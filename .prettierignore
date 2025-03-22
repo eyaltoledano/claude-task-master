@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+tasks
+*.json
+*.mdc
+README.md
+.cursor
+scripts/*.js
+scripts/init.js
