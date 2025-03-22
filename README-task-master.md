@@ -1,4 +1,5 @@
 # Task Master
+
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
@@ -15,9 +16,11 @@ A task management system for AI-driven development with Claude, designed to work
 The script can be configured through environment variables in a `.env` file at the root of the project:
 
 ### Required Configuration
+
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
 
 ### Optional Configuration
+
 - `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
 - `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
 - `TEMPERATURE`: Temperature for model responses (default: 0.7)
@@ -91,7 +94,7 @@ Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.c
 
 1. After initializing your project, open it in Cursor
 2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+3. Place your PRD document in the `scripts/task-master/` directory (e.g., `scripts/task-master/prd.txt`)
 4. Open Cursor's AI chat and switch to Agent mode
 
 ### Initial Task Generation
@@ -99,15 +102,17 @@ Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.c
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the dev.js script to parse my PRD and generate tasks. The PRD is located at scripts/prd.txt.
+Please use the task-master/dev.js script to parse my PRD and generate tasks. The PRD is located at scripts/task-master/prd.txt.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js parse-prd --input=scripts/prd.txt
+node scripts/task-master/dev.js parse-prd --input=scripts/task-master/prd.txt
 ```
 
 This will:
+
 - Parse your PRD document
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
 - The agent will understand this process due to the Cursor rules
@@ -121,8 +126,9 @@ Please generate individual task files from tasks.json
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js generate
+node scripts/task-master/dev.js generate
 ```
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
@@ -140,8 +146,9 @@ What tasks are available to work on next?
 ```
 
 The agent will:
-- Run `node scripts/dev.js list` to see all tasks
-- Run `node scripts/dev.js next` to determine the next task to work on
+
+- Run `node scripts/task-master/dev.js list` to see all tasks
+- Run `node scripts/task-master/dev.js next` to determine the next task to work on
 - Analyze dependencies to determine which tasks are ready to be worked on
 - Prioritize tasks based on priority level and ID order
 - Suggest the next task(s) to implement
@@ -149,12 +156,14 @@ The agent will:
 ### 2. Task Implementation
 
 When implementing a task, the agent will:
+
 - Reference the task's details section for implementation specifics
 - Consider dependencies on previous tasks
 - Follow the project's coding standards
 - Create appropriate tests based on the task's testStrategy
 
 You can ask:
+
 ```
 Let's implement task 3. What does it involve?
 ```
@@ -162,6 +171,7 @@ Let's implement task 3. What does it involve?
 ### 3. Task Verification
 
 Before marking a task as complete, verify it according to:
+
 - The task's specified testStrategy
 - Any automated tests in the codebase
 - Manual verification if required
@@ -175,25 +185,29 @@ Task 3 is now complete. Please update its status.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js set-status --id=3 --status=done
+node scripts/task-master/dev.js set-status --id=3 --status=done
 ```
 
 ### 5. Handling Implementation Drift
 
 If during implementation, you discover that:
+
 - The current approach differs significantly from what was planned
 - Future tasks need to be modified due to current implementation choices
 - New dependencies or requirements have emerged
 
 Tell the agent:
+
 ```
 We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js update --from=4 --prompt="Now we are using Express instead of Fastify."
+node scripts/task-master/dev.js update --from=4 --prompt="Now we are using Express instead of Fastify."
 ```
 
 This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
@@ -207,38 +221,45 @@ Task 5 seems complex. Can you break it down into subtasks?
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js expand --id=5 --subtasks=3
+node scripts/task-master/dev.js expand --id=5 --subtasks=3
 ```
 
 You can provide additional context:
+
 ```
 Please break down task 5 with a focus on security considerations.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js expand --id=5 --prompt="Focus on security aspects"
+node scripts/task-master/dev.js expand --id=5 --prompt="Focus on security aspects"
 ```
 
 You can also expand all pending tasks:
+
 ```
 Please break down all pending tasks into subtasks.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js expand --all
+node scripts/task-master/dev.js expand --all
 ```
 
 For research-backed subtask generation using Perplexity AI:
+
 ```
 Please break down task 5 using research-backed generation.
 ```
 
 The agent will execute:
+
 ```bash
-node scripts/dev.js expand --id=5 --research
+node scripts/task-master/dev.js expand --id=5 --research
 ```
 
 ## Command Reference
@@ -246,148 +267,160 @@ node scripts/dev.js expand --id=5 --research
 Here's a comprehensive reference of all available commands:
 
 ### Parse PRD
+
 ```bash
 # Parse a PRD file and generate tasks
-npm run parse-prd -- --input=<prd-file.txt>
+npm run task-master:parse-prd -- --input=<prd-file.txt>
 
 # Limit the number of tasks generated
-npm run dev -- parse-prd --input=<prd-file.txt> --tasks=10
+npm run task-master:dev -- parse-prd --input=<prd-file.txt> --tasks=10
 ```
 
 ### List Tasks
+
 ```bash
 # List all tasks
-npm run list
+npm run task-master:list
 
 # List tasks with a specific status
-npm run dev -- list --status=<status>
+npm run task-master:dev -- list --status=<status>
 
 # List tasks with subtasks
-npm run dev -- list --with-subtasks
+npm run task-master:dev -- list --with-subtasks
 
 # List tasks with a specific status and include subtasks
-npm run dev -- list --status=<status> --with-subtasks
+npm run task-master:dev -- list --status=<status> --with-subtasks
 ```
 
 ### Show Next Task
+
 ```bash
 # Show the next task to work on based on dependencies and status
-npm run dev -- next
+npm run task-master:dev -- next
 ```
 
 ### Show Specific Task
+
 ```bash
 # Show details of a specific task
-npm run dev -- show <id>
+npm run task-master:dev -- show <id>
 # or
-npm run dev -- show --id=<id>
+npm run task-master:dev -- show --id=<id>
 
 # View a specific subtask (e.g., subtask 2 of task 1)
-npm run dev -- show 1.2
+npm run task-master:dev -- show 1.2
 ```
 
 ### Update Tasks
+
 ```bash
 # Update tasks from a specific ID and provide context
-npm run dev -- update --from=<id> --prompt="<prompt>"
+npm run task-master:dev -- update --from=<id> --prompt="<prompt>"
 ```
 
 ### Generate Task Files
+
 ```bash
 # Generate individual task files from tasks.json
-npm run generate
+npm run task-master:generate
 ```
 
 ### Set Task Status
+
 ```bash
 # Set status of a single task
-npm run dev -- set-status --id=<id> --status=<status>
+npm run task-master:dev -- set-status --id=<id> --status=<status>
 
 # Set status for multiple tasks
-npm run dev -- set-status --id=1,2,3 --status=<status>
+npm run task-master:dev -- set-status --id=1,2,3 --status=<status>
 
 # Set status for subtasks
-npm run dev -- set-status --id=1.1,1.2 --status=<status>
+npm run task-master:dev -- set-status --id=1.1,1.2 --status=<status>
 ```
 
 When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
 
 ### Expand Tasks
+
 ```bash
 # Expand a specific task with subtasks
-npm run dev -- expand --id=<id> --subtasks=<number>
+npm run task-master:dev -- expand --id=<id> --subtasks=<number>
 
 # Expand with additional context
-npm run dev -- expand --id=<id> --prompt="<context>"
+npm run task-master:dev -- expand --id=<id> --prompt="<context>"
 
 # Expand all pending tasks
-npm run dev -- expand --all
+npm run task-master:dev -- expand --all
 
 # Force regeneration of subtasks for tasks that already have them
-npm run dev -- expand --all --force
+npm run task-master:dev -- expand --all --force
 
 # Research-backed subtask generation for a specific task
-npm run dev -- expand --id=<id> --research
+npm run task-master:dev -- expand --id=<id> --research
 
 # Research-backed generation for all tasks
-npm run dev -- expand --all --research
+npm run task-master:dev -- expand --all --research
 ```
 
 ### Clear Subtasks
+
 ```bash
 # Clear subtasks from a specific task
-npm run dev -- clear-subtasks --id=<id>
+npm run task-master:dev -- clear-subtasks --id=<id>
 
 # Clear subtasks from multiple tasks
-npm run dev -- clear-subtasks --id=1,2,3
+npm run task-master:dev -- clear-subtasks --id=1,2,3
 
 # Clear subtasks from all tasks
-npm run dev -- clear-subtasks --all
+npm run task-master:dev -- clear-subtasks --all
 ```
 
 ### Analyze Task Complexity
+
 ```bash
 # Analyze complexity of all tasks
-npm run dev -- analyze-complexity
+npm run task-master:dev -- analyze-complexity
 
 # Save report to a custom location
-npm run dev -- analyze-complexity --output=my-report.json
+npm run task-master:dev -- analyze-complexity --output=my-report.json
 
 # Use a specific LLM model
-npm run dev -- analyze-complexity --model=claude-3-opus-20240229
+npm run task-master:dev -- analyze-complexity --model=claude-3-opus-20240229
 
 # Set a custom complexity threshold (1-10)
-npm run dev -- analyze-complexity --threshold=6
+npm run task-master:dev -- analyze-complexity --threshold=6
 
 # Use an alternative tasks file
-npm run dev -- analyze-complexity --file=custom-tasks.json
+npm run task-master:dev -- analyze-complexity --file=custom-tasks.json
 
 # Use Perplexity AI for research-backed complexity analysis
-npm run dev -- analyze-complexity --research
+npm run task-master:dev -- analyze-complexity --research
 ```
 
 ### View Complexity Report
+
 ```bash
 # Display the task complexity analysis report
-npm run dev -- complexity-report
+npm run task-master:dev -- complexity-report
 
 # View a report at a custom location
-npm run dev -- complexity-report --file=my-report.json
+npm run task-master:dev -- complexity-report --file=my-report.json
 ```
 
 ### Managing Task Dependencies
+
 ```bash
 # Add a dependency to a task
-npm run dev -- add-dependency --id=<id> --depends-on=<id>
+npm run task-master:dev -- add-dependency --id=<id> --depends-on=<id>
 
 # Remove a dependency from a task
-npm run dev -- remove-dependency --id=<id> --depends-on=<id>
+npm run task-master:dev -- remove-dependency --id=<id> --depends-on=<id>
 
 # Validate dependencies without fixing them
-npm run dev -- validate-dependencies
+npm run task-master:dev -- validate-dependencies
 
 # Find and fix invalid dependencies automatically
-npm run dev -- fix-dependencies
+npm run task-master:dev -- fix-dependencies
 ```
 
 ## Feature Details
@@ -395,6 +428,7 @@ npm run dev -- fix-dependencies
 ### Analyzing Task Complexity
 
 The `analyze-complexity` command:
+
 - Analyzes each task using AI to assess its complexity on a scale of 1-10
 - Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
 - Generates tailored prompts for expanding each task
@@ -402,6 +436,7 @@ The `analyze-complexity` command:
 - Saves the report to scripts/task-complexity-report.json by default
 
 The generated report contains:
+
 - Complexity analysis for each task (scored 1-10)
 - Recommended number of subtasks based on complexity
 - AI-generated expansion prompts customized for each task
@@ -410,6 +445,7 @@ The generated report contains:
 ### Viewing Complexity Report
 
 The `complexity-report` command:
+
 - Displays a formatted, easy-to-read version of the complexity analysis report
 - Shows tasks organized by complexity score (highest to lowest)
 - Provides complexity distribution statistics (low, medium, high)
@@ -422,28 +458,31 @@ The `complexity-report` command:
 The `expand` command automatically checks for and uses the complexity report:
 
 When a complexity report exists:
+
 - Tasks are automatically expanded using the recommended subtask count and prompts
 - When expanding all tasks, they're processed in order of complexity (highest first)
 - Research-backed generation is preserved from the complexity analysis
 - You can still override recommendations with explicit command-line options
 
 Example workflow:
+
 ```bash
 # Generate the complexity analysis report with research capabilities
-npm run dev -- analyze-complexity --research
+npm run task-master:dev -- analyze-complexity --research
 
 # Review the report in a readable format
-npm run dev -- complexity-report
+npm run task-master:dev -- complexity-report
 
 # Expand tasks using the optimized recommendations
-npm run dev -- expand --id=8
+npm run task-master:dev -- expand --id=8
 # or expand all tasks
-npm run dev -- expand --all
+npm run task-master:dev -- expand --all
 ```
 
 ### Finding the Next Task
 
 The `next` command:
+
 - Identifies tasks that are pending/in-progress and have all dependencies satisfied
 - Prioritizes tasks by priority level, dependency count, and task ID
 - Displays comprehensive information about the selected task:
@@ -458,6 +497,7 @@ The `next` command:
 ### Viewing Specific Task Details
 
 The `show` command:
+
 - Displays comprehensive details about a specific task or subtask
 - Shows task status, priority, dependencies, and detailed implementation notes
 - For parent tasks, displays all subtasks and their status
@@ -488,43 +528,51 @@ The `show` command:
 ## Example Cursor AI Interactions
 
 ### Starting a new project
+
 ```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
+I've just initialized a new project with Claude Task Master. I have a PRD at scripts/task-master/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 
 ### Working on tasks
+
 ```
 What's the next task I should work on? Please consider dependencies and priorities.
 ```
 
 ### Implementing a specific task
+
 ```
 I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
 ```
 
 ### Managing subtasks
+
 ```
 I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
 ```
 
 ### Handling changes
+
 ```
 We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
 ```
 
 ### Completing work
+
 ```
-I've finished implementing the authentication system described in task 2. All tests are passing. 
+I've finished implementing the authentication system described in task 2. All tests are passing.
 Please mark it as complete and tell me what I should work on next.
 ```
 
 ### Analyzing complexity
+
 ```
 Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
 ```
 
 ### Viewing complexity report
+
 ```
 Can you show me the complexity report in a more readable format?
 ```
