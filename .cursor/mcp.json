@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "TaskMaster": {
+      "name": "Task Master MCP",
+      "transport": "command",
+      "command": "npx",
+      "args": ["-y", "task-master-mcp", "start"],
+      "description": "MCP server for Task Master CLI integration"
+    }
+  }
+}

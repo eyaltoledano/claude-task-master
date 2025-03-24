@@ -1,0 +1,131 @@
+# Task ID: 23
+# Title: Implement MCP Server for Task-Master CLI
+# Status: pending
+# Dependencies: 
+# Priority: high
+# Description: Create an MCP server that exposes the task-master CLI functionality through the Model Context Protocol using FastMCP, enabling AI assistants to interact with the task management system.
+# Details:
+Implement a complete MCP server for task-master using the FastMCP TypeScript framework. The server will allow AI assistants (like Claude in Cursor) to interact with the task management system through the standardized MCP protocol. Key implementation details include:
+
+1. Server Configuration:
+   - Set up FastMCP server with proper identification and version information
+   - Configure authentication if needed
+   - Implement session handling for client connections
+   - Set up proper error handling and logging
+
+2. Tool Definitions:
+   - Map each task-master CLI command to an MCP tool
+   - Implement parameter validation using Zod schemas
+   - Create descriptive documentation for each tool
+   - Ensure proper error handling for each tool
+
+3. Command Execution:
+   - Create handlers that translate tool calls into CLI commands
+   - Execute the commands using child processes
+   - Parse and format command output for MCP responses
+   - Handle error cases and provide meaningful error messages
+
+4. Client Compatibility:
+   - Implement standardized JSONRPC responses for Cursor MCP client
+   - Add client-specific adaptations for better Cursor integration
+   - Ensure compatibility with the MCP specification
+   - Implement tool discovery and introspection capabilities
+
+5. Testing and Documentation:
+   - Create test scripts to verify server functionality
+   - Document server usage and configuration options
+   - Provide examples for common MCP client interactions
+   - Include troubleshooting information
+
+# Test Strategy:
+Verification will involve:
+
+1. Functionality Testing:
+   - Verify that each task-master CLI command can be successfully executed through the MCP server
+   - Test parameter validation and error handling for each tool
+   - Verify that the server responds correctly to malformed requests
+   - Test client compatibility with Cursor and other MCP clients
+
+2. Integration Testing:
+   - Test the MCP server with actual AI assistants (Claude in Cursor)
+   - Verify that the server can handle concurrent tool calls
+   - Test server authentication and session handling
+   - Verify that command output is properly formatted and returned to clients
+
+3. Performance Testing:
+   - Measure response times for various tool calls
+   - Test server under load with multiple concurrent clients
+   - Verify memory usage remains stable over time
+
+The implementation will be considered complete when all task-master CLI commands are accessible through the MCP server, the server correctly handles errors and edge cases, and AI assistants can effectively interact with the task management system.
+
+# Subtasks:
+## Subtask ID: 1
+## Title: Set Up FastMCP Server Configuration
+## Status: pending
+## Dependencies: None
+## Description: Install FastMCP and configure the basic MCP server with proper identification, version information, and transport options. Implement authentication, session handling, error handling, and logging. Create a solid foundation for implementing the MCP tools.
+## Acceptance Criteria:
+- FastMCP package is installed and properly configured
+- Server is set up with appropriate name and version information
+- Authentication mechanism is implemented if needed
+- Session handling is properly configured
+- Error handling and logging are implemented
+- Server can be started and accepts connections
+- Basic server functionality is tested and verified
+
+## Subtask ID: 2
+## Title: Define MCP Tools for Core Task-Master Commands
+## Status: pending
+## Dependencies: 23.1 ⏱️
+## Description: Define MCP tools for the core task-master CLI commands (list, next, generate, parse-prd, update, set-status, expand, etc.). Implement parameter validation using Zod schemas and create descriptive documentation for each tool. Ensure that tool definitions follow MCP best practices.
+## Acceptance Criteria:
+- MCP tools are defined for all core task-master CLI commands
+- Each tool has proper parameter validation using Zod schemas
+- Tool documentation is clear and comprehensive
+- Tools follow MCP best practices and standards
+- Parameter schemas match the CLI command options
+- Optional and required parameters are properly handled
+- Tools can be discovered through the MCP introspection capabilities
+
+## Subtask ID: 3
+## Title: Implement Command Execution Handlers
+## Status: pending
+## Dependencies: 23.2 ⏱️
+## Description: Create handlers that translate MCP tool calls into task-master CLI commands. Implement the execute function for each tool to run the appropriate CLI command using child processes, parse the output, and format the response according to MCP standards. Handle errors and provide meaningful error messages.
+## Acceptance Criteria:
+- Each tool has a working execute function that runs the appropriate CLI command
+- Command execution is properly handled using child processes
+- Command output is parsed and formatted for MCP responses
+- Error handling is robust and provides meaningful error messages
+- Command execution is properly logged
+- Long-running commands are handled appropriately
+- Process exits and signals are properly managed
+
+## Subtask ID: 4
+## Title: Implement JSONRPC Response Handling for Cursor Compatibility
+## Status: pending
+## Dependencies: 23.3 ⏱️
+## Description: Implement standardized JSONRPC response handling to ensure compatibility with the Cursor MCP client. Create client-specific adaptations for better Cursor integration. Ensure that the server follows the MCP specification for message formats and error codes.
+## Acceptance Criteria:
+- JSONRPC responses follow the MCP specification
+- Responses are compatible with the Cursor MCP client
+- Error codes and messages follow the MCP standard
+- Tool results are properly formatted for client consumption
+- Server passes MCP compliance tests
+- Cursor-specific adaptations are implemented where needed
+- Response format is consistent across all tools
+
+## Subtask ID: 5
+## Title: Implement Tool Discovery and Advanced Features
+## Status: pending
+## Dependencies: 23.4 ⏱️
+## Description: Add tool discovery and introspection capabilities to the MCP server. Implement advanced features like progress reporting, image content handling (if needed), and sampling. Create a complete implementation that provides a rich experience for AI assistants.
+## Acceptance Criteria:
+- Tool discovery and introspection are properly implemented
+- Progress reporting is implemented for long-running commands
+- Image content handling is implemented if needed
+- Sampling capability is provided for compatible clients
+- Advanced MCP features are properly documented
+- Server provides a rich experience for AI assistants
+- Implementation follows best practices for MCP servers 

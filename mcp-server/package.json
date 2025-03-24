@@ -1,0 +1,42 @@
+{
+  "name": "task-master-mcp",
+  "version": "0.2.0",
+  "description": "MCP server for Task Master CLI",
+  "main": "cli.js",
+  "type": "module",
+  "bin": {
+    "task-master-mcp": "./cli.js",
+    "task-master-mcp-install": "./install.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node --test",
+    "debug": "DEBUG=* node src/index.js",
+    "debug:sse": "DEBUG=* TRANSPORT_TYPE=sse node src/index.js",
+    "simple": "node src/simple.js",
+    "simple:sse": "TRANSPORT_TYPE=sse node src/simple.js",
+    "prepare": "chmod +x cli.js index.js postinstall.js install.js",
+    "postinstall": "node postinstall.js",
+    "install-global": "node install.js"
+  },
+  "keywords": [
+    "mcp",
+    "task-master",
+    "cli",
+    "productivity",
+    "fastmcp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fastmcp": "^1.20.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
