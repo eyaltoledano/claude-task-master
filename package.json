@@ -6,13 +6,16 @@
   "type": "module",
   "bin": {
     "task-master": "./bin/task-master.js",
-    "task-master-init": "./bin/task-master-init.js"
+    "task-master-init": "./bin/task-master-init.js",
+    "task-master-cursor-setup": "./bin/task-master-cursor-setup.js",
+    "task-master-cli-mcp": "./bin/task-master-cli-mcp.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
-    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js"
+    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js bin/task-master-cursor-setup.js bin/task-master-cli-mcp.js",
+    "cursor-setup": "node bin/task-master-cursor-setup.js"
   },
   "keywords": [
     "claude",

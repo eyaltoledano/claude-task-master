@@ -1,4 +1,5 @@
 # Task Master
+
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
@@ -15,9 +16,11 @@ A task management system for AI-driven development with Claude, designed to work
 The script can be configured through environment variables in a `.env` file at the root of the project:
 
 ### Required Configuration
+
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
 
 ### Optional Configuration
+
 - `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
 - `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
 - `TEMPERATURE`: Temperature for model responses (default: 0.7)
@@ -39,6 +42,137 @@ npm install -g task-master-ai
 # OR install locally within your project
 npm install task-master-ai
 ```
+
+## Model Context Protocol (MCP)
+
+Task Master includes a Model Context Protocol (MCP) system that enables AI assistants to recognize and execute task-master commands through slash commands in user queries. This makes it easy to integrate Task Master with AI-powered tools and chatbots.
+
+### Using the MCP Module
+
+You can use the MCP functionality directly via the `task-master mcp` command:
+
+```bash
+# List all tasks
+task-master mcp "/task list"
+
+# Show specific task
+task-master mcp "/task show 5"
+
+# Get next task to work on
+task-master mcp "/task next"
+
+# Set task status
+task-master mcp "/task set-status --id=5 --status=done"
+```
+
+### Using Slash Commands in MCP-compatible environments
+
+```
+/task list
+/task show 5
+/task next
+```
+
+You can use these commands in any MCP-compatible environment, including:
+
+1. In the terminal using the `task-master mcp` command
+2. In AI assistants that support MCP (like Cursor AI)
+
+### Configuration
+
+Task Master can be configured to use different execution methods:
+
+1. **Direct Execution**: The default method when using slash commands
+2. **Local Server**: For better process isolation (configured in `.cursor/mcp.json`)
+3. **HTTP Server**: For remote execution (configured in `.cursor/mcp.json`)
+
+See the [MCP Configuration](#mcp-configuration) section for more details.
+
+### Declarative MCP Configuration
+
+Task Master supports a declarative configuration system for MCP servers, allowing you to easily set up and configure different types of MCP servers. Configuration can be loaded from:
+
+1. JSON configuration files (`mcp-config.json`)
+2. Environment variables
+
+#### Configuration File Example
+
+Create an `mcp-config.json` file in your project root:
+
+```json
+{
+  "mcpServers": {
+    "task-master": {
+      "command": "node",
+      "args": ["path/to/mcp-server.js"],
+      "type": "local"
+    },
+    "remote-server": {
+      "type": "remote",
+      "url": "https://my-mcp-server.example.com/mcp"
+    }
+  },
+  "defaultServer": "task-master"
+}
+```
+
+#### Environment Variables
+
+You can also configure MCP servers using environment variables:
+
+```
+MCP_SERVER_TASKMASTER_COMMAND=node
+MCP_SERVER_TASKMASTER_ARGS=["path/to/mcp-server.js"]
+MCP_SERVER_TASKMASTER_TYPE=local
+MCP_DEFAULT_SERVER=taskmaster
+```
+
+### MCP Server Types
+
+Task Master supports different types of MCP servers:
+
+1. **Local**: Runs as a child process on the same machine
+2. **Remote**: Communicates with a remote HTTP/HTTPS server
+3. **Custom**: Extensible server type for custom implementations
+
+### Running the MCP Server
+
+You can run the MCP server in two modes:
+
+1. **Standard Input**: Processes commands from stdin/stdout (default)
+
+   ```bash
+   node path/to/mcp-server.js
+   ```
+
+2. **HTTP Server**: Listens for HTTP requests
+   ```bash
+   node path/to/mcp-server.js --http --port=3099
+   ```
+
+### Testing the MCP Configuration
+
+You can test the MCP configuration by running commands directly:
+
+```bash
+task-master mcp "/task list"
+task-master mcp "/task next"
+task-master mcp "/task show 1"
+```
+
+These commands will use your configured MCP server to process the requests.
+
+### Supported Slash Commands
+
+The MCP module supports the following slash commands:
+
+- `/task list`: List all tasks
+- `/task next`: Show the next task to work on
+- `/task show <id>`: Show details of a specific task
+- `/task expand --id=<id>`: Expand a task with subtasks
+- `/task set-status --id=<id> --status=<status>`: Update task status
+- `/task add-task --prompt="<description>"`: Add a new task
+- `/task help [command]`: Show help information
 
 ### Initialize a new project
 
@@ -132,11 +266,13 @@ Please use the task-master parse-prd command to generate tasks from my PRD. The 
 ```
 
 The agent will execute:
+
 ```bash
 task-master parse-prd scripts/prd.txt
 ```
 
 This will:
+
 - Parse your PRD document
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
 - The agent will understand this process due to the Cursor rules
@@ -150,6 +286,7 @@ Please generate individual task files from tasks.json
 ```
 
 The agent will execute:
+
 ```bash
 task-master generate
 ```
@@ -169,6 +306,7 @@ What tasks are available to work on next?
 ```
 
 The agent will:
+
 - Run `task-master list` to see all tasks
 - Run `task-master next` to determine the next task to work on
 - Analyze dependencies to determine which tasks are ready to be worked on
@@ -178,12 +316,14 @@ The agent will:
 ### 2. Task Implementation
 
 When implementing a task, the agent will:
+
 - Reference the task's details section for implementation specifics
 - Consider dependencies on previous tasks
 - Follow the project's coding standards
 - Create appropriate tests based on the task's testStrategy
 
 You can ask:
+
 ```
 Let's implement task 3. What does it involve?
 ```
@@ -191,6 +331,7 @@ Let's implement task 3. What does it involve?
 ### 3. Task Verification
 
 Before marking a task as complete, verify it according to:
+
 - The task's specified testStrategy
 - Any automated tests in the codebase
 - Manual verification if required
@@ -204,6 +345,7 @@ Task 3 is now complete. Please update its status.
 ```
 
 The agent will execute:
+
 ```bash
 task-master set-status --id=3 --status=done
 ```
@@ -211,16 +353,19 @@ task-master set-status --id=3 --status=done
 ### 5. Handling Implementation Drift
 
 If during implementation, you discover that:
+
 - The current approach differs significantly from what was planned
 - Future tasks need to be modified due to current implementation choices
 - New dependencies or requirements have emerged
 
 Tell the agent:
+
 ```
 We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
 ```
 
 The agent will execute:
+
 ```bash
 task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
 ```
@@ -236,36 +381,43 @@ Task 5 seems complex. Can you break it down into subtasks?
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --num=3
 ```
 
 You can provide additional context:
+
 ```
 Please break down task 5 with a focus on security considerations.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --prompt="Focus on security aspects"
 ```
 
 You can also expand all pending tasks:
+
 ```
 Please break down all pending tasks into subtasks.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --all
 ```
 
 For research-backed subtask generation using Perplexity AI:
+
 ```
 Please break down task 5 using research-backed generation.
 ```
 
 The agent will execute:
+
 ```bash
 task-master expand --id=5 --research
 ```
@@ -275,6 +427,7 @@ task-master expand --id=5 --research
 Here's a comprehensive reference of all available commands:
 
 ### Parse PRD
+
 ```bash
 # Parse a PRD file and generate tasks
 task-master parse-prd <prd-file.txt>
@@ -284,6 +437,7 @@ task-master parse-prd <prd-file.txt> --num-tasks=10
 ```
 
 ### List Tasks
+
 ```bash
 # List all tasks
 task-master list
@@ -299,12 +453,14 @@ task-master list --status=<status> --with-subtasks
 ```
 
 ### Show Next Task
+
 ```bash
 # Show the next task to work on based on dependencies and status
 task-master next
 ```
 
 ### Show Specific Task
+
 ```bash
 # Show details of a specific task
 task-master show <id>
@@ -316,18 +472,21 @@ task-master show 1.2
 ```
 
 ### Update Tasks
+
 ```bash
 # Update tasks from a specific ID and provide context
 task-master update --from=<id> --prompt="<prompt>"
 ```
 
 ### Generate Task Files
+
 ```bash
 # Generate individual task files from tasks.json
 task-master generate
 ```
 
 ### Set Task Status
+
 ```bash
 # Set status of a single task
 task-master set-status --id=<id> --status=<status>
@@ -342,6 +501,7 @@ task-master set-status --id=1.1,1.2 --status=<status>
 When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
 
 ### Expand Tasks
+
 ```bash
 # Expand a specific task with subtasks
 task-master expand --id=<id> --num=<number>
@@ -363,6 +523,7 @@ task-master expand --all --research
 ```
 
 ### Clear Subtasks
+
 ```bash
 # Clear subtasks from a specific task
 task-master clear-subtasks --id=<id>
@@ -375,197 +536,76 @@ task-master clear-subtasks --all
 ```
 
 ### Analyze Task Complexity
-```bash
-# Analyze complexity of all tasks
-task-master analyze-complexity
 
-# Save report to a custom location
-task-master analyze-complexity --output=my-report.json
-
-# Use a specific LLM model
-task-master analyze-complexity --model=claude-3-opus-20240229
-
-# Set a custom complexity threshold (1-10)
-task-master analyze-complexity --threshold=6
-
-# Use an alternative tasks file
-task-master analyze-complexity --file=custom-tasks.json
-
-# Use Perplexity AI for research-backed complexity analysis
-task-master analyze-complexity --research
 ```
 
-### View Complexity Report
-```bash
-# Display the task complexity analysis report
-task-master complexity-report
-
-# View a report at a custom location
-task-master complexity-report --file=my-report.json
 ```
 
-### Managing Task Dependencies
-```bash
-# Add a dependency to a task
-task-master add-dependency --id=<id> --depends-on=<id>
+## Integrating with AI Assistants (MCP)
 
-# Remove a dependency from a task
-task-master remove-dependency --id=<id> --depends-on=<id>
+You can integrate Task Master with AI assistants that support the Model Context Protocol (MCP) to execute commands directly from the AI conversation interface.
 
-# Validate dependencies without fixing them
-task-master validate-dependencies
+### What is MCP?
 
-# Find and fix invalid dependencies automatically
-task-master fix-dependencies
+The Model Context Protocol (MCP) is an open standard that enables AI assistants to connect to external data sources and tools. With MCP integration, you can use slash commands like `/task list` in your AI assistant, and it will execute the corresponding Task Master command.
+
+### Setting up MCP Integration
+
+1. **Start the MCP Server**
+
+   ```bash
+   # Start the MCP server
+   npx task-master mcp
+   ```
+
+   This will start the MCP server on port 8888 by default. You can specify a different port with the `-p` option:
+
+   ```bash
+   npx task-master mcp -p 9999
+   ```
+
+2. **Configure Your AI Assistant**
+
+   #### For Claude Desktop:
+
+   1. Open Claude Desktop
+   2. Go to Settings > MCP
+   3. Add an MCP server with the following configuration:
+      - Name: task-master
+      - Type: command
+      - Command: `npx task-master-ai mcp`
+
+   #### For Other MCP-Compatible Assistants:
+
+   - Configure the MCP server with the endpoint: `http://localhost:8888/mcp`
+   - Use the format: `{"query": "/task command"}` for requests
+
+### Available Commands
+
+The following slash commands are available:
+
+- `/task list` - List all tasks
+- `/task next` - Show the next task to work on
+- `/task show <id>` - Show details of a specific task
+- `/task expand --id=<id>` - Expand a task with subtasks
+- `/task set-status --id=<id> --status=<status>` - Set the status of a task
+- `/task help` - Show help information
+
+### Example Usage in AI Assistant
+
+Once configured, you can use Task Master directly in your AI assistant conversation:
+
+```
+User: /task list
+AI: [Displays the list of tasks]
+
+User: /task next
+AI: [Shows the next task to work on]
+
+User: /task show 3
+AI: [Displays details of task 3]
 ```
 
-### Add a New Task
-```bash
-# Add a new task using AI
-task-master add-task --prompt="Description of the new task"
+### Advanced Configuration
 
-# Add a task with dependencies
-task-master add-task --prompt="Description" --dependencies=1,2,3
-
-# Add a task with priority
-task-master add-task --prompt="Description" --priority=high
-```
-
-## Feature Details
-
-### Analyzing Task Complexity
-
-The `analyze-complexity` command:
-- Analyzes each task using AI to assess its complexity on a scale of 1-10
-- Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
-- Generates tailored prompts for expanding each task
-- Creates a comprehensive JSON report with ready-to-use commands
-- Saves the report to scripts/task-complexity-report.json by default
-
-The generated report contains:
-- Complexity analysis for each task (scored 1-10)
-- Recommended number of subtasks based on complexity
-- AI-generated expansion prompts customized for each task
-- Ready-to-run expansion commands directly within each task analysis
-
-### Viewing Complexity Report
-
-The `complexity-report` command:
-- Displays a formatted, easy-to-read version of the complexity analysis report
-- Shows tasks organized by complexity score (highest to lowest)
-- Provides complexity distribution statistics (low, medium, high)
-- Highlights tasks recommended for expansion based on threshold score
-- Includes ready-to-use expansion commands for each complex task
-- If no report exists, offers to generate one on the spot
-
-### Smart Task Expansion
-
-The `expand` command automatically checks for and uses the complexity report:
-
-When a complexity report exists:
-- Tasks are automatically expanded using the recommended subtask count and prompts
-- When expanding all tasks, they're processed in order of complexity (highest first)
-- Research-backed generation is preserved from the complexity analysis
-- You can still override recommendations with explicit command-line options
-
-Example workflow:
-```bash
-# Generate the complexity analysis report with research capabilities
-task-master analyze-complexity --research
-
-# Review the report in a readable format
-task-master complexity-report
-
-# Expand tasks using the optimized recommendations
-task-master expand --id=8
-# or expand all tasks
-task-master expand --all
-```
-
-### Finding the Next Task
-
-The `next` command:
-- Identifies tasks that are pending/in-progress and have all dependencies satisfied
-- Prioritizes tasks by priority level, dependency count, and task ID
-- Displays comprehensive information about the selected task:
-  - Basic task details (ID, title, priority, dependencies)
-  - Implementation details
-  - Subtasks (if they exist)
-- Provides contextual suggested actions:
-  - Command to mark the task as in-progress
-  - Command to mark the task as done
-  - Commands for working with subtasks
-
-### Viewing Specific Task Details
-
-The `show` command:
-- Displays comprehensive details about a specific task or subtask
-- Shows task status, priority, dependencies, and detailed implementation notes
-- For parent tasks, displays all subtasks and their status
-- For subtasks, shows parent task relationship
-- Provides contextual action suggestions based on the task's state
-- Works with both regular tasks and subtasks (using the format taskId.subtaskId)
-
-## Best Practices for AI-Driven Development
-
-1. **Start with a detailed PRD**: The more detailed your PRD, the better the generated tasks will be.
-
-2. **Review generated tasks**: After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
-
-3. **Analyze task complexity**: Use the complexity analysis feature to identify which tasks should be broken down further.
-
-4. **Follow the dependency chain**: Always respect task dependencies - the Cursor agent will help with this.
-
-5. **Update as you go**: If your implementation diverges from the plan, use the update command to keep future tasks aligned with your current approach.
-
-6. **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
-
-7. **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
-
-8. **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
-
-9. **Validate dependencies**: Periodically run the validate-dependencies command to check for invalid or circular dependencies.
-
-## Example Cursor AI Interactions
-
-### Starting a new project
-```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
-Can you help me parse it and set up the initial tasks?
-```
-
-### Working on tasks
-```
-What's the next task I should work on? Please consider dependencies and priorities.
-```
-
-### Implementing a specific task
-```
-I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
-```
-
-### Managing subtasks
-```
-I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
-```
-
-### Handling changes
-```
-We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
-```
-
-### Completing work
-```
-I've finished implementing the authentication system described in task 2. All tests are passing. 
-Please mark it as complete and tell me what I should work on next.
-```
-
-### Analyzing complexity
-```
-Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
-```
-
-### Viewing complexity report
-```
-Can you show me the complexity report in a more readable format?
-```
+For advanced MCP configuration or to set up MCP for a custom AI assistant, refer to the MCP documentation and your AI assistant's integration guides.

@@ -1,0 +1,25 @@
+{
+  "mcp": {
+    "commands": {
+      "task": {
+        "name": "task",
+        "description": "Run task-master commands directly",
+        "execute": [
+          "npx",
+          "task-master",
+          "mcp",
+          "/task {input}"
+        ],
+        "suggest": [
+          "list",
+          "next",
+          "show",
+          "expand",
+          "set-status",
+          "add-task",
+          "help"
+        ]
+      }
+    }
+  }
+}

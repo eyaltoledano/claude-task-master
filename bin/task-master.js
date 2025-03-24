@@ -29,7 +29,7 @@ function runDevScript(args) {
     stdio: 'inherit',
     cwd: process.cwd()
   });
-  
+
   child.on('close', (code) => {
     process.exit(code);
   });
@@ -55,20 +55,28 @@ program
   .option('--dry-run', 'Show what would be done without making changes')
   .action((options) => {
     // Pass through any options to the init script
-    const args = ['--yes', 'name', 'description', 'version', 'author', 'skip-install', 'dry-run']
-      .filter(opt => options[opt])
-      .map(opt => {
+    const args = [
+      '--yes',
+      'name',
+      'description',
+      'version',
+      'author',
+      'skip-install',
+      'dry-run'
+    ]
+      .filter((opt) => options[opt])
+      .map((opt) => {
         if (opt === 'yes' || opt === 'skip-install' || opt === 'dry-run') {
           return `--${opt}`;
         }
         return `--${opt}=${options[opt]}`;
       });
-    
+
     const child = spawn('node', [initScriptPath, ...args], {
       stdio: 'inherit',
       cwd: process.cwd()
     });
-    
+
     child.on('close', (code) => {
       process.exit(code);
     });
@@ -136,10 +144,15 @@ program
 
 program
   .command('update')
-  .description('Update tasks based on new information or implementation changes')
+  .description(
+    'Update tasks based on new information or implementation changes'
+  )
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
   .option('--from <id>', 'Task ID to start updating from', '1')
-  .option('-p, --prompt <text>', 'Prompt explaining the changes or new context (required)')
+  .option(
+    '-p, --prompt <text>',
+    'Prompt explaining the changes or new context (required)'
+  )
   .action((options) => {
     const args = ['update'];
     if (options.file) args.push('--file', options.file);
@@ -148,11 +161,88 @@ program
     runDevScript(args);
   });
 
+// Add the mcp command to process slash commands
+program
+  .command('mcp')
+  .description('Start an MCP server or execute a single MCP command')
+  .option('-p, --port <port>', 'Port to use for the MCP server', '8888')
+  .argument('[command]', 'Optional MCP command to execute (e.g., "/task list")')
+  .action(async (command, options) => {
+    // If a command is provided, execute it directly
+    if (command) {
+      // Import the processMCPCommand function
+      const { processMCPCommand } = await import('../lib/mcp/mcp.js');
+      const { loadConfig } = await import('../lib/mcp/mcp-config.js');
+
+      try {
+        // Load the MCP configuration
+        const config = await loadConfig();
+
+        // Process the command
+        const result = await processMCPCommand(command, null, config);
+
+        if (!result.processed) {
+          console.error('Error: Not a valid MCP command');
+          process.exit(1);
+        }
+
+        if (!result.success) {
+          if (result.error) {
+            console.error(`Error: ${result.error}`);
+          }
+
+          if (result.suggestedCommands) {
+            console.log('\nSuggested commands:');
+            result.suggestedCommands.forEach((cmd) => {
+              console.log(`  /task ${cmd}`);
+            });
+          }
+
+          process.exit(1);
+        }
+
+        // If successfully processed, output the result
+        if (result.output) {
+          console.log(result.output);
+        } else {
+          console.log('Command processed successfully');
+        }
+      } catch (error) {
+        console.error(`Error: ${error.message}`);
+        process.exit(1);
+      }
+    } else {
+      // Start the MCP server if no command is provided
+      console.log('Starting MCP server...');
+      import('../lib/mcp/mcp-server.js')
+        .then(({ startServer }) => {
+          startServer(options.port)
+            .then(() => {
+              console.log(`MCP server running on port ${options.port}`);
+            })
+            .catch((err) => {
+              console.error('Failed to start MCP server:', err.message);
+              process.exit(1);
+            });
+        })
+        .catch((err) => {
+          console.error('Failed to import MCP server module:', err.message);
+          process.exit(1);
+        });
+    }
+  });
+
 program
   .command('set-status')
   .description('Set the status of a task')
-  .option('-i, --id <id>', 'Task ID (can be comma-separated for multiple tasks)')
-  .option('-s, --status <status>', 'New status (todo, in-progress, review, done)')
+  .option(
+    '-i, --id <id>',
+    'Task ID (can be comma-separated for multiple tasks)'
+  )
+  .option(
+    '-s, --status <status>',
+    'New status (todo, in-progress, review, done)'
+  )
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
   .action((options) => {
     const args = ['set-status'];
@@ -169,9 +259,18 @@ program
   .option('-i, --id <id>', 'Task ID to expand')
   .option('-a, --all', 'Expand all tasks')
   .option('-n, --num <number>', 'Number of subtasks to generate')
-  .option('-r, --no-research', 'Disable Perplexity AI for research-backed subtask generation')
-  .option('-p, --prompt <text>', 'Additional context to guide subtask generation')
-  .option('--force', 'Force regeneration of subtasks for tasks that already have them')
+  .option(
+    '-r, --no-research',
+    'Disable Perplexity AI for research-backed subtask generation'
+  )
+  .option(
+    '-p, --prompt <text>',
+    'Additional context to guide subtask generation'
+  )
+  .option(
+    '--force',
+    'Force regeneration of subtasks for tasks that already have them'
+  )
   .action((options) => {
     const args = ['expand'];
     if (options.file) args.push('--file', options.file);
@@ -186,12 +285,25 @@ program
 
 program
   .command('analyze-complexity')
-  .description('Analyze tasks and generate complexity-based expansion recommendations')
-  .option('-o, --output <file>', 'Output file path for the report', 'scripts/task-complexity-report.json')
+  .description(
+    'Analyze tasks and generate complexity-based expansion recommendations'
+  )
+  .option(
+    '-o, --output <file>',
+    'Output file path for the report',
+    'scripts/task-complexity-report.json'
+  )
   .option('-m, --model <model>', 'LLM model to use for analysis')
-  .option('-t, --threshold <number>', 'Minimum complexity score to recommend expansion (1-10)', '5')
+  .option(
+    '-t, --threshold <number>',
+    'Minimum complexity score to recommend expansion (1-10)',
+    '5'
+  )
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-  .option('-r, --research', 'Use Perplexity AI for research-backed complexity analysis')
+  .option(
+    '-r, --research',
+    'Use Perplexity AI for research-backed complexity analysis'
+  )
   .action((options) => {
     const args = ['analyze-complexity'];
     if (options.output) args.push('--output', options.output);
@@ -221,8 +333,15 @@ program
   .description('Add a new task to tasks.json using AI')
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
   .option('-p, --prompt <text>', 'Description of the task to add (required)')
-  .option('-d, --dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
-  .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+  .option(
+    '-d, --dependencies <ids>',
+    'Comma-separated list of task IDs this task depends on'
+  )
+  .option(
+    '--priority <priority>',
+    'Task priority (high, medium, low)',
+    'medium'
+  )
   .action((options) => {
     const args = ['add-task'];
     if (options.file) args.push('--file', options.file);
@@ -277,7 +396,11 @@ program
 program
   .command('validate-dependencies')
   .description('Check for and identify invalid dependencies in tasks')
-  .option('-f, --file <path>', 'Path to the tasks.json file', 'tasks/tasks.json')
+  .option(
+    '-f, --file <path>',
+    'Path to the tasks.json file',
+    'tasks/tasks.json'
+  )
   .action((options) => {
     const args = ['validate-dependencies'];
     if (options.file) args.push('--file', options.file);
@@ -286,8 +409,14 @@ program
 
 program
   .command('fix-dependencies')
-  .description('Find and fix all invalid dependencies in tasks.json and task files')
-  .option('-f, --file <path>', 'Path to the tasks.json file', 'tasks/tasks.json')
+  .description(
+    'Find and fix all invalid dependencies in tasks.json and task files'
+  )
+  .option(
+    '-f, --file <path>',
+    'Path to the tasks.json file',
+    'tasks/tasks.json'
+  )
   .action((options) => {
     const args = ['fix-dependencies'];
     if (options.file) args.push('--file', options.file);
@@ -297,11 +426,15 @@ program
 program
   .command('complexity-report')
   .description('Display the complexity analysis report')
-  .option('-f, --file <path>', 'Path to the complexity report file', 'scripts/task-complexity-report.json')
+  .option(
+    '-f, --file <path>',
+    'Path to the complexity report file',
+    'scripts/task-complexity-report.json'
+  )
   .action((options) => {
     const args = ['complexity-report'];
     if (options.file) args.push('--file', options.file);
     runDevScript(args);
   });
 
-program.parse(process.argv); 
+program.parse(process.argv);

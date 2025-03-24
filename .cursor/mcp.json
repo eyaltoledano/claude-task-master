@@ -1,0 +1,11 @@
+{
+  "servers": [
+    {
+      "name": "task-master",
+      "type": "command",
+      "command": "npx",
+      "args": ["task-master", "mcp"],
+      "description": "Task Master MCP - process task-master commands"
+    }
+  ]
+}
