@@ -1,3 +1,4 @@
+
 /**
  * ai-services.js
  * AI service interactions for the Task Master CLI
@@ -11,11 +12,17 @@ import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 // Load environment variables
 dotenv.config();
 
-// Configure OpenRouter client
-const openrouter = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1"
-});
+let openai;
+if (process.env.OPENROUTER_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: "https://openrouter.ai/api/v1", // OpenRouter API base URL
+  });
+} else {
+  openai = new OpenAI({
+    apiKey: process.env.ANTHROPIC_API_KEY || process.env.PERPLEXITY_API_KEY,
+  });
+}
 
 // Lazy-loaded Perplexity client
 let perplexity = null;
@@ -125,8 +132,12 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
   let responseText = '';
 
   try {
-    const response = await openrouter.chat.completions.create({
-      model: CONFIG.model,
+    let model = process.env.CLINE_MODEL || process.env.MODEL || CONFIG.model;
+    if (process.env.AI_PROVIDER === 'CLAUDE') {
+      model = process.env.MODEL || CONFIG.model; // Use MODEL for Claude
+    }
+    const response = await openai.chat.completions.create({
+      model: model,
       messages: [
         {
           role: 'system',
@@ -272,8 +283,12 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    const message = await openrouter.chat.completions.create({
-      model: CONFIG.model,
+    let model = process.env.CLINE_MODEL || CONFIG.model;
+    if (process.env.AI_PROVIDER === 'CLAUDE') {
+      model = process.env.MODEL || CONFIG.model; // Use MODEL for Claude
+    }
+    const message = await openai.chat.completions.create({
+      model: model,
       messages: [
         {
           role: 'user',

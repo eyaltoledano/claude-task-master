@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.13",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
     "mock-fs": "^5.5.0",

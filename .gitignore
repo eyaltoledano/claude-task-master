@@ -1,3 +1,9 @@
+tasks/
+.cursor/
+.gitignore
+.npmignore
+
+
 # Dependency directories
 node_modules/
 jspm_packages/

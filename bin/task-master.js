@@ -15,6 +15,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
+// Set OpenAI API key if not already set
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "PLACEHOLDER_API_KEY";
+
 // Get package information
 const packageJson = require('../package.json');
 const version = packageJson.version;
@@ -127,7 +130,11 @@ program
   .argument('<file>', 'Path to the PRD file')
   .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
   .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+  .option('--ai-provider <provider>', 'AI provider to use (openai or openrouter)', 'openai')
   .action((file, options) => {
+    if (options.aiProvider) {
+      process.env.AI_PROVIDER = options.aiProvider;
+    }
     const args = ['parse-prd', file];
     if (options.output) args.push('--output', options.output);
     if (options.numTasks) args.push('--num-tasks', options.numTasks);
@@ -172,6 +179,7 @@ program
   .option('-r, --no-research', 'Disable Perplexity AI for research-backed subtask generation')
   .option('-p, --prompt <text>', 'Additional context to guide subtask generation')
   .option('--force', 'Force regeneration of subtasks for tasks that already have them')
+  .option('--ai-provider <provider>', 'AI provider to use (openai or openrouter)', 'openai')
   .action((options) => {
     const args = ['expand'];
     if (options.file) args.push('--file', options.file);
@@ -181,6 +189,7 @@ program
     if (!options.research) args.push('--no-research');
     if (options.prompt) args.push('--prompt', options.prompt);
     if (options.force) args.push('--force');
+    if (options.aiProvider) args.push('--ai-provider', options.aiProvider);
     runDevScript(args);
   });
 
@@ -304,4 +313,4 @@ program
     runDevScript(args);
   });
 
-program.parse(process.argv); 
+program.parse(process.argv);

@@ -59,6 +59,10 @@ function registerCommands(programInstance) {
       const numTasks = parseInt(options.numTasks, 10);
       const outputPath = options.output;
       
+      if (options.aiProvider) {
+        process.env.AI_PROVIDER = options.aiProvider;
+      }
+
       console.log(chalk.blue(`Parsing PRD file: ${file}`));
       console.log(chalk.blue(`Generating ${numTasks} tasks...`));
       
@@ -468,4 +472,4 @@ export {
   registerCommands,
   setupCLI,
   runCLI
-}; 
+};
