@@ -3,7 +3,6 @@
  * AI service interactions for the Task Master CLI
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { CONFIG, log, sanitizePrompt } from './utils.js';
@@ -12,9 +11,10 @@ import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 // Load environment variables
 dotenv.config();
 
-// Configure Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// Configure OpenRouter client
+const openrouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1"
 });
 
 // Lazy-loaded Perplexity client
@@ -48,7 +48,7 @@ function getPerplexityClient() {
 async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
   try {
     log('info', 'Calling Claude...');
-    
+
     // Build the system prompt
     const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
 Your goal is to create ${numTasks} well-structured, actionable development tasks based on the PRD provided.
@@ -123,24 +123,27 @@ Important: Your response must be valid JSON only, with no additional explanation
 async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
   const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
   let responseText = '';
-  
+
   try {
-    const message = await anthropic.messages.create({
+    const response = await openrouter.chat.completions.create({
       model: CONFIG.model,
-      max_tokens: maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
       messages: [
         {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
           role: 'user',
-          content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
-        }
-      ]
+          content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`,
+        },
+      ],
+      max_tokens: maxTokens,
+      temperature: CONFIG.temperature,
     });
-    
-    responseText = message.content[0].text;
+
+    responseText = response.choices[0].message.content;
     stopLoadingIndicator(loadingIndicator);
-    
+
     return processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath);
   } catch (error) {
     stopLoadingIndicator(loadingIndicator);
@@ -162,24 +165,24 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
     // Attempt to parse the JSON response
     let jsonStart = textContent.indexOf('{');
     let jsonEnd = textContent.lastIndexOf('}');
-    
+
     if (jsonStart === -1 || jsonEnd === -1) {
       throw new Error("Could not find valid JSON in Claude's response");
     }
-    
+
     let jsonContent = textContent.substring(jsonStart, jsonEnd + 1);
     let parsedData = JSON.parse(jsonContent);
-    
+
     // Validate the structure of the generated tasks
     if (!parsedData.tasks || !Array.isArray(parsedData.tasks)) {
       throw new Error("Claude's response does not contain a valid tasks array");
     }
-    
+
     // Ensure we have the correct number of tasks
     if (parsedData.tasks.length !== numTasks) {
       log('warn', `Expected ${numTasks} tasks, but received ${parsedData.tasks.length}`);
     }
-    
+
     // Add metadata if missing
     if (!parsedData.metadata) {
       parsedData.metadata = {
@@ -189,21 +192,21 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
         generatedAt: new Date().toISOString().split('T')[0]
       };
     }
-    
+
     return parsedData;
   } catch (error) {
     log('error', "Error processing Claude's response:", error.message);
-    
+
     // Retry logic
     if (retryCount < 2) {
       log('info', `Retrying to parse response (${retryCount + 1}/2)...`);
-      
+
       // Try again with Claude for a cleaner response
       if (retryCount === 1) {
         log('info', "Calling Claude again for a cleaner response...");
         return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
       }
-      
+
       return processClaudeResponse(textContent, numTasks, retryCount + 1, prdContent, prdPath);
     } else {
       throw error;
@@ -222,9 +225,9 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
 async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext = '') {
   try {
     log('info', `Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`);
-    
+
     const loadingIndicator = startLoadingIndicator(`Generating subtasks for task ${task.id}...`);
-    
+
     const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
 
@@ -244,9 +247,9 @@ For each subtask, provide:
 
 Each subtask should be implementable in a focused coding session.`;
 
-    const contextPrompt = additionalContext ? 
+    const contextPrompt = additionalContext ?
       `\n\nAdditional context to consider: ${additionalContext}` : '';
-    
+
     const userPrompt = `Please break down this task into ${numSubtasks} specific, actionable subtasks:
 
 Task ID: ${task.id}
@@ -269,22 +272,21 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    const message = await anthropic.messages.create({
+    const message = await openrouter.chat.completions.create({
       model: CONFIG.model,
-      max_tokens: CONFIG.maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
       messages: [
         {
           role: 'user',
           content: userPrompt
         }
-      ]
+      ],
+      max_tokens: CONFIG.maxTokens,
+      temperature: CONFIG.temperature,
     });
-    
+
     stopLoadingIndicator(loadingIndicator);
-    
-    return parseSubtasksFromText(message.content[0].text, nextSubtaskId, numSubtasks, task.id);
+
+    return parseSubtasksFromText(message.choices[0].message.content, nextSubtaskId, numSubtasks, task.id);
   } catch (error) {
     log('error', `Error generating subtasks: ${error.message}`);
     throw error;
@@ -304,15 +306,15 @@ async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtask
     // First, perform research to get context
     log('info', `Researching context for task ${task.id}: ${task.title}`);
     const perplexityClient = getPerplexityClient();
-    
+
     const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-small-online';
     const researchLoadingIndicator = startLoadingIndicator('Researching best practices with Perplexity AI...');
-    
+
     // Formulate research query based on task
     const researchQuery = `I need to implement "${task.title}" which involves: "${task.description}". 
 What are current best practices, libraries, design patterns, and implementation approaches? 
 Include concrete code examples and technical considerations where relevant.`;
-    
+
     // Query Perplexity for research
     const researchResponse = await perplexityClient.chat.completions.create({
       model: PERPLEXITY_MODEL,
@@ -322,12 +324,12 @@ Include concrete code examples and technical considerations where relevant.`;
       }],
       temperature: 0.1 // Lower temperature for more factual responses
     });
-    
+
     const researchResult = researchResponse.choices[0].message.content;
-    
+
     stopLoadingIndicator(researchLoadingIndicator);
     log('info', 'Research completed, now generating subtasks with additional context');
-    
+
     // Use the research result as additional context for Claude to generate subtasks
     const combinedContext = `
 RESEARCH FINDINGS:
@@ -336,10 +338,10 @@ ${researchResult}
 ADDITIONAL CONTEXT PROVIDED BY USER:
 ${additionalContext || "No additional context provided."}
 `;
-    
+
     // Now generate subtasks with Claude
     const loadingIndicator = startLoadingIndicator(`Generating research-backed subtasks for task ${task.id}...`);
-    
+
     const systemPrompt = `You are an AI assistant helping with task breakdown for software development.
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
 
@@ -386,22 +388,21 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    const message = await anthropic.messages.create({
+    const message = await openrouter.chat.completions.create({
       model: CONFIG.model,
-      max_tokens: CONFIG.maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
       messages: [
         {
           role: 'user',
           content: userPrompt
         }
-      ]
+      ],
+      max_tokens: CONFIG.maxTokens,
+      temperature: CONFIG.temperature,
     });
-    
+
     stopLoadingIndicator(loadingIndicator);
-    
-    return parseSubtasksFromText(message.content[0].text, nextSubtaskId, numSubtasks, task.id);
+
+    return parseSubtasksFromText(message.choices[0].message.content, nextSubtaskId, numSubtasks, task.id);
   } catch (error) {
     log('error', `Error generating research-backed subtasks: ${error.message}`);
     throw error;
@@ -421,25 +422,25 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
     // Locate JSON array in the text
     const jsonStartIndex = text.indexOf('[');
     const jsonEndIndex = text.lastIndexOf(']');
-    
+
     if (jsonStartIndex === -1 || jsonEndIndex === -1 || jsonEndIndex < jsonStartIndex) {
       throw new Error("Could not locate valid JSON array in the response");
     }
-    
+
     // Extract and parse the JSON
     const jsonText = text.substring(jsonStartIndex, jsonEndIndex + 1);
     let subtasks = JSON.parse(jsonText);
-    
+
     // Validate
     if (!Array.isArray(subtasks)) {
       throw new Error("Parsed content is not an array");
     }
-    
+
     // Log warning if count doesn't match expected
     if (subtasks.length !== expectedCount) {
       log('warn', `Expected ${expectedCount} subtasks, but parsed ${subtasks.length}`);
     }
-    
+
     // Normalize subtask IDs if they don't match
     subtasks = subtasks.map((subtask, index) => {
       // Assign the correct ID if it doesn't match
@@ -447,7 +448,7 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
         log('warn', `Correcting subtask ID from ${subtask.id} to ${startId + index}`);
         subtask.id = startId + index;
       }
-      
+
       // Convert dependencies to numbers if they are strings
       if (subtask.dependencies && Array.isArray(subtask.dependencies)) {
         subtask.dependencies = subtask.dependencies.map(dep => {
@@ -456,25 +457,25 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
       } else {
         subtask.dependencies = [];
       }
-      
+
       // Ensure status is 'pending'
       subtask.status = 'pending';
-      
+
       // Add parentTaskId
       subtask.parentTaskId = parentTaskId;
-      
+
       return subtask;
     });
-    
+
     return subtasks;
   } catch (error) {
     log('error', `Error parsing subtasks: ${error.message}`);
-    
+
     // Create a fallback array of empty subtasks if parsing fails
     log('warn', 'Creating fallback subtasks');
-    
+
     const fallbackSubtasks = [];
-    
+
     for (let i = 0; i < expectedCount; i++) {
       fallbackSubtasks.push({
         id: startId + i,
@@ -486,7 +487,7 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
         parentTaskId: parentTaskId
       });
     }
-    
+
     return fallbackSubtasks;
   }
 }
@@ -535,4 +536,4 @@ export {
   generateSubtasksWithPerplexity,
   parseSubtasksFromText,
   generateComplexityAnalysisPrompt
-}; 
+};

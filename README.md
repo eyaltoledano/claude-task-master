@@ -1,11 +1,106 @@
 # Task Master
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+Sick of @cursor\_ai rewriting good code or going in circles?
+
+Introducing Task Master ✨
+
+A CLI that turns your PRD into a local task management system for Cursor Agent
+
+Graduate from building cute little apps to ambitious projects without overwhelming yourself or Cursor
+
+![Image](https://pbs.twimg.com/media/GmoQ0epa8AAXf8-.jpg)
+
+Giving AI a full PRD often leads to confusion.
+
+My solution? A custom script that intelligently breaks down massive PRDs into clear, ordered, dependency-aware tasks:
+
+• Clear focus for Cursor
+• Reliable, sequential implementation
+• Eliminates overwhelm/boosts clarity
+
+Also 👇 ![Image](https://pbs.twimg.com/media/GmoRWjYWcAA5mC9.jpg)
+
+Ambitious projects evolve, and early decisions make your PRD stale—leading to “implementation drift” and dependency hell
+
+Most give up here.
+
+My solution lets Cursor Agent manage task updates:
+• Single command + short prompt
+• Automatically adjusts all future tasks
+
+How? ![Image](https://pbs.twimg.com/media/GmoRXRxXwAAsV-3.jpg)
+
+Integrating this workflow with Cursor AI is seamless:
+
+• Add this to your project with one CLI command
+• Drop your PRD.txt into the correct folder
+• Turn it into tasks.json
+• Research & expand tasks into sub-tasks
+• Cursor Agent will use the script and its commands to build ![Image](https://pbs.twimg.com/media/GmoRXrMaEAMG7JN.jpg)
+
+## Overview
+
+`index.js` is the main entry point for the `task-master` CLI, providing commands like `init`, `list`, `next`, and `generate`. It also exports functions for programmatic use.
+
+`bin/task-master.js` serves as the main entry point for the globally installed `task-master` CLI, mirroring the commands available in `index.js` but with more detailed option handling. It essentially acts as a wrapper around the `dev.js` script, providing a user-friendly command-line interface.
+
+**Table of Contents:**
+
+- [Project Description](#project-description)
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+- [Installation](#installation)
+- [Quick Start](#quick-start-with-global-commands)
+- [Troubleshooting](#troubleshooting)
+- [Task Structure](#task-structure)
+- [Integrating with Cursor AI](#integrating-with-cursor-ai)
+- [AI-Driven Development Workflow](#ai-driven-development-workflow)
+- [Command Reference](#command-reference)
+- [Feature Details](#feature-details)
+- [Best Practices for AI-Driven Development](#best-practices-for-ai-driven-development)
+- [Example Cursor AI Interactions](#example-cursor-ai-interactions)
+
+Other .md files provide additional context:
+
+- [scripts/README.md (and assets/scripts\_README.md)](#scriptsreadmeand-assetsscripts_readmemd): Provides in-depth documentation of the `dev.js` script, including all commands and options. This is more technical and developer-focused.
+- [tests/README.md](#testsreadmemd): Describes the testing strategy and how to run tests.
 
 ## Requirements
 
-- Node.js 14.0.0 or higher
+### System Requirements
+- **Node.js 14.0.0 or higher** (recommended: LTS version)
+- **npm** (comes with Node.js) or **yarn**
+
+#### Installation Instructions:
+
+**Linux (Debian/Ubuntu):**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+**Linux (RHEL/CentOS):**
+```bash
+curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
+sudo yum install -y nodejs
+```
+
+**macOS (using Homebrew):**
+```bash
+brew install node
+```
+
+**Windows:**
+Download installer from [Node.js official website](https://nodejs.org/)
+
+**Verify Installation:**
+```bash
+node --version
+npm --version
+```
+
+### API Requirements
 - Anthropic API key (Claude API)
 - Anthropic SDK version 0.39.0 or higher
 - OpenAI SDK (for Perplexity API integration, optional)
@@ -54,8 +149,8 @@ This will prompt you for project details and set up a new project with the neces
 
 ### Important Notes
 
-1. This package uses ES modules. Your package.json should include `"type": "module"`.
-2. The Anthropic SDK version should be 0.39.0 or higher.
+1.  This package uses ES modules. Your package.json should include `"type": "module"`.
+2.  The Anthropic SDK version should be 0.39.0 or higher.
 
 ## Quick Start with Global Commands
 
@@ -118,10 +213,10 @@ Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.c
 
 ### Setup with Cursor
 
-1. After initializing your project, open it in Cursor
-2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
-4. Open Cursor's AI chat and switch to Agent mode
+1.  After initializing your project, open it in Cursor
+2.  The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
+3.  Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+4.  Open Cursor's AI chat and switch to Agent mode
 
 ### Initial Task Generation
 
@@ -369,7 +464,6 @@ task-master clear-subtasks --id=<id>
 
 # Clear subtasks from multiple tasks
 task-master clear-subtasks --id=1,2,3
-
 # Clear subtasks from all tasks
 task-master clear-subtasks --all
 ```
@@ -508,22 +602,14 @@ The `show` command:
 
 ## Best Practices for AI-Driven Development
 
-1. **Start with a detailed PRD**: The more detailed your PRD, the better the generated tasks will be.
-
-2. **Review generated tasks**: After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
-
-3. **Analyze task complexity**: Use the complexity analysis feature to identify which tasks should be broken down further.
-
-4. **Follow the dependency chain**: Always respect task dependencies - the Cursor agent will help with this.
-
-5. **Update as you go**: If your implementation diverges from the plan, use the update command to keep future tasks aligned with your current approach.
-
-6. **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
-
-7. **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
-
-8. **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
-
+1.  **Start with a detailed PRD**: The more detailed your PRD, the better the generated tasks will be.
+2.  **Review generated tasks**: After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
+3.  **Analyze task complexity**: Use the complexity analysis feature to identify which tasks should be broken down further.
+4.  **Follow the dependency chain**: Always respect task dependencies - the Cursor agent will help with this.
+5.  **Update as you go**: If your implementation diverges from the plan, use the update command to keep future tasks aligned with your current approach.
+6.  **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
+7.  **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
+8.  **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
 9. **Validate dependencies**: Periodically run the validate-dependencies command to check for invalid or circular dependencies.
 
 ## Example Cursor AI Interactions
@@ -568,4 +654,3 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ### Viewing complexity report
 ```
 Can you show me the complexity report in a more readable format?
-```

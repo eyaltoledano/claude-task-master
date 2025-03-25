@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: g4eoa-jjn3c
+created: 2025-03-25T17:53:03+01:00

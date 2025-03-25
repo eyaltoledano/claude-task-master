@@ -140,9 +140,6 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
     case 'self_improve.mdc':
       sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'self_improve.mdc');
       break;
-    case 'README-task-master.md':
-      sourcePath = path.join(__dirname, '..', 'README-task-master.md');
-      break;
     default:
       // For other files like env.example, gitignore, etc. that don't have direct equivalents
       sourcePath = path.join(__dirname, '..', 'assets', templateName);
@@ -180,7 +177,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
       if (newLines.length > 0) {
         // Add a comment to separate the original content from our additions
         const updatedContent = existingContent.trim() + 
-          '\n\n# Added by Claude Task Master\n' + 
+          '\n\n# Added by AI Task Master\n' + 
           newLines.join('\n');
         fs.writeFileSync(targetPath, updatedContent);
         log('success', `Updated ${targetPath} with additional entries`);
@@ -541,15 +538,15 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     chalk.cyan.bold('Things you can now do:') + '\n\n' +
     chalk.white('1. ') + chalk.yellow('Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY') + '\n' +
     chalk.white('2. ') + chalk.yellow('Discuss your idea with AI, and once ready ask for a PRD using the example_prd.txt file, and save what you get to scripts/PRD.txt') + '\n' +
-    chalk.white('3. ') + chalk.yellow('Ask Cursor Agent to parse your PRD.txt and generate tasks') + '\n' +
+    chalk.white('3. ') + chalk.yellow('Ask AI Agent to parse your PRD.txt and generate tasks') + '\n' +
     chalk.white('   └─ ') + chalk.dim('You can also run ') + chalk.cyan('npm run parse-prd -- --input=<your-prd-file.txt>') + '\n' +
-    chalk.white('4. ') + chalk.yellow('Ask Cursor to analyze the complexity of your tasks') + '\n' +
-    chalk.white('5. ') + chalk.yellow('Ask Cursor which task is next to determine where to start') + '\n' +
-    chalk.white('6. ') + chalk.yellow('Ask Cursor to expand any complex tasks that are too large or complex.') + '\n' +
-    chalk.white('7. ') + chalk.yellow('Ask Cursor to set the status of a task, or multiple tasks. Use the task id from the task lists.') + '\n' +
-    chalk.white('8. ') + chalk.yellow('Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.') + '\n' +
+    chalk.white('4. ') + chalk.yellow('Ask AI to analyze the complexity of your tasks') + '\n' +
+    chalk.white('5. ') + chalk.yellow('Ask AI which task is next to determine where to start') + '\n' +
+    chalk.white('6. ') + chalk.yellow('Ask AI to expand any complex tasks that are too large or complex.') + '\n' +
+    chalk.white('7. ') + chalk.yellow('Ask AI to set the status of a task, or multiple tasks. Use the task id from the task lists.') + '\n' +
+    chalk.white('8. ') + chalk.yellow('Ask AI to update all tasks from a specific task id based on new learnings or pivots in your project.') + '\n' +
     chalk.white('9. ') + chalk.green.bold('Ship it!') + '\n\n' +
-    chalk.dim('* Review the README.md file to learn how to use other commands via Cursor Agent.'),
+    chalk.dim('* Review the README.md file to learn how to use other commands via the Agent.'),
     {
       padding: 1,
       margin: 1,
