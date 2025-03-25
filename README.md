@@ -1,3 +1,4 @@
+#
 # Task Master
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
@@ -39,11 +40,6 @@ Integrating this workflow with Cursor AI is seamless:
 • Research & expand tasks into sub-tasks
 • Cursor Agent will use the script and its commands to build ![Image](https://pbs.twimg.com/media/GmoRXrMaEAMG7JN.jpg)
 
-## Overview
-
-`index.js` is the main entry point for the `task-master` CLI, providing commands like `init`, `list`, `next`, and `generate`. It also exports functions for programmatic use.
-
-`bin/task-master.js` serves as the main entry point for the globally installed `task-master` CLI, mirroring the commands available in `index.js` but with more detailed option handling. It essentially acts as a wrapper around the `dev.js` script, providing a user-friendly command-line interface.
 
 **Table of Contents:**
 
@@ -61,18 +57,101 @@ Integrating this workflow with Cursor AI is seamless:
 - [Best Practices for AI-Driven Development](#best-practices-for-ai-driven-development)
 - [Example Cursor AI Interactions](#example-cursor-ai-interactions)
 
+
+# Using Task Master AI with Cline
+
+Task Master AI is a CLI tool that helps you manage AI-driven development tasks. It allows you to break down a Product Requirements Document (PRD) into a set of sequential development tasks, manage task dependencies, analyze task complexity, and generate task files.
+
+### Installation
+
+To install Task Master AI, run the following command:
+
+```bash
+npm install -g task-master-ai
+```
+
+### Configuration
+
+To configure Task Master AI with Cline, you need to set the following environment variables in a `.env` file at the root of your project:
+
+*   `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude (required if not using OpenRouter)
+*   `OPENROUTER_API_KEY`: Your OpenRouter API key for using OpenRouter as an AI provider (optional)
+
+You can also configure the following optional environment variables:
+
+*   `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
+*   `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
+*   `TEMPERATURE`: Temperature for model responses (default: 0.7)
+*   `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
+*   `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
+*   `DEBUG`: Enable debug logging (default: false)
+*   `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
+*   `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
+*   `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
+*   `PROJECT_NAME`: Override default project name in tasks.json
+*   `PROJECT_VERSION`: Override default version in tasks.json
+
+If you are using OpenRouter as your AI provider, you need to set the `OPENROUTER_API_KEY` environment variable and specify the `--ai-provider=openrouter` option when running the Task Master CLI commands.
+
+### Usage Examples
+
+Here are some examples of how to use the Task Master CLI commands to manage tasks:
+
+*   **Parse a PRD file and generate tasks:**
+
+    ```bash
+    task-master parse-prd your-prd.txt --ai-provider=openrouter
+    ```
+
+*   **List all tasks:**
+
+    ```bash
+    task-master list
+    ```
+
+*   **Show the next task to work on:**
+
+    ```bash
+    task-master next
+    ```
+
+*   **Generate task files:**
+
+    ```bash
+    task-master generate
+    ```
+
+*   **Expand a task into subtasks:**
+
+    ```bash
+    task-master expand --id=1 --num=3 --ai-provider=openrouter
+    ```
+
+*   **Set the status of a task:**
+
+    ```bash
+    task-master set-status --id=1 --status=done
+    ```
+
+
+## Code Overview
+
+`index.js` is the main entry point for the `task-master` CLI, providing commands like `init`, `list`, `next`, and `generate`. It also exports functions for programmatic use.
+
+`bin/task-master.js` serves as the main entry point for the globally installed `task-master` CLI, mirroring the commands available in `index.js` but with more detailed option handling. It essentially acts as a wrapper around the `dev.js` script, providing a user-friendly command-line interface.
+
+
 Other .md files provide additional context:
 
 - [scripts/README.md (and assets/scripts\_README.md)](#scriptsreadmeand-assetsscripts_readmemd): Provides in-depth documentation of the `dev.js` script, including all commands and options. This is more technical and developer-focused.
 - [tests/README.md](#testsreadmemd): Describes the testing strategy and how to run tests.
+
 
 ## Requirements
 
 ### System Requirements
 - **Node.js 14.0.0 or higher** (recommended: LTS version)
 - **npm** (comes with Node.js) or **yarn**
-
-#### Installation Instructions:
 
 **Linux (Debian/Ubuntu):**
 ```bash
@@ -105,26 +184,6 @@ npm --version
 - Anthropic SDK version 0.39.0 or higher
 - OpenAI SDK (for Perplexity API integration, optional)
 
-## Configuration
-
-The script can be configured through environment variables in a `.env` file at the root of the project:
-
-### Required Configuration
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
-
-### Optional Configuration
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
-- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
-- `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
-- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
-- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
-- `PROJECT_NAME`: Override default project name in tasks.json
-- `PROJECT_VERSION`: Override default version in tasks.json
-
 ## Installation
 
 ```bash
@@ -141,25 +200,6 @@ npm install task-master-ai
 # If installed globally
 task-master init
 
-# If installed locally
-npx task-master-init
-```
-
-This will prompt you for project details and set up a new project with the necessary files and structure.
-
-### Important Notes
-
-1.  This package uses ES modules. Your package.json should include `"type": "module"`.
-2.  The Anthropic SDK version should be 0.39.0 or higher.
-
-## Quick Start with Global Commands
-
-After installing the package globally, you can use these CLI commands from any directory:
-
-```bash
-# Initialize a new project
-task-master init
-
 # Parse a PRD and generate tasks
 task-master parse-prd your-prd.txt
 
@@ -173,23 +213,8 @@ task-master next
 task-master generate
 ```
 
-## Troubleshooting
 
-### If `task-master init` doesn't respond:
 
-Try running it with Node directly:
-
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
-
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
 
 ## Task Structure
 
@@ -206,50 +231,6 @@ Tasks in tasks.json have the following structure:
 - `details`: In-depth implementation instructions (Example: `"Use GitHub client ID/secret, handle callback, set session token."`)
 - `testStrategy`: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`)
 - `subtasks`: List of smaller, more specific tasks that make up the main task (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`)
-
-## Integrating with Cursor AI
-
-Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.
-
-### Setup with Cursor
-
-1.  After initializing your project, open it in Cursor
-2.  The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3.  Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
-4.  Open Cursor's AI chat and switch to Agent mode
-
-### Initial Task Generation
-
-In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
-
-```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
-```
-
-The agent will execute:
-```bash
-task-master parse-prd scripts/prd.txt
-```
-
-This will:
-- Parse your PRD document
-- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
-- The agent will understand this process due to the Cursor rules
-
-### Generate Individual Task Files
-
-Next, ask the agent to generate individual task files:
-
-```
-Please generate individual task files from tasks.json
-```
-
-The agent will execute:
-```bash
-task-master generate
-```
-
-This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
 ## AI-Driven Development Workflow
 
@@ -376,6 +357,9 @@ task-master parse-prd <prd-file.txt>
 
 # Limit the number of tasks generated
 task-master parse-prd <prd-file.txt> --num-tasks=10
+
+# Specify the AI provider (openai or openrouter)
+task-master parse-prd <prd-file.txt> --ai-provider=openrouter
 ```
 
 ### List Tasks
@@ -580,12 +564,12 @@ task-master expand --all
 
 The `next` command:
 - Identifies tasks that are pending/in-progress and have all dependencies satisfied
-- Prioritizes tasks by priority level, dependency count, and task ID
+- Prioritizes tasks based on priority level, dependency count, and task ID
 - Displays comprehensive information about the selected task:
   - Basic task details (ID, title, priority, dependencies)
   - Implementation details
   - Subtasks (if they exist)
-- Provides contextual suggested actions:
+- Provides contextual action suggestions:
   - Command to mark the task as in-progress
   - Command to mark the task as done
   - Commands for working with subtasks
@@ -610,47 +594,31 @@ The `show` command:
 6.  **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
 7.  **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
 8.  **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
-9. **Validate dependencies**: Periodically run the validate-dependencies command to check for invalid or circular dependencies.
+9. Validate dependencies**: Periodically run the validate-dependencies command to check for invalid or circular dependencies.
 
-## Example Cursor AI Interactions
 
-### Starting a new project
-```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
-Can you help me parse it and set up the initial tasks?
-```
+## Troubleshooting
 
-### Working on tasks
-```
-What's the next task I should work on? Please consider dependencies and priorities.
+### If `task-master init` doesn't respond:
+
+Try running it with Node directly:
+
+```bash
+node node_modules/claude-task-master/scripts/init.js
 ```
 
-### Implementing a specific task
-```
-I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+Or clone the repository and run:
+
+```bash
+git clone https://github.com/eyaltoledano/claude-task-master.git
+cd claude-task-master
+node scripts/init.js
 ```
 
-### Managing subtasks
-```
-I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
-```
 
-### Handling changes
-```
-We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
-```
+If you encounter any issues while using Task Master AI with Cline, please check the following:
 
-### Completing work
-```
-I've finished implementing the authentication system described in task 2. All tests are passing. 
-Please mark it as complete and tell me what I should work on next.
-```
-
-### Analyzing complexity
-```
-Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
-```
-
-### Viewing complexity report
-```
-Can you show me the complexity report in a more readable format?
+*   Make sure that you have installed Task Master AI correctly.
+*   Make sure that you have set the required environment variables.
+*   Make sure that you are using a valid model ID for the OpenRouter API.
+*   Make sure that you have internet connectivity.
