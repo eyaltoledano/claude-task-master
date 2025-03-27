@@ -1,10 +1,9 @@
 {
     "mcpServers": {
         "taskmaster-ai": {
-            "command": "npx",
+            "command": "node",
             "args": [
-                "-y",
-                "bin/task-master-mcp-server.js"
+                "./mcp-server/server.js"
             ]
         }
     }
