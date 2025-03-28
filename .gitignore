@@ -56,3 +56,37 @@ dist
 *.debug
 init-debug.log
 dev-debug.log
+
+# Added by Claude Task Master
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/
+
+# Temporary testing files
+test-concept.js
+test-prd.js
+temp_play.vbs
+scripts/test-round-table.js
+
+# Temporary batch files
+run-*.bat
+
+# Temporary documentation
+time-line.txt
+pull-request-notes.md
+pull-request-update.md
+
+# Temporary prd directory contents for testing
+prd/HOOMAN README PLEASE FIRST OF ALL.TXT
+
+# Empty test directories
+test-output/ 
