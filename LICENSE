@@ -1,0 +1,55 @@
+MIT License with Commercial Use Restrictions
+
+Copyright (c) 2025 Zyra (PRD Generator functionality) and Eyal Toledano (Task Master core)
+
+The Task Master core functionality is copyright of Eyal Toledano.
+The PRD Generator functionality including all related commands (ideate, round-table, 
+refine-concept, generate-prd-file) is copyright of Zyra.
+
+This license applies to the open source components of the software only.
+The SaaS components, web application, and hosted services are proprietary
+and not subject to this license.
+
+IMPORTANT NOTICE: This is NOT a standard MIT license. This modified license 
+contains significant commercial use restrictions. Any use that violates these
+restrictions is strictly prohibited and constitutes copyright infringement.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, and publish copies of the Software, and to permit 
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+1. The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+2. COMMERCIAL USE RESTRICTION: Commercial use, redistribution, or creation of derivative 
+   works for commercial purposes requires explicit written permission from the copyright 
+   holders. This includes but is not limited to:
+   a. Incorporating the Software into a commercial product
+   b. Using the Software in a commercial service or offering
+   c. Selling, licensing, or otherwise monetizing access to the Software
+   d. Using the Software to generate content or services that are sold commercially
+
+3. ATTRIBUTION REQUIREMENT: Any derivative works or modifications must acknowledge 
+   the original authors and include a link to the original repository.
+
+4. AI TRAINING RESTRICTION: The Software may not be used to train or develop AI models 
+   without explicit written permission from the copyright holders.
+
+5. SAAS RESERVATION: The hosted SaaS version and proprietary components are excluded 
+   from the permissions granted in this license and remain the exclusive property of 
+   their respective owners. The right to offer this software as a service is exclusively 
+   reserved to the copyright holders.
+
+6. ENFORCEMENT: Violation of these terms automatically terminates your rights under this 
+   license and may subject you to legal action for copyright infringement, including 
+   statutory damages of up to $150,000 per infringement in the United States.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. 
