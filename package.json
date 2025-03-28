@@ -14,7 +14,9 @@
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
-    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js"
+    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "keywords": [
     "claude",
@@ -66,6 +68,8 @@
     "whatwg-url": "^11.0.0"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.28.1",
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
