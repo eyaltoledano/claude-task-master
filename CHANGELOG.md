@@ -2,7 +2,7 @@
 
 ## [0.9.30] - 2025-03-28
 ### Added
-- Implemented full PRD generation workflow (contributed by [@ZyraV23](https://x.com/ZyraV23))
+- Implemented full PRD generation workflow (designed and implemented by [@ZyraV23](https://x.com/ZyraV23))
   - `ideate` command to transform raw ideas into structured concepts
   - `round-table` command to simulate expert discussions and generate insights
   - `refine-concept` command to improve concepts based on expert feedback

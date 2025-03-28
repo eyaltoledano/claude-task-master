@@ -37,7 +37,11 @@ import {
   callClaude,
   generateSubtasks,
   generateSubtasksWithPerplexity,
-  generateComplexityAnalysisPrompt
+  generateComplexityAnalysisPrompt,
+  generateProductConcept,
+  generateExpertDiscussion,
+  generateConceptRefinement,
+  generatePRD
 } from './ai-services.js';
 
 import {
@@ -1096,141 +1100,216 @@ function safeColor(text, colorFn, maxLength = 0) {
  * Expand a task with subtasks
  * @param {number} taskId - Task ID to expand
  * @param {number} numSubtasks - Number of subtasks to generate
- * @param {boolean} useResearch - Whether to use research (Perplexity)
- * @param {string} additionalContext - Additional context
+ * @param {boolean} useResearch - Whether to use Perplexity AI for research
+ * @param {string} additionalContext - Additional context for subtask generation
+ * @returns {Promise<Object>} - The expanded task with subtasks
  */
 async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '') {
   try {
-    displayBanner();
+    log('info', `Expanding task ${taskId} with ${numSubtasks} subtasks`);
+    log('debug', `Research mode: ${useResearch}, Additional context: ${additionalContext}`);
     
-    // Load tasks
-    const tasksPath = path.join(process.cwd(), 'tasks', 'tasks.json');
-    log('info', `Loading tasks from ${tasksPath}...`);
+    // Import from the command recovery module
+    const { executeResilientCommand } = await import('./command-recovery.js');
     
-    const data = readJSON(tasksPath);
-    if (!data || !data.tasks) {
-      throw new Error(`No valid tasks found in ${tasksPath}`);
-    }
-    
-    // Find the task
-    const task = data.tasks.find(t => t.id === taskId);
-    if (!task) {
-      throw new Error(`Task ${taskId} not found`);
-    }
-    
-    // Check if the task is already completed
-    if (task.status === 'done' || task.status === 'completed') {
-      log('warn', `Task ${taskId} is already marked as "${task.status}". Skipping expansion.`);
-      console.log(chalk.yellow(`Task ${taskId} is already marked as "${task.status}". Skipping expansion.`));
-      return;
-    }
-    
-    // Check for complexity report
-    log('info', 'Checking for complexity analysis...');
-    const complexityReport = readComplexityReport();
-    let taskAnalysis = null;
-    
-    if (complexityReport) {
-      taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
-      
-      if (taskAnalysis) {
-        log('info', `Found complexity analysis for task ${taskId}: Score ${taskAnalysis.complexityScore}/10`);
+    // Define the resilient command function
+    return await executeResilientCommand(
+      `expand-task-${taskId}`, 
+      async (args) => {
+        // Destructure args (will include saved state if recovering)
+        const { 
+          taskId: id, 
+          numSubtasks: subtasks, 
+          useResearch: research, 
+          additionalContext: context,
+          lastExpandedSubtaskId
+        } = args;
         
-        // Use recommended number of subtasks if available and not overridden
-        if (taskAnalysis.recommendedSubtasks && numSubtasks === CONFIG.defaultSubtasks) {
-          numSubtasks = taskAnalysis.recommendedSubtasks;
-          log('info', `Using recommended number of subtasks: ${numSubtasks}`);
+        // Validate research flag
+        if (research && (!perplexity || !process.env.PERPLEXITY_API_KEY)) {
+          log('warn', 'Perplexity AI is not available. Falling back to Claude AI.');
+          console.log(chalk.yellow('Perplexity AI is not available (API key may be missing). Falling back to Claude AI.'));
+          useResearch = false;
         }
         
-        // Use expansion prompt from analysis as additional context if available
-        if (taskAnalysis.expansionPrompt && !additionalContext) {
-          additionalContext = taskAnalysis.expansionPrompt;
-          log('info', 'Using expansion prompt from complexity analysis');
+        // Read tasks file
+        const tasksPath = 'tasks/tasks.json';
+        const data = readJSON(tasksPath);
+        if (!data || !data.tasks) {
+          throw new Error(`No valid tasks found in ${tasksPath}`);
         }
-      } else {
-        log('info', `No complexity analysis found for task ${taskId}`);
+        
+        // Find the task to expand
+        const task = findTaskById(data.tasks, id);
+        if (!task) {
+          throw new Error(`Task with ID ${id} not found`);
+        }
+        
+        // Check if the task already has subtasks
+        if (task.subtasks && task.subtasks.length > 0) {
+          // If recovering and we have a lastExpandedSubtaskId, we can continue from there
+          if (lastExpandedSubtaskId) {
+            log('info', `Resuming subtask expansion from subtask ID ${lastExpandedSubtaskId}`);
+            console.log(chalk.blue(`Resuming expansion from previous attempt...`));
+          } else {
+            log('warn', `Task ${id} already has ${task.subtasks.length} subtasks`);
+            console.log(chalk.yellow(`Task ${id} already has ${task.subtasks.length} subtasks.`));
+            
+            // Ask user if they want to replace or keep existing subtasks
+            const rl = readline.createInterface({
+              input: process.stdin,
+              output: process.stdout
+            });
+            
+            const answer = await new Promise(resolve => {
+              rl.question(chalk.yellow('Do you want to replace existing subtasks? (y/n) '), resolve);
+            });
+            
+            rl.close();
+            
+            if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+              log('info', 'User chose to keep existing subtasks');
+              console.log(chalk.green('Keeping existing subtasks.'));
+              return task;
+            }
+            
+            log('info', 'User chose to replace existing subtasks');
+            console.log(chalk.green('Replacing existing subtasks...'));
+          }
+        }
+        
+        // Create a copy of the task to modify
+        const updatedTask = { ...task };
+        
+        // Start from existing subtasks if we have a lastExpandedSubtaskId
+        let existingSubtasks = [];
+        if (lastExpandedSubtaskId && task.subtasks && task.subtasks.length > 0) {
+          existingSubtasks = task.subtasks.filter(st => st.id <= lastExpandedSubtaskId);
+          log('info', `Keeping ${existingSubtasks.length} previously generated subtasks`);
+          console.log(chalk.blue(`Keeping ${existingSubtasks.length} previously generated subtasks.`));
+        }
+        
+        // Calculate the next available subtask ID
+        let nextSubtaskId = 1;
+        if (existingSubtasks.length > 0) {
+          // If we have existing subtasks, continue from the highest ID
+          nextSubtaskId = Math.max(...existingSubtasks.map(st => st.id)) + 1;
+        }
+        
+        // Get the complexity information if available
+        let complexityInfo = null;
+        try {
+          const complexityReport = readComplexityReport();
+          complexityInfo = findTaskInComplexityReport(complexityReport, id);
+          if (complexityInfo) {
+            log('info', `Found complexity information for task ${id}: score ${complexityInfo.complexityScore}`);
+            
+            // Use the recommended subtask count from complexity report if not explicitly specified
+            if (numSubtasks === CONFIG.defaultSubtasks && complexityInfo.recommendedSubtasks) {
+              subtasks = complexityInfo.recommendedSubtasks;
+              log('info', `Using recommended subtask count from complexity analysis: ${subtasks}`);
+              console.log(chalk.blue(`Using recommended subtask count from complexity analysis: ${subtasks}`));
+            }
+            
+            // Use additional context from complexity report if not provided
+            if (!context && complexityInfo.expansionPrompt) {
+              context = complexityInfo.expansionPrompt;
+              log('info', `Using expansion prompt from complexity analysis`);
+            }
+          }
+        } catch (error) {
+          log('warn', `Could not read complexity information: ${error.message}`);
+          // Non-critical error, continue without complexity information
+        }
+        
+        // Determine if we need to generate any new subtasks
+        const remainingSubtasks = subtasks - existingSubtasks.length;
+        
+        if (remainingSubtasks > 0) {
+          // Generate new subtasks
+          console.log(chalk.blue(`Generating ${remainingSubtasks} subtasks for task ${id}...`));
+          
+          try {
+            let generatedSubtasks;
+            if (research) {
+              log('info', `Using Perplexity AI research for task ${id}`);
+              console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+              generatedSubtasks = await generateSubtasksWithPerplexity(task, remainingSubtasks, nextSubtaskId, context);
+            } else {
+              log('info', `Using Claude AI for task ${id}`);
+              generatedSubtasks = await generateSubtasks(task, remainingSubtasks, nextSubtaskId, context);
+            }
+            
+            // Save progress after each subtask batch for recovery purposes
+            updatedTask.subtasks = [...existingSubtasks, ...generatedSubtasks];
+            data.tasks = data.tasks.map(t => t.id === id ? updatedTask : t);
+            writeJSON(tasksPath, data);
+            
+            // Record the last expanded subtask ID for potential recovery
+            const lastGeneratedSubtaskId = generatedSubtasks.length > 0 
+              ? generatedSubtasks[generatedSubtasks.length - 1].id 
+              : nextSubtaskId - 1;
+            
+            // Return updated task with state for command recovery
+            return {
+              result: updatedTask,
+              state: {
+                lastExpandedSubtaskId: lastGeneratedSubtaskId
+              }
+            };
+          } catch (error) {
+            log('error', `Error generating subtasks: ${error.message}`);
+            throw error;
+          }
+        } else {
+          // No new subtasks to generate
+          console.log(chalk.green(`Task ${id} already has the requested number of subtasks.`));
+          return {
+            result: updatedTask,
+            state: {
+              lastExpandedSubtaskId: nextSubtaskId - 1
+            }
+          };
+        }
+      },
+      {
+        taskId,
+        numSubtasks,
+        useResearch,
+        additionalContext
+      },
+      {
+        // Command resilience options
+        enableStatePersistence: true,
+        errorCategory: 'TASK_EXPANSION',
+        enableRetry: true,
+        retryableErrors: [
+          // Custom function to check if error is retryable
+          (error) => {
+            // Network or API errors are retryable
+            if (error.message && (
+              error.message.includes('network') ||
+              error.message.includes('timeout') ||
+              error.message.includes('rate limit') ||
+              error.message.includes('overloaded')
+            )) {
+              return true;
+            }
+            
+            // JSON parsing or task not found errors are not retryable
+            if (error.message && (
+              error.message.includes('JSON') ||
+              error.message.includes('not found')
+            )) {
+              return false;
+            }
+            
+            // By default, retry other errors
+            return true;
+          }
+        ]
       }
-    }
-    
-    console.log(boxen(
-      chalk.white.bold(`Expanding Task: #${taskId} - ${task.title}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 0, bottom: 1 } }
-    ));
-    
-    // Check if the task already has subtasks
-    if (task.subtasks && task.subtasks.length > 0) {
-      log('warn', `Task ${taskId} already has ${task.subtasks.length} subtasks. Appending new subtasks.`);
-      console.log(chalk.yellow(`Task ${taskId} already has ${task.subtasks.length} subtasks. New subtasks will be appended.`));
-    }
-    
-    // Initialize subtasks array if it doesn't exist
-    if (!task.subtasks) {
-      task.subtasks = [];
-    }
-    
-    // Determine the next subtask ID
-    const nextSubtaskId = task.subtasks.length > 0 ? 
-      Math.max(...task.subtasks.map(st => st.id)) + 1 : 1;
-    
-    // Generate subtasks
-    let subtasks;
-    if (useResearch) {
-      log('info', 'Using Perplexity AI for research-backed subtask generation');
-      subtasks = await generateSubtasksWithPerplexity(task, numSubtasks, nextSubtaskId, additionalContext);
-    } else {
-      log('info', 'Generating subtasks with Claude only');
-      subtasks = await generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext);
-    }
-    
-    // Add the subtasks to the task
-    task.subtasks = [...task.subtasks, ...subtasks];
-    
-    // Write the updated tasks to the file
-    writeJSON(tasksPath, data);
-    
-    // Generate individual task files
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    
-    // Display success message
-    console.log(boxen(
-      chalk.green(`Successfully added ${subtasks.length} subtasks to task ${taskId}`),
-      { padding: 1, borderColor: 'green', borderStyle: 'round' }
-    ));
-    
-    // Show the subtasks table
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Dependencies'),
-        chalk.cyan.bold('Status')
-      ],
-      colWidths: [8, 50, 15, 15]
-    });
-    
-    subtasks.forEach(subtask => {
-      const deps = subtask.dependencies && subtask.dependencies.length > 0 ? 
-        subtask.dependencies.map(d => `${taskId}.${d}`).join(', ') : 
-        chalk.gray('None');
-      
-      table.push([
-        `${taskId}.${subtask.id}`,
-        truncate(subtask.title, 47),
-        deps,
-        getStatusWithColor(subtask.status, true)
-      ]);
-    });
-    
-    console.log(table.toString());
-    
-    // Show next steps
-    console.log(boxen(
-      chalk.white.bold('Next Steps:') + '\n\n' +
-      `${chalk.cyan('1.')} Run ${chalk.yellow(`task-master show ${taskId}`)} to see the full task with subtasks\n` +
-      `${chalk.cyan('2.')} Start working on subtask: ${chalk.yellow(`task-master set-status --id=${taskId}.1 --status=in-progress`)}\n` +
-      `${chalk.cyan('3.')} Mark subtask as done: ${chalk.yellow(`task-master set-status --id=${taskId}.1 --status=done`)}`,
-      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
-    ));
+    );
   } catch (error) {
     log('error', `Error expanding task: ${error.message}`);
     console.error(chalk.red(`Error: ${error.message}`));
@@ -1239,7 +1318,7 @@ async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResea
       console.error(error);
     }
     
-    process.exit(1);
+    throw error;
   }
 }
 
@@ -2576,7 +2655,473 @@ async function removeSubtask(tasksPath, subtaskId, convertToTask = false, genera
   }
 }
 
-// Export task manager functions
+/**
+ * Generate a product concept from an initial idea and save to file
+ * @param {string} idea - Initial product/feature idea (optional, will prompt if not provided)
+ * @param {string} outputFile - Path to save the concept
+ * @returns {Promise<void>}
+ */
+async function ideateProductConcept(idea, outputFile) {
+  try {
+    log('info', `Starting interactive ideation process, output will be saved to ${outputFile}`);
+    
+    // Create the directory if it doesn't exist
+    const fs = await import('fs');
+    const path = await import('path');
+    const outputDir = path.dirname(outputFile);
+    
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      log('info', `Created directory: ${outputDir}`);
+    }
+    
+    // Import modules
+    const { 
+      askQuestion, 
+      askConfirmation, 
+      askQuestionSequence,
+      validators 
+    } = await import('./prompt-manager.js');
+    const { generateProductConcept } = await import('./ai-services.js');
+    const {
+      saveConceptResponse,
+      saveQuestionResponses,
+      generateSessionId
+    } = await import('./json-storage.js');
+    
+    // Generate a unique session ID for this interaction
+    const sessionId = generateSessionId();
+    
+    // If no idea provided, use interactive questions to gather information
+    let conceptInput = idea;
+    let additionalInfo = {};
+    
+    if (!conceptInput || conceptInput.trim().length === 0) {
+      console.log(chalk.blue('\n=== Interactive Product Concept Generation ==='));
+      console.log(chalk.white('Please answer a few questions to help generate a structured product concept.'));
+      
+      // Get basic information through interactive questions
+      const answers = await askQuestionSequence([
+        {
+          type: 'input',
+          name: 'productIdea',
+          message: 'What problem does your product solve or what opportunity does it address?',
+          validate: validators.minLength(10)
+        },
+        {
+          type: 'input',
+          name: 'targetUsers',
+          message: 'Who are the primary users or customers for this product?',
+          validate: validators.required
+        },
+        {
+          type: 'input',
+          name: 'corePainPoints',
+          message: 'What are the main pain points or challenges your users face?',
+          validate: validators.required
+        },
+        {
+          type: 'input',
+          name: 'keyFeatures',
+          message: 'What key features would address these pain points?',
+          validate: validators.required
+        },
+        {
+          type: 'input',
+          name: 'successMetrics',
+          message: 'How will you measure the success of this product?',
+          validate: validators.required
+        }
+      ]);
+      
+      // Save the responses to JSON storage
+      await saveQuestionResponses('ideate', sessionId, answers);
+      
+      // Construct a comprehensive idea from the answers
+      conceptInput = `
+Product Idea: ${answers.productIdea}
+
+Target Users: ${answers.targetUsers}
+
+Pain Points: ${answers.corePainPoints}
+
+Key Features: ${answers.keyFeatures}
+
+Success Metrics: ${answers.successMetrics}
+      `;
+      
+      // Store the answers for later use
+      additionalInfo = answers;
+      
+      console.log(chalk.green('\nThank you! Generating your product concept...'));
+    } else {
+      // Save the provided idea to JSON storage
+      await saveQuestionResponses('ideate', sessionId, { providedIdea: conceptInput });
+      console.log(chalk.blue('\nGenerating product concept from provided idea...'));
+    }
+    
+    // Generate the concept
+    const conceptContent = await generateProductConcept(conceptInput);
+    
+    // Write to file
+    fs.writeFileSync(outputFile, conceptContent, 'utf8');
+    log('info', `Successfully saved concept to ${outputFile}`);
+    
+    // Save to JSON storage
+    const conceptId = `concept_${Date.now()}`;
+    await saveConceptResponse(conceptId, {
+      content: conceptContent,
+      sessionId: sessionId,
+      userInput: additionalInfo,
+      outputFile
+    });
+    
+    // Check if user wants to see a preview
+    const showPreview = await askConfirmation('Would you like to see a preview of the generated concept?', true);
+    
+    if (showPreview) {
+      // Show a preview (first few lines)
+      const previewLines = conceptContent.split('\n').slice(0, 15);
+      console.log(chalk.yellow('\nPreview of generated concept:'));
+      console.log(chalk.white('-'.repeat(60)));
+      previewLines.forEach(line => console.log(chalk.white(line)));
+      console.log(chalk.white('-'.repeat(60)));
+      console.log(chalk.yellow('... (more content in the file)'));
+    }
+    
+    // Display success message
+    console.log(chalk.green(`\nProduct concept generated and saved to ${outputFile}`));
+    console.log(chalk.green(`Concept ID for MCP reference: ${conceptId}`));
+    console.log(chalk.blue('\nNext steps:'));
+    console.log(chalk.white(`1. Review the complete concept in ${outputFile}`));
+    console.log(chalk.white(`2. Run 'task-master round-table --concept-file=${outputFile}' to gather expert feedback`));
+    console.log(chalk.white(`3. Or proceed directly to 'task-master generate-prd-file --concept-file=${outputFile}'`));
+    
+    return { 
+      outputFile, 
+      additionalInfo,
+      conceptId,
+      sessionId
+    };
+  } catch (error) {
+    log('error', `Error in ideateProductConcept: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Simulate a round table discussion between experts and save to file
+ * @param {string} conceptFile - Path to the concept file
+ * @param {Array<string>} participants - List of expert participants 
+ * @param {string} outputFile - Path to save the discussion
+ * @param {boolean} refineConcept - Whether to apply recommendations to concept
+ * @returns {Promise<void>}
+ */
+async function simulateRoundTable(conceptFile, participants, outputFile, refineConcept = false) {
+  try {
+    log('info', `Simulating round table discussion for concept in ${conceptFile}`);
+    
+    // Import the round-table command module
+    const { simulateRoundTable: runRoundTable } = await import('./round-table-command.js');
+    
+    // Use the implementation from the dedicated module
+    return await runRoundTable(conceptFile, participants, outputFile, refineConcept);
+  } catch (error) {
+    log('error', `Error in simulateRoundTable: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Refine a product concept with additional insights
+ * @param {string} conceptFile - Path to the concept file
+ * @param {string} prompt - Custom refinement prompt
+ * @param {string} discussionFile - Path to discussion file
+ * @param {string} outputFile - Path to save the refined concept
+ * @returns {Promise<void>}
+ */
+async function refineProductConcept(conceptFile, prompt, discussionFile, outputFile) {
+  try {
+    log('info', `Refining product concept from ${conceptFile}`);
+    
+    // Import the refine-concept command module
+    const { refineProductConcept: runRefine } = await import('./refine-concept-command.js');
+    
+    // Use the implementation from the dedicated module
+    return await runRefine(conceptFile, prompt, discussionFile, outputFile);
+  } catch (error) {
+    log('error', `Error in refineProductConcept: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Generate a PRD file from a concept
+ * @param {string} conceptFile - Path to the concept file
+ * @param {string} templateFile - Path to template file (optional)
+ * @param {string} outputFile - Path to save the PRD
+ * @param {boolean} useResearch - Whether to use research
+ * @param {Object} detailedParams - Optional detailed parameters for PRD generation
+ * @returns {Promise<void>}
+ */
+async function generatePRDFile(conceptFile, templateFile, outputFile, useResearch = false, detailedParams = null) {
+  try {
+    log('info', `Generating PRD from concept in ${conceptFile}`);
+    
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Check if concept file exists
+    if (!fs.existsSync(conceptFile)) {
+      throw new Error(`Concept file not found: ${conceptFile}`);
+    }
+    
+    // Create the output directory if it doesn't exist
+    const outputDir = path.dirname(outputFile);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      log('info', `Created directory: ${outputDir}`);
+    }
+    
+    // Read the concept
+    const conceptContent = fs.readFileSync(conceptFile, 'utf8');
+    
+    // Generate the PRD
+    const { generatePRD } = await import('./ai-services.js');
+    const prdContent = await generatePRD(conceptContent, templateFile, useResearch, detailedParams);
+    
+    // Write to file
+    fs.writeFileSync(outputFile, prdContent, 'utf8');
+    log('info', `Successfully saved PRD to ${outputFile}`);
+    
+    // Display success message
+    console.log(chalk.green(`\nPRD generated and saved to ${outputFile}`));
+    console.log(chalk.blue('\nNext steps:'));
+    console.log(chalk.white(`1. Review the PRD in ${outputFile}`));
+    console.log(chalk.white(`2. Run 'task-master parse-prd --input=${outputFile}' to generate tasks`));
+  } catch (error) {
+    log('error', `Error in generatePRDFile: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Run the full PRD generation workflow
+ * @param {string} idea - Initial product idea
+ * @param {string} outputDir - Output directory
+ * @param {string} flow - Custom flow (comma-separated stages)
+ * @returns {Promise<void>}
+ */
+async function generatePRDWorkflow(idea, outputDir, flow = 'ideate,round-table,refine-concept,generate-prd') {
+  try {
+    log('info', `Starting PRD generation workflow with stages: ${flow}`);
+    
+    const fs = await import('fs');
+    const path = await import('path');
+    const readline = await import('readline');
+    
+    // Create the output directory if it doesn't exist
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      log('info', `Created directory: ${outputDir}`);
+    }
+    
+    // Define file paths
+    const conceptFile = path.join(outputDir, 'concept.txt');
+    const discussionFile = path.join(outputDir, 'discussion.txt');
+    const prdFile = path.join(outputDir, 'prd.txt');
+    
+    // Create readline interface for user input
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const promptUser = (question) => {
+      return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+          resolve(answer);
+        });
+      });
+    };
+    
+    // Parse the flow string
+    const stages = flow.split(',').map(stage => stage.trim());
+    
+    // Track generated files
+    const generatedFiles = [];
+    
+    // Execute each stage
+    for (const stage of stages) {
+      switch (stage) {
+        case 'ideate':
+          console.log(chalk.blue('\n--- Stage: Ideate ---'));
+          
+          // If idea wasn't provided, prompt for it
+          let ideaContent = idea;
+          if (!ideaContent || ideaContent.trim().length === 0) {
+            console.log(chalk.yellow('\nLet\'s define your product idea:'));
+            ideaContent = await promptUser(chalk.white('Enter your product/feature idea: '));
+          }
+          
+          // Generate the concept
+          await ideateProductConcept(ideaContent, conceptFile);
+          generatedFiles.push(conceptFile);
+          break;
+          
+        case 'round-table':
+          console.log(chalk.blue('\n--- Stage: Round Table Discussion ---'));
+          
+          // Check if concept exists
+          if (!fs.existsSync(conceptFile)) {
+            console.log(chalk.yellow('Concept file not found. Running ideate stage first...'));
+            
+            // If idea wasn't provided, prompt for it
+            let ideaContent = idea;
+            if (!ideaContent || ideaContent.trim().length === 0) {
+              console.log(chalk.yellow('\nLet\'s define your product idea:'));
+              ideaContent = await promptUser(chalk.white('Enter your product/feature idea: '));
+            }
+            
+            // Generate the concept
+            await ideateProductConcept(ideaContent, conceptFile);
+            generatedFiles.push(conceptFile);
+          }
+          
+          // Define participants
+          console.log(chalk.yellow('\nLet\'s define the participants for the round table:'));
+          console.log(chalk.white('Example participants: "Product Manager", "UX Designer", "Lead Engineer", "Marketing Director"'));
+          const participantsInput = await promptUser(chalk.white('Enter comma-separated list of participants: '));
+          const participants = participantsInput.split(',').map(p => p.trim());
+          
+          // Ask if user wants to refine concept
+          const refine = await promptUser(chalk.white('Apply discussion recommendations to the concept? (y/n): '));
+          const shouldRefine = refine.toLowerCase() === 'y' || refine.toLowerCase() === 'yes';
+          
+          // Run round table
+          await simulateRoundTable(conceptFile, participants, discussionFile, shouldRefine);
+          generatedFiles.push(discussionFile);
+          break;
+          
+        case 'refine-concept':
+          console.log(chalk.blue('\n--- Stage: Refine Concept ---'));
+          
+          // Check if concept exists
+          if (!fs.existsSync(conceptFile)) {
+            console.log(chalk.yellow('Concept file not found. Running ideate stage first...'));
+            
+            // If idea wasn't provided, prompt for it
+            let ideaContent = idea;
+            if (!ideaContent || ideaContent.trim().length === 0) {
+              console.log(chalk.yellow('\nLet\'s define your product idea:'));
+              ideaContent = await promptUser(chalk.white('Enter your product/feature idea: '));
+            }
+            
+            // Generate the concept
+            await ideateProductConcept(ideaContent, conceptFile);
+            generatedFiles.push(conceptFile);
+          }
+          
+          // Import and use the interactive refine concept function
+          const { interactiveRefineConcept } = await import('./refine-concept-command.js');
+          
+          // Configure options for the refinement
+          const refinementOptions = {
+            conceptFile: conceptFile,
+            outputFile: conceptFile
+          };
+          
+          // Check if discussion file exists and include it in options
+          if (fs.existsSync(discussionFile)) {
+            refinementOptions.discussionFile = discussionFile;
+          }
+          
+          // Run interactive refinement
+          const refinementResult = await interactiveRefineConcept(refinementOptions);
+          
+          if (refinementResult.hasRefinement) {
+            console.log(chalk.green('\nConcept successfully refined.'));
+          }
+          
+          break;
+          
+        case 'generate-prd':
+          console.log(chalk.blue('\n--- Stage: Generate PRD ---'));
+          
+          // Check if concept exists
+          if (!fs.existsSync(conceptFile)) {
+            console.log(chalk.yellow('Concept file not found. Running ideate stage first...'));
+            
+            // If idea wasn't provided, prompt for it
+            let ideaContent = idea;
+            if (!ideaContent || ideaContent.trim().length === 0) {
+              console.log(chalk.yellow('\nLet\'s define your product idea:'));
+              ideaContent = await promptUser(chalk.white('Enter your product/feature idea: '));
+            }
+            
+            // Generate the concept
+            await ideateProductConcept(ideaContent, conceptFile);
+            generatedFiles.push(conceptFile);
+          }
+          
+          // Use the interactive PRD generation mode
+          const { interactivePRDGeneration } = await import('./prd-command.js');
+          
+          // Prepare options for the interactive mode
+          const prdInteractiveOptions = {
+            conceptFile,
+            output: prdFile,
+            template: '',
+            research: false
+          };
+          
+          // Get options from interactive session
+          console.log(chalk.blue('\nStarting interactive PRD generation...'));
+          const prdOptions = await interactivePRDGeneration(prdInteractiveOptions);
+          
+          // If the user proceeds, generate the PRD
+          if (prdOptions.success) {
+            await generatePRDFile(
+              prdOptions.conceptFile,
+              prdOptions.templateFile,
+              prdOptions.outputFile,
+              prdOptions.useResearch
+            );
+            generatedFiles.push(prdOptions.outputFile);
+          } else {
+            console.log(chalk.yellow('PRD generation skipped.'));
+          }
+          
+          break;
+          
+        default:
+          log('warn', `Unknown stage: ${stage}`);
+          console.log(chalk.yellow(`Skipping unknown stage: ${stage}`));
+      }
+    }
+    
+    // Close readline interface
+    rl.close();
+    
+    // Display summary
+    console.log(chalk.green('\n=== PRD Generation Workflow Complete ==='));
+    console.log(chalk.blue('\nGenerated files:'));
+    generatedFiles.forEach(file => {
+      console.log(chalk.white(`- ${file}`));
+    });
+    
+    console.log(chalk.blue('\nNext steps:'));
+    console.log(chalk.white(`1. Review the PRD in ${prdFile}`));
+    console.log(chalk.white(`2. Run 'task-master parse-prd --input=${prdFile}' to generate tasks`));
+    
+    log('info', 'PRD generation workflow completed successfully');
+  } catch (error) {
+    log('error', `Error in generatePRDWorkflow: ${error.message}`);
+    throw error;
+  }
+}
+
+// Export task management functions
 export {
   parsePRD,
   updateTasks,
@@ -2592,4 +3137,9 @@ export {
   removeSubtask,
   findNextTask,
   analyzeTaskComplexity,
+  ideateProductConcept,
+  simulateRoundTable,
+  refineProductConcept,
+  generatePRDFile,
+  generatePRDWorkflow
 }; 

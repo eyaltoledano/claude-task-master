@@ -433,7 +433,7 @@ task-master add-task --prompt="Description" --priority=high
 
 ### Generate PRD
 
-The PRD generation feature is contributed by [@ZyraV23](https://x.com/ZyraV23), providing a powerful workflow to create professional product requirement documents from raw ideas.
+The PRD generation feature is designed and implemented by [@ZyraV23](https://x.com/ZyraV23), providing a powerful workflow to create professional product requirement documents from raw ideas.
 
 ```bash
 # Start the interactive PRD generation workflow
@@ -804,3 +804,47 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+## License
+
+This project contains both open source and proprietary components:
+
+1. **Task Master Core**: Copyright of Eyal Toledano, available under a modified MIT License with restrictions.
+
+2. **PRD Generator Core Library**: Copyright of Zyra-V23, available under a modified MIT License with commercial use restrictions.
+
+3. **PRD Generator SaaS**: Copyright of Zyra-V23, proprietary software available as a hosted service (coming soon).
+
+### Important Copyright Notice
+
+The PRD Generator functionality (including ideate, round-table, refine-concept, and generate-prd-file commands) is copyright of Zyra and is protected by copyright law. This software is provided under a modified MIT license with significant commercial use restrictions.
+
+### Commercial Use Restrictions
+
+**ANY commercial use of the PRD Generator requires explicit written permission** from Zyra, including:
+- Incorporating the code into commercial products
+- Using the functionality in commercial services
+- Selling or licensing access to the software
+- Using it to generate content that is monetized
+
+### Exclusive SaaS Rights
+
+The right to offer the PRD Generator as a Software as a Service (SaaS) is exclusively reserved for Zyra. A commercial SaaS offering is currently in development and will be available soon.
+
+### Authorized Usage
+
+You ARE permitted to:
+- Use the software for personal, non-commercial/opensource projects
+- Modify the code for personal, non-commercial use
+- Contribute improvements back to the project
+- Fork the repository for non-commercial purposes
+
+### Legal Protection
+
+This software is protected under copyright law, and violations of the license terms may result in legal action, including statutory damages for copyright infringement.
+
+For full details, see the [LICENSE](LICENSE) file.
+
+For licensing inquiries or commercial use permissions, please contact:
+- For PRD Generator functionality: Zyra-V23
+- For Task Master core functionality: Eyal Toledano

@@ -41,6 +41,13 @@ import {
   getStatusWithColor
 } from './ui.js';
 
+// Import the AI status command
+import { initAiStatusCommand } from '../commands/ai-status-command.js';
+// Import the AI test command
+import { initAiTestCommand } from '../commands/ai-test-command.js';
+// Import the recovery command
+import { initRecoveryCommand } from '../commands/recovery-command.js';
+
 /**
  * Configure and register CLI commands
  * @param {Object} program - Commander program instance
@@ -50,6 +57,15 @@ function registerCommands(programInstance) {
   programInstance.on('--help', function() {
     displayHelp();
   });
+  
+  // Register AI status command
+  initAiStatusCommand(programInstance);
+  
+  // Register AI test command
+  initAiTestCommand(programInstance);
+  
+  // Register recovery command
+  initRecoveryCommand(programInstance);
   
   // parse-prd command
   programInstance
@@ -584,6 +600,413 @@ function registerCommands(programInstance) {
       console.log(chalk.white('  task-master init -y'));
       process.exit(0);
     });
+
+  // generate-prd command (main workflow)
+  programInstance
+    .command('generate-prd')
+    .description('Generate a Product Requirements Document (PRD) through a guided process')
+    .option('-i, --idea <text>', 'Initial product/feature idea')
+    .option('-o, --output <dir>', 'Output directory for generated files', 'prd')
+    .option('-f, --flow <stages>', 'Custom flow with comma-separated stages', 'ideate,round-table,refine-concept,generate-prd')
+    .action(async (options) => {
+      try {
+        const idea = options.idea || '';
+        const outputDir = options.output;
+        const flow = options.flow;
+        
+        // Mostrar el banner personalizado de PRD
+        displayBanner(true);
+        
+        console.log(chalk.blue('Starting PRD generation workflow...'));
+        console.log(chalk.blue(`Output directory: ${outputDir}`));
+        console.log(chalk.blue(`Flow stages: ${flow}`));
+        
+        const { generatePRDWorkflow } = await import('./task-manager.js');
+        await generatePRDWorkflow(idea, outputDir, flow);
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
+    
+  // ideate command (convert idea to concept)
+  programInstance
+    .command('ideate')
+    .description('Turn a raw idea into a structured product concept through interactive prompts')
+    .option('-i, --idea <text>', 'Initial product/feature idea (optional, will prompt if not provided)')
+    .option('-o, --output <file>', 'Output file for the concept', 'prd/concept.txt')
+    .option('-y, --yes', 'Skip confirmation prompts')
+    .option('-f, --format <format>', 'Output format (txt or json)', 'txt')
+    .action(async (options) => {
+      try {
+        // Mostrar el banner personalizado de PRD
+        displayBanner(true);
+        
+        // Import display integration
+        const { withDisplay } = await import('./command-display.js');
+        
+        // Use withDisplay wrapper for consistent error handling and display
+        await withDisplay(async (opts) => {
+          const { display } = opts;
+          const idea = options.idea;
+          const outputFile = options.outputFile || options.output;
+          const outputFormat = options.format || 'txt';
+          
+          // Show start message with improved formatting
+          display.log('info', 'Starting interactive concept generation...');
+          
+          if (idea) {
+            display.log('info', `Using provided idea: "${idea}"`);
+          }
+          
+          display.log('info', `Output will be saved to: ${outputFile}`);
+          
+          // Import and execute the core function
+          const { ideateProductConcept } = await import('./task-manager.js');
+          const result = await ideateProductConcept(idea, outputFile);
+          
+          // Display results with the new templates
+          if (result?.conceptId) {
+            // Show success message with better formatting
+            display.displaySuccess({
+              title: 'Concept Generated Successfully',
+              message: `Product concept has been generated and saved to ${outputFile}`,
+              details: `Concept ID: ${result.conceptId}`,
+              nextSteps: [
+                `Review the complete concept in ${outputFile}`,
+                `Run 'task-master round-table --concept-file=${outputFile}' to gather expert feedback`,
+                `Or proceed directly to 'task-master generate-prd-file --concept-file=${outputFile}'`
+              ]
+            });
+          }
+          
+          return result;
+        })(options);
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
+    
+  // round-table command (simulate expert discussion)
+  programInstance
+    .command('round-table')
+    .description('Simulate a discussion between domain experts to generate insights')
+    .option('-c, --concept-file <file>', 'Path to the concept file', 'prd/concept.txt')
+    .option('-p, --participants <experts>', 'Comma-separated list of expert names/descriptions')
+    .option('-o, --output <file>', 'Output file for the discussion', 'prd/discussion.txt')
+    .option('-r, --refine-concept', 'Apply recommendations to concept file')
+    .option('-s, --summary', 'Extract and display summary insights')
+    .option('-i, --insights-file <file>', 'Path to save extracted insights (JSON format)')
+    .action(async (options) => {
+      try {
+        // Mostrar el banner personalizado de PRD
+        displayBanner(true);
+        
+        // Import display integration
+        const { withDisplay } = await import('./command-display.js');
+        
+        // Use withDisplay wrapper for consistent error handling and display
+        await withDisplay(async (opts) => {
+          const { display } = opts;
+          
+          // Check if we have participants (required for non-interactive mode)
+          if (!options.participants && process.env.NON_INTERACTIVE === 'true') {
+            display.displayError({
+              title: 'Missing Required Parameter',
+              message: 'Error: --participants parameter is required in non-interactive mode',
+              tips: [
+                'Provide a comma-separated list of experts with --participants',
+                'Example: --participants="Product Manager,UX Designer,Software Engineer"'
+              ]
+            });
+            process.exit(1);
+          }
+          
+          // Import the interactive round table function
+          const { interactiveRoundTable } = await import('./round-table-command.js');
+          
+          // Set summary extraction flag based on option
+          if (options.summary) {
+            options.extractSummary = true;
+          }
+          
+          // Run the interactive round table
+          const result = await interactiveRoundTable(options, display);
+          
+          // Display success message with the new templates
+          if (result?.hasDiscussion) {
+            if (result.summaryExtracted && result.insights) {
+              // Use the dedicated template for displaying insights
+              const insightsDisplay = (await import('./display-templates.js')).default.discussionInsights(result.insights);
+              console.log(insightsDisplay);
+              
+              display.displaySuccess({
+                title: 'Expert Discussion and Insights Generated',
+                message: `Discussion has been generated and insights extracted`,
+                details: `Participants: ${result.participants.join(', ')}`,
+                nextSteps: [
+                  `Full discussion saved to: ${result.outputFile}`,
+                  `Extracted insights saved to: ${result.insightsFile}`,
+                  result.conceptRefined 
+                    ? `The concept file (${result.conceptFile}) has been updated with recommendations`
+                    : `Run 'task-master refine-concept --concept-file=${result.conceptFile} --discussion-file=${result.outputFile}' to apply recommendations`,
+                  `Or proceed directly to 'task-master generate-prd-file --concept-file=${result.conceptFile}'`
+                ]
+              });
+            } else {
+              display.displaySuccess({
+                title: 'Expert Discussion Generated',
+                message: `Discussion has been generated and saved to ${result.outputFile}`,
+                details: `Participants: ${result.participants.join(', ')}`,
+                nextSteps: [
+                  `Review the discussion in ${result.outputFile}`,
+                  result.conceptRefined 
+                    ? `The concept file (${result.conceptFile}) has been updated with recommendations`
+                    : `Run 'task-master refine-concept --concept-file=${result.conceptFile} --discussion-file=${result.outputFile}' to apply recommendations`,
+                  `Or proceed directly to 'task-master generate-prd-file --concept-file=${result.conceptFile}'`
+                ]
+              });
+            }
+          }
+          
+          return result;
+        })(options);
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
+    
+  // refine-concept command (improve concept)
+  programInstance
+    .command('refine-concept')
+    .description('Improve and deepen a concept with additional insights')
+    .option('-c, --concept-file <file>', 'Path to the concept file', 'prd/concept.txt')
+    .option('-p, --prompt <text>', 'Custom prompt for refinement')
+    .option('-d, --discussion-file <file>', 'Path to discussion file to incorporate insights', '')
+    .option('-o, --output <file>', 'Output file for the refined concept', 'prd/concept.txt')
+    .option('--no-history', 'Disable version history tracking')
+    .option('--no-preview', 'Skip showing change preview')
+    .option('--skip-feedback', 'Skip showing real-time feedback')
+    .action(async (options) => {
+      try {
+        // Mostrar el banner personalizado de PRD
+        displayBanner(true);
+        
+        // Import display integration
+        const { withDisplay } = await import('./command-display.js');
+        
+        // Use withDisplay wrapper for consistent error handling and display
+        await withDisplay(async (opts) => {
+          const { display } = opts;
+          
+          // Check if we have at least a prompt or discussion file in non-interactive mode
+          if (!options.prompt && !options.discussionFile && process.env.NON_INTERACTIVE === 'true') {
+            display.displayError({
+              title: 'Missing Required Parameter',
+              message: 'Error: Either --prompt or --discussion-file must be provided in non-interactive mode',
+              tips: [
+                'Provide a custom prompt with --prompt="Your refinement prompt"',
+                'Or specify a discussion file with --discussion-file=path/to/discussion.txt'
+              ]
+            });
+            process.exit(1);
+          }
+          
+          // Import the interactive refine concept function
+          const { interactiveRefineConcept } = await import('./refine-concept-command.js');
+          
+          // Run the interactive refine concept command
+          const result = await interactiveRefineConcept(options, display);
+          
+          // Display success message with the new templates
+          if (result?.hasRefinement) {
+            // Get the concept title
+            const title = result.refinedContent 
+              ? result.refinedContent.split('\n')[0].replace(/^#+\s+/, '') 
+              : 'Concept';
+            
+            display.displaySuccess({
+              title: 'Concept Refinement Complete',
+              message: `Refined concept "${title}" has been saved`,
+              details: `Output file: ${result.outputFile}`,
+              nextSteps: [
+                `Review the refined concept in ${result.outputFile}`,
+                `Run 'task-master generate-prd-file --concept-file=${result.outputFile}' to create a PRD`
+              ]
+            });
+          }
+          
+          return result;
+        })(options);
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
+    
+  // generate-prd-file command (convert concept to PRD)
+  programInstance
+    .command('generate-prd-file')
+    .description('Convert a concept into a detailed PRD')
+    .option('-c, --concept-file <file>', 'Path to the concept file', 'prd/concept.txt')
+    .option('-t, --template <file>', 'Reference template structure', '')
+    .option('-o, --output <file>', 'Output file for the PRD', 'prd/prd.txt')
+    .option('-r, --research', 'Use Perplexity AI for research-backed generation')
+    .option('-i, --interactive', 'Use interactive mode with prompts')
+    .option('-p, --preview', 'Show a preview of the PRD before generating')
+    .option('-f, --format <format>', 'Output format (markdown, plaintext, html)', 'markdown')
+    .option('-s, --style <style>', 'Detail level (standard, detailed, minimal)', 'standard')
+    .option('--sections <list>', 'Comma-separated list of sections to include', parseList)
+    .action(async (options) => {
+      try {
+        // Mostrar el banner personalizado de PRD
+        displayBanner(true);
+        
+        // Check if interactive mode is enabled
+        if (options.interactive) {
+          console.log(chalk.blue('Starting interactive PRD generation...'));
+          
+          // Import the interactive module
+          const { interactivePRDGeneration } = await import('./prd-command.js');
+          
+          // Get options from interactive session
+          const prdOptions = await interactivePRDGeneration(options);
+          
+          // If the user cancelled, return early
+          if (!prdOptions.success) {
+            console.log(chalk.yellow(prdOptions.message));
+            return;
+          }
+          
+          // Generate PRD with the interactive options
+          const { generatePRDFile } = await import('./task-manager.js');
+          await generatePRDFile(
+            prdOptions.conceptFile,
+            prdOptions.templateFile,
+            prdOptions.outputFile,
+            prdOptions.useResearch,
+            prdOptions.detailedParams
+          );
+        } else {
+          // Non-interactive mode
+          console.log(chalk.blue('Starting PRD generation...'));
+          
+          // Check if concept file exists
+          const fs = await import('fs');
+          if (!fs.existsSync(options.conceptFile)) {
+            console.error(chalk.red(`Concept file not found: ${options.conceptFile}`));
+            return;
+          }
+          
+          // Validate format option
+          const validFormats = ['markdown', 'plaintext', 'html'];
+          if (!validFormats.includes(options.format)) {
+            console.error(chalk.red(`Invalid format: ${options.format}. Must be one of: ${validFormats.join(', ')}`));
+            return;
+          }
+          
+          // Validate style option
+          const validStyles = ['standard', 'detailed', 'minimal'];
+          if (!validStyles.includes(options.style)) {
+            console.error(chalk.red(`Invalid style: ${options.style}. Must be one of: ${validStyles.join(', ')}`));
+            return;
+          }
+          
+          // Prepare detailed parameters
+          const detailedParams = {
+            format: options.format,
+            style: options.style
+          };
+          
+          // Add sections if provided
+          if (options.sections && options.sections.length > 0) {
+            detailedParams.sections = options.sections;
+          }
+          
+          // Adjust file extension based on format if needed
+          if (options.format !== 'plaintext') {
+            const path = await import('path');
+            const outputExt = path.extname(options.output);
+            if (outputExt === '.txt' || outputExt === '') {
+              const basePath = outputExt === '' ? options.output : options.output.slice(0, -4);
+              const newExt = options.format === 'markdown' ? '.md' : '.html';
+              options.output = basePath + newExt;
+            }
+          }
+          
+          // Show preview if requested
+          if (options.preview) {
+            try {
+              console.log(chalk.blue('Generating PRD preview...'));
+              const boxen = (await import('boxen')).default;
+              const { generatePRDPreview } = await import('./ai-services.js');
+              
+              // Read concept file
+              const conceptContent = fs.readFileSync(options.conceptFile, 'utf8');
+              
+              // Generate and display preview
+              const previewContent = await generatePRDPreview(
+                conceptContent,
+                options.template,
+                options.research,
+                detailedParams
+              );
+              
+              console.log(chalk.green('\nPRD Preview:'));
+              console.log(boxen(previewContent, {
+                padding: 1,
+                margin: 1,
+                borderStyle: 'round',
+                borderColor: 'blue',
+                width: 80,
+                wrap: {
+                  wrapWidth: 76,
+                  trim: true,
+                  hard: true
+                }
+              }));
+              
+              // Ask for confirmation to proceed
+              const { prompt } = await import('./utils.js');
+              const proceed = await prompt('Generate full PRD with these parameters? (y/N): ');
+              if (proceed.toLowerCase() !== 'y') {
+                console.log(chalk.yellow('PRD generation cancelled.'));
+                return;
+              }
+            } catch (error) {
+              console.error(chalk.red(`Error generating preview: ${error.message}`));
+              
+              // Ask user if they want to continue despite preview error
+              const { prompt } = await import('./utils.js');
+              const proceed = await prompt('Continue with PRD generation anyway? (y/N): ');
+              if (proceed.toLowerCase() !== 'y') {
+                console.log(chalk.yellow('PRD generation cancelled.'));
+                return;
+              }
+            }
+          }
+          
+          try {
+            // Generate PRD with CLI options
+            const { generatePRDFile } = await import('./task-manager.js');
+            await generatePRDFile(
+              options.conceptFile,
+              options.template,
+              options.output,
+              options.research,
+              detailedParams
+            );
+          } catch (error) {
+            console.error(chalk.red(`Error generating PRD: ${error.message}`));
+          }
+        }
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
     
   // Add more commands as needed...
   
@@ -663,6 +1086,16 @@ async function runCLI(argv = process.argv) {
     
     process.exit(1);
   }
+}
+
+/**
+ * Parse a comma-separated list into an array
+ * @param {string} value - Comma-separated list
+ * @returns {string[]} Parsed array
+ */
+function parseList(value) {
+  if (!value) return [];
+  return value.split(',').map(item => item.trim()).filter(Boolean);
 }
 
 export {

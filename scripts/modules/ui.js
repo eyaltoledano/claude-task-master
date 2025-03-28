@@ -14,25 +14,268 @@ import path from 'path';
 import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
 
+// Importar la biblioteca para reproducir sonido
+import player from 'play-sound';
+const audioPlayer = player({});
+
+// Importar child_process para ejecutar comandos del sistema
+import { exec } from 'child_process';
+
 // Create a color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
+// Rosa y morado - gradiente Ghibli-esque con más contrastes
+const ghibliGradient = gradient(['#ffb3db', '#ff80bf', '#e200a5', '#9f00e2', '#8f00ff']);
+const ghibliAccentGradient = gradient(['#ffc6f0', '#ffb3f0', '#ff80ea', '#cb6ce6', '#bb8fce']);
+
+/**
+ * Play startup sound when showing PRD Creator
+ * @param {boolean} isPrdCommand - Whether this is being called from a PRD-related command
+ */
+function playStartupSound(isPrdCommand) {
+  if (!isPrdCommand) return;
+  
+  try {
+    const soundPath = path.join(process.cwd(), 'assets/audio/startup.mp3');
+    
+    // Always show debug messages for now to help with troubleshooting
+    console.log(`Attempting to play sound from: ${soundPath}`);
+    console.log(`File exists: ${fs.existsSync(soundPath) ? 'Yes' : 'No'}`);
+    
+    // Check if sound file exists
+    if (fs.existsSync(soundPath)) {
+      console.log('Sound file found, attempting to play...');
+      
+      // Determine OS and use appropriate method
+      const isWindows = process.platform === 'win32';
+      let command = '';
+      
+      if (isWindows) {
+        // Para Windows, intentamos múltiples métodos en orden de preferencia:
+        
+        // 1. Método 1: Usando Windows Media Player con el comando mplay32
+        command = `start /min wmplayer "${soundPath}" /play /close`;
+        console.log(`Executing Windows Media Player: ${command}`);
+        exec(command, (error) => {
+          if (error) {
+            console.log(`Error with Windows Media Player: ${error.message}`);
+            
+            // 2. Método 2: PowerShell - más compatible con versiones modernas de Windows
+            const psCommand = `powershell -c (New-Object Media.SoundPlayer "${soundPath}").PlaySync();`;
+            console.log(`Trying PowerShell: ${psCommand}`);
+            exec(psCommand, (psError) => {
+              if (psError) {
+                console.log(`Error with PowerShell: ${psError.message}`);
+                
+                // 3. Método 3: Crear un archivo HTML temporal y abrirlo
+                const htmlPath = path.join(process.cwd(), 'temp_player.html');
+                const htmlContent = `
+                  <html>
+                  <head>
+                    <title>Audio Player</title>
+                    <script>
+                      window.onload = function() {
+                        var audio = document.getElementById('audio');
+                        audio.play();
+                        audio.onended = function() {
+                          window.close();
+                        };
+                        setTimeout(function() { window.close(); }, 5000); // Fallback close
+                      };
+                    </script>
+                  </head>
+                  <body style="display:none">
+                    <audio id="audio" controls autoplay>
+                      <source src="${soundPath.replace(/\\/g, '/')}" type="audio/mpeg">
+                    </audio>
+                  </body>
+                  </html>
+                `;
+                
+                try {
+                  fs.writeFileSync(htmlPath, htmlContent);
+                  console.log(`Created temporary HTML player at: ${htmlPath}`);
+                  
+                  // Abrir el HTML con el navegador predeterminado
+                  exec(`start "" "${htmlPath}"`, (htmlError) => {
+                    // Limpiar el archivo temporal
+                    try { fs.unlinkSync(htmlPath); } catch (e) { /* ignore */ }
+                    
+                    if (htmlError) {
+                      console.log(`Error with HTML player: ${htmlError.message}`);
+                      
+                      // 4. Método 4: VBScript (original, pero mejorado)
+                      const vbsPath = path.join(process.cwd(), 'temp_play.vbs');
+                      const vbsContent = `
+                        Set Sound = CreateObject("WMPlayer.OCX.7")
+                        Sound.URL = "${soundPath.replace(/\\/g, '\\\\')}"
+                        Sound.settings.volume = 100
+                        Sound.Controls.play
+                        WScript.Sleep 500  ' Wait a bit for initialization
+                        
+                        ' Set a maximum time to wait (3 seconds)
+                        maxWait = 3000
+                        waited = 0
+                        stepWait = 100
+                        
+                        ' Wait for media to start or timeout
+                        Do While Sound.currentMedia.duration = 0 And waited < maxWait
+                          WScript.Sleep stepWait
+                          waited = waited + stepWait
+                        Loop
+                        
+                        ' If we got duration, wait for it to finish
+                        If Sound.currentMedia.duration > 0 Then
+                          ' Add 500ms to ensure it completes
+                          WScript.Sleep (Int(Sound.currentMedia.duration * 1000) + 500)
+                        Else
+                          ' Otherwise wait 2 seconds as fallback
+                          WScript.Sleep 2000
+                        End If
+                        
+                        Sound.close
+                      `;
+                      
+                      try {
+                        fs.writeFileSync(vbsPath, vbsContent);
+                        exec(`cscript //nologo "${vbsPath}"`, () => {
+                          try { fs.unlinkSync(vbsPath); } catch (e) { /* ignore */ }
+                        });
+                      } catch (vbsError) {
+                        console.log(`Error with VBScript: ${vbsError.message}`);
+                      }
+                    }
+                  });
+                } catch (fsError) {
+                  console.log(`Error creating HTML player: ${fsError.message}`);
+                }
+              }
+            });
+          }
+        });
+      } else if (process.platform === 'darwin') {
+        // macOS - afplay es el más fiable
+        command = `afplay "${soundPath}"`;
+        
+        console.log(`Executing: ${command}`);
+        exec(command, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error playing sound: ${error.message}`);
+          } else {
+            console.log('Sound played successfully!');
+          }
+        });
+      } else {
+        // Linux - intentar varios reproductores comunes
+        // Añadimos sox y aplay que están más comúnmente disponibles
+        command = `mplayer "${soundPath}" || mpg123 "${soundPath}" || mpg321 "${soundPath}" || play "${soundPath}" || aplay "${soundPath}" || paplay "${soundPath}"`;
+        
+        console.log(`Executing: ${command}`);
+        exec(command, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error playing sound: ${error.message}`);
+            
+            // Método alternativo para Linux: XDG-OPEN para abrir con reproductor predeterminado
+            console.log('Trying to open with default audio player...');
+            exec(`xdg-open "${soundPath}"`, (xdgError) => {
+              if (xdgError) {
+                console.log(`Error with xdg-open: ${xdgError.message}`);
+              }
+            });
+          } else {
+            console.log('Sound played successfully!');
+          }
+        });
+      }
+      
+      // También intentar con el reproductor de respaldo (asíncrono, no bloquea)
+      audioPlayer.play(soundPath, (err) => {
+        if (err) {
+          console.log('Backup player error:', err);
+        } else {
+          console.log('Backup player success!');
+        }
+      });
+    } else {
+      console.log(`Sound file not found: ${soundPath}`);
+      console.log('Please place a startup.mp3 file in assets/audio/ directory');
+      console.log('Recommended format: MP3, 44.1kHz, stereo, ~3 seconds, similar to Windows 95 startup');
+    }
+  } catch (error) {
+    console.error('Error with sound playback system:', error);
+  }
+}
 
 /**
  * Display a fancy banner for the CLI
+ * @param {boolean} isPrdCommand - Whether this is being called from a PRD-related command
  */
-function displayBanner() {
+function displayBanner(isPrdCommand = false) {
   console.clear();
-  const bannerText = figlet.textSync('Task Master', {
-    font: 'Standard',
-    horizontalLayout: 'default',
-    verticalLayout: 'default'
-  });
   
-  console.log(coolGradient(bannerText));
+  // Auto-detect PRD commands from process.argv
+  const args = process.argv.join(' ').toLowerCase();
+  const isPrdRelatedCommand = isPrdCommand || 
+                             args.includes('prd') || 
+                             args.includes('ideate') || 
+                             args.includes('round-table') || 
+                             args.includes('refine-concept');
   
-  // Add creator credit line below the banner
-  console.log(chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano'));
+  // Play startup sound when showing PRD Creator banner
+  playStartupSound(isPrdRelatedCommand);
+  
+  // Use different gradient and text for PRD commands
+  if (isPrdRelatedCommand) {
+    // Define un arte ASCII más 8-bit para el PRD Creator
+    const bannerLines = [
+      "     ██████╗ ██████╗ ██████╗      ██████╗██████╗ ███████╗ █████╗ ████████╗ ██████╗ ██████╗     ",
+      "     ██╔══██╗██╔══██╗██╔══██╗    ██╔════╝██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗    ",
+      "     ██████╔╝██████╔╝██║  ██║    ██║     ██████╔╝█████╗  ███████║   ██║   ██║   ██║██████╔╝    ",
+      "     ██╔═══╝ ██╔══██╗██║  ██║    ██║     ██╔══██╗██╔══╝  ██╔══██║   ██║   ██║   ██║██╔══██╗    ",
+      "     ██║     ██║  ██║██████╔╝    ╚██████╗██║  ██║███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║    ",
+      "     ╚═╝     ╚═╝  ╚═╝╚═════╝      ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝    ",
+      "                                                                                                 ",
+      "                     ✨  Turning ideas into brilliantly effective products  ✨                   "
+    ];
+    
+    // Aplicar el gradiente a cada línea con un ligero offset para crear efecto de profundidad
+    bannerLines.forEach((line, i) => {
+      // Calcular un ligero offset para el gradiente basado en el índice
+      const offsetIndex = Math.min(i * 0.15, 1);
+      
+      // Crear un gradiente personalizado para cada línea con un efecto de profundidad
+      if (i === bannerLines.length - 1) {
+        // La última línea (slogan) usa un gradiente diferente
+        console.log(ghibliAccentGradient(line));
+      } else {
+        console.log(ghibliGradient(line));
+      }
+    });
+    
+    // Show Zyra as the primary author for PRD features
+    console.log(chalk.dim('created by ') + chalk.hex('#ff80ea').underline('https://x.com/ZyraV23'));
+    
+    // Add reference to Task Master
+    console.log(chalk.hex('#bb8fce')('A feature for Task Master (created by ') + 
+                chalk.dim.underline('https://x.com/eyaltoledano') + 
+                chalk.hex('#bb8fce')(')'));
+    
+    // Add Ghibli-inspired quote with beautiful formatting
+    console.log(chalk.hex('#e200a5').italic('"The beginning of all creation is imagination written with care"'));
+    
+    // Add brief description of the PRD functionality with subtle styling
+    console.log(chalk.hex('#9f00e2')('⭐ Document management tool for creating, organizing, and generating structured PRD files ⭐') + chalk.hex('#9f00e2').italic(' -optimized for task-master workflow'));
+  } else {
+    const bannerText = figlet.textSync('Task Master', {
+      font: 'Standard',
+      horizontalLayout: 'default',
+      verticalLayout: 'default'
+    });
+    console.log(coolGradient(bannerText));
+    
+    // Add creator credit line below the banner
+    console.log(chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano'));
+  }
   
   // Read version directly from package.json
   let version = CONFIG.projectVersion; // Default fallback
@@ -46,11 +289,15 @@ function displayBanner() {
     // Silently fall back to default version
   }
   
+  // Use a different border color and box style for PRD commands - More Ghibli-inspired
+  const borderColor = isPrdRelatedCommand ? '#e200a5' : 'cyan';
+  const boxStyle = isPrdRelatedCommand ? 'double' : 'round';
+  
   console.log(boxen(chalk.white(`${chalk.bold('Version:')} ${version}   ${chalk.bold('Project:')} ${CONFIG.projectName}`), {
     padding: 1,
     margin: { top: 0, bottom: 1 },
-    borderStyle: 'round',
-    borderColor: 'cyan'
+    borderStyle: boxStyle,
+    borderColor: borderColor
   }));
 }
 
@@ -1055,14 +1302,14 @@ async function displayComplexityReport(reportPath) {
 // Export UI functions
 export {
   displayBanner,
-  startLoadingIndicator,
-  stopLoadingIndicator,
-  createProgressBar,
-  getStatusWithColor,
-  formatDependenciesWithStatus,
   displayHelp,
-  getComplexityWithColor,
   displayNextTask,
   displayTaskById,
   displayComplexityReport,
+  getStatusWithColor,
+  startLoadingIndicator,
+  stopLoadingIndicator,
+  createProgressBar,
+  getComplexityWithColor,
+  formatDependenciesWithStatus
 }; 

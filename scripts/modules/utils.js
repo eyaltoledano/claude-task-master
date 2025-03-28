@@ -321,6 +321,41 @@ function detectCamelCaseFlags(args) {
   return camelCaseFlags;
 }
 
+/**
+ * Checks if a file exists
+ * @param {string} filepath - Path to the file
+ * @returns {Promise<boolean>} - True if the file exists, false otherwise
+ */
+async function fileExists(filepath) {
+  try {
+    const fs = await import('fs/promises');
+    await fs.access(filepath);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Prompts the user for input
+ * @param {string} question - The question to ask
+ * @returns {Promise<string>} The user's response
+ */
+async function prompt(question) {
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
 // Export all utility functions and configuration
 export {
   CONFIG,
@@ -337,5 +372,7 @@ export {
   truncate,
   findCycles,
   toKebabCase,
-  detectCamelCaseFlags
+  detectCamelCaseFlags,
+  fileExists,
+  prompt
 }; 
