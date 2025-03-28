@@ -40,6 +40,7 @@ A custom script that intelligently breaks down massive PRDs into clear, ordered,
 
 
 ---
+
 - [Task Master](#task-master)
 - [Table of Contents:](#table-of-contents)
 - [QuickStart - How to Use](#quickstart---how-to-use)
@@ -96,7 +97,8 @@ A custom script that intelligently breaks down massive PRDs into clear, ordered,
 	- [Troubleshooting](#troubleshooting)
 	    - [If task-master init doesn't respond:](#if-task-master-init-doesnt-respond)
 ---
-# QuickStart - How to Use
+
+# QuickStart - How to Use Roo Code (latest implementation, OpenRouter version)
 
 To start using Roo-AI Task Master, follow these steps:
 
