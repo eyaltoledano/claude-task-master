@@ -1,25 +1,56 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --no-warnings
 
 /**
  * Claude Task Master CLI
  * Main entry point for globally installed package
+ *
+ * Note: The -S flag in shebang properly handles paths with spaces
  */
 
+// Keep all imports at top
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { createRequire } from 'module';
 import { spawn } from 'child_process';
 import { Command } from 'commander';
+import fs from 'fs';
+import path from 'path';
 
+// Central path handling with proper URI encoding
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const projectRoot = resolve(__dirname, '..');
+global.__rootdir = projectRoot;
+process.env.NODE_PATH = encodeURI(projectRoot);
+
+// Initialize require
 const require = createRequire(import.meta.url);
 
-// Set OpenAI API key if not already set
-process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "PLACEHOLDER_API_KEY";
+// Verify path resolution
+try {
+  if (!fs.existsSync(projectRoot)) {
+    throw new Error(`Project root not found at: ${projectRoot}`);
+  }
+  
+  require('module').Module._initPaths();
+} catch (err) {
+  console.error('Path resolution error:', err.message);
+  process.exit(1);
+}
 
-// Get package information
-const packageJson = require('../package.json');
+// Handle API key configuration
+if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.PERPLEXITY_API_KEY) {
+  try {
+    const config = JSON.parse(fs.readFileSync(`${projectRoot}/.taskmasterrc`));
+    process.env.OPENAI_API_KEY = config.apiKey || "PLACEHOLDER_API_KEY";
+  } catch (err) {
+    console.warn('Warning: Using placeholder API key. For better performance, configure an API key.');
+    process.env.OPENAI_API_KEY = "PLACEHOLDER_API_KEY";
+  }
+}
+
+// Get package information using centralized root
+const packageJson = require(`${projectRoot}/package.json`);
 const version = packageJson.version;
 
 // Get paths to script files
@@ -30,7 +61,8 @@ const initScriptPath = resolve(__dirname, '../scripts/init.js');
 function runDevScript(args) {
   const child = spawn('node', [devScriptPath, ...args], {
     stdio: 'inherit',
-    cwd: process.cwd()
+    cwd: process.cwd(),
+    shell: true
   });
   
   child.on('close', (code) => {
@@ -76,6 +108,14 @@ program
       process.exit(code);
     });
   });
+
+const validDevCommands = [
+  'create', 'delete', 'list', 'next', 'generate', 'parse-prd',
+  'update', 'set-status', 'expand', 'analyze-complexity',
+  'clear-subtasks', 'add-task', 'show', 'add-dependency',
+  'remove-dependency', 'validate-dependencies', 'fix-dependencies',
+  'complexity-report'
+];
 
 program
   .command('dev')
@@ -312,5 +352,81 @@ program
     if (options.file) args.push('--file', options.file);
     runDevScript(args);
   });
+  
+program
+  .command('create')
+  .description('Create a new task')
+  .requiredOption('--title <title>', 'Task title (required)')
+  .option('--description <description>', 'Task description')
+  .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+  .option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+  .action((options, cmd) => {
+    if (!options.title) {
+      cmd.help({ error: true });
+    }
+    const args = ['create'];
+    if (options.title) args.push('--title', options.title);
+    if (options.description) args.push('--description', options.description);
+    if (options.priority) args.push('--priority', options.priority);
+    if (options.file) args.push('--file', options.file);
+    runDevScript(args);
+  });
 
-program.parse(process.argv);
+program
+// Import necessary modules
+const { addTask } = require('./modules/task-manager');
+
+// Create a new task
+program
+  .command('create')
+  .description('Create a new task')
+  .requiredOption('--title <title>', 'Task title (required)')
+  .option('--description <description>', 'Task description')
+  .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+  .option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+  .action(async (options, cmd) => {
+    if (!options.title) {
+      cmd.help({ error: true });
+    }
+
+    const tasksPath = options.file;
+    const title = options.title;
+    const description = options.description || title;
+    const dependencies = [];
+    const priority = options.priority || 'medium';
+
+    // Placeholder API key logic
+    if (process.env.ANTHROPIC_API_KEY === 'PLACEHOLDER_API_KEY') {
+      try {
+        const data = require(tasksPath);
+        const newTaskId = data.tasks.length > 0 ? Math.max(...data.tasks.map(t => t.id)) + 1 : 1;
+
+        const newTask = {
+          id: newTaskId,
+          title: title,
+          description: description,
+          status: 'pending',
+          priority: priority,
+          dependencies: dependencies,
+          createdAt: new Date().toISOString()
+        };
+
+        data.tasks.push(newTask);
+        fs.writeFileSync(tasksPath, JSON.stringify(data, null, 2));
+        console.log(`Created task #${newTask.id} (placeholder mode)`);
+      } catch (error) {
+        console.error(`Error creating task: ${error}`);
+      }
+    } else {
+      console.log("Please set a valid API key to use AI features.");
+    }
+  });
+
+// Forward all other commands to dev.js
+program
+  .command('*', { isDefault: true })
+  .description('Forward to dev.js')
+  .action(() => {
+    const args = process.argv.slice(2);
+    runDevScript(args);
+  });

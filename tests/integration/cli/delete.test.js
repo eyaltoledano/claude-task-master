@@ -1,10 +1,15 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 describe('CLI Task Deletion Integration Tests', () => {
   const tempTasksFile = path.join(__dirname, '../../fixtures/temp-tasks.json');
-  const cliPath = path.join(__dirname, '../../../bin/task-master.js');
+  const cliPath = '/home/anon-pro-creator/Documents/Coding/AI Task Master/Cline Task Master/bin/task-master.js';
 
   beforeEach(() => {
     // Create a temp tasks file with sample data
@@ -35,9 +40,10 @@ describe('CLI Task Deletion Integration Tests', () => {
   });
 
   it('should delete specified task', () => {
-    const output = execSync(
-      `node ${cliPath} delete --id 2 --file ${tempTasksFile}`
-    ).toString();
+      console.log('Running delete test');
+     const output = execSync(
+              `node ${cliPath} delete --id 2 --file "${tempTasksFile}"`
+            ).toString();
 
     expect(output).toContain('Successfully deleted task');
     
@@ -49,8 +55,8 @@ describe('CLI Task Deletion Integration Tests', () => {
   it('should fail when deleting non-existent task', () => {
     expect(() => {
       execSync(
-        `node ${cliPath} delete --id 99 --file ${tempTasksFile}`
-      );
+               `node ${cliPath} delete --id 99 --file ${tempTasksFile}`
+             );
     }).toThrow();
   });
 
@@ -77,8 +83,8 @@ describe('CLI Task Deletion Integration Tests', () => {
 
     expect(() => {
       execSync(
-        `node ${cliPath} delete --id 2 --file ${tempTasksFile}`
-      );
+              `node ${cliPath} delete --id 2 --file ${tempTasksFile}`
+            );
     }).toThrow('Cannot delete task with dependencies');
   });
 });

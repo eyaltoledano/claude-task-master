@@ -72,10 +72,10 @@ npm install -g task-master-ai
 
 ### Configuration
 
-To configure Task Master AI with Cline, you need to set the following environment variables in a `.env` file at the root of your project:
+To configure Task Master AI with Cline, you need to set 1 of the 2 the following environment variables in a `.env` file at the root of your project:
 
-*   `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude (required if not using OpenRouter)
-*   `OPENROUTER_API_KEY`: Your OpenRouter API key for using OpenRouter as an AI provider (optional)
+*   `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude 
+*   `OPENROUTER_API_KEY`: Your OpenRouter API key for using OpenRouter as an AI provider 
 
 You can also configure the following optional environment variables:
 
@@ -234,7 +234,7 @@ Tasks in tasks.json have the following structure:
 
 ## AI-Driven Development Workflow
 
-The Cursor agent is pre-configured (via the rules file) to follow this workflow:
+The agent is pre-configured (via the rules file) to follow this workflow:
 
 ### 1. Task Discovery and Selection
 

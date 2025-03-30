@@ -10,5 +10,13 @@
 
 import { runCLI } from './modules/commands.js';
 
-// Run the CLI with the process arguments
-runCLI(process.argv); 
+// Debug log the incoming arguments
+console.log('CLI Arguments:', process.argv);
+
+try {
+  // Run the CLI with the process arguments
+  runCLI(process.argv);
+} catch (err) {
+  console.error('Error executing command:', err);
+  process.exit(1);
+}

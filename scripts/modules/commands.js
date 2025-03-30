@@ -19,9 +19,9 @@ import {
   expandTask,
   expandAllTasks,
   clearSubtasks,
-  addTask,
   analyzeTaskComplexity
 } from './task-manager.js';
+import { addTask } from './task-manager-test.js';
 
 import {
   addDependency,
@@ -48,6 +48,43 @@ function registerCommands(programInstance) {
     displayHelp();
   });
   
+  // Handle both 'create' and legacy 'add-task' commands
+  function registerCreateCommand(programInstance) {
+    const handler = async (options) => {
+      const tasksPath = options.file;
+      const title = options.title;
+      const description = options.description || title;
+      const dependencies = options.dependencies ?
+        options.dependencies.split(',').map(id => parseInt(id.trim(), 10)) : [];
+      const priority = options.priority;
+      
+      await addTask(tasksPath, title, description, dependencies, priority);
+    };
+
+    // Register as both 'create' and 'add-task' for backwards compatibility
+    programInstance
+      .command('create')
+      .description('Create a new task')
+      .requiredOption('--title <title>', 'Task title (required)')
+      .option('--description <description>', 'Task description')
+      .option('--dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
+      .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+      .option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+      .action(handler);
+
+    programInstance
+      .command('add-task')
+      .description('Create a new task (legacy)')
+      .requiredOption('--title <title>', 'Task title (required)')
+      .option('--description <description>', 'Task description')
+      .option('--dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
+      .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+      .option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+      .action(handler);
+  }
+
+  registerCreateCommand(programInstance);
+
   // parse-prd command
   programInstance
     .command('parse-prd')

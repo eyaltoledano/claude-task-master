@@ -1,0 +1,3 @@
+"""
+Analysis package initialization.
+"""

@@ -1,10 +1,15 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 describe('CLI Task Update Integration Tests', () => {
   const tempTasksFile = path.join(__dirname, '../../fixtures/temp-tasks.json');
-  const cliPath = path.join(__dirname, '../../../bin/task-master.js');
+  const cliPath = '/home/anon-pro-creator/Documents/Coding/AI Task Master/Cline Task Master/bin/task-master.js';
 
   beforeEach(() => {
     // Create a temp tasks file with sample data
@@ -31,8 +36,8 @@ describe('CLI Task Update Integration Tests', () => {
 
   it('should update task title', () => {
     const output = execSync(
-      `node ${cliPath} update --id 1 --title "Updated Title" --file ${tempTasksFile}`
-    ).toString();
+              `${cliPath} update --id 1 --title "Updated Title" --file "${tempTasksFile}"`
+            ).toString();
 
     expect(output).toContain('Successfully updated task');
     
@@ -43,8 +48,8 @@ describe('CLI Task Update Integration Tests', () => {
 
   it('should update task status', () => {
     execSync(
-      `node ${cliPath} update --id 1 --status done --file ${tempTasksFile}`
-    );
+              `${cliPath} update --id 1 --status done --file ${tempTasksFile}`
+            );
 
     const tasksData = JSON.parse(fs.readFileSync(tempTasksFile));
     expect(tasksData.tasks[0].status).toBe("done");
@@ -53,8 +58,8 @@ describe('CLI Task Update Integration Tests', () => {
   it('should fail when updating non-existent task', () => {
     expect(() => {
       execSync(
-        `node ${cliPath} update --id 99 --title "Should Fail" --file ${tempTasksFile}`
-      );
+              `node ${cliPath} update --id 99 --title "Should Fail" --file ${tempTasksFile}`
+            );
     }).toThrow();
   });
 });

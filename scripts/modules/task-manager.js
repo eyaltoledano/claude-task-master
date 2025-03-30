@@ -1426,6 +1426,29 @@ function clearSubtasks(tasksPath, taskIds) {
  * @returns {number} The new task ID
  */
 async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium') {
+  // Handle placeholder API key case
+  if (process.env.ANTHROPIC_API_KEY === 'placeholder-api-key') {
+    const data = readJSON(tasksPath) || { tasks: [] };
+    const newTaskId = data.tasks.length > 0 ? Math.max(...data.tasks.map(t => t.id)) + 1 : 1;
+    
+    const newTask = {
+      id: newTaskId,
+      title: prompt,
+      description: prompt,
+      status: 'pending',
+      priority: priority,
+      dependencies: dependencies,
+      createdAt: new Date().toISOString()
+    };
+    
+    data.tasks.push(newTask);
+    writeJSON(tasksPath, data);
+    return newTaskId;
+  }
+
+  // Normal AI-powered processing
+
+  // Normal AI-powered task creation
   displayBanner();
   
   // Read the existing tasks
@@ -1436,8 +1459,22 @@ async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium'
   }
   
   // Find the highest task ID to determine the next ID
-  const highestId = Math.max(...data.tasks.map(t => t.id));
+  const highestId = data.tasks.length > 0 ? Math.max(...data.tasks.map(t => t.id)) : 0;
   const newTaskId = highestId + 1;
+    const newTask = {
+      id: newTaskId,
+      title: prompt,
+      description: prompt,
+      status: 'pending',
+      priority: priority,
+      dependencies: dependencies,
+      createdAt: new Date().toISOString()
+    };
+    data.tasks.push(newTask);
+    writeJSON(tasksPath, data);
+    log('success', `Created task #${newTaskId} (placeholder mode)`);
+    return newTaskId;
+  }
   
   console.log(boxen(
     chalk.white.bold(`Creating New Task #${newTaskId}`),

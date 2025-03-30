@@ -1,10 +1,15 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 describe('CLI Task Listing Integration Tests', () => {
   const tempTasksFile = path.join(__dirname, '../../fixtures/temp-tasks.json');
-  const cliPath = path.join(__dirname, '../../../bin/task-master.js');
+  const cliPath = '/home/anon-pro-creator/Documents/Coding/AI Task Master/Cline Task Master/bin/task-master.js';
 
   beforeEach(() => {
     // Create a temp tasks file with sample data
@@ -41,8 +46,8 @@ describe('CLI Task Listing Integration Tests', () => {
 
   it('should list all tasks', () => {
     const output = execSync(
-      `node ${cliPath} list --file ${tempTasksFile}`
-    ).toString();
+              `${cliPath} list --file "${tempTasksFile}"`
+            ).toString();
 
     expect(output).toContain('First Task');
     expect(output).toContain('Second Task');
@@ -50,8 +55,8 @@ describe('CLI Task Listing Integration Tests', () => {
 
   it('should filter tasks by status', () => {
     const output = execSync(
-      `node ${cliPath} list --status done --file ${tempTasksFile}`
-    ).toString();
+          `${cliPath} list --status done --file ${tempTasksFile}`
+        ).toString();
 
     expect(output).toContain('Second Task');
     expect(output).not.toContain('First Task');
@@ -59,8 +64,8 @@ describe('CLI Task Listing Integration Tests', () => {
 
   it('should filter tasks by priority', () => {
     const output = execSync(
-      `node ${cliPath} list --priority high --file ${tempTasksFile}`
-    ).toString();
+          `${cliPath} list --priority high --file ${tempTasksFile}`
+        ).toString();
 
     expect(output).toContain('First Task');
     expect(output).not.toContain('Second Task');
@@ -68,8 +73,8 @@ describe('CLI Task Listing Integration Tests', () => {
 
   it('should show empty message when no tasks match filters', () => {
     const output = execSync(
-      `node ${cliPath} list --status in-progress --file ${tempTasksFile}`
-    ).toString();
+          `${cliPath} list --status in-progress --file ${tempTasksFile}`
+        ).toString();
 
     expect(output).toContain('No tasks found matching the specified filters');
   });

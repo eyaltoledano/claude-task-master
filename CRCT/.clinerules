@@ -1,0 +1,10 @@
+[LAST_ACTION_STATE]
+last_action: "System Initialized"
+current_phase: "Set-up/Maintenance"
+next_action: "Initialize Core Files"
+next_phase: "Set-up/Maintenance"
+
+[CODE_ROOT_DIRECTORIES]
+- src
+
+[LEARNING_JOURNAL]
