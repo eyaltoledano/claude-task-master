@@ -1,3 +1,5 @@
+// Easiest method is to copy paste 1 and 2 from this file in the respective fields in Roo Code extension directly by creating a custom mode through the UI view
+
 - [1. Role]()
 - [2. Custom instructions :]()- 
 ---
