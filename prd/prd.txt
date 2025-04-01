@@ -1,0 +1,139 @@
+# Product Requirements Document: Task Master - PRD Generation Workflow v2
+
+**Version:** 1.0
+**Date:** 2025-04-01
+**Status:** Draft
+
+## 1. Introduction
+
+This document outlines the requirements for enhancing the PRD Generation feature within the Task Master CLI. The goal is to align the existing functionality with the originally specified workflow and command structure, improve user experience through consistent interactivity, and prepare for future integration by adding JSON export capabilities. This enhancement aims to provide a robust, guided process for users to transform raw ideas into well-structured PRDs.
+
+## 2. Goals
+
+*   **Align with Original Specification:** Implement the PRD generation workflow using the distinct commands (`ideate`, `round-table`, `refine-concept`, `generate-prd`) as initially defined.
+*   **Consistent Interactivity:** Ensure the final PRD generation step (`generate-prd` command or its direct invocation) always presents an interactive menu for output customization (format, style, sections, template, research).
+*   **Improve User Experience:** Provide clear feedback, progress indicators (spinners), and a logical flow throughout the PRD generation process.
+*   **Enable MCP Integration:** Add JSON as an output format option for the final PRD, structured appropriately for potential consumption by the Model Context Protocol (MCP).
+*   **Isolate and Verify:** Ensure the complete, aligned functionality operates correctly within an isolated environment (`PRDGenerator` directory) based on the `upstream/next` branch.
+
+## 3. Target Users
+
+*   Task Master CLI users (developers, product managers) who need assistance creating structured PRDs.
+*   Users who prefer a guided, step-by-step workflow over providing all inputs at once.
+*   Future systems (like MCP) that may consume structured PRD data.
+
+## 4. High-Level Workflow (To Be Implemented/Verified)
+
+The system must support the following sequential workflow, ideally triggered by corresponding CLI commands:
+
+1.  **`ideate`**:
+    *   **Input:** User provides a raw product/feature idea (interactively if not via flag).
+    *   **Process:** Guides the user through interactive prompts (idea exploration, target audience, core problem, features, success metrics) using AI assistance.
+    *   **Output:** Saves a structured product concept to `concept.txt` (or user-specified path).
+2.  **`round-table`**:
+    *   **Input:** Path to `concept.txt` (`--concept-file`), list of participant roles (`--participants`).
+    *   **Process:**
+        *   Prompts user to define/confirm participants (if needed).
+        *   Simulates an expert discussion based on the concept using AI.
+        *   Summarizes actionable recommendations in the CLI output.
+        *   Optionally refines `concept.txt` based on discussion if `--refine-concept` flag is present.
+    *   **Output:** Saves the full discussion transcript to `discussion.txt` (or user-specified path); potentially modifies `concept.txt`.
+3.  **`refine-concept`**:
+    *   **Input:** Path to `concept.txt` (`--concept-file`), optional custom prompt (`--prompt`), optional path to `discussion.txt` (`--discussion-file`).
+    *   **Process:** Loads the concept, applies refinements based on the provided prompt and/or discussion insights using AI.
+    *   **Output:** Saves the updated, refined concept back to `concept.txt` (or user-specified path).
+4.  **`generate-prd`**:
+    *   **Input:** Path to the *refined* `concept.txt` (`--concept-file`), optional template path (`--template` or `--example-prd`), optional research flag (`--research`). Flags for format, style, sections should also be supported but will default to interactive prompts.
+    *   **Process:**
+        *   Calls an *interactive configuration step* (`collectPRDOutputOptions` or similar) **ALWAYS**, regardless of whether flags were passed. This step prompts for:
+            *   Output file path (respects `--output` flag if provided).
+            *   Output format (Markdown, Plaintext, HTML, **JSON** - respects `--format` flag).
+            *   Detail level/style (Standard, Detailed, Minimal - respects `--style` flag).
+            *   Sections to include (respects `--sections` flag, if implemented).
+            *   Whether to use a template (respects `--template` flag).
+            *   Whether to use research (respects `--research` flag).
+        *   **(Optional) Preview:** Generates and displays a preview/outline of the PRD.
+        *   **(Optional) Confirmation:** Asks the user to confirm before generating the full document.
+        *   Generates the **full, detailed PRD content** using AI based on the refined concept and *all* selected interactive/flag options.
+    *   **Output:** Saves the final PRD to the specified output file (`prd.txt` or user-specified) in the chosen format (including JSON).
+
+## 5. Detailed Requirements
+
+### 5.1. Command Structure Alignment
+
+*   **Requirement 5.1.1:** Implement distinct CLI commands: `task-master ideate`, `task-master round-table`, `task-master refine-concept`, `task-master generate-prd` (or their `node scripts/dev.js <command>` equivalents).
+*   **Requirement 5.1.2:** Each command must accept the flags specified in the admin proposal (e.g., `--concept-file`, `--participants`, `--prompt`, `--research`, `--template`, `--format`, `--style`, etc.).
+*   **Requirement 5.1.3:** Each command must perform the specific function described in the proposal (generate concept, simulate discussion, refine concept, generate final PRD).
+*   **Requirement 5.1.4:** Commands should handle file paths correctly and create output files (`concept.txt`, `discussion.txt`, `prd.txt`/`.json`/`.md`/`.html`) as specified.
+
+### 5.2. Consistent Interactivity for `generate-prd`
+
+*   **Requirement 5.2.1:** The final PRD generation step (invoked via `generate-prd` command) must *always* enter an interactive phase to confirm/collect output options, even if some options are provided via flags.
+*   **Requirement 5.2.2:** The interactive phase must include prompts for: Output file path, Output Format (including JSON), Style/Detail Level, Sections to Include, Use Template (Y/N, then path if Y), Use Research (Y/N).
+*   **Requirement 5.2.3:** If an option is provided via a CLI flag (e.g., `--format json`), the corresponding interactive prompt for that specific option should be skipped, but other prompts should still appear.
+*   **Requirement 5.2.4:** Implement the "Preview -> Confirm -> Generate Full" flow within the `generate-prd` command action.
+
+### 5.3. JSON Export Format
+
+*   **Requirement 5.3.1:** Add "JSON" as a selectable output format in the interactive menu and as a valid value for the `--format` flag.
+*   **Requirement 5.3.2:** When JSON format is selected, the AI must be prompted to generate the PRD content as a structured JSON object.
+*   **Requirement 5.3.3:** Define a clear, consistent JSON schema for the PRD output. (Example draft below - **subject to refinement**):
+    ```json
+    {
+      "metadata": {
+        "title": "Product Requirements Document: [Product Name]",
+        "version": "1.0",
+        "generatedAt": "ISO8601 Timestamp",
+        "sourceConceptFile": "path/to/concept.txt",
+        "options": {
+          "style": "detailed",
+          "research": false,
+          // ... other options used
+        }
+      },
+      "sections": {
+        "executive_summary": "...",
+        "problem_statement": "...",
+        "goals": [ { "id": "G1", "description": "...", "metric": "..." } ],
+        "personas": [ { "name": "Alex", "description": "...", "needs": [...] } ],
+        "icp": { "industry": "...", "companySize": "..." },
+        "features": [
+          {
+            "id": "F1",
+            "name": "Private Cross-Chain Swaps",
+            "description": "...",
+            "requirements": [ { "id": "R1.1", "text": "..." } ],
+            "userStories": [ "As a..." ],
+            "acceptanceCriteria": [ "..." ]
+          }
+        ],
+        "technical_requirements": { "architecture": "...", "stack": [...] },
+        "ux_considerations": { "guidelines": "...", "journeys": [...] },
+        "success_metrics": [ { "id": "M1", "name": "...", "target": "..." } ],
+        "timeline": [ { "phase": "Phase 1", "milestones": [...] } ],
+        "risks_mitigations": [ { "risk": "...", "mitigation": "..." } ]
+        // ... other selected sections ...
+      }
+    }
+    ```
+*   **Requirement 5.3.4:** Ensure the AI prompt clearly requests output matching the defined JSON schema.
+*   **Requirement 5.3.5:** Save the output with a `.json` extension when this format is selected.
+
+### 5.4. User Experience
+
+*   **Requirement 5.4.1:** Use `ora` spinners consistently during long-running operations (AI calls, file saving) for all commands (`ideate`, `round-table`, `refine-concept`, `generate-prd`).
+*   **Requirement 5.4.2:** Provide clear informational messages (`log.info`) guiding the user through each step of the workflow.
+*   **Requirement 5.4.3:** Ensure technical debug logs (`log.debug` or SDK logs) are suppressed by default and only shown when a `DEBUG` flag or environment variable is explicitly set.
+
+## 6. Non-Goals
+
+*   Implementing the actual MCP server connection.
+*   Resolving the `@model-context-protocol/sdk` dependency issue (to be handled by admins).
+*   Adding commands beyond `ideate`, `round-table`, `refine-concept`, `generate-prd`.
+*   Implementing complex features not directly related to the core PRD generation workflow described.
+
+## 7. Open Questions
+
+*   What is the definitive JSON schema required for MCP integration? (Draft provided, needs confirmation).
+*   How should errors during intermediate steps (e.g., `round-table` fails) affect the overall workflow? Should the user be prompted to retry or exit?
+*   Confirm the exact AI prompt needed to reliably generate the desired JSON structure. 

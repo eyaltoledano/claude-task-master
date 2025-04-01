@@ -9,6 +9,8 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';
 import https from 'https';
+import inquirer from 'inquirer';
+import ora from 'ora';
 
 import { CONFIG, log, readJSON } from './utils.js';
 import {
@@ -25,7 +27,9 @@ import {
   removeSubtask,
   analyzeTaskComplexity,
   updateTaskById,
-  updateSubtaskById
+  updateSubtaskById,
+  ideateTask,
+  brainstormTaskImplementation
 } from './task-manager.js';
 
 import {
@@ -44,6 +48,15 @@ import {
   getStatusWithColor,
   confirmTaskOverwrite
 } from './ui.js';
+
+import { IdeationService } from './ideation-service.js';
+import { DiscussionService } from './discussion-service.js';
+import { PRDService } from './prd-service.js';
+import { Idea } from './models/idea.js';
+import { Discussion } from './models/discussion.js';
+import { PRD } from './models/prd.js';
+import logger, { createLogger } from './logger.js';
+import errorHandler from './error-handler.js';
 
 /**
  * Configure and register CLI commands
@@ -511,24 +524,35 @@ function registerCommands(programInstance) {
     .description('Add a new task using AI')
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-p, --prompt <text>', 'Description of the task to add (required)')
+    .option('-t, --title <title>', 'Title for the new task (overrides AI generation)')
     .option('-d, --dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
     .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
     .action(async (options) => {
+      // --- BEGIN ADDED LOGGING ---
+      console.log('--- DEBUG: Entering add-task command action ---');
+      console.log('--- DEBUG: Options received: ---');
+      console.log(JSON.stringify(options, null, 2));
+      console.log('--- END DEBUG ---');
+      // --- END ADDED LOGGING ---
+
       const tasksPath = options.file;
       const prompt = options.prompt;
+      const titleOverride = options.title;
       const dependencies = options.dependencies ? options.dependencies.split(',').map(id => parseInt(id.trim(), 10)) : [];
       const priority = options.priority;
       
-      if (!prompt) {
-        console.error(chalk.red('Error: --prompt parameter is required. Please provide a task description.'));
+      if (!prompt && !titleOverride) {
+        console.error(chalk.red('Error: Either --prompt or --title parameter is required.'));
         process.exit(1);
       }
       
-      console.log(chalk.blue(`Adding new task with description: "${prompt}"`));
+      const taskDescription = titleOverride || prompt;
+
+      console.log(chalk.blue(`Adding new task: "${taskDescription}"`));
       console.log(chalk.blue(`Dependencies: ${dependencies.length > 0 ? dependencies.join(', ') : 'None'}`));
       console.log(chalk.blue(`Priority: ${priority}`));
       
-      await addTask(tasksPath, prompt, dependencies, priority);
+      await addTask(tasksPath, prompt, dependencies, priority, titleOverride);
     });
 
   // next command
@@ -864,8 +888,347 @@ function registerCommands(programInstance) {
       process.exit(0);
     });
     
-  // Add more commands as needed...
-  
+  // ideate command (Implement original ChatPRD flow)
+  programInstance
+    .command('ideate')
+    .description('Turn a raw idea into a structured product concept using AI [Original ChatPRD flow]')
+    .option('-i, --idea <text>', 'Initial product/feature idea (required for non-interactive)')
+    .option('-o, --output <file>', 'Output file for the concept', 'prd/concept.txt') // Default output path
+    .action(async (options) => {
+      const spinner = ora('Initializing ideation service...').start();
+      try {
+        // --- BEGIN IMPLEMENTATION --- 
+        let ideaInput = options.idea;
+        if (!ideaInput) {
+          spinner.stop();
+          // Interactive prompt if --idea is not provided
+          const answers = await inquirer.prompt([
+            {
+              type: 'input',
+              name: 'idea',
+              message: 'Enter the initial product idea or problem statement:',
+              validate: (input) => input.trim() !== '' || 'Please enter an idea.',
+            },
+          ]);
+          ideaInput = answers.idea;
+          spinner.start();
+        }
+
+        const outputFile = path.resolve(options.output); // Ensure absolute path
+        const outputDir = path.dirname(outputFile);
+
+        spinner.text = 'Generating product concept...';
+
+        // Ensure output directory exists
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+          log('info', `Created output directory: ${outputDir}`)
+        }
+
+        // Initialize service
+        // Note: Ensure IdeationService constructor doesn't require complex deps or is adapted
+        const ideationService = new IdeationService(); 
+
+        // Generate the concept
+        // Assuming generateConcept exists and returns an object like { title: '...', content: '...' }
+        // We might need to adjust based on the actual IdeationService implementation
+        const productConcept = await ideationService.generateConcept(ideaInput); 
+
+        // Basic check for generated content
+        if (productConcept && productConcept.content) {
+          fs.writeFileSync(outputFile, productConcept.content);
+          spinner.succeed(chalk.green(`Product concept generated successfully!`));
+          console.log(chalk.cyan(`Concept saved to: ${outputFile}`));
+          console.log(chalk.white.bold('\nNext Steps:'));
+          console.log(chalk.cyan(`1. Review the generated concept in ${outputFile}`));
+          // Suggest round-table command with the correct output file path
+          console.log(chalk.cyan(`2. Run 'task-master round-table --concept-file="${options.output}"' to simulate a discussion`)); 
+        } else {
+          spinner.fail(chalk.red('Failed to generate concept content.'));
+          console.error(chalk.red('Error: The AI response did not contain the expected concept content.'));
+          // Log the response if possible for debugging
+          log('error', 'Received object from IdeationService:', JSON.stringify(productConcept, null, 2)); 
+        }
+        // --- END IMPLEMENTATION ---
+      } catch (error) {
+        spinner.fail(chalk.red('Ideation failed.'));
+        // Use centralized error handler 
+        // Ensure errorHandler can handle errors from IdeationService correctly
+        errorHandler(error); // Make sure this handler is suitable or adapt it
+        if (CONFIG.debug) {
+          console.error('Ideate Command Error Stack:', error);
+        }
+        process.exit(1);
+      }
+    });
+    
+  // NEW: brainstorm-task command
+  programInstance
+    .command('brainstorm-task')
+    .description('Use AI to brainstorm implementation ideas for an existing task')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('--id <id>', 'ID of the task to brainstorm implementation for (required)')
+    .action(async (options) => {
+      console.log('--- DEBUG: Entering brainstorm-task command action ---');
+      console.log('--- DEBUG: Options received: ---');
+      console.log(JSON.stringify(options, null, 2));
+      console.log('--- END DEBUG ---');
+
+      const tasksPath = options.file;
+      const taskId = options.id ? parseInt(options.id, 10) : null;
+
+      if (!taskId) {
+        console.error(chalk.red('Error: --id parameter is required.'));
+        process.exit(1);
+      }
+
+      // Call the renamed function
+      await brainstormTaskImplementation(tasksPath, taskId);
+    });
+
+  // round-table command (Structure Only)
+  programInstance
+    .command('round-table')
+    .command('refine-concept')
+    .description('Refine a product concept based on additional input (prompt or discussion file)')
+    .option('-c, --concept-file <file>', 'Path to the concept.txt file to refine (required)')
+    .option('-p, --prompt <text>', 'Custom prompt for refinement')
+    .option('-d, --discussion-file <file>', 'Path to discussion.txt to use discussion insights for refinement')
+    .option('-o, --output <file>', 'Output file for the refined concept (defaults to overwriting input concept file)')
+    .action(async (options) => {
+        try {
+            // 1. Validate options
+            if (!options.conceptFile) {
+                throw errorHandler.createValidationError('Concept file path is required (--concept-file).');
+            }
+            if (!options.prompt && !options.discussionFile) {
+                 throw errorHandler.createValidationError('Either a prompt (--prompt) or a discussion file (--discussion-file) must be provided for refinement.');
+            }
+            if (!fs.existsSync(options.conceptFile)) {
+                throw errorHandler.createValidationError(`Concept file not found: ${options.conceptFile}`);
+            }
+            if (options.discussionFile && !fs.existsSync(options.discussionFile)) {
+                 throw errorHandler.createValidationError(`Discussion file not found: ${options.discussionFile}`);
+            }
+
+            const outputFile = options.output || options.conceptFile; // Default to overwrite input
+
+            console.log(chalk.blue('Starting concept refinement...'));
+            log('info', `Refining concept file: ${options.conceptFile}`);
+            if (options.prompt) log('info', `Using custom prompt.`);
+            if (options.discussionFile) log('info', `Using discussion file: ${options.discussionFile}`);
+            log('info', `Refined concept will be saved to: ${outputFile}`);
+
+            // 2. Read concept file content
+            const conceptContent = fs.readFileSync(options.conceptFile, 'utf8');
+
+            // 3. Read discussion file content if provided
+            let discussionContent = null;
+            if (options.discussionFile) {
+                discussionContent = fs.readFileSync(options.discussionFile, 'utf8');
+            }
+
+            // 4. Instantiate PRDService
+            const prdService = new PRDService();
+
+            const spinner = ora('Refining concept with AI...').start();
+            try {
+                // 5. Call refineConceptWithAI
+                const refinedConceptContent = await prdService.refineConceptWithAI(
+                    conceptContent,
+                    options.prompt,      // Pass custom prompt if provided
+                    discussionContent    // Pass discussion content if provided
+                );
+
+                // 6. Save the refined concept
+                fs.writeFileSync(outputFile, refinedConceptContent, 'utf8');
+                spinner.succeed('Concept refined successfully!');
+
+                console.log(boxen(
+                    chalk.green(`Refined concept saved to ${outputFile}`),
+                    { padding: 1, borderColor: 'green', borderStyle: 'round' }
+                ));
+                console.log(boxen(
+                    chalk.white.bold('Next Steps:') + '\n\n' +
+                    `${chalk.cyan('1.')} Review the refined concept in ${outputFile}\n` +
+                    `${chalk.cyan('2.')} Run ${chalk.yellow(`task-master generate-prd --concept-file ${outputFile}`)} to generate the final PRD`,
+                    { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+                ));
+
+            } catch (error) {
+                spinner.fail('Concept refinement failed.');
+                const handledError = errorHandler.handle(error, {
+                    message: 'Failed during concept refinement'
+                });
+                console.error(chalk.red(`Error: ${handledError.getUserMessage()}`));
+                if (CONFIG.debug) {
+                    console.error(handledError.stack);
+                }
+                process.exit(1);
+            }
+
+        } catch (error) {
+             // Catch setup/validation errors
+             const handledError = errorHandler.handle(error, {
+                 message: 'Failed to run refine-concept command'
+             });
+             console.error(chalk.red(`Error: ${handledError.getUserMessage()}`));
+             if (CONFIG.debug) {
+                console.error(handledError.stack);
+             }
+             process.exit(1);
+        }
+    });
+
+  // generate-prd command
+  programInstance
+    .command('generate-prd')
+    .description('Generate a full PRD file from a product concept')
+    .option('-c, --concept-file <file>', 'Path to the concept.txt file (required)')
+    .option('-t, --template <file>', 'Path to an optional PRD template file') // Renamed from --example-prd for consistency
+    .option('-r, --research', 'Use Perplexity AI for research-backed generation')
+    .option('-o, --output <file>', 'Output file path for the PRD', 'prd/prd.txt')
+    .option('--format <format>', 'Output format (markdown, html, plain)', 'markdown')
+    .option('--style <style>', 'Detail level (detailed, standard, minimal)', 'standard')
+    .option('--sections <list>', 'Comma-separated list of sections to include (defaults to all)')
+    .option('--preview', 'Show a preview before generating the full document')
+    .option('-y, --yes', 'Skip preview confirmation if --preview is used') // Only relevant with --preview
+    .action(async (options) => {
+        try {
+            // 1. Validate options
+            if (!options.conceptFile) {
+                throw errorHandler.createValidationError('Concept file path is required (--concept-file).');
+            }
+            if (!fs.existsSync(options.conceptFile)) {
+                throw errorHandler.createValidationError(`Concept file not found: ${options.conceptFile}`);
+            }
+            if (options.template && !fs.existsSync(options.template)) {
+                 throw errorHandler.createValidationError(`Template file not found: ${options.template}`);
+            }
+
+            console.log(chalk.blue('Starting PRD generation...'));
+            log('info', `Using concept file: ${options.conceptFile}`);
+            if(options.template) log('info', `Using template file: ${options.template}`);
+            if(options.research) log('info', `Research-backed generation enabled.`);
+            log('info', `Output format: ${options.format}`);
+            log('info', `Detail style: ${options.style}`);
+            log('info', `PRD output file: ${options.output}`);
+
+            // 2. Read concept file content
+            const conceptContent = fs.readFileSync(options.conceptFile, 'utf8');
+
+            // 3. Parse sections if provided
+            const sections = options.sections ? options.sections.split(',').map(s => s.trim()) : null;
+            if(sections) log('info', `Including sections: ${sections.join(', ')}`);
+
+            // Ensure output directory exists
+            const outputDir = path.dirname(options.output);
+            if (!fs.existsSync(outputDir)){
+                fs.mkdirSync(outputDir, { recursive: true });
+                log('info', `Created output directory: ${outputDir}`);
+            }
+
+            // 4. Instantiate PRDService
+            const prdService = new PRDService();
+
+            // Gather options for PRD generation
+            const prdOptions = {
+                template: options.template, // Pass path, service should read it
+                research: options.research || false,
+                format: options.format,
+                style: options.style,
+                sections: sections // Pass null if not specified, service uses defaults
+                // TODO: Add detailedParams support if needed later
+            };
+
+            let generateConfirmed = true; // Assume yes unless preview is shown and rejected
+
+            // 5. Handle Preview (Optional)
+            if (options.preview) {
+                const previewSpinner = ora('Generating PRD preview...').start();
+                try {
+                    const previewContent = await prdService.generatePRDPreview(
+                        conceptContent,
+                        options.template, 
+                        options.research,
+                        { format: options.format, style: options.style, sections: sections }
+                    );
+                    previewSpinner.succeed('PRD preview generated.');
+                    console.log(chalk.cyan.bold('\n--- PRD Preview --- '));
+                    console.log(previewContent);
+                    console.log(chalk.cyan.bold('--- End Preview --- \n'));
+
+                    if (!options.yes) {
+                        const answers = await inquirer.prompt([
+                            {
+                                type: 'confirm',
+                                name: 'confirmGeneration',
+                                message: 'Generate the full PRD document based on this preview?',
+                                default: true
+                            }
+                        ]);
+                        generateConfirmed = answers.confirmGeneration;
+                    }
+                } catch (previewError) {
+                    previewSpinner.fail('Failed to generate PRD preview.');
+                    const handledError = errorHandler.handle(previewError, {
+                        message: 'Failed during PRD preview generation'
+                     });
+                    console.error(chalk.red(`Error: ${handledError.getUserMessage()}`));
+                    // Exit if preview fails?
+                    process.exit(1); 
+                }
+            }
+
+            // 6. Generate Full PRD (if confirmed)
+            if (generateConfirmed) {
+                const prdSpinner = ora('Generating full PRD document...').start();
+                try {
+                    const prdResult = await prdService.generatePRD(conceptContent, prdOptions);
+
+                    // Save the generated PRD content
+                    fs.writeFileSync(options.output, prdResult.content, 'utf8');
+                    prdSpinner.succeed('PRD generated successfully!');
+
+                    console.log(boxen(
+                        chalk.green(`Full PRD saved to ${options.output}`),
+                        { padding: 1, borderColor: 'green', borderStyle: 'round' }
+                    ));
+                     console.log(boxen(
+                        chalk.white.bold('Next Steps:') + '\n\n' +
+                        `${chalk.cyan('1.')} Review the PRD in ${options.output}\n` +
+                        `${chalk.cyan('2.')} Run ${chalk.yellow(`task-master parse-prd ${options.output}`)} to generate tasks from this PRD`,
+                        { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+                    ));
+
+                } catch (error) {
+                    prdSpinner.fail('Full PRD generation failed.');
+                    const handledError = errorHandler.handle(error, {
+                        message: 'Failed during full PRD generation'
+                    });
+                    console.error(chalk.red(`Error: ${handledError.getUserMessage()}`));
+                    if (CONFIG.debug) {
+                        console.error(handledError.stack);
+                    }
+                    process.exit(1);
+                }
+            } else {
+                console.log(chalk.yellow('Full PRD generation cancelled by user.'));
+            }
+
+        } catch (error) {
+             // Catch setup/validation errors
+             const handledError = errorHandler.handle(error, {
+                 message: 'Failed to run generate-prd command'
+             });
+             console.error(chalk.red(`Error: ${handledError.getUserMessage()}`));
+             if (CONFIG.debug) {
+                console.error(handledError.stack);
+             }
+             process.exit(1);
+        }
+    });
+
   return programInstance;
 }
 

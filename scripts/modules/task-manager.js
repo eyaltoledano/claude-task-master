@@ -34,7 +34,7 @@ import {
 } from './ui.js';
 
 import {
-  callClaude,
+  callClaude as callClaudeForPRD,
   generateSubtasks,
   generateSubtasksWithPerplexity,
   generateComplexityAnalysisPrompt,
@@ -48,8 +48,11 @@ import {
 } from './dependency-manager.js';
 
 // Initialize Anthropic client
-const anthropic = new Anthropic({
+const anthropicClient = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  defaultHeaders: { // Optional: Add beta header if needed for longer outputs
+    'anthropic-beta': 'output-128k-2025-02-19'
+  }
 });
 
 // Import perplexity if available
@@ -86,7 +89,7 @@ async function parsePRD(prdPath, tasksPath, numTasks) {
     const prdContent = fs.readFileSync(prdPath, 'utf8');
     
     // Call Claude to generate tasks
-    const tasksData = await callClaude(prdContent, prdPath, numTasks);
+    const tasksData = await callClaudeForPRD(prdContent, prdPath, numTasks);
     
     // Create the directory if it doesn't exist
     const tasksDir = path.dirname(tasksPath);
@@ -277,7 +280,7 @@ Return only the updated tasks as a valid JSON array.`
           }, 500);
           
           // Use streaming API call
-          const stream = await anthropic.messages.create({
+          const stream = await anthropicClient.messages.create({
             model: CONFIG.model,
             max_tokens: CONFIG.maxTokens,
             temperature: CONFIG.temperature,
@@ -556,7 +559,7 @@ Return only the updated task as a valid JSON object.`
           }, 500);
           
           // Use streaming API call
-          const stream = await anthropic.messages.create({
+          const stream = await anthropicClient.messages.create({
             model: CONFIG.model,
             max_tokens: CONFIG.maxTokens,
             temperature: CONFIG.temperature,
@@ -2076,7 +2079,7 @@ async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium'
 
   try {
     // Call Claude with streaming enabled
-    const stream = await anthropic.messages.create({
+    const stream = await anthropicClient.messages.create({
       max_tokens: CONFIG.maxTokens,
       model: CONFIG.model,
       temperature: CONFIG.temperature,
@@ -2279,7 +2282,7 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
       // Helper function to use Claude for complexity analysis
       async function useClaudeForComplexityAnalysis() {
         // Call the LLM API with streaming
-        const stream = await anthropic.messages.create({
+        const stream = await anthropicClient.messages.create({
           max_tokens: CONFIG.maxTokens,
           model: modelOverride || CONFIG.model,
           temperature: CONFIG.temperature,
@@ -2514,7 +2517,7 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
               missingAnalysisResponse = result.choices[0].message.content;
             } else {
               // Use Claude
-              const stream = await anthropic.messages.create({
+              const stream = await anthropicClient.messages.create({
                 max_tokens: CONFIG.maxTokens,
                 model: modelOverride || CONFIG.model,
                 temperature: CONFIG.temperature,
@@ -3375,6 +3378,131 @@ Provide concrete examples, code snippets, or implementation details when relevan
   }
 }
 
+/**
+ * Use AI to brainstorm implementation ideas for an existing task
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {number} taskId - ID of the task to brainstorm on
+ */
+async function brainstormTaskImplementation(tasksPath, taskId) { // Renamed function
+  displayBanner();
+  console.log(boxen(
+    chalk.white.bold(`Brainstorming Implementation for Task ${taskId} with AI`), // Updated title
+    { padding: 1, borderColor: 'magenta', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+
+  log('info', `Reading tasks from ${tasksPath}...`);
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found. Initialize with 'task-master init' first?");
+    console.error(chalk.red('Error: No valid tasks found in tasks.json. Run `task-master init` first.'));
+    process.exit(1);
+  }
+
+  // Find the task
+  const task = findTaskById(data.tasks, taskId);
+  if (!task) {
+    log('error', `Task with ID ${taskId} not found.`);
+    console.error(chalk.red(`Error: Task with ID ${taskId} not found.`));
+    process.exit(1);
+  }
+
+  log('info', `Found task: ${task.id} - ${task.title}`);
+
+  // System prompt for brainstorming
+  const systemPrompt = `You are an AI assistant helping a software developer brainstorm implementation ideas for a task.
+  You will be given the details of an existing task.
+  Your goal is to generate practical implementation ideas, potential challenges, alternative approaches, and suggest relevant technologies or libraries.
+  Structure your response clearly, perhaps using markdown.
+  Focus on providing actionable insights based *only* on the provided task details.
+  Respond ONLY with the brainstorming content itself, without any introductory phrases like "Here are some ideas..." or similar.`;
+
+  // User prompt with task details
+  const userPrompt = `Brainstorm implementation ideas for the following task:
+  
+  ID: ${task.id}
+  Title: ${task.title}
+  Description: ${task.description || 'No description provided.'}
+  Current Details: ${task.details || 'No details provided yet.'}
+  Priority: ${task.priority}
+  Status: ${task.status}
+  Dependencies: [${(task.dependencies || []).join(', ') || 'None'}]
+  
+Please provide brainstorming suggestions based on this information.`;
+
+  const loadingIndicator = startLoadingIndicator('Brainstorming ideas with Claude AI...');
+  let generatedIdeas = ''; // Initialize as empty string
+
+  try {
+    // --- MODIFIED: Directly call Anthropic API --- 
+    log('info', 'Calling Anthropic API directly for ideation...');
+    const response = await anthropicClient.messages.create({
+        model: CONFIG.model, // Use model from config
+        max_tokens: CONFIG.maxTokens, // Use maxTokens from config
+        temperature: CONFIG.temperature, // Use temperature from config
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    // Extract text content
+    if (response.content && response.content.length > 0 && response.content[0].text) {
+        generatedIdeas = response.content[0].text.trim();
+    } else {
+        log('warn', 'Anthropic API response did not contain expected text content.');
+        // Optional: Log the full response for debugging
+        // log('debug', 'Full Anthropic response:', JSON.stringify(response, null, 2));
+    }
+    // --- END MODIFICATION ---
+    
+    // Check if we actually got any ideas (string might be empty)
+    if (!generatedIdeas) {
+        // Log the actual response content type for debugging if needed
+        const contentType = response.content && response.content.length > 0 ? response.content[0].type : 'no content';
+        log('error', `AI response was empty or in unexpected format. Content type: ${contentType}`);
+        throw new Error('AI failed to generate valid brainstorming ideas (empty response).');
+    }
+    
+    log('info', `Generated implementation ideas for task ${taskId}`);
+
+    // Append the ideas to the task details with a separator and timestamp
+    const currentDate = new Date();
+    const timestamp = currentDate.toISOString();
+    // Changed header to be more specific
+    const ideasHeader = `\n\n--- AI Implementation Brainstorming (${timestamp}) ---`; 
+    const formattedIdeas = `${ideasHeader}\n${generatedIdeas}\n--- End AI Implementation Brainstorming ---`;
+
+    task.details = (task.details ? task.details : '') + formattedIdeas;
+    log('info', `Appended ideas to task ${taskId} details.`);
+
+    // Write the updated tasks file
+    writeJSON(tasksPath, data);
+
+    // Generate individual task file for the updated task
+    log('info', "Regenerating task files...");
+    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+
+    // Display success message
+    stopLoadingIndicator(loadingIndicator);
+    console.log(boxen(
+      chalk.green.bold(`✓ Implementation Ideas Generated for Task ${taskId}`) + '\n\n' + // Updated success message
+      chalk.white(`Title: ${task.title}`) + '\n\n' +
+      chalk.white.bold('Generated Ideas Snippet:') + '\n' +
+      chalk.gray(truncate(generatedIdeas, 300, true)), 
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    ));
+
+  } catch (error) {
+    stopLoadingIndicator(loadingIndicator);
+    // Updated error context message
+    log('error', `Error during implementation brainstorming for task ${taskId}: ${error.message}`); 
+    const userMessage = handleClaudeError(error); 
+    console.error(chalk.red(userMessage));
+    if (CONFIG.debug) {
+        console.error('Brainstorm Task Error Stack:', error);
+    }
+    process.exit(1);
+  }
+}
+
 // Export task manager functions
 export {
   parsePRD,
@@ -3393,4 +3521,5 @@ export {
   removeSubtask,
   findNextTask,
   analyzeTaskComplexity,
+  brainstormTaskImplementation // Export the renamed function
 }; 

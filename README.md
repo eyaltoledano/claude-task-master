@@ -677,3 +677,41 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+### Core Task Management
+
+*   `task-master init`: Initialize a new project (creates `tasks/tasks.json`).
+*   `task-master list [--status <status>] [--priority <priority>] [--sort <field>] [--query <text>] [--with-subtasks]`: List tasks with optional filtering, sorting, and subtask display.
+*   `task-master show <id>`: Display detailed information for a specific task.
+*   `task-master add-task --prompt <text> [--dependencies <ids>] [--priority <priority>] [--title <title>]`: Add a new task using AI based on a prompt or directly with a title.
+*   `task-master add-subtask --parent-id <id> --title <text> [--description <text>]`: Add a subtask to an existing parent task.
+*   `task-master update-task --id <id> [--title <text>] [--description <text>] [--details <text>] [--status <status>] [--priority <priority>] [--dependencies <ids>]`: Update fields of an existing task.
+*   `task-master update-subtask --id <parentId.subtaskId> [--title <text>] [--description <text>] [--details <text>] [--status <status>]`: Update fields of an existing subtask.
+*   `task-master remove-task --id <id>`: Remove a task.
+*   `task-master remove-subtask --id <parentId.subtaskId>`: Remove a subtask.
+*   `task-master set-status --id <id> --status <status>`: Quickly set the status of one or more tasks (comma-separated IDs).
+
+### AI-Powered Task Enhancement
+
+*   `task-master expand --id <id> [--subtasks <number>] [--prompt <text>] [--research]`: Use AI (Claude or Perplexity) to break down a task into subtasks.
+*   `task-master expand-all [--status <status>] [--priority <priority>] [--prompt <text>] [--research]`: Expand multiple tasks matching filter criteria.
+*   `task-master brainstorm-task --id <id>`: Use AI to brainstorm implementation ideas, challenges, and approaches for a specific task, adding the results to the task's details.
+*   `task-master analyze-complexity --id <id> [--model <model_name>] [--regenerate]`: Use AI to analyze task complexity and estimate effort, saving results to `tasks/complexity_report.json`.
+*   `task-master update-tasks --from-id <id> --prompt <text> [--research]`: Use AI to update multiple tasks based on new context provided in the prompt.
+*   `task-master update-subtask --id <parentId.subtaskId> --prompt <text> [--research]`: Use AI (Claude or Perplexity) to enhance a specific subtask based on a prompt.
+*   `task-master clear-subtasks --id <id>`: Remove all non-done subtasks from a parent task.
+*   `task-master find-next`: Suggest the next task to work on based on dependencies and priority.
+
+### PRD Generation Workflow (ChatPRD inspired)
+
+*   `task-master ideate --idea <text> [--output <file>]`: (Work in Progress) Turn a raw idea into a structured product concept (`concept.txt`).
+*   `task-master round-table --concept-file <file> [--participants <list>] [--refine-concept]`: (Placeholder) Simulate expert discussion on the concept (`discussion.txt`).
+*   `task-master refine-concept --concept-file <file> [--prompt <text>] [--discussion-file <file>]`: (Placeholder) Refine the concept based on prompts or discussion.
+*   `task-master generate-prd --concept-file <file> [--example-prd <file>] [--research]`: (Placeholder) Generate a full PRD (`prd.txt`) from the concept.
+*   `task-master parse-prd --prd-file <file> [--tasks <number>]`: Parse an existing PRD file to generate tasks in `tasks.json`.
+
+### Utility
+
+*   `task-master generate-files`: Regenerate individual task files (e.g., `task_001.txt`) from `tasks.json`.
+*   `task-master validate-deps`: Check for and report dependency issues (cycles, missing tasks).
+*   `task-master fix-deps`: Attempt to automatically fix dependency issues.
