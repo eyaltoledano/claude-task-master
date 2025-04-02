@@ -94,6 +94,9 @@ node scripts/dev.js update --from=4 --prompt="Refactor tasks from ID 4 onward to
 # Update all tasks (default from=1)
 node scripts/dev.js update --prompt="Add authentication to all relevant tasks"
 
+# With research-backed updates using Perplexity AI
+node scripts/dev.js update --from=4 --prompt="Integrate OAuth 2.0" --research
+
 # Specify a different tasks file
 node scripts/dev.js update --file=custom-tasks.json --from=5 --prompt="Change database from MongoDB to PostgreSQL"
 ```
@@ -102,6 +105,27 @@ Notes:
 - The `--prompt` parameter is required and should explain the changes or new context
 - Only tasks that aren't marked as 'done' will be updated
 - Tasks with ID >= the specified --from value will be updated
+- The `--research` flag uses Perplexity AI for more informed updates when available
+
+## Updating a Single Task
+
+The `update-task` command allows you to update a specific task instead of multiple tasks:
+
+```bash
+# Update a specific task with new information
+node scripts/dev.js update-task --id=4 --prompt="Use JWT for authentication"
+
+# With research-backed updates using Perplexity AI
+node scripts/dev.js update-task --id=4 --prompt="Use JWT for authentication" --research
+```
+
+This command:
+- Updates only the specified task rather than a range of tasks
+- Provides detailed validation with helpful error messages
+- Checks for required API keys when using research mode
+- Falls back gracefully if Perplexity API is unavailable
+- Preserves tasks that are already marked as "done"
+- Includes contextual error handling for common issues
 
 ## Setting Task Status
 
@@ -427,3 +451,94 @@ This command:
    - For subtasks, provides a link to view the parent task
 
 This command is particularly useful when you need to examine a specific task in detail before implementing it or when you want to check the status and details of a particular task.
+
+## Enhanced Error Handling
+
+The script now includes improved error handling throughout all commands:
+
+1. **Detailed Validation**:
+   - Required parameters (like task IDs and prompts) are validated early
+   - File existence is checked with customized errors for common scenarios
+   - Parameter type conversion is handled with clear error messages
+
+2. **Contextual Error Messages**:
+   - Task not found errors include suggestions to run the list command
+   - API key errors include reminders to check environment variables
+   - Invalid ID format errors show the expected format
+
+3. **Command-Specific Help Displays**:
+   - When validation fails, detailed help for the specific command is shown
+   - Help displays include usage examples and parameter descriptions
+   - Formatted in clear, color-coded boxes with examples
+
+4. **Helpful Error Recovery**:
+   - Detailed troubleshooting steps for common errors
+   - Graceful fallbacks for missing optional dependencies
+   - Clear instructions for how to fix configuration issues
+
+## Version Checking
+
+The script now automatically checks for updates without slowing down execution:
+
+1. **Background Version Checking**:
+   - Non-blocking version checks run in the background while commands execute
+   - Actual command execution isn't delayed by version checking
+   - Update notifications appear after command completion
+
+2. **Update Notifications**:
+   - When a newer version is available, a notification is displayed
+   - Notifications include current version, latest version, and update command
+   - Formatted in an attention-grabbing box with clear instructions
+
+3. **Implementation Details**:
+   - Uses semantic versioning to compare current and latest versions
+   - Fetches version information from npm registry with a timeout
+   - Gracefully handles connection issues without affecting command execution
+
+## Subtask Management
+
+The script now includes enhanced commands for managing subtasks:
+
+### Adding Subtasks
+
+```bash
+# Add a subtask to an existing task
+node scripts/dev.js add-subtask --parent=5 --title="Implement login UI" --description="Create login form"
+
+# Convert an existing task to a subtask
+node scripts/dev.js add-subtask --parent=5 --task-id=8
+
+# Add a subtask with dependencies
+node scripts/dev.js add-subtask --parent=5 --title="Authentication middleware" --dependencies=5.1,5.2
+
+# Skip regenerating task files
+node scripts/dev.js add-subtask --parent=5 --title="Login API route" --skip-generate
+```
+
+Key features:
+- Create new subtasks with detailed properties or convert existing tasks
+- Define dependencies between subtasks
+- Set custom status for new subtasks
+- Provides next-step suggestions after creation
+
+### Removing Subtasks
+
+```bash
+# Remove a subtask
+node scripts/dev.js remove-subtask --id=5.2
+
+# Remove multiple subtasks
+node scripts/dev.js remove-subtask --id=5.2,5.3,5.4
+
+# Convert a subtask to a standalone task
+node scripts/dev.js remove-subtask --id=5.2 --convert
+
+# Skip regenerating task files
+node scripts/dev.js remove-subtask --id=5.2 --skip-generate
+```
+
+Key features:
+- Remove subtasks individually or in batches
+- Optionally convert subtasks to standalone tasks
+- Control whether task files are regenerated
+- Provides detailed success messages and next steps

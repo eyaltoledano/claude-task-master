@@ -1,6 +1,6 @@
 ---
 description: Guidelines for implementing utility functions
-globs: scripts/modules/utils.js
+globs: scripts/modules/utils.js, mcp-server/src/**/*
 alwaysApply: false
 ---
 
@@ -273,13 +273,81 @@ alwaysApply: false
   }
   ```
 
+## MCP Server Utilities (`mcp-server/src/tools/utils.js`)
+
+- **Purpose**: These utilities specifically support the MCP server tools, handling communication patterns and data formatting for MCP clients. Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for usage patterns.
+
+-(See also: [`tests.mdc`](mdc:.cursor/rules/tests.mdc) for testing these utilities)
+
+- **`getProjectRoot(projectRootRaw, log)`**:
+  - Normalizes a potentially relative project root path into an absolute path.
+  - Defaults to `process.cwd()` if `projectRootRaw` is not provided.
+  - Primarily used *internally* by `executeMCPToolAction` and `executeTaskMasterCommand`. Tools usually don't need to call this directly.
+
+- **`executeMCPToolAction({ actionFn, args, log, actionName, processResult })`**:
+  - ✅ **DO**: Use this as the main wrapper inside an MCP tool's `execute` method when calling a direct function wrapper.
+  - Handles standard workflow: logs action start, normalizes `projectRoot`, calls the `actionFn` (e.g., `listTasksDirect`), processes the result (using `handleApiResult`), logs success/error, and returns a formatted MCP response (`createContentResponse`/`createErrorResponse`).
+  - Simplifies tool implementation significantly by handling boilerplate.
+  - Accepts an optional `processResult` function to customize data filtering/transformation before sending the response (defaults to `processMCPResponseData`).
+
+- **`handleApiResult(result, log, errorPrefix, processFunction)`**:
+  - Takes the standard `{ success, data/error }` object returned by direct function wrappers (like `listTasksDirect`).
+  - Checks the `success` flag.
+  - If successful, processes the `data` using `processFunction` (defaults to `processMCPResponseData`).
+  - Returns a formatted MCP response object using `createContentResponse` or `createErrorResponse`.
+  - Typically called *internally* by `executeMCPToolAction`.
+
+- **`executeTaskMasterCommand(command, log, args, projectRootRaw)`**:
+  - Executes a Task Master command using `child_process.spawnSync`.
+  - Tries the global `task-master` command first, then falls back to `node scripts/dev.js`.
+  - Handles project root normalization internally.
+  - Returns `{ success, stdout, stderr }` or `{ success: false, error }`.
+  - ❌ **DON'T**: Use this as the primary method for MCP tools. Prefer `executeMCPToolAction` with direct function calls. Use only as a fallback for commands not yet refactored or those requiring CLI execution.
+
+- **`processMCPResponseData(taskOrData, fieldsToRemove = ['details', 'testStrategy'])`**:
+  - Filters task data before sending it to the MCP client.
+  - By default, removes the `details` and `testStrategy` fields from task objects and their subtasks to reduce payload size.
+  - Can handle single task objects or data structures containing a `tasks` array (like from `listTasks`).
+  - This is the default processor used by `executeMCPToolAction`.
+
+  ```javascript
+  // Example usage (typically done inside executeMCPToolAction):
+  const rawResult = { success: true, data: { tasks: [ { id: 1, title: '...', details: '...', subtasks: [...] } ] } };
+  const filteredData = processMCPResponseData(rawResult.data);
+  // filteredData.tasks[0] will NOT have the 'details' field.
+  ```
+
+- **`createContentResponse(content)`**:
+  - ✅ **DO**: Use this (usually via `handleApiResult` or `executeMCPToolAction`) to format successful MCP responses.
+  - Wraps the `content` (stringifies objects to JSON) in the standard FastMCP `{ content: [{ type: "text", text: ... }] }` structure.
+
+- **`createErrorResponse(errorMessage)`**:
+  - ✅ **DO**: Use this (usually via `handleApiResult` or `executeMCPToolAction`) to format error responses for MCP.
+  - Wraps the `errorMessage` in the standard FastMCP error structure, including `isError: true`.
+
+- **`getCachedOrExecute({ cacheKey, actionFn, log })`**:
+  - ✅ **DO**: Use this utility *inside direct function wrappers* (like `listTasksDirect` in `task-master-core.js`) to implement caching for MCP operations.
+  - Checks the `ContextManager` cache using `cacheKey`.
+  - If a hit occurs, returns the cached result directly.
+  - If a miss occurs, it executes the provided `actionFn` (which should be an async function returning `{ success, data/error }`).
+  - If `actionFn` succeeds, its result is stored in the cache under `cacheKey`.
+  - Returns the result (either cached or fresh) wrapped in the standard structure `{ success, data/error, fromCache: boolean }`.
+
+- **`executeMCPToolAction({ actionFn, args, log, actionName, processResult })`**:
+  - Update: While this function *can* technically coordinate caching if provided a `cacheKeyGenerator`, the current preferred pattern involves implementing caching *within* the `actionFn` (the direct wrapper) using `getCachedOrExecute`. `executeMCPToolAction` primarily orchestrates the call to `actionFn` and handles processing its result (including the `fromCache` flag) via `handleApiResult`.
+
+- **`handleApiResult(result, log, errorPrefix, processFunction)`**:
+  - Update: Now expects the `result` object to potentially contain a `fromCache` boolean flag. If present, this flag is included in the final response payload generated by `createContentResponse` (e.g., `{ fromCache: true, data: ... }`).
+
 ## Export Organization
 
 - **Grouping Related Functions**:
-  - ✅ DO: Export all utility functions in a single statement
-  - ✅ DO: Group related exports together
-  - ✅ DO: Export configuration constants
-  - ❌ DON'T: Use default exports
+  - ✅ DO: Keep utilities relevant to their location (e.g., core utils in `scripts/modules/utils.js`, MCP utils in `mcp-server/src/tools/utils.js`).
+  - ✅ DO: Export all utility functions in a single statement per file.
+  - ✅ DO: Group related exports together.
+  - ✅ DO: Export configuration constants.
+  - ❌ DON'T: Use default exports.
+  - ❌ DON'T: Create circular dependencies between utility files or between utilities and the modules that use them (See [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc)).
 
   ```javascript
   // ✅ DO: Organize exports logically
@@ -311,4 +379,4 @@ alwaysApply: false
   };
   ```
 
-Refer to [`utils.js`](mdc:scripts/modules/utils.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 
+Refer to [`utils.js`](mdc:scripts/modules/utils.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. Use [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for CLI integration details. 

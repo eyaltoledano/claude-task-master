@@ -175,6 +175,81 @@ describe('Dependency Manager Module', () => {
       const result = isCircularDependency(tasks, 1);
       expect(result).toBe(true);
     });
+
+    test('should handle subtask dependencies correctly', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: ["1.2"] },
+            { id: 2, dependencies: ["1.3"] },
+            { id: 3, dependencies: ["1.1"] }
+          ]
+        }
+      ];
+      
+      // This creates a circular dependency: 1.1 -> 1.2 -> 1.3 -> 1.1
+      const result = isCircularDependency(tasks, "1.1", ["1.3", "1.2"]);
+      expect(result).toBe(true);
+    });
+
+    test('should allow non-circular subtask dependencies within same parent', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: [] },
+            { id: 2, dependencies: ["1.1"] },
+            { id: 3, dependencies: ["1.2"] }
+          ]
+        }
+      ];
+      
+      // This is a valid dependency chain: 1.3 -> 1.2 -> 1.1
+      const result = isCircularDependency(tasks, "1.1", []);
+      expect(result).toBe(false);
+    });
+
+    test('should properly handle dependencies between subtasks of the same parent', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: [] },
+            { id: 2, dependencies: ["1.1"] },
+            { id: 3, dependencies: [] }
+          ]
+        }
+      ];
+      
+      // Check if adding a dependency from subtask 1.3 to 1.2 creates a circular dependency
+      // This should be false as 1.3 -> 1.2 -> 1.1 is a valid chain
+      mockTaskExists.mockImplementation(() => true);
+      const result = isCircularDependency(tasks, "1.3", ["1.2"]);
+      expect(result).toBe(false);
+    });
+
+    test('should correctly detect circular dependencies in subtasks of the same parent', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: ["1.3"] },
+            { id: 2, dependencies: ["1.1"] },
+            { id: 3, dependencies: ["1.2"] }
+          ]
+        }
+      ];
+      
+      // This creates a circular dependency: 1.1 -> 1.3 -> 1.2 -> 1.1
+      mockTaskExists.mockImplementation(() => true);
+      const result = isCircularDependency(tasks, "1.2", ["1.1"]);
+      expect(result).toBe(true);
+    });
   });
 
   describe('validateTaskDependencies function', () => {
@@ -241,6 +316,128 @@ describe('Dependency Manager Module', () => {
       
       // Should be valid since a missing dependencies property is interpreted as an empty array
       expect(result.valid).toBe(true);
+    });
+
+    test('should handle subtask dependencies correctly', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: [] },
+            { id: 2, dependencies: ["1.1"] }, // Valid - depends on another subtask
+            { id: 3, dependencies: ["1.2"] }  // Valid - depends on another subtask
+          ]
+        },
+        {
+          id: 2,
+          dependencies: ["1.3"],  // Valid - depends on a subtask from task 1
+          subtasks: []
+        }
+      ];
+      
+      // Set up mock to handle subtask validation
+      mockTaskExists.mockImplementation((tasks, id) => {
+        if (typeof id === 'string' && id.includes('.')) {
+          const [taskId, subtaskId] = id.split('.').map(Number);
+          const task = tasks.find(t => t.id === taskId);
+          return task && task.subtasks && task.subtasks.some(st => st.id === subtaskId);
+        }
+        return tasks.some(task => task.id === parseInt(id, 10));
+      });
+
+      const result = validateTaskDependencies(tasks);
+      
+      expect(result.valid).toBe(true);
+      expect(result.issues.length).toBe(0);
+    });
+
+    test('should detect missing subtask dependencies', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: ["1.4"] },  // Invalid - subtask 4 doesn't exist
+            { id: 2, dependencies: ["2.1"] }   // Invalid - task 2 has no subtasks
+          ]
+        },
+        {
+          id: 2,
+          dependencies: [],
+          subtasks: []
+        }
+      ];
+
+      // Mock taskExists to correctly identify missing subtasks
+      mockTaskExists.mockImplementation((taskArray, depId) => {
+        if (typeof depId === 'string' && depId === "1.4") {
+          return false; // Subtask 1.4 doesn't exist
+        }
+        if (typeof depId === 'string' && depId === "2.1") {
+          return false; // Subtask 2.1 doesn't exist
+        }
+        return true; // All other dependencies exist
+      });
+
+      const result = validateTaskDependencies(tasks);
+      
+      expect(result.valid).toBe(false);
+      expect(result.issues.length).toBeGreaterThan(0);
+      // Should detect missing subtask dependencies
+      expect(result.issues.some(issue => 
+        issue.type === 'missing' && String(issue.taskId) === "1.1" && String(issue.dependencyId) === "1.4"
+      )).toBe(true);
+    });
+
+    test('should detect circular dependencies between subtasks', () => {
+      const tasks = [
+        { 
+          id: 1, 
+          dependencies: [], 
+          subtasks: [
+            { id: 1, dependencies: ["1.2"] },
+            { id: 2, dependencies: ["1.1"] }  // Creates a circular dependency with 1.1
+          ]
+        }
+      ];
+
+      // Mock isCircularDependency for subtasks
+      mockFindCycles.mockReturnValue(true);
+
+      const result = validateTaskDependencies(tasks);
+      
+      expect(result.valid).toBe(false);
+      expect(result.issues.some(issue => issue.type === 'circular')).toBe(true);
+    });
+
+    test('should properly validate dependencies between subtasks of the same parent', () => {
+      const tasks = [
+        { 
+          id: 23, 
+          dependencies: [], 
+          subtasks: [
+            { id: 8, dependencies: ["23.13"] },
+            { id: 10, dependencies: ["23.8"] },
+            { id: 13, dependencies: [] }
+          ]
+        }
+      ];
+      
+      // Mock taskExists to validate the subtask dependencies
+      mockTaskExists.mockImplementation((taskArray, id) => {
+        if (typeof id === 'string') {
+          if (id === "23.8" || id === "23.10" || id === "23.13") {
+            return true;
+          }
+        }
+        return false;
+      });
+      
+      const result = validateTaskDependencies(tasks);
+      
+      expect(result.valid).toBe(true);
+      expect(result.issues.length).toBe(0);
     });
   });
 

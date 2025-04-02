@@ -1,0 +1,32 @@
+async function updateSubtaskById(tasksPath, subtaskId, prompt, useResearch = false) {
+  let loadingIndicator = null;
+  try {
+    log('info', `Updating subtask ${subtaskId} with prompt: "${prompt}"`);
+
+    // Validate subtask ID format
+    if (!subtaskId || typeof subtaskId !== 'string' || !subtaskId.includes('.')) {
+      throw new Error(`Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId"`);
+    }
+
+    // Validate prompt
+    if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
+      throw new Error('Prompt cannot be empty. Please provide context for the subtask update.');
+    }
+
+    // Prepare for fallback handling
+    let claudeOverloaded = false;
+
+    // Validate tasks file exists
+    if (!fs.existsSync(tasksPath)) {
+      throw new Error(`Tasks file not found at path: ${tasksPath}`);
+    }
+
+    // Read the tasks file
+    const data = readJSON(tasksPath);
+    // ... rest of the function
+  } catch (error) {
+    // Handle errors
+    console.error(`Error updating subtask: ${error.message}`);
+    throw error;
+  }
+} 

@@ -7,7 +7,7 @@ globs: "**/*.test.js,tests/**/*"
 
 ## Test Organization Structure
 
-- **Unit Tests**
+- **Unit Tests** (See [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for module breakdown)
   - Located in `tests/unit/`
   - Test individual functions and utilities in isolation
   - Mock all external dependencies
@@ -324,7 +324,7 @@ When testing ES modules (`"type": "module"` in package.json), traditional mockin
 ## Testing Common Components
 
 - **CLI Commands**
-  - Mock the action handlers and verify they're called with correct arguments
+  - Mock the action handlers (defined in [`commands.js`](mdc:scripts/modules/commands.js)) and verify they're called with correct arguments
   - Test command registration and option parsing
   - Use `commander` test utilities or custom mocks
 

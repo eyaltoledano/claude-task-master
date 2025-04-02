@@ -104,9 +104,31 @@ async function addDependency(tasksPath, taskId, dependencyId) {
       return;
     }
     
-    // Check if the task is trying to depend on itself
+    // Check if the task is trying to depend on itself - compare full IDs (including subtask parts)
     if (String(formattedTaskId) === String(formattedDependencyId)) {
       log('error', `Task ${formattedTaskId} cannot depend on itself.`);
+      process.exit(1);
+    }
+    
+    // For subtasks of the same parent, we need to make sure we're not treating it as a self-dependency
+    // Check if we're dealing with subtasks with the same parent task
+    let isSelfDependency = false;
+    
+    if (typeof formattedTaskId === 'string' && typeof formattedDependencyId === 'string' &&
+        formattedTaskId.includes('.') && formattedDependencyId.includes('.')) {
+      const [taskParentId] = formattedTaskId.split('.');
+      const [depParentId] = formattedDependencyId.split('.');
+      
+      // Only treat it as a self-dependency if both the parent ID and subtask ID are identical
+      isSelfDependency = formattedTaskId === formattedDependencyId;
+      
+      // Log for debugging
+      log('debug', `Adding dependency between subtasks: ${formattedTaskId} depends on ${formattedDependencyId}`);
+      log('debug', `Parent IDs: ${taskParentId} and ${depParentId}, Self-dependency check: ${isSelfDependency}`);
+    }
+    
+    if (isSelfDependency) {
+      log('error', `Subtask ${formattedTaskId} cannot depend on itself.`);
       process.exit(1);
     }
     
@@ -276,8 +298,22 @@ async function addDependency(tasksPath, taskId, dependencyId) {
       return true;
     }
     
-    // Find the task
-    const task = tasks.find(t => String(t.id) === taskIdStr);
+    // Find the task or subtask
+    let task = null;
+    
+    // Check if this is a subtask reference (e.g., "1.2")
+    if (taskIdStr.includes('.')) {
+      const [parentId, subtaskId] = taskIdStr.split('.').map(Number);
+      const parentTask = tasks.find(t => t.id === parentId);
+      
+      if (parentTask && parentTask.subtasks) {
+        task = parentTask.subtasks.find(st => st.id === subtaskId);
+      }
+    } else {
+      // Regular task
+      task = tasks.find(t => String(t.id) === taskIdStr);
+    }
+    
     if (!task) {
       return false; // Task doesn't exist, can't create circular dependency
     }
@@ -334,6 +370,50 @@ async function addDependency(tasksPath, taskId, dependencyId) {
           type: 'circular',
           taskId: task.id,
           message: `Task ${task.id} is part of a circular dependency chain`
+        });
+      }
+      
+      // Check subtask dependencies if they exist
+      if (task.subtasks && task.subtasks.length > 0) {
+        task.subtasks.forEach(subtask => {
+          if (!subtask.dependencies) {
+            return; // No dependencies to validate
+          }
+          
+          // Create a full subtask ID for reference
+          const fullSubtaskId = `${task.id}.${subtask.id}`;
+          
+          subtask.dependencies.forEach(depId => {
+            // Check for self-dependencies in subtasks
+            if (String(depId) === String(fullSubtaskId) || 
+               (typeof depId === 'number' && depId === subtask.id)) {
+              issues.push({
+                type: 'self',
+                taskId: fullSubtaskId,
+                message: `Subtask ${fullSubtaskId} depends on itself`
+              });
+              return;
+            }
+            
+            // Check if dependency exists
+            if (!taskExists(tasks, depId)) {
+              issues.push({
+                type: 'missing',
+                taskId: fullSubtaskId,
+                dependencyId: depId,
+                message: `Subtask ${fullSubtaskId} depends on non-existent task/subtask ${depId}`
+              });
+            }
+          });
+          
+          // Check for circular dependencies in subtasks
+          if (isCircularDependency(tasks, fullSubtaskId)) {
+            issues.push({
+              type: 'circular',
+              taskId: fullSubtaskId,
+              message: `Subtask ${fullSubtaskId} is part of a circular dependency chain`
+            });
+          }
         });
       }
     });

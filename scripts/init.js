@@ -1,5 +1,20 @@
 #!/usr/bin/env node
 
+/**
+ * Task Master
+ * Copyright (c) 2025 Eyal Toledano, Ralph Khreish
+ *
+ * This software is licensed under the MIT License with Commons Clause.
+ * You may use this software for any purpose, including commercial applications,
+ * and modify and redistribute it freely, subject to the following restrictions:
+ *
+ * 1. You may not sell this software or offer it as a service.
+ * 2. The origin of this software must not be misrepresented.
+ * 3. Altered source versions must be plainly marked as such.
+ *
+ * For the full license text, see the LICENSE file in the root directory.
+ */
+
 console.log('Starting task-master-ai...');
 
 import fs from 'fs';
@@ -39,6 +54,7 @@ program
   .option('-a, --author <author>', 'Author name')
   .option('--skip-install', 'Skip installing dependencies')
   .option('--dry-run', 'Show what would be done without making changes')
+  .option('--aliases', 'Add shell aliases (tm, taskmaster)')
   .parse(process.argv);
 
 const options = program.opts();
@@ -130,6 +146,53 @@ function ensureDirectoryExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
     log('info', `Created directory: ${dirPath}`);
+  }
+}
+
+// Function to add shell aliases to the user's shell configuration
+function addShellAliases() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  let shellConfigFile;
+  
+  // Determine which shell config file to use
+  if (process.env.SHELL?.includes('zsh')) {
+    shellConfigFile = path.join(homeDir, '.zshrc');
+  } else if (process.env.SHELL?.includes('bash')) {
+    shellConfigFile = path.join(homeDir, '.bashrc');
+  } else {
+    log('warn', 'Could not determine shell type. Aliases not added.');
+    return false;
+  }
+  
+  try {
+    // Check if file exists
+    if (!fs.existsSync(shellConfigFile)) {
+      log('warn', `Shell config file ${shellConfigFile} not found. Aliases not added.`);
+      return false;
+    }
+    
+    // Check if aliases already exist
+    const configContent = fs.readFileSync(shellConfigFile, 'utf8');
+    if (configContent.includes('alias tm=\'task-master\'')) {
+      log('info', 'Task Master aliases already exist in shell config.');
+      return true;
+    }
+    
+    // Add aliases to the shell config file
+    const aliasBlock = `
+# Task Master aliases added on ${new Date().toLocaleDateString()}
+alias tm='task-master'
+alias taskmaster='task-master'
+`;
+    
+    fs.appendFileSync(shellConfigFile, aliasBlock);
+    log('success', `Added Task Master aliases to ${shellConfigFile}`);
+    log('info', 'To use the aliases in your current terminal, run: source ' + shellConfigFile);
+    
+    return true;
+  } catch (error) {
+    log('error', `Failed to add aliases: ${error.message}`);
+    return false;
   }
 }
 
@@ -299,6 +362,7 @@ async function initializeProject(options = {}) {
     const authorName = options.authorName || '';
     const dryRun = options.dryRun || false;
     const skipInstall = options.skipInstall || false;
+    const addAliases = options.addAliases || false;
     
     if (dryRun) {
       log('info', 'DRY RUN MODE: No files will be modified');
@@ -306,6 +370,9 @@ async function initializeProject(options = {}) {
       log('info', `Description: ${projectDescription}`);
       log('info', `Author: ${authorName || 'Not specified'}`);
       log('info', 'Would create/update necessary project files');
+      if (addAliases) {
+        log('info', 'Would add shell aliases for task-master');
+      }
       if (!skipInstall) {
         log('info', 'Would install dependencies');
       }
@@ -318,7 +385,7 @@ async function initializeProject(options = {}) {
       };
     }
     
-    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall);
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall, addAliases);
     return {
       projectName,
       projectDescription,
@@ -340,6 +407,10 @@ async function initializeProject(options = {}) {
     const projectVersionInput = await promptQuestion(rl, chalk.cyan('Enter project version (default: 1.0.0): '));
     const authorName = await promptQuestion(rl, chalk.cyan('Enter your name: '));
     
+    // Ask about shell aliases
+    const addAliasesInput = await promptQuestion(rl, chalk.cyan('Add shell aliases for task-master? (Y/n): '));
+    const addAliases = addAliasesInput.trim().toLowerCase() !== 'n';
+    
     // Set default version if not provided
     const projectVersion = projectVersionInput.trim() ? projectVersionInput : '1.0.0';
     
@@ -349,6 +420,7 @@ async function initializeProject(options = {}) {
     console.log(chalk.blue('Description:'), chalk.white(projectDescription));
     console.log(chalk.blue('Version:'), chalk.white(projectVersion));
     console.log(chalk.blue('Author:'), chalk.white(authorName || 'Not specified'));
+    console.log(chalk.blue('Add shell aliases:'), chalk.white(addAliases ? 'Yes' : 'No'));
     
     const confirmInput = await promptQuestion(rl, chalk.yellow('\nDo you want to continue with these settings? (Y/n): '));
     const shouldContinue = confirmInput.trim().toLowerCase() !== 'n';
@@ -367,6 +439,9 @@ async function initializeProject(options = {}) {
     if (dryRun) {
       log('info', 'DRY RUN MODE: No files will be modified');
       log('info', 'Would create/update necessary project files');
+      if (addAliases) {
+        log('info', 'Would add shell aliases for task-master');
+      }
       if (!skipInstall) {
         log('info', 'Would install dependencies');
       }
@@ -380,7 +455,7 @@ async function initializeProject(options = {}) {
     }
     
     // Create the project structure
-    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall);
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall, addAliases);
     
     return {
       projectName,
@@ -405,7 +480,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall) {
+function createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall, addAliases) {
   const targetDir = process.cwd();
   log('info', `Initializing project in ${targetDir}`);
   
@@ -489,6 +564,9 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     log('success', 'Created package.json');
   }
   
+  // Setup MCP configuration for integration with Cursor
+  setupMCPConfiguration(targetDir, packageJson.name);
+  
   // Copy template files with replacements
   const replacements = {
     projectName,
@@ -571,6 +649,11 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     }
   ));
   
+  // Add shell aliases if requested
+  if (addAliases) {
+    addShellAliases();
+  }
+  
   // Display next steps in a nice box
   console.log(boxen(
     chalk.cyan.bold('Things you can now do:') + '\n\n' +
@@ -596,6 +679,84 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   ));
 }
 
+// Function to setup MCP configuration for Cursor integration
+function setupMCPConfiguration(targetDir, projectName) {
+  const mcpDirPath = path.join(targetDir, '.cursor');
+  const mcpJsonPath = path.join(mcpDirPath, 'mcp.json');
+  
+  log('info', 'Setting up MCP configuration for Cursor integration...');
+  
+  // Create .cursor directory if it doesn't exist
+  ensureDirectoryExists(mcpDirPath);
+  
+  // New MCP config to be added - references the installed package
+  const newMCPServer = {
+    "task-master-ai": {
+      "command": "npx",
+      "args": [
+        "task-master-ai",
+        "mcp-server"
+      ]
+    }
+  };
+  
+  // Check if mcp.json already exists
+  if (fs.existsSync(mcpJsonPath)) {
+    log('info', 'MCP configuration file already exists, updating...');
+    try {
+      // Read existing config
+      const mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
+      
+      // Initialize mcpServers if it doesn't exist
+      if (!mcpConfig.mcpServers) {
+        mcpConfig.mcpServers = {};
+      }
+      
+      // Add the task-master-ai server if it doesn't exist
+      if (!mcpConfig.mcpServers["task-master-ai"]) {
+        mcpConfig.mcpServers["task-master-ai"] = newMCPServer["task-master-ai"];
+        log('info', 'Added task-master-ai server to existing MCP configuration');
+      } else {
+        log('info', 'task-master-ai server already configured in mcp.json');
+      }
+      
+      // Write the updated configuration
+      fs.writeFileSync(
+        mcpJsonPath, 
+        JSON.stringify(mcpConfig, null, 4)
+      );
+      log('success', 'Updated MCP configuration file');
+    } catch (error) {
+      log('error', `Failed to update MCP configuration: ${error.message}`);
+      // Create a backup before potentially modifying
+      const backupPath = `${mcpJsonPath}.backup-${Date.now()}`;
+      if (fs.existsSync(mcpJsonPath)) {
+        fs.copyFileSync(mcpJsonPath, backupPath);
+        log('info', `Created backup of existing mcp.json at ${backupPath}`);
+      }
+      
+      // Create new configuration
+      const newMCPConfig = {
+        "mcpServers": newMCPServer
+      };
+      
+      fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
+      log('warn', 'Created new MCP configuration file (backup of original file was created if it existed)');
+    }
+  } else {
+    // If mcp.json doesn't exist, create it
+    const newMCPConfig = {
+      "mcpServers": newMCPServer
+    };
+    
+    fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
+    log('success', 'Created MCP configuration file for Cursor integration');
+  }
+  
+  // Add note to console about MCP integration
+  log('info', 'MCP server will use the installed task-master-ai package');
+}
+
 // Run the initialization if this script is executed directly
 // The original check doesn't work with npx and global commands
 // if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -619,7 +780,8 @@ console.log('process.argv:', process.argv);
         projectVersion: options.version || '1.0.0',
         authorName: options.author || '',
         dryRun: options.dryRun || false,
-        skipInstall: options.skipInstall || false
+        skipInstall: options.skipInstall || false,
+        addAliases: options.aliases || false
       });
     } else {
       // Otherwise, prompt for input normally

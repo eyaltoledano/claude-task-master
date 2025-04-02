@@ -6,8 +6,8 @@
 import { z } from "zod";
 import {
   executeTaskMasterCommand,
-  createContentResponse,
   createErrorResponse,
+  handleApiResult
 } from "./utils.js";
 
 /**
@@ -23,6 +23,7 @@ export function registerShowTaskTool(server) {
       file: z.string().optional().describe("Path to the tasks file"),
       projectRoot: z
         .string()
+        .optional()
         .describe(
           "Root directory of the project (default: current working directory)"
         ),
@@ -31,26 +32,46 @@ export function registerShowTaskTool(server) {
       try {
         log.info(`Showing task details for ID: ${args.id}`);
 
+        // Prepare arguments for CLI command
         const cmdArgs = [`--id=${args.id}`];
         if (args.file) cmdArgs.push(`--file=${args.file}`);
 
-        const projectRoot = args.projectRoot;
-
+        // Execute the command - function now handles project root internally
         const result = executeTaskMasterCommand(
           "show",
           log,
           cmdArgs,
-          projectRoot
+          args.projectRoot // Pass raw project root, function will normalize it
         );
 
-        if (!result.success) {
-          throw new Error(result.error);
+        // Process CLI result into API result format for handleApiResult
+        if (result.success) {
+          try {
+            // Try to parse response as JSON
+            const data = JSON.parse(result.stdout);
+            // Return equivalent of a successful API call with data
+            return handleApiResult({ success: true, data }, log, 'Error showing task');
+          } catch (e) {
+            // If parsing fails, still return success but with raw string data
+            return handleApiResult(
+              { success: true, data: result.stdout }, 
+              log, 
+              'Error showing task',
+              // Skip data processing for string data
+              null
+            );
+          }
+        } else {
+          // Return equivalent of a failed API call
+          return handleApiResult(
+            { success: false, error: { message: result.error } },
+            log,
+            'Error showing task'
+          );
         }
-
-        return createContentResponse(result.stdout);
       } catch (error) {
         log.error(`Error showing task: ${error.message}`);
-        return createErrorResponse(`Error showing task: ${error.message}`);
+        return createErrorResponse(error.message);
       }
     },
   });

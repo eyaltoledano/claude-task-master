@@ -5,16 +5,16 @@ alwaysApply: true
 ---
 
 - **Global CLI Commands**
-  - Task Master now provides a global CLI through the `task-master` command
+  - Task Master now provides a global CLI through the `task-master` command (See [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for details)
   - All functionality from `scripts/dev.js` is available through this interface
   - Install globally with `npm install -g claude-task-master` or use locally via `npx`
   - Use `task-master <command>` instead of `node scripts/dev.js <command>`
   - Examples:
-    - `task-master list` instead of `node scripts/dev.js list`
-    - `task-master next` instead of `node scripts/dev.js next`
-    - `task-master expand --id=3` instead of `node scripts/dev.js expand --id=3`
+    - `task-master list`
+    - `task-master next`
+    - `task-master expand --id=3`
   - All commands accept the same options as their script equivalents
-  - The CLI provides additional commands like `task-master init` for project setup
+  - The CLI (`task-master`) is the **primary** way for users to interact with the application.
 
 - **Development Workflow Process**
   - Start new projects by running `task-master init` or `node scripts/dev.js parse-prd --input=<prd-file.txt>` to generate initial tasks.json
@@ -32,6 +32,7 @@ alwaysApply: true
   - Generate task files with `task-master generate` after updating tasks.json
   - Maintain valid dependency structure with `task-master fix-dependencies` when needed
   - Respect dependency chains and task priorities when selecting work
+  - **MCP Server**: For integrations (like Cursor), interact via the MCP server which prefers direct function calls. Restart the MCP server if core logic in `scripts/modules` changes. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc).
   - Report progress regularly using the list command
 
 - **Task Complexity Analysis**
@@ -49,7 +50,7 @@ alwaysApply: true
   - Use `--prompt="<context>"` to provide additional context when needed
   - Review and adjust generated subtasks as necessary
   - Use `--all` flag to expand multiple pending tasks at once
-  - If subtasks need regeneration, clear them first with `clear-subtasks` command
+  - If subtasks need regeneration, clear them first with `clear-subtasks` command (See Command Reference below)
 
 - **Implementation Drift Handling**
   - When implementation differs significantly from planned approach
@@ -79,16 +80,14 @@ alwaysApply: true
   ```
 
 - **Command Reference: parse-prd**
-  - Legacy Syntax: `node scripts/dev.js parse-prd --input=<prd-file.txt>`
   - CLI Syntax: `task-master parse-prd --input=<prd-file.txt>`
-  - Description: Parses a PRD document and generates a tasks.json file with structured tasks
+  - Description: Parses a PRD document and generates a `tasks.json` file with structured tasks
   - Parameters: 
     - `--input=<file>`: Path to the PRD text file (default: sample-prd.txt)
   - Example: `task-master parse-prd --input=requirements.txt`
   - Notes: Will overwrite existing tasks.json file. Use with caution.
 
 - **Command Reference: update**
-  - Legacy Syntax: `node scripts/dev.js update --from=<id> --prompt="<prompt>"`
   - CLI Syntax: `task-master update --from=<id> --prompt="<prompt>"`
   - Description: Updates tasks with ID >= specified ID based on the provided prompt
   - Parameters:
@@ -97,8 +96,31 @@ alwaysApply: true
   - Example: `task-master update --from=4 --prompt="Now we are using Express instead of Fastify."`
   - Notes: Only updates tasks not marked as 'done'. Completed tasks remain unchanged.
 
+- **Command Reference: update-task**
+  - CLI Syntax: `task-master update-task --id=<id> --prompt="<prompt>"`
+  - Description: Updates a single task by ID with new information
+  - Parameters:
+    - `--id=<id>`: ID of the task to update (required)
+    - `--prompt="<text>"`: New information or context to update the task (required)
+    - `--research`: Use Perplexity AI for research-backed updates
+  - Example: `task-master update-task --id=5 --prompt="Use JWT for authentication instead of sessions."`
+  - Notes: Only updates tasks not marked as 'done'. Preserves completed subtasks.
+
+- **Command Reference: update-subtask**
+  - CLI Syntax: `task-master update-subtask --id=<id> --prompt="<prompt>"`
+  - Description: Appends additional information to a specific subtask without replacing existing content
+  - Parameters:
+    - `--id=<id>`: ID of the subtask to update in format "parentId.subtaskId" (required)
+    - `--prompt="<text>"`: Information to add to the subtask (required)
+    - `--research`: Use Perplexity AI for research-backed updates
+  - Example: `task-master update-subtask --id=5.2 --prompt="Add details about API rate limiting."`
+  - Notes: 
+    - Appends new information to subtask details with timestamp
+    - Does not replace existing content, only adds to it
+    - Uses XML-like tags to clearly mark added information
+    - Will not update subtasks marked as 'done' or 'completed'
+
 - **Command Reference: generate**
-  - Legacy Syntax: `node scripts/dev.js generate`
   - CLI Syntax: `task-master generate`
   - Description: Generates individual task files in tasks/ directory based on tasks.json
   - Parameters: 
@@ -108,7 +130,6 @@ alwaysApply: true
   - Notes: Overwrites existing task files. Creates tasks/ directory if needed.
 
 - **Command Reference: set-status**
-  - Legacy Syntax: `node scripts/dev.js set-status --id=<id> --status=<status>`
   - CLI Syntax: `task-master set-status --id=<id> --status=<status>`
   - Description: Updates the status of a specific task in tasks.json
   - Parameters:
@@ -118,7 +139,6 @@ alwaysApply: true
   - Notes: Common values are 'done', 'pending', and 'deferred', but any string is accepted.
 
 - **Command Reference: list**
-  - Legacy Syntax: `node scripts/dev.js list`
   - CLI Syntax: `task-master list`
   - Description: Lists all tasks in tasks.json with IDs, titles, and status
   - Parameters: 
@@ -129,7 +149,6 @@ alwaysApply: true
   - Notes: Provides quick overview of project progress. Use at start of sessions.
 
 - **Command Reference: expand**
-  - Legacy Syntax: `node scripts/dev.js expand --id=<id> [--num=<number>] [--research] [--prompt="<context>"]`
   - CLI Syntax: `task-master expand --id=<id> [--num=<number>] [--research] [--prompt="<context>"]`
   - Description: Expands a task with subtasks for detailed implementation
   - Parameters:
@@ -143,7 +162,6 @@ alwaysApply: true
   - Notes: Uses complexity report recommendations if available.
 
 - **Command Reference: analyze-complexity**
-  - Legacy Syntax: `node scripts/dev.js analyze-complexity [options]`
   - CLI Syntax: `task-master analyze-complexity [options]`
   - Description: Analyzes task complexity and generates expansion recommendations
   - Parameters:
@@ -156,7 +174,6 @@ alwaysApply: true
   - Notes: Report includes complexity scores, recommended subtasks, and tailored prompts.
 
 - **Command Reference: clear-subtasks**
-  - Legacy Syntax: `node scripts/dev.js clear-subtasks --id=<id>`
   - CLI Syntax: `task-master clear-subtasks --id=<id>`
   - Description: Removes subtasks from specified tasks to allow regeneration
   - Parameters:
@@ -230,7 +247,6 @@ alwaysApply: true
   - Dependencies are visualized with status indicators in task listings and files
 
 - **Command Reference: add-dependency**
-  - Legacy Syntax: `node scripts/dev.js add-dependency --id=<id> --depends-on=<id>`
   - CLI Syntax: `task-master add-dependency --id=<id> --depends-on=<id>`
   - Description: Adds a dependency relationship between two tasks
   - Parameters:
@@ -240,7 +256,6 @@ alwaysApply: true
   - Notes: Prevents circular dependencies and duplicates; updates task files automatically
 
 - **Command Reference: remove-dependency**
-  - Legacy Syntax: `node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>`
   - CLI Syntax: `task-master remove-dependency --id=<id> --depends-on=<id>`
   - Description: Removes a dependency relationship between two tasks
   - Parameters:
@@ -250,7 +265,6 @@ alwaysApply: true
   - Notes: Checks if dependency actually exists; updates task files automatically
 
 - **Command Reference: validate-dependencies**
-  - Legacy Syntax: `node scripts/dev.js validate-dependencies [options]`
   - CLI Syntax: `task-master validate-dependencies [options]`
   - Description: Checks for and identifies invalid dependencies in tasks.json and task files
   - Parameters:
@@ -262,7 +276,6 @@ alwaysApply: true
     - Use before fix-dependencies to audit your task structure
 
 - **Command Reference: fix-dependencies**
-  - Legacy Syntax: `node scripts/dev.js fix-dependencies [options]`
   - CLI Syntax: `task-master fix-dependencies [options]`
   - Description: Finds and fixes all invalid dependencies in tasks.json and task files
   - Parameters:
@@ -275,7 +288,6 @@ alwaysApply: true
     - Provides detailed report of all fixes made
 
 - **Command Reference: complexity-report**
-  - Legacy Syntax: `node scripts/dev.js complexity-report [options]`
   - CLI Syntax: `task-master complexity-report [options]`
   - Description: Displays the task complexity analysis report in a formatted, easy-to-read way
   - Parameters:

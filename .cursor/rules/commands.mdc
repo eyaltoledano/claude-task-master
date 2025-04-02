@@ -52,6 +52,28 @@ alwaysApply: false
 
   > **Note**: Although options are defined with kebab-case (`--num-tasks`), Commander.js stores them internally as camelCase properties. Access them in code as `options.numTasks`, not `options['num-tasks']`.
 
+- **Boolean Flag Conventions**:
+  - ✅ DO: Use positive flags with `--skip-` prefix for disabling behavior
+  - ❌ DON'T: Use negated boolean flags with `--no-` prefix
+  - ✅ DO: Use consistent flag handling across all commands
+
+  ```javascript
+  // ✅ DO: Use positive flag with skip- prefix 
+  .option('--skip-generate', 'Skip generating task files')
+  
+  // ❌ DON'T: Use --no- prefix 
+  .option('--no-generate', 'Skip generating task files')
+  ```
+
+  > **Important**: When handling boolean flags in the code, make your intent clear:
+  ```javascript
+  // ✅ DO: Use clear variable naming that matches the flag's intent
+  const generateFiles = !options.skipGenerate;
+  
+  // ❌ DON'T: Use confusing double negatives
+  const dontSkipGenerate = !options.skipGenerate;
+  ```
+
 ## Input Validation
 
 - **Required Parameters**:
@@ -80,6 +102,38 @@ alwaysApply: false
   }
   ```
 
+- **Enhanced Input Validation**:
+  - ✅ DO: Validate file existence for critical file operations
+  - ✅ DO: Provide context-specific validation for identifiers
+  - ✅ DO: Check required API keys for features that depend on them
+
+  ```javascript
+  // ✅ DO: Validate file existence
+  if (!fs.existsSync(tasksPath)) {
+    console.error(chalk.red(`Error: Tasks file not found at path: ${tasksPath}`));
+    if (tasksPath === 'tasks/tasks.json') {
+      console.log(chalk.yellow('Hint: Run task-master init or task-master parse-prd to create tasks.json first'));
+    } else {
+      console.log(chalk.yellow(`Hint: Check if the file path is correct: ${tasksPath}`));
+    }
+    process.exit(1);
+  }
+  
+  // ✅ DO: Validate task ID
+  const taskId = parseInt(options.id, 10);
+  if (isNaN(taskId) || taskId <= 0) {
+    console.error(chalk.red(`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`));
+    console.log(chalk.yellow('Usage example: task-master update-task --id=23 --prompt="Update with new information"'));
+    process.exit(1);
+  }
+  
+  // ✅ DO: Check for required API keys
+  if (useResearch && !process.env.PERPLEXITY_API_KEY) {
+    console.log(chalk.yellow('Warning: PERPLEXITY_API_KEY environment variable is missing. Research-backed updates will not be available.'));
+    console.log(chalk.yellow('Falling back to Claude AI for task update.'));
+  }
+  ```
+
 ## User Feedback
 
 - **Operation Status**:
@@ -101,6 +155,26 @@ alwaysApply: false
   }
   ```
 
+- **Success Messages with Next Steps**:
+  - ✅ DO: Use boxen for important success messages with clear formatting
+  - ✅ DO: Provide suggested next steps after command completion
+  - ✅ DO: Include ready-to-use commands for follow-up actions
+
+  ```javascript
+  // ✅ DO: Display success with next steps
+  console.log(boxen(
+    chalk.white.bold(`Subtask ${parentId}.${subtask.id} Added Successfully`) + '\n\n' +
+    chalk.white(`Title: ${subtask.title}`) + '\n' +
+    chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) + '\n' +
+    (dependencies.length > 0 ? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n' : '') +
+    '\n' +
+    chalk.white.bold('Next Steps:') + '\n' +
+    chalk.cyan(`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`) + '\n' +
+    chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`),
+    { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+  ));
+  ```
+
 ## Command Registration
 
 - **Command Grouping**:
@@ -117,7 +191,10 @@ alwaysApply: false
   export {
     registerCommands,
     setupCLI,
-    runCLI
+    runCLI,
+    checkForUpdate, // Include version checking functions
+    compareVersions,
+    displayUpgradeNotification
   };
   ```
 
@@ -143,6 +220,88 @@ alwaysApply: false
   }
   ```
 
+- **Unknown Options Handling**:
+  - ✅ DO: Provide clear error messages for unknown options
+  - ✅ DO: Show available options when an unknown option is used
+  - ✅ DO: Include command-specific help displays for common errors
+  - ❌ DON'T: Allow unknown options with `.allowUnknownOption()`
+
+  ```javascript
+  // ✅ DO: Register global error handlers for unknown options
+  programInstance.on('option:unknown', function(unknownOption) {
+    const commandName = this._name || 'unknown';
+    console.error(chalk.red(`Error: Unknown option '${unknownOption}'`));
+    console.error(chalk.yellow(`Run 'task-master ${commandName} --help' to see available options`));
+    process.exit(1);
+  });
+  
+  // ✅ DO: Add command-specific help displays
+  function showCommandHelp() {
+    console.log(boxen(
+      chalk.white.bold('Command Help') + '\n\n' +
+      chalk.cyan('Usage:') + '\n' +
+      `  task-master command --option1=<value> [options]\n\n` +
+      chalk.cyan('Options:') + '\n' +
+      '  --option1 <value>    Description of option1 (required)\n' +
+      '  --option2 <value>    Description of option2\n\n' +
+      chalk.cyan('Examples:') + '\n' +
+      '  task-master command --option1=value --option2=value',
+      { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+    ));
+  }
+  ```
+
+- **Global Error Handling**:
+  - ✅ DO: Set up global error handlers for uncaught exceptions
+  - ✅ DO: Detect and format Commander-specific errors
+  - ✅ DO: Provide suitable guidance for fixing common errors
+
+  ```javascript
+  // ✅ DO: Set up global error handlers with helpful messages
+  process.on('uncaughtException', (err) => {
+    // Handle Commander-specific errors
+    if (err.code === 'commander.unknownOption') {
+      const option = err.message.match(/'([^']+)'/)?.[1];
+      console.error(chalk.red(`Error: Unknown option '${option}'`));
+      console.error(chalk.yellow(`Run 'task-master <command> --help' to see available options`));
+      process.exit(1);
+    }
+    
+    // Handle other error types...
+    console.error(chalk.red(`Error: ${err.message}`));
+    process.exit(1);
+  });
+  ```
+
+- **Contextual Error Handling**:
+  - ✅ DO: Provide specific error handling for common issues
+  - ✅ DO: Include troubleshooting hints for each error type
+  - ✅ DO: Use consistent error formatting across all commands
+
+  ```javascript
+  // ✅ DO: Provide specific error handling with guidance
+  try {
+    // Implementation
+  } catch (error) {
+    console.error(chalk.red(`Error: ${error.message}`));
+    
+    // Provide more helpful error messages for common issues
+    if (error.message.includes('task') && error.message.includes('not found')) {
+      console.log(chalk.yellow('\nTo fix this issue:'));
+      console.log('  1. Run task-master list to see all available task IDs');
+      console.log('  2. Use a valid task ID with the --id parameter');
+    } else if (error.message.includes('API key')) {
+      console.log(chalk.yellow('\nThis error is related to API keys. Check your environment variables.'));
+    }
+    
+    if (CONFIG.debug) {
+      console.error(error);
+    }
+    
+    process.exit(1);
+  }
+  ```
+
 ## Integration with Other Modules
 
 - **Import Organization**:
@@ -155,6 +314,7 @@ alwaysApply: false
   import { program } from 'commander';
   import path from 'path';
   import chalk from 'chalk';
+  import https from 'https';
   
   import { CONFIG, log, readJSON } from './utils.js';
   import { displayBanner, displayHelp } from './ui.js';
@@ -172,30 +332,22 @@ alwaysApply: false
     .description('Add a new subtask to a parent task or convert an existing task to a subtask')
     .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-p, --parent <id>', 'ID of the parent task (required)')
-    .option('-e, --existing <id>', 'ID of an existing task to convert to a subtask')
+    .option('-i, --task-id <id>', 'Existing task ID to convert to subtask')
     .option('-t, --title <title>', 'Title for the new subtask (when not converting)')
     .option('-d, --description <description>', 'Description for the new subtask (when not converting)')
     .option('--details <details>', 'Implementation details for the new subtask (when not converting)')
     .option('--dependencies <ids>', 'Comma-separated list of subtask IDs this subtask depends on')
     .option('--status <status>', 'Initial status for the subtask', 'pending')
+    .option('--skip-generate', 'Skip regenerating task files')
     .action(async (options) => {
       // Validate required parameters
       if (!options.parent) {
         console.error(chalk.red('Error: --parent parameter is required'));
+        showAddSubtaskHelp(); // Show contextual help
         process.exit(1);
       }
       
-      // Validate that either existing task ID or title is provided
-      if (!options.existing && !options.title) {
-        console.error(chalk.red('Error: Either --existing or --title must be provided'));
-        process.exit(1);
-      }
-      
-      try {
-        // Implementation
-      } catch (error) {
-        // Error handling
-      }
+      // Implementation with detailed error handling
     });
   ```
 
@@ -208,25 +360,75 @@ alwaysApply: false
     .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-i, --id <id>', 'ID of the subtask to remove in format "parentId.subtaskId" (required)')
     .option('-c, --convert', 'Convert the subtask to a standalone task')
+    .option('--skip-generate', 'Skip regenerating task files')
     .action(async (options) => {
-      // Validate required parameters
-      if (!options.id) {
-        console.error(chalk.red('Error: --id parameter is required'));
-        process.exit(1);
-      }
-      
-      // Validate subtask ID format
-      if (!options.id.includes('.')) {
-        console.error(chalk.red('Error: Subtask ID must be in format "parentId.subtaskId"'));
-        process.exit(1);
-      }
-      
-      try {
-        // Implementation
-      } catch (error) {
-        // Error handling
-      }
+      // Implementation with detailed error handling
+    })
+    .on('error', function(err) {
+      console.error(chalk.red(`Error: ${err.message}`));
+      showRemoveSubtaskHelp(); // Show contextual help
+      process.exit(1);
     });
+  ```
+
+## Version Checking and Updates
+
+- **Automatic Version Checking**:
+  - ✅ DO: Implement version checking to notify users of available updates
+  - ✅ DO: Use non-blocking version checks that don't delay command execution
+  - ✅ DO: Display update notifications after command completion
+
+  ```javascript
+  // ✅ DO: Implement version checking function
+  async function checkForUpdate() {
+    // Implementation details...
+    return { currentVersion, latestVersion, needsUpdate };
+  }
+  
+  // ✅ DO: Implement semantic version comparison
+  function compareVersions(v1, v2) {
+    const v1Parts = v1.split('.').map(p => parseInt(p, 10));
+    const v2Parts = v2.split('.').map(p => parseInt(p, 10));
+    
+    // Implementation details...
+    return result; // -1, 0, or 1
+  }
+  
+  // ✅ DO: Display attractive update notifications
+  function displayUpgradeNotification(currentVersion, latestVersion) {
+    const message = boxen(
+      `${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
+      `Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
+      {
+        padding: 1,
+        margin: { top: 1, bottom: 1 },
+        borderColor: 'yellow',
+        borderStyle: 'round'
+      }
+    );
+    
+    console.log(message);
+  }
+  
+  // ✅ DO: Integrate version checking in CLI run function
+  async function runCLI(argv = process.argv) {
+    try {
+      // Start the update check in the background - don't await yet
+      const updateCheckPromise = checkForUpdate();
+      
+      // Setup and parse
+      const programInstance = setupCLI();
+      await programInstance.parseAsync(argv);
+      
+      // After command execution, check if an update is available
+      const updateInfo = await updateCheckPromise;
+      if (updateInfo.needsUpdate) {
+        displayUpgradeNotification(updateInfo.currentVersion, updateInfo.latestVersion);
+      }
+    } catch (error) {
+      // Error handling...
+    }
+  }
   ```
 
 Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 

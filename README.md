@@ -4,6 +4,25 @@
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
+## Licensing
+
+Task Master is licensed under the MIT License with Commons Clause. This means you can:
+
+✅ **Allowed**:
+
+- Use Task Master for any purpose (personal, commercial, academic)
+- Modify the code
+- Distribute copies
+- Create and sell products built using Task Master
+
+❌ **Not Allowed**:
+
+- Sell Task Master itself
+- Offer Task Master as a hosted service
+- Create competing products based on Task Master
+
+See the [LICENSE](LICENSE) file for the complete license text.
+
 ## Requirements
 
 - Node.js 14.0.0 or higher
@@ -362,466 +381,30 @@ task-master show 1.2
 task-master update --from=<id> --prompt="<prompt>"
 ```
 
-### Generate Task Files
+### Update a Specific Task
 
 ```bash
-# Generate individual task files from tasks.json
-task-master generate
+# Update a single task by ID with new information
+task-master update-task --id=<id> --prompt="<prompt>"
+
+# Use research-backed updates with Perplexity AI
+task-master update-task --id=<id> --prompt="<prompt>" --research
 ```
 
-### Set Task Status
+### Update a Subtask
 
 ```bash
-# Set status of a single task
-task-master set-status --id=<id> --status=<status>
+# Append additional information to a specific subtask
+task-master update-subtask --id=<parentId.subtaskId> --prompt="<prompt>"
 
-# Set status for multiple tasks
-task-master set-status --id=1,2,3 --status=<status>
+# Example: Add details about API rate limiting to subtask 2 of task 5
+task-master update-subtask --id=5.2 --prompt="Add rate limiting of 100 requests per minute"
 
-# Set status for subtasks
-task-master set-status --id=1.1,1.2 --status=<status>
+# Use research-backed updates with Perplexity AI
+task-master update-subtask --id=<parentId.subtaskId> --prompt="<prompt>" --research
 ```
 
-When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
-
-### Expand Tasks
-
-```bash
-# Expand a specific task with subtasks
-task-master expand --id=<id> --num=<number>
-
-# Expand with additional context
-task-master expand --id=<id> --prompt="<context>"
-
-# Expand all pending tasks
-task-master expand --all
-
-# Force regeneration of subtasks for tasks that already have them
-task-master expand --all --force
-
-# Research-backed subtask generation for a specific task
-task-master expand --id=<id> --research
-
-# Research-backed generation for all tasks
-task-master expand --all --research
-```
-
-### Clear Subtasks
-
-```bash
-# Clear subtasks from a specific task
-task-master clear-subtasks --id=<id>
-
-# Clear subtasks from multiple tasks
-task-master clear-subtasks --id=1,2,3
-
-# Clear subtasks from all tasks
-task-master clear-subtasks --all
-```
-
-### Analyze Task Complexity
-
-```bash
-# Analyze complexity of all tasks
-task-master analyze-complexity
-
-# Save report to a custom location
-task-master analyze-complexity --output=my-report.json
-
-# Use a specific LLM model
-task-master analyze-complexity --model=claude-3-opus-20240229
-
-# Set a custom complexity threshold (1-10)
-task-master analyze-complexity --threshold=6
-
-# Use an alternative tasks file
-task-master analyze-complexity --file=custom-tasks.json
-
-# Use Perplexity AI for research-backed complexity analysis
-task-master analyze-complexity --research
-```
-
-### View Complexity Report
-
-```bash
-# Display the task complexity analysis report
-task-master complexity-report
-
-# View a report at a custom location
-task-master complexity-report --file=my-report.json
-```
-
-### Managing Task Dependencies
-
-```bash
-# Add a dependency to a task
-task-master add-dependency --id=<id> --depends-on=<id>
-
-# Remove a dependency from a task
-task-master remove-dependency --id=<id> --depends-on=<id>
-
-# Validate dependencies without fixing them
-task-master validate-dependencies
-
-# Find and fix invalid dependencies automatically
-task-master fix-dependencies
-```
-
-### Add a New Task
-
-````bash
-# Add a new task using AI
-task-master add-task --prompt="Description of the new task"
-
-# Add a task with dependencies
-task-master add-task --prompt="Description" --dependencies=1,2,3
-
-# Add a task with priority
-# Task Master
-### by [@eyaltoledano](https://x.com/eyaltoledano)
-
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
-
-## Requirements
-
-- Node.js 14.0.0 or higher
-- Anthropic API key (Claude API)
-- Anthropic SDK version 0.39.0 or higher
-- OpenAI SDK (for Perplexity API integration, optional)
-
-## Configuration
-
-The script can be configured through environment variables in a `.env` file at the root of the project:
-
-### Required Configuration
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
-
-### Optional Configuration
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
-- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
-- `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
-- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
-- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
-- `PROJECT_NAME`: Override default project name in tasks.json
-- `PROJECT_VERSION`: Override default version in tasks.json
-
-## Installation
-
-```bash
-# Install globally
-npm install -g task-master-ai
-
-# OR install locally within your project
-npm install task-master-ai
-````
-
-### Initialize a new project
-
-```bash
-# If installed globally
-task-master init
-
-# If installed locally
-npx task-master-init
-```
-
-This will prompt you for project details and set up a new project with the necessary files and structure.
-
-### Important Notes
-
-1. This package uses ES modules. Your package.json should include `"type": "module"`.
-2. The Anthropic SDK version should be 0.39.0 or higher.
-
-## Quick Start with Global Commands
-
-After installing the package globally, you can use these CLI commands from any directory:
-
-```bash
-# Initialize a new project
-task-master init
-
-# Parse a PRD and generate tasks
-task-master parse-prd your-prd.txt
-
-# List all tasks
-task-master list
-
-# Show the next task to work on
-task-master next
-
-# Generate task files
-task-master generate
-```
-
-## Troubleshooting
-
-### If `task-master init` doesn't respond:
-
-Try running it with Node directly:
-
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
-
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
-
-## Task Structure
-
-Tasks in tasks.json have the following structure:
-
-- `id`: Unique identifier for the task (Example: `1`)
-- `title`: Brief, descriptive title of the task (Example: `"Initialize Repo"`)
-- `description`: Concise description of what the task involves (Example: `"Create a new repository, set up initial structure."`)
-- `status`: Current state of the task (Example: `"pending"`, `"done"`, `"deferred"`)
-- `dependencies`: IDs of tasks that must be completed before this task (Example: `[1, 2]`)
-  - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending)
-  - This helps quickly identify which prerequisite tasks are blocking work
-- `priority`: Importance level of the task (Example: `"high"`, `"medium"`, `"low"`)
-- `details`: In-depth implementation instructions (Example: `"Use GitHub client ID/secret, handle callback, set session token."`)
-- `testStrategy`: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`)
-- `subtasks`: List of smaller, more specific tasks that make up the main task (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`)
-
-## Integrating with Cursor AI
-
-Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.
-
-### Setup with Cursor
-
-1. After initializing your project, open it in Cursor
-2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
-4. Open Cursor's AI chat and switch to Agent mode
-
-### Initial Task Generation
-
-In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
-
-```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
-```
-
-The agent will execute:
-
-```bash
-task-master parse-prd scripts/prd.txt
-```
-
-This will:
-
-- Parse your PRD document
-- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
-- The agent will understand this process due to the Cursor rules
-
-### Generate Individual Task Files
-
-Next, ask the agent to generate individual task files:
-
-```
-Please generate individual task files from tasks.json
-```
-
-The agent will execute:
-
-```bash
-task-master generate
-```
-
-This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
-
-## AI-Driven Development Workflow
-
-The Cursor agent is pre-configured (via the rules file) to follow this workflow:
-
-### 1. Task Discovery and Selection
-
-Ask the agent to list available tasks:
-
-```
-What tasks are available to work on next?
-```
-
-The agent will:
-
-- Run `task-master list` to see all tasks
-- Run `task-master next` to determine the next task to work on
-- Analyze dependencies to determine which tasks are ready to be worked on
-- Prioritize tasks based on priority level and ID order
-- Suggest the next task(s) to implement
-
-### 2. Task Implementation
-
-When implementing a task, the agent will:
-
-- Reference the task's details section for implementation specifics
-- Consider dependencies on previous tasks
-- Follow the project's coding standards
-- Create appropriate tests based on the task's testStrategy
-
-You can ask:
-
-```
-Let's implement task 3. What does it involve?
-```
-
-### 3. Task Verification
-
-Before marking a task as complete, verify it according to:
-
-- The task's specified testStrategy
-- Any automated tests in the codebase
-- Manual verification if required
-
-### 4. Task Completion
-
-When a task is completed, tell the agent:
-
-```
-Task 3 is now complete. Please update its status.
-```
-
-The agent will execute:
-
-```bash
-task-master set-status --id=3 --status=done
-```
-
-### 5. Handling Implementation Drift
-
-If during implementation, you discover that:
-
-- The current approach differs significantly from what was planned
-- Future tasks need to be modified due to current implementation choices
-- New dependencies or requirements have emerged
-
-Tell the agent:
-
-```
-We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
-```
-
-The agent will execute:
-
-```bash
-task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
-```
-
-This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
-
-### 6. Breaking Down Complex Tasks
-
-For complex tasks that need more granularity:
-
-```
-Task 5 seems complex. Can you break it down into subtasks?
-```
-
-The agent will execute:
-
-```bash
-task-master expand --id=5 --num=3
-```
-
-You can provide additional context:
-
-```
-Please break down task 5 with a focus on security considerations.
-```
-
-The agent will execute:
-
-```bash
-task-master expand --id=5 --prompt="Focus on security aspects"
-```
-
-You can also expand all pending tasks:
-
-```
-Please break down all pending tasks into subtasks.
-```
-
-The agent will execute:
-
-```bash
-task-master expand --all
-```
-
-For research-backed subtask generation using Perplexity AI:
-
-```
-Please break down task 5 using research-backed generation.
-```
-
-The agent will execute:
-
-```bash
-task-master expand --id=5 --research
-```
-
-## Command Reference
-
-Here's a comprehensive reference of all available commands:
-
-### Parse PRD
-
-```bash
-# Parse a PRD file and generate tasks
-task-master parse-prd <prd-file.txt>
-
-# Limit the number of tasks generated
-task-master parse-prd <prd-file.txt> --num-tasks=10
-```
-
-### List Tasks
-
-```bash
-# List all tasks
-task-master list
-
-# List tasks with a specific status
-task-master list --status=<status>
-
-# List tasks with subtasks
-task-master list --with-subtasks
-
-# List tasks with a specific status and include subtasks
-task-master list --status=<status> --with-subtasks
-```
-
-### Show Next Task
-
-```bash
-# Show the next task to work on based on dependencies and status
-task-master next
-```
-
-### Show Specific Task
-
-```bash
-# Show details of a specific task
-task-master show <id>
-# or
-task-master show --id=<id>
-
-# View a specific subtask (e.g., subtask 2 of task 1)
-task-master show 1.2
-```
-
-### Update Tasks
-
-```bash
-# Update tasks from a specific ID and provide context
-task-master update --from=<id> --prompt="<prompt>"
-```
+Unlike the `update-task` command which replaces task information, the `update-subtask` command _appends_ new information to the existing subtask details, marking it with a timestamp. This is useful for iteratively enhancing subtasks while preserving the original content.
 
 ### Generate Task Files
 
@@ -1094,3 +677,81 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+### Core Task Management
+
+*   `task-master init`: Initialize a new project (creates `tasks/tasks.json`).
+*   `task-master list [--status <status>] [--priority <priority>] [--sort <field>] [--query <text>] [--with-subtasks]`: List tasks with optional filtering, sorting, and subtask display.
+*   `task-master show <id>`: Display detailed information for a specific task.
+*   `task-master add-task --prompt <text> [--dependencies <ids>] [--priority <priority>] [--title <title>]`: Add a new task using AI based on a prompt or directly with a title.
+*   `task-master add-subtask --parent-id <id> --title <text> [--description <text>]`: Add a subtask to an existing parent task.
+*   `task-master update-task --id <id> [--title <text>] [--description <text>] [--details <text>] [--status <status>] [--priority <priority>] [--dependencies <ids>]`: Update fields of an existing task.
+*   `task-master update-subtask --id <parentId.subtaskId> [--title <text>] [--description <text>] [--details <text>] [--status <status>]`: Update fields of an existing subtask.
+*   `task-master remove-task --id <id>`: Remove a task.
+*   `task-master remove-subtask --id <parentId.subtaskId>`: Remove a subtask.
+*   `task-master set-status --id <id> --status <status>`: Quickly set the status of one or more tasks (comma-separated IDs).
+
+### AI-Powered Task Enhancement
+
+*   `task-master expand --id <id> [--subtasks <number>] [--prompt <text>] [--research]`: Use AI (Claude or Perplexity) to break down a task into subtasks.
+*   `task-master expand-all [--status <status>] [--priority <priority>] [--prompt <text>] [--research]`: Expand multiple tasks matching filter criteria.
+*   `task-master brainstorm-task --id <id>`: Use AI to brainstorm implementation ideas, challenges, and approaches for a specific task, adding the results to the task's details.
+*   `task-master analyze-complexity --id <id> [--model <model_name>] [--regenerate]`: Use AI to analyze task complexity and estimate effort, saving results to `tasks/complexity_report.json`.
+*   `task-master update-tasks --from-id <id> --prompt <text> [--research]`: Use AI to update multiple tasks based on new context provided in the prompt.
+*   `task-master update-subtask --id <parentId.subtaskId> --prompt <text> [--research]`: Use AI (Claude or Perplexity) to enhance a specific subtask based on a prompt.
+*   `task-master clear-subtasks --id <id>`: Remove all non-done subtasks from a parent task.
+*   `task-master find-next`: Suggest the next task to work on based on dependencies and priority.
+
+### PRD Generation Workflow (ChatPRD inspired)
+
+Este flujo te guía desde una idea inicial hasta un concepto refinado, listo para generar un PRD.
+
+1.  **`task-master ideate [options]`**: Convierte una idea inicial en un concepto estructurado.
+    *   Flags:
+        *   `-i, --idea <text>`: La idea inicial (si no se proporciona, se pide interactivamente).
+        *   `-o, --output <file>`: Archivo de salida para el concepto (por defecto: `prd/concept.txt`).
+    *   Flujo:
+        *   Toma la idea (flag o interactiva).
+        *   Genera un documento con secciones (Problema, Solución, Objetivos, Audiencia, Features, Métricas).
+        *   Comprueba si el archivo de salida existe y pregunta (Sobrescribir/Nuevo/Cancelar).
+        *   Guarda en `prd/concept.txt` (o el archivo especificado, o uno con timestamp si se elige "Nuevo").
+
+2.  **`task-master round-table [options]`**: Simula una discusión de expertos sobre el concepto.
+    *   Flags:
+        *   `-c, --concept-file <file>`: Ruta al archivo de concepto (por defecto: `prd/concept.txt`).
+        *   `-o, --output <file>`: Archivo de salida para la transcripción (por defecto: `prd/discussion.txt`).
+        *   `-p, --participants <list>`: Lista separada por comas de roles expertos.
+        *   `--topics <list>`: Lista separada por comas de temas específicos a incluir.
+        *   `--focus-topics`: Indica que la discusión debe centrarse principalmente en los temas proporcionados.
+    *   Flujo:
+        *   Comprueba si el archivo de salida (`discussion.txt`) existe y pregunta (Sobrescribir/Nuevo/Cancelar).
+        *   Lee el archivo de concepto.
+        *   Pide participantes interactivamente si no se proporcionan con `-p`.
+        *   Pregunta interactivamente si se quieren añadir temas y cómo tratarlos (Incluir/Enfocar), a menos que se use `--focus-topics`.
+        *   Simula la discusión usando la IA.
+        *   Guarda la transcripción en `prd/discussion.txt` (o el archivo especificado/timestamped).
+        *   **Pregunta interactivamente si se desea refinar el concepto inmediatamente usando esta discusión.**
+
+3.  **`task-master refine-concept [options]`**: Refina el concepto usando la discusión y/o prompts.
+    *   Flags:
+        *   `-c, --concept-file <file>`: Ruta al concepto a refinar (requerido).
+        *   `-d, --discussion-file <file>`: Ruta al archivo de discusión para usar en el refinamiento.
+        *   `-p, --prompt <text>`: Prompt personalizado para guiar el refinamiento.
+        *   `-o, --output <file>`: Archivo de salida para el concepto refinado (por defecto: `<concepto_original>_refined.txt`).
+    *   Flujo:
+        *   Lee el concepto y, opcionalmente, la discusión y/o el prompt.
+        *   Llama a la IA para generar una versión refinada del concepto.
+        *   Guarda el resultado en `<concepto>_refined.txt` (o el archivo especificado con `-o`).
+
+4.  **`task-master generate-prd [options]`**: (Próximo paso) Genera el PRD completo desde el concepto refinado.
+    *   Flags:
+        *   `--concept-file <file>`: Ruta al archivo de concepto (probablemente `<concepto>_refined.txt`).
+        *   `--example-prd <file>`: (Opcional) Plantilla para la estructura del PRD.
+        *   `--research`: (Opcional) Habilitar investigación externa con IA.
+    *   Output: `prd/prd.txt`
+
+### Utility
+
+*   `task-master generate-files`: Regenerate individual task files (e.g., `task_001.txt`) from `tasks.json`.
+*   `task-master validate-deps`: Check for and report dependency issues (cycles, missing tasks).
+*   `task-master fix-deps`: Attempt to automatically fix dependency issues.

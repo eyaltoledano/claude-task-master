@@ -12,7 +12,7 @@ alwaysApply: false
 
   - **[`commands.js`](mdc:scripts/modules/commands.js): Command Handling**
     - **Purpose**: Defines and registers all CLI commands using Commander.js.
-    - **Responsibilities**:
+    - **Responsibilities** (See also: [`commands.mdc`](mdc:.cursor/rules/commands.mdc)):
       - Parses command-line arguments and options.
       - Invokes appropriate functions from other modules to execute commands.
       - Handles user input and output related to command execution.
@@ -86,7 +86,7 @@ alwaysApply: false
 
   - **[`utils.js`](mdc:scripts/modules/utils.js): Utility Functions and Configuration**
     - **Purpose**: Provides reusable utility functions and global configuration settings used across the application.
-    - **Responsibilities**:
+    - **Responsibilities** (See also: [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc)):
       - Manages global configuration settings loaded from environment variables and defaults.
       - Implements logging utility with different log levels and output formatting.
       - Provides file system operation utilities (read/write JSON files).
@@ -101,6 +101,19 @@ alwaysApply: false
       - `formatTaskId(id)` / `findTaskById(tasks, taskId)`: Task ID and search utilities.
       - `findCycles(subtaskId, dependencyMap)`: Cycle detection algorithm.
 
+  - **[`mcp-server/`](mdc:mcp-server/): MCP Server Integration**
+    - **Purpose**: Provides an MCP (Model Context Protocol) interface for Task Master, allowing integration with external tools like Cursor. Uses FastMCP framework.
+    - **Responsibilities** (See also: [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)):
+      - Registers Task Master functionalities as tools consumable via MCP.
+      - Handles MCP requests and translates them into calls to the Task Master core logic.
+      - Prefers direct function calls to core modules via [`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js) for performance.
+      - Uses CLI execution via `executeTaskMasterCommand` as a fallback.
+      - **Implements Caching**: Utilizes a caching layer (`ContextManager` with `lru-cache`) invoked via `getCachedOrExecute` within direct function wrappers ([`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js)) to optimize performance for specific read operations (e.g., listing tasks).
+      - Standardizes response formatting for MCP clients using utilities in [`tools/utils.js`](mdc:mcp-server/src/tools/utils.js).
+    - **Key Components**:
+      - `mcp-server/src/server.js`: Main server setup and initialization.
+      - `mcp-server/src/tools/`: Directory containing individual tool definitions, each registering a specific Task Master command for MCP.
+
 - **Data Flow and Module Dependencies**:
 
   - **Commands Initiate Actions**: User commands entered via the CLI (handled by [`commands.js`](mdc:scripts/modules/commands.js)) are the entry points for most operations.
@@ -108,10 +121,11 @@ alwaysApply: false
   - **UI for Presentation**:  [`ui.js`](mdc:scripts/modules/ui.js) is used by command handlers and task/dependency managers to display information to the user. UI functions primarily consume data and format it for output, without modifying core application state.
   - **Utilities for Common Tasks**: [`utils.js`](mdc:scripts/modules/utils.js) provides helper functions used by all other modules for configuration, logging, file operations, and common data manipulations.
   - **AI Services Integration**: AI functionalities (complexity analysis, task expansion, PRD parsing) are invoked from [`task-manager.js`](mdc:scripts/modules/task-manager.js) and potentially [`commands.js`](mdc:scripts/modules/commands.js), likely using functions that would reside in a dedicated `ai-services.js` module or be integrated within `utils.js` or `task-manager.js`.
+  - **MCP Server Interaction**: External tools interact with the `mcp-server`, which then calls direct function wrappers in `task-master-core.js` or falls back to `executeTaskMasterCommand`. Responses are formatted by `mcp-server/src/tools/utils.js`. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details.
 
 - **Testing Architecture**:
 
-  - **Test Organization Structure**:
+  - **Test Organization Structure** (See also: [`tests.mdc`](mdc:.cursor/rules/tests.mdc)):
     - **Unit Tests**: Located in `tests/unit/`, reflect the module structure with one test file per module
     - **Integration Tests**: Located in `tests/integration/`, test interactions between modules
     - **End-to-End Tests**: Located in `tests/e2e/`, test complete workflows from a user perspective

@@ -311,10 +311,17 @@ These subtasks will help you implement the parent task efficiently.`;
         }
       };
       
+      // Mock process.env to include PERPLEXITY_API_KEY
+      const originalEnv = process.env;
+      process.env = { ...originalEnv, PERPLEXITY_API_KEY: 'test-key' };
+      
       const result = handleClaudeError(error);
       
-      expect(result).toContain('Claude is currently experiencing high demand');
-      expect(result).toContain('overloaded');
+      // Restore original env
+      process.env = originalEnv;
+      
+      expect(result).toContain('Claude is currently overloaded');
+      expect(result).toContain('fall back to Perplexity AI');
     });
 
     test('should handle rate_limit_error type', () => {

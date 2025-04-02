@@ -677,6 +677,15 @@ async function displayTaskById(tasksPath, taskId) {
     
     console.log(taskTable.toString());
     
+    // Show details if they exist for subtasks
+    if (task.details && task.details.trim().length > 0) {
+      console.log(boxen(
+        chalk.white.bold('Implementation Details:') + '\n\n' + 
+        task.details,
+        { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+    }
+    
     // Show action suggestions for subtask
     console.log(boxen(
       chalk.white.bold('Suggested Actions:') + '\n' +
@@ -760,7 +769,7 @@ async function displayTaskById(tasksPath, taskId) {
     const availableWidth = process.stdout.columns - 10 || 100; // Default to 100 if can't detect
     
     // Define percentage-based column widths
-    const idWidthPct = 8;
+    const idWidthPct = 10;
     const statusWidthPct = 15;
     const depsWidthPct = 25;
     const titleWidthPct = 100 - idWidthPct - statusWidthPct - depsWidthPct;
@@ -1052,6 +1061,33 @@ async function displayComplexityReport(reportPath) {
   ));
 }
 
+/**
+ * Confirm overwriting existing tasks.json file
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @returns {Promise<boolean>} - Promise resolving to true if user confirms, false otherwise
+ */
+async function confirmTaskOverwrite(tasksPath) {
+  console.log(boxen(
+    chalk.yellow('It looks like you\'ve already generated tasks for this project.\n') +
+    chalk.yellow('Executing this command will overwrite any existing tasks.'),
+    { padding: 1, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1 } }
+  ));
+  
+  // Use dynamic import to get the readline module
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  const answer = await new Promise(resolve => {
+    rl.question(chalk.cyan('Are you sure you wish to continue? (y/N): '), resolve);
+  });
+  rl.close();
+  
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+}
+
 // Export UI functions
 export {
   displayBanner,
@@ -1065,4 +1101,5 @@ export {
   displayNextTask,
   displayTaskById,
   displayComplexityReport,
+  confirmTaskOverwrite
 }; 

@@ -1,0 +1,3849 @@
+Directory Structure:
+
+└── ./
+    ├── src
+    │   ├── bin
+    │   │   └── fastmcp.ts
+    │   ├── examples
+    │   │   └── addition.ts
+    │   ├── FastMCP.test.ts
+    │   └── FastMCP.ts
+    ├── eslint.config.js
+    ├── package.json
+    ├── README.md
+    └── vitest.config.js
+
+
+
+---
+File: /src/bin/fastmcp.ts
+---
+
+#!/usr/bin/env node
+
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import { execa } from "execa";
+
+await yargs(hideBin(process.argv))
+  .scriptName("fastmcp")
+  .command(
+    "dev <file>",
+    "Start a development server",
+    (yargs) => {
+      return yargs.positional("file", {
+        type: "string",
+        describe: "The path to the server file",
+        demandOption: true,
+      });
+    },
+    async (argv) => {
+      try {
+        await execa({
+          stdin: "inherit",
+          stdout: "inherit",
+          stderr: "inherit",
+        })`npx @wong2/mcp-cli npx tsx ${argv.file}`;
+      } catch {
+        process.exit(1);
+      }
+    },
+  )
+  .command(
+    "inspect <file>",
+    "Inspect a server file",
+    (yargs) => {
+      return yargs.positional("file", {
+        type: "string",
+        describe: "The path to the server file",
+        demandOption: true,
+      });
+    },
+    async (argv) => {
+      try {
+        await execa({
+          stdout: "inherit",
+          stderr: "inherit",
+        })`npx @modelcontextprotocol/inspector npx tsx ${argv.file}`;
+      } catch {
+        process.exit(1);
+      }
+    },
+  )
+  .help()
+  .parseAsync();
+
+
+
+---
+File: /src/examples/addition.ts
+---
+
+/**
+ * This is a complete example of an MCP server.
+ */
+import { FastMCP } from "../FastMCP.js";
+import { z } from "zod";
+
+const server = new FastMCP({
+  name: "Addition",
+  version: "1.0.0",
+});
+
+server.addTool({
+  name: "add",
+  description: "Add two numbers",
+  parameters: z.object({
+    a: z.number(),
+    b: z.number(),
+  }),
+  execute: async (args) => {
+    return String(args.a + args.b);
+  },
+});
+
+server.addResource({
+  uri: "file:///logs/app.log",
+  name: "Application Logs",
+  mimeType: "text/plain",
+  async load() {
+    return {
+      text: "Example log content",
+    };
+  },
+});
+
+server.addPrompt({
+  name: "git-commit",
+  description: "Generate a Git commit message",
+  arguments: [
+    {
+      name: "changes",
+      description: "Git diff or description of changes",
+      required: true,
+    },
+  ],
+  load: async (args) => {
+    return `Generate a concise but descriptive commit message for these changes:\n\n${args.changes}`;
+  },
+});
+
+server.start({
+  transportType: "stdio",
+});
+
+
+
+---
+File: /src/FastMCP.test.ts
+---
+
+import { FastMCP, FastMCPSession, UserError, imageContent } from "./FastMCP.js";
+import { z } from "zod";
+import { test, expect, vi } from "vitest";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { getRandomPort } from "get-port-please";
+import { setTimeout as delay } from "timers/promises";
+import {
+  CreateMessageRequestSchema,
+  ErrorCode,
+  ListRootsRequestSchema,
+  LoggingMessageNotificationSchema,
+  McpError,
+  PingRequestSchema,
+  Root,
+} from "@modelcontextprotocol/sdk/types.js";
+import { createEventSource, EventSourceClient } from 'eventsource-client';
+
+const runWithTestServer = async ({
+  run,
+  client: createClient,
+  server: createServer,
+}: {
+  server?: () => Promise<FastMCP>;
+  client?: () => Promise<Client>;
+  run: ({
+    client,
+    server,
+  }: {
+    client: Client;
+    server: FastMCP;
+    session: FastMCPSession;
+  }) => Promise<void>;
+}) => {
+  const port = await getRandomPort();
+
+  const server = createServer
+    ? await createServer()
+    : new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  try {
+    const client = createClient
+      ? await createClient()
+      : new Client(
+          {
+            name: "example-client",
+            version: "1.0.0",
+          },
+          {
+            capabilities: {},
+          },
+        );
+
+    const transport = new SSEClientTransport(
+      new URL(`http://localhost:${port}/sse`),
+    );
+
+    const session = await new Promise<FastMCPSession>((resolve) => {
+      server.on("connect", (event) => {
+        
+        resolve(event.session);
+      });
+
+      client.connect(transport);
+    });
+
+    await run({ client, server, session });
+  } finally {
+    await server.stop();
+  }
+
+  return port;
+};
+
+test("adds tools", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args) => {
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(await client.listTools()).toEqual({
+        tools: [
+          {
+            name: "add",
+            description: "Add two numbers",
+            inputSchema: {
+              additionalProperties: false,
+              $schema: "http://json-schema.org/draft-07/schema#",
+              type: "object",
+              properties: {
+                a: { type: "number" },
+                b: { type: "number" },
+              },
+              required: ["a", "b"],
+            },
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("calls a tool", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args) => {
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        }),
+      ).toEqual({
+        content: [{ type: "text", text: "3" }],
+      });
+    },
+  });
+});
+
+test("returns a list", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async () => {
+          return {
+            content: [
+              { type: "text", text: "a" },
+              { type: "text", text: "b" },
+            ],
+          };
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        }),
+      ).toEqual({
+        content: [
+          { type: "text", text: "a" },
+          { type: "text", text: "b" },
+        ],
+      });
+    },
+  });
+});
+
+test("returns an image", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async () => {
+          return imageContent({
+            buffer: Buffer.from(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+              "base64",
+            ),
+          });
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        }),
+      ).toEqual({
+        content: [
+          {
+            type: "image",
+            data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+            mimeType: "image/png",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("handles UserError errors", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async () => {
+          throw new UserError("Something went wrong");
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        }),
+      ).toEqual({
+        content: [{ type: "text", text: "Something went wrong" }],
+        isError: true,
+      });
+    },
+  });
+});
+
+test("calling an unknown tool throws McpError with MethodNotFound code", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      try {
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(McpError);
+
+        // @ts-expect-error - we know that error is an McpError
+        expect(error.code).toBe(ErrorCode.MethodNotFound);
+      }
+    },
+  });
+});
+
+test("tracks tool progress", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args, { reportProgress }) => {
+          reportProgress({
+            progress: 0,
+            total: 10,
+          });
+
+          await delay(100);
+
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      const onProgress = vi.fn();
+
+      await client.callTool(
+        {
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        },
+        undefined,
+        {
+          onprogress: onProgress,
+        },
+      );
+
+      expect(onProgress).toHaveBeenCalledTimes(1);
+      expect(onProgress).toHaveBeenCalledWith({
+        progress: 0,
+        total: 10,
+      });
+    },
+  });
+});
+
+test("sets logging levels", async () => {
+  await runWithTestServer({
+    run: async ({ client, session }) => {
+      await client.setLoggingLevel("debug");
+
+      expect(session.loggingLevel).toBe("debug");
+
+      await client.setLoggingLevel("info");
+
+      expect(session.loggingLevel).toBe("info");
+    },
+  });
+});
+
+test("sends logging messages to the client", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args, { log }) => {
+          log.debug("debug message", {
+            foo: "bar",
+          });
+          log.error("error message");
+          log.info("info message");
+          log.warn("warn message");
+
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      const onLog = vi.fn();
+
+      client.setNotificationHandler(
+        LoggingMessageNotificationSchema,
+        (message) => {
+          if (message.method === "notifications/message") {
+            onLog({
+              level: message.params.level,
+              ...(message.params.data ?? {}),
+            });
+          }
+        },
+      );
+
+      await client.callTool({
+        name: "add",
+        arguments: {
+          a: 1,
+          b: 2,
+        },
+      });
+
+      expect(onLog).toHaveBeenCalledTimes(4);
+      expect(onLog).toHaveBeenNthCalledWith(1, {
+        level: "debug",
+        message: "debug message",
+        context: {
+          foo: "bar",
+        },
+      });
+      expect(onLog).toHaveBeenNthCalledWith(2, {
+        level: "error",
+        message: "error message",
+      });
+      expect(onLog).toHaveBeenNthCalledWith(3, {
+        level: "info",
+        message: "info message",
+      });
+      expect(onLog).toHaveBeenNthCalledWith(4, {
+        level: "warning",
+        message: "warn message",
+      });
+    },
+  });
+});
+
+test("adds resources", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResource({
+        uri: "file:///logs/app.log",
+        name: "Application Logs",
+        mimeType: "text/plain",
+        async load() {
+          return {
+            text: "Example log content",
+          };
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(await client.listResources()).toEqual({
+        resources: [
+          {
+            uri: "file:///logs/app.log",
+            name: "Application Logs",
+            mimeType: "text/plain",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("clients reads a resource", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResource({
+        uri: "file:///logs/app.log",
+        name: "Application Logs",
+        mimeType: "text/plain",
+        async load() {
+          return {
+            text: "Example log content",
+          };
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.readResource({
+          uri: "file:///logs/app.log",
+        }),
+      ).toEqual({
+        contents: [
+          {
+            uri: "file:///logs/app.log",
+            name: "Application Logs",
+            text: "Example log content",
+            mimeType: "text/plain",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("clients reads a resource that returns multiple resources", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResource({
+        uri: "file:///logs/app.log",
+        name: "Application Logs",
+        mimeType: "text/plain",
+        async load() {
+          return [
+            {
+              text: "a",
+            },
+            {
+              text: "b",
+            },
+          ];
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.readResource({
+          uri: "file:///logs/app.log",
+        }),
+      ).toEqual({
+        contents: [
+          {
+            uri: "file:///logs/app.log",
+            name: "Application Logs",
+            text: "a",
+            mimeType: "text/plain",
+          },
+          {
+            uri: "file:///logs/app.log",
+            name: "Application Logs",
+            text: "b",
+            mimeType: "text/plain",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("adds prompts", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addPrompt({
+        name: "git-commit",
+        description: "Generate a Git commit message",
+        arguments: [
+          {
+            name: "changes",
+            description: "Git diff or description of changes",
+            required: true,
+          },
+        ],
+        load: async (args) => {
+          return `Generate a concise but descriptive commit message for these changes:\n\n${args.changes}`;
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.getPrompt({
+          name: "git-commit",
+          arguments: {
+            changes: "foo",
+          },
+        }),
+      ).toEqual({
+        description: "Generate a Git commit message",
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: "Generate a concise but descriptive commit message for these changes:\n\nfoo",
+            },
+          },
+        ],
+      });
+
+      expect(await client.listPrompts()).toEqual({
+        prompts: [
+          {
+            name: "git-commit",
+            description: "Generate a Git commit message",
+            arguments: [
+              {
+                name: "changes",
+                description: "Git diff or description of changes",
+                required: true,
+              },
+            ],
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("uses events to notify server of client connect/disconnect", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP({
+    name: "Test",
+    version: "1.0.0",
+  });
+
+  const onConnect = vi.fn();
+  const onDisconnect = vi.fn();
+
+  server.on("connect", onConnect);
+  server.on("disconnect", onDisconnect);
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const client = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  await client.connect(transport);
+
+  await delay(100);
+
+  expect(onConnect).toHaveBeenCalledTimes(1);
+  expect(onDisconnect).toHaveBeenCalledTimes(0);
+
+  expect(server.sessions).toEqual([expect.any(FastMCPSession)]);
+
+  await client.close();
+
+  await delay(100);
+
+  expect(onConnect).toHaveBeenCalledTimes(1);
+  expect(onDisconnect).toHaveBeenCalledTimes(1);
+
+  await server.stop();
+});
+
+test("handles multiple clients", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP({
+    name: "Test",
+    version: "1.0.0",
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const client1 = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport1 = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  await client1.connect(transport1);
+
+  const client2 = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport2 = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  await client2.connect(transport2);
+
+  await delay(100);
+
+  expect(server.sessions).toEqual([
+    expect.any(FastMCPSession),
+    expect.any(FastMCPSession),
+  ]);
+
+  await server.stop();
+});
+
+test("session knows about client capabilities", async () => {
+  await runWithTestServer({
+    client: async () => {
+      const client = new Client(
+        {
+          name: "example-client",
+          version: "1.0.0",
+        },
+        {
+          capabilities: {
+            roots: {
+              listChanged: true,
+            },
+          },
+        },
+      );
+
+      client.setRequestHandler(ListRootsRequestSchema, () => {
+        return {
+          roots: [
+            {
+              uri: "file:///home/user/projects/frontend",
+              name: "Frontend Repository",
+            },
+          ],
+        };
+      });
+
+      return client;
+    },
+    run: async ({ session }) => {
+      expect(session.clientCapabilities).toEqual({
+        roots: {
+          listChanged: true,
+        },
+      });
+    },
+  });
+});
+
+test("session knows about roots", async () => {
+  await runWithTestServer({
+    client: async () => {
+      const client = new Client(
+        {
+          name: "example-client",
+          version: "1.0.0",
+        },
+        {
+          capabilities: {
+            roots: {
+              listChanged: true,
+            },
+          },
+        },
+      );
+
+      client.setRequestHandler(ListRootsRequestSchema, () => {
+        return {
+          roots: [
+            {
+              uri: "file:///home/user/projects/frontend",
+              name: "Frontend Repository",
+            },
+          ],
+        };
+      });
+
+      return client;
+    },
+    run: async ({ session }) => {
+      expect(session.roots).toEqual([
+        {
+          uri: "file:///home/user/projects/frontend",
+          name: "Frontend Repository",
+        },
+      ]);
+    },
+  });
+});
+
+test("session listens to roots changes", async () => {
+  let clientRoots: Root[] = [
+    {
+      uri: "file:///home/user/projects/frontend",
+      name: "Frontend Repository",
+    },
+  ];
+
+  await runWithTestServer({
+    client: async () => {
+      const client = new Client(
+        {
+          name: "example-client",
+          version: "1.0.0",
+        },
+        {
+          capabilities: {
+            roots: {
+              listChanged: true,
+            },
+          },
+        },
+      );
+
+      client.setRequestHandler(ListRootsRequestSchema, () => {
+        return {
+          roots: clientRoots,
+        };
+      });
+
+      return client;
+    },
+    run: async ({ session, client }) => {
+      expect(session.roots).toEqual([
+        {
+          uri: "file:///home/user/projects/frontend",
+          name: "Frontend Repository",
+        },
+      ]);
+
+      clientRoots.push({
+        uri: "file:///home/user/projects/backend",
+        name: "Backend Repository",
+      });
+
+      await client.sendRootsListChanged();
+
+      const onRootsChanged = vi.fn();
+
+      session.on("rootsChanged", onRootsChanged);
+
+      await delay(100);
+
+      expect(session.roots).toEqual([
+        {
+          uri: "file:///home/user/projects/frontend",
+          name: "Frontend Repository",
+        },
+        {
+          uri: "file:///home/user/projects/backend",
+          name: "Backend Repository",
+        },
+      ]);
+
+      expect(onRootsChanged).toHaveBeenCalledTimes(1);
+      expect(onRootsChanged).toHaveBeenCalledWith({
+        roots: [
+          {
+            uri: "file:///home/user/projects/frontend",
+            name: "Frontend Repository",
+          },
+          {
+            uri: "file:///home/user/projects/backend",
+            name: "Backend Repository",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("session sends pings to the client", async () => {
+  await runWithTestServer({
+    run: async ({ client }) => {
+      const onPing = vi.fn().mockReturnValue({});
+
+      client.setRequestHandler(PingRequestSchema, onPing);
+
+      await delay(2000);
+
+      expect(onPing).toHaveBeenCalledTimes(1);
+    },
+  });
+});
+
+test("completes prompt arguments", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addPrompt({
+        name: "countryPoem",
+        description: "Writes a poem about a country",
+        load: async ({ name }) => {
+          return `Hello, ${name}!`;
+        },
+        arguments: [
+          {
+            name: "name",
+            description: "Name of the country",
+            required: true,
+            complete: async (value) => {
+              if (value === "Germ") {
+                return {
+                  values: ["Germany"],
+                };
+              }
+
+              return {
+                values: [],
+              };
+            },
+          },
+        ],
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      const response = await client.complete({
+        ref: {
+          type: "ref/prompt",
+          name: "countryPoem",
+        },
+        argument: {
+          name: "name",
+          value: "Germ",
+        },
+      });
+
+      expect(response).toEqual({
+        completion: {
+          values: ["Germany"],
+        },
+      });
+    },
+  });
+});
+
+test("adds automatic prompt argument completion when enum is provided", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addPrompt({
+        name: "countryPoem",
+        description: "Writes a poem about a country",
+        load: async ({ name }) => {
+          return `Hello, ${name}!`;
+        },
+        arguments: [
+          {
+            name: "name",
+            description: "Name of the country",
+            required: true,
+            enum: ["Germany", "France", "Italy"],
+          },
+        ],
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      const response = await client.complete({
+        ref: {
+          type: "ref/prompt",
+          name: "countryPoem",
+        },
+        argument: {
+          name: "name",
+          value: "Germ",
+        },
+      });
+
+      expect(response).toEqual({
+        completion: {
+          values: ["Germany"],
+          total: 1,
+        },
+      });
+    },
+  });
+});
+
+test("completes template resource arguments", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResourceTemplate({
+        uriTemplate: "issue:///{issueId}",
+        name: "Issue",
+        mimeType: "text/plain",
+        arguments: [
+          {
+            name: "issueId",
+            description: "ID of the issue",
+            complete: async (value) => {
+              if (value === "123") {
+                return {
+                  values: ["123456"],
+                };
+              }
+
+              return {
+                values: [],
+              };
+            },
+          },
+        ],
+        load: async ({ issueId }) => {
+          return {
+            text: `Issue ${issueId}`,
+          };
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      const response = await client.complete({
+        ref: {
+          type: "ref/resource",
+          uri: "issue:///{issueId}",
+        },
+        argument: {
+          name: "issueId",
+          value: "123",
+        },
+      });
+
+      expect(response).toEqual({
+        completion: {
+          values: ["123456"],
+        },
+      });
+    },
+  });
+});
+
+test("lists resource templates", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResourceTemplate({
+        uriTemplate: "file:///logs/{name}.log",
+        name: "Application Logs",
+        mimeType: "text/plain",
+        arguments: [
+          {
+            name: "name",
+            description: "Name of the log",
+            required: true,
+          },
+        ],
+        load: async ({ name }) => {
+          return {
+            text: `Example log content for ${name}`,
+          };
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(await client.listResourceTemplates()).toEqual({
+        resourceTemplates: [
+          {
+            name: "Application Logs",
+            uriTemplate: "file:///logs/{name}.log",
+          },
+        ],
+      });
+    },
+  });
+});
+
+test("clients reads a resource accessed via a resource template", async () => {
+  const loadSpy = vi.fn((_args) => {
+    return {
+      text: "Example log content",
+    };
+  });
+
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addResourceTemplate({
+        uriTemplate: "file:///logs/{name}.log",
+        name: "Application Logs",
+        mimeType: "text/plain",
+        arguments: [
+          {
+            name: "name",
+            description: "Name of the log",
+          },
+        ],
+        async load(args) {
+          return loadSpy(args);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      expect(
+        await client.readResource({
+          uri: "file:///logs/app.log",
+        }),
+      ).toEqual({
+        contents: [
+          {
+            uri: "file:///logs/app.log",
+            name: "Application Logs",
+            text: "Example log content",
+            mimeType: "text/plain",
+          },
+        ],
+      });
+
+      expect(loadSpy).toHaveBeenCalledWith({
+        name: "app",
+      });
+    },
+  });
+});
+
+test("makes a sampling request", async () => {
+  const onMessageRequest = vi.fn(() => {
+    return {
+      model: "gpt-3.5-turbo",
+      role: "assistant",
+      content: {
+        type: "text",
+        text: "The files are in the current directory.",
+      },
+    };
+  });
+
+  await runWithTestServer({
+    client: async () => {
+      const client = new Client(
+        {
+          name: "example-client",
+          version: "1.0.0",
+        },
+        {
+          capabilities: {
+            sampling: {},
+          },
+        },
+      );
+      return client;
+    },
+    run: async ({ client, session }) => {
+      client.setRequestHandler(CreateMessageRequestSchema, onMessageRequest);
+
+      const response = await session.requestSampling({
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: "What files are in the current directory?",
+            },
+          },
+        ],
+        systemPrompt: "You are a helpful file system assistant.",
+        includeContext: "thisServer",
+        maxTokens: 100,
+      });
+
+      expect(response).toEqual({
+        model: "gpt-3.5-turbo",
+        role: "assistant",
+        content: {
+          type: "text",
+          text: "The files are in the current directory.",
+        },
+      });
+
+      expect(onMessageRequest).toHaveBeenCalledTimes(1);
+    },
+  });
+});
+
+test("throws ErrorCode.InvalidParams if tool parameters do not match zod schema", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args) => {
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      try {
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: "invalid",
+          },
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(McpError);
+
+        // @ts-expect-error - we know that error is an McpError
+        expect(error.code).toBe(ErrorCode.InvalidParams);
+
+        // @ts-expect-error - we know that error is an McpError
+        expect(error.message).toBe("MCP error -32602: MCP error -32602: Invalid add parameters");
+      }
+    },
+  });
+});
+
+test("server remains usable after InvalidParams error", async () => {
+  await runWithTestServer({
+    server: async () => {
+      const server = new FastMCP({
+        name: "Test",
+        version: "1.0.0",
+      });
+
+      server.addTool({
+        name: "add",
+        description: "Add two numbers",
+        parameters: z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        execute: async (args) => {
+          return String(args.a + args.b);
+        },
+      });
+
+      return server;
+    },
+    run: async ({ client }) => {
+      try {
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: "invalid",
+          },
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(McpError);
+
+        // @ts-expect-error - we know that error is an McpError
+        expect(error.code).toBe(ErrorCode.InvalidParams);
+
+        // @ts-expect-error - we know that error is an McpError
+        expect(error.message).toBe("MCP error -32602: MCP error -32602: Invalid add parameters");
+      }
+
+      expect(
+        await client.callTool({
+          name: "add",
+          arguments: {
+            a: 1,
+            b: 2,
+          },
+        }),
+      ).toEqual({
+        content: [{ type: "text", text: "3" }],
+      });
+    },
+  });
+});
+
+test("allows new clients to connect after a client disconnects", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP({
+    name: "Test",
+    version: "1.0.0",
+  });
+
+  server.addTool({
+    name: "add",
+    description: "Add two numbers",
+    parameters: z.object({
+      a: z.number(),
+      b: z.number(),
+    }),
+    execute: async (args) => {
+      return String(args.a + args.b);
+    },
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const client1 = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport1 = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  await client1.connect(transport1);
+
+  expect(
+    await client1.callTool({
+      name: "add",
+      arguments: {
+        a: 1,
+        b: 2,
+      },
+    }),
+  ).toEqual({
+    content: [{ type: "text", text: "3" }],
+  });
+
+  await client1.close();
+
+  const client2 = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport2 = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  await client2.connect(transport2);
+
+  expect(
+    await client2.callTool({
+      name: "add",
+      arguments: {
+        a: 1,
+        b: 2,
+      },
+    }),
+  ).toEqual({
+    content: [{ type: "text", text: "3" }],
+  });
+
+  await client2.close();
+
+  await server.stop();
+});
+
+test("able to close server immediately after starting it", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP({
+    name: "Test",
+    version: "1.0.0",
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  // We were previously not waiting for the server to start.
+  // Therefore, this would have caused error 'Server is not running.'.
+  await server.stop();
+});
+
+test("closing event source does not produce error", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP({
+    name: "Test",
+    version: "1.0.0",
+  });
+
+  server.addTool({
+    name: "add",
+    description: "Add two numbers",
+    parameters: z.object({
+      a: z.number(),
+      b: z.number(),
+    }),
+    execute: async (args) => {
+      return String(args.a + args.b);
+    },
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const eventSource = await new Promise<EventSourceClient>((onMessage) => {
+    const eventSource = createEventSource({
+      onConnect: () => {
+        console.info('connected');
+      },
+      onDisconnect: () => {
+        console.info('disconnected');
+      },
+      onMessage: () => {
+        onMessage(eventSource);
+      },
+      url: `http://127.0.0.1:${port}/sse`,
+    });
+  });
+
+  expect(eventSource.readyState).toBe('open');
+
+  eventSource.close();
+
+  // We were getting unhandled error 'Not connected'
+  // https://github.com/punkpeye/mcp-proxy/commit/62cf27d5e3dfcbc353e8d03c7714a62c37177b52
+  await delay(1000);
+
+  await server.stop();
+});
+
+test("provides auth to tools", async () => {
+  const port = await getRandomPort();
+
+  const authenticate = vi.fn(async () => {
+    return {
+      id: 1,
+    };
+  });
+
+  const server = new FastMCP<{id: number}>({
+    name: "Test",
+    version: "1.0.0",
+    authenticate,
+  });
+
+  const execute = vi.fn(async (args) => {
+    return String(args.a + args.b);
+  });
+
+  server.addTool({
+    name: "add",
+    description: "Add two numbers",
+    parameters: z.object({
+      a: z.number(),
+      b: z.number(),
+    }),
+    execute,
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const client = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+    {
+      eventSourceInit: {
+        fetch: async (url, init) => {
+          return fetch(url, {
+            ...init,
+            headers: {
+              ...init?.headers,
+              "x-api-key": "123",
+            },
+          });
+        },
+      },
+    },
+  );
+
+  await client.connect(transport);
+
+  expect(authenticate, "authenticate should have been called").toHaveBeenCalledTimes(1);
+
+  expect(
+    await client.callTool({
+      name: "add",
+      arguments: {
+        a: 1,
+        b: 2,
+      },
+    }),
+  ).toEqual({
+    content: [{ type: "text", text: "3" }],
+  });
+
+  expect(execute, "execute should have been called").toHaveBeenCalledTimes(1);
+
+  expect(execute).toHaveBeenCalledWith({
+    a: 1,
+    b: 2,
+  }, {
+    log: {
+      debug: expect.any(Function),
+      error: expect.any(Function),
+      info: expect.any(Function),
+      warn: expect.any(Function),
+    },
+    reportProgress: expect.any(Function),
+    session: { id: 1 },
+  });
+});
+
+test("blocks unauthorized requests", async () => {
+  const port = await getRandomPort();
+
+  const server = new FastMCP<{id: number}>({
+    name: "Test",
+    version: "1.0.0",
+    authenticate: async () => {
+      throw new Response(null, {
+        status: 401,
+        statusText: "Unauthorized",
+      });
+    },
+  });
+
+  await server.start({
+    transportType: "sse",
+    sse: {
+      endpoint: "/sse",
+      port,
+    },
+  });
+
+  const client = new Client(
+    {
+      name: "example-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    },
+  );
+
+  const transport = new SSEClientTransport(
+    new URL(`http://localhost:${port}/sse`),
+  );
+
+  expect(async () => {
+    await client.connect(transport);
+  }).rejects.toThrow("SSE error: Non-200 status code (401)");
+});
+
+
+---
+File: /src/FastMCP.ts
+---
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ClientCapabilities,
+  CompleteRequestSchema,
+  CreateMessageRequestSchema,
+  ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListToolsRequestSchema,
+  McpError,
+  ReadResourceRequestSchema,
+  Root,
+  RootsListChangedNotificationSchema,
+  ServerCapabilities,
+  SetLevelRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
+import { setTimeout as delay } from "timers/promises";
+import { readFile } from "fs/promises";
+import { fileTypeFromBuffer } from "file-type";
+import { StrictEventEmitter } from "strict-event-emitter-types";
+import { EventEmitter } from "events";
+import Fuse from "fuse.js";
+import { startSSEServer } from "mcp-proxy";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import parseURITemplate from "uri-templates";
+import http from "http";
+import {
+  fetch
+} from "undici";
+
+export type SSEServer = {
+  close: () => Promise<void>;
+};
+
+type FastMCPEvents<T extends FastMCPSessionAuth> = {
+  connect: (event: { session: FastMCPSession<T> }) => void;
+  disconnect: (event: { session: FastMCPSession<T> }) => void;
+};
+
+type FastMCPSessionEvents = {
+  rootsChanged: (event: { roots: Root[] }) => void;
+  error: (event: { error: Error }) => void;
+};
+
+/**
+ * Generates an image content object from a URL, file path, or buffer.
+ */
+export const imageContent = async (
+  input: { url: string } | { path: string } | { buffer: Buffer },
+): Promise<ImageContent> => {
+  let rawData: Buffer;
+
+  if ("url" in input) {
+    const response = await fetch(input.url);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+    }
+
+    rawData = Buffer.from(await response.arrayBuffer());
+  } else if ("path" in input) {
+    rawData = await readFile(input.path);
+  } else if ("buffer" in input) {
+    rawData = input.buffer;
+  } else {
+    throw new Error(
+      "Invalid input: Provide a valid 'url', 'path', or 'buffer'",
+    );
+  }
+
+  const mimeType = await fileTypeFromBuffer(rawData);
+
+  const base64Data = rawData.toString("base64");
+
+  return {
+    type: "image",
+    data: base64Data,
+    mimeType: mimeType?.mime ?? "image/png",
+  } as const;
+};
+
+abstract class FastMCPError extends Error {
+  public constructor(message?: string) {
+    super(message);
+    this.name = new.target.name;
+  }
+}
+
+type Extra = unknown;
+
+type Extras = Record<string, Extra>;
+
+export class UnexpectedStateError extends FastMCPError {
+  public extras?: Extras;
+
+  public constructor(message: string, extras?: Extras) {
+    super(message);
+    this.name = new.target.name;
+    this.extras = extras;
+  }
+}
+
+/**
+ * An error that is meant to be surfaced to the user.
+ */
+export class UserError extends UnexpectedStateError {}
+
+type ToolParameters = z.ZodTypeAny;
+
+type Literal = boolean | null | number | string | undefined;
+
+type SerializableValue =
+  | Literal
+  | SerializableValue[]
+  | { [key: string]: SerializableValue };
+
+type Progress = {
+  /**
+   * The progress thus far. This should increase every time progress is made, even if the total is unknown.
+   */
+  progress: number;
+  /**
+   * Total number of items to process (or total progress required), if known.
+   */
+  total?: number;
+};
+
+type Context<T extends FastMCPSessionAuth> = {
+  session: T | undefined;
+  reportProgress: (progress: Progress) => Promise<void>;
+  log: {
+    debug: (message: string, data?: SerializableValue) => void;
+    error: (message: string, data?: SerializableValue) => void;
+    info: (message: string, data?: SerializableValue) => void;
+    warn: (message: string, data?: SerializableValue) => void;
+  };
+};
+
+type TextContent = {
+  type: "text";
+  text: string;
+};
+
+const TextContentZodSchema = z
+  .object({
+    type: z.literal("text"),
+    /**
+     * The text content of the message.
+     */
+    text: z.string(),
+  })
+  .strict() satisfies z.ZodType<TextContent>;
+
+type ImageContent = {
+  type: "image";
+  data: string;
+  mimeType: string;
+};
+
+const ImageContentZodSchema = z
+  .object({
+    type: z.literal("image"),
+    /**
+     * The base64-encoded image data.
+     */
+    data: z.string().base64(),
+    /**
+     * The MIME type of the image. Different providers may support different image types.
+     */
+    mimeType: z.string(),
+  })
+  .strict() satisfies z.ZodType<ImageContent>;
+
+type Content = TextContent | ImageContent;
+
+const ContentZodSchema = z.discriminatedUnion("type", [
+  TextContentZodSchema,
+  ImageContentZodSchema,
+]) satisfies z.ZodType<Content>;
+
+type ContentResult = {
+  content: Content[];
+  isError?: boolean;
+};
+
+const ContentResultZodSchema = z
+  .object({
+    content: ContentZodSchema.array(),
+    isError: z.boolean().optional(),
+  })
+  .strict() satisfies z.ZodType<ContentResult>;
+
+type Completion = {
+  values: string[];
+  total?: number;
+  hasMore?: boolean;
+};
+
+/**
+ * https://github.com/modelcontextprotocol/typescript-sdk/blob/3164da64d085ec4e022ae881329eee7b72f208d4/src/types.ts#L983-L1003
+ */
+const CompletionZodSchema = z.object({
+  /**
+   * An array of completion values. Must not exceed 100 items.
+   */
+  values: z.array(z.string()).max(100),
+  /**
+   * The total number of completion options available. This can exceed the number of values actually sent in the response.
+   */
+  total: z.optional(z.number().int()),
+  /**
+   * Indicates whether there are additional completion options beyond those provided in the current response, even if the exact total is unknown.
+   */
+  hasMore: z.optional(z.boolean()),
+}) satisfies z.ZodType<Completion>;
+
+type Tool<T extends FastMCPSessionAuth, Params extends ToolParameters = ToolParameters> = {
+  name: string;
+  description?: string;
+  parameters?: Params;
+  execute: (
+    args: z.infer<Params>,
+    context: Context<T>,
+  ) => Promise<string | ContentResult | TextContent | ImageContent>;
+};
+
+type ResourceResult =
+  | {
+      text: string;
+    }
+  | {
+      blob: string;
+    };
+
+type InputResourceTemplateArgument = Readonly<{
+  name: string;
+  description?: string;
+  complete?: ArgumentValueCompleter;
+}>;
+
+type ResourceTemplateArgument = Readonly<{
+  name: string;
+  description?: string;
+  complete?: ArgumentValueCompleter;
+}>;
+
+type ResourceTemplate<
+  Arguments extends ResourceTemplateArgument[] = ResourceTemplateArgument[],
+> = {
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+  arguments: Arguments;
+  complete?: (name: string, value: string) => Promise<Completion>;
+  load: (
+    args: ResourceTemplateArgumentsToObject<Arguments>,
+  ) => Promise<ResourceResult>;
+};
+
+type ResourceTemplateArgumentsToObject<T extends { name: string }[]> = {
+  [K in T[number]["name"]]: string;
+};
+
+type InputResourceTemplate<
+  Arguments extends ResourceTemplateArgument[] = ResourceTemplateArgument[],
+> = {
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+  arguments: Arguments;
+  load: (
+    args: ResourceTemplateArgumentsToObject<Arguments>,
+  ) => Promise<ResourceResult>;
+};
+
+type Resource = {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+  load: () => Promise<ResourceResult | ResourceResult[]>;
+  complete?: (name: string, value: string) => Promise<Completion>;
+};
+
+type ArgumentValueCompleter = (value: string) => Promise<Completion>;
+
+type InputPromptArgument = Readonly<{
+  name: string;
+  description?: string;
+  required?: boolean;
+  complete?: ArgumentValueCompleter;
+  enum?: string[];
+}>;
+
+type PromptArgumentsToObject<T extends { name: string; required?: boolean }[]> =
+  {
+    [K in T[number]["name"]]: Extract<
+      T[number],
+      { name: K }
+    >["required"] extends true
+      ? string
+      : string | undefined;
+  };
+
+type InputPrompt<
+  Arguments extends InputPromptArgument[] = InputPromptArgument[],
+  Args = PromptArgumentsToObject<Arguments>,
+> = {
+  name: string;
+  description?: string;
+  arguments?: InputPromptArgument[];
+  load: (args: Args) => Promise<string>;
+};
+
+type PromptArgument = Readonly<{
+  name: string;
+  description?: string;
+  required?: boolean;
+  complete?: ArgumentValueCompleter;
+  enum?: string[];
+}>;
+
+type Prompt<
+  Arguments extends PromptArgument[] = PromptArgument[],
+  Args = PromptArgumentsToObject<Arguments>,
+> = {
+  arguments?: PromptArgument[];
+  complete?: (name: string, value: string) => Promise<Completion>;
+  description?: string;
+  load: (args: Args) => Promise<string>;
+  name: string;
+};
+
+type ServerOptions<T extends FastMCPSessionAuth> = {
+  name: string;
+  version: `${number}.${number}.${number}`;
+  authenticate?: Authenticate<T>;
+};
+
+type LoggingLevel =
+  | "debug"
+  | "info"
+  | "notice"
+  | "warning"
+  | "error"
+  | "critical"
+  | "alert"
+  | "emergency";
+
+const FastMCPSessionEventEmitterBase: {
+  new (): StrictEventEmitter<EventEmitter, FastMCPSessionEvents>;
+} = EventEmitter;
+
+class FastMCPSessionEventEmitter extends FastMCPSessionEventEmitterBase {}
+
+type SamplingResponse = {
+  model: string;
+  stopReason?: "endTurn" | "stopSequence" | "maxTokens" | string;
+  role: "user" | "assistant";
+  content: TextContent | ImageContent;
+};
+
+type FastMCPSessionAuth = Record<string, unknown> | undefined;
+
+export class FastMCPSession<T extends FastMCPSessionAuth = FastMCPSessionAuth> extends FastMCPSessionEventEmitter {
+  #capabilities: ServerCapabilities = {};
+  #clientCapabilities?: ClientCapabilities;
+  #loggingLevel: LoggingLevel = "info";
+  #prompts: Prompt[] = [];
+  #resources: Resource[] = [];
+  #resourceTemplates: ResourceTemplate[] = [];
+  #roots: Root[] = [];
+  #server: Server;
+  #auth: T | undefined;
+
+  constructor({
+    auth,
+    name,
+    version,
+    tools,
+    resources,
+    resourcesTemplates,
+    prompts,
+  }: {
+    auth?: T;
+    name: string;
+    version: string;
+    tools: Tool<T>[];
+    resources: Resource[];
+    resourcesTemplates: InputResourceTemplate[];
+    prompts: Prompt[];
+  }) {
+    super();
+
+    this.#auth = auth;
+
+    if (tools.length) {
+      this.#capabilities.tools = {};
+    }
+
+    if (resources.length || resourcesTemplates.length) {
+      this.#capabilities.resources = {};
+    }
+
+    if (prompts.length) {
+      for (const prompt of prompts) {
+        this.addPrompt(prompt);
+      }
+
+      this.#capabilities.prompts = {};
+    }
+
+    this.#capabilities.logging = {};
+
+    this.#server = new Server(
+      { name: name, version: version },
+      { capabilities: this.#capabilities },
+    );
+
+    this.setupErrorHandling();
+    this.setupLoggingHandlers();
+    this.setupRootsHandlers();
+    this.setupCompleteHandlers();
+
+    if (tools.length) {
+      this.setupToolHandlers(tools);
+    }
+
+    if (resources.length || resourcesTemplates.length) {
+      for (const resource of resources) {
+        this.addResource(resource);
+      }
+
+      this.setupResourceHandlers(resources);
+
+      if (resourcesTemplates.length) {
+        for (const resourceTemplate of resourcesTemplates) {
+          this.addResourceTemplate(resourceTemplate);
+        }
+
+        this.setupResourceTemplateHandlers(resourcesTemplates);
+      }
+    }
+
+    if (prompts.length) {
+      this.setupPromptHandlers(prompts);
+    }
+  }
+
+  private addResource(inputResource: Resource) {
+    this.#resources.push(inputResource);
+  }
+
+  private addResourceTemplate(inputResourceTemplate: InputResourceTemplate) {
+    const completers: Record<string, ArgumentValueCompleter> = {};
+
+    for (const argument of inputResourceTemplate.arguments ?? []) {
+      if (argument.complete) {
+        completers[argument.name] = argument.complete;
+      }
+    }
+
+    const resourceTemplate = {
+      ...inputResourceTemplate,
+      complete: async (name: string, value: string) => {
+        if (completers[name]) {
+          return await completers[name](value);
+        }
+
+        return {
+          values: [],
+        };
+      },
+    };
+
+    this.#resourceTemplates.push(resourceTemplate);
+  }
+
+  private addPrompt(inputPrompt: InputPrompt) {
+    const completers: Record<string, ArgumentValueCompleter> = {};
+    const enums: Record<string, string[]> = {};
+
+    for (const argument of inputPrompt.arguments ?? []) {
+      if (argument.complete) {
+        completers[argument.name] = argument.complete;
+      }
+
+      if (argument.enum) {
+        enums[argument.name] = argument.enum;
+      }
+    }
+
+    const prompt = {
+      ...inputPrompt,
+      complete: async (name: string, value: string) => {
+        if (completers[name]) {
+          return await completers[name](value);
+        }
+
+        if (enums[name]) {
+          const fuse = new Fuse(enums[name], {
+            keys: ["value"],
+          });
+
+          const result = fuse.search(value);
+
+          return {
+            values: result.map((item) => item.item),
+            total: result.length,
+          };
+        }
+
+        return {
+          values: [],
+        };
+      },
+    };
+
+    this.#prompts.push(prompt);
+  }
+
+  public get clientCapabilities(): ClientCapabilities | null {
+    return this.#clientCapabilities ?? null;
+  }
+
+  public get server(): Server {
+    return this.#server;
+  }
+
+  #pingInterval: ReturnType<typeof setInterval> | null = null;
+
+  public async requestSampling(
+    message: z.infer<typeof CreateMessageRequestSchema>["params"],
+  ): Promise<SamplingResponse> {
+    return this.#server.createMessage(message);
+  }
+
+  public async connect(transport: Transport) {
+    if (this.#server.transport) {
+      throw new UnexpectedStateError("Server is already connected");
+    }
+
+    await this.#server.connect(transport);
+
+    let attempt = 0;
+
+    while (attempt++ < 10) {
+      const capabilities = await this.#server.getClientCapabilities();
+
+      if (capabilities) {
+        this.#clientCapabilities = capabilities;
+
+        break;
+      }
+
+      await delay(100);
+    }
+
+    if (!this.#clientCapabilities) {
+      console.warn('[warning] FastMCP could not infer client capabilities')
+    }
+
+    if (this.#clientCapabilities?.roots?.listChanged) {
+      try {
+        const roots = await this.#server.listRoots();
+        this.#roots = roots.roots;
+      } catch(e) {
+        console.error(`[error] FastMCP received error listing roots.\n\n${e instanceof Error ? e.stack : JSON.stringify(e)}`)
+      }
+    }
+
+    this.#pingInterval = setInterval(async () => {
+      try {
+        await this.#server.ping();
+      } catch (error) {
+        this.emit("error", {
+          error: error as Error,
+        });
+      }
+    }, 1000);
+  }
+
+  public get roots(): Root[] {
+    return this.#roots;
+  }
+
+  public async close() {
+    if (this.#pingInterval) {
+      clearInterval(this.#pingInterval);
+    }
+
+    try {
+      await this.#server.close();
+    } catch (error) {
+      console.error("[MCP Error]", "could not close server", error);
+    }
+  }
+
+  private setupErrorHandling() {
+    this.#server.onerror = (error) => {
+      console.error("[MCP Error]", error);
+    };
+  }
+
+  public get loggingLevel(): LoggingLevel {
+    return this.#loggingLevel;
+  }
+
+  private setupCompleteHandlers() {
+    this.#server.setRequestHandler(CompleteRequestSchema, async (request) => {
+      if (request.params.ref.type === "ref/prompt") {
+        const prompt = this.#prompts.find(
+          (prompt) => prompt.name === request.params.ref.name,
+        );
+
+        if (!prompt) {
+          throw new UnexpectedStateError("Unknown prompt", {
+            request,
+          });
+        }
+
+        if (!prompt.complete) {
+          throw new UnexpectedStateError("Prompt does not support completion", {
+            request,
+          });
+        }
+
+        const completion = CompletionZodSchema.parse(
+          await prompt.complete(
+            request.params.argument.name,
+            request.params.argument.value,
+          ),
+        );
+
+        return {
+          completion,
+        };
+      }
+
+      if (request.params.ref.type === "ref/resource") {
+        const resource = this.#resourceTemplates.find(
+          (resource) => resource.uriTemplate === request.params.ref.uri,
+        );
+
+        if (!resource) {
+          throw new UnexpectedStateError("Unknown resource", {
+            request,
+          });
+        }
+
+        if (!("uriTemplate" in resource)) {
+          throw new UnexpectedStateError("Unexpected resource");
+        }
+
+        if (!resource.complete) {
+          throw new UnexpectedStateError(
+            "Resource does not support completion",
+            {
+              request,
+            },
+          );
+        }
+
+        const completion = CompletionZodSchema.parse(
+          await resource.complete(
+            request.params.argument.name,
+            request.params.argument.value,
+          ),
+        );
+
+        return {
+          completion,
+        };
+      }
+
+      throw new UnexpectedStateError("Unexpected completion request", {
+        request,
+      });
+    });
+  }
+
+  private setupRootsHandlers() {
+    this.#server.setNotificationHandler(
+      RootsListChangedNotificationSchema,
+      () => {
+        this.#server.listRoots().then((roots) => {
+          this.#roots = roots.roots;
+
+          this.emit("rootsChanged", {
+            roots: roots.roots,
+          });
+        });
+      },
+    );
+  }
+
+  private setupLoggingHandlers() {
+    this.#server.setRequestHandler(SetLevelRequestSchema, (request) => {
+      this.#loggingLevel = request.params.level;
+
+      return {};
+    });
+  }
+
+  private setupToolHandlers(tools: Tool<T>[]) {
+    this.#server.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: tools.map((tool) => {
+          return {
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.parameters
+              ? zodToJsonSchema(tool.parameters)
+              : undefined,
+          };
+        }),
+      };
+    });
+
+    this.#server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const tool = tools.find((tool) => tool.name === request.params.name);
+
+      if (!tool) {
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown tool: ${request.params.name}`,
+        );
+      }
+
+      let args: any = undefined;
+
+      if (tool.parameters) {
+        const parsed = tool.parameters.safeParse(request.params.arguments);
+
+        if (!parsed.success) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid ${request.params.name} parameters`,
+          );
+        }
+
+        args = parsed.data;
+      }
+
+      const progressToken = request.params?._meta?.progressToken;
+
+      let result: ContentResult;
+
+      try {
+        const reportProgress = async (progress: Progress) => {
+          await this.#server.notification({
+            method: "notifications/progress",
+            params: {
+              ...progress,
+              progressToken,
+            },
+          });
+        };
+
+        const log = {
+          debug: (message: string, context?: SerializableValue) => {
+            this.#server.sendLoggingMessage({
+              level: "debug",
+              data: {
+                message,
+                context,
+              },
+            });
+          },
+          error: (message: string, context?: SerializableValue) => {
+            this.#server.sendLoggingMessage({
+              level: "error",
+              data: {
+                message,
+                context,
+              },
+            });
+          },
+          info: (message: string, context?: SerializableValue) => {
+            this.#server.sendLoggingMessage({
+              level: "info",
+              data: {
+                message,
+                context,
+              },
+            });
+          },
+          warn: (message: string, context?: SerializableValue) => {
+            this.#server.sendLoggingMessage({
+              level: "warning",
+              data: {
+                message,
+                context,
+              },
+            });
+          },
+        };
+
+        const maybeStringResult = await tool.execute(args, {
+          reportProgress,
+          log,
+          session: this.#auth,
+        });
+
+        if (typeof maybeStringResult === "string") {
+          result = ContentResultZodSchema.parse({
+            content: [{ type: "text", text: maybeStringResult }],
+          });
+        } else if ("type" in maybeStringResult) {
+          result = ContentResultZodSchema.parse({
+            content: [maybeStringResult],
+          });
+        } else {
+          result = ContentResultZodSchema.parse(maybeStringResult);
+        }
+      } catch (error) {
+        if (error instanceof UserError) {
+          return {
+            content: [{ type: "text", text: error.message }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+          isError: true,
+        };
+      }
+
+      return result;
+    });
+  }
+
+  private setupResourceHandlers(resources: Resource[]) {
+    this.#server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      return {
+        resources: resources.map((resource) => {
+          return {
+            uri: resource.uri,
+            name: resource.name,
+            mimeType: resource.mimeType,
+          };
+        }),
+      };
+    });
+
+    this.#server.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request) => {
+        if ("uri" in request.params) {
+          const resource = resources.find(
+            (resource) =>
+              "uri" in resource && resource.uri === request.params.uri,
+          );
+
+          if (!resource) {
+            for (const resourceTemplate of this.#resourceTemplates) {
+              const uriTemplate = parseURITemplate(
+                resourceTemplate.uriTemplate,
+              );
+
+              const match = uriTemplate.fromUri(request.params.uri);
+
+              if (!match) {
+                continue;
+              }
+
+              const uri = uriTemplate.fill(match);
+
+              const result = await resourceTemplate.load(match);
+
+              return {
+                contents: [
+                  {
+                    uri: uri,
+                    mimeType: resourceTemplate.mimeType,
+                    name: resourceTemplate.name,
+                    ...result,
+                  },
+                ],
+              };
+            }
+
+            throw new McpError(
+              ErrorCode.MethodNotFound,
+              `Unknown resource: ${request.params.uri}`,
+            );
+          }
+
+          if (!("uri" in resource)) {
+            throw new UnexpectedStateError("Resource does not support reading");
+          }
+
+          let maybeArrayResult: Awaited<ReturnType<Resource["load"]>>;
+
+          try {
+            maybeArrayResult = await resource.load();
+          } catch (error) {
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Error reading resource: ${error}`,
+              {
+                uri: resource.uri,
+              },
+            );
+          }
+
+          if (Array.isArray(maybeArrayResult)) {
+            return {
+              contents: maybeArrayResult.map((result) => ({
+                uri: resource.uri,
+                mimeType: resource.mimeType,
+                name: resource.name,
+                ...result,
+              })),
+            };
+          } else {
+            return {
+              contents: [
+                {
+                  uri: resource.uri,
+                  mimeType: resource.mimeType,
+                  name: resource.name,
+                  ...maybeArrayResult,
+                },
+              ],
+            };
+          }
+        }
+
+        throw new UnexpectedStateError("Unknown resource request", {
+          request,
+        });
+      },
+    );
+  }
+
+  private setupResourceTemplateHandlers(resourceTemplates: ResourceTemplate[]) {
+    this.#server.setRequestHandler(
+      ListResourceTemplatesRequestSchema,
+      async () => {
+        return {
+          resourceTemplates: resourceTemplates.map((resourceTemplate) => {
+            return {
+              name: resourceTemplate.name,
+              uriTemplate: resourceTemplate.uriTemplate,
+            };
+          }),
+        };
+      },
+    );
+  }
+
+  private setupPromptHandlers(prompts: Prompt[]) {
+    this.#server.setRequestHandler(ListPromptsRequestSchema, async () => {
+      return {
+        prompts: prompts.map((prompt) => {
+          return {
+            name: prompt.name,
+            description: prompt.description,
+            arguments: prompt.arguments,
+            complete: prompt.complete,
+          };
+        }),
+      };
+    });
+
+    this.#server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+      const prompt = prompts.find(
+        (prompt) => prompt.name === request.params.name,
+      );
+
+      if (!prompt) {
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown prompt: ${request.params.name}`,
+        );
+      }
+
+      const args = request.params.arguments;
+
+      for (const arg of prompt.arguments ?? []) {
+        if (arg.required && !(args && arg.name in args)) {
+          throw new McpError(
+            ErrorCode.InvalidRequest,
+            `Missing required argument: ${arg.name}`,
+          );
+        }
+      }
+
+      let result: Awaited<ReturnType<Prompt["load"]>>;
+
+      try {
+        result = await prompt.load(args as Record<string, string | undefined>);
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Error loading prompt: ${error}`,
+        );
+      }
+
+      return {
+        description: prompt.description,
+        messages: [
+          {
+            role: "user",
+            content: { type: "text", text: result },
+          },
+        ],
+      };
+    });
+  }
+}
+
+const FastMCPEventEmitterBase: {
+  new (): StrictEventEmitter<EventEmitter, FastMCPEvents<FastMCPSessionAuth>>;
+} = EventEmitter;
+
+class FastMCPEventEmitter extends FastMCPEventEmitterBase {}
+
+type Authenticate<T> = (request: http.IncomingMessage) => Promise<T>;
+
+export class FastMCP<T extends Record<string, unknown> | undefined = undefined> extends FastMCPEventEmitter {
+  #options: ServerOptions<T>;
+  #prompts: InputPrompt[] = [];
+  #resources: Resource[] = [];
+  #resourcesTemplates: InputResourceTemplate[] = [];
+  #sessions: FastMCPSession<T>[] = [];
+  #sseServer: SSEServer | null = null;
+  #tools: Tool<T>[] = [];
+  #authenticate: Authenticate<T> | undefined;
+
+  constructor(public options: ServerOptions<T>) {
+    super();
+
+    this.#options = options;
+    this.#authenticate = options.authenticate;
+  }
+
+  public get sessions(): FastMCPSession<T>[] {
+    return this.#sessions;
+  }
+
+  /**
+   * Adds a tool to the server.
+   */
+  public addTool<Params extends ToolParameters>(tool: Tool<T, Params>) {
+    this.#tools.push(tool as unknown as Tool<T>);
+  }
+
+  /**
+   * Adds a resource to the server.
+   */
+  public addResource(resource: Resource) {
+    this.#resources.push(resource);
+  }
+
+  /**
+   * Adds a resource template to the server.
+   */
+  public addResourceTemplate<
+    const Args extends InputResourceTemplateArgument[],
+  >(resource: InputResourceTemplate<Args>) {
+    this.#resourcesTemplates.push(resource);
+  }
+
+  /**
+   * Adds a prompt to the server.
+   */
+  public addPrompt<const Args extends InputPromptArgument[]>(
+    prompt: InputPrompt<Args>,
+  ) {
+    this.#prompts.push(prompt);
+  }
+
+  /**
+   * Starts the server.
+   */
+  public async start(
+    options:
+      | { transportType: "stdio" }
+      | {
+          transportType: "sse";
+          sse: { endpoint: `/${string}`; port: number };
+        } = {
+      transportType: "stdio",
+    },
+  ) {
+    if (options.transportType === "stdio") {
+      const transport = new StdioServerTransport();
+
+      const session = new FastMCPSession<T>({
+        name: this.#options.name,
+        version: this.#options.version,
+        tools: this.#tools,
+        resources: this.#resources,
+        resourcesTemplates: this.#resourcesTemplates,
+        prompts: this.#prompts,
+      });
+
+      await session.connect(transport);
+
+      this.#sessions.push(session);
+
+      this.emit("connect", {
+        session,
+      });
+
+    } else if (options.transportType === "sse") {
+      this.#sseServer = await startSSEServer<FastMCPSession<T>>({
+        endpoint: options.sse.endpoint as `/${string}`,
+        port: options.sse.port,
+        createServer: async (request) => {
+          let auth: T | undefined;
+
+          if (this.#authenticate) {
+            auth = await this.#authenticate(request);
+          }
+
+          return new FastMCPSession<T>({
+            auth,
+            name: this.#options.name,
+            version: this.#options.version,
+            tools: this.#tools,
+            resources: this.#resources,
+            resourcesTemplates: this.#resourcesTemplates,
+            prompts: this.#prompts,
+          });
+        },
+        onClose: (session) => {
+          this.emit("disconnect", {
+            session,
+          });
+        },
+        onConnect: async (session) => {
+          this.#sessions.push(session);
+
+          this.emit("connect", {
+            session,
+          });
+        },
+      });
+
+      console.info(
+        `server is running on SSE at http://localhost:${options.sse.port}${options.sse.endpoint}`,
+      );
+    } else {
+      throw new Error("Invalid transport type");
+    }
+  }
+
+  /**
+   * Stops the server.
+   */
+  public async stop() {
+    if (this.#sseServer) {
+      this.#sseServer.close();
+    }
+  }
+}
+
+export type { Context };
+export type { Tool, ToolParameters };
+export type { Content, TextContent, ImageContent, ContentResult };
+export type { Progress, SerializableValue };
+export type { Resource, ResourceResult };
+export type { ResourceTemplate, ResourceTemplateArgument };
+export type { Prompt, PromptArgument };
+export type { InputPrompt, InputPromptArgument };
+export type { ServerOptions, LoggingLevel };
+export type { FastMCPEvents, FastMCPSessionEvents };
+
+
+
+---
+File: /eslint.config.js
+---
+
+import perfectionist from "eslint-plugin-perfectionist";
+
+export default [perfectionist.configs["recommended-alphabetical"]];
+
+
+
+---
+File: /package.json
+---
+
+{
+  "name": "fastmcp",
+  "version": "1.0.0",
+  "main": "dist/FastMCP.js",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run && tsc && jsr publish --dry-run",
+    "format": "prettier --write . && eslint --fix ."
+  },
+  "bin": {
+    "fastmcp": "dist/bin/fastmcp.js"
+  },
+  "keywords": [
+    "MCP",
+    "SSE"
+  ],
+  "type": "module",
+  "author": "Frank Fiegel <frank@glama.ai>",
+  "license": "MIT",
+  "description": "A TypeScript framework for building MCP servers.",
+  "module": "dist/FastMCP.js",
+  "types": "dist/FastMCP.d.ts",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "execa": "^9.5.2",
+    "file-type": "^20.3.0",
+    "fuse.js": "^7.1.0",
+    "mcp-proxy": "^2.10.4",
+    "strict-event-emitter-types": "^2.0.0",
+    "undici": "^7.4.0",
+    "uri-templates": "^0.2.0",
+    "yargs": "^17.7.2",
+    "zod": "^3.24.2",
+    "zod-to-json-schema": "^3.24.3"
+  },
+  "repository": {
+    "url": "https://github.com/punkpeye/fastmcp"
+  },
+  "homepage": "https://glama.ai/mcp",
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github",
+      "@sebbo2002/semantic-release-jsr"
+    ]
+  },
+  "devDependencies": {
+    "@sebbo2002/semantic-release-jsr": "^2.0.4",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^22.13.5",
+    "@types/uri-templates": "^0.1.34",
+    "@types/yargs": "^17.0.33",
+    "eslint": "^9.21.0",
+    "eslint-plugin-perfectionist": "^4.9.0",
+    "eventsource-client": "^1.1.3",
+    "get-port-please": "^3.1.2",
+    "jsr": "^0.13.3",
+    "prettier": "^3.5.2",
+    "semantic-release": "^24.2.3",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  },
+  "tsup": {
+    "entry": [
+      "src/FastMCP.ts",
+      "src/bin/fastmcp.ts"
+    ],
+    "format": [
+      "esm"
+    ],
+    "dts": true,
+    "splitting": true,
+    "sourcemap": true,
+    "clean": true
+  }
+}
+
+
+
+---
+File: /README.md
+---
+
+# FastMCP
+
+A TypeScript framework for building [MCP](https://glama.ai/mcp) servers capable of handling client sessions.
+
+> [!NOTE]
+>
+> For a Python implementation, see [FastMCP](https://github.com/jlowin/fastmcp).
+
+## Features
+
+- Simple Tool, Resource, Prompt definition
+- [Authentication](#authentication)
+- [Sessions](#sessions)
+- [Image content](#returning-an-image)
+- [Logging](#logging)
+- [Error handling](#errors)
+- [SSE](#sse)
+- CORS (enabled by default)
+- [Progress notifications](#progress)
+- [Typed server events](#typed-server-events)
+- [Prompt argument auto-completion](#prompt-argument-auto-completion)
+- [Sampling](#requestsampling)
+- Automated SSE pings
+- Roots
+- CLI for [testing](#test-with-mcp-cli) and [debugging](#inspect-with-mcp-inspector)
+
+## Installation
+
+```bash
+npm install fastmcp
+```
+
+## Quickstart
+
+```ts
+import { FastMCP } from "fastmcp";
+import { z } from "zod";
+
+const server = new FastMCP({
+  name: "My Server",
+  version: "1.0.0",
+});
+
+server.addTool({
+  name: "add",
+  description: "Add two numbers",
+  parameters: z.object({
+    a: z.number(),
+    b: z.number(),
+  }),
+  execute: async (args) => {
+    return String(args.a + args.b);
+  },
+});
+
+server.start({
+  transportType: "stdio",
+});
+```
+
+_That's it!_ You have a working MCP server.
+
+You can test the server in terminal with:
+
+```bash
+git clone https://github.com/punkpeye/fastmcp.git
+cd fastmcp
+
+npm install
+
+# Test the addition server example using CLI:
+npx fastmcp dev src/examples/addition.ts
+# Test the addition server example using MCP Inspector:
+npx fastmcp inspect src/examples/addition.ts
+```
+
+### SSE
+
+You can also run the server with SSE support:
+
+```ts
+server.start({
+  transportType: "sse",
+  sse: {
+    endpoint: "/sse",
+    port: 8080,
+  },
+});
+```
+
+This will start the server and listen for SSE connections on `http://localhost:8080/sse`.
+
+You can then use `SSEClientTransport` to connect to the server:
+
+```ts
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+
+const client = new Client(
+  {
+    name: "example-client",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {},
+  },
+);
+
+const transport = new SSEClientTransport(new URL(`http://localhost:8080/sse`));
+
+await client.connect(transport);
+```
+
+## Core Concepts
+
+### Tools
+
+[Tools](https://modelcontextprotocol.io/docs/concepts/tools) in MCP allow servers to expose executable functions that can be invoked by clients and used by LLMs to perform actions.
+
+```js
+server.addTool({
+  name: "fetch",
+  description: "Fetch the content of a url",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return await fetchWebpageContent(args.url);
+  },
+});
+```
+
+#### Returning a string
+
+`execute` can return a string:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return "Hello, world!";
+  },
+});
+```
+
+The latter is equivalent to:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "Hello, world!",
+        },
+      ],
+    };
+  },
+});
+```
+
+#### Returning a list
+
+If you want to return a list of messages, you can return an object with a `content` property:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return {
+      content: [
+        { type: "text", text: "First message" },
+        { type: "text", text: "Second message" },
+      ],
+    };
+  },
+});
+```
+
+#### Returning an image
+
+Use the `imageContent` to create a content object for an image:
+
+```js
+import { imageContent } from "fastmcp";
+
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return imageContent({
+      url: "https://example.com/image.png",
+    });
+
+    // or...
+    // return imageContent({
+    //   path: "/path/to/image.png",
+    // });
+
+    // or...
+    // return imageContent({
+    //   buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64"),
+    // });
+
+    // or...
+    // return {
+    //   content: [
+    //     await imageContent(...)
+    //   ],
+    // };
+  },
+});
+```
+
+The `imageContent` function takes the following options:
+
+- `url`: The URL of the image.
+- `path`: The path to the image file.
+- `buffer`: The image data as a buffer.
+
+Only one of `url`, `path`, or `buffer` must be specified.
+
+The above example is equivalent to:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    return {
+      content: [
+        {
+          type: "image",
+          data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+          mimeType: "image/png",
+        },
+      ],
+    };
+  },
+});
+```
+
+#### Logging
+
+Tools can log messages to the client using the `log` object in the context object:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args, { log }) => {
+    log.info("Downloading file...", {
+      url,
+    });
+
+    // ...
+
+    log.info("Downloaded file");
+
+    return "done";
+  },
+});
+```
+
+The `log` object has the following methods:
+
+- `debug(message: string, data?: SerializableValue)`
+- `error(message: string, data?: SerializableValue)`
+- `info(message: string, data?: SerializableValue)`
+- `warn(message: string, data?: SerializableValue)`
+
+#### Errors
+
+The errors that are meant to be shown to the user should be thrown as `UserError` instances:
+
+```js
+import { UserError } from "fastmcp";
+
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args) => {
+    if (args.url.startsWith("https://example.com")) {
+      throw new UserError("This URL is not allowed");
+    }
+
+    return "done";
+  },
+});
+```
+
+#### Progress
+
+Tools can report progress by calling `reportProgress` in the context object:
+
+```js
+server.addTool({
+  name: "download",
+  description: "Download a file",
+  parameters: z.object({
+    url: z.string(),
+  }),
+  execute: async (args, { reportProgress }) => {
+    reportProgress({
+      progress: 0,
+      total: 100,
+    });
+
+    // ...
+
+    reportProgress({
+      progress: 100,
+      total: 100,
+    });
+
+    return "done";
+  },
+});
+```
+
+### Resources
+
+[Resources](https://modelcontextprotocol.io/docs/concepts/resources) represent any kind of data that an MCP server wants to make available to clients. This can include:
+
+- File contents
+- Screenshots and images
+- Log files
+- And more
+
+Each resource is identified by a unique URI and can contain either text or binary data.
+
+```ts
+server.addResource({
+  uri: "file:///logs/app.log",
+  name: "Application Logs",
+  mimeType: "text/plain",
+  async load() {
+    return {
+      text: await readLogFile(),
+    };
+  },
+});
+```
+
+> [!NOTE]
+>
+> `load` can return multiple resources. This could be used, for example, to return a list of files inside a directory when the directory is read.
+>
+> ```ts
+> async load() {
+>   return [
+>     {
+>       text: "First file content",
+>     },
+>     {
+>       text: "Second file content",
+>     },
+>   ];
+> }
+> ```
+
+You can also return binary contents in `load`:
+
+```ts
+async load() {
+  return {
+    blob: 'base64-encoded-data'
+  };
+}
+```
+
+### Resource templates
+
+You can also define resource templates:
+
+```ts
+server.addResourceTemplate({
+  uriTemplate: "file:///logs/{name}.log",
+  name: "Application Logs",
+  mimeType: "text/plain",
+  arguments: [
+    {
+      name: "name",
+      description: "Name of the log",
+      required: true,
+    },
+  ],
+  async load({ name }) {
+    return {
+      text: `Example log content for ${name}`,
+    };
+  },
+});
+```
+
+#### Resource template argument auto-completion
+
+Provide `complete` functions for resource template arguments to enable automatic completion:
+
+```ts
+server.addResourceTemplate({
+  uriTemplate: "file:///logs/{name}.log",
+  name: "Application Logs",
+  mimeType: "text/plain",
+  arguments: [
+    {
+      name: "name",
+      description: "Name of the log",
+      required: true,
+      complete: async (value) => {
+        if (value === "Example") {
+          return {
+            values: ["Example Log"],
+          };
+        }
+
+        return {
+          values: [],
+        };
+      },
+    },
+  ],
+  async load({ name }) {
+    return {
+      text: `Example log content for ${name}`,
+    };
+  },
+});
+```
+
+### Prompts
+
+[Prompts](https://modelcontextprotocol.io/docs/concepts/prompts) enable servers to define reusable prompt templates and workflows that clients can easily surface to users and LLMs. They provide a powerful way to standardize and share common LLM interactions.
+
+```ts
+server.addPrompt({
+  name: "git-commit",
+  description: "Generate a Git commit message",
+  arguments: [
+    {
+      name: "changes",
+      description: "Git diff or description of changes",
+      required: true,
+    },
+  ],
+  load: async (args) => {
+    return `Generate a concise but descriptive commit message for these changes:\n\n${args.changes}`;
+  },
+});
+```
+
+#### Prompt argument auto-completion
+
+Prompts can provide auto-completion for their arguments:
+
+```js
+server.addPrompt({
+  name: "countryPoem",
+  description: "Writes a poem about a country",
+  load: async ({ name }) => {
+    return `Hello, ${name}!`;
+  },
+  arguments: [
+    {
+      name: "name",
+      description: "Name of the country",
+      required: true,
+      complete: async (value) => {
+        if (value === "Germ") {
+          return {
+            values: ["Germany"],
+          };
+        }
+
+        return {
+          values: [],
+        };
+      },
+    },
+  ],
+});
+```
+
+#### Prompt argument auto-completion using `enum`
+
+If you provide an `enum` array for an argument, the server will automatically provide completions for the argument.
+
+```js
+server.addPrompt({
+  name: "countryPoem",
+  description: "Writes a poem about a country",
+  load: async ({ name }) => {
+    return `Hello, ${name}!`;
+  },
+  arguments: [
+    {
+      name: "name",
+      description: "Name of the country",
+      required: true,
+      enum: ["Germany", "France", "Italy"],
+    },
+  ],
+});
+```
+
+### Authentication
+
+FastMCP allows you to `authenticate` clients using a custom function:
+
+```ts
+import { AuthError } from "fastmcp";
+
+const server = new FastMCP({
+  name: "My Server",
+  version: "1.0.0",
+  authenticate: ({request}) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (apiKey !== '123') {
+      throw new Response(null, {
+        status: 401,
+        statusText: "Unauthorized",
+      });
+    }
+
+    // Whatever you return here will be accessible in the `context.session` object.
+    return {
+      id: 1,
+    }
+  },
+});
+```
+
+Now you can access the authenticated session data in your tools:
+
+```ts
+server.addTool({
+  name: "sayHello",
+  execute: async (args, { session }) => {
+    return `Hello, ${session.id}!`;
+  },
+});
+```
+
+### Sessions
+
+The `session` object is an instance of `FastMCPSession` and it describes active client sessions.
+
+```ts
+server.sessions;
+```
+
+We allocate a new server instance for each client connection to enable 1:1 communication between a client and the server.
+
+### Typed server events
+
+You can listen to events emitted by the server using the `on` method:
+
+```ts
+server.on("connect", (event) => {
+  console.log("Client connected:", event.session);
+});
+
+server.on("disconnect", (event) => {
+  console.log("Client disconnected:", event.session);
+});
+```
+
+## `FastMCPSession`
+
+`FastMCPSession` represents a client session and provides methods to interact with the client.
+
+Refer to [Sessions](#sessions) for examples of how to obtain a `FastMCPSession` instance.
+
+### `requestSampling`
+
+`requestSampling` creates a [sampling](https://modelcontextprotocol.io/docs/concepts/sampling) request and returns the response.
+
+```ts
+await session.requestSampling({
+  messages: [
+    {
+      role: "user",
+      content: {
+        type: "text",
+        text: "What files are in the current directory?",
+      },
+    },
+  ],
+  systemPrompt: "You are a helpful file system assistant.",
+  includeContext: "thisServer",
+  maxTokens: 100,
+});
+```
+
+### `clientCapabilities`
+
+The `clientCapabilities` property contains the client capabilities.
+
+```ts
+session.clientCapabilities;
+```
+
+### `loggingLevel`
+
+The `loggingLevel` property describes the logging level as set by the client.
+
+```ts
+session.loggingLevel;
+```
+
+### `roots`
+
+The `roots` property contains the roots as set by the client.
+
+```ts
+session.roots;
+```
+
+### `server`
+
+The `server` property contains an instance of MCP server that is associated with the session.
+
+```ts
+session.server;
+```
+
+### Typed session events
+
+You can listen to events emitted by the session using the `on` method:
+
+```ts
+session.on("rootsChanged", (event) => {
+  console.log("Roots changed:", event.roots);
+});
+
+session.on("error", (event) => {
+  console.error("Error:", event.error);
+});
+```
+
+## Running Your Server
+
+### Test with `mcp-cli`
+
+The fastest way to test and debug your server is with `fastmcp dev`:
+
+```bash
+npx fastmcp dev server.js
+npx fastmcp dev server.ts
+```
+
+This will run your server with [`mcp-cli`](https://github.com/wong2/mcp-cli) for testing and debugging your MCP server in the terminal.
+
+### Inspect with `MCP Inspector`
+
+Another way is to use the official [`MCP Inspector`](https://modelcontextprotocol.io/docs/tools/inspector) to inspect your server with a Web UI:
+
+```bash
+npx fastmcp inspect server.ts
+```
+
+## FAQ
+
+### How to use with Claude Desktop?
+
+Follow the guide https://modelcontextprotocol.io/quickstart/user and add the following configuration:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "/PATH/TO/YOUR_PROJECT/src/index.ts"
+      ],
+      "env": {
+        "YOUR_ENV_VAR": "value"
+      }
+    }
+  }
+}
+```
+
+## Showcase
+
+> [!NOTE]
+>
+> If you've developed a server using FastMCP, please [submit a PR](https://github.com/punkpeye/fastmcp) to showcase it here!
+
+- https://github.com/apinetwork/piapi-mcp-server
+- https://github.com/Meeting-Baas/meeting-mcp - Meeting BaaS MCP server that enables AI assistants to create meeting bots, search transcripts, and manage recording data
+
+## Acknowledgements
+
+- FastMCP is inspired by the [Python implementation](https://github.com/jlowin/fastmcp) by [Jonathan Lowin](https://github.com/jlowin).
+- Parts of codebase were adopted from [LiteMCP](https://github.com/wong2/litemcp).
+- Parts of codebase were adopted from [Model Context protocolでSSEをやってみる](https://dev.classmethod.jp/articles/mcp-sse/).
+
+
+
+---
+File: /vitest.config.js
+---
+
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    poolOptions: {
+      forks: { execArgv: ["--experimental-eventsource"] },
+    },
+  },
+});
+

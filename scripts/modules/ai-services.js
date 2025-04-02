@@ -45,6 +45,56 @@ function getPerplexityClient() {
 }
 
 /**
+ * Get the best available AI model for a given operation
+ * @param {Object} options - Options for model selection
+ * @param {boolean} options.claudeOverloaded - Whether Claude is currently overloaded
+ * @param {boolean} options.requiresResearch - Whether the operation requires research capabilities
+ * @returns {Object} Selected model info with type and client
+ */
+function getAvailableAIModel(options = {}) {
+  const { claudeOverloaded = false, requiresResearch = false } = options;
+  
+  // First choice: Perplexity if research is required and it's available
+  if (requiresResearch && process.env.PERPLEXITY_API_KEY) {
+    try {
+      const client = getPerplexityClient();
+      return { type: 'perplexity', client };
+    } catch (error) {
+      log('warn', `Perplexity not available: ${error.message}`);
+      // Fall through to Claude
+    }
+  }
+  
+  // Second choice: Claude if not overloaded
+  if (!claudeOverloaded && process.env.ANTHROPIC_API_KEY) {
+    return { type: 'claude', client: anthropic };
+  }
+  
+  // Third choice: Perplexity as Claude fallback (even if research not required)
+  if (process.env.PERPLEXITY_API_KEY) {
+    try {
+      const client = getPerplexityClient();
+      log('info', 'Claude is overloaded, falling back to Perplexity');
+      return { type: 'perplexity', client };
+    } catch (error) {
+      log('warn', `Perplexity fallback not available: ${error.message}`);
+      // Fall through to Claude anyway with warning
+    }
+  }
+  
+  // Last resort: Use Claude even if overloaded (might fail)
+  if (process.env.ANTHROPIC_API_KEY) {
+    if (claudeOverloaded) {
+      log('warn', 'Claude is overloaded but no alternatives are available. Proceeding with Claude anyway.');
+    }
+    return { type: 'claude', client: anthropic };
+  }
+  
+  // No models available
+  throw new Error('No AI models available. Please set ANTHROPIC_API_KEY and/or PERPLEXITY_API_KEY.');
+}
+
+/**
  * Handle Claude API errors with user-friendly messages
  * @param {Error} error - The error from Claude API
  * @returns {string} User-friendly error message
@@ -54,6 +104,10 @@ function handleClaudeError(error) {
   if (error.type === 'error' && error.error) {
     switch (error.error.type) {
       case 'overloaded_error':
+        // Check if we can use Perplexity as a fallback
+        if (process.env.PERPLEXITY_API_KEY) {
+          return 'Claude is currently overloaded. Trying to fall back to Perplexity AI.';
+        }
         return 'Claude is currently experiencing high demand and is overloaded. Please wait a few minutes and try again.';
       case 'rate_limit_error':
         return 'You have exceeded the rate limit. Please wait a few minutes before making more requests.';
@@ -676,5 +730,6 @@ export {
   generateSubtasksWithPerplexity,
   parseSubtasksFromText,
   generateComplexityAnalysisPrompt,
-  handleClaudeError
+  handleClaudeError,
+  getAvailableAIModel
 }; 

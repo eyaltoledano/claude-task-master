@@ -8,14 +8,14 @@ alwaysApply: false
 
 ## Feature Placement Decision Process
 
-- **Identify Feature Type**:
-  - **Data Manipulation**: Features that create, read, update, or delete tasks belong in [`task-manager.js`](mdc:scripts/modules/task-manager.js)
-  - **Dependency Management**: Features that handle task relationships belong in [`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js)
-  - **User Interface**: Features that display information to users belong in [`ui.js`](mdc:scripts/modules/ui.js)
-  - **AI Integration**: Features that use AI models belong in [`ai-services.js`](mdc:scripts/modules/ai-services.js)
+- **Identify Feature Type** (See [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for module details):
+  - **Data Manipulation**: Features that create, read, update, or delete tasks belong in [`task-manager.js`](mdc:scripts/modules/task-manager.js). Follow guidelines in [`tasks.mdc`](mdc:.cursor/rules/tasks.mdc).
+  - **Dependency Management**: Features that handle task relationships belong in [`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js). Follow guidelines in [`dependencies.mdc`](mdc:.cursor/rules/dependencies.mdc).
+  - **User Interface**: Features that display information to users belong in [`ui.js`](mdc:scripts/modules/ui.js). Follow guidelines in [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
+  - **AI Integration**: Features that use AI models belong in [`ai-services.js`](mdc:scripts/modules/ai-services.js).
   - **Cross-Cutting**: Features that don't fit one category may need components in multiple modules
 
-- **Command-Line Interface**:
+- **Command-Line Interface** (See [`commands.mdc`](mdc:.cursor/rules/commands.mdc)):
   - All new user-facing commands should be added to [`commands.js`](mdc:scripts/modules/commands.js)
   - Use consistent patterns for option naming and help text
   - Follow the Commander.js model for subcommand structure
@@ -24,11 +24,11 @@ alwaysApply: false
 
 The standard pattern for adding a feature follows this workflow:
 
-1. **Core Logic**: Implement the business logic in the appropriate module
-2. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js)
-3. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js)
+1. **Core Logic**: Implement the business logic in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
+2. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
+3. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
 4. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
-5. **Configuration**: Update any configuration in [`utils.js`](mdc:scripts/modules/utils.js) if needed
+5. **Configuration**: Update any configuration in [`utils.js`](mdc:scripts/modules/utils.js) if needed, following [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc).
 6. **Documentation**: Update help text and documentation in [dev_workflow.mdc](mdc:scripts/modules/dev_workflow.mdc)
 
 ```javascript
@@ -294,7 +294,7 @@ For each new feature:
 
 1. Add help text to the command definition
 2. Update [`dev_workflow.mdc`](mdc:scripts/modules/dev_workflow.mdc) with command reference
-3. Add examples to the appropriate sections in [`MODULE_PLAN.md`](mdc:scripts/modules/MODULE_PLAN.md)
+3. Consider updating [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) if the feature significantly changes module responsibilities.
 
 Follow the existing command reference format:
 ```markdown
@@ -309,3 +309,51 @@ Follow the existing command reference format:
 ```
 
 For more information on module structure, see [`MODULE_PLAN.md`](mdc:scripts/modules/MODULE_PLAN.md) and follow [`self_improve.mdc`](mdc:scripts/modules/self_improve.mdc) for best practices on updating documentation.
+
+## Adding MCP Server Support for Commands
+
+Integrating Task Master commands with the MCP server (for use by tools like Cursor) follows a specific pattern distinct from the CLI command implementation.
+
+- **Goal**: Leverage direct function calls for performance and reliability, avoiding CLI overhead.
+- **Reference**: See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for full details.
+
+**MCP Integration Workflow**:
+
+1.  **Core Logic**: Ensure the command's core logic exists in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
+2.  **Direct Function Wrapper**:
+    - In [`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js), create an `async function yourCommandDirect(args, log)`.
+    - This function imports and calls the core logic.
+    - It uses utilities like `findTasksJsonPath` if needed.
+    - It handles argument parsing and validation specific to the direct call.
+    - **Implement Caching (if applicable)**: For read operations that benefit from caching, use the `getCachedOrExecute` utility here to wrap the core logic call. Generate a unique cache key based on relevant arguments.
+    - It returns a standard `{ success: true/false, data/error, fromCache: boolean }` object.
+    - Export the function and add it to the `directFunctions` map.
+3.  **MCP Tool File**:
+    - Create a new file in `mcp-server/src/tools/` (e.g., `yourCommand.js`).
+    - Import `zod`, `executeMCPToolAction` from `./utils.js`, and your `yourCommandDirect` function.
+    - Implement `registerYourCommandTool(server)` which calls `server.addTool`:
+        - Define the tool `name`, `description`, and `parameters` using `zod`. Include optional `projectRoot` and `file` if relevant, following patterns in existing tools.
+        - Define the `async execute(args, log)` method for the tool.
+        - **Crucially**, the `execute` method should primarily call `executeMCPToolAction`:
+          ```javascript
+          // In mcp-server/src/tools/yourCommand.js
+          import { executeMCPToolAction } from "./utils.js";
+          import { yourCommandDirect } from "../core/task-master-core.js";
+          import { z } from "zod";
+
+          export function registerYourCommandTool(server) {
+            server.addTool({
+              name: "yourCommand",
+              description: "Description of your command.",
+              parameters: z.object({ /* zod schema */ }),
+              async execute(args, log) {
+                return executeMCPToolAction({
+                  actionFn: yourCommandDirect, // Pass the direct function wrapper
+                  args, log, actionName: "Your Command Description"
+                });
+              }
+            });
+          }
+          ```
+4.  **Register in Tool Index**: Import and call `registerYourCommandTool` in [`mcp-server/src/tools/index.js`](mdc:mcp-server/src/tools/index.js).
+5.  **Update `mcp.json`**: Add the tool definition to `.cursor/mcp.json`.
