@@ -234,45 +234,47 @@ export class PRDService extends ServiceInterface {
       }
     }).join(', ');
     
-    // Create system prompt
-    const systemPrompt = `You are an AI assistant specialized in creating comprehensive Product Requirements Documents (PRDs).
+    // Create system prompt - ADJUST FOR PREVIEW MODE
+    let systemPrompt;
+    if (options.previewMode) {
+        systemPrompt = `You are an AI assistant creating a preview or outline for a Product Requirements Document (PRD).
+Based on the provided product concept, generate a concise preview or high-level outline covering the main sections planned for the full PRD: ${sectionsList}.
+Focus on the core elements and structure. The final PRD generated from this concept should be optimized for parsing into tasks by a tool like task-master (e.g., clear feature descriptions, actionable requirements). Ensure the preview reflects this intent.`;
+    } else {
+        systemPrompt = `You are an AI assistant specialized in creating comprehensive Product Requirements Documents (PRDs).
 Based on the provided product concept, create a detailed PRD that would guide a product team.
 Include the following sections: ${sectionsList}.
 ${formatInstructions}
 ${styleInstructions}
-The PRD should be structured, comprehensive, and actionable.`;
+The PRD should be structured, comprehensive, actionable, and optimized for parsing into tasks by a tool like task-master (e.g., clear feature descriptions, actionable requirements, well-defined goals, distinct sections). Respond ONLY with the full PRD content.`; // Added optimization note and ONLY instruction
+    }
     
-    // Create user prompt
-    const prompt = options.templateContent ? 
-      `Product Concept:\n\n${conceptContent}\n\nTemplate to follow:\n\n${options.templateContent}\n\nPlease generate a PRD based on this concept and template.` :
-      `Product Concept:\n\n${conceptContent}\n\nPlease generate a comprehensive PRD based on this concept.`;
+    // Create user prompt (remains the same, providing context)
+    const userPrompt = options.templateContent ? 
+      `Product Concept:\n\n${conceptContent}\n\nTemplate to follow:\n\n${options.templateContent}\n\nPlease generate a ${options.previewMode ? 'preview/outline' : 'PRD based on this concept and template'}.` :
+      `Product Concept:\n\n${conceptContent}\n\nPlease generate a ${options.previewMode ? 'preview/outline' : 'comprehensive PRD based on this concept'}.`;
     
-    logger.debug('Calling AI provider to generate PRD content');
-
-    // --- ADAPTATION NEEDED --- 
-    // Original code used `this.deps.aiProvider.generateCompletion` or `streamCompletion`
-    // We need to use `this.aiProvider.messages.create`
+    logger.debug(`Calling AI provider to generate PRD ${options.previewMode ? 'preview' : 'content'}`);
     
-    // For simplicity, using non-streaming for now
+    // AI Call (remains the same, uses the constructed prompts and options)
     try {
         const response = await this.aiProvider.messages.create({
             model: options.model,
-            max_tokens: options.maxTokens,
+            max_tokens: options.maxTokens, // Use maxTokens from options (already reduced for preview)
             temperature: options.temperature,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: prompt }]
+            system: systemPrompt, // Use the correct system prompt
+            messages: [{ role: 'user', content: userPrompt }]
         });
-        return response.content[0].text;
+
+        if (response.content && response.content.length > 0 && response.content[0].text) {
+            return response.content[0].text;
+        } else {
+            throw new Error('AI response did not contain expected text content.');
+        }
     } catch (aiError) {
-        console.error("Error calling AI for PRD generation:", aiError);
-        // Use the imported errorHandler
-        throw errorHandler.handle(aiError, {
-            message: 'AI interaction failed during PRD generation',
-            category: ERROR_CATEGORIES.API, 
-            code: 'ERR_AI_PRD_GENERATION'
-        });
+        logger.error("Error calling AI:", aiError);
+        throw new Error(`AI interaction failed: ${aiError.message}`);
     }
-    // --- END ADAPTATION --- 
   }
 
   /**
@@ -430,6 +432,44 @@ ${conceptContent}\n---\n`;
             category: ERROR_CATEGORIES.API,
             code: 'ERR_AI_REFINE_CONCEPT'
         });
+    }
+  }
+
+  /**
+   * Generate a preview of the PRD.
+   * @param {string} conceptContent - Concept content.
+   * @param {object} options - Generation options (similar to generatePRD).
+   * @returns {Promise<string>} - The generated preview content as a string.
+   */
+  async generatePRDPreview(conceptContent, options = {}) {
+    await this.initialize();
+    this._ensureInitialized();
+    logger.debug('Generating PRD preview...');
+
+    try {
+      const mergedOptions = {
+        ...this.defaultOptions,
+        ...options,
+        sections: options.sections || this.defaultSections
+      };
+
+      // Use a modified prompt asking for a preview/outline
+      const previewContent = await this._generatePRDContent(conceptContent, {
+        ...mergedOptions,
+        // Override or add options specific to preview generation if needed
+        // e.g., request a shorter output, specific preview sections, or an outline format
+        previewMode: true, // Add a flag to signal preview generation to _generatePRDContent
+        maxTokens: 1500 // Limit tokens for preview
+      });
+
+      return previewContent;
+    } catch (error) {
+        const enhancedError = errorHandler.handle(error, {
+            message: 'Error generating PRD preview',
+            category: ERROR_CATEGORIES.SERVICE,
+            code: 'ERR_PRD_PREVIEW_FAILED'
+        });
+        throw enhancedError;
     }
   }
 } 

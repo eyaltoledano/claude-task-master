@@ -704,11 +704,51 @@ Can you show me the complexity report in a more readable format?
 
 ### PRD Generation Workflow (ChatPRD inspired)
 
-*   `task-master ideate --idea <text> [--output <file>]`: (Work in Progress) Turn a raw idea into a structured product concept (`concept.txt`).
-*   `task-master round-table --concept-file <file> [--participants <list>] [--refine-concept]`: (Placeholder) Simulate expert discussion on the concept (`discussion.txt`).
-*   `task-master refine-concept --concept-file <file> [--prompt <text>] [--discussion-file <file>]`: (Placeholder) Refine the concept based on prompts or discussion.
-*   `task-master generate-prd --concept-file <file> [--example-prd <file>] [--research]`: (Placeholder) Generate a full PRD (`prd.txt`) from the concept.
-*   `task-master parse-prd --prd-file <file> [--tasks <number>]`: Parse an existing PRD file to generate tasks in `tasks.json`.
+Este flujo te guía desde una idea inicial hasta un concepto refinado, listo para generar un PRD.
+
+1.  **`task-master ideate [options]`**: Convierte una idea inicial en un concepto estructurado.
+    *   Flags:
+        *   `-i, --idea <text>`: La idea inicial (si no se proporciona, se pide interactivamente).
+        *   `-o, --output <file>`: Archivo de salida para el concepto (por defecto: `prd/concept.txt`).
+    *   Flujo:
+        *   Toma la idea (flag o interactiva).
+        *   Genera un documento con secciones (Problema, Solución, Objetivos, Audiencia, Features, Métricas).
+        *   Comprueba si el archivo de salida existe y pregunta (Sobrescribir/Nuevo/Cancelar).
+        *   Guarda en `prd/concept.txt` (o el archivo especificado, o uno con timestamp si se elige "Nuevo").
+
+2.  **`task-master round-table [options]`**: Simula una discusión de expertos sobre el concepto.
+    *   Flags:
+        *   `-c, --concept-file <file>`: Ruta al archivo de concepto (por defecto: `prd/concept.txt`).
+        *   `-o, --output <file>`: Archivo de salida para la transcripción (por defecto: `prd/discussion.txt`).
+        *   `-p, --participants <list>`: Lista separada por comas de roles expertos.
+        *   `--topics <list>`: Lista separada por comas de temas específicos a incluir.
+        *   `--focus-topics`: Indica que la discusión debe centrarse principalmente en los temas proporcionados.
+    *   Flujo:
+        *   Comprueba si el archivo de salida (`discussion.txt`) existe y pregunta (Sobrescribir/Nuevo/Cancelar).
+        *   Lee el archivo de concepto.
+        *   Pide participantes interactivamente si no se proporcionan con `-p`.
+        *   Pregunta interactivamente si se quieren añadir temas y cómo tratarlos (Incluir/Enfocar), a menos que se use `--focus-topics`.
+        *   Simula la discusión usando la IA.
+        *   Guarda la transcripción en `prd/discussion.txt` (o el archivo especificado/timestamped).
+        *   **Pregunta interactivamente si se desea refinar el concepto inmediatamente usando esta discusión.**
+
+3.  **`task-master refine-concept [options]`**: Refina el concepto usando la discusión y/o prompts.
+    *   Flags:
+        *   `-c, --concept-file <file>`: Ruta al concepto a refinar (requerido).
+        *   `-d, --discussion-file <file>`: Ruta al archivo de discusión para usar en el refinamiento.
+        *   `-p, --prompt <text>`: Prompt personalizado para guiar el refinamiento.
+        *   `-o, --output <file>`: Archivo de salida para el concepto refinado (por defecto: `<concepto_original>_refined.txt`).
+    *   Flujo:
+        *   Lee el concepto y, opcionalmente, la discusión y/o el prompt.
+        *   Llama a la IA para generar una versión refinada del concepto.
+        *   Guarda el resultado en `<concepto>_refined.txt` (o el archivo especificado con `-o`).
+
+4.  **`task-master generate-prd [options]`**: (Próximo paso) Genera el PRD completo desde el concepto refinado.
+    *   Flags:
+        *   `--concept-file <file>`: Ruta al archivo de concepto (probablemente `<concepto>_refined.txt`).
+        *   `--example-prd <file>`: (Opcional) Plantilla para la estructura del PRD.
+        *   `--research`: (Opcional) Habilitar investigación externa con IA.
+    *   Output: `prd/prd.txt`
 
 ### Utility
 

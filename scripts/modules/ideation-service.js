@@ -17,13 +17,19 @@ export class IdeationService {
    * @param {object} config - Configuration options (optional, can include aiProvider, storageProvider)
    */
   constructor(config = {}) {
+    console.log('DEBUG: [IdeationService] Constructor started.'); // Log start
     this.storageProvider = config.storageProvider || null;
-    // Initialize AI provider internally if not provided
+    
+    console.log('DEBUG: [IdeationService] Initializing AI Provider...'); // Log before init
     this.aiProvider = config.aiProvider || this._initializeAIProvider();
+    console.log('DEBUG: [IdeationService] AI Provider initialized (type:', typeof this.aiProvider, ').'); // Log after init
     
     if (!this.aiProvider) {
+        // This error should stop execution if aiProvider is null/undefined
+        console.error('ERROR: [IdeationService] AI Provider is null or undefined AFTER initialization attempt!');
         throw new Error('AI Provider could not be initialized. Check ANTHROPIC_API_KEY environment variable.');
     }
+    console.log('DEBUG: [IdeationService] Constructor finished successfully.');
   }
   
   /**
@@ -31,23 +37,25 @@ export class IdeationService {
    * @private
    */
   _initializeAIProvider() {
+    console.log('DEBUG: [IdeationService] Running _initializeAIProvider...'); // Log helper start
     if (!process.env.ANTHROPIC_API_KEY) {
-        console.warn('ANTHROPIC_API_KEY not found in environment variables.');
+        console.warn('WARN: [IdeationService] ANTHROPIC_API_KEY not found in environment variables. Returning null.');
         return null;
     }
-    // This assumes the ai-services structure might be needed later or adapted
-    // For now, just return a basic Anthropic client instance
-    // TODO: Adapt this to match the actual AI provider interface/adapter used by ChatPRD if needed
-    // Or integrate with the existing ai-services.js from claude-task-master 
-    return new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-        defaultHeaders: {
-            'anthropic-beta': 'output-128k-2025-02-19' // Example header, adjust if needed
-        }
-    });
-    // Placeholder for the actual methods needed by generateIdeas/combineIdeas
-    // This client needs methods like `generateIdeas` and `generateText` or we adapt the calls below
-    // For now, we assume the Anthropic client directly might work or needs adaptation later
+    try {
+        console.log('DEBUG: [IdeationService] Attempting to create Anthropic client...'); // Log before new Anthropic
+        const client = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY,
+            defaultHeaders: {
+                'anthropic-beta': 'output-128k-2025-02-19'
+            }
+        });
+        console.log('DEBUG: [IdeationService] Anthropic client created successfully.'); // Log success
+        return client;
+    } catch (error) {
+        console.error('ERROR: [IdeationService] Failed to create Anthropic client:', error);
+        return null; // Return null on error
+    }
   }
 
   /**
@@ -240,6 +248,63 @@ export class IdeationService {
   }
 
   /**
+   * Generate a structured product concept from an initial idea text.
+   * This is intended for the initial 'ideate' step in the PRD workflow.
+   * @param {string} ideaText - The initial idea or problem statement.
+   * @param {object} options - Generation options (e.g., model, temperature).
+   * @returns {Promise<{title: string, content: string}>} - Object containing the concept title and content.
+   */
+  async generateConcept(ideaText, options = {}) {
+    console.log('DEBUG: [IdeationService] generateConcept called.'); // Add log
+    if (!ideaText || ideaText.trim().length === 0) {
+      throw new Error('Initial idea text is required for concept generation');
+    }
+    const defaultOptions = {
+      temperature: 0.7,
+      model: process.env.MODEL || 'claude-3-7-sonnet-20250219'
+    };
+    const mergedOptions = { ...defaultOptions, ...options };
+    const systemPrompt = `You are an AI assistant helping define a new product or feature. Based on the user's initial idea, generate a structured product concept document.
+The concept should cover:
+1.  **Problem Statement:** Clearly define the problem this idea solves.
+2.  **Proposed Solution:** Describe the core idea and how it addresses the problem.
+3.  **Goals/Objectives:** What are the primary goals of this product/feature?
+4.  **Target Audience:** Who is this for?
+5.  **Key Features:** List the essential features or components.
+6.  **Success Metrics:** How will success be measured?
+Format the output clearly using Markdown. Respond ONLY with the concept document content.`;
+    const userPrompt = `Expand the following idea into a structured product concept:\n\nIdea: "${ideaText}"`;
+    let conceptContent = '';
+    try {
+      console.log('DEBUG: [IdeationService] Calling AI for concept generation...'); // Add log
+      if (!this.aiProvider || typeof this.aiProvider.messages?.create !== 'function') {
+          console.error('ERROR: [IdeationService] aiProvider or messages.create is invalid!', this.aiProvider);
+          throw new Error('AI Provider is not configured correctly within IdeationService.');
+      }
+      const response = await this.aiProvider.messages.create({
+        model: mergedOptions.model,
+        max_tokens: 4000, 
+        temperature: mergedOptions.temperature,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      });
+      if (response.content && response.content.length > 0 && response.content[0].text) {
+          conceptContent = response.content[0].text;
+          console.log('DEBUG: [IdeationService] Concept content received from AI.'); // Add log
+      } else {
+          throw new Error('AI response did not contain expected text content.');
+      }
+    } catch (aiError) {
+      console.error("Error calling AI for concept generation:", aiError);
+      throw new Error(`AI interaction failed during concept generation: ${aiError.message}`);
+    }
+    return {
+        title: `Concept for: ${ideaText.substring(0, 50)}...`,
+        content: conceptContent
+    };
+  }
+
+  /**
    * Combine multiple ideas into a new idea
    * @param {Array<Idea>} ideas - Ideas to combine
    * @param {string} theme - Optional theme for the combination
@@ -312,5 +377,76 @@ Provide a title and description for this combined idea.
     });
     
     return combinedIdea;
+  }
+
+  /**
+   * Refine an existing product concept using discussion insights and/or a custom prompt.
+   * @param {string} conceptContent - The current content of the concept document.
+   * @param {string|null} discussionContent - The content of the discussion transcript (optional).
+   * @param {string|null} customPrompt - A specific prompt guiding the refinement (optional).
+   * @param {object} options - Generation options (e.g., model, temperature).
+   * @returns {Promise<string>} - The refined concept content as a string.
+   */
+  async refineConcept(conceptContent, discussionContent = null, customPrompt = null, options = {}) {
+    if (!conceptContent || conceptContent.trim().length === 0) {
+      throw new Error('Original concept content is required for refinement.');
+    }
+    if (!discussionContent && !customPrompt) {
+      throw new Error('Either discussion content or a custom prompt is required for refinement.');
+    }
+
+    // Set default options
+    const defaultOptions = {
+      temperature: 0.6, // Slightly lower temp for refinement
+      model: process.env.MODEL || 'claude-3-7-sonnet-20250219'
+    };
+    const mergedOptions = { ...defaultOptions, ...options };
+
+    // Construct the system prompt
+    let systemPrompt = `You are an AI assistant tasked with refining a product concept based on additional input.
+
+The original concept is:
+--- START CONCEPT ---
+${conceptContent}
+--- END CONCEPT ---`;
+
+    if (discussionContent) {
+        systemPrompt += `\n\nPlease refine the concept above based on the insights and recommendations from the following discussion transcript:
+--- START DISCUSSION ---
+${discussionContent}
+--- END DISCUSSION ---`;
+    }
+
+    if (customPrompt) {
+        systemPrompt += `\n\nAdditionally, consider the following specific instruction for refinement:
+Instruction: "${customPrompt}"`;
+    }
+
+     systemPrompt += `\n\nRewrite the entire concept document, incorporating the necessary refinements based on the provided discussion and/or instruction. Ensure the refined concept maintains a clear structure (Problem, Solution, Goals, Features, etc.). Respond ONLY with the full refined concept document content.`;
+
+    const userPrompt = "Refine the product concept based on the provided context.";
+
+    let refinedContent = '';
+    try {
+      const response = await this.aiProvider.messages.create({
+        model: mergedOptions.model,
+        max_tokens: 4000, // Concept might grow
+        temperature: mergedOptions.temperature,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      });
+
+      if (response.content && response.content.length > 0 && response.content[0].text) {
+          refinedContent = response.content[0].text;
+      } else {
+          throw new Error('AI response did not contain expected refined concept content.');
+      }
+
+    } catch (aiError) {
+      console.error("Error calling AI for concept refinement:", aiError);
+      throw new Error(`AI interaction failed during concept refinement: ${aiError.message}`);
+    }
+
+    return refinedContent;
   }
 } 

@@ -1,10 +1,14 @@
 {
-    "mcpServers": {
-        "taskmaster-ai": {
-            "command": "node",
-            "args": [
-                "./mcp-server/server.js"
-            ]
-        }
+  "mcpServers": {
+    "taskmaster-cli": {
+      "command": "node",
+      "args": [
+        "./mcp-server/server.js"
+      ],
+      "description": "Task Master CLI - PRD and task management integration",
+      "env": {
+        "PRD_PATH": "prd\\prd.txt"
+      }
     }
+  }
 }

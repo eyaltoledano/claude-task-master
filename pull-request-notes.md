@@ -1,45 +1,55 @@
-# Pull Request Notes: Generate PRD Feature
+# Pull Request Notes: MCP Integration for PRD Workflow
 
 ## Feature Overview
-This PR implements the `generate-prd` command and related sub-commands to facilitate PRD creation through a guided, interactive process. This addresses issue #37 by providing an intuitive way for users to create well-structured PRDs without having to bring their own PRD initially.
+This PR enhances the `generate-prd` command and related workflow to integrate with Cursor's Model Context Protocol (MCP). It automatically generates an `.cursor/mcp.json` configuration file when a PRD is created, allowing Cursor's AI assistant to directly access and work with Task Master's PRD and tasks. This enables a seamless AI-powered development experience from idea to implementation.
 
 ## Key Components
-1. **New AI Service Functions** in ai-services.js
-2. **Core Business Logic** in task-manager.js
-3. **CLI Commands** in commands.js
-4. **Documentation** in dev_workflow.mdc
+1. **New MCP Configuration Generator** in commands.js
+2. **Enhanced PRD Generation Flow** to create MCP config files
+3. **Cross-platform path normalization** for Windows compatibility
+4. **Integration with existing workflow** (ideate → round-table → refine-concept → generate-prd)
 
-## Cross-Platform Compatibility
-- Improved package.json scripts for better cross-platform support
-- Replaced Unix-specific `chmod` command with Node.js implementation that works on Windows and Unix systems
-- Ensures seamless installation experience across different operating systems
+## Implementation Details
+- Added a `generateMcpConfigFile` function to create properly formatted MCP config files
+- Enhanced `runGeneratePRDProcess` to automatically create MCP configuration on successful PRD generation
+- Implemented path normalization to ensure cross-platform compatibility
+- Graceful error handling to prevent MCP failures from interrupting the main workflow
 
 ## Usage Flow
 Users can now:
-1. Start with a raw idea
-2. Convert it to a structured concept
-3. Gather simulated expert feedback
-4. Refine the concept
-5. Generate a complete PRD
-6. Use the PRD with existing Task Master functionality
+1. Start with a raw idea using `ideate`
+2. Simulate expert discussions with `round-table`
+3. Refine their concept with `refine-concept`
+4. Generate a complete PRD with `generate-prd`
+5. **Automatically receive MCP configuration for Cursor integration**
+6. Use Cursor's AI assistant to interact directly with the PRD and tasks
+
+## MCP Configuration Details
+The generated `.cursor/mcp.json` file:
+- Configures a Node.js-based MCP server
+- Provides the PRD file path as an environment variable
+- Uses normalized paths for cross-platform compatibility
+- Follows official MCP protocol specifications
 
 ## Testing Completed
-- Individual command testing on all sub-commands
-- End-to-end workflow testing
-- Cross-platform compatibility verification
+- Tested MCP configuration generation on Windows and Unix platforms
+- Verified path normalization for cross-platform compatibility
+- Confirmed integration with existing command workflow
+- Validated against current Cursor MCP requirements
 
 ## Documentation Added
-- Command references in dev_workflow.mdc
-- Testing instructions in testing-instructions.md
-- Implementation timeline in time-line.txt
+- Code comments explaining MCP integration
+- Log messages for monitoring MCP configuration process
+- Error handling for graceful fallback
 
 ## Future Improvements
-- Enhanced template support
-- Better validation for file inputs 
-- More options for Perplexity research integration
+- Add more environment variables for enhanced MCP functionality
+- Expose additional Task Master features through MCP
+- Implement actual MCP server functionality
+- Include tasks and discussions as MCP resources
 
 ## Reviewer Notes
-- All code follows Task Master's "clear, simple, and concise" philosophy
-- Maintains compatibility with existing commands and workflows
-- Interactive prompts guide users through the PRD creation process
-- Uses Claude API for AI-powered generation with streaming support 
+- The MCP configuration generator only creates the necessary JSON structure
+- The implementation of the actual MCP server functionality is left for future work
+- This PR focuses specifically on enhancing the PRD workflow with MCP configuration
+- All changes maintain backward compatibility with existing functionality 
