@@ -841,7 +841,7 @@ function generateTaskFiles(tasksPath, outputDir) {
 /**
  * Set the status of a task
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {string} taskIdInput - Task ID(s) to update
+ * @param {string} taskIdInput - Task ID to update (can be comma-separated)
  * @param {string} newStatus - New status
  */
 async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
@@ -865,8 +865,8 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     
     // Update each task
     for (const id of taskIds) {
-      await updateSingleTaskStatus(tasksPath, id, newStatus, data);
-      updatedTasks.push(id);
+      const result = await updateSingleTaskStatus(tasksPath, id, newStatus, data);
+      updatedTasks.push({ id, task: result.task, oldStatus: result.oldStatus });
     }
     
     // Write the updated tasks to the file
@@ -881,13 +881,12 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     await generateTaskFiles(tasksPath, path.dirname(tasksPath));
     
     // Display success message
-    for (const id of updatedTasks) {
-      const task = findTaskById(data.tasks, id);
-      const taskName = task ? task.title : id;
+    for (const update of updatedTasks) {
+      const { id, task, oldStatus } = update;
       
       console.log(boxen(
         chalk.white.bold(`Successfully updated task ${id} status:`) + '\n' +
-        `From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
+        `From: ${(oldStatus === 'done' || oldStatus === 'completed') ? chalk.green(oldStatus) : chalk.yellow(oldStatus || 'unknown')}\n` +
         `To:   ${chalk.green(newStatus)}`,
         { padding: 1, borderColor: 'green', borderStyle: 'round' }
       ));
@@ -903,15 +902,18 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     process.exit(1);
   }
 }
-
 /**
  * Update the status of a single task
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIdInput - Task ID to update
  * @param {string} newStatus - New status
  * @param {Object} data - Tasks data
+ * @returns {Object} The updated task and old status
  */
 async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
+  let taskResult = null;
+  let oldStatus = null;
+
   // Check if it's a subtask (e.g., "1.2")
   if (taskIdInput.includes('.')) {
     const [parentId, subtaskId] = taskIdInput.split('.').map(id => parseInt(id, 10));
@@ -933,8 +935,9 @@ async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
     }
     
     // Update the subtask status
-    const oldStatus = subtask.status || 'pending';
+    oldStatus = subtask.status || 'pending';
     subtask.status = newStatus;
+    taskResult = subtask;
     
     log('info', `Updated subtask ${parentId}.${subtaskId} status from '${oldStatus}' to '${newStatus}'`);
     
@@ -959,8 +962,9 @@ async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
     }
     
     // Update the task status
-    const oldStatus = task.status || 'pending';
+    oldStatus = task.status || 'pending';
     task.status = newStatus;
+    taskResult = task;
     
     log('info', `Updated task ${taskId} status from '${oldStatus}' to '${newStatus}'`);
     
@@ -980,8 +984,9 @@ async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
       }
     }
   }
-}
 
+  return { task: taskResult, oldStatus };
+}
 /**
  * List all tasks
  * @param {string} tasksPath - Path to the tasks.json file
