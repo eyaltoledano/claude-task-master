@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>user/repo</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="description" content="Task-Master AI" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/vue.css" />
+    <style>
+      .markdown-section { max-width: 700px; }
+    </style>
+  </head>
+  <body>
+    <nav
+      style="display: flex; flex-direction: row; align-items: center; justify-content: space-between;"
+    >
+      <!-- <ul><li href="/link">Link 1</li></ul> -->
+    </nav>
+    <div id="app"></div>
+    <script>
+      window.$docsify = {
+        subMaxLevel: 1,
+        maxLevel: 3,
+        auto2top: true,
+        repo: 'eyaltoledano/claude-task-master',
+        routerMode: 'history',
+        homepage: "README.md"
+      };
+    </script>
+    <script src="//cdn.jsdelivr.net/npm/docsify@4.12.2/lib/docsify.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1.28.0/prism.min.js"></script>
+  </body>
+</html>
