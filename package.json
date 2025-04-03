@@ -10,10 +10,10 @@
     "task-master-mcp-server": "mcp-server/server.js"
   },
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest",
-    "test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
-    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
-    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:fails": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --onlyFailures",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "prepare": "node -e \"const fs = require('fs'); const path = require('path'); const isWin = process.platform === 'win32'; const files = ['bin/task-master.js', 'bin/task-master-init.js']; try { if (!isWin) { files.forEach(f => fs.chmodSync(f, '755')); console.log('Set execute permissions on bin files'); } else { console.log('Windows detected, skipping chmod'); } } catch (err) { console.error('Error setting permissions:', err.message); }\"",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
