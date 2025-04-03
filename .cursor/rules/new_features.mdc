@@ -1,4 +1,9 @@
 ---
+description: 
+globs: 
+alwaysApply: true
+---
+---
 description: Guidelines for integrating new features into the Task Master CLI
 globs: scripts/modules/*.js
 alwaysApply: false
@@ -8,90 +13,74 @@ alwaysApply: false
 
 ## Feature Placement Decision Process
 
-- **Identify Feature Type** (See [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for module details):
-  - **Data Manipulation**: Features that create, read, update, or delete tasks belong in [`task-manager.js`](mdc:scripts/modules/task-manager.js). Follow guidelines in [`tasks.mdc`](mdc:.cursor/rules/tasks.mdc).
-  - **Dependency Management**: Features that handle task relationships belong in [`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js). Follow guidelines in [`dependencies.mdc`](mdc:.cursor/rules/dependencies.mdc).
-  - **User Interface**: Features that display information to users belong in [`ui.js`](mdc:scripts/modules/ui.js). Follow guidelines in [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
-  - **AI Integration**: Features that use AI models belong in [`ai-services.js`](mdc:scripts/modules/ai-services.js).
+- **Identify Feature Type** (See ](mdc:.cursor/rules/architecture.mdc) for module details):
+  - **Data Manipulation**: Features that create, reate tasks belong in [`tas`](mdc:scripts/modules/task-manager.js). Follow guidelines in [`tasks.mdc`](mdc:.cu  - **Dependency Manageat handle task relationships belong in [`dependency-manager.js`](mdc:scripts/modendency-manager.js). Foelines in [`dependencies.mdc`](mdc:.cursor/rules/dependencies.mdcterface**: Features that display information to users belong in [`ui.js`](mdc:scripts/modules/ui.js). Follow guidelines in [`ui.mdc`](mdc:.cmdc).
+  - **AI Integration**: Features that use AI mode`ai-services.js`](mdc:scripts/modules/ai-services.js).
   - **Cross-Cutting**: Features that don't fit one category may need components in multiple modules
 
 - **Command-Line Interface** (See [`commands.mdc`](mdc:.cursor/rules/commands.mdc)):
-  - All new user-facing commands should be added to [`commands.js`](mdc:scripts/modules/commands.js)
-  - Use consistent patterns for option naming and help text
-  - Follow the Commander.js model for subcommand structure
-
-## Implementation Pattern
-
+  - All new user-facing commands should be added to [`commpts/modules/commands.js)
+  - Use consistent patterns fn naming anxt
+  - Follow the Commander.js model for subcommand s Implementa
 The standard pattern for adding a feature follows this workflow:
 
-1. **Core Logic**: Implement the business logic in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
-2. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
+1. **CoImplement the business logic in the appropriate modultask-manager.js`](mdc:task-manager.js)).
+2. **UI Components**: Add any display funct(mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
 3. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
 4. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
 5. **Configuration**: Update any configuration in [`utils.js`](mdc:scripts/modules/utils.js) if needed, following [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc).
 6. **Documentation**: Update help text and documentation in [dev_workflow.mdc](mdc:scripts/modules/dev_workflow.mdc)
 
-```javascript
-// 1. CORE LOGIC: Add function to appropriate module (example in task-manager.js)
-/**
- * Archives completed tasks to archive.json
- * @param {string} tasksPath - Path to the tasks.json file
- * @param {string} archivePath - Path to the archive.json file
- * @returns {number} Number of tasks archived
- */
-async function archiveTasks(tasksPath, archivePath = 'tasks/archive.json') {
-  // Implementation...
-  return archivedCount;
-}
+## New Command Implementation
 
-// Export from the module
-export {
-  // ... existing exports ...
-  archiveTasks,
-};
-```
+- Follow the conventions in existing files to maintain consistency
+- New commands should be added to [`commands.js`](mdc:scripts/modules/commands.js) in the `registerCommands` function
+- Use Commander.js for command definition and option parsing
 
 ```javascript
-// 2. UI COMPONENTS: Add display function to ui.js
-/**
- * Display archive operation results
- * @param {string} archivePath - Path to the archive file
- * @param {number} count - Number of tasks archived
- */
-function displayArchiveResults(archivePath, count) {
-  console.log(boxen(
-    chalk.green(`Successfully archived ${count} tasks to ${archivePath}`),
-    { padding: 1, borderColor: 'green', borderStyle: 'round' }
-  ));
-}
-
-// Export from the module
-export {
-  // ... existing exports ...
-  displayArchiveResults,
-};
-```
-
-```javascript
-// 3. COMMAND INTEGRATION: Add to commands.js
-import { archiveTasks } from './task-manager.js';
-import { displayArchiveResults } from './ui.js';
-
-// In registerCommands function
 programInstance
-  .command('archive')
-  .description('Archive completed tasks to separate file')
-  .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-  .option('-o, --output <file>', 'Archive output file', 'tasks/archive.json')
+  .command('new-command')
+  .description('Description of the new command')
+  .option('-o, --option <value>', 'Description of the option')
   .action(async (options) => {
-    const tasksPath = options.file;
-    const archivePath = options.output;
-    
-    console.log(chalk.blue(`Archiving completed tasks from ${tasksPath} to ${archivePath}...`));
-    
-    const archivedCount = await archiveTasks(tasksPath, archivePath);
-    displayArchiveResults(archivePath, archivedCount);
+    // Implement command action
   });
+```
+
+- For interactive commands, use inquirer following the standardized patterns:
+
+```javascript
+// Interactive prompt with inquirer
+try {
+  const { userInput } = await inquirer.prompt([
+    {
+      type: 'input', // or 'confirm', 'list', etc.
+      name: 'userInput',
+      message: 'Enter information:',
+      validate: (input) => input.trim() !== '' || 'Input cannot be empty'
+    }
+  ]);
+  
+  // Process user input
+} catch (error) {
+  console.error(chalk.red('Interactive input failed:'), error.message);
+}
+```
+
+- All command handlers should use `try/catch` for error handling
+
+```javascript
+.action(async (options) => {
+  try {
+    // Command implementation
+  } catch (error) {
+    console.error(chalk.red(`Error: ${error.message}`));
+    if (CONFIG.debug) {
+      console.error(error);
+    }
+    process.exit(1);
+  }
+});
 ```
 
 ## Cross-Module Features
@@ -143,217 +132,10 @@ For features requiring components in multiple modules:
     .description('Clear, concise description of what the command does')
     .option('-s, --short-option <value>', 'Option description', 'default value')
     .option('--long-option <value>', 'Option description')
-    .action(async (options) => {
-      // Command implementation
+    .action(async (options) => {ommand implementation
     });
   ```
 
 ## Utility Function Guidelines
 
-When adding utilities to [`utils.js`](mdc:scripts/modules/utils.js):
-
-- Only add functions that could be used by multiple modules
-- Keep utilities single-purpose and purely functional
-- Document parameters and return values
-
-```javascript
-/**
- * Formats a duration in milliseconds to a human-readable string
- * @param {number} ms - Duration in milliseconds
- * @returns {string} Formatted duration string (e.g., "2h 30m 15s")
- */
-function formatDuration(ms) {
-  // Implementation...
-  return formatted;
-}
-```
-
-## Writing Testable Code
-
-When implementing new features, follow these guidelines to ensure your code is testable:
-
-- **Dependency Injection**
-  - Design functions to accept dependencies as parameters
-  - Avoid hard-coded dependencies that are difficult to mock
-  ```javascript
-  // ✅ DO: Accept dependencies as parameters
-  function processTask(task, fileSystem, logger) {
-    fileSystem.writeFile('task.json', JSON.stringify(task));
-    logger.info('Task processed');
-  }
-  
-  // ❌ DON'T: Use hard-coded dependencies
-  function processTask(task) {
-    fs.writeFile('task.json', JSON.stringify(task));
-    console.log('Task processed');
-  }
-  ```
-
-- **Separate Logic from Side Effects**
-  - Keep pure logic separate from I/O operations or UI rendering
-  - This allows testing the logic without mocking complex dependencies
-  ```javascript
-  // ✅ DO: Separate logic from side effects
-  function calculateTaskPriority(task, dependencies) {
-    // Pure logic that returns a value
-    return computedPriority;
-  }
-  
-  function displayTaskPriority(task, dependencies) {
-    const priority = calculateTaskPriority(task, dependencies);
-    console.log(`Task priority: ${priority}`);
-  }
-  ```
-
-- **Callback Functions and Testing**
-  - When using callbacks (like in Commander.js commands), define them separately
-  - This allows testing the callback logic independently
-  ```javascript
-  // ✅ DO: Define callbacks separately for testing
-  function getVersionString() {
-    // Logic to determine version
-    return version;
-  }
-  
-  // In setupCLI
-  programInstance.version(getVersionString);
-  
-  // In tests
-  test('getVersionString returns correct version', () => {
-    expect(getVersionString()).toBe('1.5.0');
-  });
-  ```
-
-- **UI Output Testing**
-  - For UI components, focus on testing conditional logic rather than exact output
-  - Use string pattern matching (like `expect(result).toContain('text')`)
-  - Pay attention to emojis and formatting which can make exact string matching difficult
-  ```javascript
-  // ✅ DO: Test the essence of the output, not exact formatting
-  test('statusFormatter shows done status correctly', () => {
-    const result = formatStatus('done');
-    expect(result).toContain('done');
-    expect(result).toContain('✅');
-  });
-  ```
-
-## Testing Requirements
-
-Every new feature **must** include comprehensive tests following the guidelines in [`tests.mdc`](mdc:.cursor/rules/tests.mdc). Testing should include:
-
-1. **Unit Tests**: Test individual functions and components in isolation
-   ```javascript
-   // Example unit test for a new utility function
-   describe('newFeatureUtil', () => {
-     test('should perform expected operation with valid input', () => {
-       expect(newFeatureUtil('valid input')).toBe('expected result');
-     });
-     
-     test('should handle edge cases appropriately', () => {
-       expect(newFeatureUtil('')).toBeNull();
-     });
-   });
-   ```
-
-2. **Integration Tests**: Verify the feature works correctly with other components
-   ```javascript
-   // Example integration test for a new command
-   describe('newCommand integration', () => {
-     test('should call the correct service functions with parsed arguments', () => {
-       const mockService = jest.fn().mockResolvedValue('success');
-       // Set up test with mocked dependencies
-       // Call the command handler
-       // Verify service was called with expected arguments
-     });
-   });
-   ```
-
-3. **Edge Cases**: Test boundary conditions and error handling
-   - Invalid inputs
-   - Missing dependencies
-   - File system errors
-   - API failures
-
-4. **Test Coverage**: Aim for at least 80% coverage for all new code
-
-5. **Jest Mocking Best Practices**
-   - Follow the mock-first-then-import pattern as described in [`tests.mdc`](mdc:.cursor/rules/tests.mdc)
-   - Use jest.spyOn() to create spy functions for testing
-   - Clear mocks between tests to prevent interference
-   - See the Jest Module Mocking Best Practices section in [`tests.mdc`](mdc:.cursor/rules/tests.mdc) for details
-
-When submitting a new feature, always run the full test suite to ensure nothing was broken:
-
-```bash
-npm test
-```
-
-## Documentation Requirements
-
-For each new feature:
-
-1. Add help text to the command definition
-2. Update [`dev_workflow.mdc`](mdc:scripts/modules/dev_workflow.mdc) with command reference
-3. Consider updating [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) if the feature significantly changes module responsibilities.
-
-Follow the existing command reference format:
-```markdown
-- **Command Reference: your-command**
-  - CLI Syntax: `task-master your-command [options]`
-  - Description: Brief explanation of what the command does
-  - Parameters:
-    - `--option1=<value>`: Description of option1 (default: 'default')
-    - `--option2=<value>`: Description of option2 (required)
-  - Example: `task-master your-command --option1=value --option2=value2`
-  - Notes: Additional details, limitations, or special considerations
-```
-
-For more information on module structure, see [`MODULE_PLAN.md`](mdc:scripts/modules/MODULE_PLAN.md) and follow [`self_improve.mdc`](mdc:scripts/modules/self_improve.mdc) for best practices on updating documentation.
-
-## Adding MCP Server Support for Commands
-
-Integrating Task Master commands with the MCP server (for use by tools like Cursor) follows a specific pattern distinct from the CLI command implementation.
-
-- **Goal**: Leverage direct function calls for performance and reliability, avoiding CLI overhead.
-- **Reference**: See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for full details.
-
-**MCP Integration Workflow**:
-
-1.  **Core Logic**: Ensure the command's core logic exists in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
-2.  **Direct Function Wrapper**:
-    - In [`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js), create an `async function yourCommandDirect(args, log)`.
-    - This function imports and calls the core logic.
-    - It uses utilities like `findTasksJsonPath` if needed.
-    - It handles argument parsing and validation specific to the direct call.
-    - **Implement Caching (if applicable)**: For read operations that benefit from caching, use the `getCachedOrExecute` utility here to wrap the core logic call. Generate a unique cache key based on relevant arguments.
-    - It returns a standard `{ success: true/false, data/error, fromCache: boolean }` object.
-    - Export the function and add it to the `directFunctions` map.
-3.  **MCP Tool File**:
-    - Create a new file in `mcp-server/src/tools/` (e.g., `yourCommand.js`).
-    - Import `zod`, `executeMCPToolAction` from `./utils.js`, and your `yourCommandDirect` function.
-    - Implement `registerYourCommandTool(server)` which calls `server.addTool`:
-        - Define the tool `name`, `description`, and `parameters` using `zod`. Include optional `projectRoot` and `file` if relevant, following patterns in existing tools.
-        - Define the `async execute(args, log)` method for the tool.
-        - **Crucially**, the `execute` method should primarily call `executeMCPToolAction`:
-          ```javascript
-          // In mcp-server/src/tools/yourCommand.js
-          import { executeMCPToolAction } from "./utils.js";
-          import { yourCommandDirect } from "../core/task-master-core.js";
-          import { z } from "zod";
-
-          export function registerYourCommandTool(server) {
-            server.addTool({
-              name: "yourCommand",
-              description: "Description of your command.",
-              parameters: z.object({ /* zod schema */ }),
-              async execute(args, log) {
-                return executeMCPToolAction({
-                  actionFn: yourCommandDirect, // Pass the direct function wrapper
-                  args, log, actionName: "Your Command Description"
-                });
-              }
-            });
-          }
-          ```
-4.  **Register in Tool Index**: Import and call `registerYourCommandTool` in [`mcp-server/src/tools/index.js`](mdc:mcp-server/src/tools/index.js).
-5.  **Update `mcp.json`**: Add the tool definition to `.cursor/mcp.json`.
+When

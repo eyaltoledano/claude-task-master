@@ -1,4 +1,9 @@
 ---
+description: 
+globs: 
+alwaysApply: true
+---
+---
 description: Guidelines for implementing CLI commands using Commander.js
 globs: scripts/modules/commands.js
 alwaysApply: false
@@ -430,5 +435,80 @@ alwaysApply: false
     }
   }
   ```
+
+## Interactive Experience
+
+- ✅ DO: Use spinners to indicate progress during lengthy operations
+  ```javascript
+  const spinner = ora('Loading tasks...').start();
+  try {
+    // Perform operation
+    spinner.succeed('Tasks loaded successfully!');
+  } catch (error) {
+    spinner.fail('Failed to load tasks.');
+    // Handle error
+  }
+  ```
+
+- ✅ DO: Use inquirer for interactive user prompts
+  ```javascript
+  const answers = await inquirer.prompt([{
+    type: 'input',
+    name: 'idea',
+    message: 'Enter your product idea:',
+    validate: (input) => input.trim() !== '' || 'Please enter an idea.'
+  }]);
+  ```
+
+- ✅ DO: Follow standardized inquirer patterns
+  ```javascript
+  // 1. Wrap in try/catch for error handling
+  try {
+    // 2. Use consistent prompt format
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: 'File already exists. What would you like to do:',
+        choices: [
+          { name: 'Overwrite the existing file', value: 'overwrite' },
+          { name: 'Create a new file (timestamped name)', value: 'new' },
+          { name: 'Cancel operation', value: 'cancel' }
+        ],
+        default: 'new'
+      }
+    ]);
+    
+    // 3. Handle responses consistently
+    if (action === 'cancel') {
+      return null;
+    }
+  } catch (error) {
+    // Error handling
+  }
+  ```
+
+- ✅ DO: Chain workflow steps with conditional prompts
+  ```javascript
+  // After completing one step, offer the next
+  if (discussionFilePath) {
+    const { refineNow } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'refineNow',
+        message: `Discussion saved. Refine the concept now?`,
+        default: true
+      }
+    ]);
+    
+    if (refineNow) {
+      // Proceed with refinement
+    }
+  }
+  ```
+
+- ❌ DON'T: Use synchronous prompts that block the event loop
+- ❌ DON'T: Create overly complex menu hierarchies that disorient users
+- ❌ DON'T: Mix different prompt styling approaches within the same command
 
 Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 
