@@ -10,8 +10,8 @@
                 "PERPLEXITY_API_KEY": "%PERPLEXITY_API_KEY%",
                 "MODEL": "%MODEL%",
                 "PERPLEXITY_MODEL": "%PERPLEXITY_MODEL%",
-                "MAX_TOKENS": "%MAX_TOKENS%",
-                "TEMPERATURE": "%TEMPERATURE%",
+                "MAX_TOKENS": 64000,
+                "TEMPERATURE": 0.4,
                 "DEFAULT_SUBTASKS": 5,
                 "DEFAULT_PRIORITY": "medium"
             }
