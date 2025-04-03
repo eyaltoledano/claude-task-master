@@ -136,9 +136,13 @@ function handleClaudeError(error) {
  * @param {string} prdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} retryCount - Retry count
+ * @param {Object} options - Options object containing:
+ *   - reportProgress: Function to report progress to MCP server (optional)
+ *   - mcpLog: MCP logger object (optional)
+ *   - session: Session object from MCP server (optional)
  * @returns {Object} Claude's response
  */
-async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
+async function callClaude(prdContent, prdPath, numTasks, retryCount = 0, { reportProgress, mcpLog, session } = {}) {
   try {
     log('info', 'Calling Claude...');
     
@@ -167,6 +171,9 @@ Guidelines:
 6. Set appropriate dependency IDs (a task can only depend on tasks with lower IDs)
 7. Assign priority (high/medium/low) based on criticality and dependency order
 8. Include detailed implementation guidance in the "details" field
+9. If the PRD contains specific requirements for libraries, database schemas, frameworks, tech stacks, or any other implementation details, STRICTLY ADHERE to these requirements in your task breakdown and do not discard them under any circumstance
+10. Focus on filling in any gaps left by the PRD or areas that aren't fully specified, while preserving all explicit requirements
+11. Always aim to provide the most direct path to implementation, avoiding over-engineering or roundabout approaches
 
 Expected output format:
 {
@@ -190,7 +197,7 @@ Expected output format:
 Important: Your response must be valid JSON only, with no additional explanation or comments.`;
 
     // Use streaming request to handle large responses and show progress
-    return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt);
+    return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt, { reportProgress, mcpLog, session } = {});
   } catch (error) {
     // Get user-friendly error message
     const userMessage = handleClaudeError(error);
@@ -224,19 +231,24 @@ Important: Your response must be valid JSON only, with no additional explanation
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} maxTokens - Maximum tokens
  * @param {string} systemPrompt - System prompt
+ * @param {Object} options - Options object containing:
+ *   - reportProgress: Function to report progress to MCP server (optional)
+ *   - mcpLog: MCP logger object (optional)
+ *   - session: Session object from MCP server (optional)
  * @returns {Object} Claude's response
  */
-async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
+async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt, { reportProgress, mcpLog, session } = {}) {
   const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
+  if (reportProgress) { await reportProgress({ progress: 0 }); }
   let responseText = '';
   let streamingInterval = null;
   
   try {
     // Use streaming for handling large responses
     const stream = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: maxTokens,
-      temperature: CONFIG.temperature,
+      model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+      max_tokens: session?.env?.MAX_TOKENS || maxTokens,
+      temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
       system: systemPrompt,
       messages: [
         {
@@ -260,6 +272,12 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta' && chunk.delta.text) {
         responseText += chunk.delta.text;
+      }
+      if (reportProgress) {
+        await reportProgress({ progress: (responseText.length / maxTokens) * 100 });
+      }
+      if (mcpLog) {
+        mcpLog.info(`Progress: ${responseText.length / maxTokens * 100}%`);
       }
     }
     
@@ -355,9 +373,13 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
  * @param {number} numSubtasks - Number of subtasks to generate
  * @param {number} nextSubtaskId - Next subtask ID
  * @param {string} additionalContext - Additional context
+ * @param {Object} options - Options object containing:
+ *   - reportProgress: Function to report progress to MCP server (optional)
+ *   - mcpLog: MCP logger object (optional)
+ *   - session: Session object from MCP server (optional)
  * @returns {Array} Generated subtasks
  */
-async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext = '') {
+async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext = '', { reportProgress, mcpLog, session } = {}) {
   try {
     log('info', `Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`);
     
@@ -418,12 +440,14 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
         process.stdout.write(`Generating subtasks for task ${task.id}${'.'.repeat(dotCount)}`);
         dotCount = (dotCount + 1) % 4;
       }, 500);
+
+      // TODO: MOVE THIS TO THE STREAM REQUEST FUNCTION (DRY)
       
       // Use streaming API call
       const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
+        model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+        max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+        temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
         system: systemPrompt,
         messages: [
           {
@@ -438,6 +462,12 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
       for await (const chunk of stream) {
         if (chunk.type === 'content_block_delta' && chunk.delta.text) {
           responseText += chunk.delta.text;
+        }
+        if (reportProgress) {
+          await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
+        }
+        if (mcpLog) {
+          mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
         }
       }
       
@@ -464,15 +494,19 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
  * @param {number} numSubtasks - Number of subtasks to generate
  * @param {number} nextSubtaskId - Next subtask ID
  * @param {string} additionalContext - Additional context
+ * @param {Object} options - Options object containing:
+ *   - reportProgress: Function to report progress to MCP server (optional)
+ *   - mcpLog: MCP logger object (optional)
+ *   - session: Session object from MCP server (optional)
  * @returns {Array} Generated subtasks
  */
-async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtaskId = 1, additionalContext = '') {
+async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtaskId = 1, additionalContext = '', { reportProgress, mcpLog, session } = {}) {
   try {
     // First, perform research to get context
     log('info', `Researching context for task ${task.id}: ${task.title}`);
     const perplexityClient = getPerplexityClient();
     
-    const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
+    const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
     const researchLoadingIndicator = startLoadingIndicator('Researching best practices with Perplexity AI...');
     
     // Formulate research query based on task
@@ -566,9 +600,9 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
       
       // Use streaming API call
       const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
+        model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+        max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+        temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
         system: systemPrompt,
         messages: [
           {
@@ -583,6 +617,12 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
       for await (const chunk of stream) {
         if (chunk.type === 'content_block_delta' && chunk.delta.text) {
           responseText += chunk.delta.text;
+        }
+        if (reportProgress) {
+          await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
+        }
+        if (mcpLog) {
+          mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
         }
       }
       

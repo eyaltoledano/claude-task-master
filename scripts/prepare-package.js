@@ -129,6 +129,7 @@ function preparePackage() {
     'assets/example_prd.txt',
     'assets/scripts_README.md',
     '.cursor/rules/dev_workflow.mdc',
+    '.cursor/rules/taskmaster.mdc',
     '.cursor/rules/cursor_rules.mdc',
     '.cursor/rules/self_improve.mdc'
   ];

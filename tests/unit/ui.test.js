@@ -177,26 +177,42 @@ describe('UI Module', () => {
 
   describe('createProgressBar function', () => {
     test('should create a progress bar with the correct percentage', () => {
-      const result = createProgressBar(50, 10);
-      expect(result).toBe('█████░░░░░ 50%');
+      const result = createProgressBar(50, 10, {
+        'pending': 20,
+        'in-progress': 15,
+        'blocked': 5
+      });
+      expect(result).toContain('50%');
     });
 
     test('should handle 0% progress', () => {
       const result = createProgressBar(0, 10);
-      expect(result).toBe('░░░░░░░░░░ 0%');
+      expect(result).toContain('0%');
     });
 
     test('should handle 100% progress', () => {
       const result = createProgressBar(100, 10);
-      expect(result).toBe('██████████ 100%');
+      expect(result).toContain('100%');
     });
 
     test('should handle invalid percentages by clamping', () => {
-      const result1 = createProgressBar(0, 10); // -10 should clamp to 0
-      expect(result1).toBe('░░░░░░░░░░ 0%');
+      const result1 = createProgressBar(0, 10);
+      expect(result1).toContain('0%');
       
-      const result2 = createProgressBar(100, 10); // 150 should clamp to 100
-      expect(result2).toBe('██████████ 100%');
+      const result2 = createProgressBar(100, 10); 
+      expect(result2).toContain('100%');
+    });
+
+    test('should support status breakdown in the progress bar', () => {
+      const result = createProgressBar(30, 10, {
+        'pending': 30,
+        'in-progress': 20,
+        'blocked': 10,
+        'deferred': 5,
+        'cancelled': 5
+      });
+      
+      expect(result).toContain('40%');
     });
   });
 

@@ -5,7 +5,11 @@
 
 import { spawnSync } from "child_process";
 import path from "path";
+import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
+
+// Import path utilities to ensure consistent path resolution
+import { lastFoundProjectRoot, PROJECT_MARKERS } from '../core/utils/path-utils.js';
 
 /**
  * Get normalized project root path 
@@ -13,17 +17,125 @@ import { contextManager } from '../core/context-manager.js'; // Import the singl
  * @param {Object} log - Logger object
  * @returns {string} - Normalized absolute path to project root
  */
-export function getProjectRoot(projectRootRaw, log) {
-  // Make sure projectRoot is set
-  const rootPath = projectRootRaw || process.cwd();
+function getProjectRoot(projectRootRaw, log) {
+  // PRECEDENCE ORDER:
+  // 1. Environment variable override
+  // 2. Explicitly provided projectRoot in args
+  // 3. Previously found/cached project root
+  // 4. Current directory if it has project markers
+  // 5. Current directory with warning
   
-  // Ensure projectRoot is absolute
-  const projectRoot = path.isAbsolute(rootPath) 
-    ? rootPath 
-    : path.resolve(process.cwd(), rootPath);
+  // 1. Check for environment variable override
+  if (process.env.TASK_MASTER_PROJECT_ROOT) {
+    const envRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+    const absolutePath = path.isAbsolute(envRoot) 
+      ? envRoot 
+      : path.resolve(process.cwd(), envRoot);
+    log.info(`Using project root from TASK_MASTER_PROJECT_ROOT environment variable: ${absolutePath}`);
+    return absolutePath;
+  }
+
+  // 2. If project root is explicitly provided, use it
+  if (projectRootRaw) {
+    const absolutePath = path.isAbsolute(projectRootRaw) 
+      ? projectRootRaw 
+      : path.resolve(process.cwd(), projectRootRaw);
+    
+    log.info(`Using explicitly provided project root: ${absolutePath}`);
+    return absolutePath;
+  }
   
-  log.info(`Using project root: ${projectRoot}`);
-  return projectRoot;
+  // 3. If we have a last found project root from a tasks.json search, use that for consistency
+  if (lastFoundProjectRoot) {
+    log.info(`Using last known project root where tasks.json was found: ${lastFoundProjectRoot}`);
+    return lastFoundProjectRoot;
+  }
+  
+  // 4. Check if the current directory has any indicators of being a task-master project
+  const currentDir = process.cwd();
+  if (PROJECT_MARKERS.some(marker => {
+    const markerPath = path.join(currentDir, marker);
+    return fs.existsSync(markerPath);
+  })) {
+    log.info(`Using current directory as project root (found project markers): ${currentDir}`);
+    return currentDir;
+  }
+  
+  // 5. Default to current working directory but warn the user
+  log.warn(`No task-master project detected in current directory. Using ${currentDir} as project root.`);
+  log.warn('Consider using --project-root to specify the correct project location or set TASK_MASTER_PROJECT_ROOT environment variable.');
+  return currentDir;
+}
+
+/**
+ * Extracts the project root path from the FastMCP session object.
+ * @param {Object} session - The FastMCP session object.
+ * @param {Object} log - Logger object.
+ * @returns {string|null} - The absolute path to the project root, or null if not found.
+ */
+function getProjectRootFromSession(session, log) {
+  try {
+    // If we have a session with roots array
+    if (session?.roots?.[0]?.uri) {
+      const rootUri = session.roots[0].uri;
+      const rootPath = rootUri.startsWith('file://')
+        ? decodeURIComponent(rootUri.slice(7))
+        : rootUri;
+      return rootPath;
+    }
+    
+    // If we have a session with roots.roots array (different structure)
+    if (session?.roots?.roots?.[0]?.uri) {
+      const rootUri = session.roots.roots[0].uri;
+      const rootPath = rootUri.startsWith('file://')
+        ? decodeURIComponent(rootUri.slice(7))
+        : rootUri;
+      return rootPath;
+    }
+
+    // Get the server's location and try to find project root -- this is a fallback necessary in Cursor IDE
+    const serverPath = process.argv[1];  // This should be the path to server.js, which is in mcp-server/
+    if (serverPath && serverPath.includes('mcp-server')) {
+      // Find the mcp-server directory first
+      const mcpServerIndex = serverPath.indexOf('mcp-server');
+      if (mcpServerIndex !== -1) {
+        // Get the path up to mcp-server, which should be the project root
+        const projectRoot = serverPath.substring(0, mcpServerIndex - 1); // -1 to remove trailing slash
+        
+        // Verify this looks like our project root by checking for key files/directories
+        if (fs.existsSync(path.join(projectRoot, '.cursor')) || 
+            fs.existsSync(path.join(projectRoot, 'mcp-server')) ||
+            fs.existsSync(path.join(projectRoot, 'package.json'))) {
+          return projectRoot;
+        }
+      }
+    }
+
+    // If we get here, we'll try process.cwd() but only if it's not "/"
+    const cwd = process.cwd();
+    if (cwd !== '/') {
+      return cwd;
+    }
+
+    // Last resort: try to derive from the server path we found earlier
+    if (serverPath) {
+      const mcpServerIndex = serverPath.indexOf('mcp-server');
+      return mcpServerIndex !== -1 ? serverPath.substring(0, mcpServerIndex - 1) : cwd;
+    }
+
+    throw new Error('Could not determine project root');
+  } catch (e) {
+    // If we have a server path, use it as a basis for project root
+    const serverPath = process.argv[1];
+    if (serverPath && serverPath.includes('mcp-server')) {
+      const mcpServerIndex = serverPath.indexOf('mcp-server');
+      return mcpServerIndex !== -1 ? serverPath.substring(0, mcpServerIndex - 1) : process.cwd();
+    }
+    
+    // Only use cwd if it's not "/"
+    const cwd = process.cwd();
+    return cwd !== '/' ? cwd : '/';
+  }
 }
 
 /**
@@ -34,7 +146,7 @@ export function getProjectRoot(projectRootRaw, log) {
  * @param {Function} processFunction - Optional function to process successful result data
  * @returns {Object} - Standardized MCP response object
  */
-export function handleApiResult(result, log, errorPrefix = 'API error', processFunction = processMCPResponseData) {
+function handleApiResult(result, log, errorPrefix = 'API error', processFunction = processMCPResponseData) {
   if (!result.success) {
     const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
     // Include cache status in error logs
@@ -66,7 +178,7 @@ export function handleApiResult(result, log, errorPrefix = 'API error', processF
  * @param {string|undefined} projectRootRaw - Optional raw project root path (will be normalized internally)
  * @returns {Object} - The result of the command execution
  */
-export function executeTaskMasterCommand(
+function executeTaskMasterCommand(
   command,
   log,
   args = [],
@@ -143,7 +255,7 @@ export function executeTaskMasterCommand(
  * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
  *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
-export async function getCachedOrExecute({ cacheKey, actionFn, log }) {
+async function getCachedOrExecute({ cacheKey, actionFn, log }) {
   // Check cache first
   const cachedResult = contextManager.getCachedData(cacheKey);
   
@@ -181,102 +293,13 @@ export async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 }
 
 /**
- * Executes a Task Master tool action with standardized error handling, logging, and response formatting.
- * Integrates caching logic via getCachedOrExecute if a cacheKeyGenerator is provided.
- *
- * @param {Object} options - Options for executing the tool action
- * @param {Function} options.actionFn - The core action function (e.g., listTasksDirect) to execute. Should return {success, data, error}.
- * @param {Object} options.args - Arguments for the action, passed to actionFn and cacheKeyGenerator.
- * @param {Object} options.log - Logger object from FastMCP.
- * @param {string} options.actionName - Name of the action for logging purposes.
- * @param {Function} [options.cacheKeyGenerator] - Optional function to generate a cache key based on args. If provided, caching is enabled.
- * @param {Function} [options.processResult=processMCPResponseData] - Optional function to process the result data before returning.
- * @returns {Promise<Object>} - Standardized response for FastMCP.
- */
-export async function executeMCPToolAction({
-  actionFn,
-  args,
-  log,
-  actionName,
-  cacheKeyGenerator, // Note: We decided not to use this for listTasks for now
-  processResult = processMCPResponseData
-}) {
-  try {
-    // Log the action start
-    log.info(`${actionName} with args: ${JSON.stringify(args)}`);
-
-    // Normalize project root path - common to almost all tools
-    const projectRootRaw = args.projectRoot || process.cwd();
-    const projectRoot = path.isAbsolute(projectRootRaw)
-      ? projectRootRaw
-      : path.resolve(process.cwd(), projectRootRaw);
-
-    log.info(`Using project root: ${projectRoot}`);
-    const executionArgs = { ...args, projectRoot };
-
-    let result;
-    const cacheKey = cacheKeyGenerator ? cacheKeyGenerator(executionArgs) : null;
-
-    if (cacheKey) {
-      // Use caching utility
-      log.info(`Caching enabled for ${actionName} with key: ${cacheKey}`);
-      const cacheWrappedAction = async () => await actionFn(executionArgs, log);
-      result = await getCachedOrExecute({
-         cacheKey,
-         actionFn: cacheWrappedAction,
-         log
-      });
-    } else {
-      // Execute directly without caching
-      log.info(`Caching disabled for ${actionName}. Executing directly.`);
-      // We need to ensure the result from actionFn has a fromCache field
-      // Let's assume actionFn now consistently returns { success, data/error, fromCache }
-      // The current listTasksDirect does this if it calls getCachedOrExecute internally.
-      result = await actionFn(executionArgs, log);
-      // If the action function itself doesn't determine caching (like our original listTasksDirect refactor attempt),
-      // we'd set it here:
-      // result.fromCache = false; 
-    }
-
-    // Handle error case
-    if (!result.success) {
-      const errorMsg = result.error?.message || `Unknown error during ${actionName.toLowerCase()}`;
-      // Include fromCache in error logs too, might be useful
-      log.error(`Error during ${actionName.toLowerCase()}: ${errorMsg}. From cache: ${result.fromCache}`);
-      return createErrorResponse(errorMsg);
-    }
-
-    // Log success
-    log.info(`Successfully completed ${actionName.toLowerCase()}. From cache: ${result.fromCache}`);
-
-    // Process the result data if needed
-    const processedData = processResult ? processResult(result.data) : result.data;
-
-    // Create a new object that includes both the processed data and the fromCache flag
-    const responsePayload = {
-      fromCache: result.fromCache, // Include the flag here
-      data: processedData         // Embed the actual data under a 'data' key
-    };
-    
-    // Pass this combined payload to createContentResponse
-    return createContentResponse(responsePayload);
-
-  } catch (error) {
-    // Handle unexpected errors during the execution wrapper itself
-    log.error(`Unexpected error during ${actionName.toLowerCase()} execution wrapper: ${error.message}`);
-    console.error(error.stack); // Log stack for debugging wrapper errors
-    return createErrorResponse(`Internal server error during ${actionName.toLowerCase()}: ${error.message}`);
-  }
-}
-
-/**
  * Recursively removes specified fields from task objects, whether single or in an array.
  * Handles common data structures returned by task commands.
  * @param {Object|Array} taskOrData - A single task object or a data object containing a 'tasks' array.
  * @param {string[]} fieldsToRemove - An array of field names to remove.
  * @returns {Object|Array} - The processed data with specified fields removed.
  */
-export function processMCPResponseData(taskOrData, fieldsToRemove = ['details', 'testStrategy']) {
+function processMCPResponseData(taskOrData, fieldsToRemove = ['details', 'testStrategy']) {
   if (!taskOrData) {
     return taskOrData;
   }
@@ -333,7 +356,7 @@ export function processMCPResponseData(taskOrData, fieldsToRemove = ['details', 
  * @param {string|Object} content - Content to include in response
  * @returns {Object} - Content response object in FastMCP format
  */
-export function createContentResponse(content) {
+function createContentResponse(content) {
   // FastMCP requires text type, so we format objects as JSON strings
   return {
     content: [
@@ -365,3 +388,14 @@ export function createErrorResponse(errorMessage) {
     isError: true
   };
 }
+
+// Ensure all functions are exported
+export {
+  getProjectRoot,
+  getProjectRootFromSession,
+  handleApiResult,
+  executeTaskMasterCommand,
+  getCachedOrExecute,
+  processMCPResponseData,
+  createContentResponse,
+};

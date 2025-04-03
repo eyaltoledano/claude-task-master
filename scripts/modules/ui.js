@@ -79,19 +79,112 @@ function stopLoadingIndicator(spinner) {
 }
 
 /**
- * Create a progress bar using ASCII characters
- * @param {number} percent - Progress percentage (0-100)
- * @param {number} length - Length of the progress bar in characters
- * @returns {string} Formatted progress bar
+ * Create a colored progress bar
+ * @param {number} percent - The completion percentage
+ * @param {number} length - The total length of the progress bar in characters
+ * @param {Object} statusBreakdown - Optional breakdown of non-complete statuses (e.g., {pending: 20, 'in-progress': 10})
+ * @returns {string} The formatted progress bar
  */
-function createProgressBar(percent, length = 30) {
-  const filled = Math.round(percent * length / 100);
-  const empty = length - filled;
+function createProgressBar(percent, length = 30, statusBreakdown = null) {
+  // Adjust the percent to treat deferred and cancelled as complete
+  const effectivePercent = statusBreakdown ? 
+    Math.min(100, percent + (statusBreakdown.deferred || 0) + (statusBreakdown.cancelled || 0)) : 
+    percent;
+    
+  // Calculate how many characters to fill for "true completion"
+  const trueCompletedFilled = Math.round(percent * length / 100);
   
-  const filledBar = '█'.repeat(filled);
-  const emptyBar = '░'.repeat(empty);
+  // Calculate how many characters to fill for "effective completion" (including deferred/cancelled)
+  const effectiveCompletedFilled = Math.round(effectivePercent * length / 100);
   
-  return `${filledBar}${emptyBar} ${percent.toFixed(0)}%`;
+  // The "deferred/cancelled" section (difference between true and effective)
+  const deferredCancelledFilled = effectiveCompletedFilled - trueCompletedFilled;
+  
+  // Set the empty section (remaining after effective completion)
+  const empty = length - effectiveCompletedFilled;
+  
+  // Determine color based on percentage for the completed section
+  let completedColor;
+  if (percent < 25) {
+    completedColor = chalk.red;
+  } else if (percent < 50) {
+    completedColor = chalk.hex('#FFA500'); // Orange
+  } else if (percent < 75) {
+    completedColor = chalk.yellow;
+  } else if (percent < 100) {
+    completedColor = chalk.green;
+  } else {
+    completedColor = chalk.hex('#006400'); // Dark green
+  }
+  
+  // Create colored sections
+  const completedSection = completedColor('█'.repeat(trueCompletedFilled));
+  
+  // Gray section for deferred/cancelled items
+  const deferredCancelledSection = chalk.gray('█'.repeat(deferredCancelledFilled));
+  
+  // If we have a status breakdown, create a multi-colored remaining section
+  let remainingSection = '';
+  
+  if (statusBreakdown && empty > 0) {
+    // Status colors (matching the statusConfig colors in getStatusWithColor)
+    const statusColors = {
+      'pending': chalk.yellow,
+      'in-progress': chalk.hex('#FFA500'), // Orange
+      'blocked': chalk.red,
+      'review': chalk.magenta,
+      // Deferred and cancelled are treated as part of the completed section
+    };
+    
+    // Calculate proportions for each status
+    const totalRemaining = Object.entries(statusBreakdown)
+      .filter(([status]) => !['deferred', 'cancelled', 'done', 'completed'].includes(status))
+      .reduce((sum, [_, val]) => sum + val, 0);
+    
+    // If no remaining tasks with tracked statuses, just use gray
+    if (totalRemaining <= 0) {
+      remainingSection = chalk.gray('░'.repeat(empty));
+    } else {
+      // Track how many characters we've added
+      let addedChars = 0;
+      
+      // Add each status section proportionally
+      for (const [status, percentage] of Object.entries(statusBreakdown)) {
+        // Skip statuses that are considered complete
+        if (['deferred', 'cancelled', 'done', 'completed'].includes(status)) continue;
+        
+        // Calculate how many characters this status should fill
+        const statusChars = Math.round((percentage / totalRemaining) * empty);
+        
+        // Make sure we don't exceed the total length due to rounding
+        const actualChars = Math.min(statusChars, empty - addedChars);
+        
+        // Add colored section for this status
+        const colorFn = statusColors[status] || chalk.gray;
+        remainingSection += colorFn('░'.repeat(actualChars));
+        
+        addedChars += actualChars;
+      }
+      
+      // If we have any remaining space due to rounding, fill with gray
+      if (addedChars < empty) {
+        remainingSection += chalk.gray('░'.repeat(empty - addedChars));
+      }
+    }
+  } else {
+    // Default to gray for the empty section if no breakdown provided
+    remainingSection = chalk.gray('░'.repeat(empty));
+  }
+  
+  // Effective percentage text color should reflect the highest category
+  const percentTextColor = percent === 100 ? 
+    chalk.hex('#006400') : // Dark green for 100%
+    (effectivePercent === 100 ? 
+      chalk.gray : // Gray for 100% with deferred/cancelled
+      completedColor); // Otherwise match the completed color
+  
+  // Build the complete progress bar
+  return `${completedSection}${deferredCancelledSection}${remainingSection} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;
 }
 
 /**
@@ -112,7 +205,8 @@ function getStatusWithColor(status, forTable = false) {
     'in-progress': { color: chalk.hex('#FFA500'), icon: '🔄', tableIcon: '►' },
     'deferred': { color: chalk.gray, icon: '⏱️', tableIcon: '⏱' },
     'blocked': { color: chalk.red, icon: '❌', tableIcon: '✗' },
-    'review': { color: chalk.magenta, icon: '👀', tableIcon: '👁' }
+    'review': { color: chalk.magenta, icon: '👀', tableIcon: '👁' },
+    'cancelled': { color: chalk.gray, icon: '❌', tableIcon: '✗' }
   };
   
   const config = statusConfig[status.toLowerCase()] || { color: chalk.red, icon: '❌', tableIcon: '✗' };
@@ -695,6 +789,61 @@ async function displayTaskById(tasksPath, taskId) {
       { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
     ));
     
+    // Calculate and display subtask completion progress
+    if (task.subtasks && task.subtasks.length > 0) {
+      const totalSubtasks = task.subtasks.length;
+      const completedSubtasks = task.subtasks.filter(st => 
+        st.status === 'done' || st.status === 'completed'
+      ).length;
+      
+      // Count other statuses for the subtasks
+      const inProgressSubtasks = task.subtasks.filter(st => st.status === 'in-progress').length;
+      const pendingSubtasks = task.subtasks.filter(st => st.status === 'pending').length;
+      const blockedSubtasks = task.subtasks.filter(st => st.status === 'blocked').length;
+      const deferredSubtasks = task.subtasks.filter(st => st.status === 'deferred').length;
+      const cancelledSubtasks = task.subtasks.filter(st => st.status === 'cancelled').length;
+      
+      // Calculate status breakdown as percentages
+      const statusBreakdown = {
+        'in-progress': (inProgressSubtasks / totalSubtasks) * 100,
+        'pending': (pendingSubtasks / totalSubtasks) * 100,
+        'blocked': (blockedSubtasks / totalSubtasks) * 100,
+        'deferred': (deferredSubtasks / totalSubtasks) * 100,
+        'cancelled': (cancelledSubtasks / totalSubtasks) * 100
+      };
+      
+      const completionPercentage = (completedSubtasks / totalSubtasks) * 100;
+      
+      // Calculate appropriate progress bar length based on terminal width
+      // Subtract padding (2), borders (2), and the percentage text (~5)
+      const availableWidth = process.stdout.columns || 80; // Default to 80 if can't detect
+      const boxPadding = 2; // 1 on each side
+      const boxBorders = 2; // 1 on each side
+      const percentTextLength = 5; // ~5 chars for " 100%"
+      // Reduce the length by adjusting the subtraction value from 20 to 35
+      const progressBarLength = Math.max(20, Math.min(60, availableWidth - boxPadding - boxBorders - percentTextLength - 35)); // Min 20, Max 60
+      
+      // Status counts for display
+      const statusCounts = 
+        `${chalk.green('✓ Done:')} ${completedSubtasks}  ${chalk.hex('#FFA500')('► In Progress:')} ${inProgressSubtasks}  ${chalk.yellow('○ Pending:')} ${pendingSubtasks}\n` +
+        `${chalk.red('! Blocked:')} ${blockedSubtasks}  ${chalk.gray('⏱ Deferred:')} ${deferredSubtasks}  ${chalk.gray('✗ Cancelled:')} ${cancelledSubtasks}`;
+      
+      console.log(boxen(
+        chalk.white.bold('Subtask Progress:') + '\n\n' +
+        `${chalk.cyan('Completed:')} ${completedSubtasks}/${totalSubtasks} (${completionPercentage.toFixed(1)}%)\n` +
+        `${statusCounts}\n` +
+        `${chalk.cyan('Progress:')} ${createProgressBar(completionPercentage, progressBarLength, statusBreakdown)}`,
+        { 
+          padding: { top: 0, bottom: 0, left: 1, right: 1 }, 
+          borderColor: 'blue', 
+          borderStyle: 'round', 
+          margin: { top: 1, bottom: 0 },
+          width: Math.min(availableWidth - 10, 100), // Add width constraint to limit the box width
+          textAlignment: 'left'
+        }
+      ));
+    }
+    
     return;
   }
   
@@ -851,6 +1000,61 @@ async function displayTaskById(tasksPath, taskId) {
     });
     
     console.log(subtaskTable.toString());
+    
+    // Calculate and display subtask completion progress
+    if (task.subtasks && task.subtasks.length > 0) {
+      const totalSubtasks = task.subtasks.length;
+      const completedSubtasks = task.subtasks.filter(st => 
+        st.status === 'done' || st.status === 'completed'
+      ).length;
+      
+      // Count other statuses for the subtasks
+      const inProgressSubtasks = task.subtasks.filter(st => st.status === 'in-progress').length;
+      const pendingSubtasks = task.subtasks.filter(st => st.status === 'pending').length;
+      const blockedSubtasks = task.subtasks.filter(st => st.status === 'blocked').length;
+      const deferredSubtasks = task.subtasks.filter(st => st.status === 'deferred').length;
+      const cancelledSubtasks = task.subtasks.filter(st => st.status === 'cancelled').length;
+      
+      // Calculate status breakdown as percentages
+      const statusBreakdown = {
+        'in-progress': (inProgressSubtasks / totalSubtasks) * 100,
+        'pending': (pendingSubtasks / totalSubtasks) * 100,
+        'blocked': (blockedSubtasks / totalSubtasks) * 100,
+        'deferred': (deferredSubtasks / totalSubtasks) * 100,
+        'cancelled': (cancelledSubtasks / totalSubtasks) * 100
+      };
+      
+      const completionPercentage = (completedSubtasks / totalSubtasks) * 100;
+      
+      // Calculate appropriate progress bar length based on terminal width
+      // Subtract padding (2), borders (2), and the percentage text (~5)
+      const availableWidth = process.stdout.columns || 80; // Default to 80 if can't detect
+      const boxPadding = 2; // 1 on each side
+      const boxBorders = 2; // 1 on each side
+      const percentTextLength = 5; // ~5 chars for " 100%"
+      // Reduce the length by adjusting the subtraction value from 20 to 35
+      const progressBarLength = Math.max(20, Math.min(60, availableWidth - boxPadding - boxBorders - percentTextLength - 35)); // Min 20, Max 60
+      
+      // Status counts for display
+      const statusCounts = 
+        `${chalk.green('✓ Done:')} ${completedSubtasks}  ${chalk.hex('#FFA500')('► In Progress:')} ${inProgressSubtasks}  ${chalk.yellow('○ Pending:')} ${pendingSubtasks}\n` +
+        `${chalk.red('! Blocked:')} ${blockedSubtasks}  ${chalk.gray('⏱ Deferred:')} ${deferredSubtasks}  ${chalk.gray('✗ Cancelled:')} ${cancelledSubtasks}`;
+      
+      console.log(boxen(
+        chalk.white.bold('Subtask Progress:') + '\n\n' +
+        `${chalk.cyan('Completed:')} ${completedSubtasks}/${totalSubtasks} (${completionPercentage.toFixed(1)}%)\n` +
+        `${statusCounts}\n` +
+        `${chalk.cyan('Progress:')} ${createProgressBar(completionPercentage, progressBarLength, statusBreakdown)}`,
+        { 
+          padding: { top: 0, bottom: 0, left: 1, right: 1 }, 
+          borderColor: 'blue', 
+          borderStyle: 'round', 
+          margin: { top: 1, bottom: 0 },
+          width: Math.min(availableWidth - 10, 100), // Add width constraint to limit the box width
+          textAlignment: 'left'
+        }
+      ));
+    }
   } else {
     // Suggest expanding if no subtasks
     console.log(boxen(

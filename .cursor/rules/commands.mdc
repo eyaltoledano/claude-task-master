@@ -6,6 +6,16 @@ alwaysApply: false
 
 # Command-Line Interface Implementation Guidelines
 
+**Note on Interaction Method:**
+
+While this document details the implementation of Task Master's **CLI commands**, the **preferred method for interacting with Task Master in integrated environments (like Cursor) is through the MCP server tools**. 
+
+- **Use MCP Tools First**: Always prefer using the MCP tools (e.g., `get_tasks`, `add_task`) when interacting programmatically or via an integrated tool. They offer better performance, structured data, and richer error handling. See [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for a comprehensive list of MCP tools and their corresponding CLI commands.
+- **CLI as Fallback/User Interface**: The `task-master` CLI commands described here are primarily intended for:
+    - Direct user interaction in the terminal.
+    - A fallback mechanism if the MCP server is unavailable or a specific functionality is not exposed via an MCP tool.
+- **Implementation Context**: This document (`commands.mdc`) focuses on the standards for *implementing* the CLI commands using Commander.js within the [`commands.js`](mdc:scripts/modules/commands.js) module.
+
 ## Command Structure Standards
 
 - **Basic Command Template**:

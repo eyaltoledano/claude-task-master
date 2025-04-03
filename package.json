@@ -16,10 +16,11 @@
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
-    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js",
+    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js mcp-server/server.js",
     "changeset": "changeset",
     "release": "changeset publish",
-    "inspector": "CLIENT_PORT=8888 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node mcp-server/server.js"
+    "inspector": "CLIENT_PORT=8888 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node mcp-server/server.js",
+    "mcp-server": "node mcp-server/server.js"
   },
   "keywords": [
     "claude",
