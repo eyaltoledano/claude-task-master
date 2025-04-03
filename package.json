@@ -14,9 +14,9 @@
     "test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "prepare": "node -e \"const fs = require('fs'); const path = require('path'); const isWin = process.platform === 'win32'; const files = ['bin/task-master.js', 'bin/task-master-init.js']; try { if (!isWin) { files.forEach(f => fs.chmodSync(f, '755')); console.log('Set execute permissions on bin files'); } else { console.log('Windows detected, skipping chmod'); } } catch (err) { console.error('Error setting permissions:', err.message); }\"",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
-    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js",
     "changeset": "changeset",
     "release": "changeset publish",
     "inspector": "CLIENT_PORT=8888 SERVER_PORT=9000 npx @modelcontextprotocol/inspector node mcp-server/server.js"
@@ -49,6 +49,7 @@
     "fuse.js": "^7.0.0",
     "gradient-string": "^3.0.0",
     "helmet": "^8.1.0",
+    "inquirer": "^12.5.0",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^10.2.0",
     "openai": "^4.89.0",

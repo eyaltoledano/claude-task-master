@@ -1,4 +1,9 @@
 ---
+description: 
+globs: 
+alwaysApply: true
+---
+---
 description: Guide for using meta-development script (scripts/dev.js) to manage task-driven development workflows
 globs: **/*
 alwaysApply: true

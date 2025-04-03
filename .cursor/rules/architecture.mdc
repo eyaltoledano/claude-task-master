@@ -1,4 +1,9 @@
 ---
+description: 
+globs: 
+alwaysApply: true
+---
+---
 description: Describes the high-level architecture of the Task Master CLI application.
 globs: scripts/modules/*.js
 alwaysApply: false
@@ -164,3 +169,60 @@ alwaysApply: false
   - **Clarity**: The modular structure provides a clear separation of concerns, making the codebase easier to navigate and understand for developers.
 
 This architectural overview should help AI models understand the structure and organization of the Task Master CLI codebase, enabling them to more effectively assist with code generation, modification, and understanding.
+
+## External Dependencies
+
+This section documents external npm packages that are critical to Task Master's functionality.
+
+### Core External Dependencies
+
+- **commander**: Command-line interface framework
+  - **Purpose**: Provides the foundation for all CLI commands
+  - **Justification**: Industry standard for Node.js CLI applications with robust option parsing
+
+- **chalk**: Terminal string styling
+  - **Purpose**: Enables colored output in the terminal
+  - **Justification**: Essential for user experience and visual differentiation of information types
+
+- **inquirer**: Interactive command-line user interfaces
+  - **Purpose**: Provides interactive prompts for user input during PRD generation workflows
+  - **Justification**: 
+    - Required for the interactive nature of `ideate`, `round-table`, and `refine-concept` commands
+    - Enables multi-step workflows with user decision points and confirmations
+    - Facilitates guided experiences when generating concepts, discussions, and PRDs
+    - Supports rich input types (text, confirmation, selection lists) needed for PRD workflows
+    - Industry standard with 30M+ weekly downloads and robust support
+  - **Used in**:
+    - `ideate` command: For collecting initial ideas and confirming next steps
+    - `round-table` command: For configuring discussion participants and topics
+    - `refine-concept` command: For selecting refinement options
+    - `generate-prd` command: For configuring PRD generation options
+  - **Standard Usage Patterns**:
+    - Always wrap inquirer prompt calls in try/catch blocks
+    - For file operations, use inquirer to confirm overwrites with Overwrite/New/Cancel options
+    - Use clear, descriptive messages that end with a colon
+    - Provide defaults where appropriate using the `default` property
+    - Implement input validation with the `validate` property when needed
+    - For confirmation prompts, prefer the conventional `Y/n` format with defaulting to yes
+    - Chain workflows by offering the next step after current step completion
+    - Follow the prompt pattern: `await inquirer.prompt([{ type, name, message, ... }])`
+
+- **ora**: Terminal spinner
+  - **Purpose**: Provides visual feedback during long-running operations
+  - **Justification**: Improves user experience by showing progress during AI operations
+
+### Development Dependencies
+
+- **jest**: Testing framework
+  - **Purpose**: Enables comprehensive unit and integration testing
+  - **Justification**: Industry standard for JavaScript testing
+
+- **supertest**: HTTP testing
+  - **Purpose**: Tests HTTP endpoints in the MCP server
+  - **Justification**: Simplifies API testing with clear syntax
+
+When adding new dependencies, ensure they:
+1. Serve a clear purpose not easily achieved with existing dependencies
+2. Are actively maintained and have strong community support
+3. Are properly documented in this section
+4. Have reasonable size and dependency footprints themselves
