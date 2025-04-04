@@ -34,16 +34,32 @@ function displayBanner() {
   // Add creator credit line below the banner
   console.log(chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano'));
   
-  // Read version directly from package.json
+  // Read version from the task-master package.json, not the current directory
   let version = CONFIG.projectVersion; // Default fallback
   try {
-    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    // First try to find the package's own directory (more reliable)
+    const packagePath = path.resolve(__dirname, '../../..');
+    const packageJsonPath = path.join(packagePath, 'package.json');
+    
     if (fs.existsSync(packageJsonPath)) {
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
       version = packageJson.version;
+    } else {
+      // Fallback to current directory only if we couldn't find the package's own package.json
+      const cwdPackageJsonPath = path.join(process.cwd(), 'package.json');
+      if (fs.existsSync(cwdPackageJsonPath)) {
+        const cwdPackageJson = JSON.parse(fs.readFileSync(cwdPackageJsonPath, 'utf8'));
+        // Only use the current directory's version if it's actually task-master-ai
+        if (cwdPackageJson.name === 'task-master-ai') {
+          version = cwdPackageJson.version;
+        }
+      }
     }
   } catch (error) {
     // Silently fall back to default version
+    if (CONFIG.debug) {
+      console.error('Error reading package version:', error);
+    }
   }
   
   console.log(boxen(chalk.white(`${chalk.bold('Version:')} ${version}   ${chalk.bold('Project:')} ${CONFIG.projectName}`), {
