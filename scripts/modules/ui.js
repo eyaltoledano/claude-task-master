@@ -1062,6 +1062,255 @@ async function displayComplexityReport(reportPath) {
 }
 
 /**
+ * Display real-time analysis progress with detailed information in a single line format
+ * @param {Object} progressData - Object containing progress information
+ * @param {string} progressData.model - Model name (e.g., 'claude-3-7-sonnet-20250219')
+ * @param {number} progressData.contextTokens - Context tokens used
+ * @param {number} progressData.elapsed - Elapsed time in seconds
+ * @param {number} progressData.temperature - Temperature setting
+ * @param {number} progressData.tasksAnalyzed - Number of tasks analyzed so far
+ * @param {number} progressData.totalTasks - Total number of tasks to analyze
+ * @param {number} progressData.percentComplete - Percentage complete (0-100)
+ * @param {number} progressData.maxTokens - Maximum tokens setting
+ * @param {boolean} progressData.completed - Whether the process is completed
+ * @returns {void}
+ */
+function displayAnalysisProgress(progressData) {
+  const {
+    model,
+    contextTokens = 0,
+    elapsed = 0,
+    temperature = 0.7,
+    tasksAnalyzed = 0,
+    totalTasks = 0,
+    percentComplete = 0,
+    maxTokens = 0,
+    completed = false
+  } = progressData;
+
+  // Format the elapsed time
+  const timeDisplay = formatElapsedTime(elapsed);
+  
+  // Use static variables to track display state
+  if (displayAnalysisProgress.initialized === undefined) {
+    displayAnalysisProgress.initialized = false;
+    displayAnalysisProgress.lastUpdate = Date.now();
+    displayAnalysisProgress.statusLineStarted = false;
+  }
+  
+  // Create progress bar (20 characters wide)
+  const progressBarWidth = 20;
+  const percentText = `${Math.round(percentComplete)}%`;
+  const percentTextLength = percentText.length;
+  
+  // Calculate expected total tokens and current progress
+  const totalTokens = contextTokens; // Use the actual token count as the total
+  
+  // Calculate current tokens based on percentage complete to show gradual increase from 0 to totalTokens
+  const currentTokens = completed ? totalTokens : Math.min(totalTokens, Math.round((percentComplete / 100) * totalTokens));
+  
+  // Format token counts with proper padding
+  const totalTokenDigits = totalTokens.toString().length;
+  const currentTokensFormatted = currentTokens.toString().padStart(totalTokenDigits, '0');
+  const tokenDisplay = `${currentTokensFormatted}/${totalTokens}`;
+  
+  // Calculate position for centered percentage
+  const halfBarWidth = Math.floor(progressBarWidth / 2);
+  const percentStartPos = Math.max(0, halfBarWidth - Math.floor(percentTextLength / 2));
+  
+  // Calculate how many filled and empty chars to draw
+  const filledChars = Math.floor((percentComplete / 100) * progressBarWidth);
+  
+  // Create the progress bar with centered percentage (without gradient)
+  let progressBar = '';
+  for (let i = 0; i < progressBarWidth; i++) {
+    // If we're at the start position for the percentage text
+    if (i === percentStartPos) {
+      // Apply bold white for percentage text to stand out
+      progressBar += chalk.bold.white(percentText);
+      // Skip ahead by the length of the percentage text
+      i += percentTextLength - 1;
+    } else if (i < filledChars) {
+      // Use a single color instead of gradient
+      progressBar += chalk.cyan('█');
+    } else {
+      // Use a subtle character for empty space
+      progressBar += chalk.gray('░');
+    }
+  }
+  
+  // Use spinner from ora - these are the actual frames used in the default spinner
+  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  
+  // Increment the counter faster to speed up the animation
+  if (!displayAnalysisProgress.frameCounter) {
+    displayAnalysisProgress.frameCounter = 0;
+  }
+  if (!displayAnalysisProgress.updateToggle) {
+    displayAnalysisProgress.updateToggle = false;
+  }
+  
+  // Toggle between updating and not updating to halve the speed
+  displayAnalysisProgress.updateToggle = !displayAnalysisProgress.updateToggle;
+  
+  // Only update every other call to make animation half as fast
+  if (displayAnalysisProgress.updateToggle) {
+    displayAnalysisProgress.frameCounter = (displayAnalysisProgress.frameCounter + 1) % spinnerFrames.length;
+  }
+  
+  const spinner = chalk.cyan(spinnerFrames[displayAnalysisProgress.frameCounter]);
+  
+  // Format status line based on whether we're complete or not
+  let statusLine;
+  
+  if (completed) {
+    // For completed progress, show checkmark and "Complete" text
+    statusLine = 
+      `  ${chalk.cyan('⏱')} ${timeDisplay} ${chalk.gray('|')} ` +
+      `Tasks: ${chalk.bold(tasksAnalyzed)}/${totalTasks} ${chalk.gray('|')} ` +
+      `Tokens: ${tokenDisplay} ${chalk.gray('|')} ` +
+      `${progressBar} ${chalk.gray('|')} ` +
+      `${chalk.green('✅')} ${chalk.green('Complete')}`;
+  } else {
+    // For in-progress, show spinner and "Processing" text
+    statusLine = 
+      `  ${chalk.cyan('⏱')} ${timeDisplay} ${chalk.gray('|')} ` +
+      `Tasks: ${chalk.bold(tasksAnalyzed)}/${totalTasks} ${chalk.gray('|')} ` +
+      `Tokens: ${tokenDisplay} ${chalk.gray('|')} ` +
+      `${progressBar} ${chalk.gray('|')} ` +
+      `${chalk.cyan('Processing')} ${spinner}`;
+  }
+  
+
+  
+  // Clear the line and update the status
+  process.stdout.write('\r\x1B[K');
+  process.stdout.write(statusLine);
+  
+  // Additional handling for completion
+  if (completed) {
+    // Move to next line and print completion message in a box
+    process.stdout.write('\n\n');
+    
+    console.log(boxen(
+      chalk.green(`Task complexity analysis completed in ${timeDisplay}`) + '\n' +
+      chalk.green(`✅ Analyzed ${tasksAnalyzed} tasks successfully.`),
+      { 
+        padding: { top: 1, bottom: 1, left: 2, right: 2 },
+        margin: { top: 0, bottom: 1 }, 
+        borderColor: 'green', 
+        borderStyle: 'round' 
+      }
+    ));
+    
+    // Reset initialization state for next run
+    displayAnalysisProgress.initialized = undefined;
+    displayAnalysisProgress.statusLineStarted = false;
+  }
+}
+
+/**
+ * Format elapsed time in the format shown in the screenshot (0m 00s)
+ * @param {number} seconds - Elapsed time in seconds
+ * @returns {string} Formatted time string
+ */
+function formatElapsedTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
+}
+
+/**
+ * Format a complexity summary from analyze-complexity with a neat boxed display
+ * @param {Object} summary The complexity analysis summary
+ * @returns {string} The formatted summary
+ */
+function formatComplexitySummary(summary) {
+  // Calculate verification sum
+  const sumTotal = summary.highComplexityCount + summary.mediumComplexityCount + summary.lowComplexityCount;
+  const verificationStatus = sumTotal === summary.analyzedTasks ? chalk.green('✅') : chalk.red('✗');
+  
+  // Create a table for better alignment
+  const table = new Table({
+    chars: {
+      'top': '', 'top-mid': '', 'top-left': '', 'top-right': '',
+      'bottom': '', 'bottom-mid': '', 'bottom-left': '', 'bottom-right': '',
+      'left': '', 'left-mid': '', 'mid': '', 'mid-mid': '',
+      'right': '', 'right-mid': '', 'middle': ' '
+    },
+    style: { border: [], 'padding-left': 2 },
+    colWidths: [28, 50]
+  });
+  
+  // Basic info
+  table.push(
+    [chalk.cyan('Tasks in input file:'), chalk.bold(summary.totalTasks)],
+    [chalk.cyan('Tasks analyzed:'), chalk.bold(summary.analyzedTasks)]
+  );
+  
+  // Complexity distribution in one row
+  const percentHigh = Math.round((summary.highComplexityCount / summary.analyzedTasks) * 100);
+  const percentMed = Math.round((summary.mediumComplexityCount / summary.analyzedTasks) * 100);
+  const percentLow = Math.round((summary.lowComplexityCount / summary.analyzedTasks) * 100);
+  
+  const complexityRow = [
+    chalk.cyan('Complexity distribution:'),
+    `${chalk.hex('#CC0000').bold(summary.highComplexityCount)} ${chalk.hex('#CC0000')('High')} (${percentHigh}%) · ` +
+    `${chalk.hex('#FF8800').bold(summary.mediumComplexityCount)} ${chalk.hex('#FF8800')('Medium')} (${percentMed}%) · ` +
+    `${chalk.yellow.bold(summary.lowComplexityCount)} ${chalk.yellow('Low')} (${percentLow}%)`
+  ];
+  table.push(complexityRow);
+  
+  // Visual bar representation of complexity distribution
+  const barWidth = 40;  // Total width of the bar
+  
+  // Only show bars for categories with at least 1 task
+  const highChars = summary.highComplexityCount > 0 ? 
+    Math.max(1, Math.round((summary.highComplexityCount / summary.analyzedTasks) * barWidth)) : 0;
+  
+  const medChars = summary.mediumComplexityCount > 0 ? 
+    Math.max(1, Math.round((summary.mediumComplexityCount / summary.analyzedTasks) * barWidth)) : 0;
+  
+  const lowChars = summary.lowComplexityCount > 0 ? 
+    Math.max(1, Math.round((summary.lowComplexityCount / summary.analyzedTasks) * barWidth)) : 0;
+  
+  // Adjust bar width if some categories have 0 tasks
+  const actualBarWidth = highChars + medChars + lowChars;
+  
+  const distributionBar = 
+    chalk.hex('#CC0000')('█'.repeat(highChars)) + 
+    chalk.hex('#FF8800')('█'.repeat(medChars)) + 
+    chalk.yellow('█'.repeat(lowChars)) +
+    // Add empty space if actual bar is shorter than expected
+    (actualBarWidth < barWidth ? chalk.gray('░'.repeat(barWidth - actualBarWidth)) : '');
+  
+  table.push([chalk.cyan('Distribution:'), distributionBar]);
+  
+  // Add verification and research status
+  table.push(
+    [chalk.cyan('Verification:'), `${verificationStatus} ${sumTotal}/${summary.analyzedTasks}`],
+    [chalk.cyan('Research-backed:'), summary.researchBacked ? chalk.green('✅') : 'No']
+  );
+  
+  // Final string output with title and footer
+  const output = [
+    chalk.bold.underline('Complexity Analysis Summary'),
+    '',
+    table.toString(),
+    '',
+    `Report saved to: ${chalk.italic('scripts/task-complexity-report.json')}`
+  ].join('\n');
+  
+  // Return a boxed version
+  return boxen(output, {
+    padding: { top: 1, right: 1, bottom: 1, left: 1 },
+    borderColor: 'blue',
+    borderStyle: 'round',
+    margin: { top: 1, right: 1, bottom: 1, left: 0 }
+  });
+}
+
+/**
  * Confirm overwriting existing tasks.json file
  * @param {string} tasksPath - Path to the tasks.json file
  * @returns {Promise<boolean>} - Promise resolving to true if user confirms, false otherwise
@@ -1088,6 +1337,38 @@ async function confirmTaskOverwrite(tasksPath) {
   return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }
 
+/**
+ * Display the start of complexity analysis with a boxen announcement
+ * @param {string} tasksPath - Path to the tasks file being analyzed
+ * @param {string} outputPath - Path where the report will be saved
+ * @param {boolean} useResearch - Whether Perplexity AI research is enabled
+ * @param {string} model - AI model name
+ * @param {number} temperature - AI temperature setting
+ */
+function displayComplexityAnalysisStart(tasksPath, outputPath, useResearch = false, model = CONFIG.model, temperature = CONFIG.temperature) {
+  // Create the message content with all information
+  let message = chalk.bold(`🤖 Analyzing Task Complexity`) + '\n' +
+    chalk.dim(`Model: ${model} | Temperature: ${temperature}`) + '\n\n' +
+    chalk.blue(`Input: ${tasksPath}`) + '\n' +
+    chalk.blue(`Output: ${outputPath}`);
+  
+  // Add research info if enabled
+  if (useResearch) {
+    message += '\n' + chalk.blue('Using Perplexity AI for research-backed analysis');
+  }
+  
+  // Display everything in a single boxen
+  console.log(boxen(
+    message,
+    { 
+      padding: { top: 1, bottom: 1, left: 2, right: 2 },
+      margin: { top: 0, bottom: 0 }, 
+      borderColor: 'blue', 
+      borderStyle: 'round' 
+    }
+  ));
+}
+
 // Export UI functions
 export {
   displayBanner,
@@ -1100,6 +1381,9 @@ export {
   getComplexityWithColor,
   displayNextTask,
   displayTaskById,
+  displayComplexityAnalysisStart,
   displayComplexityReport,
+  displayAnalysisProgress,
+  formatComplexitySummary,
   confirmTaskOverwrite
 }; 
