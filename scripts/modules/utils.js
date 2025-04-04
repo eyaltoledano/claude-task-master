@@ -17,7 +17,7 @@ const CONFIG = {
   defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || "3"),
   defaultPriority: process.env.DEFAULT_PRIORITY || "medium",
   projectName: process.env.PROJECT_NAME || "Task Master",
-  projectVersion: "1.5.0" // Hardcoded version - ALWAYS use this value, ignore environment variable
+  projectVersion: process.env.PROJECT_VERSION || "0.10.2" // Default fallback, should match package.json
 };
 
 // Set up logging based on log level

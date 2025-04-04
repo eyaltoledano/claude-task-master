@@ -19,7 +19,9 @@ const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
 // Get package information
-const packageJson = require('../package.json');
+// Use a more reliable path to find the package.json
+const packageJsonPath = resolve(__dirname, '../package.json');
+const packageJson = require(packageJsonPath);
 const version = packageJson.version;
 
 // Get paths to script files
