@@ -41,6 +41,8 @@ import {
   getStatusWithColor
 } from './ui.js';
 
+import { launchDashboard } from './dashboard.js';
+
 /**
  * Configure and register CLI commands
  * @param {Object} program - Commander program instance
@@ -423,6 +425,17 @@ function registerCommands(programInstance) {
     .option('-f, --file <file>', 'Path to the report file', 'scripts/task-complexity-report.json')
     .action(async (options) => {
       await displayComplexityReport(options.file);
+    });
+
+  // dashboard command
+  programInstance
+    .command('dashboard')
+    .description('Launch the Task Master web dashboard')
+    .option('-p, --port <port>', 'Port to run the dashboard on', '8080')
+    .action(async (options) => {
+      const port = parseInt(options.port, 10);
+      console.log(chalk.blue(`Launching Task Master dashboard on port ${port}...`));
+      await launchDashboard({ port });
     });
 
   // add-subtask command

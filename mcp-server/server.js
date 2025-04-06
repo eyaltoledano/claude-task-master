@@ -11,7 +11,12 @@ dotenv.config();
  * Start the MCP server
  */
 async function startServer() {
-  const server = new TaskMasterMCPServer();
+  // Get port from environment variable or use default
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
+  
+  const server = new TaskMasterMCPServer({
+    port: port
+  });
 
   // Handle graceful shutdown
   process.on("SIGINT", async () => {

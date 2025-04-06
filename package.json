@@ -1,13 +1,14 @@
 {
   "name": "task-master-ai",
-  "version": "0.9.30",
+  "version": "0.9.31",
   "description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
   "main": "index.js",
   "type": "module",
   "bin": {
     "task-master": "bin/task-master.js",
     "task-master-init": "bin/task-master-init.js",
-    "task-master-mcp-server": "mcp-server/server.js"
+    "task-master-mcp-server": "mcp-server/server.js",
+    "task-master-mcp": "bin/task-master-mcp.js"
   },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
@@ -15,9 +16,18 @@
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
-    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js",
+    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js bin/task-master-mcp.js mcp-server/server.js",
     "changeset": "changeset",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "dev": "node scripts/dev.js",
+    "list": "node scripts/dev.js list",
+    "generate": "node scripts/dev.js generate",
+    "parse-prd": "node scripts/dev.js parse-prd",
+    "task-master": "node ./bin/task-master.js",
+    "task-master-init": "node ./bin/task-master-init.js",
+    "mcp-server": "cross-env NODE_ENV=production node ./mcp-server/server.js",
+    "mcp-server:dev": "cross-env NODE_ENV=development node ./mcp-server/server.js",
+    "start-mcp": "node ./bin/task-master-mcp.js"
   },
   "keywords": [
     "claude",
@@ -35,21 +45,25 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.8.0",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",
     "commander": "^11.1.0",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.3.1",
     "express": "^4.21.2",
     "fastmcp": "^1.20.5",
     "figlet": "^1.8.0",
+    "find-free-port": "^2.0.0",
+    "fuse.js": "^7.0.0",
     "gradient-string": "^3.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.89.0",
     "ora": "^8.2.0",
-    "fuse.js": "^7.0.0"
+    "vite": "^5.4.17"
   },
   "engines": {
     "node": ">=14.0.0"
@@ -65,13 +79,16 @@
   "files": [
     "scripts/init.js",
     "scripts/dev.js",
+    "scripts/init-mcp-server.js",
+    "scripts/content-repository.js",
     "scripts/modules/**",
     "assets/**",
     ".cursor/**",
     "README-task-master.md",
     "index.js",
     "bin/**",
-    "mcp-server/**"
+    "mcp-server/**",
+    "docs/**"
   ],
   "overrides": {
     "node-fetch": "^3.3.2",

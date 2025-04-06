@@ -13,6 +13,8 @@ import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { Command } from 'commander';
+import { setupAiIntegrations, promptForAiTools, promptForMcpIntegration, getAiToolStartupMessage } from './ai-integration.js';
+import { createMcpConfig } from './init-mcp-server.js';
 
 // Debug information
 console.log('Node version:', process.version);
@@ -37,6 +39,8 @@ program
   .option('-my_version <version>', 'Project version (alias for --version)')
   .option('--my_name <name>', 'Project name (alias for --name)')
   .option('-a, --author <author>', 'Author name')
+  .option('--ai-tools <tools>', 'AI tool integrations to set up (cursor, roo, all, none)', 'all')
+  .option('--mcp-integration <integration>', 'MCP integration option (mcp-only, files-only, both)', 'both')
   .option('--skip-install', 'Skip installing dependencies')
   .option('--dry-run', 'Show what would be done without making changes')
   .parse(process.argv);
@@ -405,14 +409,33 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall) {
+async function createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall) {
   const targetDir = process.cwd();
   log('info', `Initializing project in ${targetDir}`);
   
-  // Create directories
-  ensureDirectoryExists(path.join(targetDir, '.cursor', 'rules'));
+  // Create base directories
   ensureDirectoryExists(path.join(targetDir, 'scripts'));
   ensureDirectoryExists(path.join(targetDir, 'tasks'));
+  
+  // Create readline interface for prompts
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  // Ask which AI tool integrations to set up (if not specified via CLI)
+  let aiToolsChoice = options.aiTools || 'all';
+  if (!options.yes && !options.aiTools) {
+    aiToolsChoice = await promptForAiTools(rl, promptQuestion);
+  }
+  
+  // Ask which MCP integration option to use (if not specified via CLI)
+  let mcpIntegrationChoice = options.mcpIntegration || 'both';
+  if (!options.yes && !options.mcpIntegration) {
+    mcpIntegrationChoice = await promptForMcpIntegration(rl, promptQuestion);
+  }
+  
+  rl.close();
   
   // Define our package.json content
   const packageJson = {
@@ -504,17 +527,29 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   // Copy .gitignore
   copyTemplateFile('gitignore', path.join(targetDir, '.gitignore'));
   
-  // Copy dev_workflow.mdc
-  copyTemplateFile('dev_workflow.mdc', path.join(targetDir, '.cursor', 'rules', 'dev_workflow.mdc'));
+  // Set up AI tool integrations
+  const aiIntegrationResult = await setupAiIntegrations({
+    targetDir,
+    projectName,
+    projectDescription,
+    projectVersion,
+    authorName,
+    log,
+    ensureDirectoryExists,
+    copyTemplateFile,
+    aiTools: aiToolsChoice,
+    mcpIntegration: mcpIntegrationChoice
+  });
   
-  // Copy cursor_rules.mdc
-  copyTemplateFile('cursor_rules.mdc', path.join(targetDir, '.cursor', 'rules', 'cursor_rules.mdc'));
-  
-  // Copy self_improve.mdc
-  copyTemplateFile('self_improve.mdc', path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc'));
-  
-  // Copy .windsurfrules
-  copyTemplateFile('windsurfrules', path.join(targetDir, '.windsurfrules'));
+  // Create MCP configuration if MCP is enabled
+  if (['mcp-only', 'both'].includes(mcpIntegrationChoice)) {
+    createMcpConfig({
+      targetDir,
+      projectName,
+      enableRooResources: ['roo', 'all'].includes(aiToolsChoice)
+    });
+    log('success', 'MCP server configuration created');
+  }
   
   // Copy scripts/dev.js
   copyTemplateFile('dev.js', path.join(targetDir, 'scripts', 'dev.js'));
@@ -572,19 +607,18 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   ));
   
   // Display next steps in a nice box
+  let startupMessage = getAiToolStartupMessage(aiIntegrationResult.aiToolsDescription);
+  
+  // Add MCP-specific instructions if MCP is enabled
+  if (['mcp-only', 'both'].includes(mcpIntegrationChoice)) {
+    startupMessage += '\n\n' + chalk.cyan.bold('MCP Integration:') + '\n' +
+      chalk.white('1. ') + chalk.yellow('Start the MCP server with ') + chalk.cyan('npm run start-mcp') + '\n' +
+      chalk.white('2. ') + chalk.yellow('Connect to the MCP server in your AI assistant') + '\n' +
+      chalk.white('3. ') + chalk.yellow('Access resources via URIs like ') + chalk.cyan('role://architecture') + ' or ' + chalk.cyan('boomerang://expand-task');
+  }
+  
   console.log(boxen(
-    chalk.cyan.bold('Things you can now do:') + '\n\n' +
-    chalk.white('1. ') + chalk.yellow('Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY') + '\n' +
-    chalk.white('2. ') + chalk.yellow('Discuss your idea with AI, and once ready ask for a PRD using the example_prd.txt file, and save what you get to scripts/PRD.txt') + '\n' +
-    chalk.white('3. ') + chalk.yellow('Ask Cursor Agent to parse your PRD.txt and generate tasks') + '\n' +
-    chalk.white('   └─ ') + chalk.dim('You can also run ') + chalk.cyan('task-master parse-prd <your-prd-file.txt>') + '\n' +
-    chalk.white('4. ') + chalk.yellow('Ask Cursor to analyze the complexity of your tasks') + '\n' +
-    chalk.white('5. ') + chalk.yellow('Ask Cursor which task is next to determine where to start') + '\n' +
-    chalk.white('6. ') + chalk.yellow('Ask Cursor to expand any complex tasks that are too large or complex.') + '\n' +
-    chalk.white('7. ') + chalk.yellow('Ask Cursor to set the status of a task, or multiple tasks. Use the task id from the task lists.') + '\n' +
-    chalk.white('8. ') + chalk.yellow('Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.') + '\n' +
-    chalk.white('9. ') + chalk.green.bold('Ship it!') + '\n\n' +
-    chalk.dim('* Review the README.md file to learn how to use other commands via Cursor Agent.'),
+    startupMessage,
     {
       padding: 1,
       margin: 1,

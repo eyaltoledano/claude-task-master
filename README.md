@@ -126,9 +126,23 @@ Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.c
 3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
 4. Open Cursor's AI chat and switch to Agent mode
 
-### Setting up MCP in Cursor
+### Setting up MCP Integration
 
-To enable enhanced task management capabilities directly within Cursor using the Model Control Protocol (MCP):
+Task Master supports two methods of AI integration:
+
+1. **File-based integration** using the `.roo` directory
+2. **MCP-based integration** using the Model Context Protocol
+
+During initialization, you can choose which integration method to use:
+- **Use MCP**: Resources packaged in MCP server
+- **Traditional files**: Create `.roo` directory with files
+- **Both**: Support both methods (recommended)
+
+For more details, see the [AI Integration Documentation](docs/ai-integration.md).
+
+#### Setting up MCP in Cursor
+
+To enable enhanced task management capabilities directly within Cursor using the Model Context Protocol (MCP):
 
 1. Go to Cursor settings
 2. Navigate to the MCP section
@@ -140,6 +154,24 @@ To enable enhanced task management capabilities directly within Cursor using the
 5. Save the settings
 
 Once configured, you can interact with Task Master's task management commands directly through Cursor's interface, providing a more integrated experience.
+
+#### Setting up MCP in Claude
+
+To use Task Master with Claude:
+
+1. Start the MCP server in your project:
+   ```bash
+   npm run start-mcp
+   ```
+
+2. In Claude, connect to the MCP server:
+   - Go to Settings > MCP Servers
+   - Add a new MCP server with the URL provided by the MCP server (typically http://localhost:3000)
+
+3. Once connected, you can access resources using MCP URIs:
+   ```
+   Please read the role://architecture resource for guidance on the architecture of this project.
+   ```
 
 ### Initial Task Generation
 
