@@ -136,11 +136,12 @@ function handleClaudeError(error) {
  * @param {string} prdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} retryCount - Retry count
+ * @param {Function} progressCallback - Optional callback to track streaming progress
  * @returns {Object} Claude's response
  */
-async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
+async function callClaude(prdContent, prdPath, numTasks, retryCount = 0, progressCallback = null) {
   try {
-    log('info', 'Calling Claude...');
+    log('debug', 'Calling Claude...');
     
     // Build the system prompt
     const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
@@ -190,8 +191,13 @@ Expected output format:
 Important: Your response must be valid JSON only, with no additional explanation or comments.`;
 
     // Use streaming request to handle large responses and show progress
-    return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt);
+    return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt, progressCallback);
   } catch (error) {
+    // Handle cancellation
+    if (error.message === 'Operation cancelled by user.') {
+      throw error; // Just pass through the cancellation error
+    }
+    
     // Get user-friendly error message
     const userMessage = handleClaudeError(error);
     log('error', userMessage);
@@ -203,10 +209,35 @@ Important: Your response must be valid JSON only, with no additional explanation
       error.message?.toLowerCase().includes('timeout') ||
       error.message?.toLowerCase().includes('network')
     )) {
-      const waitTime = (retryCount + 1) * 5000; // 5s, then 10s
-      log('info', `Waiting ${waitTime/1000} seconds before retry ${retryCount + 1}/2...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      return await callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+      // Check if there's a SIGINT listener indicating we're in the process of cancelling
+      const hasSignalListener = process.listenerCount('SIGINT') > 0;
+      if (hasSignalListener) {
+        // Set up a temporary listener to check for cancellation during the wait period
+        let cancelled = false;
+        const tempListener = () => { cancelled = true; };
+        process.on('SIGINT', tempListener);
+        
+        const waitTime = (retryCount + 1) * 5000; // 5s, then 10s
+        log('info', `Waiting ${waitTime/1000} seconds before retry ${retryCount + 1}/2...`);
+        
+        // Wait with cancellation check
+        for (let waited = 0; waited < waitTime; waited += 100) {
+          if (cancelled) {
+            process.removeListener('SIGINT', tempListener);
+            throw new Error('Operation cancelled by user.');
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        process.removeListener('SIGINT', tempListener);
+      } else {
+        // Simple wait without cancellation check
+        const waitTime = (retryCount + 1) * 5000; // 5s, then 10s
+        log('info', `Waiting ${waitTime/1000} seconds before retry ${retryCount + 1}/2...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+      
+      return await callClaude(prdContent, prdPath, numTasks, retryCount + 1, progressCallback);
     } else {
       console.error(chalk.red(userMessage));
       if (CONFIG.debug) {
@@ -218,20 +249,41 @@ Important: Your response must be valid JSON only, with no additional explanation
 }
 
 /**
- * Handle streaming request to Claude
+ * Handle streaming requests to Claude API
  * @param {string} prdContent - PRD content
  * @param {string} prdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
- * @param {number} maxTokens - Maximum tokens
- * @param {string} systemPrompt - System prompt
+ * @param {number} maxTokens - Maximum tokens for completion
+ * @param {string} systemPrompt - System prompt to use
+ * @param {Function} progressCallback - Optional callback to track streaming progress
  * @returns {Object} Claude's response
  */
-async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
-  const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
+async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt, progressCallback = null) {
+  // Only use loading indicator if we don't have a progress callback
+  const loadingIndicator = !progressCallback ? startLoadingIndicator('Generating tasks from PRD...') : null;
   let responseText = '';
   let streamingInterval = null;
   
+  // Token tracking variables
+  let totalProcessedTokens = 0;
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let lastProgressUpdate = Date.now();
+  
+  // Track cancellation (SIGINT)
+  let isCancelled = false;
+  const cancelListener = () => {
+    isCancelled = true;
+  };
+  process.on('SIGINT', cancelListener);
+  
   try {
+    // Calculate prompt token estimate for progress tracking
+    // This helps set correct expectations for total tokens
+    const estimatedPromptTokens = Math.ceil(prdContent.length / 4) + 
+                                Math.ceil(systemPrompt.length / 4) + 
+                                100; // Account for role tokens and message formatting
+    
     // Use streaming for handling large responses
     const stream = await anthropic.messages.create({
       model: CONFIG.model,
@@ -247,31 +299,157 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
       stream: true
     });
     
-    // Update loading indicator to show streaming progress
+    // Update loading indicator to show streaming progress (only if no progress callback)
     let dotCount = 0;
     const readline = await import('readline');
-    streamingInterval = setInterval(() => {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-      dotCount = (dotCount + 1) % 4;
-    }, 500);
+    
+    if (!progressCallback) {
+      streamingInterval = setInterval(() => {
+        // Check if operation was cancelled
+        if (isCancelled) {
+          clearInterval(streamingInterval);
+          streamingInterval = null;
+          return;
+        }
+        
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+        dotCount = (dotCount + 1) % 4;
+      }, 500);
+    }
+    
+    // Track timing for streaming chunks
+    let chunkCount = 0;
+    let lastChunkTime = Date.now();
+    let phaseStartTime = Date.now();
+    let currentPhase = 'initializing';
     
     // Process the stream
     for await (const chunk of stream) {
+      // Check if operation was cancelled
+      if (isCancelled) {
+        break;
+      }
+      
+      // Extract usage information when available
+      if (chunk.usage) {
+        if (chunk.usage.input_tokens) {
+          promptTokens = chunk.usage.input_tokens;
+        }
+        if (chunk.usage.output_tokens) {
+          completionTokens = chunk.usage.output_tokens;
+        }
+      }
+      
       if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        // Add text to response
         responseText += chunk.delta.text;
+        const chunkText = chunk.delta.text;
+        chunkCount++;
+        
+        // Track timing between chunks
+        const now = Date.now();
+        const timeSinceLastChunk = now - lastChunkTime;
+        lastChunkTime = now;
+        
+        // Analyze the response to detect phases for better progress tracking
+        // Different phases: planning, task_generation, details_generation, metadata_generation
+        if (responseText.includes('{"tasks":') && currentPhase === 'initializing') {
+          currentPhase = 'task_generation';
+          phaseStartTime = now;
+        } else if (responseText.includes('"details":') && currentPhase === 'task_generation') {
+          currentPhase = 'details_generation';
+          phaseStartTime = now;
+        } else if (responseText.includes('"metadata":') && currentPhase === 'details_generation') {
+          currentPhase = 'metadata_generation';
+          phaseStartTime = now;
+        }
+        
+        // Update token count with more accurate calculation from the chunk
+        const chunkTokenEstimate = Math.ceil(chunkText.length / 4);
+        completionTokens += chunkTokenEstimate;
+        totalProcessedTokens = promptTokens + completionTokens;
+        
+        // Call progress callback if provided
+        if (progressCallback && typeof progressCallback === 'function') {
+          // Limit updates to reasonable intervals to prevent UI flicker
+          // But ensure we're always sending the first chunk and chunks with tasks
+          const shouldUpdateProgress = 
+            chunkCount === 1 || 
+            now - lastProgressUpdate > 100 || // Update at most every 100ms
+            chunkText.includes('"id":') ||    // Always update when task ID is detected
+            chunkText.includes('"title":');   // Always update when task title is detected
+          
+          if (shouldUpdateProgress) {
+            // Pass the full text accumulated so far to allow maintaining complete context
+            progressCallback(responseText, {
+              chunkSize: chunkText.length,
+              chunkCount,
+              timeSinceLastChunk,
+              isFirstChunk: chunkCount === 1,
+              isSlowChunk: timeSinceLastChunk > 2000, // Flag if there's a significant delay
+              promptTokens,
+              completionTokens,
+              totalTokens: totalProcessedTokens,
+              phase: currentPhase,
+              estimatedPromptTokens
+            });
+            
+            lastProgressUpdate = now;
+          }
+        }
+      } else if (chunk.type === 'message_stop') {
+        // End of message, extract final usage statistics if available
+        if (chunk.message && chunk.message.usage) {
+          promptTokens = chunk.message.usage.input_tokens || promptTokens;
+          completionTokens = chunk.message.usage.output_tokens || completionTokens;
+          totalProcessedTokens = promptTokens + completionTokens;
+          
+          // Final update with accurate token counts
+          if (progressCallback && typeof progressCallback === 'function') {
+            progressCallback(responseText, {
+              chunkCount,
+              isComplete: true,
+              promptTokens,
+              completionTokens,
+              totalTokens: totalProcessedTokens,
+              phase: 'complete'
+            });
+          }
+        }
       }
     }
     
+    // Check if operation was cancelled after streaming
+    if (isCancelled) {
+      throw new Error('Operation cancelled by user.');
+    }
+    
     if (streamingInterval) clearInterval(streamingInterval);
-    stopLoadingIndicator(loadingIndicator);
+    if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
     
-    log('info', "Completed streaming response from Claude API!");
+    // Return the processed response and let the caller log the completion
+    const result = processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath, progressCallback);
     
-    return processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath);
+    // Include token usage in the result
+    return { 
+      ...result, 
+      streamingCompleted: true,
+      tokenUsage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens
+      }
+    };
   } catch (error) {
     if (streamingInterval) clearInterval(streamingInterval);
-    stopLoadingIndicator(loadingIndicator);
+    if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+    
+    // Special handling for cancellation
+    if (isCancelled || error.message === 'Operation cancelled by user.') {
+      // Let the caller handle cancellation
+      throw new Error('Operation cancelled by user.');
+    }
     
     // Get user-friendly error message
     const userMessage = handleClaudeError(error);
@@ -283,6 +461,9 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
     }
     
     throw new Error(userMessage);
+  } finally {
+    // Always clean up the cancellation listener
+    process.removeListener('SIGINT', cancelListener);
   }
 }
 
@@ -293,9 +474,10 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
  * @param {number} retryCount - Retry count
  * @param {string} prdContent - PRD content
  * @param {string} prdPath - Path to the PRD file
+ * @param {Function} progressCallback - Optional callback to track streaming progress
  * @returns {Object} Processed response
  */
-function processClaudeResponse(textContent, numTasks, retryCount, prdContent, prdPath) {
+function processClaudeResponse(textContent, numTasks, retryCount, prdContent, prdPath, progressCallback = null) {
   try {
     // Attempt to parse the JSON response
     let jsonStart = textContent.indexOf('{');
@@ -332,6 +514,22 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
   } catch (error) {
     log('error', "Error processing Claude's response:", error.message);
     
+    // Check for cancellation signals before retrying
+    if (process.listenerCount('SIGINT') > 0) {
+      // Check if we've received a SIGINT during parsing
+      let cancelled = false;
+      const tempListener = () => { cancelled = true; };
+      process.on('SIGINT', tempListener);
+      
+      // Small delay to check for cancellation
+      setTimeout(() => {
+        process.removeListener('SIGINT', tempListener);
+        if (cancelled) {
+          throw new Error('Operation cancelled by user.');
+        }
+      }, 50);
+    }
+    
     // Retry logic
     if (retryCount < 2) {
       log('info', `Retrying to parse response (${retryCount + 1}/2)...`);
@@ -339,10 +537,10 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
       // Try again with Claude for a cleaner response
       if (retryCount === 1) {
         log('info', "Calling Claude again for a cleaner response...");
-        return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+        return callClaude(prdContent, prdPath, numTasks, retryCount + 1, progressCallback);
       }
       
-      return processClaudeResponse(textContent, numTasks, retryCount + 1, prdContent, prdPath);
+      return processClaudeResponse(textContent, numTasks, retryCount + 1, prdContent, prdPath, progressCallback);
     } else {
       throw error;
     }
