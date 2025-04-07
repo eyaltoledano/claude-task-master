@@ -565,9 +565,10 @@ async function addDependency(tasksPath, taskId, dependencyId) {
         // Call the original function in a context where log calls are intercepted
         const result = (() => {
           // Use Function.prototype.bind to create a new function that has logProxy available
-          return Function('tasks', 'tasksPath', 'log', 'customLogger', 
+          // Pass isCircularDependency explicitly to make it available
+          return Function('tasks', 'tasksPath', 'log', 'customLogger', 'isCircularDependency', 'taskExists',
             `return (${originalValidateTaskDependencies.toString()})(tasks, tasksPath);`
-          )(tasks, tasksPath, logProxy, customLogger);
+          )(tasks, tasksPath, logProxy, customLogger, isCircularDependency, taskExists);
         })();
         
         return result;

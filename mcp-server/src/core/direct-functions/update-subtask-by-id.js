@@ -6,15 +6,19 @@
 import { updateSubtaskById } from '../../../../scripts/modules/task-manager.js';
 import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
+import { getAnthropicClientForMCP, getPerplexityClientForMCP } from '../utils/ai-client-utils.js';
 
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
  * 
  * @param {Object} args - Command arguments containing id, prompt, useResearch and file path options.
  * @param {Object} log - Logger object.
+ * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function updateSubtaskByIdDirect(args, log) {
+export async function updateSubtaskByIdDirect(args, log, context = {}) {
+  const { session } = context; // Only extract session, not reportProgress
+  
   try {
     log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
     
@@ -41,8 +45,19 @@ export async function updateSubtaskByIdDirect(args, log) {
     
     // Validate subtask ID format
     const subtaskId = args.id;
-    if (typeof subtaskId !== 'string' || !subtaskId.includes('.')) {
-      const errorMessage = `Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
+    if (typeof subtaskId !== 'string' && typeof subtaskId !== 'number') {
+      const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Subtask ID must be a string or number.`;
+      log.error(errorMessage);
+      return {
+        success: false,
+        error: { code: 'INVALID_SUBTASK_ID_TYPE', message: errorMessage },
+        fromCache: false
+      };
+    }
+    
+    const subtaskIdStr = String(subtaskId);
+    if (!subtaskIdStr.includes('.')) {
+      const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Subtask ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
       log.error(errorMessage);
       return { 
         success: false, 
@@ -67,14 +82,46 @@ export async function updateSubtaskByIdDirect(args, log) {
     // Get research flag
     const useResearch = args.research === true;
     
-    log.info(`Updating subtask with ID ${subtaskId} with prompt "${args.prompt}" and research: ${useResearch}`);
+    log.info(`Updating subtask with ID ${subtaskIdStr} with prompt "${args.prompt}" and research: ${useResearch}`);
+    
+    // Initialize the appropriate AI client based on research flag
+    try {
+      if (useResearch) {
+        // Initialize Perplexity client
+        await getPerplexityClientForMCP(session);
+      } else {
+        // Initialize Anthropic client
+        await getAnthropicClientForMCP(session);
+      }
+    } catch (error) {
+      log.error(`AI client initialization error: ${error.message}`);
+      return {
+        success: false,
+        error: { code: 'AI_CLIENT_ERROR', message: error.message || 'Failed to initialize AI client' },
+        fromCache: false
+      };
+    }
     
     try {
       // Enable silent mode to prevent console logs from interfering with JSON response
       enableSilentMode();
       
+      // Create a logger wrapper object to handle logging without breaking the mcpLog[level] calls
+      // This ensures outputFormat is set to 'json' while still supporting proper logging
+      const logWrapper = {
+        info: (message) => log.info(message),
+        warn: (message) => log.warn(message),
+        error: (message) => log.error(message),
+        debug: (message) => log.debug && log.debug(message),
+        success: (message) => log.info(message) // Map success to info if needed
+      };
+      
       // Execute core updateSubtaskById function
-      const updatedSubtask = await updateSubtaskById(tasksPath, subtaskId, args.prompt, useResearch);
+      // Pass both session and logWrapper as mcpLog to ensure outputFormat is 'json'
+      const updatedSubtask = await updateSubtaskById(tasksPath, subtaskIdStr, args.prompt, useResearch, { 
+        session,
+        mcpLog: logWrapper 
+      });
       
       // Restore normal logging
       disableSilentMode();
@@ -95,9 +142,9 @@ export async function updateSubtaskByIdDirect(args, log) {
       return {
         success: true,
         data: {
-          message: `Successfully updated subtask with ID ${subtaskId}`,
-          subtaskId,
-          parentId: subtaskId.split('.')[0],
+          message: `Successfully updated subtask with ID ${subtaskIdStr}`,
+          subtaskId: subtaskIdStr,
+          parentId: subtaskIdStr.split('.')[0],
           subtask: updatedSubtask,
           tasksPath,
           useResearch

@@ -152,8 +152,8 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   ```javascript
   // ✅ DO: Suggest alternatives for destructive operations
   console.log(chalk.yellow('Note: If you just want to exclude this task from active work, consider:'));
-  console.log(chalk.cyan(`  task-master set-status --id=${taskId} --status=cancelled`));
-  console.log(chalk.cyan(`  task-master set-status --id=${taskId} --status=deferred`));
+  console.log(chalk.cyan(`  task-master set-status --id='${taskId}' --status='cancelled'`));
+  console.log(chalk.cyan(`  task-master set-status --id='${taskId}' --status='deferred'`));
   console.log('This preserves the task and its history for reference.');
   ```
 
@@ -253,7 +253,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   const taskId = parseInt(options.id, 10);
   if (isNaN(taskId) || taskId <= 0) {
     console.error(chalk.red(`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`));
-    console.log(chalk.yellow('Usage example: task-master update-task --id=23 --prompt="Update with new information"'));
+    console.log(chalk.yellow('Usage example: task-master update-task --id=\'23\' --prompt=\'Update with new information.\nEnsure proper error handling.\''));
     process.exit(1);
   }
   
@@ -299,8 +299,8 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     (dependencies.length > 0 ? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n' : '') +
     '\n' +
     chalk.white.bold('Next Steps:') + '\n' +
-    chalk.cyan(`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`) + '\n' +
-    chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`),
+    chalk.cyan(`1. Run ${chalk.yellow(`task-master show '${parentId}'`)} to see the parent task with all subtasks`) + '\n' +
+    chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id='${parentId}.${subtask.id}' --status='in-progress'`)} to start working on it`),
     { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
   ));
   ```
@@ -375,7 +375,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
       '  --option1 <value>    Description of option1 (required)\n' +
       '  --option2 <value>    Description of option2\n\n' +
       chalk.cyan('Examples:') + '\n' +
-      '  task-master command --option1=value --option2=value',
+      '  task-master command --option1=\'value1\' --option2=\'value2\'',
       { padding: 1, borderColor: 'blue', borderStyle: 'round' }
     ));
   }
@@ -418,7 +418,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     // Provide more helpful error messages for common issues
     if (error.message.includes('task') && error.message.includes('not found')) {
       console.log(chalk.yellow('\nTo fix this issue:'));
-      console.log('  1. Run task-master list to see all available task IDs');
+      console.log('  1. Run \'task-master list\' to see all available task IDs');
       console.log('  2. Use a valid task ID with the --id parameter');
     } else if (error.message.includes('API key')) {
       console.log(chalk.yellow('\nThis error is related to API keys. Check your environment variables.'));
@@ -562,3 +562,45 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   ```
 
 Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 
+// Helper function to show add-subtask command help
+function showAddSubtaskHelp() {
+  console.log(boxen(
+    chalk.white.bold('Add Subtask Command Help') + '\n\n' +
+    chalk.cyan('Usage:') + '\n' +
+    `  task-master add-subtask --parent=<id> [options]\n\n` +
+    chalk.cyan('Options:') + '\n' +
+    '  -p, --parent <id>         Parent task ID (required)\n' +
+    '  -i, --task-id <id>        Existing task ID to convert to subtask\n' +
+    '  -t, --title <title>       Title for the new subtask\n' +
+    '  -d, --description <text>  Description for the new subtask\n' +
+    '  --details <text>          Implementation details for the new subtask\n' +
+    '  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
+    '  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
+    '  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
+    '  --skip-generate           Skip regenerating task files\n\n' +
+    chalk.cyan('Examples:') + '\n' +
+    '  task-master add-subtask --parent=\'5\' --task-id=\'8\'\n' +
+    '  task-master add-subtask -p \'5\' -t \'Implement login UI\' -d \'Create the login form\'\n' +
+    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details $\'Handle 401 Unauthorized.\nHandle 500 Server Error.\'',
+    { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+  ));
+}
+
+// Helper function to show remove-subtask command help
+function showRemoveSubtaskHelp() {
+  console.log(boxen(
+    chalk.white.bold('Remove Subtask Command Help') + '\n\n' +
+    chalk.cyan('Usage:') + '\n' +
+    `  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
+    chalk.cyan('Options:') + '\n' +
+    '  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
+    '  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
+    '  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
+    '  --skip-generate     Skip regenerating task files\n\n' +
+    chalk.cyan('Examples:') + '\n' +
+    '  task-master remove-subtask --id=\'5.2\'\n' +
+    '  task-master remove-subtask --id=\'5.2,6.3,7.1\'\n' +
+    '  task-master remove-subtask --id=\'5.2\' --convert',
+    { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+  ));
+} 

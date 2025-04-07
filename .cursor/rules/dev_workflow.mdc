@@ -29,7 +29,7 @@ Task Master offers two primary ways to interact:
 
 ## Standard Development Workflow Process
 
--   Start new projects by running `init` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input=<prd-file.txt>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to generate initial tasks.json
+-   Start new projects by running `init` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input='<prd-file.txt>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to generate initial tasks.json
 -   Begin coding sessions with `get_tasks` / `task-master list` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to see current tasks, status, and IDs
 -   Determine the next task to work on using `next_task` / `task-master next` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
 -   Analyze task complexity with `analyze_complexity` / `task-master analyze-complexity --research` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) before breaking down tasks
@@ -45,7 +45,7 @@ Task Master offers two primary ways to interact:
 -   Update dependent tasks when implementation differs from original plan using `update` / `task-master update --from=<id> --prompt="..."` or `update_task` / `task-master update-task --id=<id> --prompt="..."` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
 -   Add new tasks discovered during implementation using `add_task` / `task-master add-task --prompt="..."` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
 -   Add new subtasks as needed using `add_subtask` / `task-master add-subtask --parent=<id> --title="..."` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
--   Append notes or details to subtasks using `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt="..."` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
+-   Append notes or details to subtasks using `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='Add implementation notes here...\nMore details...'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
 -   Generate task files with `generate` / `task-master generate` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) after updating tasks.json
 -   Maintain valid dependency structure with `add_dependency`/`remove_dependency` tools or `task-master add-dependency`/`remove-dependency` commands, `validate_dependencies` / `task-master validate-dependencies`, and `fix_dependencies` / `task-master fix-dependencies` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) when needed
 -   Respect dependency chains and task priorities when selecting work
@@ -74,8 +74,8 @@ Task Master offers two primary ways to interact:
 -   When implementation differs significantly from planned approach
 -   When future tasks need modification due to current implementation choices
 -   When new dependencies or requirements emerge
--   Use `update` / `task-master update --from=<futureTaskId> --prompt="<explanation>"` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to update multiple future tasks.
--   Use `update_task` / `task-master update-task --id=<taskId> --prompt="<explanation>"` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to update a single specific task.
+-   Use `update` / `task-master update --from=<futureTaskId> --prompt='<explanation>\nUpdate context...'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to update multiple future tasks.
+-   Use `update_task` / `task-master update-task --id=<taskId> --prompt='<explanation>\nUpdate context...'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to update a single specific task.
 
 ## Task Status Management
 
@@ -149,6 +149,59 @@ Task Master offers two primary ways to interact:
 - Dependencies are checked for existence before being added or removed
 - Task files are automatically regenerated after dependency changes
 - Dependencies are visualized with status indicators in task listings and files
+
+## Iterative Subtask Implementation
+
+Once a task has been broken down into subtasks using `expand_task` or similar methods, follow this iterative process for implementation:
+
+1.  **Understand the Goal (Preparation):**
+    *   Use `get_task` / `task-master show <subtaskId>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to thoroughly understand the specific goals and requirements of the subtask.
+
+2.  **Initial Exploration & Planning (Iteration 1):**
+    *   This is the first attempt at creating a concrete implementation plan.
+    *   Explore the codebase to identify the precise files, functions, and even specific lines of code that will need modification.
+    *   Determine the intended code changes (diffs) and their locations.
+    *   Gather *all* relevant details from this exploration phase.
+
+3.  **Log the Plan:**
+    *   Run `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<detailed plan>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
+    *   Provide the *complete and detailed* findings from the exploration phase in the prompt. Include file paths, line numbers, proposed diffs, reasoning, and any potential challenges identified. Do not omit details. The goal is to create a rich, timestamped log within the subtask's `details`.
+
+4.  **Verify the Plan:**
+    *   Run `get_task` / `task-master show <subtaskId>` again to confirm that the detailed implementation plan has been successfully appended to the subtask's details.
+
+5.  **Begin Implementation:**
+    *   Set the subtask status using `set_task_status` / `task-master set-status --id=<subtaskId> --status=in-progress` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
+    *   Start coding based on the logged plan.
+
+6.  **Refine and Log Progress (Iteration 2+):**
+    *   As implementation progresses, you will encounter challenges, discover nuances, or confirm successful approaches.
+    *   **Before appending new information**: Briefly review the *existing* details logged in the subtask (using `get_task` or recalling from context) to ensure the update adds fresh insights and avoids redundancy.
+    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>\n- What worked...\n- What didn't work...'` to append new findings.
+    *   **Crucially, log:**
+        *   What worked ("fundamental truths" discovered).
+        *   What didn't work and why (to avoid repeating mistakes).
+        *   Specific code snippets or configurations that were successful.
+        *   Decisions made, especially if confirmed with user input.
+        *   Any deviations from the initial plan and the reasoning.
+    *   The objective is to continuously enrich the subtask's details, creating a log of the implementation journey that helps the AI (and human developers) learn, adapt, and avoid repeating errors.
+
+7.  **Review & Update Rules (Post-Implementation):**
+    *   Once the implementation for the subtask is functionally complete, review all code changes and the relevant chat history.
+    *   Identify any new or modified code patterns, conventions, or best practices established during the implementation.
+    *   Create new or update existing Cursor rules in the `.cursor/rules/` directory to capture these patterns, following the guidelines in [`cursor_rules.mdc`](mdc:.cursor/rules/cursor_rules.mdc) and [`self_improve.mdc`](mdc:.cursor/rules/self_improve.mdc).
+
+8.  **Mark Task Complete:**
+    *   After verifying the implementation and updating any necessary rules, mark the subtask as completed: `set_task_status` / `task-master set-status --id=<subtaskId> --status=done`.
+
+9.  **Commit Changes (If using Git):**
+    *   Stage the relevant code changes and any updated/new rule files (`git add .`).
+    *   Craft a comprehensive Git commit message summarizing the work done for the subtask, including both code implementation and any rule adjustments.
+    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>\n\n- Details about changes...\n- Updated rule Y for pattern Z'`).
+    *   Consider if a Changeset is needed according to [`changeset.mdc`](mdc:.cursor/rules/changeset.mdc). If so, run `npm run changeset`, stage the generated file, and amend the commit or create a new one.
+
+10. **Proceed to Next Subtask:**
+    *   Identify the next subtask in the dependency chain (e.g., using `next_task` / `task-master next`) and repeat this iterative process starting from step 1.
 
 ## Code Analysis & Refactoring Techniques
 

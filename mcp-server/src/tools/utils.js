@@ -75,21 +75,43 @@ function getProjectRoot(projectRootRaw, log) {
  */
 function getProjectRootFromSession(session, log) {
   try {
+    // Add detailed logging of session structure
+    log.info(`Session object: ${JSON.stringify({
+      hasSession: !!session,
+      hasRoots: !!session?.roots,
+      rootsType: typeof session?.roots,
+      isRootsArray: Array.isArray(session?.roots),
+      rootsLength: session?.roots?.length,
+      firstRoot: session?.roots?.[0],
+      hasRootsRoots: !!session?.roots?.roots,
+      rootsRootsType: typeof session?.roots?.roots,
+      isRootsRootsArray: Array.isArray(session?.roots?.roots),
+      rootsRootsLength: session?.roots?.roots?.length,
+      firstRootsRoot: session?.roots?.roots?.[0]
+    })}`);
+    
+    // ALWAYS ensure we return a valid path for project root
+    const cwd = process.cwd();
+    
     // If we have a session with roots array
     if (session?.roots?.[0]?.uri) {
       const rootUri = session.roots[0].uri;
+      log.info(`Found rootUri in session.roots[0].uri: ${rootUri}`);
       const rootPath = rootUri.startsWith('file://')
         ? decodeURIComponent(rootUri.slice(7))
         : rootUri;
+      log.info(`Decoded rootPath: ${rootPath}`);
       return rootPath;
     }
     
     // If we have a session with roots.roots array (different structure)
     if (session?.roots?.roots?.[0]?.uri) {
       const rootUri = session.roots.roots[0].uri;
+      log.info(`Found rootUri in session.roots.roots[0].uri: ${rootUri}`);
       const rootPath = rootUri.startsWith('file://')
         ? decodeURIComponent(rootUri.slice(7))
         : rootUri;
+      log.info(`Decoded rootPath: ${rootPath}`);
       return rootPath;
     }
 
@@ -106,24 +128,15 @@ function getProjectRootFromSession(session, log) {
         if (fs.existsSync(path.join(projectRoot, '.cursor')) || 
             fs.existsSync(path.join(projectRoot, 'mcp-server')) ||
             fs.existsSync(path.join(projectRoot, 'package.json'))) {
+          log.info(`Found project root from server path: ${projectRoot}`);
           return projectRoot;
         }
       }
     }
 
-    // If we get here, we'll try process.cwd() but only if it's not "/"
-    const cwd = process.cwd();
-    if (cwd !== '/') {
-      return cwd;
-    }
-
-    // Last resort: try to derive from the server path we found earlier
-    if (serverPath) {
-      const mcpServerIndex = serverPath.indexOf('mcp-server');
-      return mcpServerIndex !== -1 ? serverPath.substring(0, mcpServerIndex - 1) : cwd;
-    }
-
-    throw new Error('Could not determine project root');
+    // ALWAYS ensure we return a valid path as a last resort
+    log.info(`Using current working directory as ultimate fallback: ${cwd}`);
+    return cwd;
   } catch (e) {
     // If we have a server path, use it as a basis for project root
     const serverPath = process.argv[1];
@@ -171,18 +184,20 @@ function handleApiResult(result, log, errorPrefix = 'API error', processFunction
 }
 
 /**
- * Execute a Task Master CLI command using child_process
- * @param {string} command - The command to execute
- * @param {Object} log - The logger object from FastMCP
+ * Executes a task-master CLI command synchronously.
+ * @param {string} command - The command to execute (e.g., 'add-task')
+ * @param {Object} log - Logger instance
  * @param {Array} args - Arguments for the command
  * @param {string|undefined} projectRootRaw - Optional raw project root path (will be normalized internally)
+ * @param {Object|null} customEnv - Optional object containing environment variables to pass to the child process
  * @returns {Object} - The result of the command execution
  */
 function executeTaskMasterCommand(
   command,
   log,
   args = [],
-  projectRootRaw = null
+  projectRootRaw = null,
+  customEnv = null // Changed from session to customEnv
 ) {
   try {
     // Normalize project root internally using the getProjectRoot utility
@@ -201,7 +216,12 @@ function executeTaskMasterCommand(
     const spawnOptions = {
       encoding: "utf8",
       cwd: cwd,
+      // Merge process.env with customEnv, giving precedence to customEnv
+      env: { ...process.env, ...(customEnv || {}) }
     };
+
+    // Log the environment being passed (optional, for debugging)
+    // log.info(`Spawn options env: ${JSON.stringify(spawnOptions.env)}`);
 
     // Execute the command using the global task-master CLI or local script
     // Try the global CLI first
@@ -210,6 +230,7 @@ function executeTaskMasterCommand(
     // If global CLI is not available, try fallback to the local script
     if (result.error && result.error.code === "ENOENT") {
       log.info("Global task-master not found, falling back to local script");
+      // Pass the same spawnOptions (including env) to the fallback
       result = spawnSync("node", ["scripts/dev.js", ...fullArgs], spawnOptions);
     }
 

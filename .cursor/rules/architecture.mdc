@@ -155,7 +155,114 @@ alwaysApply: false
   - **UI for Presentation**:  [`ui.js`](mdc:scripts/modules/ui.js) is used by command handlers and task/dependency managers to display information to the user. UI functions primarily consume data and format it for output, without modifying core application state.
   - **Utilities for Common Tasks**: [`utils.js`](mdc:scripts/modules/utils.js) provides helper functions used by all other modules for configuration, logging, file operations, and common data manipulations.
   - **AI Services Integration**: AI functionalities (complexity analysis, task expansion, PRD parsing) are invoked from [`task-manager.js`](mdc:scripts/modules/task-manager.js) and potentially [`commands.js`](mdc:scripts/modules/commands.js), likely using functions that would reside in a dedicated `ai-services.js` module or be integrated within `utils.js` or `task-manager.js`.
-  - **MCP Server Interaction**: External tools interact with the `mcp-server`. MCP Tool `execute` methods use `getProjectRootFromSession` to find the project root, then call direct function wrappers (in `mcp-server/src/core/direct-functions/`) passing the root in `args`. These wrappers handle path finding for `tasks.json` (using `path-utils.js`), validation, caching, call the core logic from `scripts/modules/`, and return a standardized result. The final MCP response is formatted by `mcp-server/src/tools/utils.js`. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details.
+  - **MCP Server Interaction**: External tools interact with the `mcp-server`. MCP Tool `execute` methods use `getProjectRootFromSession` to find the project root, then call direct function wrappers (in `mcp-server/src/core/direct-functions/`) passing the root in `args`. These wrappers handle path finding for `tasks.json` (using `path-utils.js`), validation, caching, call the core logic from `scripts/modules/` (passing logging context via the standard wrapper pattern detailed in mcp.mdc), and return a standardized result. The final MCP response is formatted by `mcp-server/src/tools/utils.js`. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details.
+
+## Silent Mode Implementation Pattern in MCP Direct Functions
+
+Direct functions (the `*Direct` functions in `mcp-server/src/core/direct-functions/`) need to carefully implement silent mode to prevent console logs from interfering with the structured JSON responses required by MCP. This involves both using `enableSilentMode`/`disableSilentMode` around core function calls AND passing the MCP logger via the standard wrapper pattern (see mcp.mdc). Here's the standard pattern for correct implementation:
+
+1. **Import Silent Mode Utilities**:
+   ```javascript
+   import { enableSilentMode, disableSilentMode, isSilentMode } from '../../../../scripts/modules/utils.js';
+   ```
+
+2. **Parameter Matching with Core Functions**:
+   - ✅ **DO**: Ensure direct function parameters match the core function parameters
+   - ✅ **DO**: Check the original core function signature before implementing
+   - ❌ **DON'T**: Add parameters to direct functions that don't exist in core functions
+   ```javascript
+   // Example: Core function signature
+   // async function expandTask(tasksPath, taskId, numSubtasks, useResearch, additionalContext, options)
+   
+   // Direct function implementation - extract only parameters that exist in core
+   export async function expandTaskDirect(args, log, context = {}) {
+     // Extract parameters that match the core function
+     const taskId = parseInt(args.id, 10);
+     const numSubtasks = args.num ? parseInt(args.num, 10) : undefined;
+     const useResearch = args.research === true;
+     const additionalContext = args.prompt || '';
+     
+     // Later pass these parameters in the correct order to the core function
+     const result = await expandTask(
+       tasksPath, 
+       taskId, 
+       numSubtasks, 
+       useResearch, 
+       additionalContext,
+       { mcpLog: log, session: context.session }
+     );
+   }
+   ```
+
+3. **Checking Silent Mode State**:
+   - ✅ **DO**: Always use `isSilentMode()` function to check current status
+   - ❌ **DON'T**: Directly access the global `silentMode` variable or `global.silentMode`
+   ```javascript
+   // CORRECT: Use the function to check current state
+   if (!isSilentMode()) {
+     // Only create a loading indicator if not in silent mode
+     loadingIndicator = startLoadingIndicator('Processing...');
+   }
+   
+   // INCORRECT: Don't access global variables directly
+   if (!silentMode) { // ❌ WRONG
+     loadingIndicator = startLoadingIndicator('Processing...');
+   }
+   ```
+
+4. **Wrapping Core Function Calls**:
+   - ✅ **DO**: Use a try/finally block pattern to ensure silent mode is always restored
+   - ✅ **DO**: Enable silent mode before calling core functions that produce console output
+   - ✅ **DO**: Disable silent mode in a finally block to ensure it runs even if errors occur
+   - ❌ **DON'T**: Enable silent mode without ensuring it gets disabled
+   ```javascript
+   export async function someDirectFunction(args, log) {
+     try {
+       // Argument preparation
+       const tasksPath = findTasksJsonPath(args, log);
+       const someArg = args.someArg;
+       
+       // Enable silent mode to prevent console logs
+       enableSilentMode();
+       
+       try {
+         // Call core function which might produce console output
+         const result = await someCoreFunction(tasksPath, someArg);
+         
+         // Return standardized result object
+         return { 
+           success: true, 
+           data: result, 
+           fromCache: false 
+         };
+       } finally {
+         // ALWAYS disable silent mode in finally block
+         disableSilentMode();
+       }
+     } catch (error) {
+       // Standard error handling
+       log.error(`Error in direct function: ${error.message}`);
+       return { 
+         success: false, 
+         error: { code: 'OPERATION_ERROR', message: error.message }, 
+         fromCache: false 
+       };
+     }
+   }
+   ```
+
+5. **Mixed Parameter and Global Silent Mode Handling**:
+   - For functions that need to handle both a passed `silentMode` parameter and check global state:
+   ```javascript
+   // Check both the function parameter and global state
+   const isSilent = options.silentMode || (typeof options.silentMode === 'undefined' && isSilentMode());
+   
+   if (!isSilent) {
+     console.log('Operation starting...');
+   }
+   ```
+
+By following these patterns consistently, direct functions will properly manage console output suppression while ensuring that silent mode is always properly reset, even when errors occur. This creates a more robust system that helps prevent unexpected silent mode states that could cause logging problems in subsequent operations.
 
 - **Testing Architecture**:
 
@@ -205,7 +312,7 @@ Follow these steps to add MCP support for an existing Task Master command (see [
 
 1.  **Ensure Core Logic Exists**: Verify the core functionality is implemented and exported from the relevant module in `scripts/modules/`.
 
-2.  **Create Direct Function File in `mcp-server/src/core/direct-functions/`**:
+2.  **Create Direct Function File in `mcp-server/src/core/direct-functions/`:**
     - Create a new file (e.g., `your-command.js`) using **kebab-case** naming.
     - Import necessary core functions, **`findTasksJsonPath` from `../utils/path-utils.js`**, and **silent mode utilities**.
     - Implement `async function yourCommandDirect(args, log)` using **camelCase** with `Direct` suffix:

@@ -179,7 +179,11 @@ function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 
   // Find the first existing path
   for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
+    log.info(`Checking if exists: ${p}`);
+    const exists = fs.existsSync(p);
+    log.info(`Path ${p} exists: ${exists}`);
+    
+    if (exists) {
       log.info(`Found tasks file at: ${p}`);
       // Store the project root for future use
       lastFoundProjectRoot = dirPath;

@@ -31,7 +31,7 @@ export function registerParsePRDTool(server) {
           "Root directory of the project (default: automatically detected from session or CWD)"
         ),
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
         
@@ -45,9 +45,7 @@ export function registerParsePRDTool(server) {
         const result = await parsePRDDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Successfully parsed PRD: ${result.data.message}`);

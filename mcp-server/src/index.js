@@ -69,9 +69,10 @@ class TaskMasterMCPServer {
       await this.init();
     }
 
-    // Start the FastMCP server
+    // Start the FastMCP server with increased timeout
     await this.server.start({
       transportType: "stdio",
+      timeout: 120000 // 2 minutes timeout (in milliseconds)
     });
 
     return this;

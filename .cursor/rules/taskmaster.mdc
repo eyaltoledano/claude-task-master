@@ -10,6 +10,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 **Note:** For interacting with Taskmaster programmatically or via integrated tools, using the **MCP tools is strongly recommended** due to better performance, structured data, and error handling. The CLI commands serve as a user-friendly alternative and fallback. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for MCP implementation details and [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for CLI implementation guidelines.
 
+**Important:** Several MCP tools involve AI processing and are long-running operations that may take up to a minute to complete. When using these tools, always inform users that the operation is in progress and to wait patiently for results. The AI-powered tools include: `parse_prd`, `analyze_project_complexity`, `update_subtask`, `update_task`, `update`, `expand_all`, `expand_task`, and `add_task`.
+
 ---
 
 ## Initialization & Setup
@@ -49,6 +51,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `force`: `Use this to allow Taskmaster to overwrite an existing 'tasks.json' without asking for confirmation.` (CLI: `-f, --force`)
 *   **Usage:** Useful for bootstrapping a project from an existing requirements document.
 *   **Notes:** Task Master will strictly adhere to any specific requirements mentioned in the PRD (libraries, database schemas, frameworks, tech stacks, etc.) while filling in any gaps where the PRD isn't fully specified. Tasks are designed to provide the most direct implementation path while avoiding over-engineering.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ---
 
@@ -99,6 +102,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `priority`: `Set the priority for the new task ('high', 'medium', 'low'; default: 'medium').` (CLI: `--priority <priority>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Quickly add newly identified tasks during development.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 7. Add Subtask (`add_subtask`)
 
@@ -127,7 +131,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `prompt`: `Required. Explain the change or new context for Taskmaster to apply to the tasks (e.g., "We are now using React Query instead of Redux Toolkit for data fetching").` (CLI: `-p, --prompt <text>`)
     *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates based on external knowledge (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
-*   **Usage:** Handle significant implementation changes or pivots that affect multiple future tasks.
+*   **Usage:** Handle significant implementation changes or pivots that affect multiple future tasks. Example CLI: `task-master update --from='18' --prompt='Switching to React Query.\nNeed to refactor data fetching...'`
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 9. Update Task (`update_task`)
 
@@ -139,19 +144,21 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `prompt`: `Required. Explain the specific changes or provide the new information Taskmaster should incorporate into this task.` (CLI: `-p, --prompt <text>`)
     *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
-*   **Usage:** Refine a specific task based on new understanding or feedback.
+*   **Usage:** Refine a specific task based on new understanding or feedback. Example CLI: `task-master update-task --id='15' --prompt='Clarification: Use PostgreSQL instead of MySQL.\nUpdate schema details...'`
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 10. Update Subtask (`update_subtask`)
 
 *   **MCP Tool:** `update_subtask`
 *   **CLI Command:** `task-master update-subtask [options]`
-*   **Description:** `Append timestamped notes or details to a specific Taskmaster subtask without overwriting existing content.`
+*   **Description:** `Append timestamped notes or details to a specific Taskmaster subtask without overwriting existing content. Intended for iterative implementation logging.`
 *   **Key Parameters/Options:**
     *   `id`: `Required. The specific ID of the Taskmaster subtask (e.g., '15.2') you want to add information to.` (CLI: `-i, --id <id>`)
-    *   `prompt`: `Required. Provide the information or notes Taskmaster should append to the subtask's details.` (CLI: `-p, --prompt <text>`)
+    *   `prompt`: `Required. Provide the information or notes Taskmaster should append to the subtask's details. Ensure this adds *new* information not already present.` (CLI: `-p, --prompt <text>`)
     *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
-*   **Usage:** Add implementation notes, code snippets, or clarifications to a subtask during development.
+*   **Usage:** Add implementation notes, code snippets, or clarifications to a subtask during development. Before calling, review the subtask's current details to append only fresh insights, helping to build a detailed log of the implementation journey and avoid redundancy. Example CLI: `task-master update-subtask --id='15.2' --prompt='Discovered that the API requires header X.\nImplementation needs adjustment...'`
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 11. Set Task Status (`set_task_status`)
 
@@ -193,6 +200,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `force`: `Use this to make Taskmaster replace existing subtasks with newly generated ones.` (CLI: `--force`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Generate a detailed implementation plan for a complex task before starting coding.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 14. Expand All Tasks (`expand_all`)
 
@@ -206,6 +214,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `force`: `Make Taskmaster replace existing subtasks.` (CLI: `--force`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Useful after initial task generation or complexity analysis to break down multiple tasks at once.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
 ### 15. Clear Subtasks (`clear_subtasks`)
 
@@ -278,45 +287,67 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Analysis & Reporting
 
-### 21. Analyze Complexity (`analyze_complexity`)
+### 21. Analyze Project Complexity (`analyze_project_complexity`)
 
-*   **MCP Tool:** `analyze_complexity`
+*   **MCP Tool:** `analyze_project_complexity`
 *   **CLI Command:** `task-master analyze-complexity [options]`
-*   **Description:** `Let Taskmaster analyze the complexity of your tasks and generate a report with recommendations for which ones need breaking down.`
+*   **Description:** `Have Taskmaster analyze your tasks to determine their complexity and suggest which ones need to be broken down further.`
 *   **Key Parameters/Options:**
-    *   `output`: `Where Taskmaster should save the JSON complexity analysis report (default: 'scripts/task-complexity-report.json').` (CLI: `-o, --output <file>`)
-    *   `threshold`: `The minimum complexity score (1-10) for Taskmaster to recommend expanding a task.` (CLI: `-t, --threshold <number>`)
-    *   `research`: `Enable Taskmaster to use Perplexity AI for more informed complexity analysis (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `output`: `Where to save the complexity analysis report (default: 'scripts/task-complexity-report.json').` (CLI: `-o, --output <file>`)
+    *   `threshold`: `The minimum complexity score (1-10) that should trigger a recommendation to expand a task.` (CLI: `-t, --threshold <number>`)
+    *   `research`: `Enable Perplexity AI for more accurate complexity analysis (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
-*   **Usage:** Identify which tasks are likely too large and need further breakdown before implementation.
+*   **Usage:** Used before breaking down tasks to identify which ones need the most attention.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 22. Complexity Report (`complexity_report`)
+### 22. View Complexity Report (`complexity_report`)
 
 *   **MCP Tool:** `complexity_report`
 *   **CLI Command:** `task-master complexity-report [options]`
-*   **Description:** `Display the Taskmaster task complexity analysis report generated by 'analyze-complexity'.`
+*   **Description:** `Display the task complexity analysis report in a readable format.`
 *   **Key Parameters/Options:**
-    *   `file`: `Path to the JSON complexity report file (default: 'scripts/task-complexity-report.json').` (CLI: `-f, --file <file>`)
-*   **Usage:** View the formatted results of the complexity analysis to guide task expansion.
+    *   `file`: `Path to the complexity report (default: 'scripts/task-complexity-report.json').` (CLI: `-f, --file <file>`)
+*   **Usage:** Review and understand the complexity analysis results after running analyze-complexity.
 
 ---
 
-## File Generation
+## File Management
 
 ### 23. Generate Task Files (`generate`)
 
 *   **MCP Tool:** `generate`
 *   **CLI Command:** `task-master generate [options]`
-*   **Description:** `Generate individual markdown files for each task and subtask defined in your Taskmaster 'tasks.json'.`
+*   **Description:** `Create or update individual Markdown files for each task based on your tasks.json.`
 *   **Key Parameters/Options:**
-    *   `file`: `Path to your Taskmaster 'tasks.json' file containing the task data (default relies on auto-detection).` (CLI: `-f, --file <file>`)
-    *   `output`: `The directory where Taskmaster should save the generated markdown task files (default: 'tasks').` (CLI: `-o, --output <dir>`)
-*   **Usage:** Create/update the individual `.md` files in the `tasks/` directory, useful for tracking changes in git or viewing tasks individually.
+    *   `output`: `The directory where Taskmaster should save the task files (default: in a 'tasks' directory).` (CLI: `-o, --output <directory>`)
+    *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
+*   **Usage:** Run this after making changes to tasks.json to keep individual task files up to date.
 
 ---
 
-## Configuration & Metadata
+## Environment Variables Configuration
 
--   **Environment Variables**: Taskmaster relies on environment variables for configuration (API keys, model preferences, default settings). See [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) or the project README for a list.
--   **`tasks.json`**: The core data file containing the array of tasks and their details. See [`tasks.mdc`](mdc:.cursor/rules/tasks.mdc) for details.
--   **`task_xxx.md` files**: Individual markdown files generated by the `generate` command/tool, reflecting the content of `tasks.json`.
+Taskmaster's behavior can be customized via environment variables. These affect both CLI and MCP server operation:
+
+*   **ANTHROPIC_API_KEY** (Required): Your Anthropic API key for Claude.
+*   **MODEL**: Claude model to use (default: `claude-3-opus-20240229`). 
+*   **MAX_TOKENS**: Maximum tokens for AI responses (default: 8192).
+*   **TEMPERATURE**: Temperature for AI model responses (default: 0.7).
+*   **DEBUG**: Enable debug logging (`true`/`false`, default: `false`).
+*   **LOG_LEVEL**: Console output level (`debug`, `info`, `warn`, `error`, default: `info`).
+*   **DEFAULT_SUBTASKS**: Default number of subtasks for `expand` (default: 5).
+*   **DEFAULT_PRIORITY**: Default priority for new tasks (default: `medium`).
+*   **PROJECT_NAME**: Project name used in metadata.
+*   **PROJECT_VERSION**: Project version used in metadata.
+*   **PERPLEXITY_API_KEY**: API key for Perplexity AI (for `--research` flags).
+*   **PERPLEXITY_MODEL**: Perplexity model to use (default: `sonar-medium-online`).
+
+Set these in your `.env` file in the project root or in your environment before running Taskmaster.
+
+---
+
+For implementation details:
+*   CLI commands: See [`commands.mdc`](mdc:.cursor/rules/commands.mdc)
+*   MCP server: See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)
+*   Task structure: See [`tasks.mdc`](mdc:.cursor/rules/tasks.mdc)
+*   Workflow: See [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc)

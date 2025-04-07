@@ -28,7 +28,8 @@ const LOG_LEVELS = {
   debug: 0,
   info: 1,
   warn: 2,
-  error: 3
+  error: 3,
+  success: 1 // Treat success like info level
 };
 
 /**
@@ -59,7 +60,7 @@ function isSilentMode() {
  * @param  {...any} args - Arguments to log
  */
 function log(level, ...args) {
-  // Skip logging if silent mode is enabled
+  // Immediately return if silentMode is enabled
   if (silentMode) {
     return;
   }
@@ -73,16 +74,24 @@ function log(level, ...args) {
     success: chalk.green("[SUCCESS]")
   };
   
-  if (LOG_LEVELS[level] >= LOG_LEVELS[CONFIG.logLevel]) {
-    const prefix = prefixes[level] || "";
-    console.log(`${prefix} ${args.join(' ')}`);
+  // Ensure level exists, default to info if not
+  const currentLevel = LOG_LEVELS.hasOwnProperty(level) ? level : 'info';
+  const configLevel = CONFIG.logLevel || 'info'; // Ensure configLevel has a default
+  
+  // Check log level configuration
+  if (LOG_LEVELS[currentLevel] >= (LOG_LEVELS[configLevel] ?? LOG_LEVELS.info)) {
+    const prefix = prefixes[currentLevel] || '';
+    // Use console.log for all levels, let chalk handle coloring
+    // Construct the message properly
+    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+    console.log(`${prefix} ${message}`);
   }
 }
 
 /**
  * Reads and parses a JSON file
  * @param {string} filepath - Path to the JSON file
- * @returns {Object} Parsed JSON data
+ * @returns {Object|null} Parsed JSON data or null if error occurs
  */
 function readJSON(filepath) {
   try {
@@ -91,7 +100,8 @@ function readJSON(filepath) {
   } catch (error) {
     log('error', `Error reading JSON file ${filepath}:`, error.message);
     if (CONFIG.debug) {
-      console.error(error);
+      // Use log utility for debug output too
+      log('error', 'Full error details:', error);
     }
     return null;
   }
@@ -104,11 +114,16 @@ function readJSON(filepath) {
  */
 function writeJSON(filepath, data) {
   try {
-    fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+    const dir = path.dirname(filepath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
     log('error', `Error writing JSON file ${filepath}:`, error.message);
     if (CONFIG.debug) {
-      console.error(error);
+       // Use log utility for debug output too
+      log('error', 'Full error details:', error);
     }
   }
 }

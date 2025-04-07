@@ -8,6 +8,157 @@
   - Rename `list-tasks` to `get-tasks` for more intuitive client requests like "get my tasks"
   - Rename `show-task` to `get-task` for consistency with GET-based API naming conventions
 
+- **Refine AI-based MCP tool implementation patterns:**
+  - Establish clear responsibilities for direct functions vs MCP tools when handling AI operations
+  - Update MCP direct function signatures to expect `context = { session }` for AI-based tools, without `reportProgress`
+  - Clarify that AI client initialization, API calls, and response parsing should be handled within the direct function
+  - Define standard error codes for AI operations (`AI_CLIENT_ERROR`, `RESPONSE_PARSING_ERROR`, etc.)
+  - Document that `reportProgress` should not be used within direct functions due to client validation issues
+  - Establish that progress indication within direct functions should use standard logging (`log.info()`)
+  - Clarify that `AsyncOperationManager` should manage progress reporting at the MCP tool layer, not in direct functions
+  - Update `mcp.mdc` rule to reflect the refined patterns for AI-based MCP tools
+  - **Document and implement the Logger Wrapper Pattern:**
+    - Add comprehensive documentation in `mcp.mdc` and `utilities.mdc` on the Logger Wrapper Pattern
+    - Explain the dual purpose of the wrapper: preventing runtime errors and controlling output format
+    - Include implementation examples with detailed explanations of why and when to use this pattern
+    - Clearly document that this pattern has proven successful in resolving issues in multiple MCP tools
+    - Cross-reference between rule files to ensure consistent guidance
+  - **Fix critical issue in `analyze-project-complexity` MCP tool:**
+    - Implement proper logger wrapper in `analyzeTaskComplexityDirect` to fix `mcpLog[level] is not a function` errors
+    - Update direct function to handle both Perplexity and Claude AI properly for research-backed analysis
+    - Improve silent mode handling with proper wasSilent state tracking
+    - Add comprehensive error handling for AI client errors and report file parsing
+    - Ensure proper report format detection and analysis with fallbacks
+    - Fix variable name conflicts between the `report` logging function and data structures in `analyzeTaskComplexity`
+  - **Fix critical issue in `update-task` MCP tool:**
+    - Implement proper logger wrapper in `updateTaskByIdDirect` to ensure mcpLog[level] calls work correctly
+    - Update Zod schema in `update-task.js` to accept both string and number type IDs
+    - Fix silent mode implementation with proper try/finally blocks
+    - Add comprehensive error handling for missing parameters, invalid task IDs, and failed updates
+  - **Refactor `update-subtask` MCP tool to follow established patterns:**
+    - Update `updateSubtaskByIdDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling for both Anthropic and Perplexity
+    - Implement the Logger Wrapper Pattern to prevent mcpLog[level] errors
+    - Support both string and number subtask IDs with appropriate validation
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Remove commented-out calls to reportProgress for cleaner code
+    - Add comprehensive error handling for various failure scenarios
+    - Implement proper silent mode with try/finally blocks
+    - Ensure detailed successful update response information
+  - **Fix issues in `set-task-status` MCP tool:**
+    - Remove reportProgress parameter as it's not needed
+    - Improve project root handling for better session awareness
+    - Reorganize function call arguments for setTaskStatusDirect
+    - Add proper silent mode handling with try/catch/finally blocks
+    - Enhance logging for both success and error cases
+  - **Refactor `update` MCP tool to follow established patterns:**
+    - Update `updateTasksDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Simplify parameter validation using string type for 'from' parameter
+    - Improve error handling for AI client errors
+    - Implement proper silent mode handling with try/finally blocks
+    - Use `isSilentMode()` function instead of accessing global variables directly
+  - **Refactor `expand-task` MCP tool to follow established patterns:**
+    - Update `expandTaskDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Add comprehensive tests for the refactored implementation
+    - Improve error handling for AI client errors
+    - Remove non-existent 'force' parameter from direct function implementation
+    - Ensure direct function parameters match core function parameters
+    - Implement proper silent mode handling with try/finally blocks
+    - Use `isSilentMode()` function instead of accessing global variables directly
+  - **Refactor `parse-prd` MCP tool to follow established patterns:**
+    - Update `parsePRDDirect` function to accept `context = { session }` parameter for proper AI initialization
+    - Implement AI client initialization with proper error handling using `getAnthropicClientForMCP`
+    - Add the Logger Wrapper Pattern to ensure proper logging via `mcpLog`
+    - Update the core `parsePRD` function to accept an AI client parameter
+    - Implement proper silent mode handling with try/finally blocks
+    - Remove `reportProgress` usage from MCP tool for better client compatibility
+    - Fix console output that was breaking the JSON response format
+    - Improve error handling with specific error codes
+    - Pass session object to the direct function correctly
+    - Update task-manager-core.js to export AI client utilities for better organization
+    - Ensure proper option passing between functions to maintain logging context
+
+- **Update MCP Logger to respect silent mode:**
+  - Import and check `isSilentMode()` function in logger implementation
+  - Skip all logging when silent mode is enabled
+  - Prevent console output from interfering with JSON responses
+  - Fix "Unexpected token 'I', "[INFO] Gene"... is not valid JSON" errors by suppressing log output during silent mode
+
+- **Refactor `expand-all` MCP tool to follow established patterns:**
+    - Update `expandAllTasksDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling for research-backed expansion
+    - Pass session to direct function but not reportProgress in the MCP tool
+    - Implement directory switching to work around core function limitations
+    - Add comprehensive error handling with specific error codes
+    - Ensure proper restoration of working directory after execution
+    - Use try/finally pattern for both silent mode and directory management
+    - Add comprehensive tests for the refactored implementation
+
+- **Standardize and improve silent mode implementation across MCP direct functions:**
+  - Add proper import of all silent mode utilities: `import { enableSilentMode, disableSilentMode, isSilentMode } from 'utils.js'`
+  - Replace direct access to global silentMode variable with `isSilentMode()` function calls
+  - Implement consistent try/finally pattern to ensure silent mode is always properly disabled
+  - Add error handling with finally blocks to prevent silent mode from remaining enabled after errors
+  - Create proper mixed parameter/global silent mode check pattern: `const isSilent = options.silentMode || (typeof options.silentMode === 'undefined' && isSilentMode())`
+  - Update all direct functions to follow the new implementation pattern
+  - Fix issues with silent mode not being properly disabled when errors occur
+
+- **Improve parameter handling between direct functions and core functions:**
+  - Verify direct function parameters match core function signatures
+  - Remove extraction and use of parameters that don't exist in core functions (e.g., 'force')
+  - Implement appropriate type conversion for parameters (e.g., `parseInt(args.id, 10)`)
+  - Set defaults that match core function expectations
+  - Add detailed documentation on parameter matching in guidelines
+  - Add explicit examples of correct parameter handling patterns
+
+- **Create standardized MCP direct function implementation checklist:**
+  - Comprehensive imports and dependencies section
+  - Parameter validation and matching guidelines
+  - Silent mode implementation best practices
+  - Error handling and response format patterns
+  - Path resolution and core function call guidelines
+  - Function export and testing verification steps
+  - Specific issues to watch for related to silent mode, parameters, and error cases
+  - Add checklist to subtasks for uniform implementation across all direct functions
+
+- **Implement centralized AI client utilities for MCP tools:**
+  - Create new `ai-client-utils.js` module with standardized client initialization functions
+  - Implement session-aware AI client initialization for both Anthropic and Perplexity
+  - Add comprehensive error handling with user-friendly error messages
+  - Create intelligent AI model selection based on task requirements
+  - Implement model configuration utilities that respect session environment variables
+  - Add extensive unit tests for all utility functions
+  - Significantly improve MCP tool reliability for AI operations
+  - **Specific implementations include:**
+    - `getAnthropicClientForMCP`: Initializes Anthropic client with session environment variables
+    - `getPerplexityClientForMCP`: Initializes Perplexity client with session environment variables
+    - `getModelConfig`: Retrieves model parameters from session or fallbacks to defaults
+    - `getBestAvailableAIModel`: Selects the best available model based on requirements
+    - `handleClaudeError`: Processes Claude API errors into user-friendly messages
+  - **Updated direct functions to use centralized AI utilities:**
+    - Refactored `addTaskDirect` to use the new AI client utilities with proper AsyncOperationManager integration
+    - Implemented comprehensive error handling for API key validation, AI processing, and response parsing
+    - Added session-aware parameter handling with proper propagation of context to AI streaming functions
+    - Ensured proper fallback to process.env when session variables aren't available
+
+- **Refine AI services for reusable operations:**
+  - Refactor `ai-services.js` to support consistent AI operations across CLI and MCP
+  - Implement shared helpers for streaming responses, prompt building, and response parsing
+  - Standardize client initialization patterns with proper session parameter handling
+  - Enhance error handling and loading indicator management
+  - Fix process exit issues to prevent MCP server termination on API errors
+  - Ensure proper resource cleanup in all execution paths
+  - Add comprehensive test coverage for AI service functions
+  - **Key improvements include:**
+    - Stream processing safety with explicit completion detection
+    - Standardized function parameter patterns
+    - Session-aware parameter extraction with sensible defaults
+    - Proper cleanup using try/catch/finally patterns
+
 - **Optimize MCP response payloads:**
   - Add custom `processTaskResponse` function to `get-task` MCP tool to filter out unnecessary `allTasks` array data
   - Significantly reduce response size by returning only the specific requested task instead of all tasks
@@ -28,6 +179,9 @@
   - Add examples of proper error handling and parameter validation to all relevant rules
   - Include new sections about handling dependencies during task removal operations
   - Document naming conventions and implementation patterns for destructive operations
+  - Update silent mode implementation documentation with proper examples
+  - Add parameter handling guidelines emphasizing matching with core functions
+  - Update architecture documentation with dedicated section on silent mode implementation
 
 - **Implement silent mode across all direct functions:**
   - Add `enableSilentMode` and `disableSilentMode` utility imports to all direct function files
@@ -124,3 +278,8 @@
 - Improve status counts display with clear text labels beside status icons for better readability.
 - Treat deferred and cancelled tasks as effectively complete for progress calculation while maintaining visual distinction.
 - **Fix `reportProgress` calls** to use the correct `{ progress, total? }` format.
+- **Standardize logging in core task-manager functions (`expandTask`, `expandAllTasks`, `updateTasks`, `updateTaskById`, `updateSubtaskById`, `parsePRD`, `analyzeTaskComplexity`):**
+  - Implement a local `report` function in each to handle context-aware logging.
+  - Use `report` to choose between `mcpLog` (if available) and global `log` (from `utils.js`).
+  - Only call global `log` when `outputFormat` is 'text' and silent mode is off.
+  - Wrap CLI UI elements (tables, boxes, spinners) in `outputFormat === 'text'` checks.

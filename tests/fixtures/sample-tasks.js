@@ -1,5 +1,5 @@
 /**
- * Sample tasks data for tests
+ * Sample task data for testing
  */
 
 export const sampleTasks = {
@@ -28,7 +28,23 @@ export const sampleTasks = {
       dependencies: [1],
       priority: "high",
       details: "Implement user authentication, data processing, and API endpoints",
-      testStrategy: "Write unit tests for all core functions"
+      testStrategy: "Write unit tests for all core functions",
+      subtasks: [
+        {
+          id: 1,
+          title: "Implement Authentication",
+          description: "Create user authentication system",
+          status: "done",
+          dependencies: []
+        },
+        {
+          id: 2,
+          title: "Set Up Database",
+          description: "Configure database connection and models",
+          status: "pending",
+          dependencies: [1]
+        }
+      ]
     },
     {
       id: 3,

@@ -10,6 +10,8 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import readline from 'readline';
 import { Anthropic } from '@anthropic-ai/sdk';
+import ora from 'ora';
+import inquirer from 'inquirer';
 
 import { 
   CONFIG, 
@@ -22,7 +24,8 @@ import {
   findTaskInComplexityReport,
   truncate,
   enableSilentMode,
-  disableSilentMode
+  disableSilentMode,
+  isSilentMode
 } from './utils.js';
 
 import {
@@ -41,7 +44,13 @@ import {
   generateSubtasksWithPerplexity,
   generateComplexityAnalysisPrompt,
   getAvailableAIModel,
-  handleClaudeError
+  handleClaudeError,
+  _handleAnthropicStream,
+  getConfiguredAnthropicClient,
+  sendChatWithContext,
+  parseTasksFromCompletion,
+  generateTaskDescriptionWithPerplexity,
+  parseSubtasksFromText
 } from './ai-services.js';
 
 import {
@@ -51,19 +60,19 @@ import {
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || session?.env?.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Import perplexity if available
 let perplexity;
 
 try {
-  if (process.env.PERPLEXITY_API_KEY || session?.env?.PERPLEXITY_API_KEY) {
+  if (process.env.PERPLEXITY_API_KEY) {
     // Using the existing approach from ai-services.js
     const OpenAI = (await import('openai')).default;
     
     perplexity = new OpenAI({
-      apiKey: process.env.PERPLEXITY_API_KEY || session?.env?.PERPLEXITY_API_KEY, 
+      apiKey: process.env.PERPLEXITY_API_KEY, 
       baseURL: 'https://api.perplexity.ai',
     });
     
@@ -79,19 +88,37 @@ try {
  * @param {string} prdPath - Path to the PRD file
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} numTasks - Number of tasks to generate
- * @param {function} reportProgress - Function to report progress to MCP server (optional)
- * @param {Object} mcpLog - MCP logger object (optional)
- * @param {Object} session - Session object from MCP server (optional)
+ * @param {Object} options - Additional options 
+ * @param {Object} options.reportProgress - Function to report progress to MCP server (optional)
+ * @param {Object} options.mcpLog - MCP logger object (optional)
+ * @param {Object} options.session - Session object from MCP server (optional)
+ * @param {Object} aiClient - AI client to use (optional)
+ * @param {Object} modelConfig - Model configuration (optional)
  */
-async function parsePRD(prdPath, tasksPath, numTasks, { reportProgress, mcpLog, session } = {}) {
+async function parsePRD(prdPath, tasksPath, numTasks, options = {}, aiClient = null, modelConfig = null) {
+  const { reportProgress, mcpLog, session } = options;
+  
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+  
   try {
-    log('info', `Parsing PRD file: ${prdPath}`);
+    report(`Parsing PRD file: ${prdPath}`, 'info');
     
     // Read the PRD content
     const prdContent = fs.readFileSync(prdPath, 'utf8');
     
-    // Call Claude to generate tasks
-    const tasksData = await callClaude(prdContent, prdPath, numTasks, { reportProgress, mcpLog, session } = {});
+    // Call Claude to generate tasks, passing the provided AI client if available
+    const tasksData = await callClaude(prdContent, prdPath, numTasks, 0, { reportProgress, mcpLog, session }, aiClient, modelConfig);
     
     // Create the directory if it doesn't exist
     const tasksDir = path.dirname(tasksPath);
@@ -100,8 +127,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, { reportProgress, mcpLog, 
     }
     // Write the tasks to the file
     writeJSON(tasksPath, tasksData);
-    log('success', `Successfully generated ${tasksData.tasks.length} tasks from PRD`);
-    log('info', `Tasks saved to: ${tasksPath}`);
+    report(`Successfully generated ${tasksData.tasks.length} tasks from PRD`, 'success');
+    report(`Tasks saved to: ${tasksPath}`, 'info');
     
     // Generate individual task files
     if (reportProgress && mcpLog) {
@@ -113,26 +140,37 @@ async function parsePRD(prdPath, tasksPath, numTasks, { reportProgress, mcpLog, 
       await generateTaskFiles(tasksPath, tasksDir);
     }
     
-    console.log(boxen(
-      chalk.green(`Successfully generated ${tasksData.tasks.length} tasks from PRD`),
-      { padding: 1, borderColor: 'green', borderStyle: 'round' }
-    ));
-    
-    console.log(boxen(
-      chalk.white.bold('Next Steps:') + '\n\n' +
-      `${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
-      `${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks`,
-      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
-    ));
-  } catch (error) {
-    log('error', `Error parsing PRD: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
-    
-    if (CONFIG.debug) {
-      console.error(error);
+    // Only show success boxes for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log(boxen(
+        chalk.green(`Successfully generated ${tasksData.tasks.length} tasks from PRD`),
+        { padding: 1, borderColor: 'green', borderStyle: 'round' }
+      ));
+      
+      console.log(boxen(
+        chalk.white.bold('Next Steps:') + '\n\n' +
+        `${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
+        `${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks`,
+        { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+      ));
     }
     
-    process.exit(1);
+    return tasksData;
+  } catch (error) {
+    report(`Error parsing PRD: ${error.message}`, 'error');
+    
+    // Only show error UI for text output (CLI)
+    if (outputFormat === 'text') {
+      console.error(chalk.red(`Error: ${error.message}`));
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+      
+      process.exit(1);
+    } else {
+      throw error; // Re-throw for JSON output
+    }
   }
 }
 
@@ -147,15 +185,21 @@ async function parsePRD(prdPath, tasksPath, numTasks, { reportProgress, mcpLog, 
  * @param {Object} session - Session object from MCP server (optional)
  */
 async function updateTasks(tasksPath, fromId, prompt, useResearch = false, { reportProgress, mcpLog, session } = {}) {
-  try {
-    log('info', `Updating tasks from ID ${fromId} with prompt: "${prompt}"`);
-    
-    // Validate research flag
-    if (useResearch && (!perplexity || !process.env.PERPLEXITY_API_KEY || session?.env?.PERPLEXITY_API_KEY)) {
-      log('warn', 'Perplexity AI is not available. Falling back to Claude AI.');
-      console.log(chalk.yellow('Perplexity AI is not available (API key may be missing). Falling back to Claude AI.'));
-      useResearch = false;
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
     }
+  };
+  
+  try {
+    report(`Updating tasks from ID ${fromId} with prompt: "${prompt}"`);
     
     // Read the tasks file
     const data = readJSON(tasksPath);
@@ -166,45 +210,52 @@ async function updateTasks(tasksPath, fromId, prompt, useResearch = false, { rep
     // Find tasks to update (ID >= fromId and not 'done')
     const tasksToUpdate = data.tasks.filter(task => task.id >= fromId && task.status !== 'done');
     if (tasksToUpdate.length === 0) {
-      log('info', `No tasks to update (all tasks with ID >= ${fromId} are already marked as done)`);
-      console.log(chalk.yellow(`No tasks to update (all tasks with ID >= ${fromId} are already marked as done)`));
+      report(`No tasks to update (all tasks with ID >= ${fromId} are already marked as done)`, 'info');
+      
+      // Only show UI elements for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(chalk.yellow(`No tasks to update (all tasks with ID >= ${fromId} are already marked as done)`));
+      }
       return;
     }
     
-    // Show the tasks that will be updated
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Status')
-      ],
-      colWidths: [5, 60, 10]
-    });
-    
-    tasksToUpdate.forEach(task => {
-      table.push([
-        task.id,
-        truncate(task.title, 57),
-        getStatusWithColor(task.status)
-      ]);
-    });
-    
-    console.log(boxen(
-      chalk.white.bold(`Updating ${tasksToUpdate.length} tasks`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
-    ));
-    
-    console.log(table.toString());
-    
-    // Display a message about how completed subtasks are handled
-    console.log(boxen(
-      chalk.cyan.bold('How Completed Subtasks Are Handled:') + '\n\n' +
-      chalk.white('• Subtasks marked as "done" or "completed" will be preserved\n') +
-      chalk.white('• New subtasks will build upon what has already been completed\n') +
-      chalk.white('• If completed work needs revision, a new subtask will be created instead of modifying done items\n') +
-      chalk.white('• This approach maintains a clear record of completed work and new requirements'),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
-    ));
+    // Only show UI elements for text output (CLI)
+    if (outputFormat === 'text') {
+      // Show the tasks that will be updated
+      const table = new Table({
+        head: [
+          chalk.cyan.bold('ID'),
+          chalk.cyan.bold('Title'),
+          chalk.cyan.bold('Status')
+        ],
+        colWidths: [5, 60, 10]
+      });
+      
+      tasksToUpdate.forEach(task => {
+        table.push([
+          task.id,
+          truncate(task.title, 57),
+          getStatusWithColor(task.status)
+        ]);
+      });
+      
+      console.log(boxen(
+        chalk.white.bold(`Updating ${tasksToUpdate.length} tasks`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+      
+      console.log(table.toString());
+      
+      // Display a message about how completed subtasks are handled
+      console.log(boxen(
+        chalk.cyan.bold('How Completed Subtasks Are Handled:') + '\n\n' +
+        chalk.white('• Subtasks marked as "done" or "completed" will be preserved\n') +
+        chalk.white('• New subtasks will build upon what has already been completed\n') +
+        chalk.white('• If completed work needs revision, a new subtask will be created instead of modifying done items\n') +
+        chalk.white('• This approach maintains a clear record of completed work and new requirements'),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+      ));
+    }
     
     // Build the system prompt
     const systemPrompt = `You are an AI assistant helping to update software development tasks based on new context.
@@ -227,78 +278,62 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 
     const taskData = JSON.stringify(tasksToUpdate, null, 2);
     
+    // Initialize variables for model selection and fallback
     let updatedTasks;
-    const loadingIndicator = startLoadingIndicator(useResearch 
-      ? 'Updating tasks with Perplexity AI research...' 
-      : 'Updating tasks with Claude AI...');
+    let loadingIndicator = null;
+    let claudeOverloaded = false;
+    let modelAttempts = 0;
+    const maxModelAttempts = 2; // Try up to 2 models before giving up
+    
+    // Only create loading indicator for text output (CLI) initially
+    if (outputFormat === 'text') {
+      loadingIndicator = startLoadingIndicator(useResearch 
+        ? 'Updating tasks with Perplexity AI research...' 
+        : 'Updating tasks with Claude AI...');
+    }
     
     try {
-      if (useResearch) {
-        log('info', 'Using Perplexity AI for research-backed task updates');
-        
-        // Call Perplexity AI using format consistent with ai-services.js
-        const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
-        const result = await perplexity.chat.completions.create({
-          model: perplexityModel,
-          messages: [
-            {
-              role: "system", 
-              content: `${systemPrompt}\n\nAdditionally, please research the latest best practices, implementation details, and considerations when updating these tasks. Use your online search capabilities to gather relevant information. Remember to strictly follow the guidelines about preserving completed subtasks and building upon what has already been done rather than modifying or replacing it.`
-            },
-            {
-              role: "user",
-              content: `Here are the tasks to update:
-${taskData}
-
-Please update these tasks based on the following new context:
-${prompt}
-
-IMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.
-
-Return only the updated tasks as a valid JSON array.`
-            }
-          ],
-          temperature: parseFloat(process.env.TEMPERATURE || session?.env?.TEMPERATURE || CONFIG.temperature),
-          max_tokens: parseInt(process.env.MAX_TOKENS || session?.env?.MAX_TOKENS || CONFIG.maxTokens),
-        });
-        
-        const responseText = result.choices[0].message.content;
-        
-        // Extract JSON from response
-        const jsonStart = responseText.indexOf('[');
-        const jsonEnd = responseText.lastIndexOf(']');
-        
-        if (jsonStart === -1 || jsonEnd === -1) {
-          throw new Error("Could not find valid JSON array in Perplexity's response");
-        }
-        
-        const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
-        updatedTasks = JSON.parse(jsonText);
-      } else {
-        // Call Claude to update the tasks with streaming enabled
-        let responseText = '';
-        let streamingInterval = null;
+      // Import the getAvailableAIModel function
+      const { getAvailableAIModel } = await import('./ai-services.js');
+      
+      // Try different models with fallback
+      while (modelAttempts < maxModelAttempts && !updatedTasks) {
+        modelAttempts++;
+        const isLastAttempt = modelAttempts >= maxModelAttempts;
+        let modelType = null;
         
         try {
-          // Update loading indicator to show streaming progress
-          let dotCount = 0;
-          const readline = await import('readline');
-          streamingInterval = setInterval(() => {
-            readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-            dotCount = (dotCount + 1) % 4;
-          }, 500);
+          // Get the appropriate model based on current state
+          const result = getAvailableAIModel({
+            claudeOverloaded,
+            requiresResearch: useResearch
+          });
+          modelType = result.type;
+          const client = result.client;
           
-          // Use streaming API call
-          const stream = await anthropic.messages.create({
-            model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
-            max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
-            temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-            system: systemPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: `Here are the tasks to update:
+          report(`Attempt ${modelAttempts}/${maxModelAttempts}: Updating tasks using ${modelType}`, 'info');
+          
+          // Update loading indicator - only for text output
+          if (outputFormat === 'text') {
+            if (loadingIndicator) {
+              stopLoadingIndicator(loadingIndicator);
+            }
+            loadingIndicator = startLoadingIndicator(`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`);
+          }
+          
+          if (modelType === 'perplexity') {
+            // Call Perplexity AI using proper format
+            const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
+            const result = await client.chat.completions.create({
+              model: perplexityModel,
+              messages: [
+                {
+                  role: "system", 
+                  content: `${systemPrompt}\n\nAdditionally, please research the latest best practices, implementation details, and considerations when updating these tasks. Use your online search capabilities to gather relevant information. Remember to strictly follow the guidelines about preserving completed subtasks and building upon what has already been done rather than modifying or replacing it.`
+                },
+                {
+                  role: "user",
+                  content: `Here are the tasks to update:
 ${taskData}
 
 Please update these tasks based on the following new context:
@@ -307,42 +342,160 @@ ${prompt}
 IMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.
 
 Return only the updated tasks as a valid JSON array.`
+                }
+              ],
+              temperature: parseFloat(process.env.TEMPERATURE || session?.env?.TEMPERATURE || CONFIG.temperature),
+              max_tokens: parseInt(process.env.MAX_TOKENS || session?.env?.MAX_TOKENS || CONFIG.maxTokens),
+            });
+            
+            const responseText = result.choices[0].message.content;
+            
+            // Extract JSON from response
+            const jsonStart = responseText.indexOf('[');
+            const jsonEnd = responseText.lastIndexOf(']');
+            
+            if (jsonStart === -1 || jsonEnd === -1) {
+              throw new Error(`Could not find valid JSON array in ${modelType}'s response`);
+            }
+            
+            const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+            updatedTasks = JSON.parse(jsonText);
+          } else {
+            // Call Claude to update the tasks with streaming
+            let responseText = '';
+            let streamingInterval = null;
+            
+            try {
+              // Update loading indicator to show streaming progress - only for text output
+              if (outputFormat === 'text') {
+                let dotCount = 0;
+                const readline = await import('readline');
+                streamingInterval = setInterval(() => {
+                  readline.cursorTo(process.stdout, 0);
+                  process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+                  dotCount = (dotCount + 1) % 4;
+                }, 500);
               }
-            ],
-            stream: true
-          });
-          
-          // Process the stream
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-              responseText += chunk.delta.text;
-            }
-            if (reportProgress) {
-              await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
-            }
+              
+              // Use streaming API call
+              const stream = await client.messages.create({
+                model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+                max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+                temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+                system: systemPrompt,
+                messages: [
+                  {
+                    role: 'user',
+                    content: `Here is the task to update:
+${taskData}
 
-            if (mcpLog) {
-              mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
+Please update this task based on the following new context:
+${prompt}
+
+IMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.
+
+Return only the updated task as a valid JSON object.`
+                  }
+                ],
+                stream: true
+              });
+              
+              // Process the stream
+              for await (const chunk of stream) {
+                if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+                  responseText += chunk.delta.text;
+                }
+                if (reportProgress) {
+                  await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
+                }
+                if (mcpLog) {
+                  mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
+                }
+              }
+              
+              if (streamingInterval) clearInterval(streamingInterval);
+              
+              report(`Completed streaming response from ${modelType} API (Attempt ${modelAttempts})`, 'info');
+              
+              // Extract JSON from response
+              const jsonStart = responseText.indexOf('[');
+              const jsonEnd = responseText.lastIndexOf(']');
+              
+              if (jsonStart === -1 || jsonEnd === -1) {
+                throw new Error(`Could not find valid JSON array in ${modelType}'s response`);
+              }
+              
+              const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+              updatedTasks = JSON.parse(jsonText);
+              
+            } catch (streamError) {
+              if (streamingInterval) clearInterval(streamingInterval);
+              
+              // Process stream errors explicitly
+              report(`Stream error: ${streamError.message}`, 'error');
+              
+              // Check if this is an overload error
+              let isOverload = false;
+              // Check 1: SDK specific property
+              if (streamError.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 2: Check nested error property
+              else if (streamError.error?.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 3: Check status code
+              else if (streamError.status === 429 || streamError.status === 529) {
+                isOverload = true;
+              }
+              // Check 4: Check message string
+              else if (streamError.message?.toLowerCase().includes('overloaded')) {
+                isOverload = true;
+              }
+              
+              if (isOverload) {
+                claudeOverloaded = true;
+                report('Claude overloaded. Will attempt fallback model if available.', 'warn');
+                // Let the loop continue to try the next model
+                throw new Error('Claude overloaded');
+              } else {
+                // Re-throw non-overload errors
+                throw streamError;
+              }
             }
           }
           
-          if (streamingInterval) clearInterval(streamingInterval);
-          log('info', "Completed streaming response from Claude API!");
-          
-          // Extract JSON from response
-          const jsonStart = responseText.indexOf('[');
-          const jsonEnd = responseText.lastIndexOf(']');
-          
-          if (jsonStart === -1 || jsonEnd === -1) {
-            throw new Error("Could not find valid JSON array in Claude's response");
+          // If we got here successfully, break out of the loop
+          if (updatedTasks) {
+            report(`Successfully updated tasks using ${modelType} on attempt ${modelAttempts}`, 'success');
+            break;
           }
           
-          const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
-          updatedTasks = JSON.parse(jsonText);
-        } catch (error) {
-          if (streamingInterval) clearInterval(streamingInterval);
-          throw error;
+        } catch (modelError) {
+          const failedModel = modelType || 'unknown model';
+          report(`Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`, 'warn');
+          
+          // Continue to next attempt if we have more attempts and this was an overload error
+          const wasOverload = modelError.message?.toLowerCase().includes('overload');
+          
+          if (wasOverload && !isLastAttempt) {
+            if (modelType === 'claude') {
+              claudeOverloaded = true;
+              report('Will attempt with Perplexity AI next', 'info');
+            }
+            continue; // Continue to next attempt
+          } else if (isLastAttempt) {
+            report(`Final attempt (${modelAttempts}/${maxModelAttempts}) failed. No fallback possible.`, 'error');
+            throw modelError; // Re-throw on last attempt
+          } else {
+            throw modelError; // Re-throw for non-overload errors
+          }
         }
+      }
+      
+      // If we don't have updated tasks after all attempts, throw an error
+      if (!updatedTasks) {
+        throw new Error('Failed to generate updated tasks after all model attempts');
       }
       
       // Replace the tasks in the original data
@@ -356,27 +509,54 @@ Return only the updated tasks as a valid JSON array.`
       // Write the updated tasks to the file
       writeJSON(tasksPath, data);
       
-      log('success', `Successfully updated ${updatedTasks.length} tasks`);
+      report(`Successfully updated ${updatedTasks.length} tasks`, 'success');
       
       // Generate individual task files
       await generateTaskFiles(tasksPath, path.dirname(tasksPath));
       
-      console.log(boxen(
-        chalk.green(`Successfully updated ${updatedTasks.length} tasks`),
-        { padding: 1, borderColor: 'green', borderStyle: 'round' }
-      ));
+      // Only show success box for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(boxen(
+          chalk.green(`Successfully updated ${updatedTasks.length} tasks`),
+          { padding: 1, borderColor: 'green', borderStyle: 'round' }
+        ));
+      }
     } finally {
-      stopLoadingIndicator(loadingIndicator);
+      // Stop the loading indicator if it was created
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+        loadingIndicator = null;
+      }
     }
   } catch (error) {
-    log('error', `Error updating tasks: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
+    report(`Error updating tasks: ${error.message}`, 'error');
     
-    if (CONFIG.debug) {
-      console.error(error);
+    // Only show error box for text output (CLI)
+    if (outputFormat === 'text') {
+      console.error(chalk.red(`Error: ${error.message}`));
+      
+      // Provide helpful error messages based on error type
+      if (error.message?.includes('ANTHROPIC_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
+        console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+      } else if (error.message?.includes('PERPLEXITY_API_KEY') && useResearch) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
+        console.log('  2. Or run without the research flag: task-master update --from=<id> --prompt="..."');
+      } else if (error.message?.includes('overloaded')) {
+        console.log(chalk.yellow('\nAI model overloaded, and fallback failed or was unavailable:'));
+        console.log('  1. Try again in a few minutes.');
+        console.log('  2. Ensure PERPLEXITY_API_KEY is set for fallback.');
+      }
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+      
+      process.exit(1);
+    } else {
+      throw error; // Re-throw for JSON output
     }
-    
-    process.exit(1);
   }
 }
 
@@ -392,8 +572,21 @@ Return only the updated tasks as a valid JSON array.`
  * @returns {Object} - Updated task data or null if task wasn't updated
  */
 async function updateTaskById(tasksPath, taskId, prompt, useResearch = false, { reportProgress, mcpLog, session } = {}) {
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+  
   try {
-    log('info', `Updating single task ${taskId} with prompt: "${prompt}"`);
+    report(`Updating single task ${taskId} with prompt: "${prompt}"`, 'info');
     
     // Validate task ID is a positive integer
     if (!Number.isInteger(taskId) || taskId <= 0) {
@@ -407,8 +600,12 @@ async function updateTaskById(tasksPath, taskId, prompt, useResearch = false, { 
     
     // Validate research flag
     if (useResearch && (!perplexity || !process.env.PERPLEXITY_API_KEY || session?.env?.PERPLEXITY_API_KEY)) {
-      log('warn', 'Perplexity AI is not available. Falling back to Claude AI.');
-      console.log(chalk.yellow('Perplexity AI is not available (API key may be missing). Falling back to Claude AI.'));
+      report('Perplexity AI is not available. Falling back to Claude AI.', 'warn');
+      
+      // Only show UI elements for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(chalk.yellow('Perplexity AI is not available (API key may be missing). Falling back to Claude AI.'));
+      }
       useResearch = false;
     }
     
@@ -431,49 +628,56 @@ async function updateTaskById(tasksPath, taskId, prompt, useResearch = false, { 
     
     // Check if task is already completed
     if (taskToUpdate.status === 'done' || taskToUpdate.status === 'completed') {
-      log('warn', `Task ${taskId} is already marked as done and cannot be updated`);
-      console.log(boxen(
-        chalk.yellow(`Task ${taskId} is already marked as ${taskToUpdate.status} and cannot be updated.`) + '\n\n' +
-        chalk.white('Completed tasks are locked to maintain consistency. To modify a completed task, you must first:') + '\n' +
-        chalk.white('1. Change its status to "pending" or "in-progress"') + '\n' +
-        chalk.white('2. Then run the update-task command'),
-        { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-      ));
+      report(`Task ${taskId} is already marked as done and cannot be updated`, 'warn');
+      
+      // Only show warning box for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(boxen(
+          chalk.yellow(`Task ${taskId} is already marked as ${taskToUpdate.status} and cannot be updated.`) + '\n\n' +
+          chalk.white('Completed tasks are locked to maintain consistency. To modify a completed task, you must first:') + '\n' +
+          chalk.white('1. Change its status to "pending" or "in-progress"') + '\n' +
+          chalk.white('2. Then run the update-task command'),
+          { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
+        ));
+      }
       return null;
     }
     
-    // Show the task that will be updated
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Status')
-      ],
-      colWidths: [5, 60, 10]
-    });
-    
-    table.push([
-      taskToUpdate.id,
-      truncate(taskToUpdate.title, 57),
-      getStatusWithColor(taskToUpdate.status)
-    ]);
-    
-    console.log(boxen(
-      chalk.white.bold(`Updating Task #${taskId}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
-    ));
-    
-    console.log(table.toString());
-    
-    // Display a message about how completed subtasks are handled
-    console.log(boxen(
-      chalk.cyan.bold('How Completed Subtasks Are Handled:') + '\n\n' +
-      chalk.white('• Subtasks marked as "done" or "completed" will be preserved\n') +
-      chalk.white('• New subtasks will build upon what has already been completed\n') +
-      chalk.white('• If completed work needs revision, a new subtask will be created instead of modifying done items\n') +
-      chalk.white('• This approach maintains a clear record of completed work and new requirements'),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
-    ));
+    // Only show UI elements for text output (CLI)
+    if (outputFormat === 'text') {
+      // Show the task that will be updated
+      const table = new Table({
+        head: [
+          chalk.cyan.bold('ID'),
+          chalk.cyan.bold('Title'),
+          chalk.cyan.bold('Status')
+        ],
+        colWidths: [5, 60, 10]
+      });
+      
+      table.push([
+        taskToUpdate.id,
+        truncate(taskToUpdate.title, 57),
+        getStatusWithColor(taskToUpdate.status)
+      ]);
+      
+      console.log(boxen(
+        chalk.white.bold(`Updating Task #${taskId}`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+      
+      console.log(table.toString());
+      
+      // Display a message about how completed subtasks are handled
+      console.log(boxen(
+        chalk.cyan.bold('How Completed Subtasks Are Handled:') + '\n\n' +
+        chalk.white('• Subtasks marked as "done" or "completed" will be preserved\n') +
+        chalk.white('• New subtasks will build upon what has already been completed\n') +
+        chalk.white('• If completed work needs revision, a new subtask will be created instead of modifying done items\n') +
+        chalk.white('• This approach maintains a clear record of completed work and new requirements'),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+      ));
+    }
     
     // Build the system prompt
     const systemPrompt = `You are an AI assistant helping to update a software development task based on new context.
@@ -497,33 +701,62 @@ The changes described in the prompt should be thoughtfully applied to make the t
 
     const taskData = JSON.stringify(taskToUpdate, null, 2);
     
+    // Initialize variables for model selection and fallback
     let updatedTask;
-    const loadingIndicator = startLoadingIndicator(useResearch 
-      ? 'Updating task with Perplexity AI research...' 
-      : 'Updating task with Claude AI...');
+    let loadingIndicator = null;
+    let claudeOverloaded = false;
+    let modelAttempts = 0;
+    const maxModelAttempts = 2; // Try up to 2 models before giving up
+    
+    // Only create initial loading indicator for text output (CLI)
+    if (outputFormat === 'text') {
+      loadingIndicator = startLoadingIndicator(useResearch 
+        ? 'Updating task with Perplexity AI research...' 
+        : 'Updating task with Claude AI...');
+    }
     
     try {
-      if (useResearch) {
-        log('info', 'Using Perplexity AI for research-backed task update');
-        
-        // Verify Perplexity API key exists
-        if (!process.env.PERPLEXITY_API_KEY || session?.env?.PERPLEXITY_API_KEY) {
-          throw new Error('PERPLEXITY_API_KEY environment variable is missing but --research flag was used.');
-        }
+      // Import the getAvailableAIModel function
+      const { getAvailableAIModel } = await import('./ai-services.js');
+      
+      // Try different models with fallback
+      while (modelAttempts < maxModelAttempts && !updatedTask) {
+        modelAttempts++;
+        const isLastAttempt = modelAttempts >= maxModelAttempts;
+        let modelType = null;
         
         try {
-          // Call Perplexity AI
-          const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
-          const result = await perplexity.chat.completions.create({
-            model: perplexityModel,
-            messages: [
-              {
-                role: "system", 
-                content: `${systemPrompt}\n\nAdditionally, please research the latest best practices, implementation details, and considerations when updating this task. Use your online search capabilities to gather relevant information. Remember to strictly follow the guidelines about preserving completed subtasks and building upon what has already been done rather than modifying or replacing it.`
-              },
-              {
-                role: "user",
-                content: `Here is the task to update:
+          // Get the appropriate model based on current state
+          const result = getAvailableAIModel({
+            claudeOverloaded,
+            requiresResearch: useResearch
+          });
+          modelType = result.type;
+          const client = result.client;
+          
+          report(`Attempt ${modelAttempts}/${maxModelAttempts}: Updating task using ${modelType}`, 'info');
+          
+          // Update loading indicator - only for text output
+          if (outputFormat === 'text') {
+            if (loadingIndicator) {
+              stopLoadingIndicator(loadingIndicator);
+            }
+            loadingIndicator = startLoadingIndicator(`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`);
+          }
+          
+          if (modelType === 'perplexity') {
+            // Call Perplexity AI
+            const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
+            const result = await client.chat.completions.create({
+              model: perplexityModel,
+              messages: [
+                {
+                  role: "system", 
+                  content: `${systemPrompt}\n\nAdditionally, please research the latest best practices, implementation details, and considerations when updating this task. Use your online search capabilities to gather relevant information. Remember to strictly follow the guidelines about preserving completed subtasks and building upon what has already been done rather than modifying or replacing it.`
+                },
+                {
+                  role: "user",
+                  content: `Here is the task to update:
 ${taskData}
 
 Please update this task based on the following new context:
@@ -532,62 +765,56 @@ ${prompt}
 IMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.
 
 Return only the updated task as a valid JSON object.`
+                }
+              ],
+              temperature: parseFloat(process.env.TEMPERATURE || session?.env?.TEMPERATURE || CONFIG.temperature),
+              max_tokens: parseInt(process.env.MAX_TOKENS || session?.env?.MAX_TOKENS || CONFIG.maxTokens),
+            });
+            
+            const responseText = result.choices[0].message.content;
+            
+            // Extract JSON from response
+            const jsonStart = responseText.indexOf('{');
+            const jsonEnd = responseText.lastIndexOf('}');
+            
+            if (jsonStart === -1 || jsonEnd === -1) {
+              throw new Error(`Could not find valid JSON object in ${modelType}'s response. The response may be malformed.`);
+            }
+            
+            const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+            
+            try {
+              updatedTask = JSON.parse(jsonText);
+            } catch (parseError) {
+              throw new Error(`Failed to parse ${modelType} response as JSON: ${parseError.message}\nResponse fragment: ${jsonText.substring(0, 100)}...`);
+            }
+          } else {
+            // Call Claude to update the task with streaming
+            let responseText = '';
+            let streamingInterval = null;
+            
+            try {
+              // Update loading indicator to show streaming progress - only for text output
+              if (outputFormat === 'text') {
+                let dotCount = 0;
+                const readline = await import('readline');
+                streamingInterval = setInterval(() => {
+                  readline.cursorTo(process.stdout, 0);
+                  process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+                  dotCount = (dotCount + 1) % 4;
+                }, 500);
               }
-            ],
-            temperature: parseFloat(process.env.TEMPERATURE || session?.env?.TEMPERATURE || CONFIG.temperature),
-            max_tokens: parseInt(process.env.MAX_TOKENS || session?.env?.MAX_TOKENS || CONFIG.maxTokens),
-          });
-          
-          const responseText = result.choices[0].message.content;
-          
-          // Extract JSON from response
-          const jsonStart = responseText.indexOf('{');
-          const jsonEnd = responseText.lastIndexOf('}');
-          
-          if (jsonStart === -1 || jsonEnd === -1) {
-            throw new Error("Could not find valid JSON object in Perplexity's response. The response may be malformed.");
-          }
-          
-          const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
-          
-          try {
-            updatedTask = JSON.parse(jsonText);
-          } catch (parseError) {
-            throw new Error(`Failed to parse Perplexity response as JSON: ${parseError.message}\nResponse fragment: ${jsonText.substring(0, 100)}...`);
-          }
-        } catch (perplexityError) {
-          throw new Error(`Perplexity API error: ${perplexityError.message}`);
-        }
-      } else {
-        // Call Claude to update the task with streaming enabled
-        let responseText = '';
-        let streamingInterval = null;
-        
-        try {
-          // Verify Anthropic API key exists
-          if (!process.env.ANTHROPIC_API_KEY || session?.env?.ANTHROPIC_API_KEY) {
-            throw new Error('ANTHROPIC_API_KEY environment variable is missing. Required for task updates.');
-          }
-          
-          // Update loading indicator to show streaming progress
-          let dotCount = 0;
-          const readline = await import('readline');
-          streamingInterval = setInterval(() => {
-            readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-            dotCount = (dotCount + 1) % 4;
-          }, 500);
-          
-          // Use streaming API call
-          const stream = await anthropic.messages.create({
-            model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
-            max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
-            temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-            system: systemPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: `Here is the task to update:
+              
+              // Use streaming API call
+              const stream = await client.messages.create({
+                model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+                max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+                temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+                system: systemPrompt,
+                messages: [
+                  {
+                    role: 'user',
+                    content: `Here is the task to update:
 ${taskData}
 
 Please update this task based on the following new context:
@@ -596,46 +823,111 @@ ${prompt}
 IMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.
 
 Return only the updated task as a valid JSON object.`
+                  }
+                ],
+                stream: true
+              });
+              
+              // Process the stream
+              for await (const chunk of stream) {
+                if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+                  responseText += chunk.delta.text;
+                }
+                if (reportProgress) {
+                  await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
+                }
+                if (mcpLog) {
+                  mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
+                }
               }
-            ],
-            stream: true
-          });
-          
-          // Process the stream
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-              responseText += chunk.delta.text;
-            }
-            if (reportProgress) {
-              await reportProgress({ progress: (responseText.length / CONFIG.maxTokens) * 100 });
-            }
-            if (mcpLog) {
-              mcpLog.info(`Progress: ${responseText.length / CONFIG.maxTokens * 100}%`);
+              
+              if (streamingInterval) clearInterval(streamingInterval);
+              
+              report(`Completed streaming response from ${modelType} API (Attempt ${modelAttempts})`, 'info');
+              
+              // Extract JSON from response
+              const jsonStart = responseText.indexOf('{');
+              const jsonEnd = responseText.lastIndexOf('}');
+              
+              if (jsonStart === -1 || jsonEnd === -1) {
+                throw new Error(`Could not find valid JSON object in ${modelType}'s response. The response may be malformed.`);
+              }
+              
+              const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+              
+              try {
+                updatedTask = JSON.parse(jsonText);
+              } catch (parseError) {
+                throw new Error(`Failed to parse ${modelType} response as JSON: ${parseError.message}\nResponse fragment: ${jsonText.substring(0, 100)}...`);
+              }
+            } catch (streamError) {
+              if (streamingInterval) clearInterval(streamingInterval);
+              
+              // Process stream errors explicitly
+              report(`Stream error: ${streamError.message}`, 'error');
+              
+              // Check if this is an overload error
+              let isOverload = false;
+              // Check 1: SDK specific property
+              if (streamError.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 2: Check nested error property
+              else if (streamError.error?.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 3: Check status code
+              else if (streamError.status === 429 || streamError.status === 529) {
+                isOverload = true;
+              }
+              // Check 4: Check message string
+              else if (streamError.message?.toLowerCase().includes('overloaded')) {
+                isOverload = true;
+              }
+              
+              if (isOverload) {
+                claudeOverloaded = true;
+                report('Claude overloaded. Will attempt fallback model if available.', 'warn');
+                // Let the loop continue to try the next model
+                throw new Error('Claude overloaded');
+              } else {
+                // Re-throw non-overload errors
+                throw streamError;
+              }
             }
           }
           
-          if (streamingInterval) clearInterval(streamingInterval);
-          log('info', "Completed streaming response from Claude API!");
-          
-          // Extract JSON from response
-          const jsonStart = responseText.indexOf('{');
-          const jsonEnd = responseText.lastIndexOf('}');
-          
-          if (jsonStart === -1 || jsonEnd === -1) {
-            throw new Error("Could not find valid JSON object in Claude's response. The response may be malformed.");
+          // If we got here successfully, break out of the loop
+          if (updatedTask) {
+            report(`Successfully updated task using ${modelType} on attempt ${modelAttempts}`, 'success');
+            break;
           }
           
-          const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+        } catch (modelError) {
+          const failedModel = modelType || 'unknown model';
+          report(`Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`, 'warn');
           
-          try {
-            updatedTask = JSON.parse(jsonText);
-          } catch (parseError) {
-            throw new Error(`Failed to parse Claude response as JSON: ${parseError.message}\nResponse fragment: ${jsonText.substring(0, 100)}...`);
+          // Continue to next attempt if we have more attempts and this was an overload error
+          const wasOverload = modelError.message?.toLowerCase().includes('overload');
+          
+          if (wasOverload && !isLastAttempt) {
+            if (modelType === 'claude') {
+              claudeOverloaded = true;
+              report('Will attempt with Perplexity AI next', 'info');
+            }
+            continue; // Continue to next attempt
+          } else if (isLastAttempt) {
+            report(`Final attempt (${modelAttempts}/${maxModelAttempts}) failed. No fallback possible.`, 'error');
+            throw modelError; // Re-throw on last attempt
+          } else {
+            throw modelError; // Re-throw for non-overload errors
           }
-        } catch (claudeError) {
-          if (streamingInterval) clearInterval(streamingInterval);
-          throw new Error(`Claude API error: ${claudeError.message}`);
         }
+      }
+      
+      // If we don't have updated task after all attempts, throw an error
+      if (!updatedTask) {
+        throw new Error('Failed to generate updated task after all model attempts');
       }
       
       // Validation of the updated task
@@ -650,20 +942,20 @@ Return only the updated task as a valid JSON object.`
       
       // Ensure ID is preserved
       if (updatedTask.id !== taskId) {
-        log('warn', `Task ID was modified in the AI response. Restoring original ID ${taskId}.`);
+        report(`Task ID was modified in the AI response. Restoring original ID ${taskId}.`, 'warn');
         updatedTask.id = taskId;
       }
       
       // Ensure status is preserved unless explicitly changed in prompt
       if (updatedTask.status !== taskToUpdate.status && !prompt.toLowerCase().includes('status')) {
-        log('warn', `Task status was modified without explicit instruction. Restoring original status '${taskToUpdate.status}'.`);
+        report(`Task status was modified without explicit instruction. Restoring original status '${taskToUpdate.status}'.`, 'warn');
         updatedTask.status = taskToUpdate.status;
       }
       
       // Ensure completed subtasks are preserved
       if (taskToUpdate.subtasks && taskToUpdate.subtasks.length > 0) {
         if (!updatedTask.subtasks) {
-          log('warn', 'Subtasks were removed in the AI response. Restoring original subtasks.');
+          report('Subtasks were removed in the AI response. Restoring original subtasks.', 'warn');
           updatedTask.subtasks = taskToUpdate.subtasks;
         } else {
           // Check for each completed subtask
@@ -676,7 +968,7 @@ Return only the updated task as a valid JSON object.`
             
             // If completed subtask is missing or modified, restore it
             if (!updatedSubtask) {
-              log('warn', `Completed subtask ${completedSubtask.id} was removed. Restoring it.`);
+              report(`Completed subtask ${completedSubtask.id} was removed. Restoring it.`, 'warn');
               updatedTask.subtasks.push(completedSubtask);
             } else if (
               updatedSubtask.title !== completedSubtask.title ||
@@ -684,7 +976,7 @@ Return only the updated task as a valid JSON object.`
               updatedSubtask.details !== completedSubtask.details ||
               updatedSubtask.status !== completedSubtask.status
             ) {
-              log('warn', `Completed subtask ${completedSubtask.id} was modified. Restoring original.`);
+              report(`Completed subtask ${completedSubtask.id} was modified. Restoring original.`, 'warn');
               // Find and replace the modified subtask
               const index = updatedTask.subtasks.findIndex(st => st.id === completedSubtask.id);
               if (index !== -1) {
@@ -702,7 +994,7 @@ Return only the updated task as a valid JSON object.`
               subtaskIds.add(subtask.id);
               uniqueSubtasks.push(subtask);
             } else {
-              log('warn', `Duplicate subtask ID ${subtask.id} found. Removing duplicate.`);
+              report(`Duplicate subtask ID ${subtask.id} found. Removing duplicate.`, 'warn');
             }
           }
           
@@ -721,42 +1013,55 @@ Return only the updated task as a valid JSON object.`
       // Write the updated tasks to the file
       writeJSON(tasksPath, data);
       
-      log('success', `Successfully updated task ${taskId}`);
+      report(`Successfully updated task ${taskId}`, 'success');
       
       // Generate individual task files
       await generateTaskFiles(tasksPath, path.dirname(tasksPath));
       
-      console.log(boxen(
-        chalk.green(`Successfully updated task #${taskId}`) + '\n\n' +
-        chalk.white.bold('Updated Title:') + ' ' + updatedTask.title,
-        { padding: 1, borderColor: 'green', borderStyle: 'round' }
-      ));
+      // Only show success box for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(boxen(
+          chalk.green(`Successfully updated task #${taskId}`) + '\n\n' +
+          chalk.white.bold('Updated Title:') + ' ' + updatedTask.title,
+          { padding: 1, borderColor: 'green', borderStyle: 'round' }
+        ));
+      }
       
       // Return the updated task for testing purposes
       return updatedTask;
     } finally {
-      stopLoadingIndicator(loadingIndicator);
+      // Stop the loading indicator if it was created
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+        loadingIndicator = null;
+      }
     }
   } catch (error) {
-    log('error', `Error updating task: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
+    report(`Error updating task: ${error.message}`, 'error');
     
-    // Provide more helpful error messages for common issues
-    if (error.message.includes('ANTHROPIC_API_KEY')) {
-      console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
-      console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
-    } else if (error.message.includes('PERPLEXITY_API_KEY')) {
-      console.log(chalk.yellow('\nTo fix this issue:'));
-      console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
-      console.log('  2. Or run without the research flag: task-master update-task --id=<id> --prompt="..."');
-    } else if (error.message.includes('Task with ID') && error.message.includes('not found')) {
-      console.log(chalk.yellow('\nTo fix this issue:'));
-      console.log('  1. Run task-master list to see all available task IDs');
-      console.log('  2. Use a valid task ID with the --id parameter');
-    }
-    
-    if (CONFIG.debug) {
-      console.error(error);
+    // Only show error UI for text output (CLI)
+    if (outputFormat === 'text') {
+      console.error(chalk.red(`Error: ${error.message}`));
+      
+      // Provide more helpful error messages for common issues
+      if (error.message.includes('ANTHROPIC_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
+        console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+      } else if (error.message.includes('PERPLEXITY_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
+        console.log('  2. Or run without the research flag: task-master update-task --id=<id> --prompt="..."');
+      } else if (error.message.includes('Task with ID') && error.message.includes('not found')) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Run task-master list to see all available task IDs');
+        console.log('  2. Use a valid task ID with the --id parameter');
+      }
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+    } else {
+      throw error; // Re-throw for JSON output
     }
     
     return null;
@@ -767,9 +1072,14 @@ Return only the updated task as a valid JSON object.`
  * Generate individual task files from tasks.json
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} outputDir - Output directory for task files
+ * @param {Object} options - Additional options (mcpLog for MCP mode)
+ * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-function generateTaskFiles(tasksPath, outputDir) {
+function generateTaskFiles(tasksPath, outputDir, options = {}) {
   try {
+    // Determine if we're in MCP mode by checking for mcpLog
+    const isMcpMode = !!options?.mcpLog;
+    
     log('info', `Reading tasks from ${tasksPath}...`);
     
     const data = readJSON(tasksPath);
@@ -856,15 +1166,31 @@ function generateTaskFiles(tasksPath, outputDir) {
     });
     
     log('success', `All ${data.tasks.length} tasks have been generated into '${outputDir}'.`);
+    
+    // Return success data in MCP mode
+    if (isMcpMode) {
+      return {
+        success: true,
+        count: data.tasks.length,
+        directory: outputDir
+      };
+    }
   } catch (error) {
     log('error', `Error generating task files: ${error.message}`);
-    console.error(chalk.red(`Error generating task files: ${error.message}`));
     
-    if (CONFIG.debug) {
-      console.error(error);
+    // Only show error UI in CLI mode
+    if (!options?.mcpLog) {
+      console.error(chalk.red(`Error generating task files: ${error.message}`));
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+      
+      process.exit(1);
+    } else {
+      // In MCP mode, throw the error for the caller to handle
+      throw error;
     }
-    
-    process.exit(1);
   }
 }
 
@@ -873,15 +1199,23 @@ function generateTaskFiles(tasksPath, outputDir) {
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIdInput - Task ID(s) to update
  * @param {string} newStatus - New status
+ * @param {Object} options - Additional options (mcpLog for MCP mode)
+ * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
+async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
   try {
-    displayBanner();
+    // Determine if we're in MCP mode by checking for mcpLog
+    const isMcpMode = !!options?.mcpLog;
     
-    console.log(boxen(
-      chalk.white.bold(`Updating Task Status to: ${newStatus}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round' }
-    ));
+    // Only display UI elements if not in MCP mode
+    if (!isMcpMode) {
+      displayBanner();
+      
+      console.log(boxen(
+        chalk.white.bold(`Updating Task Status to: ${newStatus}`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+      ));
+    }
     
     log('info', `Reading tasks from ${tasksPath}...`);
     const data = readJSON(tasksPath);
@@ -895,7 +1229,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     
     // Update each task
     for (const id of taskIds) {
-      await updateSingleTaskStatus(tasksPath, id, newStatus, data);
+      await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode);
       updatedTasks.push(id);
     }
     
@@ -908,29 +1242,47 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     
     // Generate individual task files
     log('info', 'Regenerating task files...');
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: options.mcpLog });
     
-    // Display success message
-    for (const id of updatedTasks) {
-      const task = findTaskById(data.tasks, id);
-      const taskName = task ? task.title : id;
-      
-      console.log(boxen(
-        chalk.white.bold(`Successfully updated task ${id} status:`) + '\n' +
-        `From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
-        `To:   ${chalk.green(newStatus)}`,
-        { padding: 1, borderColor: 'green', borderStyle: 'round' }
-      ));
+    // Display success message - only in CLI mode
+    if (!isMcpMode) {
+      for (const id of updatedTasks) {
+        const task = findTaskById(data.tasks, id);
+        const taskName = task ? task.title : id;
+        
+        console.log(boxen(
+          chalk.white.bold(`Successfully updated task ${id} status:`) + '\n' +
+          `From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
+          `To:   ${chalk.green(newStatus)}`,
+          { padding: 1, borderColor: 'green', borderStyle: 'round' }
+        ));
+      }
     }
+    
+    // Return success value for programmatic use
+    return {
+      success: true,
+      updatedTasks: updatedTasks.map(id => ({
+        id,
+        status: newStatus
+      }))
+    };
   } catch (error) {
     log('error', `Error setting task status: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
     
-    if (CONFIG.debug) {
-      console.error(error);
+    // Only show error UI in CLI mode
+    if (!options?.mcpLog) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+      
+      process.exit(1);
+    } else {
+      // In MCP mode, throw the error for the caller to handle
+      throw error;
     }
-    
-    process.exit(1);
   }
 }
 
@@ -940,8 +1292,9 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
  * @param {string} taskIdInput - Task ID to update
  * @param {string} newStatus - New status
  * @param {Object} data - Tasks data
+ * @param {boolean} showUi - Whether to show UI elements
  */
-async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
+async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data, showUi = true) {
   // Check if it's a subtask (e.g., "1.2")
   if (taskIdInput.includes('.')) {
     const [parentId, subtaskId] = taskIdInput.split('.').map(id => parseInt(id, 10));
@@ -975,11 +1328,15 @@ async function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
       
       // Suggest updating parent task if all subtasks are done
       if (allSubtasksDone && parentTask.status !== 'done' && parentTask.status !== 'completed') {
-        console.log(chalk.yellow(`All subtasks of parent task ${parentId} are now marked as done.`));
-        console.log(chalk.yellow(`Consider updating the parent task status with: task-master set-status --id=${parentId} --status=done`));
+        // Only show suggestion in CLI mode
+        if (showUi) {
+          console.log(chalk.yellow(`All subtasks of parent task ${parentId} are now marked as done.`));
+          console.log(chalk.yellow(`Consider updating the parent task status with: task-master set-status --id=${parentId} --status=done`));
+        }
       }
     }
-  } else {
+  }
+  else {
     // Handle regular task
     const taskId = parseInt(taskIdInput, 10);
     const task = data.tasks.find(t => t.id === taskId);
@@ -1604,201 +1961,313 @@ function safeColor(text, colorFn, maxLength = 0) {
 }
 
 /**
- * Expand a task with subtasks
+ * Expand a task into subtasks
+ * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} taskId - Task ID to expand
  * @param {number} numSubtasks - Number of subtasks to generate
- * @param {boolean} useResearch - Whether to use research (Perplexity)
+ * @param {boolean} useResearch - Whether to use research with Perplexity
  * @param {string} additionalContext - Additional context
+ * @param {Object} options - Options for expanding tasks
+ * @param {function} options.reportProgress - Function to report progress
+ * @param {Object} options.mcpLog - MCP logger object
+ * @param {Object} options.session - Session object from MCP
+ * @returns {Promise<Object>} Expanded task
  */
-async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '') {
+async function expandTask(tasksPath, taskId, numSubtasks, useResearch = false, additionalContext = '', { reportProgress, mcpLog, session } = {}) {
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+  
+  // Keep the mcpLog check for specific MCP context logging
+  if (mcpLog) {
+    mcpLog.info(`expandTask - reportProgress available: ${!!reportProgress}, session available: ${!!session}`);
+  }
+  
   try {
-    displayBanner();
-    
-    // Load tasks
-    const tasksPath = path.join(process.cwd(), 'tasks', 'tasks.json');
-    log('info', `Loading tasks from ${tasksPath}...`);
-    
+    // Read the tasks.json file
     const data = readJSON(tasksPath);
     if (!data || !data.tasks) {
-      throw new Error(`No valid tasks found in ${tasksPath}`);
+      throw new Error("Invalid or missing tasks.json");
     }
     
     // Find the task
-    const task = data.tasks.find(t => t.id === taskId);
+    const task = data.tasks.find(t => t.id === parseInt(taskId, 10));
     if (!task) {
-      throw new Error(`Task ${taskId} not found`);
+      throw new Error(`Task with ID ${taskId} not found`);
     }
     
-    // Check if the task is already completed
-    if (task.status === 'done' || task.status === 'completed') {
-      log('warn', `Task ${taskId} is already marked as "${task.status}". Skipping expansion.`);
-      console.log(chalk.yellow(`Task ${taskId} is already marked as "${task.status}". Skipping expansion.`));
-      return;
+    report(`Expanding task ${taskId}: ${task.title}`);
+    
+    // If the task already has subtasks and force flag is not set, return the existing subtasks
+    if (task.subtasks && task.subtasks.length > 0) {
+      report(`Task ${taskId} already has ${task.subtasks.length} subtasks`);
+      return task;
     }
     
-    // Check for complexity report
-    log('info', 'Checking for complexity analysis...');
-    const complexityReport = readComplexityReport();
+    // Determine the number of subtasks to generate
+    let subtaskCount = parseInt(numSubtasks, 10) || CONFIG.defaultSubtasks;
+    
+    // Check if we have a complexity analysis for this task
     let taskAnalysis = null;
+    try {
+      const reportPath = 'scripts/task-complexity-report.json';
+      if (fs.existsSync(reportPath)) {
+        const report = readJSON(reportPath);
+        if (report && report.complexityAnalysis) {
+          taskAnalysis = report.complexityAnalysis.find(a => a.taskId === task.id);
+        }
+      }
+    } catch (error) {
+      report(`Could not read complexity analysis: ${error.message}`, 'warn');
+    }
     
-    if (complexityReport) {
-      taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
+    // Use recommended subtask count if available
+    if (taskAnalysis) {
+      report(`Found complexity analysis for task ${taskId}: Score ${taskAnalysis.complexityScore}/10`);
       
-      if (taskAnalysis) {
-        log('info', `Found complexity analysis for task ${taskId}: Score ${taskAnalysis.complexityScore}/10`);
-        
-        // Use recommended number of subtasks if available and not overridden
-        if (taskAnalysis.recommendedSubtasks && numSubtasks === CONFIG.defaultSubtasks) {
-          numSubtasks = taskAnalysis.recommendedSubtasks;
-          log('info', `Using recommended number of subtasks: ${numSubtasks}`);
-        }
-        
-        // Use expansion prompt from analysis as additional context if available
-        if (taskAnalysis.expansionPrompt && !additionalContext) {
-          additionalContext = taskAnalysis.expansionPrompt;
-          log('info', 'Using expansion prompt from complexity analysis');
-        }
-      } else {
-        log('info', `No complexity analysis found for task ${taskId}`);
+      // Use recommended number of subtasks if available
+      if (taskAnalysis.recommendedSubtasks && subtaskCount === CONFIG.defaultSubtasks) {
+        subtaskCount = taskAnalysis.recommendedSubtasks;
+        report(`Using recommended number of subtasks: ${subtaskCount}`);
+      }
+      
+      // Use the expansion prompt from analysis as additional context
+      if (taskAnalysis.expansionPrompt && !additionalContext) {
+        additionalContext = taskAnalysis.expansionPrompt;
+        report(`Using expansion prompt from complexity analysis`);
       }
     }
     
-    console.log(boxen(
-      chalk.white.bold(`Expanding Task: #${taskId} - ${task.title}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 0, bottom: 1 } }
-    ));
+    // Generate subtasks with AI
+    let generatedSubtasks = [];
     
-    // Check if the task already has subtasks
-    if (task.subtasks && task.subtasks.length > 0) {
-      log('warn', `Task ${taskId} already has ${task.subtasks.length} subtasks. Appending new subtasks.`);
-      console.log(chalk.yellow(`Task ${taskId} already has ${task.subtasks.length} subtasks. New subtasks will be appended.`));
+    // Only create loading indicator if not in silent mode and no mcpLog (CLI mode)
+    let loadingIndicator = null;
+    if (!isSilentMode() && !mcpLog) {
+      loadingIndicator = startLoadingIndicator(useResearch ? 'Generating research-backed subtasks...' : 'Generating subtasks...');
     }
     
-    // Initialize subtasks array if it doesn't exist
-    if (!task.subtasks) {
-      task.subtasks = [];
-    }
-    
-    // Determine the next subtask ID
-    const nextSubtaskId = task.subtasks.length > 0 ? 
-      Math.max(...task.subtasks.map(st => st.id)) + 1 : 1;
-    
-    // Generate subtasks
-    let subtasks;
-    if (useResearch) {
-      log('info', 'Using Perplexity AI for research-backed subtask generation');
-      subtasks = await generateSubtasksWithPerplexity(task, numSubtasks, nextSubtaskId, additionalContext);
-    } else {
-      log('info', 'Generating subtasks with Claude only');
-      subtasks = await generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext);
-    }
-    
-    // Add the subtasks to the task
-    task.subtasks = [...task.subtasks, ...subtasks];
-    
-    // Write the updated tasks to the file
-    writeJSON(tasksPath, data);
-    
-    // Generate individual task files
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    
-    // Display success message
-    console.log(boxen(
-      chalk.green(`Successfully added ${subtasks.length} subtasks to task ${taskId}`),
-      { padding: 1, borderColor: 'green', borderStyle: 'round' }
-    ));
-    
-    // Show the subtasks table
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Dependencies'),
-        chalk.cyan.bold('Status')
-      ],
-      colWidths: [8, 50, 15, 15]
-    });
-    
-    subtasks.forEach(subtask => {
-      const deps = subtask.dependencies && subtask.dependencies.length > 0 ? 
-        subtask.dependencies.map(d => `${taskId}.${d}`).join(', ') : 
-        chalk.gray('None');
+    try {
+      // Determine the next subtask ID
+      const nextSubtaskId = 1;
       
-      table.push([
-        `${taskId}.${subtask.id}`,
-        truncate(subtask.title, 47),
-        deps,
-        getStatusWithColor(subtask.status, true)
-      ]);
-    });
-    
-    console.log(table.toString());
-    
-    // Show next steps
-    console.log(boxen(
-      chalk.white.bold('Next Steps:') + '\n\n' +
-      `${chalk.cyan('1.')} Run ${chalk.yellow(`task-master show ${taskId}`)} to see the full task with subtasks\n` +
-      `${chalk.cyan('2.')} Start working on subtask: ${chalk.yellow(`task-master set-status --id=${taskId}.1 --status=in-progress`)}\n` +
-      `${chalk.cyan('3.')} Mark subtask as done: ${chalk.yellow(`task-master set-status --id=${taskId}.1 --status=done`)}`,
-      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
-    ));
-  } catch (error) {
-    log('error', `Error expanding task: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
-    
-    if (CONFIG.debug) {
-      console.error(error);
+      if (useResearch) {
+        // Use Perplexity for research-backed subtasks
+        if (!perplexity) {
+          report('Perplexity AI is not available. Falling back to Claude AI.', 'warn');
+          useResearch = false;
+        } else {
+          report('Using Perplexity for research-backed subtasks');
+          generatedSubtasks = await generateSubtasksWithPerplexity(
+            task, 
+            subtaskCount, 
+            nextSubtaskId, 
+            additionalContext, 
+            { reportProgress, mcpLog, silentMode: isSilentMode(), session }
+          );
+        }
+      }
+      
+      if (!useResearch) {
+        report('Using regular Claude for generating subtasks');
+        
+        // Use our getConfiguredAnthropicClient function instead of getAnthropicClient
+        const client = getConfiguredAnthropicClient(session);
+        
+        // Build the system prompt
+        const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
+You need to break down a high-level task into ${subtaskCount} specific subtasks that can be implemented one by one.
+
+Subtasks should:
+1. Be specific and actionable implementation steps
+2. Follow a logical sequence
+3. Each handle a distinct part of the parent task
+4. Include clear guidance on implementation approach
+5. Have appropriate dependency chains between subtasks
+6. Collectively cover all aspects of the parent task
+
+For each subtask, provide:
+- A clear, specific title
+- Detailed implementation steps
+- Dependencies on previous subtasks
+- Testing approach
+
+Each subtask should be implementable in a focused coding session.`;
+        
+        const contextPrompt = additionalContext ? 
+          `\n\nAdditional context to consider: ${additionalContext}` : '';
+        
+        const userPrompt = `Please break down this task into ${subtaskCount} specific, actionable subtasks:
+
+Task ID: ${task.id}
+Title: ${task.title}
+Description: ${task.description}
+Current details: ${task.details || 'None provided'}
+${contextPrompt}
+
+Return exactly ${subtaskCount} subtasks with the following JSON structure:
+[
+  {
+    "id": ${nextSubtaskId},
+    "title": "First subtask title",
+    "description": "Detailed description",
+    "dependencies": [], 
+    "details": "Implementation details"
+  },
+  ...more subtasks...
+]
+
+Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
+        
+        // Prepare API parameters
+        const apiParams = {
+          model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+          max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+          temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }]
+        };
+        
+        // Call the streaming API using our helper
+        const responseText = await _handleAnthropicStream(
+          client, 
+          apiParams, 
+          { reportProgress, mcpLog, silentMode: isSilentMode() }, // Pass isSilentMode() directly
+          !isSilentMode() // Only use CLI mode if not in silent mode
+        );
+        
+        // Parse the subtasks from the response
+        generatedSubtasks = parseSubtasksFromText(responseText, nextSubtaskId, subtaskCount, task.id);
+      }
+      
+      // Add the generated subtasks to the task
+      task.subtasks = generatedSubtasks;
+      
+      // Write the updated tasks back to the file
+      writeJSON(tasksPath, data);
+      
+      // Generate the individual task files
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+      
+      return task;
+    } catch (error) {
+      report(`Error expanding task: ${error.message}`, 'error');
+      throw error;
+    } finally {
+      // Always stop the loading indicator if we created one
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+      }
     }
-    
-    process.exit(1);
+  } catch (error) {
+    report(`Error expanding task: ${error.message}`, 'error');
+    throw error;
   }
 }
 
 /**
  * Expand all pending tasks with subtasks
+ * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} numSubtasks - Number of subtasks per task
  * @param {boolean} useResearch - Whether to use research (Perplexity)
  * @param {string} additionalContext - Additional context
  * @param {boolean} forceFlag - Force regeneration for tasks with subtasks
+ * @param {Object} options - Options for expanding tasks
+ * @param {function} options.reportProgress - Function to report progress
+ * @param {Object} options.mcpLog - MCP logger object
+ * @param {Object} options.session - Session object from MCP
+ * @param {string} outputFormat - Output format (text or json)
  */
-async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '', forceFlag = false) {
-  try {
+async function expandAllTasks(tasksPath, numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '', forceFlag = false, { reportProgress, mcpLog, session } = {}, outputFormat = 'text') {
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+
+  // Only display banner and UI elements for text output (CLI)
+  if (outputFormat === 'text') {
     displayBanner();
-    
-    // Load tasks
-    const tasksPath = path.join(process.cwd(), 'tasks', 'tasks.json');
-    log('info', `Loading tasks from ${tasksPath}...`);
-    
-    const data = readJSON(tasksPath);
+  }
+
+  // Parse numSubtasks as integer if it's a string
+  if (typeof numSubtasks === 'string') {
+    numSubtasks = parseInt(numSubtasks, 10);
+    if (isNaN(numSubtasks)) {
+      numSubtasks = CONFIG.defaultSubtasks;
+    }
+  }
+
+  report(`Expanding all pending tasks with ${numSubtasks} subtasks each...`);
+  
+  // Load tasks
+  let data;
+  try {
+    data = readJSON(tasksPath);
     if (!data || !data.tasks) {
-      throw new Error(`No valid tasks found in ${tasksPath}`);
+      throw new Error('No valid tasks found');
     }
+  } catch (error) {
+    report(`Error loading tasks: ${error.message}`, 'error');
+    throw error;
+  }
+
+  // Get all tasks that are pending/in-progress and don't have subtasks (or force regeneration)
+  const tasksToExpand = data.tasks.filter(task => 
+    (task.status === 'pending' || task.status === 'in-progress') && 
+    (!task.subtasks || task.subtasks.length === 0 || forceFlag)
+  );
+
+  if (tasksToExpand.length === 0) {
+    report('No tasks eligible for expansion. Tasks should be in pending/in-progress status and not have subtasks already.', 'info');
     
-    // Get complexity report if it exists
-    log('info', 'Checking for complexity analysis...');
-    const complexityReport = readComplexityReport();
-    
-    // Filter tasks that are not done and don't have subtasks (unless forced)
-    const pendingTasks = data.tasks.filter(task => 
-      task.status !== 'done' && 
-      task.status !== 'completed' && 
-      (forceFlag || !task.subtasks || task.subtasks.length === 0)
-    );
-    
-    if (pendingTasks.length === 0) {
-      log('info', 'No pending tasks found to expand');
-      console.log(boxen(
-        chalk.yellow('No pending tasks found to expand'),
-        { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-      ));
-      return;
+    // Return structured result for MCP
+    return {
+      success: true,
+      expandedCount: 0,
+      tasksToExpand: 0,
+      message: 'No tasks eligible for expansion'
+    };
+  }
+
+  report(`Found ${tasksToExpand.length} tasks to expand`);
+
+  // Check if we have a complexity report to prioritize complex tasks
+  let complexityReport;
+  const reportPath = path.join(path.dirname(tasksPath), '../scripts/task-complexity-report.json');
+  if (fs.existsSync(reportPath)) {
+    try {
+      complexityReport = readJSON(reportPath);
+      report('Using complexity analysis to prioritize tasks');
+    } catch (error) {
+      report(`Could not read complexity report: ${error.message}`, 'warn');
     }
-    
+  }
+
+  // Only create loading indicator if not in silent mode and outputFormat is 'text'
+  let loadingIndicator = null;
+  if (!isSilentMode() && outputFormat === 'text') {
+    loadingIndicator = startLoadingIndicator(`Expanding ${tasksToExpand.length} tasks with ${numSubtasks} subtasks each`);
+  }
+
+  let expandedCount = 0;
+  try {
     // Sort tasks by complexity if report exists, otherwise by ID
-    let tasksToExpand = [...pendingTasks];
-    
     if (complexityReport && complexityReport.complexityAnalysis) {
-      log('info', 'Sorting tasks by complexity...');
+      report('Sorting tasks by complexity...');
       
       // Create a map of task IDs to complexity scores
       const complexityMap = new Map();
@@ -1812,143 +2281,130 @@ async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch 
         const scoreB = complexityMap.get(b.id) || 0;
         return scoreB - scoreA;
       });
-    } else {
-      // Sort by ID if no complexity report
-      tasksToExpand.sort((a, b) => a.id - b.id);
     }
-    
-    console.log(boxen(
-      chalk.white.bold(`Expanding ${tasksToExpand.length} Pending Tasks`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 0, bottom: 1 } }
-    ));
-    
-    // Show tasks to be expanded
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Status'),
-        chalk.cyan.bold('Complexity')
-      ],
-      colWidths: [5, 50, 15, 15]
-    });
-    
-    tasksToExpand.forEach(task => {
-      const taskAnalysis = complexityReport ? 
-        findTaskInComplexityReport(complexityReport, task.id) : null;
-      
-      const complexity = taskAnalysis ? 
-        getComplexityWithColor(taskAnalysis.complexityScore) + '/10' : 
-        chalk.gray('Unknown');
-      
-      table.push([
-        task.id,
-        truncate(task.title, 47),
-        getStatusWithColor(task.status),
-        complexity
-      ]);
-    });
-    
-    console.log(table.toString());
-    
-    // Confirm expansion
-    console.log(chalk.yellow(`\nThis will expand ${tasksToExpand.length} tasks with ${numSubtasks} subtasks each.`));
-    console.log(chalk.yellow(`Research-backed generation: ${useResearch ? 'Yes' : 'No'}`));
-    console.log(chalk.yellow(`Force regeneration: ${forceFlag ? 'Yes' : 'No'}`));
-    
-    // Expand each task
-    let expandedCount = 0;
+
+    // Process each task
     for (const task of tasksToExpand) {
-      try {
-        log('info', `Expanding task ${task.id}: ${task.title}`);
-        
-        // Get task-specific parameters from complexity report
-        let taskSubtasks = numSubtasks;
-        let taskContext = additionalContext;
-        
-        if (complexityReport) {
-          const taskAnalysis = findTaskInComplexityReport(complexityReport, task.id);
-          if (taskAnalysis) {
-            // Use recommended subtasks if default wasn't overridden
-            if (taskAnalysis.recommendedSubtasks && numSubtasks === CONFIG.defaultSubtasks) {
-              taskSubtasks = taskAnalysis.recommendedSubtasks;
-              log('info', `Using recommended subtasks for task ${task.id}: ${taskSubtasks}`);
-            }
-            
-            // Add expansion prompt if no user context was provided
-            if (taskAnalysis.expansionPrompt && !additionalContext) {
-              taskContext = taskAnalysis.expansionPrompt;
-              log('info', `Using complexity analysis prompt for task ${task.id}`);
-            }
-          }
-        }
-        
-        // Check if the task already has subtasks
-        if (task.subtasks && task.subtasks.length > 0) {
-          if (forceFlag) {
-            log('info', `Task ${task.id} already has ${task.subtasks.length} subtasks. Clearing them due to --force flag.`);
-            task.subtasks = []; // Clear existing subtasks
-          } else {
-            log('warn', `Task ${task.id} already has subtasks. Skipping (use --force to regenerate).`);
-            continue;
-          }
-        }
-        
-        // Initialize subtasks array if it doesn't exist
-        if (!task.subtasks) {
-          task.subtasks = [];
-        }
-        
-        // Determine the next subtask ID
-        const nextSubtaskId = task.subtasks.length > 0 ? 
-          Math.max(...task.subtasks.map(st => st.id)) + 1 : 1;
-        
-        // Generate subtasks
-        let subtasks;
-        if (useResearch) {
-          subtasks = await generateSubtasksWithPerplexity(task, taskSubtasks, nextSubtaskId, taskContext);
-        } else {
-          subtasks = await generateSubtasks(task, taskSubtasks, nextSubtaskId, taskContext);
-        }
-        
-        // Add the subtasks to the task
-        task.subtasks = [...task.subtasks, ...subtasks];
-        expandedCount++;
-      } catch (error) {
-        log('error', `Error expanding task ${task.id}: ${error.message}`);
-        console.error(chalk.red(`Error expanding task ${task.id}: ${error.message}`));
-        continue;
+      if (loadingIndicator && outputFormat === 'text') {
+        loadingIndicator.text = `Expanding task ${task.id}: ${truncate(task.title, 30)} (${expandedCount + 1}/${tasksToExpand.length})`;
       }
+      
+      // Report progress to MCP if available
+      if (reportProgress) {
+        reportProgress({
+          status: 'processing',
+          current: expandedCount + 1,
+          total: tasksToExpand.length,
+          message: `Expanding task ${task.id}: ${truncate(task.title, 30)}`
+        });
+      }
+      
+      report(`Expanding task ${task.id}: ${truncate(task.title, 50)}`);
+      
+      // Check if task already has subtasks and forceFlag is enabled
+      if (task.subtasks && task.subtasks.length > 0 && forceFlag) {
+        report(`Task ${task.id} already has ${task.subtasks.length} subtasks. Clearing them for regeneration.`);
+        task.subtasks = [];
+      }
+      
+      try {
+        // Get complexity analysis for this task if available
+        let taskAnalysis;
+        if (complexityReport && complexityReport.complexityAnalysis) {
+          taskAnalysis = complexityReport.complexityAnalysis.find(a => a.taskId === task.id);
+        }
+        
+        let thisNumSubtasks = numSubtasks;
+        
+        // Use recommended number of subtasks from complexity analysis if available
+        if (taskAnalysis && taskAnalysis.recommendedSubtasks) {
+          report(`Using recommended ${taskAnalysis.recommendedSubtasks} subtasks based on complexity score ${taskAnalysis.complexityScore}/10 for task ${task.id}`);
+          thisNumSubtasks = taskAnalysis.recommendedSubtasks;
+        }
+        
+        // Generate prompt for subtask creation based on task details
+        const prompt = generateSubtaskPrompt(task, thisNumSubtasks, additionalContext, taskAnalysis);
+        
+        // Use AI to generate subtasks
+        const aiResponse = await getSubtasksFromAI(prompt, useResearch, session, mcpLog);
+        
+        if (aiResponse && aiResponse.subtasks) {
+          // Process and add the subtasks to the task
+          task.subtasks = aiResponse.subtasks.map((subtask, index) => ({
+            id: index + 1,
+            title: subtask.title,
+            description: subtask.description,
+            status: 'pending',
+            dependencies: subtask.dependencies || [],
+            details: subtask.details || ''
+          }));
+          
+          report(`Added ${task.subtasks.length} subtasks to task ${task.id}`);
+          expandedCount++;
+        } else {
+          report(`Failed to generate subtasks for task ${task.id}`, 'error');
+        }
+      } catch (error) {
+        report(`Error expanding task ${task.id}: ${error.message}`, 'error');
+      }
+      
+      // Small delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
-    // Write the updated tasks to the file
+    // Save the updated tasks
     writeJSON(tasksPath, data);
     
-    // Generate individual task files
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    
-    // Display success message
-    console.log(boxen(
-      chalk.green(`Successfully expanded ${expandedCount} of ${tasksToExpand.length} tasks`),
-      { padding: 1, borderColor: 'green', borderStyle: 'round' }
-    ));
-    
-    // Show next steps
-    console.log(boxen(
-      chalk.white.bold('Next Steps:') + '\n\n' +
-      `${chalk.cyan('1.')} Run ${chalk.yellow('task-master list --with-subtasks')} to see all tasks with subtasks\n` +
-      `${chalk.cyan('2.')} Run ${chalk.yellow('task-master next')} to see what to work on next`,
-      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
-    ));
-  } catch (error) {
-    log('error', `Error expanding tasks: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
-    
-    if (CONFIG.debug) {
-      console.error(error);
+    // Generate task files
+    if (outputFormat === 'text') {
+      // Only perform file generation for CLI (text) mode
+      const outputDir = path.dirname(tasksPath);
+      await generateTaskFiles(tasksPath, outputDir);
     }
     
-    process.exit(1);
+    // Return structured result for MCP
+    return {
+      success: true,
+      expandedCount,
+      tasksToExpand: tasksToExpand.length,
+      message: `Successfully expanded ${expandedCount} out of ${tasksToExpand.length} tasks`
+    };
+  } catch (error) {
+    report(`Error expanding tasks: ${error.message}`, 'error');
+    throw error;
+  } finally {
+    // Stop the loading indicator if it was created
+    if (loadingIndicator && outputFormat === 'text') {
+      stopLoadingIndicator(loadingIndicator);
+    }
+    
+    // Final progress report
+    if (reportProgress) {
+      reportProgress({
+        status: 'completed',
+        current: expandedCount,
+        total: tasksToExpand.length,
+        message: `Completed expanding ${expandedCount} out of ${tasksToExpand.length} tasks`
+      });
+    }
+    
+    // Display completion message for CLI mode
+    if (outputFormat === 'text') {
+      console.log(boxen(
+        chalk.white.bold(`Task Expansion Completed`) + '\n\n' +
+        chalk.white(`Expanded ${expandedCount} out of ${tasksToExpand.length} tasks`) + '\n' +
+        chalk.white(`Each task now has detailed subtasks to guide implementation`),
+        { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+      ));
+      
+      // Suggest next actions
+      if (expandedCount > 0) {
+        console.log(chalk.bold('\nNext Steps:'));
+        console.log(chalk.cyan(`1. Run ${chalk.yellow('task-master list --with-subtasks')} to see all tasks with their subtasks`));
+        console.log(chalk.cyan(`2. Run ${chalk.yellow('task-master next')} to find the next task to work on`));
+        console.log(chalk.cyan(`3. Run ${chalk.yellow('task-master set-status --id=<taskId> --status=in-progress')} to start working on a task`));
+      }
+    }
   }
 }
 
@@ -2067,205 +2523,291 @@ function clearSubtasks(tasksPath, taskIds) {
  * @param {function} reportProgress - Function to report progress to MCP server (optional)
  * @param {Object} mcpLog - MCP logger object (optional)
  * @param {Object} session - Session object from MCP server (optional)
+ * @param {string} outputFormat - Output format (text or json)
+ * @param {Object} customEnv - Custom environment variables (optional)
  * @returns {number} The new task ID
  */
-async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium', { reportProgress, mcpLog, session } = {}, outputFormat = 'text') {
-  // Only display banner and UI elements for text output (CLI)
-  if (outputFormat === 'text') {
-    displayBanner();
-    
-    console.log(boxen(
-      chalk.white.bold(`Creating New Task`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
-    ));
-  }
-  
-  // Read the existing tasks
-  const data = readJSON(tasksPath);
-  if (!data || !data.tasks) {
-    log('error', "Invalid or missing tasks.json.");
-    process.exit(1);
-  }
-  
-  // Find the highest task ID to determine the next ID
-  const highestId = Math.max(...data.tasks.map(t => t.id));
-  const newTaskId = highestId + 1;
-  
-  // Only show UI box for CLI mode
-  if (outputFormat === 'text') {
-    console.log(boxen(
-      chalk.white.bold(`Creating New Task #${newTaskId}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
-    ));
-  }
-  
-  // Validate dependencies before proceeding
-  const invalidDeps = dependencies.filter(depId => {
-    return !data.tasks.some(t => t.id === depId);
-  });
-  
-  if (invalidDeps.length > 0) {
-    log('warn', `The following dependencies do not exist: ${invalidDeps.join(', ')}`);
-    log('info', 'Removing invalid dependencies...');
-    dependencies = dependencies.filter(depId => !invalidDeps.includes(depId));
-  }
-  
-  // Create the system prompt for Claude
-  const systemPrompt = "You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description.";
-  
-  // Create the user prompt with context from existing tasks
-  let contextTasks = '';
-  if (dependencies.length > 0) {
-    // Provide context for the dependent tasks
-    const dependentTasks = data.tasks.filter(t => dependencies.includes(t.id));
-    contextTasks = `\nThis task depends on the following tasks:\n${dependentTasks.map(t => 
-      `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
-  } else {
-    // Provide a few recent tasks as context
-    const recentTasks = [...data.tasks].sort((a, b) => b.id - a.id).slice(0, 3);
-    contextTasks = `\nRecent tasks in the project:\n${recentTasks.map(t => 
-      `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
-  }
-  
-  const taskStructure = `
-  {
-    "title": "Task title goes here",
-    "description": "A concise one or two sentence description of what the task involves",
-    "details": "In-depth details including specifics on implementation, considerations, and anything important for the developer to know. This should be detailed enough to guide implementation.",
-    "testStrategy": "A detailed approach for verifying the task has been correctly implemented. Include specific test cases or validation methods."
-  }`;
-  
-  const userPrompt = `Create a comprehensive new task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
-  
-  ${contextTasks}
-  
-  Return your answer as a single JSON object with the following structure:
-  ${taskStructure}
-  
-  Don't include the task ID, status, dependencies, or priority as those will be added automatically.
-  Make sure the details and test strategy are thorough and specific.
-  
-  IMPORTANT: Return ONLY the JSON object, nothing else.`;
-  
-  // Start the loading indicator - only for text mode
-  let loadingIndicator = null;
-  if (outputFormat === 'text') {
-    loadingIndicator = startLoadingIndicator('Generating new task with Claude AI...');
-  }
-  
-  let fullResponse = '';
-  let streamingInterval = null;
+async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium', { reportProgress, mcpLog, session } = {}, outputFormat = 'text', customEnv = null) {
+  let loadingIndicator = null; // Keep indicator variable accessible
 
   try {
-    // Call Claude with streaming enabled
-    const stream = await anthropic.messages.create({
-      max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
-      model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
-      temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-      messages: [{ role: "user", content: userPrompt }],
-      system: systemPrompt,
-      stream: true
-    });
-    
-    // Update loading indicator to show streaming progress - only for text mode
-    let dotCount = 0;
+    // Only display banner and UI elements for text output (CLI)
     if (outputFormat === 'text') {
-      streamingInterval = setInterval(() => {
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-        dotCount = (dotCount + 1) % 4;
-      }, 500);
-    }
-    
-    // Process the stream
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-        fullResponse += chunk.delta.text;
-      }
-
-      if (reportProgress) {
-        await reportProgress({ progress: (fullResponse.length / CONFIG.maxTokens) * 100 });
-      }
-      if (mcpLog) {
-        mcpLog.info(`Progress: ${fullResponse.length / CONFIG.maxTokens * 100}%`);
-      }
-    }
-    
-    if (streamingInterval) clearInterval(streamingInterval);
-    if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-    
-    log('info', "Completed streaming response from Claude API!");
-    log('debug', `Streaming response length: ${fullResponse.length} characters`);
-    
-    // Parse the response - handle potential JSON formatting issues
-    let taskData;
-    try {
-      // Check if the response is wrapped in a code block
-      const jsonMatch = fullResponse.match(/```(?:json)?([^`]+)```/);
-      const jsonContent = jsonMatch ? jsonMatch[1] : fullResponse;
+      displayBanner();
       
-      // Parse the JSON
-      taskData = JSON.parse(jsonContent);
-      
-      // Check that we have the required fields
-      if (!taskData.title || !taskData.description) {
-        throw new Error("Missing required fields in the generated task");
-      }
-    } catch (error) {
-      log('error', "Failed to parse Claude's response as valid task JSON:", error);
-      log('debug', "Response content:", fullResponse);
-      process.exit(1);
-    }
-    
-    // Create the new task object
-    const newTask = {
-      id: newTaskId,
-      title: taskData.title,
-      description: taskData.description,
-      status: "pending",
-      dependencies: dependencies,
-      priority: priority,
-      details: taskData.details || "",
-      testStrategy: taskData.testStrategy || "Manually verify the implementation works as expected."
-    };
-    
-    // Add the new task to the tasks array
-    data.tasks.push(newTask);
-    
-    // Validate dependencies in the entire task set
-    log('info', "Validating dependencies after adding new task...");
-    validateAndFixDependencies(data, null);
-    
-    // Write the updated tasks back to the file
-    writeJSON(tasksPath, data);
-    
-    // Only show success messages for text mode (CLI)
-    if (outputFormat === 'text') {
-      // Show success message
-      const successBox = boxen(
-        chalk.green(`Successfully added new task #${newTaskId}:\n`) +
-        chalk.white.bold(newTask.title) + "\n\n" +
-        chalk.white(newTask.description),
-        { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
-      );
-      console.log(successBox);
-      
-      // Next steps suggestion
       console.log(boxen(
-        chalk.white.bold('Next Steps:') + '\n\n' +
-        `${chalk.cyan('1.')} Run ${chalk.yellow('task-master generate')} to update task files\n` +
-        `${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=' + newTaskId)} to break it down into subtasks\n` +
-        `${chalk.cyan('3.')} Run ${chalk.yellow('task-master list --with-subtasks')} to see all tasks`,
-        { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+        chalk.white.bold(`Creating New Task`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
       ));
     }
     
-    return newTaskId;
+    // Read the existing tasks
+    const data = readJSON(tasksPath);
+    if (!data || !data.tasks) {
+      log('error', "Invalid or missing tasks.json.");
+      throw new Error("Invalid or missing tasks.json.");
+    }
+    
+    // Find the highest task ID to determine the next ID
+    const highestId = Math.max(...data.tasks.map(t => t.id));
+    const newTaskId = highestId + 1;
+    
+    // Only show UI box for CLI mode
+    if (outputFormat === 'text') {
+      console.log(boxen(
+        chalk.white.bold(`Creating New Task #${newTaskId}`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+      ));
+    }
+    
+    // Validate dependencies before proceeding
+    const invalidDeps = dependencies.filter(depId => {
+      return !data.tasks.some(t => t.id === depId);
+    });
+    
+    if (invalidDeps.length > 0) {
+      log('warn', `The following dependencies do not exist: ${invalidDeps.join(', ')}`);
+      log('info', 'Removing invalid dependencies...');
+      dependencies = dependencies.filter(depId => !invalidDeps.includes(depId));
+    }
+    
+    // Create context string for task creation prompt
+    let contextTasks = '';
+    if (dependencies.length > 0) {
+      // Provide context for the dependent tasks
+      const dependentTasks = data.tasks.filter(t => dependencies.includes(t.id));
+      contextTasks = `\nThis task depends on the following tasks:\n${dependentTasks.map(t => 
+        `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
+    } else {
+      // Provide a few recent tasks as context
+      const recentTasks = [...data.tasks].sort((a, b) => b.id - a.id).slice(0, 3);
+      contextTasks = `\nRecent tasks in the project:\n${recentTasks.map(t => 
+        `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
+    }
+    
+    // Start the loading indicator - only for text mode
+    if (outputFormat === 'text') {
+      loadingIndicator = startLoadingIndicator('Generating new task with Claude AI...');
+    }
+
+    try {
+      // Import the AI services - explicitly importing here to avoid circular dependencies
+      const { _handleAnthropicStream, _buildAddTaskPrompt, parseTaskJsonResponse, getAvailableAIModel } = await import('./ai-services.js');
+      
+      // Initialize model state variables
+      let claudeOverloaded = false;
+      let modelAttempts = 0;
+      const maxModelAttempts = 2; // Try up to 2 models before giving up
+      let taskData = null;
+      
+      // Loop through model attempts
+      while (modelAttempts < maxModelAttempts && !taskData) {
+        modelAttempts++; // Increment attempt counter
+        const isLastAttempt = modelAttempts >= maxModelAttempts;
+        let modelType = null; // Track which model we're using
+        
+        try {
+          // Get the best available model based on our current state
+          const result = getAvailableAIModel({
+            claudeOverloaded,
+            requiresResearch: false // We're not using the research flag here
+          });
+          modelType = result.type;
+          const client = result.client;
+          
+          log('info', `Attempt ${modelAttempts}/${maxModelAttempts}: Generating task using ${modelType}`);
+          
+          // Update loading indicator text - only for text output
+          if (outputFormat === 'text') {
+            if (loadingIndicator) {
+              stopLoadingIndicator(loadingIndicator); // Stop previous indicator
+            }
+            loadingIndicator = startLoadingIndicator(`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`);
+          }
+          
+          // Build the prompts using the helper
+          const { systemPrompt, userPrompt } = _buildAddTaskPrompt(prompt, contextTasks, { newTaskId });
+          
+          if (modelType === 'perplexity') {
+            // Use Perplexity AI
+            const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
+            const response = await client.chat.completions.create({
+              model: perplexityModel,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+              temperature: parseFloat(process.env.TEMPERATURE || session?.env?.TEMPERATURE || CONFIG.temperature),
+              max_tokens: parseInt(process.env.MAX_TOKENS || session?.env?.MAX_TOKENS || CONFIG.maxTokens),
+            });
+            
+            const responseText = response.choices[0].message.content;
+            taskData = parseTaskJsonResponse(responseText);
+          } else {
+            // Use Claude (default)
+            // Prepare API parameters
+            const apiParams = {
+              model: session?.env?.ANTHROPIC_MODEL || CONFIG.model || customEnv?.ANTHROPIC_MODEL,
+              max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens || customEnv?.MAX_TOKENS,
+              temperature: session?.env?.TEMPERATURE || CONFIG.temperature || customEnv?.TEMPERATURE,
+              system: systemPrompt,
+              messages: [{ role: "user", content: userPrompt }]
+            };
+            
+            // Call the streaming API using our helper
+            try {
+              const fullResponse = await _handleAnthropicStream(
+                client, 
+                apiParams, 
+                { reportProgress, mcpLog }, 
+                outputFormat === 'text' // CLI mode flag
+              );
+              
+              log('debug', `Streaming response length: ${fullResponse.length} characters`);
+              
+              // Parse the response using our helper
+              taskData = parseTaskJsonResponse(fullResponse);
+            } catch (streamError) {
+              // Process stream errors explicitly
+              log('error', `Stream error: ${streamError.message}`);
+              
+              // Check if this is an overload error
+              let isOverload = false;
+              // Check 1: SDK specific property
+              if (streamError.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 2: Check nested error property
+              else if (streamError.error?.type === 'overloaded_error') {
+                isOverload = true;
+              }
+              // Check 3: Check status code
+              else if (streamError.status === 429 || streamError.status === 529) {
+                isOverload = true;
+              }
+              // Check 4: Check message string
+              else if (streamError.message?.toLowerCase().includes('overloaded')) {
+                isOverload = true;
+              }
+              
+              if (isOverload) {
+                claudeOverloaded = true;
+                log('warn', 'Claude overloaded. Will attempt fallback model if available.');
+                // Throw to continue to next model attempt
+                throw new Error('Claude overloaded');
+              } else {
+                // Re-throw non-overload errors
+                throw streamError;
+              }
+            }
+          }
+          
+          // If we got here without errors and have task data, we're done
+          if (taskData) {
+            log('info', `Successfully generated task data using ${modelType} on attempt ${modelAttempts}`);
+            break;
+          }
+          
+        } catch (modelError) {
+          const failedModel = modelType || 'unknown model';
+          log('warn', `Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`);
+          
+          // Continue to next attempt if we have more attempts and this was specifically an overload error
+          const wasOverload = modelError.message?.toLowerCase().includes('overload');
+          
+          if (wasOverload && !isLastAttempt) {
+            if (modelType === 'claude') {
+              claudeOverloaded = true;
+              log('info', 'Will attempt with Perplexity AI next');
+            }
+            continue; // Continue to next attempt
+          } else if (isLastAttempt) {
+            log('error', `Final attempt (${modelAttempts}/${maxModelAttempts}) failed. No fallback possible.`);
+            throw modelError; // Re-throw on last attempt
+          } else {
+            throw modelError; // Re-throw for non-overload errors
+          }
+        }
+      }
+      
+      // If we don't have task data after all attempts, throw an error
+      if (!taskData) {
+        throw new Error('Failed to generate task data after all model attempts');
+      }
+      
+      // Create the new task object
+      const newTask = {
+        id: newTaskId,
+        title: taskData.title,
+        description: taskData.description,
+        status: "pending",
+        dependencies: dependencies,
+        priority: priority,
+        details: taskData.details || "",
+        testStrategy: taskData.testStrategy || "Manually verify the implementation works as expected."
+      };
+      
+      // Add the new task to the tasks array
+      data.tasks.push(newTask);
+      
+      // Validate dependencies in the entire task set
+      log('info', "Validating dependencies after adding new task...");
+      validateAndFixDependencies(data, null);
+      
+      // Write the updated tasks back to the file
+      writeJSON(tasksPath, data);
+      
+      // Only show success messages for text mode (CLI)
+      if (outputFormat === 'text') {
+        // Show success message
+        const successBox = boxen(
+          chalk.green(`Successfully added new task #${newTaskId}:\n`) +
+          chalk.white.bold(newTask.title) + "\n\n" +
+          chalk.white(newTask.description),
+          { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+        );
+        console.log(successBox);
+        
+        // Next steps suggestion
+        console.log(boxen(
+          chalk.white.bold('Next Steps:') + '\n\n' +
+          `${chalk.cyan('1.')} Run ${chalk.yellow('task-master generate')} to update task files\n` +
+          `${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=' + newTaskId)} to break it down into subtasks\n` +
+          `${chalk.cyan('3.')} Run ${chalk.yellow('task-master list --with-subtasks')} to see all tasks`,
+          { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+        ));
+      }
+      
+      return newTaskId;
+    } catch (error) {
+      // Log the specific error during generation/processing
+      log('error', "Error generating or processing task:", error.message);
+      // Re-throw the error to be caught by the outer catch block
+      throw error;
+    } finally {
+      // **** THIS IS THE KEY CHANGE ****
+      // Ensure the loading indicator is stopped if it was started
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+        // Optional: Clear the line in CLI mode for a cleaner output
+        if (outputFormat === 'text' && process.stdout.isTTY) {
+           try {
+             // Use dynamic import for readline as it might not always be needed
+             const readline = await import('readline');
+             readline.clearLine(process.stdout, 0);
+             readline.cursorTo(process.stdout, 0);
+           } catch (readlineError) {
+             log('debug', 'Could not clear readline for indicator cleanup:', readlineError.message);
+           }
+        }
+        loadingIndicator = null; // Reset indicator variable
+      }
+    }
   } catch (error) {
-    if (streamingInterval) clearInterval(streamingInterval);
-    if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-    log('error', "Error generating task:", error.message);
-    process.exit(1);
+    // General error handling for the whole function
+    // The finally block above already handled the indicator if it was started
+    log('error', "Error adding task:", error.message);
+    throw error; // Throw error instead of exiting the process
   }
 }
 
@@ -2283,24 +2825,102 @@ async function analyzeTaskComplexity(options, { reportProgress, mcpLog, session 
   const thresholdScore = parseFloat(options.threshold || '5');
   const useResearch = options.research || false;
   
-  console.log(chalk.blue(`Analyzing task complexity and generating expansion recommendations...`));
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const reportLog = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+  
+  // Only show UI elements for text output (CLI)
+  if (outputFormat === 'text') {
+    console.log(chalk.blue(`Analyzing task complexity and generating expansion recommendations...`));
+  }
   
   try {
     // Read tasks.json
-    console.log(chalk.blue(`Reading tasks from ${tasksPath}...`));
-    const tasksData = readJSON(tasksPath);
+    reportLog(`Reading tasks from ${tasksPath}...`, 'info');
     
-    if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks) || tasksData.tasks.length === 0) {
-      throw new Error('No tasks found in the tasks file');
+    // Use either the filtered tasks data provided by the direct function or read from file
+    let tasksData;
+    let originalTaskCount = 0;
+    
+    if (options._filteredTasksData) {
+      // If we have pre-filtered data from the direct function, use it
+      tasksData = options._filteredTasksData;
+      originalTaskCount = options._filteredTasksData.tasks.length;
+      
+      // Get the original task count from the full tasks array
+      if (options._filteredTasksData._originalTaskCount) {
+        originalTaskCount = options._filteredTasksData._originalTaskCount;
+      } else {
+        // Try to read the original file to get the count
+        try {
+          const originalData = readJSON(tasksPath);
+          if (originalData && originalData.tasks) {
+            originalTaskCount = originalData.tasks.length;
+          }
+        } catch (e) {
+          // If we can't read the original file, just use the filtered count
+          log('warn', `Could not read original tasks file: ${e.message}`);
+        }
+      }
+    } else {
+      // No filtered data provided, read from file
+      tasksData = readJSON(tasksPath);
+      
+      if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks) || tasksData.tasks.length === 0) {
+        throw new Error('No tasks found in the tasks file');
+      }
+      
+      originalTaskCount = tasksData.tasks.length;
+      
+      // Filter out tasks with status done/cancelled/deferred
+      const activeStatuses = ['pending', 'blocked', 'in-progress'];
+      const filteredTasks = tasksData.tasks.filter(task => 
+        activeStatuses.includes(task.status?.toLowerCase() || 'pending')
+      );
+      
+      // Store original data before filtering
+      const skippedCount = originalTaskCount - filteredTasks.length;
+      
+      // Update tasksData with filtered tasks
+      tasksData = {
+        ...tasksData,
+        tasks: filteredTasks,
+        _originalTaskCount: originalTaskCount
+      };
     }
     
-    console.log(chalk.blue(`Found ${tasksData.tasks.length} tasks to analyze.`));
+    // Calculate how many tasks we're skipping (done/cancelled/deferred)
+    const skippedCount = originalTaskCount - tasksData.tasks.length;
+    
+    reportLog(`Found ${originalTaskCount} total tasks in the task file.`, 'info');
+    
+    if (skippedCount > 0) {
+      const skipMessage = `Skipping ${skippedCount} tasks marked as done/cancelled/deferred. Analyzing ${tasksData.tasks.length} active tasks.`;
+      reportLog(skipMessage, 'info');
+      
+      // For CLI output, make this more visible
+      if (outputFormat === 'text') {
+        console.log(chalk.yellow(skipMessage));
+      }
+    }
     
     // Prepare the prompt for the LLM
     const prompt = generateComplexityAnalysisPrompt(tasksData);
     
-    // Start loading indicator
-    const loadingIndicator = startLoadingIndicator('Calling AI to analyze task complexity...');
+    // Only start loading indicator for text output (CLI)
+    let loadingIndicator = null;
+    if (outputFormat === 'text') {
+      loadingIndicator = startLoadingIndicator('Calling AI to analyze task complexity...');
+    }
     
     let fullResponse = '';
     let streamingInterval = null;
@@ -2309,7 +2929,12 @@ async function analyzeTaskComplexity(options, { reportProgress, mcpLog, session 
       // If research flag is set, use Perplexity first
       if (useResearch) {
         try {
-          console.log(chalk.blue('Using Perplexity AI for research-backed complexity analysis...'));
+          reportLog('Using Perplexity AI for research-backed complexity analysis...', 'info');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.blue('Using Perplexity AI for research-backed complexity analysis...'));
+          }
           
           // Modify prompt to include more context for Perplexity and explicitly request JSON
           const researchPrompt = `You are conducting a detailed analysis of software development tasks to determine their complexity and how they should be broken down into subtasks.
@@ -2353,17 +2978,34 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
           
           // Extract the response text
           fullResponse = result.choices[0].message.content;
-          console.log(chalk.green('Successfully generated complexity analysis with Perplexity AI'));
+          reportLog('Successfully generated complexity analysis with Perplexity AI', 'success');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.green('Successfully generated complexity analysis with Perplexity AI'));
+          }
           
           if (streamingInterval) clearInterval(streamingInterval);
-          stopLoadingIndicator(loadingIndicator);
+          
+          // Stop loading indicator if it was created
+          if (loadingIndicator) {
+            stopLoadingIndicator(loadingIndicator);
+            loadingIndicator = null;
+          }
           
           // ALWAYS log the first part of the response for debugging
-          console.log(chalk.gray('Response first 200 chars:'));
-          console.log(chalk.gray(fullResponse.substring(0, 200)));
+          if (outputFormat === 'text') {
+            console.log(chalk.gray('Response first 200 chars:'));
+            console.log(chalk.gray(fullResponse.substring(0, 200)));
+          }
         } catch (perplexityError) {
-          console.log(chalk.yellow('Falling back to Claude for complexity analysis...'));
-          console.log(chalk.gray('Perplexity error:'), perplexityError.message);
+          reportLog(`Falling back to Claude for complexity analysis: ${perplexityError.message}`, 'warn');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.yellow('Falling back to Claude for complexity analysis...'));
+            console.log(chalk.gray('Perplexity error:'), perplexityError.message);
+          }
           
           // Continue to Claude as fallback
           await useClaudeForComplexityAnalysis();
@@ -2375,45 +3017,156 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
       
       // Helper function to use Claude for complexity analysis
       async function useClaudeForComplexityAnalysis() {
-        // Call the LLM API with streaming
-        const stream = await anthropic.messages.create({
-          max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
-          model: modelOverride || CONFIG.model || session?.env?.ANTHROPIC_MODEL,
-          temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-          messages: [{ role: "user", content: prompt }],
-          system: "You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.",
-          stream: true
-        });
+        // Initialize retry variables for handling Claude overload
+        let retryAttempt = 0;
+        const maxRetryAttempts = 2;
+        let claudeOverloaded = false;
         
-        // Update loading indicator to show streaming progress
-        let dotCount = 0;
-        streamingInterval = setInterval(() => {
-          readline.cursorTo(process.stdout, 0);
-          process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-          dotCount = (dotCount + 1) % 4;
-        }, 500);
-        
-        // Process the stream
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-            fullResponse += chunk.delta.text;
-          }
-          if (reportProgress) {
-            await reportProgress({ progress: (fullResponse.length / CONFIG.maxTokens) * 100 });
-          }
-          if (mcpLog) {
-            mcpLog.info(`Progress: ${fullResponse.length / CONFIG.maxTokens * 100}%`);
+        // Retry loop for Claude API calls
+        while (retryAttempt < maxRetryAttempts) {
+          retryAttempt++;
+          const isLastAttempt = retryAttempt >= maxRetryAttempts;
+          
+          try {
+            reportLog(`Claude API attempt ${retryAttempt}/${maxRetryAttempts}`, 'info');
+            
+            // Update loading indicator for CLI
+            if (outputFormat === 'text' && loadingIndicator) {
+              stopLoadingIndicator(loadingIndicator);
+              loadingIndicator = startLoadingIndicator(`Claude API attempt ${retryAttempt}/${maxRetryAttempts}...`);
+            }
+            
+            // Call the LLM API with streaming
+            const stream = await anthropic.messages.create({
+              max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+              model: modelOverride || CONFIG.model || session?.env?.ANTHROPIC_MODEL,
+              temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+              messages: [{ role: "user", content: prompt }],
+              system: "You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.",
+              stream: true
+            });
+            
+            // Update loading indicator to show streaming progress - only for text output (CLI)
+            if (outputFormat === 'text') {
+              let dotCount = 0;
+              streamingInterval = setInterval(() => {
+                readline.cursorTo(process.stdout, 0);
+                process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+                dotCount = (dotCount + 1) % 4;
+              }, 500);
+            }
+            
+            // Process the stream
+            for await (const chunk of stream) {
+              if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+                fullResponse += chunk.delta.text;
+              }
+              if (reportProgress) {
+                await reportProgress({ progress: (fullResponse.length / CONFIG.maxTokens) * 100 });
+              }
+              if (mcpLog) {
+                mcpLog.info(`Progress: ${fullResponse.length / CONFIG.maxTokens * 100}%`);
+              }
+            }
+            
+            if (streamingInterval) clearInterval(streamingInterval);
+            
+            // Stop loading indicator if it was created
+            if (loadingIndicator) {
+              stopLoadingIndicator(loadingIndicator);
+              loadingIndicator = null;
+            }
+            
+            reportLog("Completed streaming response from Claude API!", 'success');
+            
+            // Only show UI elements for text output (CLI)
+            if (outputFormat === 'text') {
+              console.log(chalk.green("Completed streaming response from Claude API!"));
+            }
+            
+            // Successfully received response, break the retry loop
+            break;
+            
+          } catch (claudeError) {
+            if (streamingInterval) clearInterval(streamingInterval);
+            
+            // Process error to check if it's an overload condition
+            reportLog(`Error in Claude API call: ${claudeError.message}`, 'error');
+            
+            // Check if this is an overload error
+            let isOverload = false;
+            // Check 1: SDK specific property
+            if (claudeError.type === 'overloaded_error') {
+              isOverload = true;
+            }
+            // Check 2: Check nested error property
+            else if (claudeError.error?.type === 'overloaded_error') {
+              isOverload = true;
+            }
+            // Check 3: Check status code
+            else if (claudeError.status === 429 || claudeError.status === 529) {
+              isOverload = true;
+            }
+            // Check 4: Check message string
+            else if (claudeError.message?.toLowerCase().includes('overloaded')) {
+              isOverload = true;
+            }
+            
+            if (isOverload) {
+              claudeOverloaded = true;
+              reportLog(`Claude overloaded (attempt ${retryAttempt}/${maxRetryAttempts})`, 'warn');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.yellow(`Claude overloaded (attempt ${retryAttempt}/${maxRetryAttempts})`));
+              }
+              
+              if (isLastAttempt) {
+                reportLog("Maximum retry attempts reached for Claude API", 'error');
+                
+                // Only show UI elements for text output (CLI)
+                if (outputFormat === 'text') {
+                  console.log(chalk.red("Maximum retry attempts reached for Claude API"));
+                }
+                
+                // Let the outer error handling take care of it
+                throw new Error(`Claude API overloaded after ${maxRetryAttempts} attempts`);
+              }
+              
+              // Wait a bit before retrying - adds backoff delay
+              const retryDelay = 1000 * retryAttempt; // Increases with each retry
+              reportLog(`Waiting ${retryDelay/1000} seconds before retry...`, 'info');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.blue(`Waiting ${retryDelay/1000} seconds before retry...`));
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              continue; // Try again
+            } else {
+              // Non-overload error - don't retry
+              reportLog(`Non-overload Claude API error: ${claudeError.message}`, 'error');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.red(`Claude API error: ${claudeError.message}`));
+              }
+              
+              throw claudeError; // Let the outer error handling take care of it
+            }
           }
         }
-        
-        clearInterval(streamingInterval);
-        stopLoadingIndicator(loadingIndicator);
-        
-        console.log(chalk.green("Completed streaming response from Claude API!"));
       }
       
       // Parse the JSON response
-      console.log(chalk.blue(`Parsing complexity analysis...`));
+      reportLog(`Parsing complexity analysis...`, 'info');
+      
+      // Only show UI elements for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(chalk.blue(`Parsing complexity analysis...`));
+      }
+      
       let complexityAnalysis;
       try {
         // Clean up the response to ensure it's valid JSON
@@ -2423,14 +3176,24 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
         const codeBlockMatch = fullResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
         if (codeBlockMatch) {
           cleanedResponse = codeBlockMatch[1];
-          console.log(chalk.blue("Extracted JSON from code block"));
+          reportLog("Extracted JSON from code block", 'info');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.blue("Extracted JSON from code block"));
+          }
         } else {
           // Look for a complete JSON array pattern
           // This regex looks for an array of objects starting with [ and ending with ]
           const jsonArrayMatch = fullResponse.match(/(\[\s*\{\s*"[^"]*"\s*:[\s\S]*\}\s*\])/);
           if (jsonArrayMatch) {
             cleanedResponse = jsonArrayMatch[1];
-            console.log(chalk.blue("Extracted JSON array pattern"));
+            reportLog("Extracted JSON array pattern", 'info');
+            
+            // Only show UI elements for text output (CLI)
+            if (outputFormat === 'text') {
+              console.log(chalk.blue("Extracted JSON array pattern"));
+            }
           } else {
             // Try to find the start of a JSON array and capture to the end
             const jsonStartMatch = fullResponse.match(/(\[\s*\{[\s\S]*)/);
@@ -2441,29 +3204,46 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
               if (properEndMatch) {
                 cleanedResponse = properEndMatch[1];
               }
-              console.log(chalk.blue("Extracted JSON from start of array to end"));
+              reportLog("Extracted JSON from start of array to end", 'info');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.blue("Extracted JSON from start of array to end"));
+              }
             }
           }
         }
         
-        // Log the cleaned response for debugging
-        console.log(chalk.gray("Attempting to parse cleaned JSON..."));
-        console.log(chalk.gray("Cleaned response (first 100 chars):"));
-        console.log(chalk.gray(cleanedResponse.substring(0, 100)));
-        console.log(chalk.gray("Last 100 chars:"));
-        console.log(chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100)));
+        // Log the cleaned response for debugging - only for text output (CLI)
+        if (outputFormat === 'text') {
+          console.log(chalk.gray("Attempting to parse cleaned JSON..."));
+          console.log(chalk.gray("Cleaned response (first 100 chars):"));
+          console.log(chalk.gray(cleanedResponse.substring(0, 100)));
+          console.log(chalk.gray("Last 100 chars:"));
+          console.log(chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100)));
+        }
         
         // More aggressive cleaning - strip any non-JSON content at the beginning or end
         const strictArrayMatch = cleanedResponse.match(/(\[\s*\{[\s\S]*\}\s*\])/);
         if (strictArrayMatch) {
           cleanedResponse = strictArrayMatch[1];
-          console.log(chalk.blue("Applied strict JSON array extraction"));
+          reportLog("Applied strict JSON array extraction", 'info');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.blue("Applied strict JSON array extraction"));
+          }
         }
         
         try {
           complexityAnalysis = JSON.parse(cleanedResponse);
         } catch (jsonError) {
-          console.log(chalk.yellow("Initial JSON parsing failed, attempting to fix common JSON issues..."));
+          reportLog("Initial JSON parsing failed, attempting to fix common JSON issues...", 'warn');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.yellow("Initial JSON parsing failed, attempting to fix common JSON issues..."));
+          }
           
           // Try to fix common JSON issues
           // 1. Remove any trailing commas in arrays or objects
@@ -2484,15 +3264,30 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
           
           try {
             complexityAnalysis = JSON.parse(cleanedResponse);
-            console.log(chalk.green("Successfully parsed JSON after fixing common issues"));
+            reportLog("Successfully parsed JSON after fixing common issues", 'success');
+            
+            // Only show UI elements for text output (CLI)
+            if (outputFormat === 'text') {
+              console.log(chalk.green("Successfully parsed JSON after fixing common issues"));
+            }
           } catch (fixedJsonError) {
-            console.log(chalk.red("Failed to parse JSON even after fixes, attempting more aggressive cleanup..."));
+            reportLog("Failed to parse JSON even after fixes, attempting more aggressive cleanup...", 'error');
+            
+            // Only show UI elements for text output (CLI)
+            if (outputFormat === 'text') {
+              console.log(chalk.red("Failed to parse JSON even after fixes, attempting more aggressive cleanup..."));
+            }
             
             // Try to extract and process each task individually
             try {
               const taskMatches = cleanedResponse.match(/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g);
               if (taskMatches && taskMatches.length > 0) {
-                console.log(chalk.yellow(`Found ${taskMatches.length} task objects, attempting to process individually`));
+                reportLog(`Found ${taskMatches.length} task objects, attempting to process individually`, 'info');
+                
+                // Only show UI elements for text output (CLI)
+                if (outputFormat === 'text') {
+                  console.log(chalk.yellow(`Found ${taskMatches.length} task objects, attempting to process individually`));
+                }
                 
                 complexityAnalysis = [];
                 for (const taskMatch of taskMatches) {
@@ -2504,12 +3299,22 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
                       complexityAnalysis.push(taskObj);
                     }
                   } catch (taskParseError) {
-                    console.log(chalk.yellow(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`));
+                    reportLog(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`, 'warn');
+                    
+                    // Only show UI elements for text output (CLI)
+                    if (outputFormat === 'text') {
+                      console.log(chalk.yellow(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`));
+                    }
                   }
                 }
                 
                 if (complexityAnalysis.length > 0) {
-                  console.log(chalk.green(`Successfully parsed ${complexityAnalysis.length} tasks individually`));
+                  reportLog(`Successfully parsed ${complexityAnalysis.length} tasks individually`, 'success');
+                  
+                  // Only show UI elements for text output (CLI)
+                  if (outputFormat === 'text') {
+                    console.log(chalk.green(`Successfully parsed ${complexityAnalysis.length} tasks individually`));
+                  }
                 } else {
                   throw new Error("Could not parse any tasks individually");
                 }
@@ -2517,7 +3322,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
                 throw fixedJsonError;
               }
             } catch (individualError) {
-              console.log(chalk.red("All parsing attempts failed"));
+              reportLog("All parsing attempts failed", 'error');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.red("All parsing attempts failed"));
+              }
               throw jsonError; // throw the original error
             }
           }
@@ -2525,7 +3335,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
         
         // Ensure complexityAnalysis is an array
         if (!Array.isArray(complexityAnalysis)) {
-          console.log(chalk.yellow('Response is not an array, checking if it contains an array property...'));
+          reportLog('Response is not an array, checking if it contains an array property...', 'warn');
+          
+          // Only show UI elements for text output (CLI)
+          if (outputFormat === 'text') {
+            console.log(chalk.yellow('Response is not an array, checking if it contains an array property...'));
+          }
           
           // Handle the case where the response might be an object with an array property
           if (complexityAnalysis.tasks || complexityAnalysis.analysis || complexityAnalysis.results) {
@@ -2533,7 +3348,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
           } else {
             // If no recognizable array property, wrap it as an array if it's an object
             if (typeof complexityAnalysis === 'object' && complexityAnalysis !== null) {
-              console.log(chalk.yellow('Converting object to array...'));
+              reportLog('Converting object to array...', 'warn');
+              
+              // Only show UI elements for text output (CLI)
+              if (outputFormat === 'text') {
+                console.log(chalk.yellow('Converting object to array...'));
+              }
               complexityAnalysis = [complexityAnalysis];
             } else {
               throw new Error('Response does not contain a valid array or object');
@@ -2550,264 +3370,140 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
         const taskIds = tasksData.tasks.map(t => t.id);
         const analysisTaskIds = complexityAnalysis.map(a => a.taskId);
         const missingTaskIds = taskIds.filter(id => !analysisTaskIds.includes(id));
-
-        if (missingTaskIds.length > 0) {
-          console.log(chalk.yellow(`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`));
-          console.log(chalk.blue(`Attempting to analyze missing tasks...`));
+        
+        // Only show missing task warnings for text output (CLI)
+        if (missingTaskIds.length > 0 && outputFormat === 'text') {
+          reportLog(`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`, 'warn');
           
-          // Create a subset of tasksData with just the missing tasks
-          const missingTasks = {
-            meta: tasksData.meta,
-            tasks: tasksData.tasks.filter(t => missingTaskIds.includes(t.id))
-          };
+          if (outputFormat === 'text') {
+            console.log(chalk.yellow(`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`));
+            console.log(chalk.blue(`Attempting to analyze missing tasks...`));
+          }
           
-          // Generate a prompt for just the missing tasks
-          const missingTasksPrompt = generateComplexityAnalysisPrompt(missingTasks);
-          
-          // Call the same AI model to analyze the missing tasks
-          let missingAnalysisResponse = '';
-          
-          try {
-            // Start a new loading indicator
-            const missingTasksLoadingIndicator = startLoadingIndicator('Analyzing missing tasks...');
-            
-            // Use the same AI model as the original analysis
-            if (useResearch) {
-              // Create the same research prompt but for missing tasks
-              const missingTasksResearchPrompt = `You are conducting a detailed analysis of software development tasks to determine their complexity and how they should be broken down into subtasks.
-
-Please research each task thoroughly, considering best practices, industry standards, and potential implementation challenges before providing your analysis.
-
-CRITICAL: You MUST respond ONLY with a valid JSON array. Do not include ANY explanatory text, markdown formatting, or code block markers.
-
-${missingTasksPrompt}
-
-Your response must be a clean JSON array only, following exactly this format:
-[
-  {
-    "taskId": 1,
-    "taskTitle": "Example Task",
-    "complexityScore": 7,
-    "recommendedSubtasks": 4,
-    "expansionPrompt": "Detailed prompt for expansion",
-    "reasoning": "Explanation of complexity assessment"
-  },
-  // more tasks...
-]
-
-DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
-
-              const result = await perplexity.chat.completions.create({
-                model: process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro',
-                messages: [
-                  {
-                    role: "system", 
-                    content: "You are a technical analysis AI that only responds with clean, valid JSON. Never include explanatory text or markdown formatting in your response."
-                  },
-                  {
-                    role: "user",
-                    content: missingTasksResearchPrompt
-                  }
-                ],
-                temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-                max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+          // Handle missing tasks with a basic default analysis
+          for (const missingId of missingTaskIds) {
+            const missingTask = tasksData.tasks.find(t => t.id === missingId);
+            if (missingTask) {
+              reportLog(`Adding default analysis for task ${missingId}`, 'info');
+              
+              // Create a basic analysis for the missing task
+              complexityAnalysis.push({
+                taskId: missingId,
+                taskTitle: missingTask.title,
+                complexityScore: 5, // Default middle complexity
+                recommendedSubtasks: 3, // Default recommended subtasks
+                expansionPrompt: `Break down this task with a focus on ${missingTask.title.toLowerCase()}.`,
+                reasoning: "Automatically added due to missing analysis in API response."
               });
-              
-              // Extract the response
-              missingAnalysisResponse = result.choices[0].message.content;
-            } else {
-              // Use Claude
-              const stream = await anthropic.messages.create({
-                max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
-                model: modelOverride || CONFIG.model || session?.env?.ANTHROPIC_MODEL,
-                temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-                messages: [{ role: "user", content: missingTasksPrompt }],
-                system: "You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.",
-                stream: true
-              });
-              
-              // Process the stream
-              for await (const chunk of stream) {
-                if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-                  missingAnalysisResponse += chunk.delta.text;
-                }
-                if (reportProgress) {
-                  await reportProgress({ progress: (missingAnalysisResponse.length / CONFIG.maxTokens) * 100 });
-                }
-                if (mcpLog) {
-                  mcpLog.info(`Progress: ${missingAnalysisResponse.length / CONFIG.maxTokens * 100}%`);
-                }
-              }
             }
-            
-            // Stop the loading indicator
-            stopLoadingIndicator(missingTasksLoadingIndicator);
-            
-            // Parse the response using the same parsing logic as before
-            let missingAnalysis;
-            try {
-              // Clean up the response to ensure it's valid JSON (using same logic as above)
-              let cleanedResponse = missingAnalysisResponse;
-              
-              // Use the same JSON extraction logic as before
-              // ... (code omitted for brevity, it would be the same as the original parsing)
-              
-              // First check for JSON code blocks
-              const codeBlockMatch = missingAnalysisResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-              if (codeBlockMatch) {
-                cleanedResponse = codeBlockMatch[1];
-                console.log(chalk.blue("Extracted JSON from code block for missing tasks"));
-              } else {
-                // Look for a complete JSON array pattern
-                const jsonArrayMatch = missingAnalysisResponse.match(/(\[\s*\{\s*"[^"]*"\s*:[\s\S]*\}\s*\])/);
-                if (jsonArrayMatch) {
-                  cleanedResponse = jsonArrayMatch[1];
-                  console.log(chalk.blue("Extracted JSON array pattern for missing tasks"));
-                } else {
-                  // Try to find the start of a JSON array and capture to the end
-                  const jsonStartMatch = missingAnalysisResponse.match(/(\[\s*\{[\s\S]*)/);
-                  if (jsonStartMatch) {
-                    cleanedResponse = jsonStartMatch[1];
-                    // Try to find a proper closing to the array
-                    const properEndMatch = cleanedResponse.match(/([\s\S]*\}\s*\])/);
-                    if (properEndMatch) {
-                      cleanedResponse = properEndMatch[1];
-                    }
-                    console.log(chalk.blue("Extracted JSON from start of array to end for missing tasks"));
-                  }
-                }
-              }
-              
-              // More aggressive cleaning if needed
-              const strictArrayMatch = cleanedResponse.match(/(\[\s*\{[\s\S]*\}\s*\])/);
-              if (strictArrayMatch) {
-                cleanedResponse = strictArrayMatch[1];
-                console.log(chalk.blue("Applied strict JSON array extraction for missing tasks"));
-              }
-              
-              try {
-                missingAnalysis = JSON.parse(cleanedResponse);
-              } catch (jsonError) {
-                // Try to fix common JSON issues (same as before)
-                cleanedResponse = cleanedResponse.replace(/,(\s*[\]}])/g, '$1');
-                cleanedResponse = cleanedResponse.replace(/(\s*)(\w+)(\s*):(\s*)/g, '$1"$2"$3:$4');
-                cleanedResponse = cleanedResponse.replace(/:(\s*)'([^']*)'(\s*[,}])/g, ':$1"$2"$3');
-                
-                try {
-                  missingAnalysis = JSON.parse(cleanedResponse);
-                  console.log(chalk.green("Successfully parsed JSON for missing tasks after fixing common issues"));
-                } catch (fixedJsonError) {
-                  // Try the individual task extraction as a last resort
-                  console.log(chalk.red("Failed to parse JSON for missing tasks, attempting individual extraction..."));
-                  
-                  const taskMatches = cleanedResponse.match(/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g);
-                  if (taskMatches && taskMatches.length > 0) {
-                    console.log(chalk.yellow(`Found ${taskMatches.length} task objects, attempting to process individually`));
-                    
-                    missingAnalysis = [];
-                    for (const taskMatch of taskMatches) {
-                      try {
-                        const fixedTask = taskMatch.replace(/,\s*$/, '');
-                        const taskObj = JSON.parse(`${fixedTask}`);
-                        if (taskObj && taskObj.taskId) {
-                          missingAnalysis.push(taskObj);
-                        }
-                      } catch (taskParseError) {
-                        console.log(chalk.yellow(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`));
-                      }
-                    }
-                    
-                    if (missingAnalysis.length === 0) {
-                      throw new Error("Could not parse any missing tasks");
-                    }
-                  } else {
-                    throw fixedJsonError;
-                  }
-                }
-              }
-              
-              // Ensure it's an array
-              if (!Array.isArray(missingAnalysis)) {
-                if (missingAnalysis && typeof missingAnalysis === 'object') {
-                  missingAnalysis = [missingAnalysis];
-                } else {
-                  throw new Error("Missing tasks analysis is not an array or object");
-                }
-              }
-              
-              // Add the missing analyses to the main analysis array
-              console.log(chalk.green(`Successfully analyzed ${missingAnalysis.length} missing tasks`));
-              complexityAnalysis = [...complexityAnalysis, ...missingAnalysis];
-              
-              // Re-check for missing tasks
-              const updatedAnalysisTaskIds = complexityAnalysis.map(a => a.taskId);
-              const stillMissingTaskIds = taskIds.filter(id => !updatedAnalysisTaskIds.includes(id));
-              
-              if (stillMissingTaskIds.length > 0) {
-                console.log(chalk.yellow(`Warning: Still missing analysis for ${stillMissingTaskIds.length} tasks: ${stillMissingTaskIds.join(', ')}`));
-              } else {
-                console.log(chalk.green(`All tasks now have complexity analysis!`));
-              }
-            } catch (error) {
-              console.error(chalk.red(`Error analyzing missing tasks: ${error.message}`));
-              console.log(chalk.yellow(`Continuing with partial analysis...`));
-            }
-          } catch (error) {
-            console.error(chalk.red(`Error during retry for missing tasks: ${error.message}`));
-            console.log(chalk.yellow(`Continuing with partial analysis...`));
           }
         }
-      } catch (error) {
-        console.error(chalk.red(`Failed to parse LLM response as JSON: ${error.message}`));
-        if (CONFIG.debug) {
-          console.debug(chalk.gray(`Raw response: ${fullResponse}`));
+
+        // Create the final report
+        const finalReport = {
+          meta: {
+            generatedAt: new Date().toISOString(),
+            tasksAnalyzed: tasksData.tasks.length,
+            thresholdScore: thresholdScore,
+            projectName: tasksData.meta?.projectName || 'Your Project Name',
+            usedResearch: useResearch
+          },
+          complexityAnalysis: complexityAnalysis
+        };
+        
+        // Write the report to file
+        reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+        writeJSON(outputPath, finalReport);
+        
+        reportLog(`Task complexity analysis complete. Report written to ${outputPath}`, 'success');
+        
+        // Only show UI elements for text output (CLI)
+        if (outputFormat === 'text') {
+          console.log(chalk.green(`Task complexity analysis complete. Report written to ${outputPath}`));
+          
+          // Display a summary of findings
+          const highComplexity = complexityAnalysis.filter(t => t.complexityScore >= 8).length;
+          const mediumComplexity = complexityAnalysis.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length;
+          const lowComplexity = complexityAnalysis.filter(t => t.complexityScore < 5).length;
+          const totalAnalyzed = complexityAnalysis.length;
+          
+          console.log('\nComplexity Analysis Summary:');
+          console.log('----------------------------');
+          console.log(`Tasks in input file: ${tasksData.tasks.length}`);
+          console.log(`Tasks successfully analyzed: ${totalAnalyzed}`);
+          console.log(`High complexity tasks: ${highComplexity}`);
+          console.log(`Medium complexity tasks: ${mediumComplexity}`);
+          console.log(`Low complexity tasks: ${lowComplexity}`);
+          console.log(`Sum verification: ${highComplexity + mediumComplexity + lowComplexity} (should equal ${totalAnalyzed})`);
+          console.log(`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`);
+          console.log(`\nSee ${outputPath} for the full report and expansion commands.`);
+          
+          // Show next steps suggestions
+          console.log(boxen(
+            chalk.white.bold('Suggested Next Steps:') + '\n\n' +
+            `${chalk.cyan('1.')} Run ${chalk.yellow('task-master complexity-report')} to review detailed findings\n` +
+            `${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down complex tasks\n` +
+            `${chalk.cyan('3.')} Run ${chalk.yellow('task-master expand --all')} to expand all pending tasks based on complexity`,
+            { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+          ));
         }
-        throw new Error('Invalid response format from LLM. Expected JSON.');
+        
+        return finalReport;
+      } catch (error) {
+        if (streamingInterval) clearInterval(streamingInterval);
+        
+        // Stop loading indicator if it was created
+        if (loadingIndicator) {
+          stopLoadingIndicator(loadingIndicator);
+        }
+        
+        reportLog(`Error parsing complexity analysis: ${error.message}`, 'error');
+        
+        if (outputFormat === 'text') {
+          console.error(chalk.red(`Error parsing complexity analysis: ${error.message}`));
+          if (CONFIG.debug) {
+            console.debug(chalk.gray(`Raw response: ${fullResponse.substring(0, 500)}...`));
+          }
+        }
+        
+        throw error;
       }
-      
-      // Create the final report
-      const report = {
-        meta: {
-          generatedAt: new Date().toISOString(),
-          tasksAnalyzed: tasksData.tasks.length,
-          thresholdScore: thresholdScore,
-          projectName: tasksData.meta?.projectName || 'Your Project Name',
-          usedResearch: useResearch
-        },
-        complexityAnalysis: complexityAnalysis
-      };
-      
-      // Write the report to file
-      console.log(chalk.blue(`Writing complexity report to ${outputPath}...`));
-      writeJSON(outputPath, report);
-      
-      console.log(chalk.green(`Task complexity analysis complete. Report written to ${outputPath}`));
-      
-      // Display a summary of findings
-      const highComplexity = complexityAnalysis.filter(t => t.complexityScore >= 8).length;
-      const mediumComplexity = complexityAnalysis.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length;
-      const lowComplexity = complexityAnalysis.filter(t => t.complexityScore < 5).length;
-      const totalAnalyzed = complexityAnalysis.length;
-      
-      console.log('\nComplexity Analysis Summary:');
-      console.log('----------------------------');
-      console.log(`Tasks in input file: ${tasksData.tasks.length}`);
-      console.log(`Tasks successfully analyzed: ${totalAnalyzed}`);
-      console.log(`High complexity tasks: ${highComplexity}`);
-      console.log(`Medium complexity tasks: ${mediumComplexity}`);
-      console.log(`Low complexity tasks: ${lowComplexity}`);
-      console.log(`Sum verification: ${highComplexity + mediumComplexity + lowComplexity} (should equal ${totalAnalyzed})`);
-      console.log(`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`);
-      console.log(`\nSee ${outputPath} for the full report and expansion commands.`);
-      
     } catch (error) {
       if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
+      
+      // Stop loading indicator if it was created
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+      }
+      
+      reportLog(`Error during AI analysis: ${error.message}`, 'error');
       throw error;
     }
   } catch (error) {
-    console.error(chalk.red(`Error analyzing task complexity: ${error.message}`));
-    process.exit(1);
+    reportLog(`Error analyzing task complexity: ${error.message}`, 'error');
+    
+    // Only show error UI for text output (CLI)
+    if (outputFormat === 'text') {
+      console.error(chalk.red(`Error analyzing task complexity: ${error.message}`));
+      
+      // Provide more helpful error messages for common issues
+      if (error.message.includes('ANTHROPIC_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
+        console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+      } else if (error.message.includes('PERPLEXITY_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
+        console.log('  2. Or run without the research flag: task-master analyze-complexity');
+      }
+      
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+      
+      process.exit(1);
+    } else {
+      throw error; // Re-throw for JSON output
+    }
   }
 }
 
@@ -3143,9 +3839,22 @@ async function removeSubtask(tasksPath, subtaskId, convertToTask = false, genera
  * @returns {Object|null} - The updated subtask or null if update failed
  */
 async function updateSubtaskById(tasksPath, subtaskId, prompt, useResearch = false, { reportProgress, mcpLog, session } = {} ) {
+  // Determine output format based on mcpLog presence (simplification)
+  const outputFormat = mcpLog ? 'json' : 'text';
+  
+  // Create custom reporter that checks for MCP log and silent mode
+  const report = (message, level = 'info') => {
+    if (mcpLog) {
+      mcpLog[level](message);
+    } else if (!isSilentMode() && outputFormat === 'text') {
+      // Only log to console if not in silent mode and outputFormat is 'text'
+      log(level, message);
+    }
+  };
+
   let loadingIndicator = null;
   try {
-    log('info', `Updating subtask ${subtaskId} with prompt: "${prompt}"`);
+    report(`Updating subtask ${subtaskId} with prompt: "${prompt}"`, 'info');
     
     // Validate subtask ID format
     if (!subtaskId || typeof subtaskId !== 'string' || !subtaskId.includes('.')) {
@@ -3198,42 +3907,49 @@ async function updateSubtaskById(tasksPath, subtaskId, prompt, useResearch = fal
     
     // Check if subtask is already completed
     if (subtask.status === 'done' || subtask.status === 'completed') {
-      log('warn', `Subtask ${subtaskId} is already marked as done and cannot be updated`);
-      console.log(boxen(
-        chalk.yellow(`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`) + '\n\n' +
-        chalk.white('Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:') + '\n' +
-        chalk.white('1. Change its status to "pending" or "in-progress"') + '\n' +
-        chalk.white('2. Then run the update-subtask command'),
-        { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-      ));
+      report(`Subtask ${subtaskId} is already marked as done and cannot be updated`, 'warn');
+      
+      // Only show UI elements for text output (CLI)
+      if (outputFormat === 'text') {
+        console.log(boxen(
+          chalk.yellow(`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`) + '\n\n' +
+          chalk.white('Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:') + '\n' +
+          chalk.white('1. Change its status to "pending" or "in-progress"') + '\n' +
+          chalk.white('2. Then run the update-subtask command'),
+          { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
+        ));
+      }
       return null;
     }
     
-    // Show the subtask that will be updated
-    const table = new Table({
-      head: [
-        chalk.cyan.bold('ID'),
-        chalk.cyan.bold('Title'),
-        chalk.cyan.bold('Status')
-      ],
-      colWidths: [10, 55, 10]
-    });
-    
-    table.push([
-      subtaskId,
-      truncate(subtask.title, 52),
-      getStatusWithColor(subtask.status)
-    ]);
-    
-    console.log(boxen(
-      chalk.white.bold(`Updating Subtask #${subtaskId}`),
-      { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
-    ));
-    
-    console.log(table.toString());
-    
-    // Start the loading indicator
-    loadingIndicator = startLoadingIndicator('Generating additional information with AI...');
+    // Only show UI elements for text output (CLI)
+    if (outputFormat === 'text') {
+      // Show the subtask that will be updated
+      const table = new Table({
+        head: [
+          chalk.cyan.bold('ID'),
+          chalk.cyan.bold('Title'),
+          chalk.cyan.bold('Status')
+        ],
+        colWidths: [10, 55, 10]
+      });
+      
+      table.push([
+        subtaskId,
+        truncate(subtask.title, 52),
+        getStatusWithColor(subtask.status)
+      ]);
+      
+      console.log(boxen(
+        chalk.white.bold(`Updating Subtask #${subtaskId}`),
+        { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+      
+      console.log(table.toString());
+      
+      // Start the loading indicator - only for text output
+      loadingIndicator = startLoadingIndicator('Generating additional information with AI...');
+    }
 
     // Create the system prompt (as before)
     const systemPrompt = `You are an AI assistant helping to update software development subtasks with additional information.
@@ -3261,10 +3977,15 @@ Provide concrete examples, code snippets, or implementation details when relevan
         modelType = result.type;
         const client = result.client;
         
-        log('info', `Attempt ${modelAttempts}/${maxModelAttempts}: Generating subtask info using ${modelType}`);
-        // Update loading indicator text
-        stopLoadingIndicator(loadingIndicator); // Stop previous indicator
-        loadingIndicator = startLoadingIndicator(`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`);
+        report(`Attempt ${modelAttempts}/${maxModelAttempts}: Generating subtask info using ${modelType}`, 'info');
+        
+        // Update loading indicator text - only for text output
+        if (outputFormat === 'text') {
+          if (loadingIndicator) {
+            stopLoadingIndicator(loadingIndicator); // Stop previous indicator
+          }
+          loadingIndicator = startLoadingIndicator(`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`);
+        }
 
         const subtaskData = JSON.stringify(subtask, null, 2);
         const userMessageContent = `Here is the subtask to enhance:\n${subtaskData}\n\nPlease provide additional information addressing this request:\n${prompt}\n\nReturn ONLY the new information to add - do not repeat existing content.`;
@@ -3285,15 +4006,18 @@ Provide concrete examples, code snippets, or implementation details when relevan
         } else { // Claude
           let responseText = '';
           let streamingInterval = null;
-          let dotCount = 0;
-          const readline = await import('readline');
-
+          
           try {
-            streamingInterval = setInterval(() => {
-              readline.cursorTo(process.stdout, 0);
-              process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-              dotCount = (dotCount + 1) % 4;
-            }, 500);
+            // Only update streaming indicator for text output
+            if (outputFormat === 'text') {
+              let dotCount = 0;
+              const readline = await import('readline');
+              streamingInterval = setInterval(() => {
+                readline.cursorTo(process.stdout, 0);
+                process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+                dotCount = (dotCount + 1) % 4;
+              }, 500);
+            }
 
             // Construct Claude payload
             const stream = await client.messages.create({
@@ -3319,23 +4043,26 @@ Provide concrete examples, code snippets, or implementation details when relevan
               }
             }
           } finally {
-             if (streamingInterval) clearInterval(streamingInterval);
-             // Clear the loading dots line
-             readline.cursorTo(process.stdout, 0);
-             process.stdout.clearLine(0);
+            if (streamingInterval) clearInterval(streamingInterval);
+            // Clear the loading dots line - only for text output
+            if (outputFormat === 'text') {
+              const readline = await import('readline');
+              readline.cursorTo(process.stdout, 0);
+              process.stdout.clearLine(0);
+            }
           }
 
-          log('info', `Completed streaming response from Claude API! (Attempt ${modelAttempts})`);
+          report(`Completed streaming response from Claude API! (Attempt ${modelAttempts})`, 'info');
           additionalInformation = responseText.trim();
         }
 
         // Success - break the loop
         if (additionalInformation) {
-           log('info', `Successfully generated information using ${modelType} on attempt ${modelAttempts}.`);
+           report(`Successfully generated information using ${modelType} on attempt ${modelAttempts}.`, 'info');
            break;
         } else {
            // Handle case where AI gave empty response without erroring
-           log('warn', `AI (${modelType}) returned empty response on attempt ${modelAttempts}.`);
+           report(`AI (${modelType}) returned empty response on attempt ${modelAttempts}.`, 'warn');
            if (isLastAttempt) {
                throw new Error('AI returned empty response after maximum attempts.');
            }
@@ -3344,7 +4071,7 @@ Provide concrete examples, code snippets, or implementation details when relevan
 
       } catch (modelError) {
         const failedModel = modelType || (modelError.modelType || 'unknown model');
-        log('warn', `Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`);
+        report(`Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`, 'warn');
 
         // --- More robust overload check ---
         let isOverload = false;
@@ -3369,22 +4096,22 @@ Provide concrete examples, code snippets, or implementation details when relevan
         if (isOverload) { // Use the result of the check
           claudeOverloaded = true; // Mark Claude as overloaded for the *next* potential attempt
           if (!isLastAttempt) {
-            log('info', 'Claude overloaded. Will attempt fallback model if available.');
-            // Stop the current indicator before continuing
-            if (loadingIndicator) {
+            report('Claude overloaded. Will attempt fallback model if available.', 'info');
+            // Stop the current indicator before continuing - only for text output
+            if (outputFormat === 'text' && loadingIndicator) {
                 stopLoadingIndicator(loadingIndicator);
                 loadingIndicator = null; // Reset indicator
             }
             continue; // Go to next iteration of the while loop to try fallback
           } else {
             // It was the last attempt, and it failed due to overload
-            log('error', `Overload error on final attempt (${modelAttempts}/${maxModelAttempts}). No fallback possible.`);
+            report(`Overload error on final attempt (${modelAttempts}/${maxModelAttempts}). No fallback possible.`, 'error');
             // Let the error be thrown after the loop finishes, as additionalInformation will be empty.
             // We don't throw immediately here, let the loop exit and the check after the loop handle it.
-          } // <<<< ADD THIS CLOSING BRACE
+          } 
         } else { // Error was NOT an overload
           // If it's not an overload, throw it immediately to be caught by the outer catch.
-          log('error', `Non-overload error on attempt ${modelAttempts}: ${modelError.message}`);
+          report(`Non-overload error on attempt ${modelAttempts}: ${modelError.message}`, 'error');
           throw modelError; // Re-throw non-overload errors immediately.
         }
       } // End inner catch
@@ -3392,103 +4119,145 @@ Provide concrete examples, code snippets, or implementation details when relevan
 
     // If loop finished without getting information
     if (!additionalInformation) {
-        console.log('>>> DEBUG: additionalInformation is falsy! Value:', additionalInformation); // <<< ADD THIS
+        // Only show debug info for text output (CLI)
+        if (outputFormat === 'text') {
+          console.log('>>> DEBUG: additionalInformation is falsy! Value:', additionalInformation);
+        }
         throw new Error('Failed to generate additional information after all attempts.');
     }
 
-    console.log('>>> DEBUG: Got additionalInformation:', additionalInformation.substring(0, 50) + '...'); // <<< ADD THIS
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: Got additionalInformation:', additionalInformation.substring(0, 50) + '...');
+    }
 
-     // Create timestamp
+    // Create timestamp
     const currentDate = new Date();
     const timestamp = currentDate.toISOString();
 
     // Format the additional information with timestamp
     const formattedInformation = `\n\n<info added on ${timestamp}>\n${additionalInformation}\n</info added on ${timestamp}>`;
-    console.log('>>> DEBUG: formattedInformation:', formattedInformation.substring(0, 70) + '...'); // <<< ADD THIS
+    
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: formattedInformation:', formattedInformation.substring(0, 70) + '...');
+    }
 
     // Append to subtask details and description
-    console.log('>>> DEBUG: Subtask details BEFORE append:', subtask.details); // <<< ADD THIS
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: Subtask details BEFORE append:', subtask.details);
+    }
+    
     if (subtask.details) {
       subtask.details += formattedInformation;
     } else {
       subtask.details = `${formattedInformation}`;
     }
-    console.log('>>> DEBUG: Subtask details AFTER append:', subtask.details); // <<< ADD THIS
-
+    
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: Subtask details AFTER append:', subtask.details);
+    }
 
     if (subtask.description) {
       // Only append to description if it makes sense (for shorter updates)
       if (additionalInformation.length < 200) {
-         console.log('>>> DEBUG: Subtask description BEFORE append:', subtask.description); // <<< ADD THIS
+        // Only show debug info for text output (CLI)
+        if (outputFormat === 'text') {
+          console.log('>>> DEBUG: Subtask description BEFORE append:', subtask.description);
+        }
         subtask.description += ` [Updated: ${currentDate.toLocaleDateString()}]`;
-         console.log('>>> DEBUG: Subtask description AFTER append:', subtask.description); // <<< ADD THIS
+        // Only show debug info for text output (CLI)
+        if (outputFormat === 'text') {
+          console.log('>>> DEBUG: Subtask description AFTER append:', subtask.description);
+        }
       }
     }
 
-    // Update the subtask in the parent task (add log before write)
-    // ... index finding logic ...
-    console.log('>>> DEBUG: About to call writeJSON with updated data...'); // <<< ADD THIS
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: About to call writeJSON with updated data...');
+    }
+    
     // Write the updated tasks to the file
     writeJSON(tasksPath, data);
-    console.log('>>> DEBUG: writeJSON call completed.'); // <<< ADD THIS
+    
+    // Only show debug info for text output (CLI)
+    if (outputFormat === 'text') {
+      console.log('>>> DEBUG: writeJSON call completed.');
+    }
 
-
-    log('success', `Successfully updated subtask ${subtaskId}`);
+    report(`Successfully updated subtask ${subtaskId}`, 'success');
 
     // Generate individual task files
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath)); // <<< Maybe log after this too
+    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-    // Stop indicator *before* final console output
-    stopLoadingIndicator(loadingIndicator);
-    loadingIndicator = null;
+    // Stop indicator before final console output - only for text output (CLI)
+    if (outputFormat === 'text') {
+      if (loadingIndicator) {
+        stopLoadingIndicator(loadingIndicator);
+        loadingIndicator = null;
+      }
 
-    console.log(boxen(
-       chalk.green(`Successfully updated subtask #${subtaskId}`) + '\n\n' +
-       chalk.white.bold('Title:') + ' ' + subtask.title + '\n\n' +
-       chalk.white.bold('Information Added:') + '\n' +
-       chalk.white(truncate(additionalInformation, 300, true)),
-       { padding: 1, borderColor: 'green', borderStyle: 'round' }
-     ));
+      console.log(boxen(
+        chalk.green(`Successfully updated subtask #${subtaskId}`) + '\n\n' +
+        chalk.white.bold('Title:') + ' ' + subtask.title + '\n\n' +
+        chalk.white.bold('Information Added:') + '\n' +
+        chalk.white(truncate(additionalInformation, 300, true)),
+        { padding: 1, borderColor: 'green', borderStyle: 'round' }
+      ));
+    }
 
     return subtask;
 
   } catch (error) {
     // Outer catch block handles final errors after loop/attempts
-    stopLoadingIndicator(loadingIndicator); // Ensure indicator is stopped on error
-    loadingIndicator = null;
-    log('error', `Error updating subtask: ${error.message}`);
-    console.error(chalk.red(`Error: ${error.message}`));
+    // Stop indicator on error - only for text output (CLI)
+    if (outputFormat === 'text' && loadingIndicator) {
+      stopLoadingIndicator(loadingIndicator);
+      loadingIndicator = null;
+    }
+    
+    report(`Error updating subtask: ${error.message}`, 'error');
+    
+    // Only show error UI for text output (CLI)
+    if (outputFormat === 'text') {
+      console.error(chalk.red(`Error: ${error.message}`));
 
-    // ... (existing helpful error message logic based on error type) ...
-     if (error.message?.includes('ANTHROPIC_API_KEY')) {
-       console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
-       console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
-     } else if (error.message?.includes('PERPLEXITY_API_KEY')) {
-       console.log(chalk.yellow('\nTo fix this issue:'));
-       console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
-       console.log('  2. Or run without the research flag: task-master update-subtask --id=<id> --prompt=\"...\"');
-     } else if (error.message?.includes('overloaded')) { // Catch final overload error
-       console.log(chalk.yellow('\nAI model overloaded, and fallback failed or was unavailable:'));
-       console.log('  1. Try again in a few minutes.');
-       console.log('  2. Ensure PERPLEXITY_API_KEY is set for fallback.');
-       console.log('  3. Consider breaking your prompt into smaller updates.');
-     } else if (error.message?.includes('not found')) {
-       console.log(chalk.yellow('\nTo fix this issue:'));
-       console.log('  1. Run task-master list --with-subtasks to see all available subtask IDs');
-       console.log('  2. Use a valid subtask ID with the --id parameter in format \"parentId.subtaskId\"');
-     } else if (error.message?.includes('empty response from AI')) {
-         console.log(chalk.yellow('\nThe AI model returned an empty response. This might be due to the prompt or API issues. Try rephrasing or trying again later.'));
-     }
+      // Provide helpful error messages based on error type
+      if (error.message?.includes('ANTHROPIC_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue, set your Anthropic API key:'));
+        console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+      } else if (error.message?.includes('PERPLEXITY_API_KEY')) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here');
+        console.log('  2. Or run without the research flag: task-master update-subtask --id=<id> --prompt=\"...\"');
+      } else if (error.message?.includes('overloaded')) { // Catch final overload error
+        console.log(chalk.yellow('\nAI model overloaded, and fallback failed or was unavailable:'));
+        console.log('  1. Try again in a few minutes.');
+        console.log('  2. Ensure PERPLEXITY_API_KEY is set for fallback.');
+        console.log('  3. Consider breaking your prompt into smaller updates.');
+      } else if (error.message?.includes('not found')) {
+        console.log(chalk.yellow('\nTo fix this issue:'));
+        console.log('  1. Run task-master list --with-subtasks to see all available subtask IDs');
+        console.log('  2. Use a valid subtask ID with the --id parameter in format \"parentId.subtaskId\"');
+      } else if (error.message?.includes('empty response from AI')) {
+        console.log(chalk.yellow('\nThe AI model returned an empty response. This might be due to the prompt or API issues. Try rephrasing or trying again later.'));
+      }
 
-    if (CONFIG.debug) {
-      console.error(error);
+      if (CONFIG.debug) {
+        console.error(error);
+      }
+    } else {
+      throw error; // Re-throw for JSON output
     }
 
     return null;
   } finally {
     // Final cleanup check for the indicator, although it should be stopped by now
-    if (loadingIndicator) {
-        stopLoadingIndicator(loadingIndicator);
+    if (outputFormat === 'text' && loadingIndicator) {
+      stopLoadingIndicator(loadingIndicator);
     }
   }
 }
@@ -3643,6 +4412,125 @@ function taskExists(tasks, taskId) {
   return tasks.some(t => t.id === id);
 }
 
+/**
+ * Generate a prompt for creating subtasks from a task
+ * @param {Object} task - The task to generate subtasks for
+ * @param {number} numSubtasks - Number of subtasks to generate
+ * @param {string} additionalContext - Additional context to include in the prompt
+ * @param {Object} taskAnalysis - Optional complexity analysis for the task
+ * @returns {string} - The generated prompt
+ */
+function generateSubtaskPrompt(task, numSubtasks, additionalContext = '', taskAnalysis = null) {
+  // Build the system prompt
+  const basePrompt = `You need to break down the following task into ${numSubtasks} specific subtasks that can be implemented one by one.
+
+Task ID: ${task.id}
+Title: ${task.title}
+Description: ${task.description || 'No description provided'}
+Current details: ${task.details || 'No details provided'}
+${additionalContext ? `\nAdditional context to consider: ${additionalContext}` : ''}
+${taskAnalysis ? `\nComplexity analysis: This task has a complexity score of ${taskAnalysis.complexityScore}/10.` : ''}
+${taskAnalysis && taskAnalysis.reasoning ? `\nReasoning for complexity: ${taskAnalysis.reasoning}` : ''}
+
+Subtasks should:
+1. Be specific and actionable implementation steps
+2. Follow a logical sequence
+3. Each handle a distinct part of the parent task
+4. Include clear guidance on implementation approach
+5. Have appropriate dependency chains between subtasks
+6. Collectively cover all aspects of the parent task
+
+Return exactly ${numSubtasks} subtasks with the following JSON structure:
+[
+  {
+    "id": 1,
+    "title": "First subtask title",
+    "description": "Detailed description",
+    "dependencies": [], 
+    "details": "Implementation details"
+  },
+  ...more subtasks...
+]
+
+Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
+
+  return basePrompt;
+}
+
+/**
+ * Call AI to generate subtasks based on a prompt
+ * @param {string} prompt - The prompt to send to the AI
+ * @param {boolean} useResearch - Whether to use Perplexity for research
+ * @param {Object} session - Session object from MCP
+ * @param {Object} mcpLog - MCP logger object
+ * @returns {Object} - Object containing generated subtasks
+ */
+async function getSubtasksFromAI(prompt, useResearch = false, session = null, mcpLog = null) {
+  try {
+    // Get the configured client
+    const client = getConfiguredAnthropicClient(session);
+    
+    // Prepare API parameters
+    const apiParams = {
+      model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+      max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+      temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+      system: "You are an AI assistant helping with task breakdown for software development.",
+      messages: [{ role: "user", content: prompt }]
+    };
+    
+    if (mcpLog) {
+      mcpLog.info("Calling AI to generate subtasks");
+    }
+    
+    // Call the AI - with research if requested
+    if (useResearch && perplexity) {
+      if (mcpLog) {
+        mcpLog.info("Using Perplexity AI for research-backed subtasks");
+      }
+      
+      const perplexityModel = process.env.PERPLEXITY_MODEL || session?.env?.PERPLEXITY_MODEL || 'sonar-pro';
+      const result = await perplexity.chat.completions.create({
+        model: perplexityModel,
+        messages: [
+          {
+            role: "system", 
+            content: "You are an AI assistant helping with task breakdown for software development. Research implementation details and provide comprehensive subtasks."
+          },
+          { role: "user", content: prompt }
+        ],
+        temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+        max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+      });
+      
+      const responseText = result.choices[0].message.content;
+      return parseSubtasksFromText(responseText);
+    } else {
+      // Use regular Claude
+      if (mcpLog) {
+        mcpLog.info("Using Claude for generating subtasks");
+      }
+      
+      // Call the streaming API
+      const responseText = await _handleAnthropicStream(
+        client, 
+        apiParams, 
+        { mcpLog, silentMode: isSilentMode() }, 
+        !isSilentMode()
+      );
+      
+      return parseSubtasksFromText(responseText);
+    }
+  } catch (error) {
+    if (mcpLog) {
+      mcpLog.error(`Error generating subtasks: ${error.message}`);
+    } else {
+      log('error', `Error generating subtasks: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
 // Export task manager functions
 export {
   parsePRD,
@@ -3664,4 +4552,6 @@ export {
   removeTask,
   findTaskById,
   taskExists,
+  generateSubtaskPrompt,
+  getSubtasksFromAI
 }; 

@@ -4,7 +4,7 @@
 
 import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
-import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
+import { enableSilentMode, disableSilentMode, isSilentMode, readJSON } from '../../../../scripts/modules/utils.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -18,9 +18,12 @@ import path from 'path';
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
  * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
+ * @param {Object} [context={}] - Context object containing session data
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function analyzeTaskComplexityDirect(args, log) {
+export async function analyzeTaskComplexityDirect(args, log, context = {}) {
+  const { session } = context; // Only extract session, not reportProgress
+  
   try {
     log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
     
@@ -33,6 +36,13 @@ export async function analyzeTaskComplexityDirect(args, log) {
       outputPath = path.join(args.projectRoot, outputPath);
     }
     
+    log.info(`Analyzing task complexity from: ${tasksPath}`);
+    log.info(`Output report will be saved to: ${outputPath}`);
+    
+    if (args.research) {
+      log.info('Using Perplexity AI for research-backed complexity analysis');
+    }
+    
     // Create options object for analyzeTaskComplexity
     const options = {
       file: tasksPath,
@@ -42,21 +52,42 @@ export async function analyzeTaskComplexityDirect(args, log) {
       research: args.research === true
     };
     
-    log.info(`Analyzing task complexity from: ${tasksPath}`);
-    log.info(`Output report will be saved to: ${outputPath}`);
-    
-    if (options.research) {
-      log.info('Using Perplexity AI for research-backed complexity analysis');
+    // Enable silent mode to prevent console logs from interfering with JSON response
+    const wasSilent = isSilentMode();
+    if (!wasSilent) {
+      enableSilentMode();
     }
     
-    // Enable silent mode to prevent console logs from interfering with JSON response
-    enableSilentMode();
+    // Create a logWrapper that matches the expected mcpLog interface as specified in utilities.mdc
+    const logWrapper = {
+      info: (message, ...args) => log.info(message, ...args),
+      warn: (message, ...args) => log.warn(message, ...args),
+      error: (message, ...args) => log.error(message, ...args),
+      debug: (message, ...args) => log.debug && log.debug(message, ...args),
+      success: (message, ...args) => log.info(message, ...args) // Map success to info
+    };
     
-    // Call the core function
-    await analyzeTaskComplexity(options);
-    
-    // Restore normal logging
-    disableSilentMode();
+    try {
+      // Call the core function with session and logWrapper as mcpLog
+      await analyzeTaskComplexity(options, {
+        session,
+        mcpLog: logWrapper // Use the wrapper instead of passing log directly
+      });
+    } catch (error) {
+      log.error(`Error in analyzeTaskComplexity: ${error.message}`);
+      return {
+        success: false,
+        error: {
+          code: 'ANALYZE_ERROR',
+          message: `Error running complexity analysis: ${error.message}`
+        }
+      };
+    } finally {
+      // Always restore normal logging in finally block, but only if we enabled it
+      if (!wasSilent) {
+        disableSilentMode();
+      }
+    }
     
     // Verify the report file was created
     if (!fs.existsSync(outputPath)) {
@@ -70,24 +101,48 @@ export async function analyzeTaskComplexityDirect(args, log) {
     }
     
     // Read the report file
-    const report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
-    
-    return {
-      success: true,
-      data: {
-        message: `Task complexity analysis complete. Report saved to ${outputPath}`,
-        reportPath: outputPath,
-        reportSummary: {
-          taskCount: report.length,
-          highComplexityTasks: report.filter(t => t.complexityScore >= 8).length,
-          mediumComplexityTasks: report.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length,
-          lowComplexityTasks: report.filter(t => t.complexityScore < 5).length,
+    let report;
+    try {
+      report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+      
+      // Important: Handle different report formats
+      // The core function might return an array or an object with a complexityAnalysis property
+      const analysisArray = Array.isArray(report) ? report : 
+                           (report.complexityAnalysis || []);
+      
+      // Count tasks by complexity
+      const highComplexityTasks = analysisArray.filter(t => t.complexityScore >= 8).length;
+      const mediumComplexityTasks = analysisArray.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length;
+      const lowComplexityTasks = analysisArray.filter(t => t.complexityScore < 5).length;
+      
+      return {
+        success: true,
+        data: {
+          message: `Task complexity analysis complete. Report saved to ${outputPath}`,
+          reportPath: outputPath,
+          reportSummary: {
+            taskCount: analysisArray.length,
+            highComplexityTasks,
+            mediumComplexityTasks,
+            lowComplexityTasks
+          }
         }
-      }
-    };
+      };
+    } catch (parseError) {
+      log.error(`Error parsing report file: ${parseError.message}`);
+      return {
+        success: false,
+        error: {
+          code: 'REPORT_PARSE_ERROR',
+          message: `Error parsing complexity report: ${parseError.message}`
+        }
+      };
+    }
   } catch (error) {
     // Make sure to restore normal logging even if there's an error
-    disableSilentMode();
+    if (isSilentMode()) {
+      disableSilentMode();
+    }
     
     log.error(`Error in analyzeTaskComplexityDirect: ${error.message}`);
     return {

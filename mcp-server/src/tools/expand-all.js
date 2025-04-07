@@ -20,17 +20,16 @@ export function registerExpandAllTool(server) {
     name: "expand_all",
     description: "Expand all pending tasks into subtasks",
     parameters: z.object({
-      num: z.union([z.number(), z.string()]).optional().describe("Number of subtasks to generate for each task"),
+      num: z.string().optional().describe("Number of subtasks to generate for each task"),
       research: z.boolean().optional().describe("Enable Perplexity AI for research-backed subtask generation"),
       prompt: z.string().optional().describe("Additional context to guide subtask generation"),
       force: z.boolean().optional().describe("Force regeneration of subtasks for tasks that already have them"),
       file: z.string().optional().describe("Path to the tasks file (default: tasks/tasks.json)"),
       projectRoot: z.string().optional().describe("Root directory of the project (default: current working directory)")
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Expanding all tasks with args: ${JSON.stringify(args)}`);
-        // await reportProgress({ progress: 0 });
         
         let rootFolder = getProjectRootFromSession(session, log);
         
@@ -42,9 +41,7 @@ export function registerExpandAllTool(server) {
         const result = await expandAllTasksDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Successfully expanded all tasks: ${result.data.message}`);

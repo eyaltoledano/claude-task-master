@@ -157,10 +157,10 @@ describe('Utils Module', () => {
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Warning message'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Error message'));
       
-      // Verify the formatting includes icons
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('ℹ️'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('⚠️'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('❌'));
+      // Verify the formatting includes text prefixes
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[INFO]'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[WARN]'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[ERROR]'));
     });
 
     test('should not log messages below the configured log level', () => {

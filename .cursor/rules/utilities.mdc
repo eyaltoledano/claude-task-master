@@ -109,6 +109,29 @@ alwaysApply: false
   - ✅ DO: Use appropriate icons for different log levels
   - ✅ DO: Respect the configured log level
   - ❌ DON'T: Add direct console.log calls outside the logging utility
+  - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
+
+- **Logger Wrapper Pattern**: 
+  - ✅ DO: Use the logger wrapper pattern when passing loggers to prevent `mcpLog[level] is not a function` errors:
+  ```javascript
+  // Standard logWrapper pattern to wrap FastMCP's log object
+  const logWrapper = {
+    info: (message, ...args) => log.info(message, ...args),
+    warn: (message, ...args) => log.warn(message, ...args),
+    error: (message, ...args) => log.error(message, ...args),
+    debug: (message, ...args) => log.debug && log.debug(message, ...args),
+    success: (message, ...args) => log.info(message, ...args) // Map success to info
+  };
+  
+  // Pass this wrapper as mcpLog to ensure consistent method availability
+  // This also ensures output format is set to 'json' in many core functions
+  const options = { mcpLog: logWrapper, session };
+  ```
+  - ✅ DO: Implement this pattern in any direct function that calls core functions expecting `mcpLog`
+  - ✅ DO: Use this solution in conjunction with silent mode for complete output control
+  - ❌ DON'T: Pass the FastMCP `log` object directly as `mcpLog` to core functions
+  - **Important**: This pattern has successfully fixed multiple issues in MCP tools (e.g., `update-task`, `update-subtask`) where using or omitting `mcpLog` incorrectly led to runtime errors or JSON parsing failures.
+  - For complete implementation details, see the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc).
 
   ```javascript
   // ✅ DO: Implement a proper logging utility
@@ -133,6 +156,107 @@ alwaysApply: false
       console.log(`${icon} ${args.join(' ')}`);
     }
   }
+  ```
+
+## Silent Mode Utilities (in `scripts/modules/utils.js`)
+
+- **Silent Mode Control**:
+  - ✅ DO: Use the exported silent mode functions rather than accessing global variables
+  - ✅ DO: Always use `isSilentMode()` to check the current silent mode state
+  - ✅ DO: Ensure silent mode is disabled in a `finally` block to prevent it from staying enabled
+  - ❌ DON'T: Access the global `silentMode` variable directly
+  - ❌ DON'T: Forget to disable silent mode after enabling it
+
+  ```javascript
+  // ✅ DO: Use the silent mode control functions properly
+  
+  // Example of proper implementation in utils.js:
+  
+  // Global silent mode flag (private to the module)
+  let silentMode = false;
+  
+  // Enable silent mode
+  function enableSilentMode() {
+    silentMode = true;
+  }
+  
+  // Disable silent mode
+  function disableSilentMode() {
+    silentMode = false;
+  }
+  
+  // Check if silent mode is enabled
+  function isSilentMode() {
+    return silentMode;
+  }
+  
+  // Example of proper usage in another module:
+  import { enableSilentMode, disableSilentMode, isSilentMode } from './utils.js';
+  
+  // Check current status
+  if (!isSilentMode()) {
+    console.log('Silent mode is not enabled');
+  }
+  
+  // Use try/finally pattern to ensure silent mode is disabled
+  try {
+    enableSilentMode();
+    // Do something that should suppress console output
+    performOperation();
+  } finally {
+    disableSilentMode();
+  }
+  ```
+
+- **Integration with Logging**:
+  - ✅ DO: Make the `log` function respect silent mode
+  ```javascript
+  function log(level, ...args) {
+    // Skip logging if silent mode is enabled
+    if (isSilentMode()) {
+      return;
+    }
+    
+    // Rest of logging logic...
+  }
+  ```
+
+- **Common Patterns for Silent Mode**:
+  - ✅ DO: In **direct functions** (`mcp-server/src/core/direct-functions/*`) that call **core functions** (`scripts/modules/*`), ensure console output from the core function is suppressed to avoid breaking MCP JSON responses.
+    - **Preferred Method**: Update the core function to accept an `outputFormat` parameter (e.g., `outputFormat = 'text'`) and make it check `outputFormat === 'text'` before displaying any UI elements (banners, spinners, boxes, direct `console.log`s). Pass `'json'` from the direct function.
+    - **Necessary Fallback/Guarantee**: If the core function *cannot* be modified or its output suppression via `outputFormat` is unreliable, **wrap the core function call within the direct function** using `enableSilentMode()` and `disableSilentMode()` in a `try/finally` block. This acts as a safety net.
+  ```javascript
+  // Example in a direct function
+  export async function someOperationDirect(args, log) {
+    let result;
+    const tasksPath = findTasksJsonPath(args, log); // Get path first
+    
+    // Option 1: Core function handles 'json' format (Preferred)
+    try {
+      result = await coreFunction(tasksPath, ...otherArgs, 'json'); // Pass 'json'
+      return { success: true, data: result, fromCache: false };
+    } catch (error) {
+      // Handle error...
+    }
+
+    // Option 2: Core function output unreliable (Fallback/Guarantee)
+    try {
+      enableSilentMode(); // Enable before call
+      result = await coreFunction(tasksPath, ...otherArgs); // Call without format param
+    } catch (error) {
+      // Handle error...
+      log.error(`Failed: ${error.message}`);
+      return { success: false, error: { /* ... */ } };
+    } finally {
+      disableSilentMode(); // ALWAYS disable in finally
+    }
+    return { success: true, data: result, fromCache: false }; // Assuming success if no error caught
+  }
+  ```
+  - ✅ DO: For functions that accept a silent mode parameter but also need to check global state (less common):
+  ```javascript
+  // Check both the passed parameter and global silent mode
+  const isSilent = options.silentMode || (typeof options.silentMode === 'undefined' && isSilentMode());
   ```
 
 ## File Operations (in `scripts/modules/utils.js`)

@@ -34,9 +34,9 @@ The standard pattern for adding a feature follows this workflow:
 ## Critical Checklist for New Features
 
 - **Comprehensive Function Exports**:
-  - ✅ **DO**: Export all helper functions and utility methods needed by your new function
-  - ✅ **DO**: Review dependencies and ensure functions like `findTaskById`, `taskExists` are exported
-  - ❌ **DON'T**: Assume internal functions are already exported - always check and add them explicitly
+  - ✅ **DO**: Export **all core functions, helper functions (like `generateSubtaskPrompt`), and utility methods** needed by your new function or command from their respective modules.
+  - ✅ **DO**: **Explicitly review the module's `export { ... }` block** at the bottom of the file to ensure every required dependency (even seemingly minor helpers like `findTaskById`, `taskExists`, specific prompt generators, AI call handlers, etc.) is included.
+  - ❌ **DON'T**: Assume internal functions are already exported - **always verify**. A missing export will cause runtime errors (e.g., `ReferenceError: generateSubtaskPrompt is not defined`).
   - **Example**: If implementing a feature that checks task existence, ensure the helper function is in exports:
   ```javascript
   // At the bottom of your module file:
@@ -45,14 +45,21 @@ The standard pattern for adding a feature follows this workflow:
     yourNewFunction,
     taskExists,  // Helper function used by yourNewFunction
     findTaskById, // Helper function used by yourNewFunction
+    generateSubtaskPrompt, // Helper needed by expand/add features
+    getSubtasksFromAI,     // Helper needed by expand/add features
   };
   ```
 
-- **Parameter Completeness**:
+- **Parameter Completeness and Matching**:
   - ✅ **DO**: Pass all required parameters to functions you call within your implementation
   - ✅ **DO**: Check function signatures before implementing calls to them
+  - ✅ **DO**: Verify that direct function parameters match their core function counterparts
+  - ✅ **DO**: When implementing a direct function for MCP, ensure it only accepts parameters that exist in the core function
+  - ✅ **DO**: Verify the expected *internal structure* of complex object parameters (like the `mcpLog` object, see mcp.mdc for the required logger wrapper pattern)
+  - ❌ **DON'T**: Add parameters to direct functions that don't exist in core functions
   - ❌ **DON'T**: Assume default parameter values will handle missing arguments
-  - **Example**: When calling file generation, pass both required parameters:
+  - ❌ **DON'T**: Assume object parameters will work without verifying their required internal structure or methods.
+  - **Example**: When calling file generation, pass all required parameters:
   ```javascript
   // ✅ DO: Pass all required parameters
   await generateTaskFiles(tasksPath, path.dirname(tasksPath));
@@ -60,12 +67,59 @@ The standard pattern for adding a feature follows this workflow:
   // ❌ DON'T: Omit required parameters
   await generateTaskFiles(tasksPath); // Error - missing outputDir parameter
   ```
+  
+  **Example**: Properly match direct function parameters to core function:
+  ```javascript
+  // Core function signature
+  async function expandTask(tasksPath, taskId, numSubtasks, useResearch = false, additionalContext = '', options = {}) {
+    // Implementation...
+  }
+  
+  // ✅ DO: Match direct function parameters to core function
+  export async function expandTaskDirect(args, log, context = {}) {
+    // Extract only parameters that exist in the core function
+    const taskId = parseInt(args.id, 10);
+    const numSubtasks = args.num ? parseInt(args.num, 10) : undefined;
+    const useResearch = args.research === true;
+    const additionalContext = args.prompt || '';
+    
+    // Call core function with matched parameters
+    const result = await expandTask(
+      tasksPath,
+      taskId,
+      numSubtasks,
+      useResearch,
+      additionalContext,
+      { mcpLog: log, session: context.session }
+    );
+    
+    // Return result
+    return { success: true, data: result, fromCache: false };
+  }
+  
+  // ❌ DON'T: Use parameters that don't exist in the core function
+  export async function expandTaskDirect(args, log, context = {}) {
+    // DON'T extract parameters that don't exist in the core function!
+    const force = args.force === true; // ❌ WRONG - 'force' doesn't exist in core function
+    
+    // DON'T pass non-existent parameters to core functions
+    const result = await expandTask(
+      tasksPath,
+      args.id,
+      args.num,
+      args.research,
+      args.prompt,
+      force, // ❌ WRONG - this parameter doesn't exist in the core function
+      { mcpLog: log }
+    );
+  }
+  ```
 
 - **Consistent File Path Handling**:
-  - ✅ **DO**: Use consistent file naming conventions: `task_${id.toString().padStart(3, '0')}.txt`
-  - ✅ **DO**: Use `path.join()` for composing file paths
-  - ✅ **DO**: Use appropriate file extensions (.txt for tasks, .json for data)
-  - ❌ **DON'T**: Hardcode path separators or inconsistent file extensions
+  - ✅ DO: Use consistent file naming conventions: `task_${id.toString().padStart(3, '0')}.txt`
+  - ✅ DO: Use `path.join()` for composing file paths
+  - ✅ DO: Use appropriate file extensions (.txt for tasks, .json for data)
+  - ❌ DON'T: Hardcode path separators or inconsistent file extensions
   - **Example**: Creating file paths for tasks:
   ```javascript
   // ✅ DO: Use consistent file naming and path.join
@@ -79,10 +133,10 @@ The standard pattern for adding a feature follows this workflow:
   ```
 
 - **Error Handling and Reporting**:
-  - ✅ **DO**: Use structured error objects with code and message properties
-  - ✅ **DO**: Include clear error messages identifying the specific problem
-  - ✅ **DO**: Handle both function-specific errors and potential file system errors
-  - ✅ **DO**: Log errors at appropriate severity levels
+  - ✅ DO: Use structured error objects with code and message properties
+  - ✅ DO: Include clear error messages identifying the specific problem
+  - ✅ DO: Handle both function-specific errors and potential file system errors
+  - ✅ DO: Log errors at appropriate severity levels
   - **Example**: Structured error handling in core functions:
   ```javascript
   try {
@@ -98,33 +152,43 @@ The standard pattern for adding a feature follows this workflow:
   ```
 
 - **Silent Mode Implementation**:
-  - ✅ **DO**: Import silent mode utilities in direct functions: `import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';`
-  - ✅ **DO**: Wrap core function calls with silent mode: 
-  ```javascript
-  // Enable silent mode to prevent console logs from interfering with JSON response
-  enableSilentMode();
-  
-  // Call the core function
-  const result = await coreFunction(...);
-  
-  // Restore normal logging
-  disableSilentMode();
-  ```
-  - ✅ **DO**: Ensure silent mode is disabled in error handling:
-  ```javascript
-  try {
-    enableSilentMode();
-    // Core function call
-    disableSilentMode();
-  } catch (error) {
-    // Make sure to restore normal logging even if there's an error
-    disableSilentMode();
-    throw error; // Rethrow to be caught by outer catch block
-  }
-  ```
-  - ✅ **DO**: Add silent mode handling in all direct functions that call core functions
-  - ❌ **DON'T**: Forget to disable silent mode, which would suppress all future logs
-  - ❌ **DON'T**: Enable silent mode outside of direct functions in the MCP server
+  - ✅ **DO**: Import all silent mode utilities together:
+    ```javascript
+    import { enableSilentMode, disableSilentMode, isSilentMode } from '../../../../scripts/modules/utils.js';
+    ```
+  - ✅ **DO**: Always use `isSilentMode()` function to check global silent mode status, never reference global variables.
+  - ✅ **DO**: Wrap core function calls **within direct functions** using `enableSilentMode()` and `disableSilentMode()` in a `try/finally` block if the core function might produce console output (like banners, spinners, direct `console.log`s) that isn't reliably controlled by an `outputFormat` parameter.
+    ```javascript
+    // Direct Function Example:
+    try {
+      // Prefer passing 'json' if the core function reliably handles it
+      const result = await coreFunction(...args, 'json'); 
+      // OR, if outputFormat is not enough/unreliable:
+      // enableSilentMode(); // Enable *before* the call
+      // const result = await coreFunction(...args);
+      // disableSilentMode(); // Disable *after* the call (typically in finally)
+
+      return { success: true, data: result };
+    } catch (error) {
+       log.error(`Error: ${error.message}`);
+       return { success: false, error: { message: error.message } };
+    } finally {
+       // If you used enable/disable, ensure disable is called here
+       // disableSilentMode(); 
+    }
+    ```
+  - ✅ **DO**: Core functions themselves *should* ideally check `outputFormat === 'text'` before displaying UI elements (banners, spinners, boxes) and use internal logging (`log`/`report`) that respects silent mode. The `enable/disableSilentMode` wrapper in the direct function is a safety net.
+  - ✅ **DO**: Handle mixed parameter/global silent mode correctly for functions accepting both (less common now, prefer `outputFormat`):
+    ```javascript
+    // Check both the passed parameter and global silent mode
+    const isSilent = silentMode || (typeof silentMode === 'undefined' && isSilentMode());
+    ```
+  - ❌ **DON'T**: Forget to disable silent mode in a `finally` block if you enabled it.
+  - ❌ **DON'T**: Access the global `silentMode` flag directly.
+
+- **Debugging Strategy**:
+  - ✅ **DO**: If an MCP tool fails with vague errors (e.g., JSON parsing issues like `Unexpected token ... is not valid JSON`), **try running the equivalent CLI command directly in the terminal** (e.g., `task-master expand --all`). CLI output often provides much more specific error messages (like missing function definitions or stack traces from the core logic) that pinpoint the root cause.
+  - ❌ **DON'T**: Rely solely on MCP logs if the error is unclear; use the CLI as a complementary debugging tool for core logic issues.
 
 ```javascript
 // 1. CORE LOGIC: Add function to appropriate module (example in task-manager.js)

@@ -27,10 +27,9 @@ export function registerAnalyzeTool(server) {
       research: z.boolean().optional().describe("Use Perplexity AI for research-backed complexity analysis"),
       projectRoot: z.string().optional().describe("Root directory of the project (default: current working directory)")
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
-        // await reportProgress({ progress: 0 });
         
         let rootFolder = getProjectRootFromSession(session, log);
         
@@ -42,9 +41,7 @@ export function registerAnalyzeTool(server) {
         const result = await analyzeTaskComplexityDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Task complexity analysis complete: ${result.data.message}`);

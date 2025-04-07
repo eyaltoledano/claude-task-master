@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { isSilentMode } from "../../scripts/modules/utils.js";
 
 // Define log levels
 const LOG_LEVELS = {
@@ -20,6 +21,11 @@ const LOG_LEVEL = process.env.LOG_LEVEL
  * @param  {...any} args - Arguments to log
  */
 function log(level, ...args) {
+  // Skip logging if silent mode is enabled
+  if (isSilentMode()) {
+    return;
+  }
+
   // Use text prefixes instead of emojis
   const prefixes = {
     debug: chalk.gray("[DEBUG]"),

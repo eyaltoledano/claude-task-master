@@ -20,7 +20,7 @@ export function registerUpdateTaskTool(server) {
     name: "update_task",
     description: "Updates a single task by ID with new information or context provided in the prompt.",
     parameters: z.object({
-      id: z.union([z.number(), z.string()]).describe("ID of the task or subtask (e.g., '15', '15.2') to update"),
+      id: z.string().describe("ID of the task or subtask (e.g., '15', '15.2') to update"),
       prompt: z.string().describe("New information or context to incorporate into the task"),
       research: z.boolean().optional().describe("Use Perplexity AI for research-backed updates"),
       file: z.string().optional().describe("Path to the tasks file"),
@@ -31,10 +31,9 @@ export function registerUpdateTaskTool(server) {
           "Root directory of the project (default: current working directory)"
         ),
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Updating task with args: ${JSON.stringify(args)}`);
-        // await reportProgress({ progress: 0 });
         
         let rootFolder = getProjectRootFromSession(session, log);
         
@@ -46,9 +45,7 @@ export function registerUpdateTaskTool(server) {
         const result = await updateTaskByIdDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Successfully updated task with ID ${args.id}`);

@@ -28,7 +28,6 @@ import { registerAddDependencyTool } from "./add-dependency.js";
 import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { asyncOperationManager } from '../core/utils/async-manager.js';
-import { registerGetOperationStatusTool } from './get-operation-status.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -61,7 +60,6 @@ export function registerTaskMasterTools(server, asyncManager) {
     registerAddDependencyTool(server);
     registerRemoveTaskTool(server);
     registerInitializeProjectTool(server);
-    registerGetOperationStatusTool(server, asyncManager);
   } catch (error) {
     logger.error(`Error registering Task Master tools: ${error.message}`);
     throw error;

@@ -34,11 +34,11 @@ export function registerSetTaskStatusTool(server) {
           "Root directory of the project (default: automatically detected)"
         ),
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
-        // await reportProgress({ progress: 0 });
         
+        // Get project root from session
         let rootFolder = getProjectRootFromSession(session, log);
         
         if (!rootFolder && args.projectRoot) {
@@ -46,19 +46,20 @@ export function registerSetTaskStatusTool(server) {
           log.info(`Using project root from args as fallback: ${rootFolder}`);
         }
         
+        // Call the direct function with the project root
         const result = await setTaskStatusDirect({
-          projectRoot: rootFolder,
-          ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
+          ...args,
+          projectRoot: rootFolder
+        }, log);
         
-        // await reportProgress({ progress: 100 });
-        
+        // Log the result
         if (result.success) {
           log.info(`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`);
         } else {
           log.error(`Failed to update task status: ${result.error?.message || 'Unknown error'}`);
         }
         
+        // Format and return the result
         return handleApiResult(result, log, 'Error setting task status');
       } catch (error) {
         log.error(`Error in setTaskStatus tool: ${error.message}`);

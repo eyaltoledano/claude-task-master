@@ -31,10 +31,9 @@ export function registerUpdateSubtaskTool(server) {
           "Root directory of the project (default: current working directory)"
         ),
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
-        // await reportProgress({ progress: 0 });
         
         let rootFolder = getProjectRootFromSession(session, log);
         
@@ -46,9 +45,7 @@ export function registerUpdateSubtaskTool(server) {
         const result = await updateSubtaskByIdDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Successfully updated subtask with ID ${args.id}`);

@@ -4,8 +4,9 @@
  */
 
 import { expandTask } from '../../../../scripts/modules/task-manager.js';
-import { readJSON, writeJSON, enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
+import { readJSON, writeJSON, enableSilentMode, disableSilentMode, isSilentMode } from '../../../../scripts/modules/utils.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
+import { getAnthropicClientForMCP, getModelConfig } from '../utils/ai-client-utils.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -14,24 +15,53 @@ import fs from 'fs';
  *
  * @param {Object} args - Command arguments
  * @param {Object} log - Logger object
+ * @param {Object} context - Context object containing session and reportProgress
  * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
-export async function expandTaskDirect(args, log) {
+export async function expandTaskDirect(args, log, context = {}) {
+  const { session } = context;
+  
+  // Log session root data for debugging
+  log.info(`Session data in expandTaskDirect: ${JSON.stringify({
+    hasSession: !!session,
+    sessionKeys: session ? Object.keys(session) : [],
+    roots: session?.roots,
+    rootsStr: JSON.stringify(session?.roots)
+  })}`);
+  
   let tasksPath;
   try {
-    // Find the tasks path first
-    tasksPath = findTasksJsonPath(args, log);
+    // If a direct file path is provided, use it directly
+    if (args.file && fs.existsSync(args.file)) {
+      log.info(`[expandTaskDirect] Using explicitly provided tasks file: ${args.file}`);
+      tasksPath = args.file;
+    } else {
+      // Find the tasks path through standard logic
+      log.info(`[expandTaskDirect] No direct file path provided or file not found at ${args.file}, searching using findTasksJsonPath`);
+      tasksPath = findTasksJsonPath(args, log);
+    }
   } catch (error) {
-    log.error(`Tasks file not found: ${error.message}`);
+    log.error(`[expandTaskDirect] Error during tasksPath determination: ${error.message}`);
+    
+    // Include session roots information in error
+    const sessionRootsInfo = session ? 
+      `\nSession.roots: ${JSON.stringify(session.roots)}\n` +
+      `Current Working Directory: ${process.cwd()}\n` +
+      `Args.projectRoot: ${args.projectRoot}\n` +
+      `Args.file: ${args.file}\n` : 
+      '\nSession object not available';
+    
     return { 
       success: false, 
       error: { 
         code: 'FILE_NOT_FOUND_ERROR', 
-        message: error.message 
+        message: `Error determining tasksPath: ${error.message}${sessionRootsInfo}` 
       }, 
       fromCache: false 
     };
   }
+
+  log.info(`[expandTaskDirect] Determined tasksPath: ${tasksPath}`);
 
   // Validate task ID
   const taskId = args.id ? parseInt(args.id, 10) : null;
@@ -51,26 +81,50 @@ export async function expandTaskDirect(args, log) {
   const numSubtasks = args.num ? parseInt(args.num, 10) : undefined;
   const useResearch = args.research === true;
   const additionalContext = args.prompt || '';
-  const force = args.force === true;
+
+  // Initialize AI client if needed (for expandTask function)
+  try {
+    // This ensures the AI client is available by checking it
+    if (useResearch) {
+      log.info('Verifying AI client for research-backed expansion');
+      await getAnthropicClientForMCP(session, log);
+    }
+  } catch (error) {
+    log.error(`Failed to initialize AI client: ${error.message}`);
+    return {
+      success: false,
+      error: {
+        code: 'AI_CLIENT_ERROR',
+        message: `Cannot initialize AI client: ${error.message}`
+      },
+      fromCache: false
+    };
+  }
 
   try {
-    log.info(`Expanding task ${taskId} into ${numSubtasks || 'default'} subtasks. Research: ${useResearch}, Force: ${force}`);
+    log.info(`[expandTaskDirect] Expanding task ${taskId} into ${numSubtasks || 'default'} subtasks. Research: ${useResearch}`);
     
     // Read tasks data
+    log.info(`[expandTaskDirect] Attempting to read JSON from: ${tasksPath}`);
     const data = readJSON(tasksPath);
+    log.info(`[expandTaskDirect] Result of readJSON: ${data ? 'Data read successfully' : 'readJSON returned null or undefined'}`);
+
     if (!data || !data.tasks) {
-      return { 
-        success: false, 
-        error: { 
-          code: 'INVALID_TASKS_FILE', 
-          message: `No valid tasks found in ${tasksPath}` 
-        }, 
+      log.error(`[expandTaskDirect] readJSON failed or returned invalid data for path: ${tasksPath}`);
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_TASKS_FILE',
+          message: `No valid tasks found in ${tasksPath}. readJSON returned: ${JSON.stringify(data)}`
+        },
         fromCache: false
       };
     }
     
     // Find the specific task
+    log.info(`[expandTaskDirect] Searching for task ID ${taskId} in data`);
     const task = data.tasks.find(t => t.id === taskId);
+    log.info(`[expandTaskDirect] Task found: ${task ? 'Yes' : 'No'}`);
     
     if (!task) {
       return { 
@@ -98,6 +152,20 @@ export async function expandTaskDirect(args, log) {
     // Check for existing subtasks
     const hasExistingSubtasks = task.subtasks && task.subtasks.length > 0;
     
+    // If the task already has subtasks, just return it (matching core behavior)
+    if (hasExistingSubtasks) {
+      log.info(`Task ${taskId} already has ${task.subtasks.length} subtasks`);
+      return { 
+        success: true, 
+        data: { 
+          task,
+          subtasksAdded: 0,
+          hasExistingSubtasks
+        }, 
+        fromCache: false 
+      };
+    }
+    
     // Keep a copy of the task before modification
     const originalTask = JSON.parse(JSON.stringify(task));
     
@@ -121,8 +189,15 @@ export async function expandTaskDirect(args, log) {
       // Enable silent mode to prevent console logs from interfering with JSON response
       enableSilentMode();
       
-      // Call expandTask
-      const result = await expandTask(taskId, numSubtasks, useResearch, additionalContext);
+      // Call expandTask with session context to ensure AI client is properly initialized
+      const result = await expandTask(
+        tasksPath,
+        taskId, 
+        numSubtasks, 
+        useResearch, 
+        additionalContext, 
+        { mcpLog: log, session } // Only pass mcpLog and session, NOT reportProgress
+      );
       
       // Restore normal logging
       disableSilentMode();

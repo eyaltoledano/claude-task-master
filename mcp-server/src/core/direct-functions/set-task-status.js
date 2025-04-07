@@ -5,7 +5,7 @@
 
 import { setTaskStatus } from '../../../../scripts/modules/task-manager.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
-import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
+import { enableSilentMode, disableSilentMode, isSilentMode } from '../../../../scripts/modules/utils.js';
 
 /**
  * Direct function wrapper for setTaskStatus with error handling.
@@ -58,26 +58,22 @@ export async function setTaskStatusDirect(args, log) {
     }
     
     // Execute core setTaskStatus function
-    // We need to handle the arguments correctly - this function expects tasksPath, taskIdInput, newStatus
     const taskId = args.id;
     const newStatus = args.status;
     
     log.info(`Setting task ${taskId} status to "${newStatus}"`);
     
-    // Call the core function
+    // Call the core function with proper silent mode handling
+    let result;
+    enableSilentMode(); // Enable silent mode before calling core function
     try {
-      // Enable silent mode to prevent console logs from interfering with JSON response
-      enableSilentMode();
-      
-      await setTaskStatus(tasksPath, taskId, newStatus);
-      
-      // Restore normal logging
-      disableSilentMode();
+      // Call the core function
+      await setTaskStatus(tasksPath, taskId, newStatus, { mcpLog: log });
       
       log.info(`Successfully set task ${taskId} status to ${newStatus}`);
       
       // Return success data
-      return {
+      result = {
         success: true,
         data: {
           message: `Successfully updated task ${taskId} status to "${newStatus}"`,
@@ -88,17 +84,24 @@ export async function setTaskStatusDirect(args, log) {
         fromCache: false // This operation always modifies state and should never be cached
       };
     } catch (error) {
-      // Make sure to restore normal logging even if there's an error
-      disableSilentMode();
-      
       log.error(`Error setting task status: ${error.message}`);
-      return { 
+      result = { 
         success: false, 
         error: { code: 'SET_STATUS_ERROR', message: error.message || 'Unknown error setting task status' },
         fromCache: false 
       };
+    } finally {
+      // ALWAYS restore normal logging in finally block
+      disableSilentMode();
     }
+    
+    return result;
   } catch (error) {
+    // Ensure silent mode is disabled if there was an uncaught error in the outer try block
+    if (isSilentMode()) {
+      disableSilentMode();
+    }
+    
     log.error(`Error setting task status: ${error.message}`);
     return { 
       success: false, 

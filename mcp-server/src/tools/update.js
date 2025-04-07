@@ -18,9 +18,9 @@ import { updateTasksDirect } from "../core/task-master-core.js";
 export function registerUpdateTool(server) {
   server.addTool({
     name: "update",
-    description: "Update multiple upcoming tasks (with ID >= 'from' ID) based on new context or changes provided in the prompt.",
+    description: "Update multiple upcoming tasks (with ID >= 'from' ID) based on new context or changes provided in the prompt. Use 'update_task' instead for a single specific task.",
     parameters: z.object({
-      from: z.union([z.number(), z.string()]).describe("Task ID from which to start updating (inclusive)"),
+      from: z.string().describe("Task ID from which to start updating (inclusive). IMPORTANT: This tool uses 'from', not 'id'"),
       prompt: z.string().describe("Explanation of changes or new context to apply"),
       research: z.boolean().optional().describe("Use Perplexity AI for research-backed updates"),
       file: z.string().optional().describe("Path to the tasks file"),
@@ -31,10 +31,9 @@ export function registerUpdateTool(server) {
           "Root directory of the project (default: current working directory)"
         ),
     }),
-    execute: async (args, { log, session, reportProgress }) => {
+    execute: async (args, { log, session }) => {
       try {
         log.info(`Updating tasks with args: ${JSON.stringify(args)}`);
-        // await reportProgress({ progress: 0 });
         
         let rootFolder = getProjectRootFromSession(session, log);
         
@@ -46,9 +45,7 @@ export function registerUpdateTool(server) {
         const result = await updateTasksDirect({
           projectRoot: rootFolder,
           ...args
-        }, log/*, { reportProgress, mcpLog: log, session}*/);
-        
-        // await reportProgress({ progress: 100 });
+        }, log, { session });
         
         if (result.success) {
           log.info(`Successfully updated tasks from ID ${args.from}: ${result.data.message}`);
