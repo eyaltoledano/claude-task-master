@@ -1,0 +1,41 @@
+import os
+import json
+
+# Path to Cursor's history folder
+history_path = os.path.expanduser('~/Library/Application Support/Cursor/User/History')
+
+# File to search for
+target_file = 'tasks/tasks.json'
+
+# Function to search through all entries.json files
+def search_entries_for_file(history_path, target_file):
+    matching_folders = []
+    for folder in os.listdir(history_path):
+        folder_path = os.path.join(history_path, folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        # Look for entries.json
+        entries_file = os.path.join(folder_path, 'entries.json')
+        if not os.path.exists(entries_file):
+            continue
+
+        # Parse entries.json to find the resource key
+        with open(entries_file, 'r') as f:
+            data = json.load(f)
+            resource = data.get('resource', None)
+            if resource and target_file in resource:
+                matching_folders.append(folder_path)
+
+    return matching_folders
+
+# Search for the target file
+matching_folders = search_entries_for_file(history_path, target_file)
+
+# Output the matching folders
+if matching_folders:
+    print(f"Found {target_file} in the following folders:")
+    for folder in matching_folders:
+        print(folder)
+else:
+    print(f"No matches found for {target_file}.")
