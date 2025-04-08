@@ -4,6 +4,23 @@
 
 - Adjusts the MCP server invokation in the mcp.json we ship with `task-master init`. Fully functional now.
 - Rename the npx -y command. It's now `npx -y task-master-ai task-master-mcp`
+- Add additional binary alias: `task-master-mcp-server` pointing to the same MCP server script
+
+- **Significant improvements to model configuration:**
+  - Increase context window from 64k to 128k tokens (MAX_TOKENS=128000) for handling larger codebases
+  - Reduce temperature from 0.4 to 0.2 for more consistent, deterministic outputs
+  - Set default model to "claude-3-7-sonnet-20250219" in configuration
+  - Update Perplexity model to "sonar-pro" for research operations
+  - Increase default subtasks generation from 4 to 5 for more granular task breakdown
+  - Set consistent default priority to "medium" for all new tasks
+
+- **Clarify environment configuration approaches:**
+  - For direct MCP usage: Configure API keys directly in `.cursor/mcp.json`
+  - For npm package usage: Configure API keys in `.env` file
+  - Update templates with clearer placeholder values and formatting
+  - Provide explicit documentation about configuration methods in both environments
+  - Use consistent placeholder format "YOUR_ANTHROPIC_API_KEY_HERE" in mcp.json
+
 - Rename MCP tools to better align with API conventions and natural language in client chat:
   - Rename `list-tasks` to `get-tasks` for more intuitive client requests like "get my tasks"
   - Rename `show-task` to `get-task` for consistency with GET-based API naming conventions

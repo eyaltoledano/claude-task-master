@@ -1,0 +1,44 @@
+# Task ID: 48
+# Title: Refactor Prompts into Centralized Structure
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Create a dedicated 'prompts' folder and move all prompt definitions from inline function implementations to individual files, establishing a centralized prompt management system.
+# Details:
+This task involves restructuring how prompts are managed in the codebase:
+
+1. Create a new 'prompts' directory at the appropriate level in the project structure
+2. For each existing prompt currently embedded in functions:
+   - Create a dedicated file with a descriptive name (e.g., 'task_suggestion_prompt.js')
+   - Extract the prompt text/object into this file
+   - Export the prompt using the appropriate module pattern
+3. Modify all functions that currently contain inline prompts to import them from the new centralized location
+4. Establish a consistent naming convention for prompt files (e.g., feature_action_prompt.js)
+5. Consider creating an index.js file in the prompts directory to provide a clean import interface
+6. Document the new prompt structure in the project documentation
+7. Ensure that any prompt that requires dynamic content insertion maintains this capability after refactoring
+
+This refactoring will improve maintainability by making prompts easier to find, update, and reuse across the application.
+
+# Test Strategy:
+Testing should verify that the refactoring maintains identical functionality while improving code organization:
+
+1. Automated Tests:
+   - Run existing test suite to ensure no functionality is broken
+   - Create unit tests for the new prompt import mechanism
+   - Verify that dynamically constructed prompts still receive their parameters correctly
+
+2. Manual Testing:
+   - Execute each feature that uses prompts and compare outputs before and after refactoring
+   - Verify that all prompts are properly loaded from their new locations
+   - Check that no prompt text is accidentally modified during the migration
+
+3. Code Review:
+   - Confirm all prompts have been moved to the new structure
+   - Verify consistent naming conventions are followed
+   - Check that no duplicate prompts exist
+   - Ensure imports are correctly implemented in all files that previously contained inline prompts
+
+4. Documentation:
+   - Verify documentation is updated to reflect the new prompt organization
+   - Confirm the index.js export pattern works as expected for importing prompts
