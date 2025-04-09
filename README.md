@@ -1,5 +1,7 @@
 # Task Master
 
+[![smithery badge](https://smithery.ai/badge/@eyaltoledano/claude-task-master)](https://smithery.ai/server/@eyaltoledano/claude-task-master)
+
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
@@ -34,6 +36,14 @@ The script can be configured through environment variables in a `.env` file at t
 - `PROJECT_VERSION`: Override default version in tasks.json
 
 ## Installation
+
+### Installing via Smithery
+
+To install Task Master for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@eyaltoledano/claude-task-master):
+
+```bash
+npx -y @smithery/cli install @eyaltoledano/claude-task-master --client claude
+```
 
 ```bash
 # Install globally
@@ -510,6 +520,14 @@ The script can be configured through environment variables in a `.env` file at t
 - `PROJECT_VERSION`: Override default version in tasks.json
 
 ## Installation
+
+### Installing via Smithery
+
+To install Task Master for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@eyaltoledano/claude-task-master):
+
+```bash
+npx -y @smithery/cli install @eyaltoledano/claude-task-master --client claude
+```
 
 ```bash
 # Install globally
