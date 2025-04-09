@@ -10,6 +10,7 @@ import { registerSetTaskStatusTool } from "./setTaskStatus.js";
 import { registerExpandTaskTool } from "./expandTask.js";
 import { registerNextTaskTool } from "./nextTask.js";
 import { registerAddTaskTool } from "./addTask.js";
+import { registerScanWorkspaceTool } from "./scanWorkspace.js";
 
 /**
  * Register all Task Master tools with the MCP server
@@ -22,6 +23,7 @@ export function registerTaskMasterTools(server) {
   registerExpandTaskTool(server);
   registerNextTaskTool(server);
   registerAddTaskTool(server);
+  registerScanWorkspaceTool(server);
 }
 
 export default {

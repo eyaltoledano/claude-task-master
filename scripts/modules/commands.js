@@ -41,6 +41,8 @@ import {
   getStatusWithColor
 } from './ui.js';
 
+import { scanWorkspace } from './workspace-scanner.js';
+
 /**
  * Configure and register CLI commands
  * @param {Object} program - Commander program instance
@@ -199,51 +201,77 @@ function registerCommands(programInstance) {
   // expand command
   programInstance
     .command('expand')
-    .description('Break down tasks into detailed subtasks')
-    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .description('Expand a task with subtasks')
     .option('-i, --id <id>', 'Task ID to expand')
-    .option('-a, --all', 'Expand all tasks')
-    .option('-n, --num <number>', 'Number of subtasks to generate', CONFIG.defaultSubtasks.toString())
-    .option('--research', 'Enable Perplexity AI for research-backed subtask generation')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-n, --num <number>', 'Number of subtasks to generate', '3')
     .option('-p, --prompt <text>', 'Additional context to guide subtask generation')
+    .option('-a, --all', 'Expand all pending tasks')
     .option('--force', 'Force regeneration of subtasks for tasks that already have them')
+    .option('-r, --research', 'Use Perplexity AI for research-backed subtask generation')
     .action(async (options) => {
       const tasksPath = options.file;
-      const idArg = options.id ? parseInt(options.id, 10) : null;
-      const allFlag = options.all;
+      const taskId = options.id;
       const numSubtasks = parseInt(options.num, 10);
-      const forceFlag = options.force;
-      const useResearch = options.research === true;
-      const additionalContext = options.prompt || '';
+      const prompt = options.prompt || '';
+      const expandAll = options.all || false;
+      const force = options.force || false;
+      const useResearch = options.research || false;
       
-      // Debug log to verify the value
-      log('debug', `Research enabled: ${useResearch}`);
-      
-      if (allFlag) {
-        console.log(chalk.blue(`Expanding all tasks with ${numSubtasks} subtasks each...`));
-        if (useResearch) {
-          console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
-        } else {
-          console.log(chalk.yellow('Research-backed subtask generation disabled'));
-        }
-        if (additionalContext) {
-          console.log(chalk.blue(`Additional context: "${additionalContext}"`));
-        }
-        await expandAllTasks(numSubtasks, useResearch, additionalContext, forceFlag);
-      } else if (idArg) {
-        console.log(chalk.blue(`Expanding task ${idArg} with ${numSubtasks} subtasks...`));
-        if (useResearch) {
-          console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
-        } else {
-          console.log(chalk.yellow('Research-backed subtask generation disabled'));
-        }
-        if (additionalContext) {
-          console.log(chalk.blue(`Additional context: "${additionalContext}"`));
-        }
-        await expandTask(idArg, numSubtasks, useResearch, additionalContext);
-      } else {
-        console.error(chalk.red('Error: Please specify a task ID with --id=<id> or use --all to expand all tasks.'));
+      if (!taskId && !expandAll) {
+        console.error(chalk.red('Error: Either --id or --all must be specified'));
+        process.exit(1);
       }
+      
+      if (expandAll) {
+        console.log(chalk.blue('Expanding all pending tasks with subtasks...'));
+        if (useResearch) {
+          console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+        }
+        
+        await expandAllTasks(tasksPath, numSubtasks, prompt, force, useResearch);
+      } else {
+        console.log(chalk.blue(`Expanding task ${taskId} with ${numSubtasks} subtasks...`));
+        if (prompt) {
+          console.log(chalk.blue(`Additional context: ${prompt}`));
+        }
+        if (useResearch) {
+          console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+        }
+        
+        await expandTask(tasksPath, taskId, numSubtasks, prompt, force, useResearch);
+      }
+    });
+
+  // scan-workspace command
+  programInstance
+    .command('scan-workspace')
+    .description('Scan a workspace folder and generate tasks based on codebase analysis')
+    .argument('[dir]', 'Path to the workspace directory')
+    .option('-d, --directory <path>', 'Path to the workspace directory (alternative to positional argument)')
+    .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
+    .option('-e, --exclude <dirs>', 'Directories to exclude (comma-separated)', 'node_modules,.git,dist,build,coverage')
+    .option('-i, --include <extensions>', 'File extensions to include (comma-separated)', '.js,.jsx,.ts,.tsx,.html,.css,.md,.json')
+    .option('-n, --name <projectName>', 'Project name (defaults to directory name)')
+    .option('-v, --version <projectVersion>', 'Project version', '1.0.0')
+    .action(async (dir, options) => {
+      // Use directory option if dir argument not provided
+      const workspaceDir = dir || options.directory || '.';
+      
+      // Process exclude and include options
+      const excludeDirs = options.exclude.split(',').map(dir => dir.trim());
+      const includeExtensions = options.include.split(',').map(ext => ext.trim());
+      
+      console.log(chalk.blue(`Scanning workspace directory: ${workspaceDir}`));
+      console.log(chalk.blue(`Output file: ${options.output}`));
+      
+      // Scan workspace and generate tasks
+      await scanWorkspace(workspaceDir, options.output, {
+        excludeDirs,
+        includeExtensions,
+        projectName: options.name,
+        projectVersion: options.version
+      });
     });
 
   // analyze-complexity command

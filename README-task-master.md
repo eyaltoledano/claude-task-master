@@ -480,6 +480,26 @@ task-master add-task --prompt="Description" --dependencies=1,2,3
 task-master add-task --prompt="Description" --priority=high
 ```
 
+### Scan Workspace
+
+# Scan current workspace and generate tasks based on codebase analysis
+task-master scan-workspace
+
+# Scan a specific directory
+task-master scan-workspace /path/to/project
+
+# Scan with custom output path
+task-master scan-workspace --output=my-tasks.json
+
+# Exclude specific directories
+task-master scan-workspace --exclude=node_modules,.git,dist
+
+# Include only specific file extensions
+task-master scan-workspace --include=.js,.ts,.jsx,.tsx
+
+# Set project name and version
+task-master scan-workspace --name="My Project" --version="2.0.0"
+
 ## Feature Details
 
 ### Analyzing Task Complexity
