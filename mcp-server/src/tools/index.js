@@ -64,8 +64,6 @@ export function registerTaskMasterTools(server, asyncManager) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;
 	}
-
-	logger.info('Registered Task Master MCP tools');
 }
 
 export default {

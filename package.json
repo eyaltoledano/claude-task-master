@@ -7,8 +7,7 @@
 	"bin": {
 		"task-master": "bin/task-master.js",
 		"task-master-init": "bin/task-master-init.js",
-		"task-master-mcp": "mcp-server/server.js",
-		"task-master-mcp-server": "mcp-server/server.js"
+		"task-master-mcp": "mcp-server/server.js"
 	},
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",

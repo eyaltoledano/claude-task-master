@@ -17,7 +17,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "task-master-ai", "mcp-server"],
+			"args": ["-y", "--package", "task-master-ai", "task-master-mcp"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
