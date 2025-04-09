@@ -676,5 +676,47 @@ export {
   generateSubtasksWithPerplexity,
   parseSubtasksFromText,
   generateComplexityAnalysisPrompt,
-  handleClaudeError
-}; 
+  handleClaudeError,
+  getChatCompletion,
+  anthropic
+};
+
+/**
+ * Get a chat completion from Claude
+ * @param {Array} messages - Array of message objects with role and content
+ * @param {Object} options - Options for the completion
+ * @returns {Object} Claude's response
+ */
+async function getChatCompletion(messages, options = {}) {
+  try {
+    log('info', 'Getting chat completion from Claude...');
+    
+    const model = options.model || CONFIG.model;
+    const maxTokens = options.maxTokens || CONFIG.maxTokens;
+    const temperature = options.temperature || CONFIG.temperature;
+    
+    const response = await anthropic.messages.create({
+      model: model,
+      max_tokens: maxTokens,
+      temperature: temperature,
+      messages: messages
+    });
+    
+    return {
+      completion: response.content[0].text,
+      model: response.model,
+      usage: response.usage
+    };
+  } catch (error) {
+    // Get user-friendly error message
+    const userMessage = handleClaudeError(error);
+    log('error', userMessage);
+    console.error(chalk.red(userMessage));
+    
+    if (CONFIG.debug) {
+      log('debug', 'Full error:', error);
+    }
+    
+    throw new Error(userMessage);
+  }
+} 

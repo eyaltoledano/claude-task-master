@@ -1,6 +1,6 @@
 # Task Master
 
-### by [@eyaltoledano](https://x.com/eyaltoledano)
+## by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
@@ -83,7 +83,7 @@ task-master generate
 
 ## Troubleshooting
 
-### If `task-master init` doesn't respond:
+### If `task-master init` doesn't respond
 
 Try running it with Node directly:
 
@@ -145,7 +145,7 @@ Once configured, you can interact with Task Master's task management commands di
 
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
-```
+```markdown
 Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
 ```
 
@@ -165,7 +165,7 @@ This will:
 
 Next, ask the agent to generate individual task files:
 
-```
+```markdown
 Please generate individual task files from tasks.json
 ```
 
@@ -185,7 +185,7 @@ The Cursor agent is pre-configured (via the rules file) to follow this workflow:
 
 Ask the agent to list available tasks:
 
-```
+```markdown
 What tasks are available to work on next?
 ```
 
@@ -208,7 +208,7 @@ When implementing a task, the agent will:
 
 You can ask:
 
-```
+```markdown
 Let's implement task 3. What does it involve?
 ```
 
@@ -224,7 +224,7 @@ Before marking a task as complete, verify it according to:
 
 When a task is completed, tell the agent:
 
-```
+```markdown
 Task 3 is now complete. Please update its status.
 ```
 
@@ -244,7 +244,7 @@ If during implementation, you discover that:
 
 Tell the agent:
 
-```
+```markdown
 We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
 ```
 
@@ -260,7 +260,7 @@ This will rewrite or re-scope subsequent tasks in tasks.json while preserving co
 
 For complex tasks that need more granularity:
 
-```
+```markdown
 Task 5 seems complex. Can you break it down into subtasks?
 ```
 
@@ -272,7 +272,7 @@ task-master expand --id=5 --num=3
 
 You can provide additional context:
 
-```
+```markdown
 Please break down task 5 with a focus on security considerations.
 ```
 
@@ -284,7 +284,7 @@ task-master expand --id=5 --prompt="Focus on security aspects"
 
 You can also expand all pending tasks:
 
-```
+```markdown
 Please break down all pending tasks into subtasks.
 ```
 
@@ -296,7 +296,7 @@ task-master expand --all
 
 For research-backed subtask generation using Perplexity AI:
 
-```
+```markdown
 Please break down task 5 using research-backed generation.
 ```
 
@@ -482,22 +482,28 @@ task-master add-task --prompt="Description" --priority=high
 
 ### Scan Workspace
 
-# Scan current workspace and generate tasks based on codebase analysis
+## Scan current workspace and generate tasks based on codebase analysis
+
 task-master scan-workspace
 
-# Scan a specific directory
+## Scan a specific directory
+
 task-master scan-workspace /path/to/project
 
-# Scan with custom output path
+## Scan with custom output path
+
 task-master scan-workspace --output=my-tasks.json
 
-# Exclude specific directories
+## Exclude specific directories
+
 task-master scan-workspace --exclude=node_modules,.git,dist
 
-# Include only specific file extensions
+## Include only specific file extensions
+
 task-master scan-workspace --include=.js,.ts,.jsx,.tsx
 
-# Set project name and version
+## Set project name and version
+
 task-master scan-workspace --name="My Project" --version="2.0.0"
 
 ## Feature Details
@@ -606,50 +612,50 @@ The `show` command:
 
 ### Starting a new project
 
-```
+```markdown
 I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 
 ### Working on tasks
 
-```
+```markdown
 What's the next task I should work on? Please consider dependencies and priorities.
 ```
 
 ### Implementing a specific task
 
-```
+```markdown
 I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
 ```
 
 ### Managing subtasks
 
-```
+```markdown
 I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
 ```
 
 ### Handling changes
 
-```
+```markdown
 We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
 ```
 
 ### Completing work
 
-```
+```markdown
 I've finished implementing the authentication system described in task 2. All tests are passing.
 Please mark it as complete and tell me what I should work on next.
 ```
 
 ### Analyzing complexity
 
-```
+```markdown
 Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
 ```
 
 ### Viewing complexity report
 
-```
+```markdown
 Can you show me the complexity report in a more readable format?
 ```

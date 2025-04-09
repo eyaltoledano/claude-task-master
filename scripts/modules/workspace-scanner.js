@@ -7,12 +7,25 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { CONFIG, log } from './utils.js';
-import { getChatCompletion } from './ai-services.js';
+import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
+import { Anthropic } from '@anthropic-ai/sdk';
 import chalk from 'chalk';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
 const readFile = promisify(fs.readFile);
+
+// Initialize Anthropic client directly
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  defaultHeaders: {
+    'anthropic-beta': 'output-128k-2025-02-19'
+  }
+});
 
 /**
  * Recursively scan a directory to find all files
@@ -72,8 +85,8 @@ function extractKeyFiles(allFiles) {
     '/models/', '/tests/'
   ];
   
-  // Max files to return
-  const MAX_FILES = 20;
+  // For testing, limit to much fewer files to avoid hitting API limits
+  const MAX_FILES = 5; // Just enough files to create a meaningful sample
   
   // Extract exact matches first
   const exactMatches = allFiles.filter(file => {
@@ -112,7 +125,7 @@ function extractKeyFiles(allFiles) {
       
       // Add a few files of each extension
       if (filesWithExt.length > 0) {
-        const samplesToAdd = Math.min(2, filesWithExt.length);
+        const samplesToAdd = Math.min(1, filesWithExt.length);
         keyFiles = keyFiles.concat(filesWithExt.slice(0, samplesToAdd));
         
         if (keyFiles.length >= MAX_FILES) {
@@ -121,6 +134,9 @@ function extractKeyFiles(allFiles) {
       }
     }
   }
+  
+  console.log(chalk.blue('Selected files for analysis:'));
+  keyFiles.forEach(file => console.log(chalk.cyan(`- ${path.relative(process.cwd(), file)}`)));
   
   return keyFiles.slice(0, MAX_FILES);
 }
@@ -280,15 +296,58 @@ async function scanWorkspace(workspacePath, outputPath = 'tasks/tasks.json', opt
   // Generate prompt for AI
   const prompt = generateAnalysisPrompt(fileContents);
   
-  // Get AI analysis
-  const model = process.env.MODEL || CONFIG.MODEL;
-  const response = await getChatCompletion([
-    { role: "system", content: "You are an expert developer assistant that specializes in analyzing codebases and creating structured development roadmaps." },
-    { role: "user", content: prompt }
-  ], { model });
+  // Get AI analysis with streaming
+  const model = process.env.MODEL || CONFIG.model;
+  const systemMessage = "You are an expert developer assistant that specializes in analyzing codebases and creating structured development roadmaps.";
+  
+  const loadingIndicator = startLoadingIndicator('Analyzing codebase...');
+  let responseText = '';
+  let streamingInterval = null;
+  
+  try {
+    // Use streaming for this long-running request
+    const stream = await anthropic.messages.create({
+      model: model,
+      max_tokens: CONFIG.maxTokens,
+      temperature: CONFIG.temperature,
+      system: systemMessage,
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      stream: true
+    });
+    
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    const readline = await import('readline');
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        responseText += chunk.delta.text;
+      }
+    }
+    
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('info', "Completed streaming response from Claude API!");
+  } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('error', `Error getting AI analysis: ${error.message}`);
+    console.error(chalk.red(`Error: ${error.message}`));
+    throw error;
+  }
   
   // Parse tasks from the AI response
-  const tasks = parseTasks(response.completion);
+  const tasks = parseTasks(responseText);
   
   console.log(chalk.green(`Generated ${tasks.length} tasks based on codebase analysis.`));
   
