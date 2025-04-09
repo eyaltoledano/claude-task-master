@@ -291,3 +291,103 @@ function findTasksWithNpmConsideration(startDir, log) {
 		}
 	}
 }
+
+/**
+ * Finds potential PRD document files based on common naming patterns
+ * @param {string} projectRoot - The project root directory
+ * @param {string|null} explicitPath - Optional explicit path provided by the user
+ * @param {Object} log - Logger object
+ * @returns {string|null} - The path to the first found PRD file, or null if none found
+ */
+export function findPRDDocumentPath(projectRoot, explicitPath, log) {
+	// If explicit path is provided, check if it exists
+	if (explicitPath) {
+		const fullPath = path.isAbsolute(explicitPath)
+			? explicitPath
+			: path.resolve(projectRoot, explicitPath);
+
+		if (fs.existsSync(fullPath)) {
+			log.info(`Using provided PRD document path: ${fullPath}`);
+			return fullPath;
+		} else {
+			log.warn(
+				`Provided PRD document path not found: ${fullPath}, will search for alternatives`
+			);
+		}
+	}
+
+	// Common locations and file patterns for PRD documents
+	const commonLocations = [
+		'', // Project root
+		'scripts/'
+	];
+
+	const commonFileNames = ['PRD.md', 'prd.md', 'PRD.txt', 'prd.txt'];
+
+	// Check all possible combinations
+	for (const location of commonLocations) {
+		for (const fileName of commonFileNames) {
+			const potentialPath = path.join(projectRoot, location, fileName);
+			if (fs.existsSync(potentialPath)) {
+				log.info(`Found PRD document at: ${potentialPath}`);
+				return potentialPath;
+			}
+		}
+	}
+
+	log.warn(`No PRD document found in common locations within ${projectRoot}`);
+	return null;
+}
+
+/**
+ * Resolves the tasks output directory path
+ * @param {string} projectRoot - The project root directory
+ * @param {string|null} explicitPath - Optional explicit output path provided by the user
+ * @param {Object} log - Logger object
+ * @returns {string} - The resolved tasks directory path
+ */
+export function resolveTasksOutputPath(projectRoot, explicitPath, log) {
+	// If explicit path is provided, use it
+	if (explicitPath) {
+		const outputPath = path.isAbsolute(explicitPath)
+			? explicitPath
+			: path.resolve(projectRoot, explicitPath);
+
+		log.info(`Using provided tasks output path: ${outputPath}`);
+		return outputPath;
+	}
+
+	// Default output path: tasks/tasks.json in the project root
+	const defaultPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
+	log.info(`Using default tasks output path: ${defaultPath}`);
+
+	// Ensure the directory exists
+	const outputDir = path.dirname(defaultPath);
+	if (!fs.existsSync(outputDir)) {
+		log.info(`Creating tasks directory: ${outputDir}`);
+		fs.mkdirSync(outputDir, { recursive: true });
+	}
+
+	return defaultPath;
+}
+
+/**
+ * Resolves various file paths needed for MCP operations based on project root
+ * @param {string} projectRoot - The project root directory
+ * @param {Object} args - Command arguments that may contain explicit paths
+ * @param {Object} log - Logger object
+ * @returns {Object} - An object containing resolved paths
+ */
+export function resolveProjectPaths(projectRoot, args, log) {
+	const prdPath = findPRDDocumentPath(projectRoot, args.input, log);
+	const tasksJsonPath = resolveTasksOutputPath(projectRoot, args.output, log);
+
+	// You can add more path resolutions here as needed
+
+	return {
+		projectRoot,
+		prdPath,
+		tasksJsonPath
+		// Add additional path properties as needed
+	};
+}

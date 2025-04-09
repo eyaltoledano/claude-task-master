@@ -47,21 +47,9 @@ export async function parsePRDDirect(args, log, context = {}) {
 			};
 		}
 
-		// --- Parameter validation and path resolution ---
-		if (!args.input) {
-			const errorMessage =
-				'No input file specified. Please provide an input PRD document path.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_INPUT_FILE', message: errorMessage },
-				fromCache: false
-			};
-		}
-
-		// Validate projectRoot
+		// Validate required parameters
 		if (!args.projectRoot) {
-			const errorMessage = 'Project root is required but was not provided';
+			const errorMessage = 'Project root is required for parsePRDDirect';
 			log.error(errorMessage);
 			return {
 				success: false,
@@ -70,52 +58,31 @@ export async function parsePRDDirect(args, log, context = {}) {
 			};
 		}
 
-		const homeDir = os.homedir();
-		// Disallow invalid projectRoot values
-		if (args.projectRoot === '/' || args.projectRoot === homeDir) {
-			const errorMessage = `Invalid project root: ${args.projectRoot}. Cannot use root or home directory.`;
+		if (!args.input) {
+			const errorMessage = 'Input file path is required for parsePRDDirect';
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INVALID_PROJECT_ROOT', message: errorMessage },
+				error: { code: 'MISSING_INPUT_PATH', message: errorMessage },
 				fromCache: false
 			};
 		}
 
-		// Resolve input path (relative to validated project root)
+		if (!args.output) {
+			const errorMessage = 'Output file path is required for parsePRDDirect';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_OUTPUT_PATH', message: errorMessage },
+				fromCache: false
+			};
+		}
+
+		// Resolve input path (expecting absolute path or path relative to project root)
 		const projectRoot = args.projectRoot;
-		log.info(`Using validated project root: ${projectRoot}`);
-
-		// Make sure the project root directory exists
-		if (!fs.existsSync(projectRoot)) {
-			const errorMessage = `Project root directory does not exist: ${projectRoot}`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'PROJECT_ROOT_NOT_FOUND', message: errorMessage },
-				fromCache: false
-			};
-		}
-
-		// Resolve input path relative to validated project root
 		const inputPath = path.isAbsolute(args.input)
 			? args.input
 			: path.resolve(projectRoot, args.input);
-
-		log.info(`Resolved input path: ${inputPath}`);
-
-		// Determine output path
-		let outputPath;
-		if (args.output) {
-			outputPath = path.isAbsolute(args.output)
-				? args.output
-				: path.resolve(projectRoot, args.output);
-		} else {
-			// Default to tasks/tasks.json in the project root
-			outputPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
-		}
-
-		log.info(`Resolved output path: ${outputPath}`);
 
 		// Verify input file exists
 		if (!fs.existsSync(inputPath)) {
@@ -130,6 +97,18 @@ export async function parsePRDDirect(args, log, context = {}) {
 				},
 				fromCache: false
 			};
+		}
+
+		// Resolve output path (expecting absolute path or path relative to project root)
+		const outputPath = path.isAbsolute(args.output)
+			? args.output
+			: path.resolve(projectRoot, args.output);
+
+		// Ensure output directory exists
+		const outputDir = path.dirname(outputPath);
+		if (!fs.existsSync(outputDir)) {
+			log.info(`Creating output directory: ${outputDir}`);
+			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
 		// Parse number of tasks - handle both string and number values
