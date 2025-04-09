@@ -23,7 +23,7 @@ export function registerRemoveTaskTool(server) {
 			id: z
 				.string()
 				.describe("ID of the task or subtask to remove (e.g., '5' or '5.2')"),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

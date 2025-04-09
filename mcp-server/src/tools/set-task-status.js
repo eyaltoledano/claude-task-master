@@ -30,7 +30,7 @@ export function registerSetTaskStatusTool(server) {
 				.describe(
 					"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled'."
 				),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

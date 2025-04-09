@@ -42,7 +42,9 @@ export function registerAnalyzeTool(server) {
 			file: z
 				.string()
 				.optional()
-				.describe('Path to the tasks file (default: tasks/tasks.json)'),
+				.describe(
+					'Absolute path to the tasks file (default: tasks/tasks.json)'
+				),
 			research: z
 				.boolean()
 				.optional()

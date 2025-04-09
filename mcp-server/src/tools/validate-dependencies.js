@@ -21,7 +21,7 @@ export function registerValidateDependenciesTool(server) {
 		description:
 			'Check tasks for dependency issues (like circular references or links to non-existent tasks) without making changes.',
 		parameters: z.object({
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

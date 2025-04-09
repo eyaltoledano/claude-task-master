@@ -31,7 +31,7 @@ export function registerAddTaskTool(server) {
 				.string()
 				.optional()
 				.describe('Task priority (high, medium, low)'),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

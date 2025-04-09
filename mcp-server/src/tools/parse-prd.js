@@ -24,9 +24,7 @@ export function registerParsePRDTool(server) {
 			input: z
 				.string()
 				.default('tasks/tasks.json')
-				.describe(
-					'Path to the PRD document file (relative to project root or absolute)'
-				),
+				.describe('Absolute path to the PRD document file'),
 			numTasks: z
 				.string()
 				.optional()
@@ -37,7 +35,7 @@ export function registerParsePRDTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Output path for tasks.json file (relative to project root or absolute, default: tasks/tasks.json)'
+					'Output absolute path for tasks.json file (default: tasks/tasks.json)'
 				),
 			force: z
 				.boolean()
@@ -47,7 +45,7 @@ export function registerParsePRDTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Root directory of the project (default: automatically detected from session or CWD)'
+					'Absolute path to the root directory of the project (default: automatically detected from session or CWD)'
 				)
 		}),
 		execute: async (args, { log, session }) => {

@@ -39,7 +39,7 @@ export function registerShowTaskTool(server) {
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
 			id: z.string().describe('Task ID to get'),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

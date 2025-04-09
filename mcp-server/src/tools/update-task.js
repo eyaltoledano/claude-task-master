@@ -31,7 +31,7 @@ export function registerUpdateTaskTool(server) {
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()

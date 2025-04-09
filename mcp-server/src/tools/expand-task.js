@@ -35,7 +35,7 @@ export function registerExpandTaskTool(server) {
 				.string()
 				.optional()
 				.describe('Additional context for subtask generation'),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()
@@ -43,7 +43,7 @@ export function registerExpandTaskTool(server) {
 					'Root directory of the project (default: current working directory)'
 				)
 		}),
-		execute: async (args, { log, reportProgress, session }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
 

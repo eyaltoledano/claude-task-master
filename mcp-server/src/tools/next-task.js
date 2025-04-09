@@ -21,7 +21,7 @@ export function registerNextTaskTool(server) {
 		description:
 			'Find the next task to work on based on dependencies and status',
 		parameters: z.object({
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
 				.optional()
