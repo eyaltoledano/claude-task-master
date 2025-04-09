@@ -17,7 +17,10 @@ const CONFIG = {
   defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || "3"),
   defaultPriority: process.env.DEFAULT_PRIORITY || "medium",
   projectName: process.env.PROJECT_NAME || "Task Master",
-  projectVersion: "1.5.0" // Hardcoded version - ALWAYS use this value, ignore environment variable
+  projectVersion: "1.5.0", // Hardcoded version - ALWAYS use this value, ignore environment variable
+  // OpenRouter configuration
+  useOpenRouter: process.env.USE_OPENROUTER === "true",
+  openRouterModel: process.env.OPENROUTER_MODEL || 'anthropic/claude-3-haiku',
 };
 
 // Set up logging based on log level

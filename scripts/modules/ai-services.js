@@ -27,6 +27,9 @@ const anthropic = new Anthropic({
 // Lazy-loaded Perplexity client
 let perplexity = null;
 
+// Lazy-loaded OpenRouter client
+let openRouter = null;
+
 /**
  * Get or initialize the Perplexity client
  * @returns {OpenAI} Perplexity client
@@ -42,6 +45,27 @@ function getPerplexityClient() {
     });
   }
   return perplexity;
+}
+
+/**
+ * Get or initialize the OpenRouter client
+ * @returns {OpenAI} OpenRouter client
+ */
+function getOpenRouterClient() {
+  if (!openRouter) {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY environment variable is missing. Set it to use OpenRouter.");
+    }
+    openRouter = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/eyaltoledano/claude-task-master',
+        'X-Title': 'Claude Task Master'
+      }
+    });
+  }
+  return openRouter;
 }
 
 /**
@@ -77,6 +101,24 @@ function handleClaudeError(error) {
 }
 
 /**
+ * Handle OpenRouter API errors with user-friendly messages
+ * @param {Error} error - The error from OpenRouter API
+ * @returns {string} User-friendly error message
+ */
+function handleOpenRouterError(error) {
+  // Check for network/timeout errors
+  if (error.message?.toLowerCase().includes('timeout')) {
+    return 'The request to OpenRouter timed out. Please try again.';
+  }
+  if (error.message?.toLowerCase().includes('network')) {
+    return 'There was a network error connecting to OpenRouter. Please check your internet connection and try again.';
+  }
+  
+  // Default error message
+  return `Error communicating with OpenRouter: ${error.message}`;
+}
+
+/**
  * Call Claude to generate tasks from a PRD
  * @param {string} prdContent - PRD content
  * @param {string} prdPath - Path to the PRD file
@@ -86,7 +128,7 @@ function handleClaudeError(error) {
  */
 async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
   try {
-    log('info', 'Calling Claude...');
+    log('info', `Calling ${CONFIG.useOpenRouter ? 'OpenRouter' : 'Claude'}...`);
     
     // Build the system prompt
     const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
@@ -139,7 +181,10 @@ Important: Your response must be valid JSON only, with no additional explanation
     return await handleStreamingRequest(prdContent, prdPath, numTasks, CONFIG.maxTokens, systemPrompt);
   } catch (error) {
     // Get user-friendly error message
-    const userMessage = handleClaudeError(error);
+    const userMessage = CONFIG.useOpenRouter 
+      ? handleOpenRouterError(error) 
+      : handleClaudeError(error);
+    
     log('error', userMessage);
 
     // Retry logic for certain errors
@@ -164,71 +209,134 @@ Important: Your response must be valid JSON only, with no additional explanation
 }
 
 /**
- * Handle streaming request to Claude
+ * Handle streaming request to Claude or OpenRouter
  * @param {string} prdContent - PRD content
  * @param {string} prdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} maxTokens - Maximum tokens
  * @param {string} systemPrompt - System prompt
- * @returns {Object} Claude's response
+ * @returns {Object} Response
  */
 async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
-  const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
+  const loadingIndicator = startLoadingIndicator(`Generating tasks from PRD using ${CONFIG.useOpenRouter ? `OpenRouter (${CONFIG.openRouterModel})` : 'Claude'}...`);
   let responseText = '';
   let streamingInterval = null;
   
   try {
-    // Use streaming for handling large responses
-    const stream = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
-        }
-      ],
-      stream: true
-    });
+    let stream;
+    
+    if (CONFIG.useOpenRouter) {
+      // Use OpenRouter
+      const openRouterClient = getOpenRouterClient();
+      
+      stream = await openRouterClient.chat.completions.create({
+        model: CONFIG.openRouterModel,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
+          }
+        ],
+        stream: true,
+        max_tokens: maxTokens,
+        temperature: CONFIG.temperature
+      });
+    } else {
+      // Use direct Anthropic API
+      stream = await anthropic.messages.create({
+        model: CONFIG.model,
+        max_tokens: maxTokens,
+        temperature: CONFIG.temperature,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
+          }
+        ],
+        stream: true
+      });
+    }
     
     // Update loading indicator to show streaming progress
     let dotCount = 0;
     const readline = await import('readline');
     streamingInterval = setInterval(() => {
       readline.cursorTo(process.stdout, 0);
-      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      process.stdout.write(`Receiving response${'.'.repeat(dotCount)}`);
       dotCount = (dotCount + 1) % 4;
     }, 500);
     
-    // Process the stream
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-        responseText += chunk.delta.text;
+    // Process the stream chunk by chunk
+    try {
+      for await (const chunk of stream) {
+        if (CONFIG.useOpenRouter) {
+          // Extract content from OpenRouter response
+          if (chunk.choices[0]?.delta?.content) {
+            responseText += chunk.choices[0]?.delta?.content;
+          }
+        } else {
+          // Extract content from Claude response
+          if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+            responseText += chunk.delta.text;
+          }
+        }
       }
+    } finally {
+      clearInterval(streamingInterval);
+      process.stdout.write('\n');
     }
     
-    if (streamingInterval) clearInterval(streamingInterval);
+    // Stop the loading indicator
     stopLoadingIndicator(loadingIndicator);
     
-    log('info', "Completed streaming response from Claude API!");
-    
-    return processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath);
+    // Parse the response text as JSON
+    try {
+      const cleanedJson = responseText.replace(/^```json/, '').replace(/```$/, '').trim();
+      const tasksData = JSON.parse(cleanedJson);
+      
+      // Add metadata
+      if (!tasksData.metadata) {
+        tasksData.metadata = {};
+      }
+      
+      tasksData.metadata.generatedAt = new Date().toISOString();
+      tasksData.metadata.sourceFile = prdPath;
+      tasksData.metadata.totalTasks = numTasks;
+      tasksData.metadata.projectName = CONFIG.projectName;
+      tasksData.metadata.modelProvider = CONFIG.useOpenRouter ? 'OpenRouter' : 'Anthropic';
+      tasksData.metadata.model = CONFIG.useOpenRouter ? CONFIG.openRouterModel : CONFIG.model;
+      
+      // Ensure consistent task format
+      tasksData.tasks = tasksData.tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status || 'pending',
+        dependencies: task.dependencies || [],
+        priority: task.priority || CONFIG.defaultPriority,
+        details: task.details || '',
+        testStrategy: task.testStrategy || '',
+        subtasks: task.subtasks || []
+      }));
+      
+      return tasksData;
+    } catch (error) {
+      log('error', `Error parsing response as JSON: ${error.message}`);
+      log('debug', 'Response text:', responseText);
+      throw new Error(`Failed to parse response as JSON: ${error.message}`);
+    }
   } catch (error) {
-    if (streamingInterval) clearInterval(streamingInterval);
-    stopLoadingIndicator(loadingIndicator);
-    
-    // Get user-friendly error message
-    const userMessage = handleClaudeError(error);
-    log('error', userMessage);
-    console.error(chalk.red(userMessage));
-    
-    if (CONFIG.debug) {
-      log('debug', 'Full error:', error);
+    if (streamingInterval) {
+      clearInterval(streamingInterval);
+      process.stdout.write('\n');
     }
-    
-    throw new Error(userMessage);
+    stopLoadingIndicator(loadingIndicator);
+    throw error;
   }
 }
 
@@ -307,7 +415,7 @@ async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalCont
   try {
     log('info', `Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`);
     
-    const loadingIndicator = startLoadingIndicator(`Generating subtasks for task ${task.id}...`);
+    const loadingIndicator = startLoadingIndicator(`Generating subtasks for task ${task.id} using ${CONFIG.useOpenRouter ? `OpenRouter (${CONFIG.openRouterModel})` : 'Claude'}...`);
     let streamingInterval = null;
     let responseText = '';
     
@@ -365,25 +473,57 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
         dotCount = (dotCount + 1) % 4;
       }, 500);
       
-      // Use streaming API call
-      const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        stream: true
-      });
+      let stream;
+      
+      if (CONFIG.useOpenRouter) {
+        // Use OpenRouter
+        const openRouterClient = getOpenRouterClient();
+        
+        stream = await openRouterClient.chat.completions.create({
+          model: CONFIG.openRouterModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true,
+          max_tokens: CONFIG.maxTokens,
+          temperature: CONFIG.temperature
+        });
+      } else {
+        // Use direct Anthropic API
+        stream = await anthropic.messages.create({
+          model: CONFIG.model,
+          max_tokens: CONFIG.maxTokens,
+          temperature: CONFIG.temperature,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true
+        });
+      }
       
       // Process the stream
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-          responseText += chunk.delta.text;
+        if (CONFIG.useOpenRouter) {
+          // Extract content from OpenRouter response
+          if (chunk.choices[0]?.delta?.content) {
+            responseText += chunk.choices[0]?.delta?.content;
+          }
+        } else {
+          // Extract content from Claude response
+          if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+            responseText += chunk.delta.text;
+          }
         }
       }
       
@@ -451,7 +591,7 @@ ${additionalContext || "No additional context provided."}
 `;
     
     // Now generate subtasks with Claude
-    const loadingIndicator = startLoadingIndicator(`Generating research-backed subtasks for task ${task.id}...`);
+    const loadingIndicator = startLoadingIndicator(`Generating research-backed subtasks for task ${task.id} using ${CONFIG.useOpenRouter ? `OpenRouter (${CONFIG.openRouterModel})` : 'Claude'}...`);
     let streamingInterval = null;
     let responseText = '';
     
@@ -510,25 +650,57 @@ Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use 
         dotCount = (dotCount + 1) % 4;
       }, 500);
       
-      // Use streaming API call
-      const stream = await anthropic.messages.create({
-        model: CONFIG.model,
-        max_tokens: CONFIG.maxTokens,
-        temperature: CONFIG.temperature,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        stream: true
-      });
+      let stream;
+      
+      if (CONFIG.useOpenRouter) {
+        // Use OpenRouter
+        const openRouterClient = getOpenRouterClient();
+        
+        stream = await openRouterClient.chat.completions.create({
+          model: CONFIG.openRouterModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true,
+          max_tokens: CONFIG.maxTokens,
+          temperature: CONFIG.temperature
+        });
+      } else {
+        // Use direct Anthropic API
+        stream = await anthropic.messages.create({
+          model: CONFIG.model,
+          max_tokens: CONFIG.maxTokens,
+          temperature: CONFIG.temperature,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true
+        });
+      }
       
       // Process the stream
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-          responseText += chunk.delta.text;
+        if (CONFIG.useOpenRouter) {
+          // Extract content from OpenRouter response
+          if (chunk.choices[0]?.delta?.content) {
+            responseText += chunk.choices[0]?.delta?.content;
+          }
+        } else {
+          // Extract content from Claude response
+          if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+            responseText += chunk.delta.text;
+          }
         }
       }
       
@@ -666,6 +838,151 @@ IMPORTANT: Make sure to include an analysis for EVERY task listed above, with th
 `;
 }
 
+/**
+ * Get a chat completion from either Claude or OpenRouter
+ * @param {string} systemPrompt - System prompt
+ * @param {string} userPrompt - User prompt
+ * @param {Object} options - Additional options
+ * @returns {string} The model's response
+ */
+async function getChatCompletion(systemPrompt, userPrompt, options = {}) {
+  const {
+    temperature = CONFIG.temperature,
+    maxTokens = CONFIG.maxTokens,
+    streamHandler = null,
+    showLoadingIndicator = true,
+    loadingMessage = `Getting chat completion from ${CONFIG.useOpenRouter ? CONFIG.openRouterModel : 'Claude'}...`
+  } = options;
+  
+  let loadingIndicator = null;
+  
+  if (showLoadingIndicator) {
+    loadingIndicator = startLoadingIndicator(loadingMessage);
+  }
+  
+  try {
+    if (CONFIG.useOpenRouter) {
+      // Use OpenRouter
+      const openRouterClient = getOpenRouterClient();
+      
+      log('info', `Getting chat completion from OpenRouter using model: ${CONFIG.openRouterModel}`);
+      
+      if (streamHandler) {
+        // Handle streaming
+        const stream = await openRouterClient.chat.completions.create({
+          model: CONFIG.openRouterModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true,
+          max_tokens: maxTokens,
+          temperature: temperature
+        });
+        
+        let fullResponse = '';
+        for await (const chunk of stream) {
+          if (chunk.choices[0]?.delta?.content) {
+            const content = chunk.choices[0].delta.content;
+            fullResponse += content;
+            streamHandler(content, fullResponse);
+          }
+        }
+        
+        return fullResponse;
+      } else {
+        // Non-streaming call
+        const response = await openRouterClient.chat.completions.create({
+          model: CONFIG.openRouterModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: maxTokens,
+          temperature: temperature
+        });
+        
+        return response.choices[0].message.content;
+      }
+    } else {
+      // Use Claude API
+      log('info', `Getting chat completion from Claude using model: ${CONFIG.model}`);
+      
+      if (streamHandler) {
+        // Handle streaming
+        const stream = await anthropic.messages.create({
+          model: CONFIG.model,
+          max_tokens: maxTokens,
+          temperature: temperature,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: true
+        });
+        
+        let fullResponse = '';
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+            const content = chunk.delta.text;
+            fullResponse += content;
+            streamHandler(content, fullResponse);
+          }
+        }
+        
+        return fullResponse;
+      } else {
+        // Non-streaming call
+        const response = await anthropic.messages.create({
+          model: CONFIG.model,
+          max_tokens: maxTokens,
+          temperature: temperature,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ]
+        });
+        
+        return response.content[0].text;
+      }
+    }
+  } catch (error) {
+    const errorMessage = CONFIG.useOpenRouter 
+      ? handleOpenRouterError(error)
+      : handleClaudeError(error);
+    
+    log('error', errorMessage);
+    
+    if (CONFIG.debug) {
+      log('debug', 'Full error:', error);
+    }
+    
+    throw new Error(errorMessage);
+  } finally {
+    if (loadingIndicator) {
+      stopLoadingIndicator(loadingIndicator);
+    }
+  }
+}
+
 // Export AI service functions
 export {
   getPerplexityClient,
@@ -676,5 +993,6 @@ export {
   generateSubtasksWithPerplexity,
   parseSubtasksFromText,
   generateComplexityAnalysisPrompt,
-  handleClaudeError
+  handleClaudeError,
+  getChatCompletion
 }; 
