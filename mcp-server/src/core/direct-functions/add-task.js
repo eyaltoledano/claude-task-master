@@ -59,6 +59,9 @@ export async function addTaskDirect(args, log, context = {}) {
 		// Use provided path
 		const tasksPath = tasksJsonPath;
 
+		// Check if this is manual task creation or AI-driven task creation
+		const isManualCreation = args.title && args.description;
+
 		// Check required parameters
 		if (!args.prompt && !isManualCreation) {
 			log.error(
