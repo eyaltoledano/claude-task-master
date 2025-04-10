@@ -5,7 +5,6 @@
 
 import { listTasks } from '../../../../scripts/modules/task-manager.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -14,38 +13,30 @@ import {
 /**
  * Direct function wrapper for listTasks with error handling and caching.
  *
- * @param {Object} args - Command arguments (projectRoot is expected to be resolved).
+ * @param {Object} args - Command arguments (now expecting tasksJsonPath explicitly).
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
  */
 export async function listTasksDirect(args, log) {
-	let tasksPath;
-	try {
-		// Find the tasks path first - needed for cache key and execution
-		tasksPath = findTasksJsonPath(args, log);
-	} catch (error) {
-		if (error.code === 'TASKS_FILE_NOT_FOUND') {
-			log.error(`Tasks file not found: ${error.message}`);
-			// Return the error structure expected by the calling tool/handler
-			return {
-				success: false,
-				error: { code: error.code, message: error.message },
-				fromCache: false
-			};
-		}
-		log.error(`Unexpected error finding tasks file: ${error.message}`);
-		// Re-throw for outer catch or return structured error
+	// Destructure the explicit tasksJsonPath from args
+	const { tasksJsonPath, status, withSubtasks } = args;
+
+	if (!tasksJsonPath) {
+		log.error('listTasksDirect called without tasksJsonPath');
 		return {
 			success: false,
-			error: { code: 'FIND_TASKS_PATH_ERROR', message: error.message },
+			error: {
+				code: 'MISSING_ARGUMENT',
+				message: 'tasksJsonPath is required'
+			},
 			fromCache: false
 		};
 	}
 
-	// Generate cache key *after* finding tasksPath
-	const statusFilter = args.status || 'all';
-	const withSubtasks = args.withSubtasks || false;
-	const cacheKey = `listTasks:${tasksPath}:${statusFilter}:${withSubtasks}`;
+	// Use the explicit tasksJsonPath for cache key
+	const statusFilter = status || 'all';
+	const withSubtasksFilter = withSubtasks || false;
+	const cacheKey = `listTasks:${tasksJsonPath}:${statusFilter}:${withSubtasksFilter}`;
 
 	// Define the action function to be executed on cache miss
 	const coreListTasksAction = async () => {
@@ -54,12 +45,13 @@ export async function listTasksDirect(args, log) {
 			enableSilentMode();
 
 			log.info(
-				`Executing core listTasks function for path: ${tasksPath}, filter: ${statusFilter}, subtasks: ${withSubtasks}`
+				`Executing core listTasks function for path: ${tasksJsonPath}, filter: ${statusFilter}, subtasks: ${withSubtasksFilter}`
 			);
+			// Pass the explicit tasksJsonPath to the core function
 			const resultData = listTasks(
-				tasksPath,
+				tasksJsonPath,
 				statusFilter,
-				withSubtasks,
+				withSubtasksFilter,
 				'json'
 			);
 

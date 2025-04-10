@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -41,7 +42,8 @@ export function registerExpandTaskTool(server) {
 				.optional()
 				.describe(
 					'Root directory of the project (default: current working directory)'
-				)
+				),
+			force: z.boolean().optional().describe('Force the expansion')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -57,23 +59,32 @@ export function registerExpandTaskTool(server) {
 
 				log.info(`Project root resolved to: ${rootFolder}`);
 
-				// Check for tasks.json in the standard locations
-				const tasksJsonPath = path.join(rootFolder, 'tasks', 'tasks.json');
-
-				if (fs.existsSync(tasksJsonPath)) {
-					log.info(`Found tasks.json at ${tasksJsonPath}`);
-					// Add the file parameter directly to args
-					args.file = tasksJsonPath;
-				} else {
-					log.warn(`Could not find tasks.json at ${tasksJsonPath}`);
+				// Resolve the path to tasks.json using the utility
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
 				}
 
 				// Call direct function with only session in the context, not reportProgress
 				// Use the pattern recommended in the MCP guidelines
 				const result = await expandTaskDirect(
 					{
-						...args,
-						projectRoot: rootFolder
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						id: args.id,
+						num: args.num,
+						research: args.research,
+						prompt: args.prompt,
+						force: args.force // Need to add force to parameters
 					},
 					log,
 					{ session }

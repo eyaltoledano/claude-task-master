@@ -8,37 +8,34 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
 import path from 'path';
 
 /**
  * Direct function wrapper for displaying the complexity report with error handling and caching.
  *
- * @param {Object} args - Command arguments containing file path option
+ * @param {Object} args - Command arguments containing reportPath.
+ * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
 export async function complexityReportDirect(args, log) {
+	// Destructure expected args
+	const { reportPath } = args;
 	try {
 		log.info(`Getting complexity report with args: ${JSON.stringify(args)}`);
 
-		// Get tasks file path to determine project root for the default report location
-		let tasksPath;
-		try {
-			tasksPath = findTasksJsonPath(args, log);
-		} catch (error) {
-			log.warn(
-				`Tasks file not found, using current directory: ${error.message}`
-			);
-			// Continue with default or specified report path
+		// Check if reportPath was provided
+		if (!reportPath) {
+			log.error('complexityReportDirect called without reportPath');
+			return {
+				success: false,
+				error: { code: 'MISSING_ARGUMENT', message: 'reportPath is required' },
+				fromCache: false
+			};
 		}
 
-		// Get report file path from args or use default
-		const reportPath =
-			args.file ||
-			path.join(process.cwd(), 'scripts', 'task-complexity-report.json');
-
+		// Use the provided report path
 		log.info(`Looking for complexity report at: ${reportPath}`);
 
 		// Generate cache key based on report path

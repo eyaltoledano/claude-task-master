@@ -10,6 +10,8 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import path from 'path';
 
 /**
  * Register the generate tool with the MCP server
@@ -45,12 +47,40 @@ export function registerGenerateTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
+				// Determine output directory: use explicit arg or default to tasks.json directory
+				const outputDir = args.output
+					? path.resolve(rootFolder, args.output) // Resolve relative to root if needed
+					: path.dirname(tasksJsonPath);
+
 				const result = await generateTaskFilesDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						// Pass the explicitly resolved paths
+						tasksJsonPath: tasksJsonPath,
+						outputDir: outputDir
+						// No other args specific to this tool
 					},
-					log /*, { reportProgress, mcpLog: log, session}*/
+					log
 				);
 
 				// await reportProgress({ progress: 100 });

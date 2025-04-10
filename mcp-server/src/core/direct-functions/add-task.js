@@ -4,7 +4,6 @@
  */
 
 import { addTask } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -38,15 +37,27 @@ import {
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
+	// Destructure expected args
+	const { tasksJsonPath, prompt, dependencies, priority, research } = args;
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('addTaskDirect called without tasksJsonPath');
+			disableSilentMode(); // Disable before returning
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
 
-		// Check if this is manual task creation or AI-driven task creation
-		const isManualCreation = args.title && args.description;
+		// Use provided path
+		const tasksPath = tasksJsonPath;
 
 		// Check required parameters
 		if (!args.prompt && !isManualCreation) {
@@ -65,15 +76,15 @@ export async function addTaskDirect(args, log, context = {}) {
 		}
 
 		// Extract and prepare parameters
-		const prompt = args.prompt;
-		const dependencies = Array.isArray(args.dependencies)
-			? args.dependencies
-			: args.dependencies
-				? String(args.dependencies)
+		const taskPrompt = prompt;
+		const taskDependencies = Array.isArray(dependencies)
+			? dependencies
+			: dependencies
+				? String(dependencies)
 						.split(',')
 						.map((id) => parseInt(id.trim(), 10))
 				: [];
-		const priority = args.priority || 'medium';
+		const taskPriority = priority || 'medium';
 
 		// Extract context parameters for advanced functionality
 		const { session } = context;

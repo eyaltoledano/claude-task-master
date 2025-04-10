@@ -6,7 +6,6 @@
 import { findTaskById } from '../../../../scripts/modules/utils.js';
 import { readJSON } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -16,28 +15,29 @@ import {
  * Direct function wrapper for showing task details with error handling and caching.
  *
  * @param {Object} args - Command arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.id - The ID of the task or subtask to show.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
 export async function showTaskDirect(args, log) {
-	let tasksPath;
-	try {
-		// Find the tasks path first - needed for cache key and execution
-		tasksPath = findTasksJsonPath(args, log);
-	} catch (error) {
-		log.error(`Tasks file not found: ${error.message}`);
+	// Destructure expected args
+	const { tasksJsonPath, id } = args;
+
+	if (!tasksJsonPath) {
+		log.error('showTaskDirect called without tasksJsonPath');
 		return {
 			success: false,
 			error: {
-				code: 'FILE_NOT_FOUND_ERROR',
-				message: error.message
+				code: 'MISSING_ARGUMENT',
+				message: 'tasksJsonPath is required'
 			},
 			fromCache: false
 		};
 	}
 
 	// Validate task ID
-	const taskId = args.id;
+	const taskId = id;
 	if (!taskId) {
 		log.error('Task ID is required');
 		return {
@@ -50,8 +50,8 @@ export async function showTaskDirect(args, log) {
 		};
 	}
 
-	// Generate cache key using task path and ID
-	const cacheKey = `showTask:${tasksPath}:${taskId}`;
+	// Generate cache key using the provided task path and ID
+	const cacheKey = `showTask:${tasksJsonPath}:${taskId}`;
 
 	// Define the action function to be executed on cache miss
 	const coreShowTaskAction = async () => {
@@ -59,16 +59,19 @@ export async function showTaskDirect(args, log) {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
-			log.info(`Retrieving task details for ID: ${taskId} from ${tasksPath}`);
+			log.info(
+				`Retrieving task details for ID: ${taskId} from ${tasksJsonPath}`
+			);
 
-			// Read tasks data
-			const data = readJSON(tasksPath);
+			// Read tasks data using the provided path
+			const data = readJSON(tasksJsonPath);
 			if (!data || !data.tasks) {
+				disableSilentMode(); // Disable before returning
 				return {
 					success: false,
 					error: {
 						code: 'INVALID_TASKS_FILE',
-						message: `No valid tasks found in ${tasksPath}`
+						message: `No valid tasks found in ${tasksJsonPath}`
 					}
 				};
 			}
@@ -77,6 +80,7 @@ export async function showTaskDirect(args, log) {
 			const task = findTaskById(data.tasks, taskId);
 
 			if (!task) {
+				disableSilentMode(); // Disable before returning
 				return {
 					success: false,
 					error: {

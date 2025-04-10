@@ -3,7 +3,6 @@
  */
 
 import { clearSubtasks } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -13,19 +12,32 @@ import fs from 'fs';
 /**
  * Clear subtasks from specified tasks
  * @param {Object} args - Function arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} [args.id] - Task IDs (comma-separated) to clear subtasks from
  * @param {boolean} [args.all] - Clear subtasks from all tasks
- * @param {string} [args.file] - Path to the tasks file
- * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function clearSubtasksDirect(args, log) {
+	// Destructure expected args
+	const { tasksJsonPath, id, all } = args;
 	try {
 		log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('clearSubtasksDirect called without tasksJsonPath');
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
+
 		// Either id or all must be provided
-		if (!args.id && !args.all) {
+		if (!id && !all) {
 			return {
 				success: false,
 				error: {
@@ -36,8 +48,8 @@ export async function clearSubtasksDirect(args, log) {
 			};
 		}
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		// Use provided path
+		const tasksPath = tasksJsonPath;
 
 		// Check if tasks.json exists
 		if (!fs.existsSync(tasksPath)) {
@@ -53,7 +65,7 @@ export async function clearSubtasksDirect(args, log) {
 		let taskIds;
 
 		// If all is specified, get all task IDs
-		if (args.all) {
+		if (all) {
 			log.info('Clearing subtasks from all tasks');
 			const data = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
 			if (!data || !data.tasks || data.tasks.length === 0) {
@@ -68,7 +80,7 @@ export async function clearSubtasksDirect(args, log) {
 			taskIds = data.tasks.map((t) => t.id).join(',');
 		} else {
 			// Use the provided task IDs
-			taskIds = args.id;
+			taskIds = id;
 		}
 
 		log.info(`Clearing subtasks from tasks: ${taskIds}`);

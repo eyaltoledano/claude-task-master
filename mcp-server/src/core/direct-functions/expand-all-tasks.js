@@ -8,7 +8,6 @@ import {
 	disableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import { getAnthropicClientForMCP } from '../utils/ai-client-utils.js';
 import path from 'path';
 import fs from 'fs';
@@ -16,34 +15,51 @@ import fs from 'fs';
 /**
  * Expand all pending tasks with subtasks
  * @param {Object} args - Function arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {number|string} [args.num] - Number of subtasks to generate
  * @param {boolean} [args.research] - Enable Perplexity AI for research-backed subtask generation
  * @param {string} [args.prompt] - Additional context to guide subtask generation
  * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
- * @param {string} [args.file] - Path to the tasks file
- * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function expandAllTasksDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
+	// Destructure expected args
+	const { tasksJsonPath, num, research, prompt, force } = args;
 
 	try {
 		log.info(`Expanding all tasks with args: ${JSON.stringify(args)}`);
+
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('expandAllTasksDirect called without tasksJsonPath');
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
 
 		// Enable silent mode early to prevent any console output
 		enableSilentMode();
 
 		try {
-			// Find the tasks.json path
+			// Remove internal path finding
+			/*
 			const tasksPath = findTasksJsonPath(args, log);
+			*/
+			// Use provided path
+			const tasksPath = tasksJsonPath;
 
 			// Parse parameters
-			const numSubtasks = args.num ? parseInt(args.num, 10) : undefined;
-			const useResearch = args.research === true;
-			const additionalContext = args.prompt || '';
-			const forceFlag = args.force === true;
+			const numSubtasks = num ? parseInt(num, 10) : undefined;
+			const useResearch = research === true;
+			const additionalContext = prompt || '';
+			const forceFlag = force === true;
 
 			log.info(
 				`Expanding all tasks with ${numSubtasks || 'default'} subtasks each...`

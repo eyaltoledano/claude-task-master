@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { setTaskStatusDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the setTaskStatus tool with the MCP server
@@ -50,11 +51,35 @@ export function registerSetTaskStatusTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				// Call the direct function with the project root
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
+				// Call the direct function with the resolved path
 				const result = await setTaskStatusDirect(
 					{
-						...args,
-						projectRoot: rootFolder
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						id: args.id,
+						status: args.status
 					},
 					log
 				);

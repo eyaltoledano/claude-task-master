@@ -6,7 +6,6 @@
 import { findNextTask } from '../../../../scripts/modules/task-manager.js';
 import { readJSON } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -16,28 +15,28 @@ import {
  * Direct function wrapper for finding the next task to work on with error handling and caching.
  *
  * @param {Object} args - Command arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
 export async function nextTaskDirect(args, log) {
-	let tasksPath;
-	try {
-		// Find the tasks path first - needed for cache key and execution
-		tasksPath = findTasksJsonPath(args, log);
-	} catch (error) {
-		log.error(`Tasks file not found: ${error.message}`);
+	// Destructure expected args
+	const { tasksJsonPath } = args;
+
+	if (!tasksJsonPath) {
+		log.error('nextTaskDirect called without tasksJsonPath');
 		return {
 			success: false,
 			error: {
-				code: 'FILE_NOT_FOUND_ERROR',
-				message: error.message
+				code: 'MISSING_ARGUMENT',
+				message: 'tasksJsonPath is required'
 			},
 			fromCache: false
 		};
 	}
 
-	// Generate cache key using task path
-	const cacheKey = `nextTask:${tasksPath}`;
+	// Generate cache key using the provided task path
+	const cacheKey = `nextTask:${tasksJsonPath}`;
 
 	// Define the action function to be executed on cache miss
 	const coreNextTaskAction = async () => {
@@ -45,16 +44,17 @@ export async function nextTaskDirect(args, log) {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
-			log.info(`Finding next task from ${tasksPath}`);
+			log.info(`Finding next task from ${tasksJsonPath}`);
 
-			// Read tasks data
-			const data = readJSON(tasksPath);
+			// Read tasks data using the provided path
+			const data = readJSON(tasksJsonPath);
 			if (!data || !data.tasks) {
+				disableSilentMode(); // Disable before return
 				return {
 					success: false,
 					error: {
 						code: 'INVALID_TASKS_FILE',
-						message: `No valid tasks found in ${tasksPath}`
+						message: `No valid tasks found in ${tasksJsonPath}`
 					}
 				};
 			}

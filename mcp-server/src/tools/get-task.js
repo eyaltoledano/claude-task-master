@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -76,10 +77,29 @@ export function registerShowTaskTool(server) {
 				log.info(`Attempting to use project root: ${rootFolder}`); // Log the final resolved root
 
 				log.info(`Root folder: ${rootFolder}`); // Log the final resolved root
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
+				log.info(`Attempting to use tasks file path: ${tasksJsonPath}`);
+
 				const result = await showTaskDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						id: args.id
 					},
 					log
 				);

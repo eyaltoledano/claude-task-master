@@ -12,6 +12,7 @@ import {
 	handleApiResult
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the addTask tool with the MCP server
@@ -79,11 +80,37 @@ export function registerAddTaskTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
 				// Call the direct function
 				const result = await addTaskDirect(
 					{
-						...args,
-						projectRoot: rootFolder
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						prompt: args.prompt,
+						dependencies: args.dependencies,
+						priority: args.priority,
+						research: args.research
 					},
 					log,
 					{ reportProgress, session }

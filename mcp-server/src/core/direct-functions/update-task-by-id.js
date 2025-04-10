@@ -4,7 +4,6 @@
  */
 
 import { updateTaskById } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -17,19 +16,32 @@ import {
 /**
  * Direct function wrapper for updateTaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch and file path options.
+ * @param {Object} args - Command arguments containing id, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
+	// Destructure expected args, including the resolved tasksJsonPath
+	const { tasksJsonPath, id, prompt, research } = args;
 
 	try {
 		log.info(`Updating task with args: ${JSON.stringify(args)}`);
 
-		// Check required parameters
-		if (!args.id) {
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			const errorMessage = 'tasksJsonPath is required but was not provided.';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
+				fromCache: false
+			};
+		}
+
+		// Check required parameters (id and prompt)
+		if (!id) {
 			const errorMessage =
 				'No task ID specified. Please provide a task ID to update.';
 			log.error(errorMessage);
@@ -40,7 +52,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		if (!args.prompt) {
+		if (!prompt) {
 			const errorMessage =
 				'No prompt specified. Please provide a prompt with new information for the task update.';
 			log.error(errorMessage);
@@ -53,15 +65,15 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 
 		// Parse taskId - handle both string and number values
 		let taskId;
-		if (typeof args.id === 'string') {
+		if (typeof id === 'string') {
 			// Handle subtask IDs (e.g., "5.2")
-			if (args.id.includes('.')) {
-				taskId = args.id; // Keep as string for subtask IDs
+			if (id.includes('.')) {
+				taskId = id; // Keep as string for subtask IDs
 			} else {
 				// Parse as integer for main task IDs
-				taskId = parseInt(args.id, 10);
+				taskId = parseInt(id, 10);
 				if (isNaN(taskId)) {
-					const errorMessage = `Invalid task ID: ${args.id}. Task ID must be a positive integer or subtask ID (e.g., "5.2").`;
+					const errorMessage = `Invalid task ID: ${id}. Task ID must be a positive integer or subtask ID (e.g., "5.2").`;
 					log.error(errorMessage);
 					return {
 						success: false,
@@ -71,24 +83,14 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				}
 			}
 		} else {
-			taskId = args.id;
+			taskId = id;
 		}
 
-		// Get tasks file path
-		let tasksPath;
-		try {
-			tasksPath = findTasksJsonPath(args, log);
-		} catch (error) {
-			log.error(`Error finding tasks file: ${error.message}`);
-			return {
-				success: false,
-				error: { code: 'TASKS_FILE_ERROR', message: error.message },
-				fromCache: false
-			};
-		}
+		// Use the provided path
+		const tasksPath = tasksJsonPath;
 
 		// Get research flag
-		const useResearch = args.research === true;
+		const useResearch = research === true;
 
 		// Initialize appropriate AI client based on research flag
 		let aiClient;
@@ -113,7 +115,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		}
 
 		log.info(
-			`Updating task with ID ${taskId} with prompt "${args.prompt}" and research: ${useResearch}`
+			`Updating task with ID ${taskId} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
 		try {
@@ -133,7 +135,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			await updateTaskById(
 				tasksPath,
 				taskId,
-				args.prompt,
+				prompt,
 				useResearch,
 				{
 					mcpLog: logWrapper, // Use our wrapper object that has the expected method structure
@@ -149,7 +151,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				data: {
 					message: `Successfully updated task with ID ${taskId} based on the prompt`,
 					taskId,
-					tasksPath,
+					tasksPath: tasksPath, // Return the used path
 					useResearch
 				},
 				fromCache: false // This operation always modifies state and should never be cached

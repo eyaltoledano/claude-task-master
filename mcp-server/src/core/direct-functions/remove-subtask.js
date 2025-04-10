@@ -3,7 +3,6 @@
  */
 
 import { removeSubtask } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -12,22 +11,37 @@ import {
 /**
  * Remove a subtask from its parent task
  * @param {Object} args - Function arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Subtask ID in format "parentId.subtaskId" (required)
  * @param {boolean} [args.convert] - Whether to convert the subtask to a standalone task
- * @param {string} [args.file] - Path to the tasks file
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
- * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function removeSubtaskDirect(args, log) {
+	// Destructure expected args
+	const { tasksJsonPath, id, convert, skipGenerate } = args;
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
 		log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
 
-		if (!args.id) {
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('removeSubtaskDirect called without tasksJsonPath');
+			disableSilentMode(); // Disable before returning
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
+
+		if (!id) {
+			disableSilentMode(); // Disable before returning
 			return {
 				success: false,
 				error: {
@@ -39,32 +53,34 @@ export async function removeSubtaskDirect(args, log) {
 		}
 
 		// Validate subtask ID format
-		if (!args.id.includes('.')) {
+		if (!id.includes('.')) {
+			disableSilentMode(); // Disable before returning
 			return {
 				success: false,
 				error: {
 					code: 'INPUT_VALIDATION_ERROR',
-					message: `Invalid subtask ID format: ${args.id}. Expected format: "parentId.subtaskId"`
+					message: `Invalid subtask ID format: ${id}. Expected format: "parentId.subtaskId"`
 				}
 			};
 		}
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		// Use provided path
+		const tasksPath = tasksJsonPath;
 
 		// Convert convertToTask to a boolean
-		const convertToTask = args.convert === true;
+		const convertToTask = convert === true;
 
 		// Determine if we should generate files
-		const generateFiles = !args.skipGenerate;
+		const generateFiles = !skipGenerate;
 
 		log.info(
-			`Removing subtask ${args.id} (convertToTask: ${convertToTask}, generateFiles: ${generateFiles})`
+			`Removing subtask ${id} (convertToTask: ${convertToTask}, generateFiles: ${generateFiles})`
 		);
 
+		// Use the provided tasksPath
 		const result = await removeSubtask(
 			tasksPath,
-			args.id,
+			id,
 			convertToTask,
 			generateFiles
 		);
@@ -77,7 +93,7 @@ export async function removeSubtaskDirect(args, log) {
 			return {
 				success: true,
 				data: {
-					message: `Subtask ${args.id} successfully converted to task #${result.id}`,
+					message: `Subtask ${id} successfully converted to task #${result.id}`,
 					task: result
 				}
 			};
@@ -86,7 +102,7 @@ export async function removeSubtaskDirect(args, log) {
 			return {
 				success: true,
 				data: {
-					message: `Subtask ${args.id} successfully removed`
+					message: `Subtask ${id} successfully removed`
 				}
 			};
 		}

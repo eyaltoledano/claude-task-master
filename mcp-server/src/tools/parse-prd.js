@@ -70,33 +70,26 @@ export function registerParsePRDTool(server) {
 					);
 				}
 
-				// Handle auto-detection of paths when not explicitly provided
-				let inputPath = args.input;
-				let outputPath = args.output;
+				// Resolve input (PRD) and output (tasks.json) paths using the utility
+				const { projectRoot, prdPath, tasksJsonPath } = resolveProjectPaths(
+					rootFolder,
+					args,
+					log
+				);
 
-				// If input not provided, try to auto-detect it
-				if (!inputPath) {
-					inputPath = findPRDDocumentPath(rootFolder, null, log);
-					if (!inputPath) {
-						return createErrorResponse(
-							'No PRD document found. Please provide a valid input file path.'
-						);
-					}
-					log.info(`Auto-detected PRD document: ${inputPath}`);
+				// Check if PRD path was found (resolveProjectPaths returns null if not found and not provided)
+				if (!prdPath) {
+					return createErrorResponse(
+						'No PRD document found or provided. Please ensure a PRD file exists (e.g., PRD.md) or provide a valid input file path.'
+					);
 				}
 
-				// If output not provided, use default
-				if (!outputPath) {
-					outputPath = resolveTasksOutputPath(rootFolder, null, log);
-					log.info(`Using default tasks output path: ${outputPath}`);
-				}
-
-				// Call the direct function with fully resolved parameters
+				// Call the direct function with fully resolved paths
 				const result = await parsePRDDirect(
 					{
-						projectRoot: rootFolder,
-						input: inputPath,
-						output: outputPath,
+						projectRoot: projectRoot,
+						input: prdPath,
+						output: tasksJsonPath,
 						numTasks: args.numTasks,
 						force: args.force
 					},

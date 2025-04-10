@@ -8,7 +8,6 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	getAnthropicClientForMCP,
 	getPerplexityClientForMCP
@@ -17,19 +16,31 @@ import {
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch and file path options.
+ * @param {Object} args - Command arguments containing id, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
+	const { tasksJsonPath, id, prompt, research } = args;
 
 	try {
 		log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
-		// Check required parameters
-		if (!args.id) {
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			const errorMessage = 'tasksJsonPath is required but was not provided.';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
+				fromCache: false
+			};
+		}
+
+		// Check required parameters (id and prompt)
+		if (!id) {
 			const errorMessage =
 				'No subtask ID specified. Please provide a subtask ID to update.';
 			log.error(errorMessage);
@@ -40,7 +51,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		if (!args.prompt) {
+		if (!prompt) {
 			const errorMessage =
 				'No prompt specified. Please provide a prompt with information to add to the subtask.';
 			log.error(errorMessage);
@@ -52,7 +63,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		}
 
 		// Validate subtask ID format
-		const subtaskId = args.id;
+		const subtaskId = id;
 		if (typeof subtaskId !== 'string' && typeof subtaskId !== 'number') {
 			const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Subtask ID must be a string or number.`;
 			log.error(errorMessage);
@@ -74,24 +85,14 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		// Get tasks file path
-		let tasksPath;
-		try {
-			tasksPath = findTasksJsonPath(args, log);
-		} catch (error) {
-			log.error(`Error finding tasks file: ${error.message}`);
-			return {
-				success: false,
-				error: { code: 'TASKS_FILE_ERROR', message: error.message },
-				fromCache: false
-			};
-		}
+		// Use the provided path
+		const tasksPath = tasksJsonPath;
 
 		// Get research flag
-		const useResearch = args.research === true;
+		const useResearch = research === true;
 
 		log.info(
-			`Updating subtask with ID ${subtaskIdStr} with prompt "${args.prompt}" and research: ${useResearch}`
+			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
 		// Initialize the appropriate AI client based on research flag
@@ -134,7 +135,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			const updatedSubtask = await updateSubtaskById(
 				tasksPath,
 				subtaskIdStr,
-				args.prompt,
+				prompt,
 				useResearch,
 				{
 					session,

@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { addSubtaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the addSubtask tool with the MCP server
@@ -73,13 +74,38 @@ export function registerAddSubtaskTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
 				const result = await addSubtaskDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						tasksJsonPath: tasksJsonPath,
+						id: args.id,
+						taskId: args.taskId,
+						title: args.title,
+						description: args.description,
+						details: args.details,
+						status: args.status,
+						dependencies: args.dependencies,
+						skipGenerate: args.skipGenerate
 					},
-					log,
-					{ reportProgress, mcpLog: log, session }
+					log
 				);
 
 				if (result.success) {

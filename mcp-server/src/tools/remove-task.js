@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { removeTaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the remove-task tool with the MCP server
@@ -55,12 +56,27 @@ export function registerRemoveTaskTool(server) {
 
 				log.info(`Using project root: ${rootFolder}`);
 
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
+				log.info(`Using tasks file path: ${tasksJsonPath}`);
+
 				// Assume client has already handled confirmation if needed
 				const result = await removeTaskDirect(
 					{
-						id: args.id,
-						file: args.file,
-						projectRoot: rootFolder
+						tasksJsonPath: tasksJsonPath,
+						id: args.id
 					},
 					log
 				);
