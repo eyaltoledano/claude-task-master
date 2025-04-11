@@ -65,7 +65,7 @@ export function registerAddTaskTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for task creation')
 		}),
-		execute: async (args, { log, reportProgress, session }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
 
@@ -106,7 +106,7 @@ export function registerAddTaskTool(server) {
 						research: args.research
 					},
 					log,
-					{ reportProgress, session }
+					{ session }
 				);
 
 				// Return the result

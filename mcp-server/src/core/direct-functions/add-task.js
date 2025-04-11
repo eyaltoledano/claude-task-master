@@ -104,14 +104,14 @@ export async function addTaskDirect(args, log, context = {}) {
 			};
 
 			log.info(
-				`Adding new task manually with title: "${args.title}", dependencies: [${dependencies.join(', ')}], priority: ${priority}`
+				`Adding new task manually with title: "${args.title}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
 			);
 
 			// Call the addTask function with manual task data
 			const newTaskId = await addTask(
 				tasksPath,
 				null, // No prompt needed for manual creation
-				dependencies,
+				taskDependencies,
 				priority,
 				{
 					mcpLog: log,
@@ -135,7 +135,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		} else {
 			// AI-driven task creation
 			log.info(
-				`Adding new task with prompt: "${prompt}", dependencies: [${dependencies.join(', ')}], priority: ${priority}`
+				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
 			);
 
 			// Initialize AI client with session environment
@@ -221,7 +221,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			const newTaskId = await addTask(
 				tasksPath,
 				prompt,
-				dependencies,
+				taskDependencies,
 				priority,
 				{
 					mcpLog: log,
