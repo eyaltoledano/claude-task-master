@@ -14,7 +14,8 @@ import {
 	writeJSON,
 	taskExists,
 	formatTaskId,
-	findCycles
+	findCycles,
+	isSilentMode
 } from './utils.js';
 
 import { displayBanner } from './ui.js';
@@ -320,19 +321,21 @@ async function removeDependency(tasksPath, taskId, dependencyId) {
 		`Removed dependency: Task ${formattedTaskId} no longer depends on ${formattedDependencyId}`
 	);
 
-	// Display a more visually appealing success message
-	console.log(
-		boxen(
-			chalk.green(`Successfully removed dependency:\n\n`) +
-				`Task ${chalk.bold(formattedTaskId)} no longer depends on ${chalk.bold(formattedDependencyId)}`,
-			{
-				padding: 1,
-				borderColor: 'green',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			}
-		)
-	);
+	if (!isSilentMode()) {
+		// Display a more visually appealing success message
+		console.log(
+			boxen(
+				chalk.green(`Successfully removed dependency:\n\n`) +
+					`Task ${chalk.bold(formattedTaskId)} no longer depends on ${chalk.bold(formattedDependencyId)}`,
+				{
+					padding: 1,
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+	}
 
 	// Regenerate task files
 	await generateTaskFiles(tasksPath, 'tasks');
@@ -553,8 +556,11 @@ function cleanupSubtaskDependencies(tasksData) {
  * Validate dependencies in task files
  * @param {string} tasksPath - Path to tasks.json
  */
-async function validateDependenciesCommand(tasksPath) {
-	displayBanner();
+async function validateDependenciesCommand(tasksPath, options = {}) {
+	// Only display banner if not in silent mode
+	if (!isSilentMode()) {
+		displayBanner();
+	}
 
 	log('info', 'Checking for invalid dependencies in task files...');
 
@@ -659,31 +665,33 @@ async function validateDependenciesCommand(tasksPath) {
 		if (changesDetected) {
 			log('success', 'Invalid dependencies were removed from tasks.json');
 
-			// Show detailed stats in a nice box
-			console.log(
-				boxen(
-					chalk.green(`Dependency Validation Results:\n\n`) +
-						`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
-						`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
-						`${chalk.cyan('Non-existent dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
-						`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
-						`${chalk.cyan('Tasks fixed:')} ${stats.tasksFixed}\n` +
-						`${chalk.cyan('Subtasks fixed:')} ${stats.subtasksFixed}`,
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round',
-						margin: { top: 1, bottom: 1 }
-					}
-				)
-			);
+			// Show detailed stats in a nice box - only if not in silent mode
+			if (!isSilentMode()) {
+				console.log(
+					boxen(
+						chalk.green(`Dependency Validation Results:\n\n`) +
+							`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
+							`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
+							`${chalk.cyan('Non-existent dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
+							`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
+							`${chalk.cyan('Tasks fixed:')} ${stats.tasksFixed}\n` +
+							`${chalk.cyan('Subtasks fixed:')} ${stats.subtasksFixed}`,
+						{
+							padding: 1,
+							borderColor: 'green',
+							borderStyle: 'round',
+							margin: { top: 1, bottom: 1 }
+						}
+					)
+				);
 
-			// Show all warnings in a collapsible list if there are many
-			if (warnings.length > 0) {
-				console.log(chalk.yellow('\nDetailed fixes:'));
-				warnings.forEach((warning) => {
-					console.log(`  ${warning}`);
-				});
+				// Show all warnings in a collapsible list if there are many
+				if (warnings.length > 0) {
+					console.log(chalk.yellow('\nDetailed fixes:'));
+					warnings.forEach((warning) => {
+						console.log(`  ${warning}`);
+					});
+				}
 			}
 
 			// Regenerate task files to reflect the changes
@@ -695,21 +703,23 @@ async function validateDependenciesCommand(tasksPath) {
 				'No invalid dependencies found - all dependencies are valid'
 			);
 
-			// Show validation summary
-			console.log(
-				boxen(
-					chalk.green(`All Dependencies Are Valid\n\n`) +
-						`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
-						`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
-						`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round',
-						margin: { top: 1, bottom: 1 }
-					}
-				)
-			);
+			// Show validation summary - only if not in silent mode
+			if (!isSilentMode()) {
+				console.log(
+					boxen(
+						chalk.green(`All Dependencies Are Valid\n\n`) +
+							`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
+							`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
+							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
+						{
+							padding: 1,
+							borderColor: 'green',
+							borderStyle: 'round',
+							margin: { top: 1, bottom: 1 }
+						}
+					)
+				);
+			}
 		}
 	} catch (error) {
 		log('error', 'Error validating dependencies:', error);
@@ -747,9 +757,13 @@ function countAllDependencies(tasks) {
 /**
  * Fixes invalid dependencies in tasks.json
  * @param {string} tasksPath - Path to tasks.json
+ * @param {Object} options - Options object
  */
-async function fixDependenciesCommand(tasksPath) {
-	displayBanner();
+async function fixDependenciesCommand(tasksPath, options = {}) {
+	// Only display banner if not in silent mode
+	if (!isSilentMode()) {
+		displayBanner();
+	}
 
 	log('info', 'Checking for and fixing invalid dependencies in tasks.json...');
 
@@ -1086,42 +1100,47 @@ async function fixDependenciesCommand(tasksPath) {
 			stats.duplicateDependenciesRemoved +
 			stats.circularDependenciesFixed;
 
-		if (totalFixedAll > 0) {
-			log('success', `Fixed ${totalFixedAll} dependency issues in total!`);
+		if (!isSilentMode()) {
+			if (totalFixedAll > 0) {
+				log('success', `Fixed ${totalFixedAll} dependency issues in total!`);
 
-			console.log(
-				boxen(
-					chalk.green(`Dependency Fixes Summary:\n\n`) +
-						`${chalk.cyan('Invalid dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
-						`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
-						`${chalk.cyan('Duplicate dependencies removed:')} ${stats.duplicateDependenciesRemoved}\n` +
-						`${chalk.cyan('Circular dependencies fixed:')} ${stats.circularDependenciesFixed}\n\n` +
-						`${chalk.cyan('Tasks fixed:')} ${stats.tasksFixed}\n` +
-						`${chalk.cyan('Subtasks fixed:')} ${stats.subtasksFixed}\n`,
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round',
-						margin: { top: 1, bottom: 1 }
-					}
-				)
-			);
-		} else {
-			log('success', 'No dependency issues found - all dependencies are valid');
+				console.log(
+					boxen(
+						chalk.green(`Dependency Fixes Summary:\n\n`) +
+							`${chalk.cyan('Invalid dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
+							`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
+							`${chalk.cyan('Duplicate dependencies removed:')} ${stats.duplicateDependenciesRemoved}\n` +
+							`${chalk.cyan('Circular dependencies fixed:')} ${stats.circularDependenciesFixed}\n\n` +
+							`${chalk.cyan('Tasks fixed:')} ${stats.tasksFixed}\n` +
+							`${chalk.cyan('Subtasks fixed:')} ${stats.subtasksFixed}\n`,
+						{
+							padding: 1,
+							borderColor: 'green',
+							borderStyle: 'round',
+							margin: { top: 1, bottom: 1 }
+						}
+					)
+				);
+			} else {
+				log(
+					'success',
+					'No dependency issues found - all dependencies are valid'
+				);
 
-			console.log(
-				boxen(
-					chalk.green(`All Dependencies Are Valid\n\n`) +
-						`${chalk.cyan('Tasks checked:')} ${data.tasks.length}\n` +
-						`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round',
-						margin: { top: 1, bottom: 1 }
-					}
-				)
-			);
+				console.log(
+					boxen(
+						chalk.green(`All Dependencies Are Valid\n\n`) +
+							`${chalk.cyan('Tasks checked:')} ${data.tasks.length}\n` +
+							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
+						{
+							padding: 1,
+							borderColor: 'green',
+							borderStyle: 'round',
+							margin: { top: 1, bottom: 1 }
+						}
+					)
+				);
+			}
 		}
 	} catch (error) {
 		log('error', 'Error in fix-dependencies command:', error);
