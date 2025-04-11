@@ -24,10 +24,7 @@ export function registerExpandTaskTool(server) {
 		description: 'Expand a task into subtasks for detailed implementation',
 		parameters: z.object({
 			id: z.string().describe('ID of task to expand'),
-			num: z
-				.union([z.string(), z.number()])
-				.optional()
-				.describe('Number of subtasks to generate'),
+			num: z.string().optional().describe('Number of subtasks to generate'),
 			research: z
 				.boolean()
 				.optional()
