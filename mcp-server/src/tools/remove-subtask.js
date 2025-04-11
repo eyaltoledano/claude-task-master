@@ -44,22 +44,16 @@ export function registerRemoveSubtaskTool(server) {
 				.describe('Skip regenerating task files'),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
 				// await reportProgress({ progress: 0 });
 
-				let rootFolder = getProjectRootFromSession(session, log);
-
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
 				// Ensure project root was determined
 				if (!rootFolder) {

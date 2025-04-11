@@ -35,21 +35,15 @@ export function registerUpdateTaskTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Updating task with args: ${JSON.stringify(args)}`);
 
-				let rootFolder = getProjectRootFromSession(session, log);
-
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
 				// Ensure project root was determined
 				if (!rootFolder) {

@@ -34,22 +34,15 @@ export function registerSetTaskStatusTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: automatically detected)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
-				// Get project root from session
-				let rootFolder = getProjectRootFromSession(session, log);
-
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
 				// Ensure project root was determined
 				if (!rootFolder) {

@@ -49,20 +49,15 @@ export function registerParsePRDTool(server) {
 				.describe('Allow overwriting an existing tasks.json file.'),
 			projectRoot: z
 				.string()
-				.describe(
-					'Absolute path to the root directory of the project. Required - ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY.'
-				)
+				.describe('The directory of the project. Must be absolute path.')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
 
-				// Get project root from session
-				let rootFolder = getProjectRootFromSession(session, log);
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
 				if (!rootFolder) {
 					return createErrorResponse(

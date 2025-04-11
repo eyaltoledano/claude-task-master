@@ -40,22 +40,16 @@ export function registerListTasksTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: automatically detected from session or CWD)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 				// await reportProgress({ progress: 0 });
 
-				let rootFolder = getProjectRootFromSession(session, log);
-
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				}
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
 				// Ensure project root was determined
 				if (!rootFolder) {

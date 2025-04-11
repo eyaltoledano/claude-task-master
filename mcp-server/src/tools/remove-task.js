@@ -27,10 +27,7 @@ export function registerRemoveTaskTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				),
+				.describe('The directory of the project. Must be an absolute path.'),
 			confirm: z
 				.boolean()
 				.optional()
@@ -40,17 +37,14 @@ export function registerRemoveTaskTool(server) {
 			try {
 				log.info(`Removing task with ID: ${args.id}`);
 
-				// Get project root from session
-				let rootFolder = getProjectRootFromSession(session, log);
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				} else if (!rootFolder) {
-					// Ensure we have a default if nothing else works
-					rootFolder = process.cwd();
-					log.warn(
-						`Session and args failed to provide root, using CWD: ${rootFolder}`
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
 					);
 				}
 
