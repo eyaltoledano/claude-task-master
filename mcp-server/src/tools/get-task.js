@@ -45,7 +45,7 @@ export function registerShowTaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			// Log the session right at the start of execute
 			log.info(
 				`Session object received in execute: ${JSON.stringify(session)}`

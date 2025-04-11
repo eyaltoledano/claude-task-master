@@ -42,10 +42,9 @@ export function registerListTasksTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
-				// await reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -81,8 +80,6 @@ export function registerListTasksTool(server) {
 					},
 					log
 				);
-
-				// await reportProgress({ progress: 100 });
 
 				log.info(
 					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`

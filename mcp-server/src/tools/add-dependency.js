@@ -35,12 +35,11 @@ export function registerAddDependencyTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(
 					`Adding dependency for task ${args.id} to depend on ${args.dependsOn}`
 				);
-				reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -79,8 +78,6 @@ export function registerAddDependencyTool(server) {
 					log
 					// Remove context object
 				);
-
-				reportProgress({ progress: 100 });
 
 				// Log result
 				if (result.success) {

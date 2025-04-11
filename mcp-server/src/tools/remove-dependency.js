@@ -33,12 +33,11 @@ export function registerRemoveDependencyTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(
 					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
 				);
-				// await reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -75,8 +74,6 @@ export function registerRemoveDependencyTool(server) {
 					},
 					log
 				);
-
-				// await reportProgress({ progress: 100 });
 
 				if (result.success) {
 					log.info(`Successfully removed dependency: ${result.data.message}`);

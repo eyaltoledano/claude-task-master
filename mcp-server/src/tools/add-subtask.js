@@ -60,7 +60,7 @@ export function registerAddSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 

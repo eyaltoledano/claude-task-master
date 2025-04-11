@@ -32,10 +32,9 @@ export function registerGenerateTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
-				// await reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -76,8 +75,6 @@ export function registerGenerateTool(server) {
 					},
 					log
 				);
-
-				// await reportProgress({ progress: 100 });
 
 				if (result.success) {
 					log.info(`Successfully generated task files: ${result.data.message}`);

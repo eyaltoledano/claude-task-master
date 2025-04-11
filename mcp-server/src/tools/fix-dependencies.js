@@ -26,10 +26,9 @@ export function registerFixDependenciesTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);
-				await reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -60,8 +59,6 @@ export function registerFixDependenciesTool(server) {
 					},
 					log
 				);
-
-				await reportProgress({ progress: 100 });
 
 				if (result.success) {
 					log.info(`Successfully fixed dependencies: ${result.data.message}`);

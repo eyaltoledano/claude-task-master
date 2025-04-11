@@ -41,10 +41,9 @@ export function registerClearSubtasksTool(server) {
 				message: "Either 'id' or 'all' parameter must be provided",
 				path: ['id', 'all']
 			}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
-				await reportProgress({ progress: 0 });
 
 				// Get project root from args or session
 				const rootFolder =
@@ -82,8 +81,6 @@ export function registerClearSubtasksTool(server) {
 					log
 					// Remove context object as clearSubtasksDirect likely doesn't need session/reportProgress
 				);
-
-				reportProgress({ progress: 100 });
 
 				if (result.success) {
 					log.info(`Subtasks cleared successfully: ${result.data.message}`);
