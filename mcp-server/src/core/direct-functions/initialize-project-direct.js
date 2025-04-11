@@ -1,5 +1,4 @@
-import path from 'path';
-import { initializeProject, log as initLog } from '../../../../scripts/init.js'; // Import core function and its logger if needed separately
+import { initializeProject } from '../../../../scripts/init.js'; // Import core function and its logger if needed separately
 import {
 	enableSilentMode,
 	disableSilentMode
