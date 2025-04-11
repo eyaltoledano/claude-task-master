@@ -125,13 +125,22 @@ export async function updateTasksDirect(args, log, context = {}) {
 			`Updating tasks from ID ${fromId} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
+		// Create the logger wrapper to ensure compatibility with core functions
+		const logWrapper = {
+			info: (message, ...args) => log.info(message, ...args),
+			warn: (message, ...args) => log.warn(message, ...args),
+			error: (message, ...args) => log.error(message, ...args),
+			debug: (message, ...args) => log.debug && log.debug(message, ...args), // Handle optional debug
+			success: (message, ...args) => log.info(message, ...args) // Map success to info if needed
+		};
+
 		try {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
 			// Execute core updateTasks function, passing the AI client and session
 			await updateTasks(tasksJsonPath, fromId, prompt, useResearch, {
-				mcpLog: log,
+				mcpLog: logWrapper, // Pass the wrapper instead of the raw log object
 				session
 			});
 
