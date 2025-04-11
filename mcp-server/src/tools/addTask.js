@@ -49,7 +49,7 @@ export function registerAddTaskTool(server) {
           "add-task",
           log,
           cmdArgs,
-          projectRoot
+          args.projectRoot
         );
 
         if (!result.success) {
