@@ -33,7 +33,7 @@
   - Updated README, added tutorial/examples guide, supported client list documentation.
 
 - Adjusts the MCP server invokation in the mcp.json we ship with `task-master init`. Fully functional now.
-- Rename the npx -y command. It's now `npx -y task-master-ai task-master-mcp`
+- Rename the npx -y command. It's now `npx -y task-master-mcp`
 - Add additional binary alias: `task-master-mcp-server` pointing to the same MCP server script
 
 - **Significant improvements to model configuration:**
