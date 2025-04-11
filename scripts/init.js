@@ -909,7 +909,7 @@ function setupMCPConfiguration(targetDir, projectName) {
 	const newMCPServer = {
 		'task-master-ai': {
 			command: 'npx',
-			args: ['-y', '--package', 'task-master-ai', 'task-master-mcp'],
+			args: ['-y', 'task-master-mcp'],
 			env: {
 				ANTHROPIC_API_KEY: '%ANTHROPIC_API_KEY%',
 				PERPLEXITY_API_KEY: '%PERPLEXITY_API_KEY%',
