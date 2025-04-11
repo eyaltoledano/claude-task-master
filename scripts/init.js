@@ -23,23 +23,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
-import {
-	isSilentMode,
-	enableSilentMode,
-	disableSilentMode
-} from './modules/utils.js';
-
-// Only log if not in silent mode
-if (!isSilentMode()) {
-	console.log('Starting task-master-ai...');
-}
-
-// Debug information - only log if not in silent mode
-if (!isSilentMode()) {
-	console.log('Node version:', process.version);
-	console.log('Current directory:', process.cwd());
-	console.log('Script path:', import.meta.url);
-}
+import { isSilentMode } from './modules/utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
