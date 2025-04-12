@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 import { createContentResponse, createErrorResponse } from './utils.js'; // Only need response creators
 
 export function registerInitializeProjectTool(server) {
@@ -35,8 +37,15 @@ export function registerInitializeProjectTool(server) {
 				.boolean()
 				.optional()
 				.default(false)
-				.describe('Skip prompts and use default values or provided arguments.')
-			// projectRoot is not needed here as 'init' works on the current directory
+				.describe('Skip prompts and use default values or provided arguments.'),
+			projectRoot: z
+				.string()
+				.describe('The root directory for the project. Must be absolute path.'),
+			confirmOverwrite: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe('Confirm overwriting existing tasks if they exist.')
 		}),
 		execute: async (args, { log }) => {
 			// Destructure context to get log
@@ -44,6 +53,14 @@ export function registerInitializeProjectTool(server) {
 				log.info(
 					`Executing initialize_project with args: ${JSON.stringify(args)}`
 				);
+				
+				// Check if tasks.json already exists
+				const tasksPath = path.join(args.projectRoot, 'tasks', 'tasks.json');
+				if (fs.existsSync(tasksPath) && !args.confirmOverwrite) {
+					const errorMessage = 'Existing tasks.json found. To initialize project and potentially overwrite existing task state, set confirmOverwrite parameter to true.';
+					log.warn(errorMessage);
+					return createErrorResponse(errorMessage, { code: 'EXISTING_TASKS' });
+				}
 
 				// Construct the command arguments carefully
 				// Using npx ensures it uses the locally installed version if available, or fetches it
@@ -68,14 +85,20 @@ export function registerInitializeProjectTool(server) {
 				command += ' ' + cliArgs.join(' ');
 
 				log.info(`Constructed command: ${command}`);
-
-				// Execute the command in the current working directory of the server process
-				// Capture stdout/stderr. Use a reasonable timeout (e.g., 5 minutes)
-				const output = execSync(command, {
+				
+				// Navigate to the project root directory if provided
+				const options = {
 					encoding: 'utf8',
 					stdio: 'pipe',
 					timeout: 300000
-				});
+				};
+				
+				if (args.projectRoot) {
+					options.cwd = args.projectRoot;
+				}
+
+				// Execute the command in the specified directory
+				const output = execSync(command, options);
 
 				log.info(`Initialization output:\n${output}`);
 

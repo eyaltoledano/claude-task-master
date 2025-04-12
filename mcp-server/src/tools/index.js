@@ -27,6 +27,7 @@ import { registerComplexityReportTool } from './complexity-report.js';
 import { registerAddDependencyTool } from './add-dependency.js';
 import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
+import { registerScanWorkspaceTool } from './scan-workspace.js';
 import { asyncOperationManager } from '../core/utils/async-manager.js';
 
 /**
@@ -60,6 +61,7 @@ export function registerTaskMasterTools(server, asyncManager) {
 		registerAddDependencyTool(server);
 		registerRemoveTaskTool(server);
 		registerInitializeProjectTool(server);
+		registerScanWorkspaceTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;
