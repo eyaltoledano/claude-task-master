@@ -2,127 +2,134 @@
  * Direct function wrapper for clearSubtasks
  */
 
-import { clearSubtasks } from '../../../../scripts/modules/task-manager.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode,
+	CONFIG // Import CONFIG
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
 
 /**
- * Clear subtasks from specified tasks
+ * Clear subtasks from specified tasks using the configured task provider.
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} [args.id] - Task IDs (comma-separated) to clear subtasks from
  * @param {boolean} [args.all] - Clear subtasks from all tasks
- * @param {Object} log - Logger object
+ * @param {string} [args.file] - Optional path to the tasks file (for local provider)
+ * @param {Object} log - Logger object provided by MCP framework
+ * @param {Object} context - Tool context { session }
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function clearSubtasksDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id, all } = args;
+export async function clearSubtasksDirect(args, log, context = {}) {
+	const { session } = context;
+	const { projectRoot, id: taskIdString, all, file } = args;
+
 	try {
 		log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('clearSubtasksDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('clearSubtasksDirect called without projectRoot.');
 		}
-
-		// Either id or all must be provided
-		if (!id && !all) {
-			return {
-				success: false,
-				error: {
-					code: 'INPUT_VALIDATION_ERROR',
-					message:
-						'Either task IDs with id parameter or all parameter must be provided'
-				}
-			};
+		if (!taskIdString && !all) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Either Task ID(s) (id) or the "all" flag is required' } };
 		}
+		// --- End Argument Validation ---
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		const targetDescription = all ? 'all tasks' : `task(s) ${taskIdString}`;
+		log.info(`Requesting ${providerType} provider to clear subtasks from ${targetDescription}.`);
 
-		// Check if tasks.json exists
-		if (!fs.existsSync(tasksPath)) {
-			return {
-				success: false,
-				error: {
-					code: 'FILE_NOT_FOUND_ERROR',
-					message: `Tasks file not found at ${tasksPath}`
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's clearSubtasks method
+			// Likely requires: search, delete_issue (use with caution!)
+			const requiredTools = ['search', 'delete_issue']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
 				}
-			};
+			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
 		}
+		// --- End Jira MCP Tools Preparation ---
 
-		let taskIds;
+		const taskIds = all ? null : taskIdString.split(',').map(id => id.trim());
 
-		// If all is specified, get all task IDs
-		if (all) {
-			log.info('Clearing subtasks from all tasks');
-			const data = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-			if (!data || !data.tasks || data.tasks.length === 0) {
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		enableSilentMode();
+		try {
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+			const providerOptions = {
+				file,
+				mcpLog: logWrapper,
+				session
+			};
+
+			// Call the provider's clearSubtasks method
+			// Assuming signature: clearSubtasks(taskIds, options) where taskIds can be null for 'all'
+			const clearResult = await provider.clearSubtasks(taskIds, providerOptions);
+
+			disableSilentMode();
+
+			// Check provider result
+			if (clearResult && clearResult.success) {
+				log.info(`Provider successfully cleared subtasks from ${targetDescription}.`);
+				return {
+					success: true,
+					data: clearResult.data || { message: `Successfully cleared subtasks from ${targetDescription}.` },
+					fromCache: false // State modification
+				};
+			} else {
+				const errorMsg = clearResult?.error?.message || 'Provider failed to clear subtasks.';
+				const errorCode = clearResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error clearing subtasks: ${errorMsg} (Code: ${errorCode})`);
 				return {
 					success: false,
-					error: {
-						code: 'INPUT_VALIDATION_ERROR',
-						message: 'No valid tasks found in the tasks file'
-					}
+					error: clearResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
 				};
 			}
-			taskIds = data.tasks.map((t) => t.id).join(',');
-		} else {
-			// Use the provided task IDs
-			taskIds = id;
-		}
-
-		log.info(`Clearing subtasks from tasks: ${taskIds}`);
-
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		enableSilentMode();
-
-		// Call the core function
-		clearSubtasks(tasksPath, taskIds);
-
-		// Restore normal logging
-		disableSilentMode();
-
-		// Read the updated data to provide a summary
-		const updatedData = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-		const taskIdArray = taskIds.split(',').map((id) => parseInt(id.trim(), 10));
-
-		// Build a summary of what was done
-		const clearedTasksCount = taskIdArray.length;
-		const taskSummary = taskIdArray.map((id) => {
-			const task = updatedData.tasks.find((t) => t.id === id);
-			return task ? { id, title: task.title } : { id, title: 'Task not found' };
-		});
-
-		return {
-			success: true,
-			data: {
-				message: `Successfully cleared subtasks from ${clearedTasksCount} task(s)`,
-				tasksCleared: taskSummary
+		} catch (error) {
+			disableSilentMode();
+			log.error(`Error during clearSubtasksDirect execution: ${error.message}`);
+			console.error(error.stack);
+			return {
+				success: false,
+				error: {
+					code: error.code || 'PROVIDER_CLEAR_SUBTASKS_ERROR',
+					message: error.message || `Failed to clear subtasks from ${targetDescription}`
+				},
+				fromCache: false
+			};
+		} finally {
+			if (isSilentMode()) {
+				disableSilentMode();
 			}
-		};
+		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
-
-		log.error(`Error in clearSubtasksDirect: ${error.message}`);
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in clearSubtasksDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'CORE_FUNCTION_ERROR',
-				message: error.message
-			}
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
+			fromCache: false
 		};
 	}
 }

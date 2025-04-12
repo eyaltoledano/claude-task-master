@@ -397,6 +397,35 @@ function detectCamelCaseFlags(args) {
 	return camelCaseFlags;
 }
 
+/**
+ * Generates the next available ID for a task or subtask.
+ * @param {Array} tasks - The current array of tasks.
+ * @param {number|string} [parentId=null] - The ID of the parent task if generating a subtask ID.
+ * @returns {number|string} The next available ID (number for top-level, string "parent.sub" for subtasks).
+ */
+function generateId(tasks, parentId = null) {
+	if (parentId !== null) {
+		// Generating a subtask ID
+		const parentTask = findTaskById(tasks, parentId);
+		if (!parentTask) {
+			log('error', `Cannot generate subtask ID: Parent task ${parentId} not found.`);
+			// Throw or return a specific error indicator? Let's throw for now.
+			throw new Error(`Parent task ${parentId} not found when generating subtask ID.`);
+		}
+		const subtasks = parentTask.subtasks || [];
+		const maxSubtaskId = subtasks.reduce((maxId, subtask) => {
+			// Subtask IDs are just numbers within the parent
+			return Math.max(maxId, subtask.id);
+		}, 0);
+		// Format as "parentId.nextSubId"
+		return `${parentTask.id}.${maxSubtaskId + 1}`;
+	} else {
+		// Generating a top-level task ID
+		const maxId = tasks.reduce((max, task) => Math.max(max, task.id), 0);
+		return maxId + 1;
+	}
+}
+
 // Export all utility functions and configuration
 export {
 	CONFIG,
@@ -417,5 +446,6 @@ export {
 	enableSilentMode,
 	disableSilentMode,
 	isSilentMode,
-	getTaskManager
+	getTaskManager,
+	generateId
 };

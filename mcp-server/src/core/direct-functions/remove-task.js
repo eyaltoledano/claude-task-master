@@ -1,106 +1,132 @@
 /**
  * remove-task.js
- * Direct function implementation for removing a task
+ * Direct function implementation for removing a task using appropriate provider.
  */
 
-import { removeTask } from '../../../../scripts/modules/task-manager.js';
+// Corrected import path for task-provider-factory
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode,
+	CONFIG
 } from '../../../../scripts/modules/utils.js';
 
 /**
- * Direct function wrapper for removeTask with error handling.
+ * Direct function wrapper for removeTask via configured provider.
  *
- * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - The ID of the task or subtask to remove.
- * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: false }
+ * @param {Object} args - Command arguments (id, file, projectRoot).
+ * @param {Object} log - Logger object.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function removeTaskDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+export async function removeTaskDirect(args, log, context = {}) {
+	const { session } = context;
+	const { projectRoot, id: taskIdString, file } = args; // Added file
+
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('removeTaskDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				},
-				fromCache: false
-			};
+		log.info(`Removing task with args: ${JSON.stringify(args)}`);
+
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('removeTaskDirect called without projectRoot.');
 		}
-
-		// Validate task ID parameter
-		const taskId = id;
-		if (!taskId) {
-			log.error('Task ID is required');
-			return {
-				success: false,
-				error: {
-					code: 'INPUT_VALIDATION_ERROR',
-					message: 'Task ID is required'
-				},
-				fromCache: false
-			};
+		if (!taskIdString) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Task ID(s) (id) is required' } };
 		}
+		// --- End Argument Validation ---
 
-		// Skip confirmation in the direct function since it's handled by the client
-		log.info(`Removing task with ID: ${taskId} from ${tasksJsonPath}`);
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		log.info(`Requesting ${providerType} provider to remove task(s) ${taskIdString}.`);
 
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's removeTask method
+			// Likely requires: delete_issue, search, get_issue, update_issue (for dependencies)
+			const requiredTools = ['delete_issue', 'search', 'get_issue', 'update_issue']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
+				}
+			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
+		}
+		// --- End Jira MCP Tools Preparation ---
+
+		const taskIds = taskIdString.split(',').map(id => id.trim());
+
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		enableSilentMode();
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
-
-			// Call the core removeTask function using the provided path
-			const result = await removeTask(tasksJsonPath, taskId);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			log.info(`Successfully removed task: ${taskId}`);
-
-			// Return the result
-			return {
-				success: true,
-				data: {
-					message: result.message,
-					taskId: taskId,
-					tasksPath: tasksJsonPath,
-					removedTask: result.removedTask
-				},
-				fromCache: false
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+			const providerOptions = {
+				file,
+				mcpLog: logWrapper,
+				session
 			};
-		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
+
+			// Call the provider's removeTask method
+			const removeResult = await provider.removeTask(taskIds, providerOptions);
+
 			disableSilentMode();
 
-			log.error(`Error removing task: ${error.message}`);
+			// Check provider result
+			if (removeResult && removeResult.success) {
+				log.info(`Provider successfully removed task(s) ${taskIds.join(', ')}.`);
+				return {
+					success: true,
+					data: removeResult.data || { message: `Successfully removed task(s) ${taskIds.join(', ')}.` },
+					fromCache: false // State modification
+				};
+			} else {
+				const errorMsg = removeResult?.error?.message || 'Provider failed to remove task.';
+				const errorCode = removeResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error removing task ${taskIds.join(', ')}: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: removeResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
+				};
+			}
+		} catch (error) {
+			disableSilentMode();
+			log.error(`Error during removeTaskDirect execution: ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: error.code || 'REMOVE_TASK_ERROR',
-					message: error.message || 'Failed to remove task'
+					code: error.code || 'PROVIDER_REMOVE_TASK_ERROR',
+					message: error.message || `Failed to remove task(s) ${taskIds.join(', ')}`
 				},
 				fromCache: false
 			};
+		} finally {
+			if (isSilentMode()) {
+				disableSilentMode();
+			}
 		}
 	} catch (error) {
-		// Ensure silent mode is disabled even if an outer error occurs
-		disableSilentMode();
-
-		// Catch any unexpected errors
-		log.error(`Unexpected error in removeTaskDirect: ${error.message}`);
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in removeTaskDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'UNEXPECTED_ERROR',
-				message: error.message
-			},
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
 			fromCache: false
 		};
 	}

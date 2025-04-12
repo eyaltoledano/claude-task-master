@@ -1,186 +1,131 @@
 /**
  * update-tasks.js
- * Direct function implementation for updating tasks based on new context/prompt
+ * Direct function implementation for updating tasks based on new context/prompt using appropriate provider.
  */
 
-import { updateTasks } from '../../../../scripts/modules/task-manager.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js'; // Use the factory
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-import {
-	getAnthropicClientForMCP,
-	getPerplexityClientForMCP
-} from '../utils/ai-client-utils.js';
 
 /**
- * Direct function wrapper for updating tasks based on new context/prompt.
+ * Direct function wrapper for updating tasks based on new context/prompt via configured provider.
  *
- * @param {Object} args - Command arguments containing fromId, prompt, useResearch and tasksJsonPath.
+ * @param {Object} args - Command arguments (from, prompt, research, file, projectRoot).
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
- * @returns {Promise<Object>} - Result object with success status and data/error information.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
  */
 export async function updateTasksDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-	const { tasksJsonPath, from, prompt, research } = args;
+	const { session } = context;
+	// Include 'file' for local provider context
+	const { projectRoot, from, prompt, research, file } = args;
 
 	try {
 		log.info(`Updating tasks with args: ${JSON.stringify(args)}`);
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
-			};
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			// Warn but don't fail, provider might not need it (e.g., Jira uses key)
+			log.warn('updateTasksDirect called without projectRoot.');
 		}
-
-		// Check for the common mistake of using 'id' instead of 'from'
+		// 'id' is deprecated, use 'from'
 		if (args.id !== undefined && from === undefined) {
-			const errorMessage =
-				"You specified 'id' parameter but 'update' requires 'from' parameter. Use 'from' for this tool or use 'update_task' tool if you want to update a single task.";
-			log.error(errorMessage);
 			return {
 				success: false,
-				error: {
-					code: 'PARAMETER_MISMATCH',
-					message: errorMessage,
-					suggestion:
-						"Use 'from' parameter instead of 'id', or use the 'update_task' tool for single task updates"
-				},
+				error: { code: 'PARAMETER_MISMATCH', message: "Parameter 'from' is required, not 'id'." },
 				fromCache: false
 			};
 		}
-
-		// Check required parameters
 		if (!from) {
-			const errorMessage =
-				'No from ID specified. Please provide a task ID to start updating from.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_FROM_ID', message: errorMessage },
-				fromCache: false
-			};
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Start task ID/Key (from) is required' }, fromCache: false };
 		}
-
 		if (!prompt) {
-			const errorMessage =
-				'No prompt specified. Please provide a prompt with new context for task updates.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
-			};
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Prompt (prompt) is required' }, fromCache: false };
 		}
+		const fromIdStr = String(from);
+		// --- End Argument Validation ---
 
-		// Parse fromId - handle both string and number values
-		let fromId;
-		if (typeof from === 'string') {
-			fromId = parseInt(from, 10);
-			if (isNaN(fromId)) {
-				const errorMessage = `Invalid from ID: ${from}. Task ID must be a positive integer.`;
-				log.error(errorMessage);
-				return {
-					success: false,
-					error: { code: 'INVALID_FROM_ID', message: errorMessage },
-					fromCache: false
-				};
-			}
-		} else {
-			fromId = from;
-		}
-
-		// Get research flag
+		// Provider type determined within getTaskProvider
 		const useResearch = research === true;
 
-		// Initialize appropriate AI client based on research flag
-		let aiClient;
-		try {
-			if (useResearch) {
-				log.info('Using Perplexity AI for research-backed task updates');
-				aiClient = await getPerplexityClientForMCP(session, log);
-			} else {
-				log.info('Using Claude AI for task updates');
-				aiClient = getAnthropicClientForMCP(session, log);
-			}
-		} catch (error) {
-			log.error(`Failed to initialize AI client: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: `Cannot initialize AI client: ${error.message}`
-				},
-				fromCache: false
-			};
-		}
+		log.info(`Requesting provider to update tasks from ${fromIdStr} with prompt "${prompt}" and research: ${useResearch}`);
 
-		log.info(
-			`Updating tasks from ID ${fromId} with prompt "${prompt}" and research: ${useResearch}`
-		);
-
-		// Create the logger wrapper to ensure compatibility with core functions
+		// Create logger wrapper
 		const logWrapper = {
 			info: (message, ...args) => log.info(message, ...args),
 			warn: (message, ...args) => log.warn(message, ...args),
 			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args), // Handle optional debug
-			success: (message, ...args) => log.info(message, ...args) // Map success to info if needed
+			debug: (message, ...args) => log.debug && log.debug(message, ...args),
+			success: (message, ...args) => log.info(message, ...args)
 		};
 
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
+			// Consider if silent mode is truly needed here if provider handles logging/output
+			enableSilentMode(); 
 
-			// Execute core updateTasks function, passing the AI client and session
-			await updateTasks(tasksJsonPath, fromId, prompt, useResearch, {
-				mcpLog: logWrapper, // Pass the wrapper instead of the raw log object
+			const provider = await getTaskProvider();
+			const providerOptions = {
+				file, // Pass file for local provider
+				mcpLog: logWrapper,
 				session
-			});
-
-			// Since updateTasks doesn't return a value but modifies the tasks file,
-			// we'll return a success message
-			return {
-				success: true,
-				data: {
-					message: `Successfully updated tasks from ID ${fromId} based on the prompt`,
-					fromId,
-					tasksPath: tasksJsonPath,
-					useResearch
-				},
-				fromCache: false // This operation always modifies state and should never be cached
 			};
+
+			// Call the provider's updateTasks method
+			// Assumes provider method signature: updateTasks(fromId, prompt, useResearch, options)
+			const updateResult = await provider.updateTasks(
+				fromIdStr,
+				prompt,
+				useResearch,
+				providerOptions
+			);
+
+			disableSilentMode();
+
+			// Check provider result structure
+			if (updateResult && updateResult.success) {
+				log.info(`Provider successfully updated tasks: ${updateResult.data?.message || 'Update process completed.'}`);
+				return {
+					success: true,
+					data: updateResult.data || {
+						message: `Task update process completed starting from ID ${fromIdStr}.`,
+						fromId: fromIdStr
+					},
+					fromCache: false // State modification
+				};
+			} else {
+				const errorMsg = updateResult?.error?.message || 'Provider failed to update tasks.';
+				log.error(`Provider error updating tasks from ID ${fromIdStr}: ${errorMsg}`);
+				return {
+					success: false,
+					error: updateResult?.error || { code: 'PROVIDER_ERROR', message: errorMsg },
+					fromCache: false
+				};
+			}
 		} catch (error) {
-			log.error(`Error updating tasks: ${error.message}`);
+			// Ensure silent mode is disabled on error
+			if (isSilentMode()) {
+				disableSilentMode();
+			}
+			log.error(`Error calling provider updateTasks from ID ${fromIdStr}: ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: 'UPDATE_TASKS_ERROR',
-					message: error.message || 'Unknown error updating tasks'
+					code: error.code || 'PROVIDER_UPDATE_ERROR',
+					message: error.message || `Unknown error updating tasks from ${fromIdStr}`
 				},
 				fromCache: false
 			};
-		} finally {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
 		}
 	} catch (error) {
-		// Ensure silent mode is disabled
-		disableSilentMode();
-
-		log.error(`Error updating tasks: ${error.message}`);
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in updateTasksDirect: ${error.message}`);
 		return {
 			success: false,
-			error: {
-				code: 'UPDATE_TASKS_ERROR',
-				message: error.message || 'Unknown error updating tasks'
-			},
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
 			fromCache: false
 		};
 	}

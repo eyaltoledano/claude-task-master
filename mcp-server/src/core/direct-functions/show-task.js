@@ -1,10 +1,9 @@
 /**
  * show-task.js
- * Direct function implementation for showing task details
+ * Direct function implementation for showing task details using appropriate provider.
  */
 
-import { findTaskById } from '../../../../scripts/modules/utils.js';
-import { readJSON } from '../../../../scripts/modules/utils.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js'; // Use the factory
 import { getCachedOrExecute } from '../../tools/utils.js';
 import {
 	enableSilentMode,
@@ -12,109 +11,87 @@ import {
 } from '../../../../scripts/modules/utils.js';
 
 /**
- * Direct function wrapper for showing task details with error handling and caching.
+ * Direct function wrapper for showing task details via configured provider.
  *
- * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - The ID of the task or subtask to show.
- * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @param {Object} args - Command arguments (id, file, projectRoot).
+ * @param {Object} log - Logger object.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
  */
-export async function showTaskDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+export async function showTaskDirect(args, log, context = {}) {
+	const { projectRoot, id: taskId, file } = args; // Added file
+	const { session } = context;
 
-	if (!tasksJsonPath) {
-		log.error('showTaskDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
-		};
+	if (!projectRoot) {
+		log.warn('showTaskDirect called without projectRoot, cache key might be less specific.');
 	}
-
-	// Validate task ID
-	const taskId = id;
 	if (!taskId) {
-		log.error('Task ID is required');
+		log.error('Task ID/Key is required');
 		return {
 			success: false,
-			error: {
-				code: 'INPUT_VALIDATION_ERROR',
-				message: 'Task ID is required'
-			},
+			error: { code: 'MISSING_ARGUMENT', message: 'Task ID/Key (id) is required' },
 			fromCache: false
 		};
 	}
 
-	// Generate cache key using the provided task path and ID
-	const cacheKey = `showTask:${tasksJsonPath}:${taskId}`;
+	// Provider type determined within getTaskProvider
+	const providerType = process.env.TASK_PROVIDER || 'local';
 
-	// Define the action function to be executed on cache miss
-	const coreShowTaskAction = async () => {
+	// Create logger wrapper for core function
+	const logWrapper = {
+		info: (message, ...rest) => log.info(message, ...rest),
+		warn: (message, ...rest) => log.warn(message, ...rest),
+		error: (message, ...rest) => log.error(message, ...rest),
+		debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+		success: (message, ...rest) => log.info(message, ...rest)
+	};
+
+	// Update cache key
+	const cacheKey = `getTask:${projectRoot || 'unknown'}:${providerType}:${file || 'default'}:${taskId}`;
+
+	// Define the action function to call the PROVIDER's getTask method
+	const providerGetTaskAction = async () => {
+		let resultData;
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
+			enableSilentMode(); // Consider removing
 
-			log.info(
-				`Retrieving task details for ID: ${taskId} from ${tasksJsonPath}`
-			);
+			const provider = await getTaskProvider();
+			const providerOptions = { file, mcpLog: logWrapper, session };
 
-			// Read tasks data using the provided path
-			const data = readJSON(tasksJsonPath);
-			if (!data || !data.tasks) {
-				disableSilentMode(); // Disable before returning
+			log.info(`Calling provider.getTask for ID: ${taskId} via ${providerType} provider`);
+
+			// Call the provider's getTask method
+			// Assuming signature: getTask(taskId, options)
+			resultData = await provider.getTask(taskId, providerOptions);
+
+			if (!resultData) {
+				log.warn(`Provider ${providerType} did not find task ${taskId}`);
 				return {
 					success: false,
-					error: {
-						code: 'INVALID_TASKS_FILE',
-						message: `No valid tasks found in ${tasksJsonPath}`
-					}
+					error: { code: 'TASK_NOT_FOUND', message: `Task with ID/Key ${taskId} not found via ${providerType} provider.` }
 				};
 			}
 
-			// Find the specific task
-			const task = findTaskById(data.tasks, taskId);
-
-			if (!task) {
-				disableSilentMode(); // Disable before returning
-				return {
-					success: false,
-					error: {
-						code: 'TASK_NOT_FOUND',
-						message: `Task with ID ${taskId} not found`
-					}
-				};
-			}
-
-			// Restore normal logging
+			log.info(`Provider ${providerType} retrieved task ${taskId}`);
 			disableSilentMode();
 
-			// Return the task data with the full tasks array for reference
-			// (needed for formatDependenciesWithStatus function in UI)
-			log.info(`Successfully found task ${taskId}`);
-			return {
-				success: true,
-				data: {
-					task,
-					allTasks: data.tasks
-				}
-			};
+			// Return the task object found by the provider
+			return { success: true, data: { task: resultData } }; // Wrap result in { data: { task: ... } }
+
 		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
-
-			log.error(`Error showing task: ${error.message}`);
+			disableSilentMode(); // Ensure disable on error
+			log.error(`Error calling provider getTask for ID ${taskId}: ${error.message}`);
+			console.error(error.stack);
+			const errorCode = (error.message && error.message.toLowerCase().includes('not found')) ? 'TASK_NOT_FOUND' : 'PROVIDER_GET_TASK_ERROR';
 			return {
 				success: false,
 				error: {
-					code: 'CORE_FUNCTION_ERROR',
-					message: error.message || 'Failed to show task details'
+					code: errorCode,
+					message: error.message || `Failed to get task ${taskId}`
 				}
 			};
+		} finally {
+			disableSilentMode();
 		}
 	};
 
@@ -122,23 +99,20 @@ export async function showTaskDirect(args, log) {
 	try {
 		const result = await getCachedOrExecute({
 			cacheKey,
-			actionFn: coreShowTaskAction,
+			actionFn: providerGetTaskAction, // Use the new action
 			log
 		});
-		log.info(`showTaskDirect completed. From cache: ${result.fromCache}`);
-		return result; // Returns { success, data/error, fromCache }
+		log.info(`showTaskDirect completed for ${taskId}. From cache: ${result.fromCache}`);
+		return result;
 	} catch (error) {
-		// Catch unexpected errors from getCachedOrExecute itself
-		disableSilentMode();
+		disableSilentMode(); // Ensure disabled on unexpected cache util error
 		log.error(
 			`Unexpected error during getCachedOrExecute for showTask: ${error.message}`
 		);
+		console.error(error.stack);
 		return {
 			success: false,
-			error: {
-				code: 'UNEXPECTED_ERROR',
-				message: error.message
-			},
+			error: { code: 'CACHE_UTIL_ERROR', message: error.message },
 			fromCache: false
 		};
 	}

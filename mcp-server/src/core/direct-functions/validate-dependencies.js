@@ -1,80 +1,128 @@
 /**
- * Direct function wrapper for validateDependenciesCommand
+ * validate-dependencies.js
+ * Direct function implementation for validating task dependencies using appropriate provider.
  */
 
-import { validateDependenciesCommand } from '../../../../scripts/modules/dependency-manager.js';
+// Corrected import path for task-provider-factory
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
+// Removed config loader import
 
 /**
- * Validate dependencies in tasks.json
- * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {Object} log - Logger object
- * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
+ * Direct function wrapper for validateDependencies via configured provider.
+ *
+ * @param {Object} args - Command arguments (file, projectRoot).
+ * @param {Object} log - Logger object.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function validateDependenciesDirect(args, log) {
-	// Destructure the explicit tasksJsonPath
-	const { tasksJsonPath } = args;
-
-	if (!tasksJsonPath) {
-		log.error('validateDependenciesDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
+export async function validateDependenciesDirect(args, log, context = {}) {
+	const { session } = context;
+	const { projectRoot, file } = args; // Added file
 
 	try {
-		log.info(`Validating dependencies in tasks: ${tasksJsonPath}`);
+		log.info(`Validating dependencies with args: ${JSON.stringify(args)}`);
 
-		// Use the provided tasksJsonPath
-		const tasksPath = tasksJsonPath;
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('validateDependenciesDirect called without projectRoot.');
+		}
+		// --- End Argument Validation ---
 
-		// Verify the file exists
-		if (!fs.existsSync(tasksPath)) {
+		// Provider type determined within getTaskProvider
+		const providerType = process.env.TASK_PROVIDER || 'local';
+
+		log.info(`Requesting ${providerType} provider to validate dependencies.`);
+
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		enableSilentMode();
+		try {
+			const provider = await getTaskProvider();
+			const providerOptions = {
+				file,
+				mcpLog: logWrapper,
+				session
+			};
+
+			// Call the provider's validateDependencies method
+			// Assuming signature: validateDependencies(options)
+			const validationResult = await provider.validateDependencies(providerOptions);
+
+			disableSilentMode();
+
+			// Check provider result
+			if (validationResult && validationResult.success) {
+				const issues = validationResult.data?.issues || [];
+				if (issues.length > 0) {
+					log.warn(`Provider found ${issues.length} dependency issues.`);
+					// Return success but include issues in data
+					return {
+						success: true,
+						data: {
+							message: `Validation complete. Found ${issues.length} issues.`,
+							issues: issues
+						},
+						fromCache: false // State modification (or checking)
+					};
+				} else {
+					log.info('Provider validation complete. No dependency issues found.');
+					return {
+						success: true,
+						data: {
+							message: 'Validation complete. No issues found.',
+							issues: []
+						},
+						fromCache: false // State checking
+					};
+				}
+			} else {
+				const errorMsg = validationResult?.error?.message || 'Provider failed to validate dependencies.';
+				const errorCode = validationResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error validating dependencies: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: validationResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
+				};
+			}
+		} catch (error) {
+			disableSilentMode();
+			log.error(`Error calling provider validateDependencies: ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: 'FILE_NOT_FOUND',
-					message: `Tasks file not found at ${tasksPath}`
-				}
+					code: error.code || 'PROVIDER_VALIDATE_DEPENDENCIES_ERROR',
+					message: error.message || 'Failed to validate dependencies'
+				},
+				fromCache: false
 			};
-		}
-
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		enableSilentMode();
-
-		// Call the original command function using the provided tasksPath
-		await validateDependenciesCommand(tasksPath);
-
-		// Restore normal logging
-		disableSilentMode();
-
-		return {
-			success: true,
-			data: {
-				message: 'Dependencies validated successfully',
-				tasksPath
+		} finally {
+			if (isSilentMode()) {
+				disableSilentMode();
 			}
-		};
+		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
-
-		log.error(`Error validating dependencies: ${error.message}`);
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in validateDependenciesDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'VALIDATION_ERROR',
-				message: error.message
-			}
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
+			fromCache: false
 		};
 	}
 }

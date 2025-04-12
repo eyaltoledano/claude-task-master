@@ -13,38 +13,14 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 
 import { CONFIG, log, readJSON, writeJSON } from './utils.js';
-import {
-	parsePRD,
-	updateTasks,
-	generateTaskFiles,
-	setTaskStatus,
-	listTasks,
-	expandTask,
-	expandAllTasks,
-	clearSubtasks,
-	addTask,
-	addSubtask,
-	removeSubtask,
-	analyzeTaskComplexity,
-	updateTaskById,
-	updateSubtaskById,
-	removeTask,
-	findTaskById,
-	taskExists
-} from './task-manager.js';
-
-import {
-	addDependency,
-	removeDependency,
-	validateDependenciesCommand,
-	fixDependenciesCommand
-} from './dependency-manager.js';
+import { getTaskProvider } from './task-provider-factory.js';
 
 import {
 	displayBanner,
 	displayHelp,
 	displayNextTask,
 	displayTaskById,
+	displayTaskList,
 	displayComplexityReport,
 	getStatusWithColor,
 	confirmTaskOverwrite,
@@ -54,12 +30,20 @@ import {
 
 import { initializeProject } from '../init.js';
 
+import {
+	addDependency,
+	removeDependency,
+	validateDependenciesCommand,
+	fixDependenciesCommand
+} from './dependency-manager.js';
+
+import * as TaskManager from './task-manager.js';
+
 /**
  * Configure and register CLI commands
  * @param {Object} program - Commander program instance
  */
 function registerCommands(programInstance) {
-	// Add global error handler for unknown options
 	programInstance.on('option:unknown', function (unknownOption) {
 		const commandName = this._name || 'unknown';
 		console.error(chalk.red(`Error: Unknown option '${unknownOption}'`));
@@ -71,12 +55,10 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
 	programInstance.on('--help', function () {
 		displayHelp();
 	});
 
-	// parse-prd command
 	programInstance
 		.command('parse-prd')
 		.description('Parse a PRD file and generate tasks')
@@ -89,14 +71,11 @@ function registerCommands(programInstance) {
 		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
 		.action(async (file, options) => {
-			// Use input option if file argument not provided
-			const inputFile = file || options.input;
-			const defaultPrdPath = 'scripts/prd.txt';
-			const numTasks = parseInt(options.numTasks, 10);
+			const inputFile = file || options.input || 'scripts/prd.txt';
 			const outputPath = options.output;
+			const numTasks = parseInt(options.numTasks, 10);
 			const force = options.force || false;
 
-			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
 				if (fs.existsSync(outputPath) && !force) {
 					const shouldContinue = await confirmTaskOverwrite(outputPath);
@@ -108,63 +87,11 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			// If no input file specified, check for default PRD location
-			if (!inputFile) {
-				if (fs.existsSync(defaultPrdPath)) {
-					console.log(chalk.blue(`Using default PRD file: ${defaultPrdPath}`));
-
-					// Check for existing tasks.json before proceeding
-					if (!(await confirmOverwriteIfNeeded())) return;
-
-					console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-					await parsePRD(defaultPrdPath, outputPath, numTasks);
-					return;
-				}
-
-				console.log(
-					chalk.yellow(
-						'No PRD file specified and default PRD file not found at scripts/prd.txt.'
-					)
-				);
-				console.log(
-					boxen(
-						chalk.white.bold('Parse PRD Help') +
-							'\n\n' +
-							chalk.cyan('Usage:') +
-							'\n' +
-							`  task-master parse-prd <prd-file.txt> [options]\n\n` +
-							chalk.cyan('Options:') +
-							'\n' +
-							'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
-							'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
-							'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
-							'  -f, --force              Skip confirmation when overwriting existing tasks\n\n' +
-							chalk.cyan('Example:') +
-							'\n' +
-							'  task-master parse-prd requirements.txt --num-tasks 15\n' +
-							'  task-master parse-prd --input=requirements.txt\n' +
-							'  task-master parse-prd --force\n\n' +
-							chalk.yellow('Note: This command will:') +
-							'\n' +
-							'  1. Look for a PRD file at scripts/prd.txt by default\n' +
-							'  2. Use the file specified by --input or positional argument if provided\n' +
-							'  3. Generate tasks from the PRD and overwrite any existing tasks.json file',
-						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-					)
-				);
-				return;
-			}
-
-			// Check for existing tasks.json before proceeding with specified input file
 			if (!(await confirmOverwriteIfNeeded())) return;
 
-			console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
-			console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-
-			await parsePRD(inputFile, outputPath, numTasks);
+			await TaskManager.parsePRD(inputFile, outputPath, numTasks);
 		});
 
-	// update command
 	programInstance
 		.command('update')
 		.description(
@@ -186,15 +113,11 @@ function registerCommands(programInstance) {
 		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			const fromId = parseInt(options.from, 10);
+			const fromId = options.from;
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
-			// Check if there's an 'id' option which is a common mistake (instead of 'from')
-			if (
-				process.argv.includes('--id') ||
-				process.argv.some((arg) => arg.startsWith('--id='))
-			) {
+			if (process.argv.includes('--id') || process.argv.some((arg) => arg.startsWith('--id='))) {
 				console.error(
 					chalk.red('Error: The update command uses --from=<id>, not --id=<id>')
 				);
@@ -224,7 +147,7 @@ function registerCommands(programInstance) {
 
 			console.log(
 				chalk.blue(
-					`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`
+					`Updating tasks from ID/Key >= ${fromId} using ${TASK_PROVIDER_TYPE} provider...`
 				)
 			);
 			console.log(chalk.blue(`Tasks file: ${tasksPath}`));
@@ -235,16 +158,15 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			await updateTasks(tasksPath, fromId, prompt, useResearch);
+			await TaskProvider.updateTasks(tasksPath, fromId, prompt, useResearch);
 		});
 
-	// update-task command
 	programInstance
 		.command('update-task')
 		.description(
 			'Update a single specific task by ID with new information (use --id parameter)'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('-f, --file <file>', 'Path to the tasks file')
 		.option('-i, --id <id>', 'Task ID to update (required)')
 		.option(
 			'-p, --prompt <text>',
@@ -255,366 +177,208 @@ function registerCommands(programInstance) {
 			'Use Perplexity AI for research-backed task updates'
 		)
 		.action(async (options) => {
-			try {
-				const tasksPath = options.file;
+			const taskId = options.id;
+			const prompt = options.prompt;
+			const useResearch = options.research || false;
 
-				// Validate required parameters
-				if (!options.id) {
-					console.error(chalk.red('Error: --id parameter is required'));
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
-
-				// Parse the task ID and validate it's a number
-				const taskId = parseInt(options.id, 10);
-				if (isNaN(taskId) || taskId <= 0) {
-					console.error(
-						chalk.red(
-							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
-
-				if (!options.prompt) {
-					console.error(
-						chalk.red(
-							'Error: --prompt parameter is required. Please provide information about the changes.'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
-
-				const prompt = options.prompt;
-				const useResearch = options.research || false;
-
-				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
-					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
-					);
-					if (tasksPath === 'tasks/tasks.json') {
-						console.log(
-							chalk.yellow(
-								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
-							)
-						);
-					} else {
-						console.log(
-							chalk.yellow(
-								`Hint: Check if the file path is correct: ${tasksPath}`
-							)
-						);
-					}
-					process.exit(1);
-				}
-
+			if (!taskId) {
+				console.error(chalk.red('Error: --id parameter is required'));
 				console.log(
-					chalk.blue(`Updating task ${taskId} with prompt: "${prompt}"`)
+					chalk.yellow(
+						'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
+					)
 				);
-				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+				process.exit(1);
+			}
 
-				if (useResearch) {
-					// Verify Perplexity API key exists if using research
-					if (!process.env.PERPLEXITY_API_KEY) {
-						console.log(
-							chalk.yellow(
-								'Warning: PERPLEXITY_API_KEY environment variable is missing. Research-backed updates will not be available.'
-							)
-						);
-						console.log(
-							chalk.yellow('Falling back to Claude AI for task update.')
-						);
-					} else {
-						console.log(
-							chalk.blue('Using Perplexity AI for research-backed task update')
-						);
-					}
-				}
-
-				const result = await updateTaskById(
-					tasksPath,
-					taskId,
-					prompt,
-					useResearch
+			if (!prompt) {
+				console.error(
+					chalk.red(
+						'Error: --prompt parameter is required. Please provide information about the changes.'
+					)
 				);
+				process.exit(1);
+			}
 
-				// If the task wasn't updated (e.g., if it was already marked as done)
-				if (!result) {
-					console.log(
-						chalk.yellow(
-							'\nTask update was not completed. Review the messages above for details.'
-						)
-					);
-				}
+			console.log(chalk.blue(`Updating task ${taskId}...`));
+			let loadingIndicator = startLoadingIndicator('Processing update...');
+
+			try {
+				const provider = await getTaskProvider();
+				const updateData = {
+					prompt: prompt,
+					research: useResearch,
+					file: options.file
+				};
+				const updatedTask = await provider.updateTask(taskId, updateData);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully updated task ${taskId}:`));
+				displayTaskById(updatedTask);
 			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
-
-				// Provide more helpful error messages for common issues
-				if (
-					error.message.includes('task') &&
-					error.message.includes('not found')
-				) {
-					console.log(chalk.yellow('\nTo fix this issue:'));
-					console.log(
-						'  1. Run task-master list to see all available task IDs'
-					);
-					console.log('  2. Use a valid task ID with the --id parameter');
-				} else if (error.message.includes('API key')) {
-					console.log(
-						chalk.yellow(
-							'\nThis error is related to API keys. Check your environment variables.'
-						)
-					);
-				}
-
-				if (CONFIG.debug) {
-					console.error(error);
-				}
-
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to update task ${taskId}: ${error.message}`);
 				process.exit(1);
 			}
 		});
 
-	// update-subtask command
 	programInstance
 		.command('update-subtask')
-		.description(
-			'Update a subtask by appending additional timestamped information'
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.description('Append information to a specific subtask')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Subtask ID to update (e.g., 12.3) (required)')
+		.option('-p, --prompt <text>', 'Information to append (required)')
 		.option(
-			'-i, --id <id>',
-			'Subtask ID to update in format "parentId.subtaskId" (required)'
+			'-r, --research',
+			'Use Perplexity AI for research-backed task updates'
 		)
-		.option(
-			'-p, --prompt <text>',
-			'Prompt explaining what information to add (required)'
-		)
-		.option('-r, --research', 'Use Perplexity AI for research-backed updates')
 		.action(async (options) => {
+			const subtaskId = options.id;
+			const prompt = options.prompt;
+			const useResearch = options.research || false;
+
+			if (!subtaskId || !subtaskId.includes('.')) {
+				console.error(
+					chalk.red('Error: --id must be a valid subtask ID (e.g., 12.3)')
+				);
+				process.exit(1);
+			}
+
+			if (!prompt) {
+				console.error(chalk.red('Error: --prompt parameter is required.'));
+				process.exit(1);
+			}
+
+			console.log(chalk.blue(`Appending to subtask ${subtaskId}...`));
+			let loadingIndicator = startLoadingIndicator('Processing update...');
+
 			try {
-				const tasksPath = options.file;
-
-				// Validate required parameters
-				if (!options.id) {
-					console.error(chalk.red('Error: --id parameter is required'));
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-subtask --id=5.2 --prompt="Add more details about the API endpoint"'
-						)
-					);
-					process.exit(1);
-				}
-
-				// Validate subtask ID format (should contain a dot)
-				const subtaskId = options.id;
-				if (!subtaskId.includes('.')) {
-					console.error(
-						chalk.red(
-							`Error: Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId"`
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-subtask --id=5.2 --prompt="Add more details about the API endpoint"'
-						)
-					);
-					process.exit(1);
-				}
-
-				if (!options.prompt) {
-					console.error(
-						chalk.red(
-							'Error: --prompt parameter is required. Please provide information to add to the subtask.'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-subtask --id=5.2 --prompt="Add more details about the API endpoint"'
-						)
-					);
-					process.exit(1);
-				}
-
-				const prompt = options.prompt;
-				const useResearch = options.research || false;
-
-				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
-					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
-					);
-					if (tasksPath === 'tasks/tasks.json') {
-						console.log(
-							chalk.yellow(
-								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
-							)
-						);
-					} else {
-						console.log(
-							chalk.yellow(
-								`Hint: Check if the file path is correct: ${tasksPath}`
-							)
-						);
-					}
-					process.exit(1);
-				}
-
-				console.log(
-					chalk.blue(`Updating subtask ${subtaskId} with prompt: "${prompt}"`)
-				);
-				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
-
-				if (useResearch) {
-					// Verify Perplexity API key exists if using research
-					if (!process.env.PERPLEXITY_API_KEY) {
-						console.log(
-							chalk.yellow(
-								'Warning: PERPLEXITY_API_KEY environment variable is missing. Research-backed updates will not be available.'
-							)
-						);
-						console.log(
-							chalk.yellow('Falling back to Claude AI for subtask update.')
-						);
-					} else {
-						console.log(
-							chalk.blue(
-								'Using Perplexity AI for research-backed subtask update'
-							)
-						);
-					}
-				}
-
-				const result = await updateSubtaskById(
-					tasksPath,
-					subtaskId,
-					prompt,
-					useResearch
-				);
-
-				if (!result) {
-					console.log(
-						chalk.yellow(
-							'\nSubtask update was not completed. Review the messages above for details.'
-						)
-					);
-				}
+				const provider = await getTaskProvider();
+				const updateData = {
+					prompt: prompt,
+					research: useResearch,
+					file: options.file
+				};
+				const updatedSubtask = await provider.updateSubtask(subtaskId, updateData);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully appended to subtask ${subtaskId}:`));
+				displayTaskById(updatedSubtask);
 			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
-
-				// Provide more helpful error messages for common issues
-				if (
-					error.message.includes('subtask') &&
-					error.message.includes('not found')
-				) {
-					console.log(chalk.yellow('\nTo fix this issue:'));
-					console.log(
-						'  1. Run task-master list --with-subtasks to see all available subtask IDs'
-					);
-					console.log(
-						'  2. Use a valid subtask ID with the --id parameter in format "parentId.subtaskId"'
-					);
-				} else if (error.message.includes('API key')) {
-					console.log(
-						chalk.yellow(
-							'\nThis error is related to API keys. Check your environment variables.'
-						)
-					);
-				}
-
-				if (CONFIG.debug) {
-					console.error(error);
-				}
-
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to update subtask ${subtaskId}: ${error.message}`);
 				process.exit(1);
 			}
 		});
 
-	// generate command
-	programInstance
-		.command('generate')
-		.description('Generate task files from tasks.json')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-o, --output <dir>', 'Output directory', 'tasks')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const outputDir = options.output;
-
-			console.log(chalk.blue(`Generating task files from: ${tasksPath}`));
-			console.log(chalk.blue(`Output directory: ${outputDir}`));
-
-			await generateTaskFiles(tasksPath, outputDir);
-		});
-
-	// set-status command
-	programInstance
-		.command('set-status')
-		.description('Set the status of a task')
-		.option(
-			'-i, --id <id>',
-			'Task ID (can be comma-separated for multiple tasks)'
-		)
-		.option(
-			'-s, --status <status>',
-			'New status (todo, in-progress, review, done)'
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskId = options.id;
-			const status = options.status;
-
-			if (!taskId || !status) {
-				console.error(chalk.red('Error: Both --id and --status are required'));
-				process.exit(1);
-			}
-
-			console.log(
-				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
-			);
-
-			await setTaskStatus(tasksPath, taskId, status);
-		});
-
-	// list command
 	programInstance
 		.command('list')
-		.description('List all tasks')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-s, --status <status>', 'Filter by status')
-		.option('--with-subtasks', 'Show subtasks for each task')
+		.description('List tasks, optionally filtering by status')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-s, --status <status>', 'Filter by task status')
+		.option('--with-subtasks', 'Include subtasks in the list')
 		.action(async (options) => {
-			const tasksPath = options.file;
-			const statusFilter = options.status;
-			const withSubtasks = options.withSubtasks || false;
+			let loadingIndicator = startLoadingIndicator('Fetching tasks...');
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = {
+					status: options.status,
+					withSubtasks: options.withSubtasks,
+					file: options.file
+				};
+				const result = await provider.getTasks(providerOptions);
 
-			console.log(chalk.blue(`Listing tasks from: ${tasksPath}`));
-			if (statusFilter) {
-				console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-			}
-			if (withSubtasks) {
-				console.log(chalk.blue('Including subtasks in listing'));
-			}
+				stopLoadingIndicator(loadingIndicator);
 
-			await listTasks(tasksPath, statusFilter, withSubtasks);
+				if (result && result.tasks) {
+					displayTaskList(result.tasks, options.status, options.withSubtasks);
+				} else {
+					log('warn', 'No tasks found or provider returned unexpected data.');
+				}
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to list tasks: ${error.message}`);
+				process.exit(1);
+			}
 		});
 
-	// expand command
+	programInstance
+		.command('show')
+		.description('Show details for a specific task or subtask')
+		.argument('[id]', 'ID of the task/subtask to show')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'ID of the task/subtask to show (alternative to positional argument)')
+		.action(async (idArg, options) => {
+			const taskId = idArg || options.id;
+			if (!taskId) {
+				console.error(chalk.red("Error: Please provide a task ID."));
+				console.log(chalk.yellow("Usage: task-master show <taskId>"));
+				process.exit(1);
+			}
+			let loadingIndicator = startLoadingIndicator(`Fetching details for task ${taskId}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				const task = await provider.getTask(taskId, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				if (task) {
+					displayTaskById(task);
+				} else {
+					log('warn', `Task with ID ${taskId} not found.`);
+				}
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to show task ${taskId}: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('next')
+		.description('Show the next available task based on dependencies and status')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.action(async (options) => {
+			let loadingIndicator = startLoadingIndicator('Finding next task...');
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				const nextTaskResult = await provider.nextTask(providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				if (nextTaskResult && nextTaskResult.nextTask) {
+					displayNextTask(nextTaskResult.nextTask, nextTaskResult.allTasks || []);
+				} else {
+					log('info', 'No pending tasks found or provider returned no next task.');
+				}
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to find next task: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('set-status')
+		.description('Update the status of one or more tasks')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Task ID(s) to update (comma-separated)')
+		.option('-s, --status <status>', 'New status to set')
+		.action(async (options) => {
+			if (!options.id || !options.status) {
+				console.error(chalk.red('Error: Both --id and --status are required.'));
+				process.exit(1);
+			}
+			let loadingIndicator = startLoadingIndicator(`Setting status for task(s) ${options.id} to ${options.status}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				await provider.setTaskStatus(options.id, options.status, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully set status for task(s) ${options.id} to ${options.status}.`));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to set task status: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
 	programInstance
 		.command('expand')
 		.description('Break down tasks into detailed subtasks')
@@ -639,12 +403,12 @@ function registerCommands(programInstance) {
 			'Force regeneration of subtasks for tasks that already have them'
 		)
 		.action(async (options) => {
-			const idArg = options.id;
+			const tasksPath = options.file;
+			const taskId = options.id;
 			const numSubtasks = options.num || CONFIG.defaultSubtasks;
 			const useResearch = options.research || false;
 			const additionalContext = options.prompt || '';
 			const forceFlag = options.force || false;
-			const tasksPath = options.file || 'tasks/tasks.json';
 
 			if (options.all) {
 				console.log(
@@ -664,16 +428,16 @@ function registerCommands(programInstance) {
 				if (additionalContext) {
 					console.log(chalk.blue(`Additional context: "${additionalContext}"`));
 				}
-				await expandAllTasks(
+				await TaskProvider.expandAllTasks(
 					tasksPath,
 					numSubtasks,
 					useResearch,
 					additionalContext,
 					forceFlag
 				);
-			} else if (idArg) {
+			} else if (taskId) {
 				console.log(
-					chalk.blue(`Expanding task ${idArg} with ${numSubtasks} subtasks...`)
+					chalk.blue(`Expanding task ${taskId} with ${numSubtasks} subtasks...`)
 				);
 				if (useResearch) {
 					console.log(
@@ -689,9 +453,9 @@ function registerCommands(programInstance) {
 				if (additionalContext) {
 					console.log(chalk.blue(`Additional context: "${additionalContext}"`));
 				}
-				await expandTask(
+				await TaskProvider.expandTask(
 					tasksPath,
-					idArg,
+					taskId,
 					numSubtasks,
 					useResearch,
 					additionalContext
@@ -705,7 +469,6 @@ function registerCommands(programInstance) {
 			}
 		});
 
-	// analyze-complexity command
 	programInstance
 		.command('analyze-complexity')
 		.description(
@@ -737,7 +500,7 @@ function registerCommands(programInstance) {
 			const thresholdScore = parseFloat(options.threshold);
 			const useResearch = options.research || false;
 
-			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
+			console.log(chalk.blue(`Analyzing task complexity using ${TASK_PROVIDER_TYPE} provider...`));
 			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
 
 			if (useResearch) {
@@ -748,281 +511,9 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			await analyzeTaskComplexity(options);
+			await TaskProvider.analyzeTaskComplexity({ ...options, threshold: thresholdScore });
 		});
 
-	// clear-subtasks command
-	programInstance
-		.command('clear-subtasks')
-		.description('Clear subtasks from specified tasks')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option(
-			'-i, --id <ids>',
-			'Task IDs (comma-separated) to clear subtasks from'
-		)
-		.option('--all', 'Clear subtasks from all tasks')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskIds = options.id;
-			const all = options.all;
-
-			if (!taskIds && !all) {
-				console.error(
-					chalk.red(
-						'Error: Please specify task IDs with --id=<ids> or use --all to clear all tasks'
-					)
-				);
-				process.exit(1);
-			}
-
-			if (all) {
-				// If --all is specified, get all task IDs
-				const data = readJSON(tasksPath);
-				if (!data || !data.tasks) {
-					console.error(chalk.red('Error: No valid tasks found'));
-					process.exit(1);
-				}
-				const allIds = data.tasks.map((t) => t.id).join(',');
-				clearSubtasks(tasksPath, allIds);
-			} else {
-				clearSubtasks(tasksPath, taskIds);
-			}
-		});
-
-	// add-task command
-	programInstance
-		.command('add-task')
-		.description('Add a new task using AI or manual input')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option(
-			'-p, --prompt <prompt>',
-			'Description of the task to add (required if not using manual fields)'
-		)
-		.option('-t, --title <title>', 'Task title (for manual task creation)')
-		.option(
-			'-d, --description <description>',
-			'Task description (for manual task creation)'
-		)
-		.option(
-			'--details <details>',
-			'Implementation details (for manual task creation)'
-		)
-		.option(
-			'--test-strategy <testStrategy>',
-			'Test strategy (for manual task creation)'
-		)
-		.option(
-			'--dependencies <dependencies>',
-			'Comma-separated list of task IDs this task depends on'
-		)
-		.option(
-			'--priority <priority>',
-			'Task priority (high, medium, low)',
-			'medium'
-		)
-		.option(
-			'-r, --research',
-			'Whether to use research capabilities for task creation'
-		)
-		.action(async (options) => {
-			const isManualCreation = options.title && options.description;
-
-			// Validate that either prompt or title+description are provided
-			if (!options.prompt && !isManualCreation) {
-				console.error(
-					chalk.red(
-						'Error: Either --prompt or both --title and --description must be provided'
-					)
-				);
-				process.exit(1);
-			}
-
-			try {
-				// Prepare dependencies if provided
-				let dependencies = [];
-				if (options.dependencies) {
-					dependencies = options.dependencies
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10));
-				}
-
-				// Create manual task data if title and description are provided
-				let manualTaskData = null;
-				if (isManualCreation) {
-					manualTaskData = {
-						title: options.title,
-						description: options.description,
-						details: options.details || '',
-						testStrategy: options.testStrategy || ''
-					};
-
-					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
-					console.log(
-						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
-						)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				}
-
-				const newTaskId = await addTask(
-					options.file,
-					options.prompt,
-					dependencies,
-					options.priority,
-					{
-						session: process.env
-					},
-					options.research || false,
-					null,
-					manualTaskData
-				);
-
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
-				console.log(chalk.gray('Next: Complete this task or add more tasks'));
-			} catch (error) {
-				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && CONFIG.debug) {
-					console.error(error.stack);
-				}
-				process.exit(1);
-			}
-		});
-
-	// next command
-	programInstance
-		.command('next')
-		.description(
-			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			await displayNextTask(tasksPath);
-		});
-
-	// show command
-	programInstance
-		.command('show')
-		.description(
-			`Display detailed information about a specific task${chalk.reset('')}`
-		)
-		.argument('[id]', 'Task ID to show')
-		.option('-i, --id <id>', 'Task ID to show')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (taskId, options) => {
-			const idArg = taskId || options.id;
-
-			if (!idArg) {
-				console.error(chalk.red('Error: Please provide a task ID'));
-				process.exit(1);
-			}
-
-			const tasksPath = options.file;
-			await displayTaskById(tasksPath, idArg);
-		});
-
-	// add-dependency command
-	programInstance
-		.command('add-dependency')
-		.description('Add a dependency to a task')
-		.option('-i, --id <id>', 'Task ID to add dependency to')
-		.option('-d, --depends-on <id>', 'Task ID that will become a dependency')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskId = options.id;
-			const dependencyId = options.dependsOn;
-
-			if (!taskId || !dependencyId) {
-				console.error(
-					chalk.red('Error: Both --id and --depends-on are required')
-				);
-				process.exit(1);
-			}
-
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await addDependency(tasksPath, formattedTaskId, formattedDependencyId);
-		});
-
-	// remove-dependency command
-	programInstance
-		.command('remove-dependency')
-		.description('Remove a dependency from a task')
-		.option('-i, --id <id>', 'Task ID to remove dependency from')
-		.option('-d, --depends-on <id>', 'Task ID to remove as a dependency')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskId = options.id;
-			const dependencyId = options.dependsOn;
-
-			if (!taskId || !dependencyId) {
-				console.error(
-					chalk.red('Error: Both --id and --depends-on are required')
-				);
-				process.exit(1);
-			}
-
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await removeDependency(tasksPath, formattedTaskId, formattedDependencyId);
-		});
-
-	// validate-dependencies command
-	programInstance
-		.command('validate-dependencies')
-		.description(
-			`Identify invalid dependencies without fixing them${chalk.reset('')}`
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			await validateDependenciesCommand(options.file);
-		});
-
-	// fix-dependencies command
-	programInstance
-		.command('fix-dependencies')
-		.description(`Fix invalid dependencies automatically${chalk.reset('')}`)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.action(async (options) => {
-			await fixDependenciesCommand(options.file);
-		});
-
-	// complexity-report command
 	programInstance
 		.command('complexity-report')
 		.description(`Display the complexity analysis report${chalk.reset('')}`)
@@ -1032,538 +523,339 @@ function registerCommands(programInstance) {
 			'scripts/task-complexity-report.json'
 		)
 		.action(async (options) => {
-			await displayComplexityReport(options.file);
+			console.log(chalk.blue('Displaying complexity report from local file...'));
+			displayComplexityReport(options.file);
 		});
 
-	// add-subtask command
-	programInstance
-		.command('add-subtask')
-		.description('Add a subtask to an existing task')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-p, --parent <id>', 'Parent task ID (required)')
-		.option('-i, --task-id <id>', 'Existing task ID to convert to subtask')
-		.option(
-			'-t, --title <title>',
-			'Title for the new subtask (when creating a new subtask)'
-		)
-		.option('-d, --description <text>', 'Description for the new subtask')
-		.option('--details <text>', 'Implementation details for the new subtask')
-		.option(
-			'--dependencies <ids>',
-			'Comma-separated list of dependency IDs for the new subtask'
-		)
-		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
-		.option('--skip-generate', 'Skip regenerating task files')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const parentId = options.parent;
-			const existingTaskId = options.taskId;
-			const generateFiles = !options.skipGenerate;
-
-			if (!parentId) {
-				console.error(
-					chalk.red(
-						'Error: --parent parameter is required. Please provide a parent task ID.'
-					)
-				);
-				showAddSubtaskHelp();
-				process.exit(1);
-			}
-
-			// Parse dependencies if provided
-			let dependencies = [];
-			if (options.dependencies) {
-				dependencies = options.dependencies.split(',').map((id) => {
-					// Handle both regular IDs and dot notation
-					return id.includes('.') ? id.trim() : parseInt(id.trim(), 10);
-				});
-			}
-
-			try {
-				if (existingTaskId) {
-					// Convert existing task to subtask
-					console.log(
-						chalk.blue(
-							`Converting task ${existingTaskId} to a subtask of ${parentId}...`
-						)
-					);
-					await addSubtask(
-						tasksPath,
-						parentId,
-						existingTaskId,
-						null,
-						generateFiles
-					);
-					console.log(
-						chalk.green(
-							`✓ Task ${existingTaskId} successfully converted to a subtask of task ${parentId}`
-						)
-					);
-				} else if (options.title) {
-					// Create new subtask with provided data
-					console.log(
-						chalk.blue(`Creating new subtask for parent task ${parentId}...`)
-					);
-
-					const newSubtaskData = {
-						title: options.title,
-						description: options.description || '',
-						details: options.details || '',
-						status: options.status || 'pending',
-						dependencies: dependencies
-					};
-
-					const subtask = await addSubtask(
-						tasksPath,
-						parentId,
-						null,
-						newSubtaskData,
-						generateFiles
-					);
-					console.log(
-						chalk.green(
-							`✓ New subtask ${parentId}.${subtask.id} successfully created`
-						)
-					);
-
-					// Display success message and suggested next steps
-					console.log(
-						boxen(
-							chalk.white.bold(
-								`Subtask ${parentId}.${subtask.id} Added Successfully`
-							) +
-								'\n\n' +
-								chalk.white(`Title: ${subtask.title}`) +
-								'\n' +
-								chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) +
-								'\n' +
-								(dependencies.length > 0
-									? chalk.white(`Dependencies: ${dependencies.join(', ')}`) +
-										'\n'
-									: '') +
-								'\n' +
-								chalk.white.bold('Next Steps:') +
-								'\n' +
-								chalk.cyan(
-									`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`
-								) +
-								'\n' +
-								chalk.cyan(
-									`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`
-								),
-							{
-								padding: 1,
-								borderColor: 'green',
-								borderStyle: 'round',
-								margin: { top: 1 }
-							}
-						)
-					);
-				} else {
-					console.error(
-						chalk.red('Error: Either --task-id or --title must be provided.')
-					);
-					console.log(
-						boxen(
-							chalk.white.bold('Usage Examples:') +
-								'\n\n' +
-								chalk.white('Convert existing task to subtask:') +
-								'\n' +
-								chalk.yellow(
-									`  task-master add-subtask --parent=5 --task-id=8`
-								) +
-								'\n\n' +
-								chalk.white('Create new subtask:') +
-								'\n' +
-								chalk.yellow(
-									`  task-master add-subtask --parent=5 --title="Implement login UI" --description="Create the login form"`
-								) +
-								'\n\n',
-							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-						)
-					);
-					process.exit(1);
-				}
-			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
-				process.exit(1);
-			}
-		})
-		.on('error', function (err) {
-			console.error(chalk.red(`Error: ${err.message}`));
-			showAddSubtaskHelp();
-			process.exit(1);
-		});
-
-	// Helper function to show add-subtask command help
-	function showAddSubtaskHelp() {
-		console.log(
-			boxen(
-				chalk.white.bold('Add Subtask Command Help') +
-					'\n\n' +
-					chalk.cyan('Usage:') +
-					'\n' +
-					`  task-master add-subtask --parent=<id> [options]\n\n` +
-					chalk.cyan('Options:') +
-					'\n' +
-					'  -p, --parent <id>         Parent task ID (required)\n' +
-					'  -i, --task-id <id>        Existing task ID to convert to subtask\n' +
-					'  -t, --title <title>       Title for the new subtask\n' +
-					'  -d, --description <text>  Description for the new subtask\n' +
-					'  --details <text>          Implementation details for the new subtask\n' +
-					'  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
-					'  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
-					'  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
-					'  --skip-generate           Skip regenerating task files\n\n' +
-					chalk.cyan('Examples:') +
-					'\n' +
-					'  task-master add-subtask --parent=5 --task-id=8\n' +
-					'  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"',
-				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-			)
-		);
-	}
-
-	// remove-subtask command
-	programInstance
-		.command('remove-subtask')
-		.description('Remove a subtask from its parent task')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option(
-			'-i, --id <id>',
-			'Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated for multiple subtasks)'
-		)
-		.option(
-			'-c, --convert',
-			'Convert the subtask to a standalone task instead of deleting it'
-		)
-		.option('--skip-generate', 'Skip regenerating task files')
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const subtaskIds = options.id;
-			const convertToTask = options.convert || false;
-			const generateFiles = !options.skipGenerate;
-
-			if (!subtaskIds) {
-				console.error(
-					chalk.red(
-						'Error: --id parameter is required. Please provide subtask ID(s) in format "parentId.subtaskId".'
-					)
-				);
-				showRemoveSubtaskHelp();
-				process.exit(1);
-			}
-
-			try {
-				// Split by comma to support multiple subtask IDs
-				const subtaskIdArray = subtaskIds.split(',').map((id) => id.trim());
-
-				for (const subtaskId of subtaskIdArray) {
-					// Validate subtask ID format
-					if (!subtaskId.includes('.')) {
-						console.error(
-							chalk.red(
-								`Error: Subtask ID "${subtaskId}" must be in format "parentId.subtaskId"`
-							)
-						);
-						showRemoveSubtaskHelp();
-						process.exit(1);
-					}
-
-					console.log(chalk.blue(`Removing subtask ${subtaskId}...`));
-					if (convertToTask) {
-						console.log(
-							chalk.blue('The subtask will be converted to a standalone task')
-						);
-					}
-
-					const result = await removeSubtask(
-						tasksPath,
-						subtaskId,
-						convertToTask,
-						generateFiles
-					);
-
-					if (convertToTask && result) {
-						// Display success message and next steps for converted task
-						console.log(
-							boxen(
-								chalk.white.bold(
-									`Subtask ${subtaskId} Converted to Task #${result.id}`
-								) +
-									'\n\n' +
-									chalk.white(`Title: ${result.title}`) +
-									'\n' +
-									chalk.white(`Status: ${getStatusWithColor(result.status)}`) +
-									'\n' +
-									chalk.white(
-										`Dependencies: ${result.dependencies.join(', ')}`
-									) +
-									'\n\n' +
-									chalk.white.bold('Next Steps:') +
-									'\n' +
-									chalk.cyan(
-										`1. Run ${chalk.yellow(`task-master show ${result.id}`)} to see details of the new task`
-									) +
-									'\n' +
-									chalk.cyan(
-										`2. Run ${chalk.yellow(`task-master set-status --id=${result.id} --status=in-progress`)} to start working on it`
-									),
-								{
-									padding: 1,
-									borderColor: 'green',
-									borderStyle: 'round',
-									margin: { top: 1 }
-								}
-							)
-						);
-					} else {
-						// Display success message for deleted subtask
-						console.log(
-							boxen(
-								chalk.white.bold(`Subtask ${subtaskId} Removed`) +
-									'\n\n' +
-									chalk.white('The subtask has been successfully deleted.'),
-								{
-									padding: 1,
-									borderColor: 'green',
-									borderStyle: 'round',
-									margin: { top: 1 }
-								}
-							)
-						);
-					}
-				}
-			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
-				showRemoveSubtaskHelp();
-				process.exit(1);
-			}
-		})
-		.on('error', function (err) {
-			console.error(chalk.red(`Error: ${err.message}`));
-			showRemoveSubtaskHelp();
-			process.exit(1);
-		});
-
-	// Helper function to show remove-subtask command help
-	function showRemoveSubtaskHelp() {
-		console.log(
-			boxen(
-				chalk.white.bold('Remove Subtask Command Help') +
-					'\n\n' +
-					chalk.cyan('Usage:') +
-					'\n' +
-					`  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
-					chalk.cyan('Options:') +
-					'\n' +
-					'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
-					'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
-					'  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
-					'  --skip-generate     Skip regenerating task files\n\n' +
-					chalk.cyan('Examples:') +
-					'\n' +
-					'  task-master remove-subtask --id=5.2\n' +
-					'  task-master remove-subtask --id=5.2,6.3,7.1\n' +
-					'  task-master remove-subtask --id=5.2 --convert',
-				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-			)
-		);
-	}
-
-	// remove-task command
-	programInstance
-		.command('remove-task')
-		.description('Remove a task or subtask permanently')
-		.option(
-			'-i, --id <id>',
-			'ID of the task or subtask to remove (e.g., "5" or "5.2")'
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-y, --yes', 'Skip confirmation prompt', false)
-		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskId = options.id;
-
-			if (!taskId) {
-				console.error(chalk.red('Error: Task ID is required'));
-				console.error(
-					chalk.yellow('Usage: task-master remove-task --id=<taskId>')
-				);
-				process.exit(1);
-			}
-
-			try {
-				// Check if the task exists
-				const data = readJSON(tasksPath);
-				if (!data || !data.tasks) {
-					console.error(
-						chalk.red(`Error: No valid tasks found in ${tasksPath}`)
-					);
-					process.exit(1);
-				}
-
-				if (!taskExists(data.tasks, taskId)) {
-					console.error(chalk.red(`Error: Task with ID ${taskId} not found`));
-					process.exit(1);
-				}
-
-				// Load task for display
-				const task = findTaskById(data.tasks, taskId);
-
-				// Skip confirmation if --yes flag is provided
-				if (!options.yes) {
-					// Display task information
-					console.log();
-					console.log(
-						chalk.red.bold(
-							'⚠️ WARNING: This will permanently delete the following task:'
-						)
-					);
-					console.log();
-
-					if (typeof taskId === 'string' && taskId.includes('.')) {
-						// It's a subtask
-						const [parentId, subtaskId] = taskId.split('.');
-						console.log(chalk.white.bold(`Subtask ${taskId}: ${task.title}`));
-						console.log(
-							chalk.gray(
-								`Parent Task: ${task.parentTask.id} - ${task.parentTask.title}`
-							)
-						);
-					} else {
-						// It's a main task
-						console.log(chalk.white.bold(`Task ${taskId}: ${task.title}`));
-
-						// Show if it has subtasks
-						if (task.subtasks && task.subtasks.length > 0) {
-							console.log(
-								chalk.yellow(
-									`⚠️ This task has ${task.subtasks.length} subtasks that will also be deleted!`
-								)
-							);
-						}
-
-						// Show if other tasks depend on it
-						const dependentTasks = data.tasks.filter(
-							(t) =>
-								t.dependencies && t.dependencies.includes(parseInt(taskId, 10))
-						);
-
-						if (dependentTasks.length > 0) {
-							console.log(
-								chalk.yellow(
-									`⚠️ Warning: ${dependentTasks.length} other tasks depend on this task!`
-								)
-							);
-							console.log(chalk.yellow('These dependencies will be removed:'));
-							dependentTasks.forEach((t) => {
-								console.log(chalk.yellow(`  - Task ${t.id}: ${t.title}`));
-							});
-						}
-					}
-
-					console.log();
-
-					// Prompt for confirmation
-					const { confirm } = await inquirer.prompt([
-						{
-							type: 'confirm',
-							name: 'confirm',
-							message: chalk.red.bold(
-								'Are you sure you want to permanently delete this task?'
-							),
-							default: false
-						}
-					]);
-
-					if (!confirm) {
-						console.log(chalk.blue('Task deletion cancelled.'));
-						process.exit(0);
-					}
-				}
-
-				const indicator = startLoadingIndicator('Removing task...');
-
-				// Remove the task
-				const result = await removeTask(tasksPath, taskId);
-
-				stopLoadingIndicator(indicator);
-
-				// Display success message with appropriate color based on task or subtask
-				if (typeof taskId === 'string' && taskId.includes('.')) {
-					// It was a subtask
-					console.log(
-						boxen(
-							chalk.green(`Subtask ${taskId} has been successfully removed`),
-							{ padding: 1, borderColor: 'green', borderStyle: 'round' }
-						)
-					);
-				} else {
-					// It was a main task
-					console.log(
-						boxen(chalk.green(`Task ${taskId} has been successfully removed`), {
-							padding: 1,
-							borderColor: 'green',
-							borderStyle: 'round'
-						})
-					);
-				}
-			} catch (error) {
-				console.error(
-					chalk.red(`Error: ${error.message || 'An unknown error occurred'}`)
-				);
-				process.exit(1);
-			}
-		});
-
-	// init command (Directly calls the implementation from init.js)
 	programInstance
 		.command('init')
 		.description('Initialize a new project with Task Master structure')
 		.option('-y, --yes', 'Skip prompts and use default values')
 		.option('-n, --name <name>', 'Project name')
 		.option('-d, --description <description>', 'Project description')
-		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
+		.option('-v, --version <version>', 'Project version', '0.1.0')
 		.option('-a, --author <author>', 'Author name')
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.action(async (cmdOptions) => {
-			// cmdOptions contains parsed arguments
+			console.log('DEBUG: Running init command action in commands.js');
+			console.log(
+				'DEBUG: Options received by action:',
+				JSON.stringify(cmdOptions)
+			);
+			await initializeProject(cmdOptions);
+		});
+
+	programInstance
+		.command('generate')
+		.description('Generate task files from tasks.json')
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('-o, --output <dir>', 'Output directory', 'tasks')
+		.action(async (options) => {
+			if (TASK_PROVIDER_TYPE === 'jira') {
+				console.warn(chalk.yellow('Warning: The `generate` command currently only operates on the local tasks.json file format. Generating based on current local state if available.'));
+				await TaskManager.generateTaskFiles(options.file, options.output || path.dirname(options.file));
+			} else {
+				console.log(chalk.blue('Generating local task markdown files...'));
+				await TaskManager.generateTaskFiles(options.file, options.output || path.dirname(options.file));
+			}
+		});
+
+	programInstance
+		.command('add-task')
+		.description('Add a new task using AI')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-p, --prompt <text>', 'Description of the task to add (required)')
+		.option('--title <title>', 'Task title (for manual task creation)')
+		.option('--description <description>', 'Task description (for manual task creation)')
+		.option('--details <details>', 'Implementation details (for manual task creation)')
+		.option('--testStrategy <testStrategy>', 'Test strategy (for manual task creation)')
+		.option('--priority <priority>', 'Task priority (high, medium, low)')
+		.option('-d, --dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
+		.option('-r, --research', 'Use Perplexity AI for research-backed task creation')
+		.action(async (options) => {
+			if (!options.prompt && !options.title) {
+				console.error(chalk.red("Error: Either --prompt or --title must be provided."));
+				process.exit(1);
+			}
+			let loadingIndicator = startLoadingIndicator('Adding new task...');
 			try {
-				console.log('DEBUG: Running init command action in commands.js');
-				console.log(
-					'DEBUG: Options received by action:',
-					JSON.stringify(cmdOptions)
-				);
-				// Directly call the initializeProject function, passing the parsed options
-				await initializeProject(cmdOptions);
-				// initializeProject handles its own flow, including potential process.exit()
+				const provider = await getTaskProvider();
+				const taskData = {
+					prompt: options.prompt,
+					title: options.title,
+					description: options.description,
+					details: options.details,
+					testStrategy: options.testStrategy,
+					priority: options.priority,
+					dependencies: options.dependencies ? options.dependencies.split(',').map(id => id.trim()) : [],
+					research: options.research || false,
+					file: options.file
+				};
+
+				const newTask = await provider.addTask(taskData);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully added new task:`));
+				displayTaskById(newTask);
 			} catch (error) {
-				console.error(
-					chalk.red(`Error during initialization: ${error.message}`)
-				);
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to add task: ${error.message}`);
 				process.exit(1);
 			}
 		});
 
-	// Add more commands as needed...
+	programInstance
+		.command('add-subtask')
+		.description('Add a subtask to an existing task')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-p, --parent <id>', 'Parent Task ID (required)')
+		.option('-i, --task-id <id>', 'Existing Task ID to convert into a subtask')
+		.option('-t, --title <title>', 'Title for the new subtask (required if not using --task-id)')
+		.option('-d, --description <text>', 'Description for the new subtask')
+		.option('--details <text>', 'Implementation details for the new subtask')
+		.option('--dependencies <ids>', 'Comma-separated dependency IDs for the new subtask')
+		.option('-s, --status <status>', 'Status for the new subtask (default: pending)')
+		.option('--skip-generate', 'Skip regenerating task files after adding')
+		.action(async (options) => {
+			if (!options.parent) {
+				console.error(chalk.red('Error: --parent <id> is required.'));
+				process.exit(1);
+			}
+			if (!options.taskId && !options.title) {
+				console.error(
+					chalk.red(
+						'Error: Either --task-id <id> or --title <title> is required.'
+					)
+				);
+				process.exit(1);
+			}
+			let loadingIndicator = startLoadingIndicator('Adding subtask...');
+			try {
+				const provider = await getTaskProvider();
+				const subtaskData = {
+					title: options.title,
+					description: options.description,
+					details: options.details,
+					dependencies: options.dependencies ? options.dependencies.split(',').map(id => id.trim()) : [],
+					status: options.status || 'pending',
+				};
+				const providerOptions = {
+					file: options.file,
+					skipGenerate: options.skipGenerate
+				};
+
+				const newSubtask = await provider.addSubtask(options.parent, options.taskId, subtaskData, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully added subtask ${newSubtask.id} to parent ${options.parent}:`));
+				displayTaskById(newSubtask);
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to add subtask: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('remove-subtask')
+		.description('Remove a subtask from its parent task')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Subtask ID(s) to remove (e.g., 15.2) (required)')
+		.option('-c, --convert', 'Convert the subtask to a standalone task instead of deleting')
+		.option('--skip-generate', 'Skip regenerating task files after removing')
+		.action(async (options) => {
+			const subtaskIds = options.id;
+			if (!subtaskIds) {
+				console.error(chalk.red('Error: --id parameter is required.'));
+				process.exit(1);
+			}
+			let loadingIndicator = startLoadingIndicator(`Removing subtask(s) ${subtaskIds}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = {
+					convert: options.convert || false,
+					skipGenerate: options.skipGenerate,
+					file: options.file
+				};
+				await provider.removeSubtask(subtaskIds, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully removed subtask(s): ${subtaskIds}`));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to remove subtask(s): ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('remove-task')
+		.description('Permanently remove a task or subtask')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Task or Subtask ID to remove (required)')
+		.option('-y, --yes', 'Skip confirmation prompt')
+		.action(async (options) => {
+			const taskId = options.id;
+			if (!taskId) {
+				console.error(chalk.red('Error: --id parameter is required.'));
+				process.exit(1);
+			}
+
+			if (!options.yes) {
+				const { confirm } = await inquirer.prompt([
+					{
+						type: 'confirm',
+						name: 'confirm',
+						message: `Are you sure you want to permanently remove task/subtask ${taskId}? This cannot be undone.`, 
+						default: false,
+					},
+				]);
+				if (!confirm) {
+					console.log(chalk.yellow('Operation cancelled.'));
+					return;
+				}
+			}
+
+			let loadingIndicator = startLoadingIndicator(`Removing task ${taskId}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				await provider.removeTask(taskId, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully removed task/subtask: ${taskId}`));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to remove task/subtask ${taskId}: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('add-dependency')
+		.description('Add a dependency between two tasks')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Task ID that will depend on another task (required)')
+		.option('-d, --depends-on <id>', 'Task ID that will become a dependency (required)')
+		.action(async (options) => {
+			const taskId = options.id;
+			const dependsOnId = options.dependsOn;
+			if (!taskId || !dependsOnId) {
+				console.error(chalk.red('Error: Both --id and --depends-on parameters are required.'));
+				process.exit(1);
+			}
+
+			let loadingIndicator = startLoadingIndicator(`Adding dependency: ${taskId} depends on ${dependsOnId}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				await provider.addDependency(taskId, dependsOnId, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully added dependency: Task ${taskId} now depends on ${dependsOnId}`));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to add dependency: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('remove-dependency')
+		.description('Remove a dependency from a task')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-i, --id <id>', 'Task ID to remove dependency from (required)')
+		.option('-d, --depends-on <id>', 'Task ID to remove as a dependency (required)')
+		.action(async (options) => {
+			const taskId = options.id;
+			const dependsOnId = options.dependsOn;
+			if (!taskId || !dependsOnId) {
+				console.error(chalk.red('Error: Both --id and --depends-on parameters are required.'));
+				process.exit(1);
+			}
+
+			let loadingIndicator = startLoadingIndicator(`Removing dependency: ${taskId} no longer depends on ${dependsOnId}...`);
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				await provider.removeDependency(taskId, dependsOnId, providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green(`Successfully removed dependency: Task ${taskId} no longer depends on ${dependsOnId}`));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to remove dependency: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('validate-dependencies')
+		.description('Check tasks for dependency issues (circular, non-existent)')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.action(async (options) => {
+			let loadingIndicator = startLoadingIndicator('Validating dependencies...');
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				const { valid, errors } = await provider.validateDependencies(providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				if (valid) {
+					console.log(chalk.green('Dependency validation successful: No issues found.'));
+				} else {
+					console.log(chalk.red('Dependency validation failed:'));
+					errors.forEach(err => console.log(chalk.red(`- ${err}`)));
+					process.exit(1);
+				}
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to validate dependencies: ${error.message}`);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('fix-dependencies')
+		.description('Automatically fix invalid dependencies')
+		.option('-f, --file <file>', 'Path to the tasks file')
+		.option('-y, --yes', 'Skip confirmation prompt')
+		.action(async (options) => {
+			if (!options.yes) {
+				const answers = await inquirer.prompt([{ type: 'confirm', name: 'confirmFix', message: 'Are you sure you want to attempt to fix invalid dependencies? This might alter your task data.', default: false }]);
+				if (!answers.confirmFix) { console.log(chalk.yellow('Operation cancelled.')); return; }
+			}
+
+			let loadingIndicator = startLoadingIndicator('Attempting to fix dependencies...');
+			try {
+				const provider = await getTaskProvider();
+				const providerOptions = { file: options.file };
+				const report = await provider.fixDependencies(providerOptions);
+				stopLoadingIndicator(loadingIndicator);
+				console.log(chalk.green('Dependency fix attempt complete:'));
+				if (report && typeof report.fixedCount === 'number') {
+					if (report.fixedCount > 0) {
+						console.log(chalk.green(`- ${report.fixedCount} issues fixed.`));
+						if (report.details && Array.isArray(report.details)) {
+							report.details.forEach(fix => console.log(chalk.cyan(`  - ${fix}`)));
+						}
+					} else {
+						console.log(chalk.yellow('- No dependency issues found or fixed.'));
+					}
+				} else {
+					console.log(chalk.yellow('- Fix process completed (no detailed report available from provider).'));
+				}
+				console.log(chalk.blue('Run `taskmaster validate-dependencies` to confirm the results.'));
+			} catch (error) {
+				stopLoadingIndicator(loadingIndicator, true);
+				log('error', `Failed to fix dependencies: ${error.message}`);
+				process.exit(1);
+			}
+		});
 
 	return programInstance;
 }
 
-/**
- * Setup the CLI application
- * @returns {Object} Configured Commander program
- */
 function setupCLI() {
-	// Create a new program instance
 	const programInstance = program
 		.name('dev')
 		.description('AI-driven development task management')
 		.version(() => {
-			// Read version directly from package.json
 			try {
 				const packageJsonPath = path.join(process.cwd(), 'package.json');
 				if (fs.existsSync(packageJsonPath)) {
@@ -1587,27 +879,19 @@ function setupCLI() {
 			process.exit(0);
 		});
 
-	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
 		displayHelp();
 		return '';
 	};
 
-	// Register commands
 	registerCommands(programInstance);
 
 	return programInstance;
 }
 
-/**
- * Check for newer version of task-master-ai
- * @returns {Promise<{currentVersion: string, latestVersion: string, needsUpdate: boolean}>}
- */
 async function checkForUpdate() {
-	// Get current version from package.json
 	let currentVersion = CONFIG.projectVersion;
 	try {
-		// Try to get the version from the installed package
 		const packageJsonPath = path.join(
 			process.cwd(),
 			'node_modules',
@@ -1619,12 +903,10 @@ async function checkForUpdate() {
 			currentVersion = packageJson.version;
 		}
 	} catch (error) {
-		// Silently fail and use default
 		log('debug', `Error reading current package version: ${error.message}`);
 	}
 
 	return new Promise((resolve) => {
-		// Get the latest version from npm registry
 		const options = {
 			hostname: 'registry.npmjs.org',
 			path: '/task-master-ai',
@@ -1646,7 +928,6 @@ async function checkForUpdate() {
 					const npmData = JSON.parse(data);
 					const latestVersion = npmData['dist-tags']?.latest || currentVersion;
 
-					// Compare versions
 					const needsUpdate =
 						compareVersions(currentVersion, latestVersion) < 0;
 
@@ -1675,7 +956,6 @@ async function checkForUpdate() {
 			});
 		});
 
-		// Set a timeout to avoid hanging if npm is slow
 		req.setTimeout(3000, () => {
 			req.abort();
 			log('debug', 'Update check timed out');
@@ -1690,12 +970,6 @@ async function checkForUpdate() {
 	});
 }
 
-/**
- * Compare semantic versions
- * @param {string} v1 - First version
- * @param {string} v2 - Second version
- * @returns {number} -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
- */
 function compareVersions(v1, v2) {
 	const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
 	const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
@@ -1711,11 +985,6 @@ function compareVersions(v1, v2) {
 	return 0;
 }
 
-/**
- * Display upgrade notification message
- * @param {string} currentVersion - Current version
- * @param {string} latestVersion - Latest version
- */
 function displayUpgradeNotification(currentVersion, latestVersion) {
 	const message = boxen(
 		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
@@ -1731,31 +1000,22 @@ function displayUpgradeNotification(currentVersion, latestVersion) {
 	console.log(message);
 }
 
-/**
- * Parse arguments and run the CLI
- * @param {Array} argv - Command-line arguments
- */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
 		if (process.stdout.isTTY) {
 			displayBanner();
 		}
 
-		// If no arguments provided, show help
 		if (argv.length <= 2) {
 			displayHelp();
 			process.exit(0);
 		}
 
-		// Start the update check in the background - don't await yet
 		const updateCheckPromise = checkForUpdate();
 
-		// Setup and parse
 		const programInstance = setupCLI();
 		await programInstance.parseAsync(argv);
 
-		// After command execution, check if an update is available
 		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
 			displayUpgradeNotification(
@@ -1774,11 +1034,4 @@ async function runCLI(argv = process.argv) {
 	}
 }
 
-export {
-	registerCommands,
-	setupCLI,
-	runCLI,
-	checkForUpdate,
-	compareVersions,
-	displayUpgradeNotification
-};
+export { registerCommands, setupCLI, runCLI, checkForUpdate, compareVersions, displayUpgradeNotification };

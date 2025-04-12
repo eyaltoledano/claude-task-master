@@ -1,12 +1,14 @@
 /**
  * add-task.js
- * Direct function implementation for adding a new task
+ * Direct function implementation for adding a new task using appropriate provider.
  */
 
-import { addTask } from '../../../../scripts/modules/task-manager.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode,
+	CONFIG // Import CONFIG
 } from '../../../../scripts/modules/utils.js';
 import {
 	getAnthropicClientForMCP,
@@ -19,7 +21,7 @@ import {
 } from '../../../../scripts/modules/ai-services.js';
 
 /**
- * Direct function wrapper for adding a new task with error handling.
+ * Direct function wrapper for adding a new task via configured provider.
  *
  * @param {Object} args - Command arguments
  * @param {string} [args.prompt] - Description of the task to add (required if not using manual fields)
@@ -27,233 +29,187 @@ import {
  * @param {string} [args.description] - Task description (for manual task creation)
  * @param {string} [args.details] - Implementation details (for manual task creation)
  * @param {string} [args.testStrategy] - Test strategy (for manual task creation)
- * @param {string} [args.dependencies] - Comma-separated list of task IDs this task depends on
+ * @param {string} [args.dependencies] - Comma-separated list of task IDs/Keys this task depends on
  * @param {string} [args.priority='medium'] - Task priority (high, medium, low)
- * @param {string} [args.file='tasks/tasks.json'] - Path to the tasks file
  * @param {string} [args.projectRoot] - Project root directory
- * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
+ * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation (handled by provider)
+ * @param {string} [args.file] - Optional path to tasks file (for local provider).
  * @param {Object} log - Logger object
- * @param {Object} context - Additional context (reportProgress, session)
+ * @param {Object} context - Additional context { session }.
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
-	// Destructure expected args
-	const { tasksJsonPath, prompt, dependencies, priority, research } = args;
-	try {
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		enableSilentMode();
+	const { session } = context;
+	const { projectRoot, prompt, dependencies, priority, research, file } = args;
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('addTaskDirect called without tasksJsonPath');
-			disableSilentMode(); // Disable before returning
+	try {
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('addTaskDirect called without projectRoot.');
+		}
+		const isManualCreation = args.title && args.description;
+		if (!prompt && !isManualCreation) {
 			return {
 				success: false,
 				error: {
 					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
+					message: 'Either prompt or (title and description) must be provided.'
 				}
 			};
 		}
+		// --- End Argument Validation ---
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
 
-		// Check if this is manual task creation or AI-driven task creation
-		const isManualCreation = args.title && args.description;
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's addTask method
+			// Likely requires: create_issue, search, get_issue
+			const requiredTools = ['create_issue', 'search', 'get_issue']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
+				}
+			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
+		}
+		// --- End Jira MCP Tools Preparation ---
 
-		// Check required parameters
-		if (!args.prompt && !isManualCreation) {
-			log.error(
-				'Missing required parameters: either prompt or title+description must be provided'
-			);
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		const taskDependenciesArray = dependencies
+			? String(dependencies).split(',').map(id => id.trim())
+				: [];
+		const taskPriorityValue = priority || 'medium';
+
+		enableSilentMode();
+		try {
+			let taskDataPayload;
+
+		if (isManualCreation) {
+				taskDataPayload = {
+					title: args.title,
+					description: args.description,
+					details: args.details || '',
+					testStrategy: args.testStrategy || '',
+					dependencies: taskDependenciesArray,
+					priority: taskPriorityValue
+				};
+				log.info(`Adding new task manually: "${args.title}" via ${providerType} provider`);
+		} else {
+				// --- AI-Driven Task Creation Path ---
+				log.info(`Adding new task via AI with prompt: "${prompt}"`);
+
+				let localAnthropic;
+				try {
+					localAnthropic = getAnthropicClientForMCP(session, log);
+				} catch (error) {
+					throw { code: 'AI_CLIENT_ERROR', message: `Cannot initialize AI client: ${error.message}` };
+				}
+
+				const modelConfig = getModelConfig(session);
+				const tasksContext = [];
+				const { systemPrompt, userPrompt } = _buildAddTaskPrompt(prompt, tasksContext);
+
+				let responseText;
+				try {
+					responseText = await _handleAnthropicStream(
+						localAnthropic,
+						{
+							model: modelConfig.model,
+							max_tokens: modelConfig.maxTokens,
+							temperature: modelConfig.temperature,
+							messages: [{ role: 'user', content: userPrompt }],
+							system: systemPrompt
+						},
+							{ mcpLog: logWrapper }
+					);
+				} catch (error) {
+						throw { code: 'AI_PROCESSING_ERROR', message: `Failed to generate task with AI: ${error.message}` };
+				}
+
+				try {
+					taskDataPayload = parseTaskJsonResponse(responseText);
+					taskDataPayload.dependencies = taskDependenciesArray;
+					taskDataPayload.priority = taskPriorityValue;
+				} catch (error) {
+						throw { code: 'RESPONSE_PARSING_ERROR', message: `Failed to parse AI response: ${error.message}` };
+				}
+				log.info(`Generated task data via AI, proceeding to add via ${providerType} provider.`);
+				// --- End AI Path ---
+			}
+
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+			const providerOptions = {
+				file,
+				research,
+				mcpLog: logWrapper,
+				session
+			};
+
+			const addResult = await provider.addTask(taskDataPayload, providerOptions);
+
 			disableSilentMode();
+
+			if (addResult && addResult.success && addResult.data?.task) {
+				const newTask = addResult.data.task;
+				log.info(`Provider successfully added new task ${newTask.id || '(unknown ID)'} via ${providerType}`);
+				return {
+					success: true,
+					data: {
+						taskId: newTask.id,
+						task: newTask,
+						message: `Successfully added new task ${newTask.id || '(unknown ID)'}`
+					},
+					fromCache: false
+				};
+			} else {
+				const errorMsg = addResult?.error?.message || 'Provider failed to add task.';
+				const errorCode = addResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error adding task: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: addResult?.error || { code: errorCode, message: errorMsg }
+				};
+			}
+		} catch (error) {
+			disableSilentMode();
+			log.error(`Error during add task process: ${error.code || 'Unknown code'} - ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: 'MISSING_PARAMETER',
-					message:
-						'Either the prompt parameter or both title and description parameters are required for adding a task'
+					code: error.code || 'ADD_TASK_DIRECT_ERROR',
+					message: error.message || 'Failed to add task'
 				}
 			};
-		}
-
-		// Extract and prepare parameters
-		const taskPrompt = prompt;
-		const taskDependencies = Array.isArray(dependencies)
-			? dependencies
-			: dependencies
-				? String(dependencies)
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10))
-				: [];
-		const taskPriority = priority || 'medium';
-
-		// Extract context parameters for advanced functionality
-		const { session } = context;
-
-		let manualTaskData = null;
-
-		if (isManualCreation) {
-			// Create manual task data object
-			manualTaskData = {
-				title: args.title,
-				description: args.description,
-				details: args.details || '',
-				testStrategy: args.testStrategy || ''
-			};
-
-			log.info(
-				`Adding new task manually with title: "${args.title}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
-			);
-
-			// Call the addTask function with manual task data
-			const newTaskId = await addTask(
-				tasksPath,
-				null, // No prompt needed for manual creation
-				taskDependencies,
-				priority,
-				{
-					mcpLog: log,
-					session
-				},
-				'json', // Use JSON output format to prevent console output
-				null, // No custom environment
-				manualTaskData // Pass the manual task data
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			return {
-				success: true,
-				data: {
-					taskId: newTaskId,
-					message: `Successfully added new task #${newTaskId}`
-				}
-			};
-		} else {
-			// AI-driven task creation
-			log.info(
-				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
-			);
-
-			// Initialize AI client with session environment
-			let localAnthropic;
-			try {
-				localAnthropic = getAnthropicClientForMCP(session, log);
-			} catch (error) {
-				log.error(`Failed to initialize Anthropic client: ${error.message}`);
+		} finally {
+			if (isSilentMode()) {
 				disableSilentMode();
-				return {
-					success: false,
-					error: {
-						code: 'AI_CLIENT_ERROR',
-						message: `Cannot initialize AI client: ${error.message}`
-					}
-				};
 			}
-
-			// Get model configuration from session
-			const modelConfig = getModelConfig(session);
-
-			// Read existing tasks to provide context
-			let tasksData;
-			try {
-				const fs = await import('fs');
-				tasksData = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-			} catch (error) {
-				log.warn(`Could not read existing tasks for context: ${error.message}`);
-				tasksData = { tasks: [] };
-			}
-
-			// Build prompts for AI
-			const { systemPrompt, userPrompt } = _buildAddTaskPrompt(
-				prompt,
-				tasksData.tasks
-			);
-
-			// Make the AI call using the streaming helper
-			let responseText;
-			try {
-				responseText = await _handleAnthropicStream(
-					localAnthropic,
-					{
-						model: modelConfig.model,
-						max_tokens: modelConfig.maxTokens,
-						temperature: modelConfig.temperature,
-						messages: [{ role: 'user', content: userPrompt }],
-						system: systemPrompt
-					},
-					{
-						mcpLog: log
-					}
-				);
-			} catch (error) {
-				log.error(`AI processing failed: ${error.message}`);
-				disableSilentMode();
-				return {
-					success: false,
-					error: {
-						code: 'AI_PROCESSING_ERROR',
-						message: `Failed to generate task with AI: ${error.message}`
-					}
-				};
-			}
-
-			// Parse the AI response
-			let taskDataFromAI;
-			try {
-				taskDataFromAI = parseTaskJsonResponse(responseText);
-			} catch (error) {
-				log.error(`Failed to parse AI response: ${error.message}`);
-				disableSilentMode();
-				return {
-					success: false,
-					error: {
-						code: 'RESPONSE_PARSING_ERROR',
-						message: `Failed to parse AI response: ${error.message}`
-					}
-				};
-			}
-
-			// Call the addTask function with 'json' outputFormat to prevent console output when called via MCP
-			const newTaskId = await addTask(
-				tasksPath,
-				prompt,
-				taskDependencies,
-				priority,
-				{
-					mcpLog: log,
-					session
-				},
-				'json',
-				null,
-				taskDataFromAI // Pass the parsed AI result as the manual task data
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			return {
-				success: true,
-				data: {
-					taskId: newTaskId,
-					message: `Successfully added new task #${newTaskId}`
-				}
-			};
 		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
-
-		log.error(`Error in addTaskDirect: ${error.message}`);
+		log.error(`Outer error in addTaskDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'ADD_TASK_ERROR',
-				message: error.message
-			}
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
+			fromCache: false
 		};
 	}
 }
+

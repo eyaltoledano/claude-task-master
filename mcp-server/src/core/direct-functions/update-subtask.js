@@ -1,6 +1,6 @@
 /**
- * parse-prd.js
- * Direct function implementation for parsing a PRD using appropriate provider.
+ * update-subtask.js
+ * Direct function implementation for updating a subtask using appropriate provider.
  */
 
 import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
@@ -14,50 +14,44 @@ import {
 	getAnthropicClientForMCP,
 	getModelConfig
 } from '../utils/ai-client-utils.js';
-import fs from 'fs';
-import path from 'path';
 
 /**
- * Direct function wrapper for parsePRD via configured provider.
+ * Direct function wrapper for updateSubtask via configured provider.
  *
- * @param {Object} args - Command arguments (input, output, numTasks, force, file, projectRoot).
+ * @param {Object} args - Command arguments (id, prompt, research, file, projectRoot).
  * @param {Object} log - Logger object.
  * @param {Object} context - Tool context { session }.
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function parsePRDDirect(args, log, context = {}) {
+export async function updateSubtaskDirect(args, log, context = {}) {
 	const { session } = context;
-	// input: Path to the PRD file.
-	// output: Path where the tasks.json should be saved.
-	const { projectRoot, input: prdInputPath, output: tasksOutputPath, numTasks, force, file } = args;
+	const { projectRoot, id: subtaskId, prompt, research, file } = args;
 
 	try {
-		log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
+		log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
 		// --- Argument Validation ---
 		if (!projectRoot) {
-			log.warn('parsePRDDirect called without projectRoot.');
+			log.warn('updateSubtaskDirect called without projectRoot.');
 		}
-		if (!prdInputPath) {
-			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'PRD input path (input) is required' } };
+		if (!subtaskId) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Subtask ID (id) is required' } };
 		}
-		if (!fs.existsSync(prdInputPath)) {
-			return { success: false, error: { code: 'FILE_NOT_FOUND', message: `PRD input file not found: ${prdInputPath}` } };
+		if (!prompt) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Prompt (prompt) is required' } };
 		}
-		// Output path defaults within the provider if not specified
 		// --- End Argument Validation ---
 
 		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
-		log.info(`Requesting ${providerType} provider to parse PRD: ${prdInputPath}.`);
+		log.info(`Requesting ${providerType} provider to update subtask ${subtaskId}.`);
 
 		// --- Prepare Jira MCP Tools if needed ---
-		// parsePRD is primarily an AI/local task generation function.
-		// A Jira provider might use tools to check for existing epics or structure,
-		// but typically wouldn't need tools for the core parsing.
 		let jiraMcpTools = {};
 		if (providerType === 'jira') {
 			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
-			const requiredTools = ['search', 'get_issue']; // Example: Might search for matching epics
+			// Define the tools required by JiraTaskManager's updateSubtask method
+			// Likely requires: get_issue, update_issue, add_comment?
+			const requiredTools = ['get_issue', 'update_issue', 'add_comment']; // Adjust as needed
 			for (const toolName of requiredTools) {
 				const fullToolName = `${toolPrefix}_${toolName}`;
 				if (typeof global[fullToolName] === 'function') {
@@ -92,58 +86,56 @@ export async function parsePRDDirect(args, log, context = {}) {
 			const modelConfig = getModelConfig(session);
 
 			const providerOptions = {
-				output: tasksOutputPath, // Pass output path
-				numTasks,
-				force,
-				file, // Pass tasks file path if provider needs it (e.g., for overwrite check)
+				prompt, // Pass prompt directly
+				research,
+				file,
 				mcpLog: logWrapper,
 				session,
 				anthropicClient,
 				modelConfig
 			};
 
-			// Call the provider's parsePRD method
-			// Assuming signature: parsePRD(inputPath, options)
-			const parseResult = await provider.parsePRD(prdInputPath, providerOptions);
+			// Call the provider's updateSubtask method
+			// Assuming signature: updateSubtask(subtaskId, options)
+			const updateResult = await provider.updateSubtask(subtaskId, providerOptions);
 
 			// Check provider result
-			if (parseResult && parseResult.success) {
-				const generatedFilePath = parseResult.data?.tasksFilePath || tasksOutputPath || 'tasks/tasks.json';
-				log.info(`Provider successfully parsed PRD and generated tasks at ${generatedFilePath}.`);
+			if (updateResult && updateResult.success) {
+				log.info(`Provider successfully updated subtask ${subtaskId}.`);
 				return {
 					success: true,
-					data: parseResult.data || { message: `Successfully parsed PRD. Tasks saved to ${generatedFilePath}.` },
-					fromCache: false // File system operation
+					data: updateResult.data || { message: `Successfully updated subtask ${subtaskId}.` },
+					fromCache: false // State modification
 				};
 			} else {
-				const errorMsg = parseResult?.error?.message || 'Provider failed to parse PRD.';
-				const errorCode = parseResult?.error?.code || 'PROVIDER_ERROR';
-				log.error(`Provider error parsing PRD: ${errorMsg} (Code: ${errorCode})`);
+				const errorMsg = updateResult?.error?.message || 'Provider failed to update subtask.';
+				const errorCode = updateResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error updating subtask ${subtaskId}: ${errorMsg} (Code: ${errorCode})`);
 				return {
 					success: false,
-					error: parseResult?.error || { code: errorCode, message: errorMsg },
+					error: updateResult?.error || { code: errorCode, message: errorMsg },
 					fromCache: false
 				};
 			}
 		} catch (error) {
-			// No silent mode needed here usually, but check just in case
+			// No silent mode usually needed, but check
 			if (isSilentMode()) {
 				disableSilentMode();
 			}
-			log.error(`Error during parsePRDDirect execution: ${error.message}`);
+			log.error(`Error during updateSubtaskDirect execution: ${error.message}`);
 			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: error.code || 'PROVIDER_PARSE_PRD_ERROR',
-					message: error.message || 'Failed to parse PRD'
+					code: error.code || 'PROVIDER_UPDATE_SUBTASK_ERROR',
+					message: error.message || `Failed to update subtask ${subtaskId}`
 				},
 				fromCache: false
 			};
 		}
 	} catch (error) {
 		// Catch errors from argument validation or initial setup
-		log.error(`Outer error in parsePRDDirect: ${error.message}`);
+		log.error(`Outer error in updateSubtaskDirect: ${error.message}`);
 		if (isSilentMode()) {
 			disableSilentMode();
 		}
@@ -153,4 +145,4 @@ export async function parsePRDDirect(args, log, context = {}) {
 			fromCache: false
 		};
 	}
-}
+} 
