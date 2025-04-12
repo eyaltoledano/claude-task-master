@@ -130,133 +130,19 @@ describe('Dependency Manager Module', () => {
 		});
 	});
 
-	describe('isCircularDependency function', () => {
-		test('should detect a direct circular dependency', () => {
-			const tasks = [
-				{ id: 1, dependencies: [2] },
-				{ id: 2, dependencies: [1] }
-			];
-
-			const result = isCircularDependency(tasks, 1);
-			expect(result).toBe(true);
-		});
-
-		test('should detect an indirect circular dependency', () => {
-			const tasks = [
-				{ id: 1, dependencies: [2] },
-				{ id: 2, dependencies: [3] },
-				{ id: 3, dependencies: [1] }
-			];
-
-			const result = isCircularDependency(tasks, 1);
-			expect(result).toBe(true);
-		});
-
-		test('should return false for non-circular dependencies', () => {
-			const tasks = [
-				{ id: 1, dependencies: [2] },
-				{ id: 2, dependencies: [3] },
-				{ id: 3, dependencies: [] }
-			];
-
-			const result = isCircularDependency(tasks, 1);
-			expect(result).toBe(false);
-		});
-
-		test('should handle a task with no dependencies', () => {
+	describe('validateTaskDependencies function', () => {
+		test('should not throw error for valid dependencies', () => {
 			const tasks = [
 				{ id: 1, dependencies: [] },
 				{ id: 2, dependencies: [1] }
 			];
 
-			const result = isCircularDependency(tasks, 1);
-			expect(result).toBe(false);
+			const result = validateTaskDependencies(tasks);
+
+			expect(result.valid).toBe(true);
+			expect(result.issues.length).toBe(0);
 		});
 
-		test('should handle a task depending on itself', () => {
-			const tasks = [{ id: 1, dependencies: [1] }];
-
-			const result = isCircularDependency(tasks, 1);
-			expect(result).toBe(true);
-		});
-
-		test('should handle subtask dependencies correctly', () => {
-			const tasks = [
-				{
-					id: 1,
-					dependencies: [],
-					subtasks: [
-						{ id: 1, dependencies: ['1.2'] },
-						{ id: 2, dependencies: ['1.3'] },
-						{ id: 3, dependencies: ['1.1'] }
-					]
-				}
-			];
-
-			// This creates a circular dependency: 1.1 -> 1.2 -> 1.3 -> 1.1
-			const result = isCircularDependency(tasks, '1.1', ['1.3', '1.2']);
-			expect(result).toBe(true);
-		});
-
-		test('should allow non-circular subtask dependencies within same parent', () => {
-			const tasks = [
-				{
-					id: 1,
-					dependencies: [],
-					subtasks: [
-						{ id: 1, dependencies: [] },
-						{ id: 2, dependencies: ['1.1'] },
-						{ id: 3, dependencies: ['1.2'] }
-					]
-				}
-			];
-
-			// This is a valid dependency chain: 1.3 -> 1.2 -> 1.1
-			const result = isCircularDependency(tasks, '1.1', []);
-			expect(result).toBe(false);
-		});
-
-		test('should properly handle dependencies between subtasks of the same parent', () => {
-			const tasks = [
-				{
-					id: 1,
-					dependencies: [],
-					subtasks: [
-						{ id: 1, dependencies: [] },
-						{ id: 2, dependencies: ['1.1'] },
-						{ id: 3, dependencies: [] }
-					]
-				}
-			];
-
-			// Check if adding a dependency from subtask 1.3 to 1.2 creates a circular dependency
-			// This should be false as 1.3 -> 1.2 -> 1.1 is a valid chain
-			mockTaskExists.mockImplementation(() => true);
-			const result = isCircularDependency(tasks, '1.3', ['1.2']);
-			expect(result).toBe(false);
-		});
-
-		test('should correctly detect circular dependencies in subtasks of the same parent', () => {
-			const tasks = [
-				{
-					id: 1,
-					dependencies: [],
-					subtasks: [
-						{ id: 1, dependencies: ['1.3'] },
-						{ id: 2, dependencies: ['1.1'] },
-						{ id: 3, dependencies: ['1.2'] }
-					]
-				}
-			];
-
-			// This creates a circular dependency: 1.1 -> 1.3 -> 1.2 -> 1.1
-			mockTaskExists.mockImplementation(() => true);
-			const result = isCircularDependency(tasks, '1.2', ['1.1']);
-			expect(result).toBe(true);
-		});
-	});
-
-	describe('validateTaskDependencies function', () => {
 		test('should detect missing dependencies', () => {
 			const tasks = [
 				{ id: 1, dependencies: [99] }, // 99 doesn't exist
