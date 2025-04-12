@@ -1,4 +1,4 @@
-#!/usr/bin/env node --trace-deprecation
+#!/usr/bin/env -S node --trace-deprecation
 
 /**
  * Task Master
