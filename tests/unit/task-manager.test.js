@@ -6,6 +6,15 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 
+// Define a standalone mock function BEFORE jest.mock
+const mockGetTaskProvider = jest.fn();
+
+// Mock the task provider factory using a factory function
+jest.mock('../../scripts/modules/task-provider-factory.js', () => ({
+	// Explicitly define the export and assign our mock function
+	getTaskProvider: mockGetTaskProvider
+}));
+
 // Mock implementations
 const mockReadFileSync = jest.fn();
 const mockExistsSync = jest.fn();
@@ -132,6 +141,22 @@ jest.mock('../../scripts/modules/task-manager.js', () => {
 		isTaskDependentOn: mockIsTaskDependentOn
 	};
 });
+
+// Mock the task provider factory
+jest.mock('../../scripts/modules/task-provider-factory.js');
+
+// --- Mock Task Provider Implementation ---
+// We'll define a reusable mock provider structure here
+// It needs methods that findNextTask might call (e.g., getTasks)
+const mockTaskProvider = {
+	getTasks: jest.fn(),
+	// Add other methods if findNextTask uses them, e.g.:
+	// updateTask: jest.fn(), 
+	// getTask: jest.fn(), 
+};
+
+// Configure the standalone mock function to return our mock provider instance
+mockGetTaskProvider.mockResolvedValue(mockTaskProvider);
 
 // Create a simplified version of parsePRD for testing
 const testParsePRD = async (prdPath, outputPath, numTasks) => {
@@ -314,6 +339,7 @@ const testAddTask = (
 import * as taskManager from '../../scripts/modules/task-manager.js';
 import { sampleClaudeResponse } from '../fixtures/sample-claude-response.js';
 import { sampleTasks, emptySampleTasks } from '../fixtures/sample-tasks.js';
+import { getTaskProvider } from '../../scripts/modules/task-provider-factory.js';
 
 // Destructure the required functions for convenience
 const { findNextTask, generateTaskFiles, clearSubtasks, updateTaskById } =
@@ -322,11 +348,15 @@ const { findNextTask, generateTaskFiles, clearSubtasks, updateTaskById } =
 describe('Task Manager Module', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Reset mock provider calls before each test
+		mockTaskProvider.getTasks.mockReset();
+		// mockTaskProvider.updateTask.mockReset(); // Reset others if added
 	});
 
-	describe.skip('findNextTask function', () => {
-		test('should return the highest priority task with all dependencies satisfied', () => {
-			const tasks = [
+	describe('findNextTask function', () => {
+		test('should return the highest priority task with all dependencies satisfied', async () => {
+			// --- Arrange: Define test data and mock provider response ---
+			const testTasks = [
 				{
 					id: 1,
 					title: 'Setup Project',
@@ -356,16 +386,29 @@ describe('Task Manager Module', () => {
 					priority: 'high'
 				}
 			];
+			// Mock the provider using mockImplementation to handle different calls
+			mockTaskProvider.getTasks.mockImplementation(async (options) => {
+				if (options && options.status === 'pending') {
+					return { tasks: testTasks.filter(t => t.status === 'pending') };
+				} else {
+					return { tasks: testTasks }; // Return all tasks for dependency check
+				}
+			});
 
-			const nextTask = findNextTask(tasks);
+			// --- Act: Call findNextTask with the new signature ---
+			const nextTask = await findNextTask('dummy/path', { taskProvider: mockTaskProvider });
 
+			// --- Assert ---
 			expect(nextTask).toBeDefined();
 			expect(nextTask.id).toBe(2);
 			expect(nextTask.title).toBe('Implement Core Features');
+			// Verify the provider was called (optional but good practice)
+			expect(mockTaskProvider.getTasks).toHaveBeenCalled();
 		});
 
-		test('should prioritize by priority level when dependencies are equal', () => {
-			const tasks = [
+		test('should prioritize by priority level when dependencies are equal', async () => {
+			// --- Arrange ---
+			const testTasks = [
 				{
 					id: 1,
 					title: 'Setup Project',
@@ -377,7 +420,7 @@ describe('Task Manager Module', () => {
 					id: 2,
 					title: 'Low Priority Task',
 					status: 'pending',
-					dependencies: [1],
+						dependencies: [1],
 					priority: 'low'
 				},
 				{
@@ -395,15 +438,27 @@ describe('Task Manager Module', () => {
 					priority: 'high'
 				}
 			];
+			// Apply the same mockImplementation logic
+			mockTaskProvider.getTasks.mockImplementation(async (options) => {
+				if (options && options.status === 'pending') {
+					return { tasks: testTasks.filter(t => t.status === 'pending') };
+				} else {
+					return { tasks: testTasks };
+				}
+			});
 
-			const nextTask = findNextTask(tasks);
+			// --- Act ---
+			const nextTask = await findNextTask('dummy/path', { taskProvider: mockTaskProvider });
 
+			// --- Assert ---
 			expect(nextTask.id).toBe(4);
 			expect(nextTask.priority).toBe('high');
+			expect(mockTaskProvider.getTasks).toHaveBeenCalled();
 		});
 
-		test('should return null when all tasks are completed', () => {
-			const tasks = [
+		test('should return null when all tasks are completed', async () => {
+			// --- Arrange ---
+			const testTasks = [
 				{
 					id: 1,
 					title: 'Setup Project',
@@ -419,39 +474,76 @@ describe('Task Manager Module', () => {
 					priority: 'high'
 				}
 			];
+			// Apply the same mockImplementation logic
+			mockTaskProvider.getTasks.mockImplementation(async (options) => {
+				if (options && options.status === 'pending') {
+					return { tasks: testTasks.filter(t => t.status === 'pending') }; // Will be empty
+				} else {
+					return { tasks: testTasks };
+				}
+			});
 
-			const nextTask = findNextTask(tasks);
+			// --- Act ---
+			const nextTask = await findNextTask('dummy/path', { taskProvider: mockTaskProvider });
 
+			// --- Assert ---
 			expect(nextTask).toBeNull();
+			expect(mockTaskProvider.getTasks).toHaveBeenCalled();
 		});
 
-		test('should return null when all pending tasks have unsatisfied dependencies', () => {
-			const tasks = [
+		test('should return null when all pending tasks have unsatisfied dependencies', async () => {
+			// --- Arrange ---
+			const testTasks = [
 				{
 					id: 1,
 					title: 'Setup Project',
 					status: 'pending',
-					dependencies: [2],
+					dependencies: [2], // Circular/unresolvable
 					priority: 'high'
 				},
 				{
 					id: 2,
 					title: 'Implement Features',
 					status: 'pending',
-					dependencies: [1],
+					dependencies: [1], // Circular/unresolvable
 					priority: 'high'
 				}
 			];
+			// Apply the same mockImplementation logic
+			mockTaskProvider.getTasks.mockImplementation(async (options) => {
+				if (options && options.status === 'pending') {
+					return { tasks: testTasks.filter(t => t.status === 'pending') };
+				} else {
+					return { tasks: testTasks };
+				}
+			});
 
-			const nextTask = findNextTask(tasks);
+			// --- Act ---
+			const nextTask = await findNextTask('dummy/path', { taskProvider: mockTaskProvider });
 
+			// --- Assert ---
 			expect(nextTask).toBeNull();
+			expect(mockTaskProvider.getTasks).toHaveBeenCalled();
 		});
 
-		test('should handle empty tasks array', () => {
-			const nextTask = findNextTask([]);
+		test('should handle empty tasks array', async () => {
+			// --- Arrange ---
+			const testTasks = []; // Define empty array
+			// Apply the same mockImplementation logic
+			mockTaskProvider.getTasks.mockImplementation(async (options) => {
+				if (options && options.status === 'pending') {
+					return { tasks: [] }; 
+				} else {
+					return { tasks: [] };
+				}
+			});
 
+			// --- Act ---
+			const nextTask = await findNextTask('dummy/path', { taskProvider: mockTaskProvider });
+
+			// --- Assert ---
 			expect(nextTask).toBeNull();
+			expect(mockTaskProvider.getTasks).toHaveBeenCalled();
 		});
 	});
 

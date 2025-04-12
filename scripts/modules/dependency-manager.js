@@ -143,9 +143,10 @@ async function addDependency(taskId, dependencyId, options = {}) {
 		throw new Error(errorMsg);
 	}
 
-	// Check for circular dependencies using the fetched tasks array
-	let dependencyChain = [formattedTaskId];
-	if (isCircularDependency(tasks, formattedDependencyId, dependencyChain)) {
+	// Check for circular dependencies: Does the new dependencyId eventually depend back on taskId?
+	// Start the check from the dependencyId, initializing the chain with the taskId.
+	// Pass a CLONE of tasks to prevent unexpected mutations affecting the check.
+	if (isCircularDependency(JSON.parse(JSON.stringify(tasks)), formattedDependencyId, [formattedTaskId])) { 
 		const errorMsg = `Cannot add dependency ${formattedDependencyId} to task ${formattedTaskId} as it would create a circular dependency.`;
 		report('error', errorMsg);
 		throw new Error(errorMsg);
@@ -386,14 +387,13 @@ function isCircularDependency(tasks, taskId, chain = []) {
 	const taskIdStr = String(taskId);
 
 	// If we've seen this task before in the chain, we have a circular dependency
-	if (chain.some((id) => String(id) === taskIdStr)) {
+	const foundInChain = chain.some((id) => String(id) === taskIdStr);
+	if (foundInChain) {
 		return true;
 	}
 
 	// Find the task or subtask
 	let task = null;
-
-	// Check if this is a subtask reference (e.g., "1.2")
 	if (taskIdStr.includes('.')) {
 		const [parentId, subtaskId] = taskIdStr.split('.').map(Number);
 		const parentTask = tasks.find((t) => t.id === parentId);
@@ -416,7 +416,8 @@ function isCircularDependency(tasks, taskId, chain = []) {
 	}
 
 	// Check each dependency recursively
-	const newChain = [...chain, taskId];
+	// Ensure the ID added to the chain is always a string to match the check
+	const newChain = [...chain, String(taskId)]; 
 	return task.dependencies.some((depId) =>
 		isCircularDependency(tasks, depId, newChain)
 	);
