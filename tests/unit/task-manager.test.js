@@ -26,6 +26,8 @@ const mockCreate = jest.fn(); // Mock for Anthropic messages.create
 const mockChatCompletionsCreate = jest.fn(); // Mock for Perplexity chat.completions.create
 const mockGetAvailableAIModel = jest.fn(); // <<<<< Added mock function
 const mockPromptYesNo = jest.fn(); // Mock for confirmation prompt
+const mockDisplayBanner = jest.fn();
+const mockGetTask = jest.fn();
 
 // Mock fs module
 jest.mock('fs', () => ({
@@ -44,7 +46,7 @@ jest.mock('path', () => ({
 // Mock ui
 jest.mock('../../scripts/modules/ui.js', () => ({
 	formatDependenciesWithStatus: mockFormatDependenciesWithStatus,
-	displayBanner: jest.fn(),
+	displayBanner: mockDisplayBanner,
 	displayTaskList: mockDisplayTaskList,
 	startLoadingIndicator: jest.fn(() => ({ stop: jest.fn() })), // <<<<< Added mock
 	stopLoadingIndicator: jest.fn(), // <<<<< Added mock
@@ -167,26 +169,6 @@ const testParsePRD = async (prdPath, outputPath, numTasks) => {
 	}
 };
 
-// Create a simplified version of listTasks for testing
-const testListTasks = (tasksData, statusFilter, withSubtasks = false) => {
-	// Filter tasks by status if specified
-	const filteredTasks = statusFilter
-		? tasksData.tasks.filter(
-				(task) =>
-					task.status &&
-					task.status.toLowerCase() === statusFilter.toLowerCase()
-			)
-		: tasksData.tasks;
-
-	// Call the displayTaskList mock for testing
-	mockDisplayTaskList(tasksData, statusFilter, withSubtasks);
-
-	return {
-		filteredTasks,
-		tasksData
-	};
-};
-
 // Create a simplified version of addTask for testing
 const testAddTask = (
 	tasksData,
@@ -239,74 +221,6 @@ const { findNextTask, generateTaskFiles, clearSubtasks, updateTaskById } =
 describe('Task Manager Module', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-	});
-
-	describe('listTasks function', () => {
-		test('should display all tasks when no filter is provided', async () => {
-			// Arrange
-			const testTasksData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Act
-			const result = testListTasks(testTasksData);
-
-			// Assert
-			expect(result.filteredTasks.length).toBe(testTasksData.tasks.length);
-			expect(mockDisplayTaskList).toHaveBeenCalledWith(
-				testTasksData,
-				undefined,
-				false
-			);
-		});
-
-		test('should filter tasks by status when filter is provided', async () => {
-			// Arrange
-			const testTasksData = JSON.parse(JSON.stringify(sampleTasks));
-			const statusFilter = 'done';
-
-			// Act
-			const result = testListTasks(testTasksData, statusFilter);
-
-			// Assert
-			expect(result.filteredTasks.length).toBe(
-				testTasksData.tasks.filter((t) => t.status === statusFilter).length
-			);
-			expect(mockDisplayTaskList).toHaveBeenCalledWith(
-				testTasksData,
-				statusFilter,
-				false
-			);
-		});
-
-		test('should display subtasks when withSubtasks flag is true', async () => {
-			// Arrange
-			const testTasksData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Act
-			testListTasks(testTasksData, undefined, true);
-
-			// Assert
-			expect(mockDisplayTaskList).toHaveBeenCalledWith(
-				testTasksData,
-				undefined,
-				true
-			);
-		});
-
-		test('should handle empty tasks array', async () => {
-			// Arrange
-			const testTasksData = JSON.parse(JSON.stringify(emptySampleTasks));
-
-			// Act
-			const result = testListTasks(testTasksData);
-
-			// Assert
-			expect(result.filteredTasks.length).toBe(0);
-			expect(mockDisplayTaskList).toHaveBeenCalledWith(
-				testTasksData,
-				undefined,
-				false
-			);
-		});
 	});
 
 	describe.skip('expandTask function', () => {
@@ -402,132 +316,6 @@ describe('Task Manager Module', () => {
 			// 2. It reports errors for individual tasks
 			// 3. It completes the operation for successful tasks
 			expect(true).toBe(true);
-		});
-	});
-
-	describe('clearSubtasks function', () => {
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
-
-		// Test implementation of clearSubtasks that just returns the updated data
-		const testClearSubtasks = (tasksData, taskIds) => {
-			// Create a deep copy of the data to avoid modifying the original
-			const data = JSON.parse(JSON.stringify(tasksData));
-			let clearedCount = 0;
-
-			// Handle multiple task IDs (comma-separated)
-			const taskIdArray = taskIds.split(',').map((id) => id.trim());
-
-			taskIdArray.forEach((taskId) => {
-				const id = parseInt(taskId, 10);
-				if (isNaN(id)) {
-					return;
-				}
-
-				const task = data.tasks.find((t) => t.id === id);
-				if (!task) {
-					// Log error for non-existent task
-					mockLog('error', `Task ${id} not found`);
-					return;
-				}
-
-				if (!task.subtasks || task.subtasks.length === 0) {
-					// No subtasks to clear
-					return;
-				}
-
-				const subtaskCount = task.subtasks.length;
-				delete task.subtasks;
-				clearedCount++;
-			});
-
-			return { data, clearedCount };
-		};
-
-		test('should clear subtasks from a specific task', () => {
-			// Create a deep copy of the sample data
-			const testData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Execute the test function
-			const { data, clearedCount } = testClearSubtasks(testData, '3');
-
-			// Verify results
-			expect(clearedCount).toBe(1);
-
-			// Verify the task's subtasks were removed
-			const task = data.tasks.find((t) => t.id === 3);
-			expect(task).toBeDefined();
-			expect(task.subtasks).toBeUndefined();
-		});
-
-		test('should clear subtasks from multiple tasks when given comma-separated IDs', () => {
-			// Setup data with subtasks on multiple tasks
-			const testData = JSON.parse(JSON.stringify(sampleTasks));
-			// Add subtasks to task 2
-			testData.tasks[1].subtasks = [
-				{
-					id: 1,
-					title: 'Test Subtask',
-					description: 'A test subtask',
-					status: 'pending',
-					dependencies: []
-				}
-			];
-
-			// Execute the test function
-			const { data, clearedCount } = testClearSubtasks(testData, '2,3');
-
-			// Verify results
-			expect(clearedCount).toBe(2);
-
-			// Verify both tasks had their subtasks cleared
-			const task2 = data.tasks.find((t) => t.id === 2);
-			const task3 = data.tasks.find((t) => t.id === 3);
-			expect(task2.subtasks).toBeUndefined();
-			expect(task3.subtasks).toBeUndefined();
-		});
-
-		test('should handle tasks with no subtasks', () => {
-			// Task 1 has no subtasks in the sample data
-			const testData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Execute the test function
-			const { clearedCount } = testClearSubtasks(testData, '1');
-
-			// Verify no tasks were cleared
-			expect(clearedCount).toBe(0);
-		});
-
-		test('should handle non-existent task IDs', () => {
-			const testData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Execute the test function
-			testClearSubtasks(testData, '99');
-
-			// Verify an error was logged
-			expect(mockLog).toHaveBeenCalledWith(
-				'error',
-				expect.stringContaining('Task 99 not found')
-			);
-		});
-
-		test('should handle multiple task IDs including both valid and non-existent IDs', () => {
-			const testData = JSON.parse(JSON.stringify(sampleTasks));
-
-			// Execute the test function
-			const { data, clearedCount } = testClearSubtasks(testData, '3,99');
-
-			// Verify results
-			expect(clearedCount).toBe(1);
-			expect(mockLog).toHaveBeenCalledWith(
-				'error',
-				expect.stringContaining('Task 99 not found')
-			);
-
-			// Verify the valid task's subtasks were removed
-			const task3 = data.tasks.find((t) => t.id === 3);
-			expect(task3.subtasks).toBeUndefined();
 		});
 	});
 
