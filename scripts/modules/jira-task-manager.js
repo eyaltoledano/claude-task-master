@@ -169,11 +169,35 @@ class JiraTaskManager {
             const issues = Array.isArray(searchResult.issues) ? searchResult.issues : [];
             const tasks = issues.map(this._mapJiraIssueToTask.bind(this));
 
-            // TODO: Handle subtasks hierarchy reconstruction if options.withSubtasks is true
-            // This would involve processing the fetched tasks list, identifying parents/children,
-            // and structuring them hierarchically before returning.
+            // Handle subtask hierarchy reconstruction if requested
+            if (options.withSubtasks) {
+                console.log('JiraTaskManager: Reconstructing subtask hierarchy...');
+                const taskMap = {};
+                const hierarchicalTasks = [];
 
-            return { tasks: tasks };
+                // First pass: create a map of all tasks by ID
+                tasks.forEach(task => {
+                    taskMap[task.id] = task; // Use Jira key (task.id) as the key
+                    task.subtasks = task.subtasks || []; // Ensure subtasks array exists
+                });
+
+                // Second pass: build the hierarchy
+                tasks.forEach(task => {
+                    if (task.parentKey && taskMap[task.parentKey]) {
+                        // This is a subtask and its parent exists in the map
+                        taskMap[task.parentKey].subtasks.push(task);
+                    } else {
+                        // This is a top-level task (or orphan subtask), add to root
+                        hierarchicalTasks.push(task);
+                    }
+                });
+                console.log(`JiraTaskManager: Hierarchy reconstruction complete. Root tasks: ${hierarchicalTasks.length}`);
+                return { tasks: hierarchicalTasks };
+            } else {
+                 // Return flat list if hierarchy not requested
+                 console.log(`JiraTaskManager: Returning flat list of ${tasks.length} tasks.`);
+                 return { tasks: tasks };
+            }
         } catch (error) {
             console.error(`Error fetching Jira issues with JQL "${jql}":`, error);
             // Re-throw or return error structure
