@@ -8,22 +8,32 @@
  *      -> Creates/overwrites tasks.json with a set of tasks (naive or LLM-based).
  *      -> Optional --tasks parameter limits the number of tasks generated.
  *
- *   2) update --from=5 --prompt="We changed from Slack to Discord."
+ *   2) scan [--output=project_scan.json] [--directory=.] [--format=json|prd|both] [--ignore=dirs] [--debug]
+ *      -> Intelligently scans and analyzes existing codebase to generate a project structure summary.
+ *      -> Uses a multi-stage LLM-driven approach to identify project type, entry points, and key components.
+ *      -> Can output structured JSON summary and/or generate a PRD based on the analysis.
+ *      -> --output: Path to save the JSON summary (default: project_scan.json).
+ *      -> --directory: Specific directory to scan (default: current directory).
+ *      -> --format: Output format (json, prd, or both) (default: json).
+ *      -> --ignore: Comma-separated list of directories to ignore (default: .git,node_modules,dist,build).
+ *      -> --debug: Print verbose debugging information during scanning.
+ *
+ *   3) update --from=5 --prompt="We changed from Slack to Discord."
  *      -> Regenerates tasks from ID >= 5 using the provided prompt.
  *      -> Only updates tasks that aren't marked as 'done'.
  *      -> The --prompt parameter is required and should explain the changes or new context.
  *
- *   3) generate
+ *   4) generate
  *      -> Generates per-task files (e.g., task_001.txt) from tasks.json
  *
- *   4) set-status --id=4 --status=done
+ *   5) set-status --id=4 --status=done
  *      -> Updates a single task's status to done (or pending, deferred, in-progress, etc.).
  *      -> Supports comma-separated IDs for updating multiple tasks: --id=1,2,3,1.1,1.2
  *      -> If you set the status of a parent task to done, all its subtasks will be set to done.
- *   5) list
+ *   6) list
  *      -> Lists tasks in a brief console view (ID, title, status).
  *
- *   6) expand --id=3 [--num=5] [--no-research] [--prompt="Additional context"]
+ *   7) expand --id=3 [--num=5] [--no-research] [--prompt="Additional context"]
  *      -> Expands a task with subtasks for more detailed implementation.
  *      -> Use --all instead of --id to expand all tasks.
  *      -> Optional --num parameter controls number of subtasks (default: 3).
@@ -34,7 +44,7 @@
  *      -> If a complexity report exists for the specified task, its recommended 
  *         subtask count and expansion prompt will be used (unless overridden).
  *
- *   7) analyze-complexity [options]
+ *   8) analyze-complexity [options]
  *      -> Analyzes task complexity and generates expansion recommendations
  *      -> Generates a report in scripts/task-complexity-report.json by default 
  *      -> Uses configured LLM to assess task complexity and create tailored expansion prompts
@@ -52,12 +62,12 @@
  *         --file, -f <path>: Use alternative tasks.json file instead of default
  *         --research, -r: Use Perplexity AI for research-backed complexity analysis
  *
- *   8) clear-subtasks
+ *   9) clear-subtasks
  *      -> Clears subtasks from specified tasks
  *      -> Supports comma-separated IDs for clearing multiple tasks: --id=1,2,3,1.1,1.2
  *      -> Use --all to clear subtasks from all tasks
  *   
- *   9) next
+ *   10) next
  *      -> Shows the next task to work on based on dependencies and status
  *      -> Prioritizes tasks whose dependencies are all satisfied
  *      -> Orders eligible tasks by priority, dependency count, and ID
@@ -65,37 +75,37 @@
  *      -> Shows subtasks if they exist
  *      -> Provides contextual action commands for the next steps
  *
- *   10) show [id] or show --id=<id>
+ *   11) show [id] or show --id=<id>
  *      -> Shows details of a specific task by ID
  *      -> Displays the same comprehensive information as the 'next' command
  *      -> Handles both regular tasks and subtasks (e.g., 1.2)
  *      -> For subtasks, shows parent task information and link
  *      -> Provides contextual action commands tailored to the specific task
  *
- *   11) add-dependency --id=<id> --depends-on=<id>
+ *   12) add-dependency --id=<id> --depends-on=<id>
  *      -> Adds a dependency to a task
  *      -> Checks if the dependency already exists before adding
  *      -> Prevents circular dependencies
  *      -> Automatically sorts dependencies for clarity
  *
- *   12) remove-dependency --id=<id> --depends-on=<id>
+ *   13) remove-dependency --id=<id> --depends-on=<id>
  *      -> Removes a dependency from a task
  *      -> Checks if the dependency exists before attempting to remove
  * 
- *   13) validate-dependencies
+ *   14) validate-dependencies
  *      -> Checks for and identifies invalid dependencies in tasks.json and task files
  *      -> Reports all non-existent dependencies and self-dependencies
  *      -> Provides detailed statistics on task dependencies
  *      -> Does not automatically fix issues, only identifies them
  *
- *   14) fix-dependencies
+ *   15) fix-dependencies
  *      -> Finds and fixes all invalid dependencies in tasks.json and task files
  *      -> Removes references to non-existent tasks and subtasks
  *      -> Eliminates self-dependencies
  *      -> Regenerates task files with corrected dependencies
  *      -> Provides detailed report of all fixes made
  *
- *   15) complexity-report [--file=path]
+ *   16) complexity-report [--file=path]
  *      -> Displays the task complexity analysis report in a readable format
  *      -> Shows tasks organized by complexity score with recommended actions
  *      -> Includes complexity distribution statistics
@@ -107,6 +117,9 @@
  * Usage examples:
  *   node dev.js parse-prd --input=sample-prd.txt
  *   node dev.js parse-prd --input=sample-prd.txt --tasks=10
+ *   node dev.js scan --output=project_scan.json --format=json
+ *   node dev.js scan --directory=src --format=both
+ *   node dev.js scan --ignore=.git,node_modules,dist,coverage --debug
  *   node dev.js update --from=4 --prompt="Refactor tasks from ID 4 onward"
  *   node dev.js generate
  *   node dev.js set-status --id=3 --status=done
@@ -2667,6 +2680,387 @@ async function main() {
     });
 
   program
+    .command('scan')
+    .description('Intelligently scan and analyze existing codebase to generate project structure summary')
+    .option('-o, --output <file>', 'Path to save JSON project summary (default: project_scan.json)', 'project_scan.json')
+    .option('-d, --directory <dir>', 'Specific directory to scan (default: current directory)', '.')
+    .option('-i, --ignore <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build')
+    .option('-f, --format <format>', 'Output format (json, prd, or both)', 'json')
+    .option('--debug', 'Print verbose debugging information during scanning')
+    .action(async (options) => {
+      try {
+        const outputPath = options.output;
+        const directory = options.directory;
+        const ignoreDirs = options.ignore.split(',');
+        const format = options.format.toLowerCase();
+        const debugEnabled = options.debug || false;
+        
+        console.log(chalk.blue(`Scanning project structure in ${directory}`));
+        console.log(chalk.blue(`Ignoring directories: ${ignoreDirs.join(', ')}`));
+        
+        // Step 1: Root Directory Scan (Project Type Identification)
+        const spinner1 = startLoadingIndicator('Scan #1: Identifying project type...');
+        const projectRoot = process.cwd();
+        const rootFiles = fs.readdirSync(path.join(projectRoot, directory))
+          .filter(file => !ignoreDirs.includes(file));
+        
+        if (debugEnabled) {
+          console.log(chalk.cyan('Root files:'), rootFiles);
+        }
+        
+        // Create a prompt for project type identification
+        const projectTypePrompt = `
+Given this root directory structure:
+${rootFiles.join('\n')}
+
+Identify:
+1. The type of project (e.g., Node.js, React, Laravel, Python)
+2. Main programming languages used
+3. Key files or directories that should be excluded from further analysis (beyond standard ones)
+4. Key files or directories that should be prioritized for deeper analysis
+
+Format your response as JSON:
+{
+  "projectType": "string",
+  "programmingLanguages": ["string"],
+  "excludeFromAnalysis": ["string"],
+  "prioritizeForAnalysis": ["string"]
+}
+`;
+        
+        const projectTypeResponse = await callLLMWithRetry({
+          messages: [
+            { role: 'system', content: 'You are an expert software architect analyzing a codebase.' },
+            { role: 'user', content: projectTypePrompt }
+          ],
+          max_tokens: 1000,
+          temperature: 0.2
+        });
+        
+        let projectInfo;
+        try {
+          projectInfo = JSON.parse(projectTypeResponse.content);
+        } catch (e) {
+          projectInfo = {
+            projectType: "Unknown",
+            programmingLanguages: [],
+            excludeFromAnalysis: [],
+            prioritizeForAnalysis: []
+          };
+        }
+        
+        stopLoadingIndicator(spinner1);
+        console.log(chalk.green('[Scan #1]'), `Detected ${projectInfo.projectType} project`);
+        
+        // Step 2: Entry Point and Core Files Identification
+        const spinner2 = startLoadingIndicator('Scan #2: Identifying entry points and core files...');
+        
+        // Add the auto-identified exclude dirs to our ignore list
+        const updatedIgnoreDirs = [...ignoreDirs, ...projectInfo.excludeFromAnalysis];
+        
+        // Find all entry points
+        const entryPointPrompt = `
+Based on the identified project type (${projectInfo.projectType}), identify the main entry points and core files critical for understanding the structure and functionality of the application.
+
+Consider these files found in the root directory:
+${rootFiles.join('\n')}
+
+Format your response as JSON:
+{
+  "entryPoints": [
+    {
+      "path": "path/to/file",
+      "description": "Description of this entry point's purpose",
+      "priority": "high|medium|low"
+    }
+  ]
+}
+`;
+        
+        const entryPointResponse = await callLLMWithRetry({
+          messages: [
+            { role: 'system', content: 'You are an expert software architect analyzing a codebase.' },
+            { role: 'user', content: entryPointPrompt }
+          ],
+          max_tokens: 1500,
+          temperature: 0.2
+        });
+        
+        let entryPoints;
+        try {
+          entryPoints = JSON.parse(entryPointResponse.content).entryPoints;
+        } catch (e) {
+          entryPoints = [];
+        }
+        
+        stopLoadingIndicator(spinner2);
+        console.log(chalk.green('[Scan #2]'), `Identified ${entryPoints.length} entry points`);
+        
+        // Step 3: Core Structure and Relevant Directory Identification
+        const spinner3 = startLoadingIndicator('Scan #3: Analyzing directories for business logic...');
+        
+        // Find all directories (excluding ignoreDirs)
+        const allDirs = rootFiles.filter(file => {
+          const filePath = path.join(projectRoot, directory, file);
+          return fs.statSync(filePath).isDirectory() && !updatedIgnoreDirs.includes(file);
+        });
+        
+        if (debugEnabled) {
+          console.log(chalk.cyan('Directories for analysis:'), allDirs);
+        }
+        
+        // Create prompt for directory analysis
+        const directoryPrompt = `
+Based on the identified entry points:
+${JSON.stringify(entryPoints, null, 2)}
+
+And available directories:
+${allDirs.join('\n')}
+
+Identify key directories that likely contain significant business logic, controllers, views, services, or components essential to the project.
+
+Format your response as JSON:
+{
+  "directories": [
+    {
+      "path": "path/to/directory",
+      "description": "Overview of this directory's purpose and importance",
+      "priority": "high|medium|low",
+      "suggestedFilesToAnalyze": ["file1.ext", "file2.ext"]
+    }
+  ]
+}
+`;
+        
+        const directoryResponse = await callLLMWithRetry({
+          messages: [
+            { role: 'system', content: 'You are an expert software architect analyzing a codebase.' },
+            { role: 'user', content: directoryPrompt }
+          ],
+          max_tokens: 2000,
+          temperature: 0.2
+        });
+        
+        let directories;
+        try {
+          directories = JSON.parse(directoryResponse.content).directories;
+        } catch (e) {
+          directories = [];
+        }
+        
+        stopLoadingIndicator(spinner3);
+        console.log(chalk.green('[Scan #3]'), `Analyzed ${directories.length} key directories`);
+        
+        // Step 4+: Recursive Deepening Scans (Iterative Analysis)
+        let fileDetails = {};
+        let scannedFilesCount = 0;
+        
+        // Process high priority directories first
+        const prioritizedDirs = directories.sort((a, b) => {
+          if (a.priority === 'high' && b.priority !== 'high') return -1;
+          if (a.priority !== 'high' && b.priority === 'high') return 1;
+          if (a.priority === 'medium' && b.priority === 'low') return -1;
+          if (a.priority === 'low' && b.priority === 'medium') return 1;
+          return 0;
+        });
+        
+        // For each high priority directory, analyze suggested files
+        for (let i = 0; i < prioritizedDirs.length; i++) {
+          const dir = prioritizedDirs[i];
+          const spinner4 = startLoadingIndicator(`Scan #${i+4}: Deep analyzing ${dir.path}...`);
+          
+          const dirPath = path.join(projectRoot, directory, dir.path);
+          let suggestedFiles = dir.suggestedFilesToAnalyze || [];
+          
+          // If no suggested files, list all files in the directory (non-recursive)
+          if (suggestedFiles.length === 0 && fs.existsSync(dirPath)) {
+            try {
+              suggestedFiles = fs.readdirSync(dirPath)
+                .filter(file => {
+                  const filePath = path.join(dirPath, file);
+                  return fs.statSync(filePath).isFile();
+                })
+                .slice(0, 5); // Limit to 5 files if no specific suggestions
+            } catch (err) {
+              console.error(chalk.red(`Error reading directory ${dirPath}: ${err.message}`));
+              suggestedFiles = [];
+            }
+          }
+          
+          // Read file contents
+          const fileContents = [];
+          for (const file of suggestedFiles) {
+            const filePath = path.join(dirPath, file);
+            if (fs.existsSync(filePath)) {
+              try {
+                // Read just the beginning of the file to limit token usage
+                let content = fs.readFileSync(filePath, 'utf8');
+                // Limit to first 50 lines or 1000 chars, whichever is smaller
+                const lines = content.split('\n').slice(0, 50).join('\n');
+                content = lines.length > 1000 ? lines.substring(0, 1000) + '...(truncated)' : lines;
+                
+                fileContents.push({
+                  path: path.join(dir.path, file),
+                  content: content
+                });
+                scannedFilesCount++;
+              } catch (err) {
+                console.error(chalk.red(`Error reading file ${filePath}: ${err.message}`));
+              }
+            }
+          }
+          
+          if (fileContents.length > 0) {
+            // Create prompt for detailed file analysis
+            const fileAnalysisPrompt = `
+Analyze these files from the ${dir.path} directory:
+
+${fileContents.map(f => `--- FILE: ${f.path} ---\n${f.content}\n--- END FILE ---`).join('\n\n')}
+
+For each file, provide:
+1. A detailed summary of its purpose
+2. The key functions or classes it contains
+3. How it fits into the overall architecture
+4. Any notable patterns, potential issues, or areas for improvement
+
+Format your response as JSON matching this structure:
+{
+  "files": {
+    "filePath1": {
+      "summary": "Detailed description",
+      "keyComponents": ["component1", "component2"],
+      "architecturalRole": "Description of role",
+      "notablePatterns": ["pattern1", "pattern2"],
+      "potentialIssues": ["issue1", "issue2"]
+    }
+  }
+}
+`;
+            
+            const fileAnalysisResponse = await callLLMWithRetry({
+              messages: [
+                { role: 'system', content: 'You are an expert software architect analyzing a codebase.' },
+                { role: 'user', content: fileAnalysisPrompt }
+              ],
+              max_tokens: 3000,
+              temperature: 0.2
+            });
+            
+            try {
+              const analysisResult = JSON.parse(fileAnalysisResponse.content).files;
+              fileDetails = { ...fileDetails, ...analysisResult };
+            } catch (e) {
+              console.error(chalk.red(`Error parsing file analysis for ${dir.path}: ${e.message}`));
+            }
+          }
+          
+          stopLoadingIndicator(spinner4);
+          console.log(chalk.green(`[Scan #${i+4}]`), `Analyzed ${suggestedFiles.length} files in ${dir.path}`);
+        }
+        
+        // Prepare the final JSON structure
+        const finalSummary = {
+          projectType: projectInfo.projectType,
+          programmingLanguages: projectInfo.programmingLanguages,
+          entryPoints: entryPoints.reduce((acc, entry) => {
+            acc[path.basename(entry.path)] = {
+              path: entry.path,
+              summary: entry.description
+            };
+            return acc;
+          }, {}),
+          directories: directories.reduce((acc, dir) => {
+            // Get all files analyzed for this directory
+            const dirFiles = Object.keys(fileDetails)
+              .filter(filePath => filePath.startsWith(dir.path))
+              .reduce((fileAcc, filePath) => {
+                fileAcc[path.basename(filePath)] = fileDetails[filePath];
+                return fileAcc;
+              }, {});
+            
+            acc[dir.path] = {
+              path: dir.path,
+              summary: dir.description,
+              files: dirFiles
+            };
+            return acc;
+          }, {}),
+          description: `Comprehensive project summary detailing architecture, data flow, and main functional components for this ${projectInfo.projectType} project.`
+        };
+        
+        // Save the JSON summary
+        const jsonOutputPath = path.join(projectRoot, outputPath);
+        writeJSON(jsonOutputPath, finalSummary);
+        console.log(chalk.green(`[Complete]`), `Project successfully scanned and analyzed.`);
+        console.log(chalk.green(`Summary saved to:`), jsonOutputPath);
+        console.log(chalk.yellow(`Total files analyzed:`), scannedFilesCount);
+        
+        // Generate PRD if requested
+        if (format === 'prd' || format === 'both') {
+          const spinner5 = startLoadingIndicator('Generating PRD from analysis results...');
+          
+          const prdPrompt = `
+Based on the code analysis summary:
+${JSON.stringify(finalSummary, null, 2)}
+
+Create a comprehensive Product Requirements Document (PRD) that:
+1. Starts with a high-level overview of the project
+2. Identifies key areas for improvement in the codebase
+3. Outlines specific requirements for:
+   - Code quality improvements
+   - Feature implementations
+   - Architecture enhancements
+   - Testing improvements
+   - Dependency management and updates
+   - Performance optimizations
+   - User experience improvements
+   - Documentation needs
+   - Technical debt reduction
+
+Format as a detailed PRD with clear sections and numbered requirements.
+Make it comprehensive enough to generate at least 15-20 specific tasks.
+`;
+          
+          const prdResponse = await callLLMWithRetry({
+            messages: [
+              { role: 'system', content: 'You are an expert product manager and software architect.' },
+              { role: 'user', content: prdPrompt }
+            ],
+            max_tokens: 4000,
+            temperature: 0.2
+          });
+          
+          // Save PRD to file
+          const prdOutputPath = path.join(projectRoot, 'scripts', 'generated_prd.txt');
+          
+          // Create scripts directory if it doesn't exist
+          const scriptsDir = path.join(projectRoot, 'scripts');
+          if (!fs.existsSync(scriptsDir)) {
+            fs.mkdirSync(scriptsDir, { recursive: true });
+          }
+          
+          fs.writeFileSync(prdOutputPath, prdResponse.content);
+          
+          stopLoadingIndicator(spinner5);
+          console.log(chalk.green(`[PRD Generated]`), `PRD saved to: ${prdOutputPath}`);
+          
+          console.log(chalk.yellow(`Next steps:`));
+          console.log(chalk.cyan(`- Generate tasks from PRD: task-master parse-prd --input=${prdOutputPath}`));
+        }
+        
+        console.log(chalk.yellow(`Next steps:`));
+        console.log(chalk.cyan(`- Review the summary: less ${jsonOutputPath}`));
+        console.log(chalk.cyan(`- Use the summary to create tasks or update your PRD`));
+      } catch (error) {
+        console.error(chalk.red(`Error scanning workspace: ${error.message}`));
+        if (CONFIG.debug) {
+          console.error(error);
+        }
+        process.exit(1);
+      }
+    });
+
+  program
     .command('*')
     .description('Handle unknown commands')
     .action(async (command) => {
@@ -2888,7 +3282,9 @@ function displayHelp() {
         { name: 'parse-prd', args: '--input=<file.txt> [--tasks=10]', 
           desc: 'Generate tasks from a PRD document' },
         { name: 'generate', args: '', 
-          desc: 'Create individual task files from tasks.json' }
+          desc: 'Create individual task files from tasks.json' },
+        { name: 'scan', args: '[--output=project_scan.json] [--directory=.] [--format=json|prd|both]',
+          desc: 'Intelligently analyze codebase to generate project structure summary' }
       ]
     },
     {
@@ -3001,17 +3397,19 @@ function displayHelp() {
     }
   ));
   
-  console.log(chalk.cyan('  1. Generate tasks:'));
-  console.log(`     ${chalk.yellow('node scripts/dev.js parse-prd --input=prd.txt')}`);
-  console.log(chalk.cyan('  2. Generate task files:'));
+  console.log(chalk.cyan('  1. Scan your codebase:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js scan --format=both')}`);
+  console.log(chalk.cyan('  2. Generate tasks from generated PRD:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js parse-prd --input=scripts/generated_prd.txt')}`);
+  console.log(chalk.cyan('  3. Generate task files:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js generate')}`);
-  console.log(chalk.cyan('  3. Analyze task complexity:'));
+  console.log(chalk.cyan('  4. Analyze task complexity:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js analyze-complexity --research')}`);
-  console.log(chalk.cyan('  4. Break down complex tasks:'));
+  console.log(chalk.cyan('  5. Break down complex tasks:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js expand --id=3 --research')}`);
-  console.log(chalk.cyan('  5. Track progress:'));
+  console.log(chalk.cyan('  6. Track progress:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js list --with-subtasks')}`);
-  console.log(chalk.cyan('  6. Update task status:'));
+  console.log(chalk.cyan('  7. Update task status:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js set-status --id=1 --status=done')}`);
   
   console.log('\n');
