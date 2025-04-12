@@ -6,6 +6,7 @@ alwaysApply: false
 
 # Command-Line Interface Implementation Guidelines
 
+<<<<<<< HEAD
 **Note on Interaction Method:**
 
 While this document details the implementation of Task Master's **CLI commands**, the **preferred method for interacting with Task Master in integrated environments (like Cursor) is through the MCP server tools**. 
@@ -16,6 +17,8 @@ While this document details the implementation of Task Master's **CLI commands**
     - A fallback mechanism if the MCP server is unavailable or a specific functionality is not exposed via an MCP tool.
 - **Implementation Context**: This document (`commands.mdc`) focuses on the standards for *implementing* the CLI commands using Commander.js within the [`commands.js`](mdc:scripts/modules/commands.js) module.
 
+=======
+>>>>>>> upstream/changeset-release/next
 ## Command Structure Standards
 
 - **Basic Command Template**:
@@ -37,6 +40,7 @@ While this document details the implementation of Task Master's **CLI commands**
   - ✅ DO: Include validation for required parameters
   - ❌ DON'T: Implement business logic in command handlers
 
+<<<<<<< HEAD
 ## Best Practices for Removal/Delete Commands
 
 When implementing commands that delete or remove data (like `remove-task` or `remove-subtask`), follow these specific guidelines:
@@ -157,6 +161,8 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   console.log('This preserves the task and its history for reference.');
   ```
 
+=======
+>>>>>>> upstream/changeset-release/next
 ## Option Naming Conventions
 
 - **Command Names**:
@@ -253,7 +259,11 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   const taskId = parseInt(options.id, 10);
   if (isNaN(taskId) || taskId <= 0) {
     console.error(chalk.red(`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`));
+<<<<<<< HEAD
     console.log(chalk.yellow('Usage example: task-master update-task --id=\'23\' --prompt=\'Update with new information.\nEnsure proper error handling.\''));
+=======
+    console.log(chalk.yellow('Usage example: task-master update-task --id=23 --prompt="Update with new information"'));
+>>>>>>> upstream/changeset-release/next
     process.exit(1);
   }
   
@@ -299,8 +309,13 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     (dependencies.length > 0 ? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n' : '') +
     '\n' +
     chalk.white.bold('Next Steps:') + '\n' +
+<<<<<<< HEAD
     chalk.cyan(`1. Run ${chalk.yellow(`task-master show '${parentId}'`)} to see the parent task with all subtasks`) + '\n' +
     chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id='${parentId}.${subtask.id}' --status='in-progress'`)} to start working on it`),
+=======
+    chalk.cyan(`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`) + '\n' +
+    chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`),
+>>>>>>> upstream/changeset-release/next
     { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
   ));
   ```
@@ -375,7 +390,11 @@ When implementing commands that delete or remove data (like `remove-task` or `re
       '  --option1 <value>    Description of option1 (required)\n' +
       '  --option2 <value>    Description of option2\n\n' +
       chalk.cyan('Examples:') + '\n' +
+<<<<<<< HEAD
       '  task-master command --option1=\'value1\' --option2=\'value2\'',
+=======
+      '  task-master command --option1=value --option2=value',
+>>>>>>> upstream/changeset-release/next
       { padding: 1, borderColor: 'blue', borderStyle: 'round' }
     ));
   }
@@ -418,7 +437,11 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     // Provide more helpful error messages for common issues
     if (error.message.includes('task') && error.message.includes('not found')) {
       console.log(chalk.yellow('\nTo fix this issue:'));
+<<<<<<< HEAD
       console.log('  1. Run \'task-master list\' to see all available task IDs');
+=======
+      console.log('  1. Run task-master list to see all available task IDs');
+>>>>>>> upstream/changeset-release/next
       console.log('  2. Use a valid task ID with the --id parameter');
     } else if (error.message.includes('API key')) {
       console.log(chalk.yellow('\nThis error is related to API keys. Check your environment variables.'));
@@ -561,6 +584,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   }
   ```
 
+<<<<<<< HEAD
 Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 
 // Helper function to show add-subtask command help
 function showAddSubtaskHelp() {
@@ -604,3 +628,6 @@ function showRemoveSubtaskHelp() {
     { padding: 1, borderColor: 'blue', borderStyle: 'round' }
   ));
 } 
+=======
+Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 
+>>>>>>> upstream/changeset-release/next
