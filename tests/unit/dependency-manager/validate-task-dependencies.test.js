@@ -88,7 +88,7 @@ describe('validateTaskDependencies function', () => {
 		const tasksData = [
 			{ id: 1, dependencies: [2] } // Task 2 does not exist
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		// Explicitly mock task existence for this specific test case
         mockTaskExists.mockImplementation((tasks, id) => {
             // For this test, only task 1 exists.
@@ -118,7 +118,7 @@ describe('validateTaskDependencies function', () => {
 			{ id: 1, dependencies: [2] },
 			{ id: 2, dependencies: [1] }
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true); // Assume all tasks exist
         mockIsCircularDependency.mockImplementation((_, id) => String(id) === '1' || String(id) === '2'); // Simulate cycle
 
@@ -135,7 +135,7 @@ describe('validateTaskDependencies function', () => {
 
 	test('should detect self-dependencies', async () => {
 		const tasksData = [{ id: 1, dependencies: [1] }];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true);
 
 		const result = await validateTaskDependencies({ 
@@ -161,7 +161,7 @@ describe('validateTaskDependencies function', () => {
 			{ id: 1, dependencies: [] },
 			{ id: 2, dependencies: [1] }
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true);
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
@@ -175,7 +175,7 @@ describe('validateTaskDependencies function', () => {
 
 	test('should handle tasks with no dependencies property', async () => {
 		const tasksData = [{ id: 1 }, { id: 2, dependencies: [1] }];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true);
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
@@ -198,7 +198,7 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true);
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
@@ -220,7 +220,7 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation((_, id) => String(id) === '1' || String(id) === '1.1'); // Only 1 and 1.1 exist
 
 		const result = await validateTaskDependencies({ 
@@ -252,8 +252,11 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
-		mockTaskExists.mockImplementation(() => true);
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
+        mockTaskExists.mockImplementation(() => true); // Assume all exist
+        // Simulate cycle involving 1.1 and 1.2
+        mockIsCircularDependency.mockImplementation((_, id) => String(id) === '1.1' || String(id) === '1.2');
+
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
 			taskExistsFunc: mockTaskExists,
@@ -275,7 +278,7 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 		mockTaskExists.mockImplementation(() => true);
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
@@ -292,7 +295,7 @@ describe('validateTaskDependencies function', () => {
 			{ id: 1, dependencies: [] },
 			{ id: 2, dependencies: [1] }
 		];
-		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		mockTaskProvider.getTasks.mockResolvedValue({ tasks: tasksData }); // Wrap in { tasks: ... }
 
 		const result = await validateTaskDependencies({ 
 			taskProvider: mockTaskProvider,
