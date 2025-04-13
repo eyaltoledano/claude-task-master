@@ -4,10 +4,15 @@
 
 import { jest } from '@jest/globals';
 import { validateTaskDependencies } from '../../../scripts/modules/dependency-manager.js';
-import * as utils from '../../../scripts/modules/utils.js'; // Adjusted path
 import { sampleTasks } from '../../fixtures/sample-tasks.js'; // Adjusted path
 
-// Mock dependencies (Copied from original, paths assumed correct relative to project root)
+// Define mocks directly
+const mockTaskExists = jest.fn();
+const mockFormatTaskId = jest.fn(); // Keep this? Check if needed by tests
+const mockLog = jest.fn(); 
+const mockIsCircularDependency = jest.fn().mockReturnValue(false); // Add mock for cycle check
+
+// Mock other dependencies
 jest.mock('path');
 jest.mock('chalk', () => ({
 	green: jest.fn((text) => `<green>${text}</green>`),
@@ -23,17 +28,6 @@ jest.mock('@anthropic-ai/sdk', () => ({
 	Anthropic: jest.fn().mockImplementation(() => ({}))
 }));
 
-// Mock utils module (Adjust mocks as needed for validateTaskDependencies)
-const mockTaskExists = jest.fn();
-const mockFormatTaskId = jest.fn();
-const mockLog = jest.fn(); // May be needed if function logs errors
-
-jest.mock('../../../scripts/modules/utils.js', () => ({ // Adjusted path
-	log: mockLog,
-	taskExists: mockTaskExists,
-	formatTaskId: mockFormatTaskId,
-}));
-
 // Mock other modules if their mocks are needed
 jest.mock('../../../scripts/modules/ui.js', () => ({ // Adjusted path
 	displayBanner: jest.fn()
@@ -43,33 +37,29 @@ jest.mock('../../../scripts/modules/task-manager.js', () => ({ // Adjusted path
 	generateTaskFiles: jest.fn()
 }));
 
-// Define a mock taskProvider or TaskManager class instance if needed by validateTaskDependencies
-// const mockTaskProvider = {
-//     getTasks: jest.fn(),
-//     findTaskById: jest.fn((taskId) => {
-//         // Simple mock implementation, adjust as needed for tests
-//         const tasks = mockTaskProvider.getTasks();
-//         if (typeof taskId === 'string' && taskId.includes('.')) {
-//             const [pId, sId] = taskId.split('.').map(Number);
-//             const parent = tasks.find(t => t.id === pId);
-//             return parent?.subtasks?.find(st => st.id === sId);
-//         }
-//         return tasks.find(t => t.id === parseInt(taskId, 10));
-//     })
-// };
-
+// Define a mock task provider
+let mockTaskProvider;
 
 describe('validateTaskDependencies function', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-        // Reset mock task provider data for each test - REMOVE THIS
-        // mockTaskProvider.getTasks.mockReturnValue([]);
+		// Reset and configure mock task provider for each test
+		mockTaskProvider = {
+			getTasks: jest.fn()
+		};
 
-		// Set default mock implementations relevant to validateTaskDependencies
-		mockTaskExists.mockImplementation((tasks, id) => {
-            // This mock might be less relevant if taskProvider.findTaskById is used
-            // but kept for potential direct uses.
+		// Reset mock task provider data for each test - REMOVE THIS
+		// mockTaskProvider.getTasks.mockReturnValue([]);
+
+		// Reset mocks
+		mockTaskExists.mockClear();
+		mockFormatTaskId.mockClear(); 
+		mockLog.mockClear();
+		mockIsCircularDependency.mockClear(); // Clear cycle mock
+
+		// Configure default mock implementations
+		mockTaskExists.mockImplementation((tasks, id) => { // Default implementation
 			if (Array.isArray(tasks)) {
 				if (typeof id === 'string' && id.includes('.')) {
 					const [taskId, subtaskId] = id.split('.').map(Number);
@@ -86,45 +76,32 @@ describe('validateTaskDependencies function', () => {
 			}
 			return false;
 		});
-
-		mockFormatTaskId.mockImplementation((id) => {
-			if (typeof id === 'string' && id.includes('.')) {
-				return id;
-			}
-			return parseInt(id, 10);
+		mockFormatTaskId.mockImplementation((id) => { // Default implementation
+			if (typeof id === 'string' && id.includes('.')) { return id; }
+			return parseInt(id, 10); // Or keep original simpler mock
 		});
-
-        // Mock findCycles to simulate cycle detection results
-		// mockFindCycles.mockImplementation((tasks) => {
-        //     // Return specific cycle detection results based on test scenarios
-        //     // Example: return [[1, 2], [2, 1]] for a simple cycle
-        //     return []; // Default: no cycles
-        // });
-
-        // Let's rely on the actual isCircularDependency for now. Remove findCycles mock.
-        // jest.mock('../../../scripts/modules/utils.js', ...) should NOT mock findCycles
-        // jest.mock('../../../scripts/modules/dependency-manager.js', ...) might be needed if we want to mock isCircularDependency
-
-        // Re-mock utils, removing findCycles
-        jest.mock('../../../scripts/modules/utils.js', () => ({ // Adjusted path
-        	log: mockLog,
-        	taskExists: mockTaskExists,
-        	formatTaskId: mockFormatTaskId,
-            // findCycles: mockFindCycles, // Removed
-            // Include other utils mocks if necessary
-        }));
-
+        // Default: no cycles
+        mockIsCircularDependency.mockReturnValue(false);
 	});
 
-	test('should detect missing dependencies', () => {
-		const tasks = [
+	test('should detect missing dependencies', async () => {
+		const tasksData = [
 			{ id: 1, dependencies: [2] } // Task 2 does not exist
 		];
-        // REMOVE mockTaskProvider setup
-		mockTaskExists.mockImplementation((_, id) => String(id) === '1'); // Only task 1 exists
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+		// Explicitly mock task existence for this specific test case
+        mockTaskExists.mockImplementation((tasks, id) => {
+            // For this test, only task 1 exists.
+            return String(id) === '1';
+        });
 
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(false);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass cycle mock
+		}); // Pass provider
+		expect(result.valid).toBe(false); // Check valid property
 		// Check the issues array
 		expect(result.issues).toEqual(
 			expect.arrayContaining([
@@ -136,28 +113,38 @@ describe('validateTaskDependencies function', () => {
 		);
 	});
 
-	test('should detect circular dependencies', () => {
-		const tasks = [
+	test('should detect circular dependencies', async () => {
+		const tasksData = [
 			{ id: 1, dependencies: [2] },
 			{ id: 2, dependencies: [1] }
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true); // Assume all tasks exist
-        // Since validateTaskDependencies uses isCircularDependency internally,
-        // we don't need to mock cycle detection separately here.
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(false);
+        mockIsCircularDependency.mockImplementation((_, id) => String(id) === '1' || String(id) === '2'); // Simulate cycle
+
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass cycle mock
+		}); // Pass provider
+		expect(result.valid).toBe(false); // Check valid property
         // Check the issues array for a circular type
         expect(result.issues.some(issue => issue.type === 'circular')).toBe(true);
 	});
 
-	test('should detect self-dependencies', () => {
-		const tasks = [{ id: 1, dependencies: [1] }];
-        // REMOVE mockTaskProvider setup
+	test('should detect self-dependencies', async () => {
+		const tasksData = [{ id: 1, dependencies: [1] }];
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
 
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(false);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(false); // Check valid property
         // Check the issues array
 		expect(result.issues).toEqual(
 			expect.arrayContaining([
@@ -169,29 +156,39 @@ describe('validateTaskDependencies function', () => {
 		);
 	});
 
-	test('should return valid for correct dependencies', () => {
-		const tasks = [
+	test('should return valid for correct dependencies', async () => {
+		const tasksData = [
 			{ id: 1, dependencies: [] },
 			{ id: 2, dependencies: [1] }
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(true);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(true); // Check valid property
 		expect(result.issues.length).toBe(0); // Check issues array is empty
 	});
 
-	test('should handle tasks with no dependencies property', () => {
-		const tasks = [{ id: 1 }, { id: 2, dependencies: [1] }];
-        // REMOVE mockTaskProvider setup
+	test('should handle tasks with no dependencies property', async () => {
+		const tasksData = [{ id: 1 }, { id: 2, dependencies: [1] }];
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(true);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(true); // Check valid property
         expect(result.issues.length).toBe(0);
 	});
 
-	test('should handle subtask dependencies correctly', () => {
-		const tasks = [
+	test('should handle subtask dependencies correctly', async () => {
+		const tasksData = [
 			{
 				id: 1,
 				dependencies: [],
@@ -201,15 +198,20 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(true);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(true); // Check valid property
         expect(result.issues.length).toBe(0);
 	});
 
-	test('should detect missing subtask dependencies', () => {
-		const tasks = [
+	test('should detect missing subtask dependencies', async () => {
+		const tasksData = [
 			{
 				id: 1,
 				dependencies: [],
@@ -218,11 +220,16 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation((_, id) => String(id) === '1' || String(id) === '1.1'); // Only 1 and 1.1 exist
 
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(false);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(false); // Check valid property
         // Check the issues array
 		expect(result.issues).toEqual(
 			expect.arrayContaining([
@@ -234,8 +241,8 @@ describe('validateTaskDependencies function', () => {
 		);
 	});
 
-	test('should detect circular dependencies between subtasks', () => {
-		const tasks = [
+	test('should detect circular dependencies between subtasks', async () => {
+		const tasksData = [
 			{
 				id: 1,
 				dependencies: [],
@@ -245,15 +252,20 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(false);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass cycle mock
+		}); // Pass provider
+		expect(result.valid).toBe(false); // Check valid property
 		expect(result.issues.some(issue => issue.type === 'circular')).toBe(true);
 	});
 
-	test('should properly validate dependencies between subtasks of the same parent', () => {
-		const tasks = [
+	test('should properly validate dependencies between subtasks of the same parent', async () => {
+		const tasksData = [
 			{
 				id: 1,
 				dependencies: [],
@@ -263,12 +275,55 @@ describe('validateTaskDependencies function', () => {
 				]
 			}
 		];
-        // REMOVE mockTaskProvider setup
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
 		mockTaskExists.mockImplementation(() => true);
-		const result = validateTaskDependencies(tasks); // Removed second argument
-		expect(result.valid).toBe(true);
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		}); // Pass provider
+		expect(result.valid).toBe(true); // Check valid property
         expect(result.issues.length).toBe(0);
 	});
 
-    // Add more edge cases if necessary
+	test('should report success when dependencies are valid', async () => {
+		const tasksData = [
+			{ id: 1, dependencies: [] },
+			{ id: 2, dependencies: [1] }
+		];
+		mockTaskProvider.getTasks.mockResolvedValue(tasksData); // Configure mock provider
+
+		const result = await validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		});
+
+		expect(result.valid).toBe(true); // Check valid property
+		expect(result.issues.length).toBe(0);
+	});
+
+	test('should handle missing task provider gracefully', async () => {
+		// Expect validateTaskDependencies to throw an error when taskProvider is missing
+		await expect(validateTaskDependencies({})).rejects.toThrow(
+			'Task provider is required'
+		);
+	});
+
+	test('should handle errors during task fetching', async () => {
+		mockTaskProvider.getTasks.mockRejectedValue(new Error('Fetch failed')); // Configure mock
+
+		await expect(validateTaskDependencies({ 
+			taskProvider: mockTaskProvider,
+			taskExistsFunc: mockTaskExists,
+			logFunc: mockLog,
+			isCircularDependencyFunc: mockIsCircularDependency // Pass default mock
+		})).rejects.toThrow(
+			'Fetch failed'
+		);
+	});
+
+	// Add more edge cases if necessary
 }); 

@@ -424,14 +424,20 @@ function isCircularDependency(tasks, taskId, chain = []) {
 }
 
 /**
- * Validate task dependencies using a Task Provider.
+ * Validates task dependencies for various issues.
  * @param {object} options - Options object.
  * @param {object} options.taskProvider - The task provider instance.
+ * @param {Function} [options.taskExistsFunc] - Injected taskExists function (for testing).
+ * @param {Function} [options.logFunc] - Injected log function (for testing).
+ * @param {Function} [options.isCircularDependencyFunc] - Injected isCircularDependency function (for testing).
  * @param {object} [options.mcpLog] - Optional logger for MCP context.
+ * @returns {Promise<{valid: boolean, issues: Array}>} Validation result
  */
 async function validateTaskDependencies(options = {}) {
-	const { taskProvider, mcpLog } = options;
-	const report = mcpLog || log; // Use MCP log if available
+	const { taskProvider, taskExistsFunc, logFunc, isCircularDependencyFunc, mcpLog } = options;
+	const report = logFunc || mcpLog || log; // Use injected/MCP log if available
+	const checkTaskExists = taskExistsFunc || taskExists; // Use injected taskExists if available
+	const checkCircularDep = isCircularDependencyFunc || isCircularDependency; // Use injected cycle check if available
 
 	if (!taskProvider) {
 		throw new Error("Task provider is required in options for validateTaskDependencies.");
@@ -474,7 +480,7 @@ async function validateTaskDependencies(options = {}) {
 			}
 
 			// Check if dependency exists
-			if (!taskExists(tasks, depId)) {
+			if (!checkTaskExists(tasks, depId)) {
 				issues.push({
 					type: 'missing',
 					taskId: task.id,
@@ -485,7 +491,7 @@ async function validateTaskDependencies(options = {}) {
 		});
 
 		// Check for circular dependencies
-		if (isCircularDependency(tasks, task.id)) {
+		if (checkCircularDep(tasks, task.id)) {
 			issues.push({
 				type: 'circular',
 				taskId: task.id,
@@ -518,7 +524,7 @@ async function validateTaskDependencies(options = {}) {
 					}
 
 					// Check if dependency exists
-					if (!taskExists(tasks, depId)) {
+					if (!checkTaskExists(tasks, depId)) {
 						issues.push({
 							type: 'missing',
 							taskId: fullSubtaskId,
@@ -529,7 +535,7 @@ async function validateTaskDependencies(options = {}) {
 				});
 
 				// Check for circular dependencies in subtasks
-				if (isCircularDependency(tasks, fullSubtaskId)) {
+				if (checkCircularDep(tasks, fullSubtaskId)) {
 					issues.push({
 						type: 'circular',
 						taskId: fullSubtaskId,
