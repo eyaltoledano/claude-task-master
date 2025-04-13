@@ -31,6 +31,9 @@ import { detectCamelCaseFlags } from '../scripts/modules/utils.js';
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
+import figlet from 'figlet';
+import gradient from 'gradient-string';
+import boxen from 'boxen';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -368,26 +371,44 @@ program
 	.option('--skip-complexity', 'Skip the automatic task complexity analysis step')
 	.option('-d, --debug', 'Enable debug output')
 	.action(async (directory, options) => {
-		console.log('\n  _____           _        __  __            _                ');
-		console.log(' |_   _|__ _  ___| |__    |  \\/  | __ _  ___| |_  ___  _ _    ');
-		console.log('   | | / _` |(_-<| / /    | |\\/| |/ _` |(_-<|  _|/ -_)| \'_|   ');
-		console.log('   |_| \\__,_|/__/|_\\_\\    |_|  |_|\\__,_|/__/ \\__|\\___||_|     ');
-		console.log('                                                               ');
-		console.log('Workspace Scanner - Analyzing codebase to generate PRD and tasks');
-		console.log('This process involves:');
-		console.log('1. Discovering code files in your project');
-		console.log('2. Analyzing file content and code patterns');
-		console.log('3. Generating a comprehensive PRD document');
-		console.log('4. Creating structured tasks from requirements');
-		console.log('5. Analyzing task complexity to identify which tasks need further breakdown');
-		console.log('6. Generating individual task files for easier reference');
-		console.log('\nThis operation may take 2-5 minutes depending on codebase size.');
-		console.log(chalk.yellow('\n⚠️  Important Note:'));
-		console.log(chalk.yellow('  • The AI analysis phase (step 3) is the longest part of the process'));
-		console.log(chalk.yellow('  • If progress appears to stall at "Finalizing and optimizing output":'));
-		console.log(chalk.yellow('    - The system may be retrying API calls due to network issues or rate limits'));
-		console.log(chalk.yellow('    - These retry attempts are normal and will be reflected in the progress display'));
-		console.log(chalk.yellow('    - Please be patient during this phase\n'));
+		// Create a visually enhanced header for the scanner
+		console.clear();
+		
+		// Create a gradient banner using figlet and gradient-string
+		const figletText = figlet.textSync('Workspace Scanner', {
+			font: 'Slant',
+			horizontalLayout: 'default',
+			verticalLayout: 'default'
+		});
+		const coolGradient = gradient(['#00b4d8', '#0077b6', '#023e8a']);
+		console.log(coolGradient(figletText));
+		
+		// Add information box with enhanced formatting
+		console.log(boxen(
+			chalk.white(`${chalk.bold('Analyzing codebase to generate PRD and tasks')}
+This process involves:
+${chalk.cyan('1.')} Discovering code files in your project
+${chalk.cyan('2.')} Analyzing file content and code patterns
+${chalk.cyan('3.')} Generating a comprehensive PRD document
+${chalk.cyan('4.')} Creating structured tasks from requirements
+${chalk.cyan('5.')} Analyzing task complexity to identify which tasks need further breakdown
+${chalk.cyan('6.')} Generating individual task files for easier reference
+
+This operation may take ${chalk.yellow('2-5 minutes')} depending on codebase size.
+
+${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
+  • The AI analysis phase (step 3) is the longest part of the process
+  • If progress appears to stall at "Finalizing and optimizing output":
+    - The system may be retrying API calls due to network issues or rate limits
+    - These retry attempts are normal and will be reflected in the progress display
+    - Please be patient during this phase`),
+			{
+				padding: 1,
+				margin: { top: 0, bottom: 1 },
+				borderStyle: 'round',
+				borderColor: 'cyan'
+			}
+		));
 		
 		// Extract CLI arguments and handle debug flag
 		const args = process.argv.slice(process.argv.indexOf('scan-workspace') + 1);

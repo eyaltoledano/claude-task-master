@@ -9,12 +9,12 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { callLLMWithRetry } from './ai-services.js';
-import { addTask, parsePRD } from './task-manager.js';
+import { addTask, parsePRD, analyzeTaskComplexity } from './task-manager.js';
 import { log, archiveTasksBeforeOverwrite } from './utils.js';
 import chalk from 'chalk';
 import { writeJSON } from './utils.js';
 import readline from 'readline';
-import { analyzeTaskComplexity } from './task-manager.js';
+import gradient from 'gradient-string';
 
 // Define colorize functions to replace the missing import
 const colorize = {
@@ -1065,20 +1065,29 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     const detail = data.detail || '';
     const progress = typeof data.progress === 'number' ? data.progress : 0;
     
-    // Define symbols for different phases
+    // Define animated spinner frames for loading indication
+    const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const spinnerFrame = spinnerFrames[Math.floor(Date.now() / 80) % spinnerFrames.length];
+    
+    // Define colorful emojis and symbols for different phases with higher contrast and visual appeal
     const symbols = {
-      'init': '🔍 ',
-      'fileDiscovery': '📁 ',
-      'fileAnalysis': '📄 ',
-      'sampling': '📊 ',
+      'init': '🚀 ',
+      'fileDiscovery': '🔍 ',
+      'fileAnalysis': '📊 ',
+      'sampling': '🧪 ',
       'prdGeneration': '📝 ',
-      'aiAnalysis': '🧠 ',  // Added extra space here
+      'aiAnalysis': '🧠 ',
       'taskGeneration': '✅ ',
       'finalization': '📦 ',
       'complete': '✨ ',
       'error': '❌ ',
       'unknown': '⚡ '
     };
+    
+    // Enhanced color gradients based on progress for visual feedback
+    const coolGradient = gradient(['#00b4d8', '#0077b6', '#023e8a']);
+    const successGradient = gradient(['#8ac926', '#52b788', '#2d6a4f']);
+    const warningGradient = gradient(['#ff9f1c', '#ffbf69', '#ffd166']);
     
     // Get the appropriate symbol, defaulting to the unknown symbol if phase is not recognized
     const symbol = symbols[phase] || symbols['unknown'];
@@ -1096,21 +1105,36 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
     }
     
-    // Create a progress bar
+    // Create an enhanced progress bar
     const progressBar = cliMode ? createCliProgressBar(progress, 30) : '';
     
-    // Format the output message
-    const progressPrefix = cliMode ? `${symbol} ` : '';
-    const progressSuffix = cliMode ? ` ${progressBar} ${progress}%` : '';
+    // Choose color gradient based on progress and phase
+    let colorFn;
+    if (progress >= 90 || phase === 'complete') {
+      colorFn = successGradient;
+    } else if (phase === 'error') {
+      colorFn = warningGradient;
+    } else {
+      colorFn = coolGradient;
+    }
     
-    // Log the progress message
+    // Format the output message with enhanced styling
+    const progressPrefix = cliMode ? `${symbol} ` : '';
+    const progressPhase = cliMode ? chalk.bold(message) : message;
+    const progressDisplay = cliMode ? colorFn(progressBar) : '';
+    const progressPercentage = cliMode ? chalk.bold(`${progress}%`) : `${progress}%`;
+    
+    // Log the progress message with the animated spinner for ongoing operations
     if (cliMode) {
+      // Add animated spinner for ongoing operations
+      const spinner = progress < 100 ? spinnerFrame + ' ' : '';
+      
       // Format for CLI output (no newline to allow overwriting)
-      process.stdout.write(`${progressPrefix}${message}${progressSuffix}`);
+      process.stdout.write(`${progressPrefix}${progressPhase} ${progressDisplay} ${spinner}${progressPercentage}`);
       
       // Add detail on the next line if provided
       if (detail && process.stdout.clearLine) {
-        process.stdout.write(`\n  → ${detail}`);
+        process.stdout.write(`\n  → ${chalk.italic(detail)}`);
         process.stdout.cursorTo(0);
       }
     } else {
@@ -1127,10 +1151,37 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     }
   };
   
-  // Helper function to create a CLI progress bar
+  // Helper function to create a CLI progress bar with enhanced visual style
   function createCliProgressBar(percent, width) {
-    const completed = Math.floor(width * (percent / 100));
-    return '[' + '='.repeat(completed) + ' '.repeat(width - completed) + ']';
+    // Choose different characters for a more visual progress bar
+    const filled = '█';
+    const partial = ['▏', '▎', '▍', '▌', '▋', '▊', '▉'];
+    const empty = '▒'; // Using a lighter block for empty space
+    
+    // Calculate components
+    const filledWidth = Math.floor(width * (percent / 100));
+    const partialWidth = Math.floor((width * (percent / 100) - filledWidth) * 7);
+    const emptyWidth = width - filledWidth - (partialWidth > 0 ? 1 : 0);
+    
+    // Build the bar
+    let bar = '';
+    
+    // Add filled sections
+    if (filledWidth > 0) {
+      bar += filled.repeat(filledWidth);
+    }
+    
+    // Add partial section if needed
+    if (partialWidth > 0) {
+      bar += partial[partialWidth - 1];
+    }
+    
+    // Add empty sections
+    if (emptyWidth > 0) {
+      bar += empty.repeat(emptyWidth);
+    }
+    
+    return `[${bar}]`;
   }
   
   // Use CLI progress reporter when in CLI mode, otherwise use the provided reportProgress
