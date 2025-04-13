@@ -27,7 +27,7 @@ import { spawn } from 'child_process';
 import { Command } from 'commander';
 import { displayHelp, displayBanner } from '../scripts/modules/ui.js';
 import { registerCommands } from '../scripts/modules/commands.js';
-import { detectCamelCaseFlags } from '../scripts/modules/utils.js';
+import { detectCamelCaseFlags } from '../scripts/modules/utils-cli.js';
 import chalk from 'chalk';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -356,25 +356,4 @@ process.on('uncaughtException', (err) => {
 		);
 		process.exit(1);
 	}
-
-	// Handle other uncaught exceptions
-	console.error(chalk.red(`Error: ${err.message}`));
-	if (process.env.DEBUG === '1') {
-		console.error(err);
-	}
-	process.exit(1);
 });
-
-// Show help if no command was provided (just 'task-master' with no args)
-if (process.argv.length <= 2) {
-	displayBanner();
-	displayHelp();
-	process.exit(0);
-}
-
-// Add exports at the end of the file
-if (typeof module !== 'undefined') {
-	module.exports = {
-		detectCamelCaseFlags
-	};
-}

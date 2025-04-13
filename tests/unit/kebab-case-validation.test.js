@@ -2,8 +2,9 @@
  * Kebab case validation tests
  */
 
-import { jest } from '@jest/globals';
-import { toKebabCase } from '../../scripts/modules/utils.js';
+import { jest, describe, test, expect } from '@jest/globals';
+// import { toKebabCase } from '../../scripts/modules/utils.js'; // Old import
+import { toKebabCase } from '../../scripts/modules/utils-cli.js'; // New import
 
 // Create a test implementation of detectCamelCaseFlags
 function testDetectCamelCaseFlags(args) {

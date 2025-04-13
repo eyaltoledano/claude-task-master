@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import os from 'os';
 
 // Global silent mode flag
 let silentMode = false;
@@ -31,6 +32,9 @@ const LOG_LEVELS = {
 	error: 3,
 	success: 1 // Treat success like info level
 };
+
+// Keep changes from HEAD (feat-task-provider-jira)
+const ATTACHMENT_DIR = process.env.ATTACHMENT_DIR || null;
 
 /**
  * Returns the task manager module
@@ -342,94 +346,65 @@ function findCycles(
 }
 
 /**
- * Convert a string from camelCase to kebab-case
- * @param {string} str - The string to convert
- * @returns {string} The kebab-case version of the string
+ * Determines the directory to use for Jira attachments.
+ * Creates a subdirectory based on the issue key.
+ * Order of preference: target_dir arg > ATTACHMENT_DIR env var > OS temp dir.
+ * @param {string} issue_key - The Jira issue key (e.g., PROJ-123).
+ * @param {string|null} target_dir - Optional specific base directory path.
+ * @returns {string} Absolute path to the attachment directory.
  */
-const toKebabCase = (str) => {
-	// Special handling for common acronyms
-	const withReplacedAcronyms = str
-		.replace(/ID/g, 'Id')
-		.replace(/API/g, 'Api')
-		.replace(/UI/g, 'Ui')
-		.replace(/URL/g, 'Url')
-		.replace(/URI/g, 'Uri')
-		.replace(/JSON/g, 'Json')
-		.replace(/XML/g, 'Xml')
-		.replace(/HTML/g, 'Html')
-		.replace(/CSS/g, 'Css');
+function getAttachmentDir(issue_key, target_dir = null) {
+	let baseDir;
 
-	// Insert hyphens before capital letters and convert to lowercase
-	return withReplacedAcronyms
-		.replace(/([A-Z])/g, '-$1')
-		.toLowerCase()
-		.replace(/^-/, ''); // Remove leading hyphen if present
-};
-
-/**
- * Detect camelCase flags in command arguments
- * @param {string[]} args - Command line arguments to check
- * @returns {Array<{original: string, kebabCase: string}>} - List of flags that should be converted
- */
-function detectCamelCaseFlags(args) {
-	const camelCaseFlags = [];
-	for (const arg of args) {
-		if (arg.startsWith('--')) {
-			const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
-
-			// Skip single-word flags - they can't be camelCase
-			if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
-				continue;
-			}
-
-			// Check for camelCase pattern (lowercase followed by uppercase)
-			if (/[a-z][A-Z]/.test(flagName)) {
-				const kebabVersion = toKebabCase(flagName);
-				if (kebabVersion !== flagName) {
-					camelCaseFlags.push({
-						original: flagName,
-						kebabCase: kebabVersion
-					});
-				}
-			}
-		}
+	if (target_dir && typeof target_dir === 'string' && target_dir.trim() !== '') {
+		baseDir = path.resolve(target_dir);
+		log('debug', `Using provided target_dir for attachments: ${baseDir}`);
+	} else if (ATTACHMENT_DIR) {
+		baseDir = path.resolve(ATTACHMENT_DIR);
+		log('debug', `Using ATTACHMENT_DIR env var for attachments: ${baseDir}`);
+	} else {
+		baseDir = os.tmpdir();
+		log('debug', `Using OS temp directory for attachments: ${baseDir}`);
 	}
-	return camelCaseFlags;
+
+	const attachmentPath = path.join(baseDir, 'taskmaster-attachments', issue_key);
+
+	try {
+		fs.mkdirSync(attachmentPath, { recursive: true });
+		log('info', `Ensured attachment directory exists: ${attachmentPath}`);
+	} catch (error) {
+		log('error', `Failed to create attachment directory ${attachmentPath}: ${error.message}`);
+		// Fallback to baseDir if subdirectory creation fails
+		return baseDir;
+	}
+
+	return attachmentPath;
 }
 
 /**
- * Generates the next available ID for a task or subtask.
- * @param {Array} tasks - The current array of tasks.
- * @param {number|string} [parentId=null] - The ID of the parent task if generating a subtask ID.
- * @returns {number|string} The next available ID (number for top-level, string "parent.sub" for subtasks).
+ * Generates a unique ID for a new task or subtask
+ * @param {Array} tasks - The array of existing tasks
+ * @param {number|null} parentId - The ID of the parent task if creating a subtask
+ * @returns {number} The next available ID
  */
 function generateId(tasks, parentId = null) {
 	if (parentId !== null) {
-		// Generating a subtask ID
-		const parentTask = findTaskById(tasks, parentId);
-		if (!parentTask) {
-			log('error', `Cannot generate subtask ID: Parent task ${parentId} not found.`);
-			// Throw or return a specific error indicator? Let's throw for now.
-			throw new Error(`Parent task ${parentId} not found when generating subtask ID.`);
+		const parentTask = tasks.find(t => t.id === parentId);
+		if (!parentTask || !parentTask.subtasks || parentTask.subtasks.length === 0) {
+			return 1;
 		}
-		const subtasks = parentTask.subtasks || [];
-		const maxSubtaskId = subtasks.reduce((maxId, subtask) => {
-			// Subtask IDs are just numbers within the parent
-			return Math.max(maxId, subtask.id);
-		}, 0);
-		// Format as "parentId.nextSubId"
-		return `${parentTask.id}.${maxSubtaskId + 1}`;
+		return Math.max(0, ...parentTask.subtasks.map(st => st.id)) + 1;
 	} else {
-		// Generating a top-level task ID
-		const maxId = tasks.reduce((max, task) => Math.max(max, task.id), 0);
-		return maxId + 1;
+		if (!tasks || tasks.length === 0) {
+			return 1;
+		}
+		return Math.max(0, ...tasks.map(t => t.id)) + 1;
 	}
 }
 
-// Export all utility functions and configuration
+// Export all utility functions
 export {
 	CONFIG,
-	LOG_LEVELS,
 	log,
 	readJSON,
 	writeJSON,
@@ -441,11 +416,10 @@ export {
 	findTaskById,
 	truncate,
 	findCycles,
-	toKebabCase,
-	detectCamelCaseFlags,
+	getAttachmentDir,
+	generateId,
 	enableSilentMode,
 	disableSilentMode,
 	isSilentMode,
-	getTaskManager,
-	generateId
+	getTaskManager
 };
