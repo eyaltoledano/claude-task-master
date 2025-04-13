@@ -85,11 +85,8 @@ alwaysApply: false
       - `parsePRDWithAI(prdContent)`: Extracts tasks from PRD content using AI.
 
   - **[`utils.js`](mdc:scripts/modules/utils.js): Utility Functions and Configuration**
-<<<<<<< HEAD
     - **Purpose**: Provides reusable utility functions and global configuration settings used across the **CLI application**.
-=======
-    - **Purpose**: Provides reusable utility functions and global configuration settings used across the application.
->>>>>>> upstream/changeset-release/next
+    - 
     - **Responsibilities** (See also: [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc)):
       - Manages global configuration settings loaded from environment variables and defaults.
       - Implements logging utility with different log levels and output formatting.
@@ -97,10 +94,8 @@ alwaysApply: false
       - Includes string manipulation utilities (e.g., `truncate`, `sanitizePrompt`).
       - Offers task-specific utility functions (e.g., `formatTaskId`, `findTaskById`, `taskExists`).
       - Implements graph algorithms like cycle detection for dependency management.
-<<<<<<< HEAD
       - **Silent Mode Control**: Provides `enableSilentMode` and `disableSilentMode` functions to control log output.
-=======
->>>>>>> upstream/changeset-release/next
+
     - **Key Components**:
       - `CONFIG`: Global configuration object.
       - `log(level, ...args)`: Logging function.
@@ -108,16 +103,12 @@ alwaysApply: false
       - `truncate(text, maxLength)`: String truncation utility.
       - `formatTaskId(id)` / `findTaskById(tasks, taskId)`: Task ID and search utilities.
       - `findCycles(subtaskId, dependencyMap)`: Cycle detection algorithm.
-<<<<<<< HEAD
       - `enableSilentMode()` / `disableSilentMode()`: Control console logging output.
-=======
->>>>>>> upstream/changeset-release/next
 
   - **[`mcp-server/`](mdc:mcp-server): MCP Server Integration**
     - **Purpose**: Provides an MCP (Model Context Protocol) interface for Task Master, allowing integration with external tools like Cursor. Uses FastMCP framework.
     - **Responsibilities** (See also: [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)):
       - Registers Task Master functionalities as tools consumable via MCP.
-<<<<<<< HEAD
       - Handles MCP requests via tool `execute` methods defined in `mcp-server/src/tools/*.js`.
       - Tool `execute` methods call corresponding **direct function wrappers**.
       - Tool `execute` methods use `getProjectRootFromSession` (from [`tools/utils.js`](mdc:mcp-server/src/tools/utils.js)) to determine the project root from the client session and pass it to the direct function.
@@ -158,16 +149,6 @@ alwaysApply: false
         - Context preservation (log, session, reportProgress)
         - Robust error handling for background tasks
       - **Usage**: Used for CPU-intensive operations like task expansion and PRD parsing
-=======
-      - Handles MCP requests and translates them into calls to the Task Master core logic.
-      - Prefers direct function calls to core modules via [`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js) for performance.
-      - Uses CLI execution via `executeTaskMasterCommand` as a fallback.
-      - **Implements Caching**: Utilizes a caching layer (`ContextManager` with `lru-cache`) invoked via `getCachedOrExecute` within direct function wrappers ([`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js)) to optimize performance for specific read operations (e.g., listing tasks).
-      - Standardizes response formatting for MCP clients using utilities in [`tools/utils.js`](mdc:mcp-server/src/tools/utils.js).
-    - **Key Components**:
-      - `mcp-server/src/server.js`: Main server setup and initialization.
-      - `mcp-server/src/tools/`: Directory containing individual tool definitions, each registering a specific Task Master command for MCP.
->>>>>>> upstream/changeset-release/next
 
 - **Data Flow and Module Dependencies**:
 
@@ -176,7 +157,6 @@ alwaysApply: false
   - **UI for Presentation**:  [`ui.js`](mdc:scripts/modules/ui.js) is used by command handlers and task/dependency managers to display information to the user. UI functions primarily consume data and format it for output, without modifying core application state.
   - **Utilities for Common Tasks**: [`utils.js`](mdc:scripts/modules/utils.js) provides helper functions used by all other modules for configuration, logging, file operations, and common data manipulations.
   - **AI Services Integration**: AI functionalities (complexity analysis, task expansion, PRD parsing) are invoked from [`task-manager.js`](mdc:scripts/modules/task-manager.js) and potentially [`commands.js`](mdc:scripts/modules/commands.js), likely using functions that would reside in a dedicated `ai-services.js` module or be integrated within `utils.js` or `task-manager.js`.
-<<<<<<< HEAD
   - **MCP Server Interaction**: External tools interact with the `mcp-server`. MCP Tool `execute` methods use `getProjectRootFromSession` to find the project root, then call direct function wrappers (in `mcp-server/src/core/direct-functions/`) passing the root in `args`. These wrappers handle path finding for `tasks.json` (using `path-utils.js`), validation, caching, call the core logic from `scripts/modules/` (passing logging context via the standard wrapper pattern detailed in mcp.mdc), and return a standardized result. The final MCP response is formatted by `mcp-server/src/tools/utils.js`. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details.
 
 ## Silent Mode Implementation Pattern in MCP Direct Functions
@@ -285,9 +265,6 @@ Direct functions (the `*Direct` functions in `mcp-server/src/core/direct-functio
    ```
 
 By following these patterns consistently, direct functions will properly manage console output suppression while ensuring that silent mode is always properly reset, even when errors occur. This creates a more robust system that helps prevent unexpected silent mode states that could cause logging problems in subsequent operations.
-=======
-  - **MCP Server Interaction**: External tools interact with the `mcp-server`, which then calls direct function wrappers in `task-master-core.js` or falls back to `executeTaskMasterCommand`. Responses are formatted by `mcp-server/src/tools/utils.js`. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details.
->>>>>>> upstream/changeset-release/next
 
 - **Testing Architecture**:
 
@@ -329,7 +306,6 @@ By following these patterns consistently, direct functions will properly manage 
   - **Scalability**:  New features can be added as new modules or by extending existing ones without significantly impacting other parts of the application.
   - **Clarity**: The modular structure provides a clear separation of concerns, making the codebase easier to navigate and understand for developers.
 
-<<<<<<< HEAD
 This architectural overview should help AI models understand the structure and organization of the Task Master CLI codebase, enabling them to more effectively assist with code generation, modification, and understanding.
 
 ## Implementing MCP Support for a Command
@@ -395,6 +371,5 @@ The AsyncOperationManager provides background task execution capabilities:
   3. Tool returns immediate response with operation ID
   4. Client polls `get_operation_status` tool with the ID
   5. Once completed, client can access operation results
-=======
+
 This architectural overview should help AI models understand the structure and organization of the Task Master CLI codebase, enabling them to more effectively assist with code generation, modification, and understanding.
->>>>>>> upstream/changeset-release/next
