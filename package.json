@@ -5,12 +5,28 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "task-master-init": "scripts/init.js"
+    "task-master-init": "scripts/init.js",
+    "task-master": "bin/task-master.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare-package": "node scripts/prepare-package.js",
-    "prepublishOnly": "npm run prepare-package"
+    "prepublishOnly": "npm run prepare-package",
+    "start-mcp": "node mcp-server/server.js",
+    "start-mcp-dev": "nodemon mcp-server/server.js",
+    "start-server": "./start-server.sh",
+    "beta-test": "node bin/task-master.js",
+    "beta-test-debug": "DEBUG=1 node bin/task-master.js",
+    "test-mcp": "node test-beta.js",
+    "test-mcp-list": "node test-beta.js list-tools",
+    "test-mcp-tasks": "node test-beta.js get-tasks",
+    "clean-install": "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps",
+    "test-server": "node test-server.js",
+    "install-fastmcp": "npm install --no-save fastmcp@latest",
+    "dev": "node scripts/dev.js",
+    "list": "node scripts/dev.js list",
+    "generate": "node scripts/dev.js generate",
+    "parse-prd": "node scripts/dev.js parse-prd"
   },
   "keywords": [
     "claude",
@@ -26,15 +42,28 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "boxen": "^8.0.1",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "boxen": "^7.1.1",
     "chalk": "^4.1.2",
-    "cli-table3": "^0.6.5",
+    "cli-table3": "^0.6.3",
     "commander": "^11.1.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "figlet": "^1.8.0",
-    "gradient-string": "^3.0.0",
-    "openai": "^4.86.1",
-    "ora": "^8.2.0"
+    "express": "^4.21.2",
+    "fastmcp": "latest",
+    "figlet": "^1.7.0",
+    "fuse.js": "^7.0.0",
+    "gradient-string": "^2.0.2",
+    "helmet": "^8.1.0",
+    "inquirer": "^12.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^10.2.0",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.17.0",
+    "ora": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   },
   "engines": {
     "node": ">=14.0.0"
@@ -53,7 +82,8 @@
     "assets/**",
     ".cursor/**",
     "README-task-master.md",
-    "index.js"
+    "index.js",
+    "bin/**"
   ],
   "overrides": {
     "node-fetch": "^3.3.2",

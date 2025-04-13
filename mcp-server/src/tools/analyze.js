@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	safeExecuteOperation
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js';
 
@@ -54,11 +55,15 @@ export function registerAnalyzeTool(server) {
 					'Root directory of the project (default: current working directory)'
 				)
 		}),
-		execute: async (args, { log, session }) => {
+		execute: async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(
 					`Analyzing task complexity with args: ${JSON.stringify(args)}`
 				);
+				
+				if (reportProgress) {
+				    reportProgress({ progress: 0 });
+				}
 
 				let rootFolder = getProjectRootFromSession(session, log);
 
@@ -67,14 +72,25 @@ export function registerAnalyzeTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				const result = await analyzeTaskComplexityDirect(
-					{
-						projectRoot: rootFolder,
-						...args
-					},
-					log,
-					{ session }
+				// Use safeExecuteOperation to handle long-running operations with timeout
+				const result = await safeExecuteOperation(
+				    async () => {
+				        return await analyzeTaskComplexityDirect(
+					        {
+						        projectRoot: rootFolder,
+						        ...args
+					        },
+					        log,
+					        { session, reportProgress }
+				        );
+				    },
+				    120000, // Increased timeout to 120 seconds for this CPU-intensive operation
+				    log
 				);
+				
+				if (reportProgress) {
+				    reportProgress({ progress: 100 });
+				}
 
 				if (result.success) {
 					log.info(`Task complexity analysis complete: ${result.data.message}`);

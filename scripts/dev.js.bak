@@ -161,8 +161,6 @@ import Table from 'cli-table3';
 import gradient from 'gradient-string';
 import { callLLMWithRetry } from './modules/ai-services.js';
 import pLimit from 'p-limit';
-import inquirer from 'inquirer';
-import { validateAndFixDependencies } from './modules/task-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -201,10 +199,12 @@ const CONFIG = {
   model: MODEL,
   maxTokens: MAX_TOKENS,
   temperature: TEMPERATURE,
-  projectName: process.env.PROJECT_NAME || "Task Master",
-  projectVersion: process.env.PROJECT_VERSION || "1.5.0",
+  debug: process.env.DEBUG === "true",
+  logLevel: process.env.LOG_LEVEL || "info",
   defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || "3"),
-  defaultPriority: process.env.DEFAULT_PRIORITY || "medium"
+  defaultPriority: process.env.DEFAULT_PRIORITY || "medium",
+  projectName: process.env.PROJECT_NAME || "Task Master",
+  projectVersion: "1.5.0" // Hardcoded version - ALWAYS use this value, ignore environment variable
 };
 
 // Set up logging based on log level
@@ -221,12 +221,36 @@ const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 // Display a fancy banner
 function displayBanner() {
-  console.log('');
-  console.log(
-    gradient.atlas.multiline(
-      figlet.textSync('Task Master AI', { font: 'Small', horizontalLayout: 'fitted' })
-    )
-  );
+  console.clear();
+  const bannerText = figlet.textSync('Task Master AI', {
+    font: 'Standard',
+    horizontalLayout: 'default',
+    verticalLayout: 'default'
+  });
+  
+  console.log(coolGradient(bannerText));
+  
+  // Add creator credit line below the banner
+  console.log(chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano'));
+  
+  // Read version directly from package.json
+  let version = "1.5.0"; // Default fallback
+  try {
+    const packageJsonPath = path.join(__dirname, '..', 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      version = packageJson.version;
+    }
+  } catch (error) {
+    // Silently fall back to default version
+  }
+  
+  console.log(boxen(chalk.white(`${chalk.bold('Version:')} ${version}   ${chalk.bold('Project:')} ${CONFIG.projectName}`), {
+    padding: 1,
+    margin: { top: 0, bottom: 1 },
+    borderStyle: 'round',
+    borderColor: 'cyan'
+  }));
 }
 
 function log(level, ...args) {
@@ -263,35 +287,18 @@ function log(level, ...args) {
 }
 
 function readJSON(filepath) {
-  console.log(`Attempting to read JSON from: ${filepath}`);
-  if (!fs.existsSync(filepath)) {
-    console.log(`File does not exist: ${filepath}`);
-    return null;
-  }
+  if (!fs.existsSync(filepath)) return null;
   try {
-    console.log(`File exists, reading content from: ${filepath}`);
     const content = fs.readFileSync(filepath, 'utf8');
-    console.log(`Content read successfully, length: ${content.length} characters`);
-    console.log(`First 100 characters: ${content.substring(0, 100)}`);
-    try {
-      const data = JSON.parse(content);
-      console.log(`JSON parsed successfully, structure: ${Object.keys(data).join(', ')}`);
-      
-      // Optional validation and cleanup of task dependencies
-      if (data && data.tasks && Array.isArray(data.tasks)) {
-        console.log(`Found tasks array with ${data.tasks.length} tasks`);
-        // validateTaskDependencies(data.tasks, filepath);
-      } else {
-        console.log(`No tasks array found or it's not an array: ${data && data.tasks ? typeof data.tasks : 'undefined'}`);
-      }
-      
-      return data;
-    } catch (parseError) {
-      console.log(`JSON parse error: ${parseError.message}`);
-      return null;
+    const data = JSON.parse(content);
+    
+    // Optional validation and cleanup of task dependencies
+    if (data && data.tasks && Array.isArray(data.tasks)) {
+      validateTaskDependencies(data.tasks, filepath);
     }
+    
+    return data;
   } catch (error) {
-    console.log(`Error reading file: ${error.message}`);
     log('error', `Error reading JSON file: ${filepath}`, error);
     return null;
   }
@@ -1742,6 +1749,1193 @@ Be creative and thorough in your analysis. The subtasks should collectively repr
 }
 
 //
+// 1) parse-prd
+//
+async function parsePRD(prdPath, tasksPath, numTasks) {
+  displayBanner();
+  
+  if (!fs.existsSync(prdPath)) {
+    log('error', `PRD file not found: ${prdPath}`);
+    process.exit(1);
+  }
+
+  const headerBox = boxen(
+    chalk.white.bold(`Parsing PRD Document: ${chalk.cyan(path.basename(prdPath))}`), 
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  );
+  console.log(headerBox);
+
+  log('info', `Reading PRD file from: ${prdPath}`);
+  const prdContent = fs.readFileSync(prdPath, 'utf8');
+  log('info', `PRD file read successfully. Content length: ${prdContent.length} characters`);
+
+  // call claude to generate the tasks.json
+  log('info', "Calling Claude to generate tasks from PRD...");
+  
+  try {
+    const loadingSpinner = startLoadingIndicator('Generating tasks with Claude AI');
+    const claudeResponse = await callClaude(prdContent, prdPath, numTasks);
+    let tasks = claudeResponse.tasks || [];
+    stopLoadingIndicator(loadingSpinner);
+    
+    log('success', `Claude generated ${tasks.length} tasks from the PRD`);
+
+    // Limit the number of tasks if specified
+    if (numTasks && numTasks > 0 && numTasks < tasks.length) {
+      log('info', `Limiting to the first ${numTasks} tasks as specified`);
+      tasks = tasks.slice(0, numTasks);
+    }
+
+    log('info', "Creating tasks.json data structure...");
+    const data = {
+      meta: {
+        projectName: CONFIG.projectName,
+        version: CONFIG.projectVersion,
+        source: prdPath,
+        description: "Tasks generated from PRD",
+        totalTasksGenerated: claudeResponse.tasks?.length || 0,
+        tasksIncluded: tasks.length
+      },
+      tasks
+    };
+
+    // Validate and fix dependencies in the generated tasks
+    log('info', "Validating dependencies in generated tasks...");
+    const dependencyChanges = validateAndFixDependencies(data, null);
+    if (dependencyChanges) {
+      log('info', "Fixed some invalid dependencies in the generated tasks");
+    } else {
+      log('info', "All dependencies in generated tasks are valid");
+    }
+
+    log('info', `Writing ${tasks.length} tasks to ${tasksPath}...`);
+    writeJSON(tasksPath, data);
+    
+    // Show success message in a box
+    const successBox = boxen(
+      chalk.green(`Successfully parsed PRD from: ${chalk.cyan(prdPath)}\n`) +
+      chalk.green(`Generated ${chalk.bold(tasks.length)} tasks in: ${chalk.cyan(tasksPath)}`),
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    );
+    console.log(successBox);
+    
+    // Show the first few tasks in a table
+    const previewTasks = tasks.slice(0, Math.min(5, tasks.length));
+    const taskTable = new Table({
+      head: [chalk.cyan.bold('ID'), chalk.cyan.bold('Title'), chalk.cyan.bold('Priority')],
+      colWidths: [6, 60, 12],
+      style: { head: [], border: [] }
+    });
+    
+    previewTasks.forEach(task => {
+      taskTable.push([
+        task.id.toString(),
+        task.title,
+        chalk.yellow(task.priority || 'medium')
+      ]);
+    });
+    
+    if (tasks.length > 5) {
+      taskTable.push([
+        '...',
+        chalk.dim(`${tasks.length - 5} more tasks`),
+        ''
+      ]);
+    }
+    
+    console.log(boxen(
+      chalk.white.bold('Task Preview:'),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+    ));
+    console.log(taskTable.toString());
+    
+    // Next steps suggestion
+    console.log(boxen(
+      chalk.white.bold('Next Steps:') + '\n\n' +
+      `${chalk.cyan('1.')} Run ${chalk.yellow('node scripts/dev.js generate')} to create individual task files\n` +
+      `${chalk.cyan('2.')} Run ${chalk.yellow('node scripts/dev.js list')} to see all tasks\n` +
+      `${chalk.cyan('3.')} Run ${chalk.yellow('node scripts/dev.js analyze-complexity')} to plan task breakdown`,
+      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
+  } catch (error) {
+    log('error', "Failed to generate tasks:", error.message);
+    process.exit(1);
+  }
+}
+
+//
+// 2) update
+//
+async function updateTasks(tasksPath, fromId, prompt) {
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "Invalid or missing tasks.json.");
+    process.exit(1);
+  }
+
+  log('info', `Updating tasks from ID >= ${fromId} with prompt: ${prompt}`);
+
+  const tasksToUpdate = data.tasks.filter(task => task.id >= fromId && task.status !== "done");
+  
+  const systemPrompt = "You are a helpful assistant that updates tasks based on provided insights. Return only the updated tasks as a JSON array.";
+  const userPrompt = `Update these tasks based on the following insight: ${prompt}\nTasks: ${JSON.stringify(tasksToUpdate, null, 2)}`;
+  
+  // Start loading indicator
+  const loadingIndicator = startLoadingIndicator("Waiting for Claude to update tasks...");
+  
+  let fullResponse = '';
+  let streamingInterval = null;
+
+  try {
+    const stream = await anthropic.messages.create({
+      max_tokens: CONFIG.maxTokens,
+      model: CONFIG.model,
+      temperature: CONFIG.temperature,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+      stream: true
+    });
+    
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        fullResponse += chunk.delta.text;
+      }
+    }
+    
+    clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('info', "Completed streaming response from Claude API!");
+    log('debug', `Streaming response length: ${fullResponse.length} characters`);
+
+    try {
+      const updatedTasks = JSON.parse(fullResponse);
+      
+      data.tasks = data.tasks.map(task => {
+        const updatedTask = updatedTasks.find(t => t.id === task.id);
+        return updatedTask || task;
+      });
+
+      // Validate and fix dependencies after task updates
+      log('info', "Validating dependencies after task updates...");
+      const dependencyChanges = validateAndFixDependencies(data, null);
+      if (dependencyChanges) {
+        log('info', "Fixed some dependencies that became invalid after task updates");
+      }
+
+      writeJSON(tasksPath, data);
+      log('info', "Tasks updated successfully.");
+      
+      // Add call to generate task files
+      log('info', "Regenerating task files...");
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+      
+    } catch (parseError) {
+      log('error', "Failed to parse Claude's response as JSON:", parseError);
+      log('debug', "Response content:", fullResponse);
+      process.exit(1);
+    }
+  } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    log('error', "Error during streaming response:", error);
+    process.exit(1);
+  }
+}
+
+//
+// 3) generate
+//
+function generateTaskFiles(tasksPath, outputDir) {
+  log('info', `Reading tasks from ${tasksPath}...`);
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks to generate files for.");
+    process.exit(1);
+  }
+  
+  log('info', `Found ${data.tasks.length} tasks to generate files for.`);
+  
+  // Validate and fix dependencies before generating files
+  log('info', "Validating and fixing dependencies before generating files...");
+  const changesDetected = validateAndFixDependencies(data, tasksPath);
+  if (changesDetected) {
+    log('info', "Fixed some invalid dependencies in the tasks");
+  } else {
+    log('debug', "All dependencies are valid");
+  }
+  
+  // The outputDir is now the same directory as tasksPath, so we don't need to check if it exists
+  // since we already did that in the main function
+  
+  log('info', "Generating individual task files...");
+  data.tasks.forEach(task => {
+    const filename = `task_${String(task.id).padStart(3, '0')}.txt`;
+    const filepath = path.join(outputDir, filename);
+
+    // Create the base content
+    const contentParts = [
+      `# Task ID: ${task.id}`,
+      `# Title: ${task.title}`,
+      `# Status: ${task.status}`,
+      `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks, false)}`,
+      `# Priority: ${task.priority}`,
+      `# Description: ${task.description}`,
+      `# Details:\n${task.details}\n`,
+      `# Test Strategy:`,
+      `${task.testStrategy}\n`
+    ];
+    
+    // Add subtasks if they exist
+    if (task.subtasks && task.subtasks.length > 0) {
+      contentParts.push(`# Subtasks:`);
+      task.subtasks.forEach(subtask => {
+        // Format subtask dependencies correctly by converting numeric IDs to parent.subtask format
+        let formattedDeps = [];
+        if (subtask.dependencies && subtask.dependencies.length > 0) {
+          // Format each dependency - this is a key change
+          formattedDeps = subtask.dependencies.map(depId => {
+            // If it already has a dot notation (e.g. "1.2"), keep it as is
+            if (typeof depId === 'string' && depId.includes('.')) {
+              // Validate that this subtask dependency actually exists
+              const [parentId, subId] = depId.split('.').map(id => isNaN(id) ? id : Number(id));
+              const parentTask = data.tasks.find(t => t.id === parentId);
+              if (!parentTask || !parentTask.subtasks || !parentTask.subtasks.some(s => s.id === Number(subId))) {
+                log('warn', `Skipping non-existent subtask dependency: ${depId}`);
+                return null;
+              }
+              return depId;
+            } 
+            // If it's a number, it's probably referencing a parent subtask in the same task
+            // Format it as "parentTaskId.subtaskId"
+            else if (typeof depId === 'number') {
+              // Check if this is likely a subtask ID (small number) within the same parent task
+              if (depId < 100) { // Assume subtask IDs are small numbers
+                // Validate that this subtask exists
+                if (!task.subtasks.some(s => s.id === depId)) {
+                  log('warn', `Skipping non-existent subtask dependency: ${task.id}.${depId}`);
+                  return null;
+                }
+                return `${task.id}.${depId}`;
+              } else {
+                // It's a reference to another task - validate it exists
+                if (!data.tasks.some(t => t.id === depId)) {
+                  log('warn', `Skipping non-existent task dependency: ${depId}`);
+                  return null;
+                }
+                return depId;
+              }
+            }
+            return depId;
+          }).filter(dep => dep !== null); // Remove null entries (invalid dependencies)
+        }
+        
+        const subtaskDeps = formattedDeps.length > 0
+          ? formatDependenciesWithStatus(formattedDeps, data.tasks, false)
+          : "None";
+          
+        contentParts.push(`## Subtask ID: ${subtask.id}`);
+        contentParts.push(`## Title: ${subtask.title}`);
+        contentParts.push(`## Status: ${subtask.status}`);
+        contentParts.push(`## Dependencies: ${subtaskDeps}`);
+        contentParts.push(`## Description: ${subtask.description}`);
+        if (subtask.acceptanceCriteria) {
+          contentParts.push(`## Acceptance Criteria:\n${subtask.acceptanceCriteria}\n`);
+        }
+      });
+    }
+
+    const content = contentParts.join('\n');
+    fs.writeFileSync(filepath, content, 'utf8');
+    log('info', `Generated: ${filename}`);
+  });
+
+  log('info', `All ${data.tasks.length} tasks have been generated into '${outputDir}'.`);
+}
+
+//
+// 4) set-status
+//
+function setTaskStatus(tasksPath, taskIdInput, newStatus) {
+  displayBanner();
+  
+  // Validate inputs
+  if (!taskIdInput || !newStatus) {
+    log('error', 'Task ID and new status are required');
+    process.exit(1);
+  }
+
+  // Read fresh data for each status update
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', 'No valid tasks found in tasks.json');
+    process.exit(1);
+  }
+
+  console.log(boxen(
+    chalk.white.bold(`Updating Task Status to: ${getStatusWithColor(newStatus)}`),
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+
+  // Handle multiple task IDs (comma-separated)
+  if (typeof taskIdInput === 'string' && taskIdInput.includes(',')) {
+    const taskIds = taskIdInput.split(',').map(id => id.trim());
+    log('info', `Processing multiple task IDs: ${taskIds.join(', ')}`);
+    
+    // Create a summary table for the updates
+    const summaryTable = new Table({
+      head: [
+        chalk.cyan.bold('ID'), 
+        chalk.cyan.bold('Title'), 
+        chalk.cyan.bold('Old Status'), 
+        chalk.cyan.bold('New Status')
+      ],
+      colWidths: [8, 40, 15, 15],
+      style: { 
+        head: [], 
+        border: [],
+        'padding-top': 0,
+        'padding-bottom': 0,
+        compact: true
+      },
+      chars: {
+        'mid': '', 'left-mid': '', 'mid-mid': '', 'right-mid': ''
+      }
+    });
+    
+    // Process each task ID individually
+    taskIds.forEach(id => {
+      const result = updateSingleTaskStatus(tasksPath, id, newStatus, data);
+      if (result) {
+        summaryTable.push([
+          result.id,
+          truncate(result.title, 37),
+          getStatusWithColor(result.oldStatus),
+          getStatusWithColor(result.newStatus)
+        ]);
+        
+        // Add subtask updates if any
+        if (result.subtasks && result.subtasks.length > 0) {
+          result.subtasks.forEach(sub => {
+            summaryTable.push([
+              `  ${sub.id}`,
+              `  ↳ ${truncate(sub.title, 35)}`,
+              getStatusWithColor(sub.oldStatus),
+              getStatusWithColor(sub.newStatus)
+            ]);
+          });
+        }
+      }
+    });
+    
+    // Validate dependencies after status updates
+    log('info', "Validating dependencies after status updates...");
+    const dependencyChanges = validateAndFixDependencies(data, null);
+    if (dependencyChanges) {
+      log('info', "Fixed some dependencies that became invalid after status changes");
+    }
+    
+    // Save the changes
+    writeJSON(tasksPath, data);
+    
+    // Regenerate task files
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
+    // Show the summary table
+    console.log(boxen(
+      chalk.white.bold('Status Update Summary:'),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+    ));
+    console.log(summaryTable.toString());
+    
+    return;
+  }
+
+  // Handle regular task ID or subtask ID
+  const result = updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data);
+  
+  if (result) {
+    // Validate dependencies after status update
+    log('info', "Validating dependencies after status update...");
+    const dependencyChanges = validateAndFixDependencies(data, null);
+    if (dependencyChanges) {
+      log('info', "Fixed some dependencies that became invalid after status change");
+    }
+    
+    // Save the changes
+    writeJSON(tasksPath, data);
+    
+    // Regenerate task files
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
+    // Show success message
+    const successBox = boxen(
+      chalk.green(`Successfully updated task ${chalk.bold(result.id)} status:\n`) +
+      `From: ${getStatusWithColor(result.oldStatus)}\n` +
+      `To:   ${getStatusWithColor(result.newStatus)}`,
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    );
+    console.log(successBox);
+    
+    // If subtasks were also updated, show them
+    if (result.subtasks && result.subtasks.length > 0) {
+      const subtaskTable = new Table({
+        head: [
+          chalk.cyan.bold('ID'), 
+          chalk.cyan.bold('Title'), 
+          chalk.cyan.bold('Old Status'), 
+          chalk.cyan.bold('New Status')
+        ],
+        colWidths: [8, 40, 15, 15],
+        style: { 
+          head: [], 
+          border: [],
+          'padding-top': 0,
+          'padding-bottom': 0,
+          compact: true
+        },
+        chars: {
+          'mid': '', 'left-mid': '', 'mid-mid': '', 'right-mid': ''
+        }
+      });
+      
+      result.subtasks.forEach(sub => {
+        subtaskTable.push([
+          `  ${sub.id}`,
+          `  ↳ ${truncate(sub.title, 35)}`,
+          getStatusWithColor(sub.oldStatus),
+          getStatusWithColor(sub.newStatus)
+        ]);
+      });
+      
+      console.log(boxen(
+        chalk.white.bold('Subtasks Also Updated:'),
+        { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+      ));
+      console.log(subtaskTable.toString());
+    }
+  }
+}
+
+// Helper function to update a single task status and return details for UI
+function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
+  // Handle subtask IDs (e.g., "1.1")
+  if (String(taskIdInput).includes('.')) {
+    const [parentIdStr, subtaskIdStr] = String(taskIdInput).split('.');
+    const parentId = parseInt(parentIdStr, 10);
+    const subtaskId = parseInt(subtaskIdStr, 10);
+
+    if (isNaN(parentId) || isNaN(subtaskId)) {
+      log('error', `Invalid subtask ID format: ${taskIdInput}`);
+      return null;
+    }
+
+    // Find the parent task
+    const parentTask = data.tasks.find(t => t.id === parentId);
+    if (!parentTask) {
+      log('error', `Parent task ${parentId} not found`);
+      return null;
+    }
+
+    // Ensure subtasks array exists
+    if (!parentTask.subtasks || !Array.isArray(parentTask.subtasks)) {
+      log('error', `Parent task ${parentId} has no subtasks array`);
+      return null;
+    }
+
+    // Find and update the subtask
+    const subtask = parentTask.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) {
+      log('error', `Subtask ${subtaskId} not found in task ${parentId}`);
+      return null;
+    }
+
+    // Update the subtask status
+    const oldStatus = subtask.status || 'pending';
+    subtask.status = newStatus;
+    
+    return {
+      id: `${parentId}.${subtaskId}`,
+      title: subtask.title,
+      oldStatus: oldStatus,
+      newStatus: newStatus
+    };
+  }
+
+  // Handle regular task ID
+  const taskId = parseInt(String(taskIdInput), 10);
+  if (isNaN(taskId)) {
+    log('error', `Invalid task ID: ${taskIdInput}`);
+    return null;
+  }
+
+  // Find the task
+  const task = data.tasks.find(t => t.id === taskId);
+  if (!task) {
+    log('error', `Task ${taskId} not found`);
+    return null;
+  }
+
+  // Update the task status
+  const oldStatus = task.status || 'pending';
+  task.status = newStatus;
+  
+  const result = {
+    id: taskId.toString(),
+    title: task.title,
+    oldStatus: oldStatus,
+    newStatus: newStatus,
+    subtasks: []
+  };
+  
+  // Automatically update subtasks if the parent task is being marked as done
+  if (newStatus === 'done' && task.subtasks && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
+    log('info', `Task ${taskId} has ${task.subtasks.length} subtasks that will be marked as done too.`);
+    
+    task.subtasks.forEach(subtask => {
+      const oldSubtaskStatus = subtask.status || 'pending';
+      subtask.status = newStatus;
+      
+      result.subtasks.push({
+        id: `${taskId}.${subtask.id}`,
+        title: subtask.title,
+        oldStatus: oldSubtaskStatus,
+        newStatus: newStatus
+      });
+    });
+  }
+  
+  return result;
+}
+
+/**
+ * Get a colored version of the status string
+ * @param {string} status - The status string
+ * @returns {string} - The colored status string
+ */
+function getStatusWithColor(status) {
+  const statusColor = {
+    'done': chalk.green,
+    'completed': chalk.green,
+    'pending': chalk.yellow,
+    'in-progress': chalk.blue,
+    'deferred': chalk.gray
+  }[status] || chalk.white;
+  
+  return statusColor(status);
+}
+
+/**
+ * Format dependencies with emoji indicators for completion status
+ * In CLI/console output use colors, in file output use emojis
+ * @param {Array} dependencies - Array of dependency IDs
+ * @param {Array} allTasks - Array of all tasks
+ * @param {boolean} forConsole - Whether this is for console output (true) or file output (false)
+ * @returns {string} - Formatted dependencies with status indicators
+ */
+function formatDependenciesWithStatus(dependencies, allTasks, forConsole = false) {
+  if (!dependencies || dependencies.length === 0) {
+    return 'None';
+  }
+  
+  // Create a map of completed task IDs for quick lookup
+  const completedTaskIds = new Set(
+    allTasks
+      .filter(t => t.status === 'done' || t.status === 'completed')
+      .map(t => t.id)
+  );
+  
+  // Create a map of subtask statuses for quick lookup
+  const subtaskStatusMap = new Map();
+  allTasks.forEach(task => {
+    if (task.subtasks && Array.isArray(task.subtasks)) {
+      task.subtasks.forEach(subtask => {
+        subtaskStatusMap.set(`${task.id}.${subtask.id}`, subtask.status || 'pending');
+      });
+    }
+  });
+  
+  // Map each dependency to include its status indicator
+  return dependencies.map(depId => {
+    // Check if it's a subtask dependency (e.g., "1.2")
+    const isSubtask = typeof depId === 'string' && depId.includes('.');
+    
+    let isDone = false;
+    let status = 'pending';
+    
+    if (isSubtask) {
+      // For subtask dependency
+      status = subtaskStatusMap.get(depId) || 'pending';
+      isDone = status === 'done' || status === 'completed';
+    } else {
+      // For regular task dependency
+      isDone = completedTaskIds.has(depId);
+      // Find the task to get its status
+      const depTask = allTasks.find(t => t.id === depId);
+      status = depTask ? (depTask.status || 'pending') : 'pending';
+    }
+    
+    if (forConsole) {
+      // For console output, use colors
+      if (status === 'done' || status === 'completed') {
+        return chalk.green(depId.toString());
+      } else if (status === 'in-progress') {
+        return chalk.yellow(depId.toString());
+      } else {
+        return chalk.red(depId.toString());
+      }
+    } else {
+      // For file output, use emojis
+      let statusEmoji = '⏱️'; // Default to pending
+      if (status === 'done' || status === 'completed') {
+        statusEmoji = '✅';
+      } else if (status === 'in-progress') {
+        statusEmoji = '🔄';
+      }
+      return `${depId} ${statusEmoji}`;
+    }
+  }).join(', ');
+}
+
+//
+// 5) list tasks
+//
+function listTasks(tasksPath, statusFilter, withSubtasks = false) {
+  displayBanner();
+  
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+
+  // Filter tasks by status if a filter is provided
+  const filteredTasks = statusFilter 
+    ? data.tasks.filter(t => t.status === statusFilter)
+    : data.tasks;
+  
+  // Count statistics for metrics
+  const doneCount = data.tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
+  const pendingCount = data.tasks.filter(t => t.status === 'pending').length;
+  const inProgressCount = data.tasks.filter(t => t.status === 'in-progress').length;
+  const deferredCount = data.tasks.filter(t => t.status === 'deferred').length;
+  const otherCount = data.tasks.length - doneCount - pendingCount - inProgressCount - deferredCount;
+  
+  // Count tasks by priority
+  const highPriorityCount = data.tasks.filter(t => t.priority === 'high').length;
+  const mediumPriorityCount = data.tasks.filter(t => t.priority === 'medium').length;
+  const lowPriorityCount = data.tasks.filter(t => t.priority === 'low').length;
+  
+  // Calculate progress percentage
+  const progressPercent = Math.round((doneCount / data.tasks.length) * 100);
+  const progressBar = createProgressBar(progressPercent, 30);
+  
+  // Count blocked tasks (pending with dependencies that aren't done)
+  let blockedCount = 0;
+  data.tasks.filter(t => t.status === 'pending').forEach(task => {
+    if (task.dependencies && task.dependencies.length > 0) {
+      const hasPendingDeps = task.dependencies.some(depId => {
+        const depTask = data.tasks.find(t => t.id === depId);
+        return depTask && depTask.status !== 'done' && depTask.status !== 'completed';
+      });
+      if (hasPendingDeps) blockedCount++;
+    }
+  });
+  
+  // Count subtasks
+  let totalSubtasks = 0;
+  let completedSubtasks = 0;
+  data.tasks.forEach(task => {
+    if (task.subtasks && Array.isArray(task.subtasks)) {
+      totalSubtasks += task.subtasks.length;
+      completedSubtasks += task.subtasks.filter(st => 
+        st.status === 'done' || st.status === 'completed'
+      ).length;
+    }
+  });
+  
+  // Calculate subtask progress
+  const subtaskProgressPercent = totalSubtasks > 0 
+    ? Math.round((completedSubtasks / totalSubtasks) * 100) 
+    : 0;
+  const subtaskProgressBar = createProgressBar(subtaskProgressPercent, 30);
+  
+  // Display the dashboard first
+  console.log(boxen(
+    chalk.white.bold('Project Dashboard\n') +
+    `${chalk.bold('Tasks Progress:')} ${progressBar} ${progressPercent}%\n` +
+    `${chalk.green.bold('Done:')} ${doneCount}  ${chalk.blue.bold('In Progress:')} ${inProgressCount}  ${chalk.yellow.bold('Pending:')} ${pendingCount}  ${chalk.red.bold('Blocked:')} ${blockedCount}  ${chalk.gray.bold('Deferred:')} ${deferredCount}\n` +
+    '\n' +
+    `${chalk.bold('Subtasks Progress:')} ${subtaskProgressBar} ${subtaskProgressPercent}%\n` +
+    `${chalk.green.bold('Completed:')} ${completedSubtasks}/${totalSubtasks}  ${chalk.yellow.bold('Remaining:')} ${totalSubtasks - completedSubtasks}\n` +
+    '\n' +
+    `${chalk.bold('Priority Breakdown:')}\n` +
+    `${chalk.red.bold('High:')} ${highPriorityCount}  ${chalk.yellow.bold('Medium:')} ${mediumPriorityCount}  ${chalk.gray.bold('Low:')} ${lowPriorityCount}`,
+    { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 0, bottom: 0 } }
+  ));
+  
+  // Get terminal width for dynamic sizing
+  const terminalWidth = process.stdout.columns || 100;
+  
+  // Create a table for better visualization
+  const table = new Table({
+    head: [
+      chalk.cyan.bold('ID'), 
+      chalk.cyan.bold('Status'), 
+      chalk.cyan.bold('Priority'),
+      chalk.cyan.bold('Title'),
+      chalk.cyan.bold('Dependencies')
+    ],
+    colWidths: [
+      8, // ID
+      12, // Status
+      10, // Priority
+      Math.floor(terminalWidth * 0.45), // Title - 45% of terminal width
+      Math.floor(terminalWidth * 0.25)  // Dependencies - 25% of terminal width
+    ],
+    style: {
+      head: [],
+      border: []
+    },
+    chars: {
+      'top': '─',
+      'top-mid': '┬',
+      'top-left': '┌',
+      'top-right': '┐',
+      'bottom': '─',
+      'bottom-mid': '┴',
+      'bottom-left': '└',
+      'bottom-right': '┘',
+      'left': '│',
+      'left-mid': '├',
+      'mid': '─',
+      'mid-mid': '┼',
+      'right': '│',
+      'right-mid': '┤',
+      'middle': '│'
+    },
+    wordWrap: true
+  });
+  
+  // Status colors
+  const statusColors = {
+    'done': chalk.green,
+    'completed': chalk.green,
+    'pending': chalk.yellow,
+    'deferred': chalk.gray,
+    'in-progress': chalk.blue,
+    'blocked': chalk.red
+  };
+  
+  // Priority colors
+  const priorityColors = {
+    'high': chalk.red.bold,
+    'medium': chalk.yellow,
+    'low': chalk.gray
+  };
+  
+  filteredTasks.forEach(t => {
+    const statusColor = statusColors[t.status] || chalk.white;
+    const priorityColor = priorityColors[t.priority] || chalk.white;
+    
+    // Format dependencies with status indicators for parent tasks
+    const formattedDeps = formatDependenciesWithStatus(t.dependencies, data.tasks, true);
+    
+    // Get the max title length for the title column with some margin for padding
+    const titleMaxLength = Math.floor(terminalWidth * 0.45) - 5;
+    
+    // Truncate long titles if necessary
+    const truncatedTitle = t.title.length > titleMaxLength 
+      ? t.title.substring(0, titleMaxLength - 3) + '...' 
+      : t.title;
+    
+    table.push([
+      t.id.toString(), 
+      statusColor(t.status), 
+      priorityColor(t.priority || 'medium'),
+      truncatedTitle,
+      formattedDeps
+    ]);
+    
+    // Display subtasks if requested and they exist
+    if (withSubtasks && t.subtasks && t.subtasks.length > 0) {
+      t.subtasks.forEach(st => {
+        const subtaskStatusColor = statusColors[st.status || 'pending'] || chalk.white;
+        
+        // Format subtask dependencies with status indicators
+        let subtaskDeps = 'None';
+        if (st.dependencies && st.dependencies.length > 0) {
+          // Convert numeric dependencies to proper format if they're likely subtask references
+          const formattedSubtaskDeps = st.dependencies.map(depId => {
+            if (typeof depId === 'number' && depId < 100) {
+              return `${t.id}.${depId}`;
+            }
+            return depId;
+          });
+          
+          subtaskDeps = formatDependenciesWithStatus(formattedSubtaskDeps, data.tasks, true);
+        }
+        
+        // Truncate subtask titles
+        const subtaskTitleMaxLength = Math.floor(terminalWidth * 0.45) - 7; // Slightly shorter to account for the arrow prefix
+        const truncatedSubtaskTitle = st.title.length > subtaskTitleMaxLength 
+          ? st.title.substring(0, subtaskTitleMaxLength - 3) + '...' 
+          : st.title;
+        
+        table.push([
+          `  ${t.id}.${st.id}`, 
+          subtaskStatusColor(st.status || 'pending'), 
+          '',
+          `  ↳ ${truncatedSubtaskTitle}`,
+          subtaskDeps
+        ]);
+      });
+    }
+  });
+  
+  if (filteredTasks.length === 0) {
+    console.log(boxen(
+      chalk.yellow(`No tasks found${statusFilter ? ` with status '${statusFilter}'` : ''}.`),
+      { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
+    ));
+  } else {
+    // Display the header with task count and filter info
+    const header = statusFilter 
+      ? `Tasks with status: ${chalk.bold(statusFilter)} (${filteredTasks.length} of ${data.tasks.length} total)`
+      : `All Tasks (${filteredTasks.length})`;
+    
+    console.log(boxen(chalk.white.bold(header), {
+      padding: { left: 2, right: 2, top: 0, bottom: 0 },
+      margin: { top: 1, bottom: 1 },
+      borderColor: 'blue',
+      borderStyle: 'round'
+    }));
+    
+    console.log(table.toString());
+  }
+}
+
+// Helper function to create a progress bar
+function createProgressBar(percent, length) {
+  const filledLength = Math.round(length * percent / 100);
+  const emptyLength = length - filledLength;
+  
+  const filled = '█'.repeat(filledLength);
+  const empty = '░'.repeat(emptyLength);
+  
+  return chalk.green(filled) + chalk.gray(empty);
+}
+
+//
+// 6) expand task with subtasks
+//
+/**
+ * Expand a task by generating subtasks
+ * @param {string} taskId - The ID of the task to expand
+ * @param {number} numSubtasks - The number of subtasks to generate
+ * @param {boolean} useResearch - Whether to use Perplexity for research-backed subtask generation
+ * @returns {Promise<void>}
+ */
+async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '') {
+  try {
+    // Get the tasks
+    const tasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+    const task = tasksData.tasks.find(t => t.id === parseInt(taskId));
+    
+    if (!task) {
+      console.error(chalk.red(`Task with ID ${taskId} not found.`));
+      return;
+    }
+    
+    // Check if the task is already completed
+    if (task.status === 'completed' || task.status === 'done') {
+      console.log(chalk.yellow(`Task ${taskId} is already completed. Skipping expansion.`));
+      return;
+    }
+    
+    // Check for complexity report
+    const complexityReport = readComplexityReport();
+    let recommendedSubtasks = numSubtasks;
+    let recommendedPrompt = additionalContext;
+    
+    // If report exists and has data for this task, use it
+    if (complexityReport) {
+      const taskAnalysis = findTaskInComplexityReport(complexityReport, parseInt(taskId));
+      if (taskAnalysis) {
+        // Only use report values if not explicitly overridden by command line
+        if (numSubtasks === CONFIG.defaultSubtasks && taskAnalysis.recommendedSubtasks) {
+          recommendedSubtasks = taskAnalysis.recommendedSubtasks;
+          console.log(chalk.blue(`Using recommended subtask count from complexity analysis: ${recommendedSubtasks}`));
+        }
+        
+        if (!additionalContext && taskAnalysis.expansionPrompt) {
+          recommendedPrompt = taskAnalysis.expansionPrompt;
+          console.log(chalk.blue(`Using recommended prompt from complexity analysis`));
+          console.log(chalk.gray(`Prompt: ${recommendedPrompt.substring(0, 100)}...`));
+        }
+      }
+    }
+    
+    // Initialize subtasks array if it doesn't exist
+    if (!task.subtasks) {
+      task.subtasks = [];
+    }
+    
+    // Calculate the next subtask ID
+    const nextSubtaskId = task.subtasks.length > 0 
+      ? Math.max(...task.subtasks.map(st => st.id)) + 1 
+      : 1;
+    
+    // Generate subtasks
+    let subtasks;
+    if (useResearch) {
+      console.log(chalk.blue(`Using Perplexity AI for research-backed subtask generation...`));
+      subtasks = await generateSubtasksWithPerplexity(task, recommendedSubtasks, nextSubtaskId, recommendedPrompt);
+    } else {
+      subtasks = await generateSubtasks(task, recommendedSubtasks, nextSubtaskId, recommendedPrompt);
+    }
+    
+    // Add the subtasks to the task
+    task.subtasks = [...task.subtasks, ...subtasks];
+    
+    // Validate and fix dependencies for the newly generated subtasks
+    console.log(chalk.blue(`Validating dependencies for generated subtasks...`));
+    const dependencyChanges = validateAndFixDependencies(tasksData, null);
+    if (dependencyChanges) {
+      console.log(chalk.yellow(`Fixed some invalid dependencies in the generated subtasks`));
+    } else {
+      console.log(chalk.green(`All dependencies in generated subtasks are valid`));
+    }
+    
+    // Ensure at least one subtask has no dependencies (entry point)
+    const hasIndependentSubtask = task.subtasks.some(st => 
+      !st.dependencies || !Array.isArray(st.dependencies) || st.dependencies.length === 0
+    );
+    
+    if (!hasIndependentSubtask && subtasks.length > 0) {
+      console.log(chalk.yellow(`Ensuring at least one independent subtask in task ${taskId}`));
+      const firstSubtask = subtasks[0];
+      firstSubtask.dependencies = [];
+    }
+    
+    // Save the updated tasks
+    fs.writeFileSync(
+      path.join(process.cwd(), 'tasks', 'tasks.json'),
+      JSON.stringify(tasksData, null, 2)
+    );
+    
+    console.log(chalk.green(`Added ${subtasks.length} subtasks to task ${taskId}.`));
+    
+    // Log the added subtasks
+    subtasks.forEach(st => {
+      console.log(chalk.cyan(`  ${st.id}. ${st.title}`));
+      console.log(chalk.gray(`     ${st.description.substring(0, 100)}${st.description.length > 100 ? '...' : ''}`));
+    });
+    
+    // Generate task files to update the task file with the new subtasks
+    console.log(chalk.blue(`Regenerating task files to include new subtasks...`));
+    await generateTaskFiles('tasks/tasks.json', 'tasks');
+    
+  } catch (error) {
+    console.error(chalk.red('Error expanding task:'), error);
+  }
+}
+
+/**
+ * Expand all tasks that are not completed
+ * @param {number} numSubtasks - The number of subtasks to generate for each task
+ * @param {boolean} useResearch - Whether to use Perplexity for research-backed subtask generation
+ * @returns {Promise<number>} - The number of tasks expanded
+ */
+async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '', forceFlag = false) {
+  try {
+    // Get the tasks
+    const tasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+    
+    if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+      console.error(chalk.red('No valid tasks found.'));
+      return 0;
+    }
+    
+    // Filter tasks that are not completed
+    let tasksToExpand = tasksData.tasks.filter(task => 
+      task.status !== 'completed' && task.status !== 'done'
+    );
+    
+    if (tasksToExpand.length === 0) {
+      console.log(chalk.yellow('No tasks to expand. All tasks are already completed.'));
+      return 0;
+    }
+    
+    // Check for complexity report
+    const complexityReport = readComplexityReport();
+    let usedComplexityReport = false;
+    
+    // If complexity report exists, sort tasks by complexity
+    if (complexityReport && complexityReport.complexityAnalysis) {
+      console.log(chalk.blue('Found complexity report. Prioritizing tasks by complexity score.'));
+      usedComplexityReport = true;
+      
+      // Create a map of task IDs to their complexity scores
+      const complexityMap = new Map();
+      complexityReport.complexityAnalysis.forEach(analysis => {
+        complexityMap.set(analysis.taskId, analysis.complexityScore);
+      });
+      
+      // Sort tasks by complexity score (highest first)
+      tasksToExpand.sort((a, b) => {
+        const scoreA = complexityMap.get(a.id) || 0;
+        const scoreB = complexityMap.get(b.id) || 0;
+        return scoreB - scoreA;
+      });
+      
+      // Log the sorted tasks
+      console.log(chalk.blue('Tasks will be expanded in this order (by complexity):'));
+      tasksToExpand.forEach(task => {
+        const score = complexityMap.get(task.id) || 'N/A';
+        console.log(chalk.blue(`  Task ${task.id}: ${task.title} (Complexity: ${score})`));
+      });
+    }
+    
+    console.log(chalk.blue(`\nExpanding ${tasksToExpand.length} tasks...`));
+    
+    let tasksExpanded = 0;
+    // Keep track of expanded tasks and their results for verification
+    const expandedTaskIds = [];
+    
+    // Expand each task
+    for (const task of tasksToExpand) {
+      console.log(chalk.blue(`\nExpanding task ${task.id}: ${task.title}`));
+      
+      // The check for usedComplexityReport is redundant since expandTask will handle it anyway
+      await expandTask(task.id, numSubtasks, useResearch, additionalContext);
+      expandedTaskIds.push(task.id);
+      
+      tasksExpanded++;
+    }
+    
+    // Verification step - Check for dummy/generic subtasks
+    // Read fresh data after all expansions
+    const updatedTasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+    const tasksNeedingRetry = [];
+    
+    console.log(chalk.blue('\nVerifying subtask quality...'));
+    
+    for (const taskId of expandedTaskIds) {
+      const task = updatedTasksData.tasks.find(t => t.id === taskId);
+      if (!task || !task.subtasks || task.subtasks.length === 0) continue;
+      
+      // Check for generic subtasks - patterns to look for:
+      // 1. Auto-generated subtask in description
+      // 2. Generic titles like "Subtask X"
+      // 3. Common dummy titles we created like "Implementation" without custom descriptions
+      const dummySubtasks = task.subtasks.filter(st => 
+        st.description.includes("Auto-generated subtask") ||
+        st.title.match(/^Subtask \d+$/) ||
+        (st.description.includes("Update this auto-generated subtask") && 
+         ["Implementation", "Testing", "Documentation", "Integration", "Error Handling", 
+          "Refactoring", "Validation", "Configuration"].includes(st.title))
+      );
+      
+      // If more than half the subtasks are generic, mark for retry
+      if (dummySubtasks.length > Math.floor(task.subtasks.length / 2)) {
+        tasksNeedingRetry.push({
+          id: task.id,
+          title: task.title,
+          dummyCount: dummySubtasks.length,
+          totalCount: task.subtasks.length
+        });
+      }
+    }
+    
+    // If we found tasks with poor subtask quality, offer to retry them
+    if (tasksNeedingRetry.length > 0) {
+      console.log(chalk.yellow(`\nFound ${tasksNeedingRetry.length} tasks with low-quality subtasks that need retry:`));
+      
+      for (const task of tasksNeedingRetry) {
+        console.log(chalk.yellow(`  Task ${task.id}: ${task.title} (${task.dummyCount}/${task.totalCount} generic subtasks)`));
+      }
+      
+      // Ask user if they want to retry these tasks
+      const readline = require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      const answer = await new Promise(resolve => {
+        readline.question(chalk.cyan('\nWould you like to retry expanding these tasks with enhanced prompts? (y/n): '), resolve);
+      });
+      readline.close();
+      
+      if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+        console.log(chalk.blue('\nRetrying task expansion with enhanced prompts...'));
+        
+        // For each task needing retry, we'll expand it again with a modified prompt
+        let retryCount = 0;
+        for (const task of tasksNeedingRetry) {
+          console.log(chalk.blue(`\nRetrying expansion for task ${task.id}...`));
+          
+          // Enhanced context to encourage better subtask generation
+          const enhancedContext = `${additionalContext ? additionalContext + "\n\n" : ""}
+IMPORTANT: The previous expansion attempt generated mostly generic subtasks. Please provide highly specific, 
+detailed, and technically relevant subtasks for this task. Each subtask should be:
+1. Specifically related to the task at hand, not generic
+2. Technically detailed with clear implementation guidance
+3. Unique and addressing a distinct aspect of the parent task
+          
+Be creative and thorough in your analysis. The subtasks should collectively represent a complete solution to the parent task.`;
+          
+          // Try with different settings - if research was off, turn it on, or increase subtasks slightly
+          const retryResearch = useResearch ? true : !useResearch; // Try opposite of current setting, but prefer ON
+          const retrySubtasks = numSubtasks < 6 ? numSubtasks + 1 : numSubtasks; // Increase subtasks slightly if not already high
+          
+          // Delete existing subtasks for this task before regenerating
+          const currentTaskData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+          const taskToUpdate = currentTaskData.tasks.find(t => t.id === task.id);
+          if (taskToUpdate) {
+            taskToUpdate.subtasks = []; // Clear existing subtasks
+            // Save before expanding again
+            fs.writeFileSync(
+              path.join(process.cwd(), 'tasks', 'tasks.json'),
+              JSON.stringify(currentTaskData, null, 2)
+            );
+          }
+          
+          // Try expansion again with enhanced context and possibly different settings
+          await expandTask(task.id, retrySubtasks, retryResearch, enhancedContext);
+          retryCount++;
+        }
+        
+        console.log(chalk.green(`\nRetried expansion for ${retryCount} tasks.`));
+        tasksExpanded += retryCount; // Add retries to total expanded count
+      } else {
+        console.log(chalk.blue('\nSkipping retry. You can manually retry task expansion using the expand command.'));
+      }
+    } else {
+      console.log(chalk.green('\nVerification complete. All subtasks appear to be of good quality.'));
+    }
+    
+    console.log(chalk.green(`\nExpanded ${tasksExpanded} tasks.`));
+    return tasksExpanded;
+  } catch (error) {
+    console.error(chalk.red('Error expanding all tasks:'), error);
+    return 0;
+  }
+}
+
+//
 // Generate subtasks using Claude
 //
 async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext = '') {
@@ -2343,18 +3537,12 @@ async function main() {
     .argument('<file>', 'Path to the PRD file')
     .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
     .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
-    .option('-f, --force', 'Force overwrite of existing tasks.json')
     .action(async (file, options) => {
       const numTasks = parseInt(options.numTasks, 10);
       const outputPath = options.output;
       
       console.log(chalk.blue(`Parsing PRD file: ${file}`));
       console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-      
-      // Set force overwrite environment variable if flag is set
-      if (options.force) {
-        process.env.FORCE_OVERWRITE = 'true';
-      }
       
       await parsePRD(file, outputPath, numTasks);
     });
@@ -2679,33 +3867,12 @@ async function main() {
     .option('-i, --ignore <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build')
     .option('-f, --format <format>', 'Output format (json, prd, or both)', 'json')
     .option('--debug', 'Print verbose debugging information during scanning')
-    .option('--progress', 'Show detailed progress for each scan phase')
-    .option('--max-files <number>', 'Maximum number of files to analyze', '30')
-    .option('--max-size <number>', 'Maximum size per file in bytes', '5000')
-    .option('--num-tasks <number>', 'Number of tasks to generate', '15')
-    .option('--force', 'Force overwrite of existing files')
-    .option('--ignore-dirs <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build,vendor,bin')
-    .option('-p, --parallel', 'Enable parallel processing mode for faster API calls')
     .action(async (options) => {
       try {
         displayBanner();
         
-        const { 
-          directory = '.', 
-          output = 'project_scan.json', 
-          format = 'json', 
-          debug = false, 
-          progress = false,
-          maxFiles = 30,
-          maxSize = 5000,
-          numTasks = 15,
-          force = false,
-          ignoreDirs = '.git,node_modules,dist,build,vendor,bin',
-          parallel = 'false'
-        } = options;
-        
-        // Handle ignore directories
-        const ignoreArray = ignoreDirs.split(',').map(dir => dir.trim());
+        const { directory, output, ignore, format, debug } = options;
+        const ignoreDirs = ignore.split(',').map(dir => dir.trim());
         const workspacePath = path.resolve(process.cwd(), directory);
         
         // Set up output paths
@@ -2713,213 +3880,26 @@ async function main() {
         const prdOutputPath = path.resolve(process.cwd(), 'scripts/prd.txt');
         
         console.log(`Scanning project structure in ${directory}`);
-        console.log(`Ignoring directories: ${ignoreArray.join(', ')}`);
+        console.log(`Ignoring directories: ${ignoreDirs.join(', ')}`);
         
-        // Set up debug mode
-        if (debug || process.env.DEBUG === '1') {
-          process.env.DEBUG = '1';
-          process.env.LOG_LEVEL = 'debug';
-          console.log(chalk.gray('Debug mode enabled - verbose output will be shown'));
-        }
-        
-        let spinner;
-        let updateProgressFn = null;
-        
-        if (progress) {
-          // Create an advanced loading indicator that shows phase information
-          let currentPhase = 0;
-          let currentMessage = '';
-          let currentDetail = '';
-          let currentProgress = 0;
-          let startTime = Date.now();
-          let phaseStartTime = Date.now();
-          
-          // Track time spent in each phase to provide better estimates
-          const phaseTimeTracking = {
-            1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0,
-            'validation': 0, 'setup': 0, 'preparation': 0,
-            'error': 0, 'complete': 0
-          };
-          
-          // Enhanced phase descriptions for better context
-          const phaseDescriptions = {
-            1: 'Workspace Initialization',
-            2: 'File Discovery',
-            3: 'Code Analysis',
-            4: 'Sample Selection',
-            5: 'AI Analysis',
-            6: 'Task Generation',
-            7: 'Final Processing',
-            'validation': 'Parameter Validation',
-            'setup': 'Environment Setup',
-            'preparation': 'Scan Preparation',
-            'complete': 'Scan Complete',
-            'error': 'Error Processing'
-          };
-          
-          // Initialize the spinner with phase information
-          spinner = ora({
-            text: `Initializing scan...`,
-            color: 'cyan',
-            spinner: 'dots'
-          }).start();
-          
-          // Function to update the progress representation
-          updateProgressFn = ({ phase, message, detail, progress, phaseDescription }) => {
-            // Track time in previous phase if phase has changed
-            if (phase !== currentPhase && currentPhase !== 0) {
-              const timeInPhase = Date.now() - phaseStartTime;
-              phaseTimeTracking[currentPhase] = (phaseTimeTracking[currentPhase] || 0) + timeInPhase;
-              phaseStartTime = Date.now();
-            }
-            
-            currentPhase = phase;
-            currentMessage = message;
-            currentDetail = detail;
-            currentProgress = progress;
-            
-            // Calculate elapsed time and estimate
-            const elapsedTime = Date.now() - startTime;
-            const elapsedMinutes = Math.floor(elapsedTime / 60000);
-            const elapsedSeconds = Math.floor((elapsedTime % 60000) / 1000);
-            
-            // Estimate remaining time based on progress
-            let remainingText = '';
-            if (progress > 10 && progress < 95) {
-              const estimatedTotalTime = elapsedTime / (progress / 100);
-              const remainingTime = estimatedTotalTime - elapsedTime;
-              const remainingMinutes = Math.floor(remainingTime / 60000);
-              const remainingSeconds = Math.floor((remainingTime % 60000) / 1000);
-              
-              if (phase === 5) {
-                // For AI analysis phase, provide context about typical processing time
-                remainingText = chalk.yellow(`(AI analysis typically takes 2-3 minutes)`);
-              } else {
-                remainingText = chalk.yellow(`Est. remaining: ~${remainingMinutes}m ${remainingSeconds}s`);
-              }
-            }
-            
-            // Create a more descriptive progress bar
-            const barLength = 25;
-            const filledLength = Math.round(progress / 100 * barLength);
-            const emptyLength = barLength - filledLength;
-            
-            let progressBar;
-            if (phase === 'error') {
-              progressBar = chalk.red(`[${'!'.repeat(barLength)}]`);
-            } else if (phase === 'complete') {
-              progressBar = chalk.green(`[${'='.repeat(barLength)}]`);
-            } else if (phase === 5) {
-              // Special progress bar for AI analysis phase to show "thinking" animation
-              const thinkingChars = ['▖', '▘', '▝', '▗'];
-              const thinkingChar = thinkingChars[Math.floor(Date.now() / 200) % thinkingChars.length];
-              progressBar = chalk.cyan(`[${'='.repeat(filledLength)}`) + 
-                            chalk.yellow(`${thinkingChar}`) + 
-                            chalk.cyan(`${'.'.repeat(Math.max(0, emptyLength - 1))}]`);
-            } else {
-              progressBar = chalk.cyan(`[${'='.repeat(filledLength)}${'.'.repeat(emptyLength)}]`);
-            }
-            
-            // Create phase indicator
-            let phaseIndicator = '';
-            if (typeof phase === 'number') {
-              // Special handling for the AI Analysis phase
-              if (phase === 5) {
-                phaseIndicator = `${chalk.bold(`Phase ${phase}/7:`)} ${chalk.magenta('AI Analysis')}`;
-              } else {
-                phaseIndicator = `${chalk.bold(`Phase ${phase}/7:`)} ${chalk.cyan(phaseDescriptions[phase] || message)}`;
-              }
-            } else {
-              phaseIndicator = `${chalk.bold(phaseDescriptions[phase] || phase)}`;
-            }
-            
-            // Add timing information
-            const timingInfo = `${chalk.gray(`Elapsed: ${elapsedMinutes}m ${elapsedSeconds}s`)} ${remainingText}`;
-            
-            // Enhanced display for AI analysis phase
-            let additionalContext = '';
-            if (phase === 5) {
-              // Extract specific phase information from the detail
-              const currentAnalysisStep = detail.split(':')[0].trim();
-              
-              // Check if this is a retry situation
-              const isRetry = detail.includes('retry') || detail.includes('attempt');
-              
-              // Add a visualization of what's happening  
-              additionalContext = `\n  ${chalk.gray('AI Analysis Status:')}
-              ${chalk.yellow('→')} ${chalk.white(currentAnalysisStep)}`;
-              
-              // If we're not in a retry, show the normal process steps
-              if (!isRetry) {
-                additionalContext += `
-  ${chalk.gray('→')} ${chalk.gray('Analyzing files and dependencies')}
-  ${chalk.gray('→')} ${chalk.gray('Building code model representation')}
-  ${chalk.gray('→')} ${chalk.gray('Extracting feature requirements')}`;
-              }
-              
-              // Add helpful context about the AI process
-              if (detail.includes('Finalizing') || detail.includes('retry') || detail.includes('attempt')) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('If progress seems stalled at this stage, the system may be:')}`; 
-                additionalContext += `\n  ${chalk.gray('- Making API retry attempts due to rate limits or network issues')}`; 
-                additionalContext += `\n  ${chalk.gray('- Processing a large response from the AI service')}`; 
-                additionalContext += `\n  ${chalk.gray('- Waiting for Anthropic API to complete the request')}`; 
-              } else if (progress > 55 && progress < 63) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is currently analyzing your codebase structure')}`;
-              } else if (progress >= 63 && progress < 70) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is formulating requirements based on code patterns')}`;
-              } else if (progress >= 70) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is finalizing the PRD document structure')}`;
-              }
-            }
-            
-            // Build detailed spinner text with rich information
-            spinner.text = `${phaseIndicator}
-${chalk.cyan('→')} ${detail}
-${progressBar} ${progress}% ${timingInfo}${additionalContext}`;
-            
-            // If we're in debug mode, output more detailed information
-            if (process.env.DEBUG === '1') {
-              console.log(`DEBUG: Phase=${phase}, Progress=${progress}%, Detail=${detail}`);
-            }
-          };
-        } else {
-          // Use simple spinner for basic progress indication
-          spinner = startLoadingIndicator('Scanning project (this may take a while)...');
-        }
+        const spinner = startLoadingIndicator('Scan #1: Identifying project type...');
         
         // Parse options for scanWorkspace
         const scanOptions = {
-          ignoreDirs: ignoreArray,
+          ignoreDirs,
           outputPath: jsonOutputPath,
           generatePRD: format === 'prd' || format === 'both',
-          maxFiles: parseInt(maxFiles, 10),
-          maxSizePerFile: parseInt(maxSize, 10),
-          numTasks: parseInt(numTasks, 10),
-          force: force,
-          // Handle parallel as a boolean flag
-          useParallel: !!parallel
+          maxFiles: 30
         };
         
-        // Debug for parallel option
         if (debug) {
-          console.log(chalk.gray(`Debug: raw parallel option value: "${parallel}" (${typeof parallel})`));
-          console.log(chalk.gray(`Debug: useParallel calculated as: ${scanOptions.useParallel} (${typeof scanOptions.useParallel})`));
-          console.log(chalk.gray('Debug: Scan options:'), scanOptions);
-        }
-        
-        // If parallel mode is enabled, show information
-        if (scanOptions.useParallel) {
-          console.log(chalk.cyan('\nParallel processing mode enabled:'));
-          console.log('• Files will be analyzed in smaller batches');
-          console.log('• Multiple smaller API calls instead of one large call');
-          console.log('• This can reduce timeouts but may increase token usage\n');
+          process.env.DEBUG = '1';
+          process.env.LOG_LEVEL = 'debug';
         }
         
         // Import and use scanWorkspace from workspace-scanner.js
         const { scanWorkspace } = await import('./modules/workspace-scanner.js');
-        
-        // Run the scan with progress reporting if enabled
-        const tasks = await scanWorkspace(workspacePath, scanOptions, updateProgressFn);
+        const tasks = await scanWorkspace(workspacePath, scanOptions);
         
         spinner.stop();
         
@@ -2944,168 +3924,6 @@ ${progressBar} ${progress}% ${timingInfo}${additionalContext}`;
         if (process.env.DEBUG === '1') {
           console.error(error);
         }
-        process.exit(1);
-      }
-    });
-
-  program
-    .command('archives')
-    .alias('archive-list')
-    .description('List archived tasks and PRDs')
-    .action(async () => {
-      try {
-        const projectRoot = process.cwd();
-        
-        displayBanner();
-        console.log(chalk.bold.blue('\nTask Master Archives\n'));
-        
-        // Get list of archived tasks and PRDs
-        const { listArchives } = await import('./modules/task-manager.js');
-        const archives = await listArchives(projectRoot);
-        
-        if (archives.tasks.length === 0 && archives.prds.length === 0) {
-          console.log(chalk.yellow('No archives found. Archives are created when tasks or PRDs are overwritten.'));
-          return;
-        }
-        
-        // Display archived tasks
-        if (archives.tasks.length > 0) {
-          console.log(chalk.cyan.bold('\nArchived Tasks:'));
-          const table = new Table({
-            head: [
-              chalk.white.bold('Filename'), 
-              chalk.white.bold('Timestamp'), 
-              chalk.white.bold('Size (bytes)')
-            ],
-            colWidths: [40, 25, 15]
-          });
-          
-          archives.tasks.forEach(file => {
-            table.push([
-              file.filename,
-              file.timestamp,
-              file.size.toLocaleString()
-            ]);
-          });
-          
-          console.log(table.toString());
-          console.log(chalk.gray(`Archive location: ${path.join(projectRoot, 'tasks', 'archives')}`));
-        }
-        
-        // Display archived PRDs
-        if (archives.prds.length > 0) {
-          console.log(chalk.cyan.bold('\nArchived PRDs:'));
-          const table = new Table({
-            head: [
-              chalk.white.bold('Filename'), 
-              chalk.white.bold('Timestamp'), 
-              chalk.white.bold('Size (bytes)')
-            ],
-            colWidths: [40, 25, 15]
-          });
-          
-          archives.prds.forEach(file => {
-            table.push([
-              file.filename,
-              file.timestamp,
-              file.size.toLocaleString()
-            ]);
-          });
-          
-          console.log(table.toString());
-          console.log(chalk.gray(`Archive location: ${path.join(projectRoot, 'scripts', 'archives')}`));
-        }
-        
-        console.log(chalk.bold('\nTo restore an archive:'));
-        console.log(`1. Copy the archived file from the archives directory.`);
-        console.log(`2. Rename it and place it in the original location.\n`);
-        console.log(`Or use the ${chalk.yellow('restore-archive')} command:`);
-        console.log(`  ${chalk.cyan('task-master restore-archive <archivePath>')}\n`);
-        
-      } catch (err) {
-        console.error(chalk.red('Error listing archives:'), err.message);
-      }
-    });
-
-  program
-    .command('restore-archive')
-    .alias('restore')
-    .description('Restore an archived tasks file or PRD to its original location')
-    .argument('<archive-path>', 'Path to the archived file to restore')
-    .option('-d, --destination <path>', 'Custom destination path (if not restoring to original location)')
-    .option('-n, --no-backup', 'Do not create a backup of existing destination file')
-    .action(async (archivePath, options) => {
-      try {
-        const projectRoot = process.cwd();
-        
-        displayBanner();
-        console.log(chalk.bold.blue('\nTask Master Archive Restore\n'));
-        
-        // Import the restore function
-        const { restoreArchive } = await import('./modules/utils.js');
-        
-        // Resolve paths
-        const resolvedArchivePath = path.isAbsolute(archivePath) 
-          ? archivePath 
-          : path.resolve(projectRoot, archivePath);
-        
-        let destinationPath = null;
-        if (options.destination) {
-          destinationPath = path.isAbsolute(options.destination)
-            ? options.destination
-            : path.resolve(projectRoot, options.destination);
-        }
-        
-        // Verify archive exists
-        if (!fs.existsSync(resolvedArchivePath)) {
-          console.error(chalk.red(`Archive file not found: ${resolvedArchivePath}`));
-          console.log(chalk.yellow('\nTip: Run `task-master archives` to list available archives.'));
-          process.exit(1);
-        }
-        
-        // Display restore info
-        console.log(`Restoring archive: ${chalk.cyan(resolvedArchivePath)}`);
-        if (destinationPath) {
-          console.log(`To destination: ${chalk.cyan(destinationPath)}`);
-        }
-        console.log(`Create backup of existing file: ${options.backup ? chalk.green('Yes') : chalk.yellow('No')}`);
-        
-        // Confirm action
-        const confirm = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'proceed',
-            message: 'Proceed with restore?',
-            default: true
-          }
-        ]);
-        
-        if (!confirm.proceed) {
-          console.log(chalk.yellow('Restore cancelled.'));
-          process.exit(0);
-        }
-        
-        // Execute restore
-        const spinner = startLoadingIndicator('Restoring archive...');
-        const result = restoreArchive(resolvedArchivePath, destinationPath, options.backup);
-        stopLoadingIndicator(spinner);
-        
-        if (!result.success) {
-          console.error(chalk.red(`Error restoring archive: ${result.error}`));
-          process.exit(1);
-        }
-        
-        console.log(chalk.green(`✓ Archive successfully restored to ${result.restoredTo}`));
-        
-        // Additional info for tasks.json
-        if (result.restoredTo.endsWith('tasks.json')) {
-          console.log('\nNext steps:');
-          console.log(`  1. Run ${chalk.cyan('task-master list')} to view the restored tasks`);
-          console.log(`  2. Run ${chalk.cyan('task-master generate')} to regenerate individual task files`);
-        }
-        
-      } catch (err) {
-        console.error(chalk.red('Error restoring archive:'), err.message);
         process.exit(1);
       }
     });

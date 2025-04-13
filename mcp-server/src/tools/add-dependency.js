@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	safeExecuteOperation
 } from './utils.js';
 import { addDependencyDirect } from '../core/task-master-core.js';
 
@@ -51,14 +52,20 @@ export function registerAddDependencyTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				// Call the direct function with the resolved rootFolder
-				const result = await addDependencyDirect(
-					{
-						projectRoot: rootFolder,
-						...args
+				// Use safeExecuteOperation to handle long-running operations with timeout
+				const result = await safeExecuteOperation(
+					async () => {
+						return await addDependencyDirect(
+							{
+								projectRoot: rootFolder,
+								...args
+							},
+							log,
+							{ reportProgress, mcpLog: log, session }
+						);
 					},
-					log,
-					{ reportProgress, mcpLog: log, session }
+					60000, // Increased timeout to 60 seconds
+					log
 				);
 
 				reportProgress({ progress: 100 });

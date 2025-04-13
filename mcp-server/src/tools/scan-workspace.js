@@ -51,19 +51,107 @@ export function registerScanWorkspaceTool(server) {
         .boolean()
         .optional()
         .default(false)
-        .describe('Confirm overwriting existing tasks if they exist.')
+        .describe('Confirm overwriting existing tasks if they exist.'),
+      cliMode: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Use CLI-friendly progress reporting')
     }),
-    execute: async (params) => {
+    execute: async (params, { reportProgress, log, session }) => {
       try {
-        logger.info(`Starting scan_workspace MCP tool with params: ${JSON.stringify(params)}`);
+        log.info(`Starting scan_workspace MCP tool with params: ${JSON.stringify(params)}`);
         
-        // Call the direct function to perform the workspace scan
-        const result = await scanWorkspaceFunction(params);
+        // Enhanced phase descriptions for better user experience
+        const phaseDescriptions = {
+          'init': 'Initial setup',
+          'validation': 'Validating input parameters',
+          'setup': 'Setting up scan environment',
+          'preparation': 'Preparing file analysis',
+          'fileDiscovery': 'Discovering files and directories',
+          'fileAnalysis': 'Analyzing file content and structure',
+          'sampling': 'Creating codebase representation',
+          'prdGeneration': 'Generating Product Requirements Document',
+          'taskGeneration': 'Converting requirements to actionable tasks',
+          'finalization': 'Finalizing task generation',
+          'complete': 'Scan completed successfully',
+          'error': 'Error encountered during scan'
+        };
+        
+        // Set up progress reporting function with enhanced messaging
+        const updateProgress = async (progressData) => {
+          if (reportProgress) {
+            try {
+              // Enhanced progress data with more detailed information
+              const enhancedProgressData = {
+                ...progressData,
+                // Add phase description if available
+                phaseDescription: phaseDescriptions[progressData.phase] || '',
+                // Enhance message to include phase context
+                message: `${progressData.message}`,
+                // If LLM processing is occurring, add timing context
+                detail: progressData.phase === 'prdGeneration' && !progressData.detail.includes('minutes')
+                  ? `${progressData.detail} (may take 2-3 minutes)`
+                  : progressData.detail
+              };
+              
+              await reportProgress(enhancedProgressData);
+            } catch (error) {
+              log.error(`Error reporting progress: ${error.message}`);
+            }
+          }
+        };
+        
+        // Initial progress report
+        await updateProgress({
+          phase: 'init',
+          message: 'Initializing workspace scan',
+          detail: 'Setting up scan parameters and environment',
+          progress: 0
+        });
+        
+        // Call the direct function to perform the workspace scan with progress reporting
+        const result = await scanWorkspaceFunction({
+          ...params,
+          cliMode: params.cliMode || false
+        }, updateProgress);
+        
+        // Final progress report
+        if (result.success) {
+          await updateProgress({
+            phase: 'complete',
+            message: 'Scan complete',
+            detail: `Generated ${result.taskCount} tasks based on ${params.generatePRD ? 'PRD and ' : ''}code analysis`,
+            progress: 100
+          });
+        } else {
+          await updateProgress({
+            phase: 'error',
+            message: 'Scan failed',
+            detail: result.error || 'Unknown error. Try running with --debug flag for more information.',
+            progress: 100
+          });
+        }
         
         // Return the result directly
         return result;
       } catch (error) {
         logger.error(`Error in scan_workspace MCP tool: ${error.message}`);
+        
+        // Report error in progress if possible
+        if (reportProgress) {
+          try {
+            await reportProgress({
+              phase: 'error',
+              message: 'Error in scan_workspace',
+              detail: `${error.message} - Check API key configuration and try again with --debug flag`,
+              progress: 100
+            });
+          } catch (progressError) {
+            log.error(`Error reporting progress failure: ${progressError.message}`);
+          }
+        }
+        
         return {
           success: false,
           error: error.message

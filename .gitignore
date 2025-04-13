@@ -59,3 +59,17 @@ dist
 *.debug
 init-debug.log
 dev-debug.log
+
+# Added by Claude Task Master
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/ 

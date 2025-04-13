@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	safeExecuteOperation
 } from './utils.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
 
@@ -36,7 +37,10 @@ export function registerGenerateTool(server) {
 		execute: async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
-				// await reportProgress({ progress: 0 });
+				
+				if (reportProgress) {
+				    reportProgress({ progress: 0 });
+				}
 
 				let rootFolder = getProjectRootFromSession(session, log);
 
@@ -45,15 +49,25 @@ export function registerGenerateTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				const result = await generateTaskFilesDirect(
-					{
-						projectRoot: rootFolder,
-						...args
+				// Use safeExecuteOperation to handle long-running operations with timeout
+				const result = await safeExecuteOperation(
+					async () => {
+						return await generateTaskFilesDirect(
+							{
+								projectRoot: rootFolder,
+								...args
+							},
+							log,
+							{ reportProgress, mcpLog: log, session }
+						);
 					},
-					log /*, { reportProgress, mcpLog: log, session}*/
+					30000, // 30-second timeout for file generation
+					log
 				);
-
-				// await reportProgress({ progress: 100 });
+				
+				if (reportProgress) {
+				    reportProgress({ progress: 100 });
+				}
 
 				if (result.success) {
 					log.info(`Successfully generated task files: ${result.data.message}`);

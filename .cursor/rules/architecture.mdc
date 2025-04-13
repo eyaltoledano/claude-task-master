@@ -113,7 +113,7 @@ alwaysApply: false
 =======
 >>>>>>> upstream/changeset-release/next
 
-  - **[`mcp-server/`](mdc:mcp-server/): MCP Server Integration**
+  - **[`mcp-server/`](mdc:mcp-server): MCP Server Integration**
     - **Purpose**: Provides an MCP (Model Context Protocol) interface for Task Master, allowing integration with external tools like Cursor. Uses FastMCP framework.
     - **Responsibilities** (See also: [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)):
       - Registers Task Master functionalities as tools consumable via MCP.

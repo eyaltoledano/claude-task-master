@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	safeExecuteOperation
 } from './utils.js';
 import { removeDependencyDirect } from '../core/task-master-core.js';
 
@@ -38,7 +39,10 @@ export function registerRemoveDependencyTool(server) {
 				log.info(
 					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
 				);
-				// await reportProgress({ progress: 0 });
+				
+				if (reportProgress) {
+					reportProgress({ progress: 0 });
+				}
 
 				let rootFolder = getProjectRootFromSession(session, log);
 
@@ -47,15 +51,25 @@ export function registerRemoveDependencyTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				const result = await removeDependencyDirect(
-					{
-						projectRoot: rootFolder,
-						...args
+				// Use safeExecuteOperation to handle long-running operations with timeout
+				const result = await safeExecuteOperation(
+					async () => {
+						return await removeDependencyDirect(
+							{
+								projectRoot: rootFolder,
+								...args
+							},
+							log,
+							{ reportProgress, mcpLog: log, session }
+						);
 					},
-					log /*, { reportProgress, mcpLog: log, session}*/
+					30000, // 30-second timeout for dependency removal
+					log
 				);
-
-				// await reportProgress({ progress: 100 });
+				
+				if (reportProgress) {
+					reportProgress({ progress: 100 });
+				}
 
 				if (result.success) {
 					log.info(`Successfully removed dependency: ${result.data.message}`);

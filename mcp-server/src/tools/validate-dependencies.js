@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	safeExecuteOperation
 } from './utils.js';
 import { validateDependenciesDirect } from '../core/task-master-core.js';
 
@@ -41,13 +42,20 @@ export function registerValidateDependenciesTool(server) {
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
 				}
 
-				const result = await validateDependenciesDirect(
-					{
-						projectRoot: rootFolder,
-						...args
+				// Use safeExecuteOperation to handle long-running operations with timeout
+				const result = await safeExecuteOperation(
+					async () => {
+						return await validateDependenciesDirect(
+							{
+								projectRoot: rootFolder,
+								...args
+							},
+							log,
+							{ reportProgress, mcpLog: log, session }
+						);
 					},
-					log,
-					{ reportProgress, mcpLog: log, session }
+					30000, // 30-second timeout should be sufficient for this operation
+					log
 				);
 
 				await reportProgress({ progress: 100 });

@@ -9,6 +9,9 @@ import { scanWorkspace } from '../../../../scripts/modules/workspace-scanner.js'
 import fs from 'fs';
 import path from 'path';
 import logger from '../../logger.js';
+import { archiveTasksBeforeOverwrite } from '../../../../scripts/modules/utils.js';
+import { validatePath } from '../utils/path-utils.js';
+import { getLogger } from '../../utils/logger.js';
 
 /**
  * Validates path and makes it absolute if relative
@@ -39,15 +42,27 @@ function validatePath(basePath, targetPath) {
  * @param {number} [options.numTasks] - Number of tasks to generate
  * @param {boolean} [options.generatePRD] - Whether to generate a PRD
  * @param {boolean} [options.confirmOverwrite] - Whether to overwrite existing tasks.json
+ * @param {boolean} [options.cliMode] - Whether to enable CLI-friendly progress reporting
+ * @param {Function} [reportProgress] - Optional callback for reporting progress
  * @returns {Promise<Object>} Result of the operation
  */
-export async function scanWorkspaceFunction(options) {
+export async function scanWorkspaceFunction(options, reportProgress = null) {
   try {
-    const { projectRoot } = options;
+    const { projectRoot, cliMode = false } = options;
 
     // Project root is required
     if (!projectRoot) {
       throw new Error('projectRoot parameter is required');
+    }
+
+    // Report progress
+    if (reportProgress) {
+      await reportProgress({
+        phase: 'validation',
+        message: 'Validating inputs',
+        detail: 'Checking project root and parameters',
+        progress: 5
+      });
     }
 
     // Resolve project root to ensure it exists
@@ -67,6 +82,16 @@ export async function scanWorkspaceFunction(options) {
       validatePath(resolvedProjectRoot, options.output) : 
       path.join(resolvedProjectRoot, 'tasks', 'tasks.json');
     
+    // Report progress
+    if (reportProgress) {
+      await reportProgress({
+        phase: 'setup',
+        message: 'Setting up scan',
+        detail: 'Checking for existing tasks and preparing output',
+        progress: 10
+      });
+    }
+    
     // Check if tasks.json already exists and respect confirmOverwrite parameter
     if (fs.existsSync(outputFile) && !options.confirmOverwrite) {
       logger.warn(`Existing tasks file found at ${outputFile}`);
@@ -75,6 +100,16 @@ export async function scanWorkspaceFunction(options) {
         error: 'Existing tasks.json found. To overwrite, set confirmOverwrite parameter to true.',
         code: 'EXISTING_TASKS'
       };
+    }
+    
+    // Archive existing tasks file if it exists and we're going to overwrite it
+    if (fs.existsSync(outputFile) && options.confirmOverwrite) {
+      const archiveResult = archiveTasksBeforeOverwrite(outputFile);
+      if (!archiveResult.success) {
+        logger.warn(`Could not archive existing tasks file: ${archiveResult.error}. Proceeding with overwrite.`);
+      } else if (archiveResult.archived) {
+        logger.info(`Existing tasks file has been archived to ${archiveResult.archivePath}`);
+      }
     }
     
     // Parse options
@@ -92,30 +127,57 @@ export async function scanWorkspaceFunction(options) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
-    logger.info(`Scanning workspace: ${directory}`);
-    logger.info(`Output will be saved to: ${outputFile}`);
-    logger.info(`Max files: ${maxFiles}, Max size per file: ${maxSizePerFile}`);
-    logger.info(`Ignoring directories: ${ignoreDirs.join(', ')}`);
-    logger.info(`Generate PRD: ${generatePRD ? 'Yes' : 'No'}`);
-    if (generatePRD) {
-      logger.info(`Number of tasks to generate from PRD: ${numTasks}`);
+    // Report progress
+    if (reportProgress) {
+      await reportProgress({
+        phase: 'preparation',
+        message: 'Preparing for scan',
+        detail: `Ready to scan: ${path.basename(directory)}`,
+        progress: 15
+      });
     }
     
-    // Scan the workspace and generate tasks
+    // Log configuration info (less verbose in CLI mode)
+    if (!cliMode) {
+      logger.info(`Scanning workspace: ${directory}`);
+      logger.info(`Output will be saved to: ${outputFile}`);
+      logger.info(`Max files: ${maxFiles}, Max size per file: ${maxSizePerFile}`);
+      logger.info(`Ignoring directories: ${ignoreDirs.join(', ')}`);
+      logger.info(`Generate PRD: ${generatePRD ? 'Yes' : 'No'}`);
+      if (generatePRD) {
+        logger.info(`Number of tasks to generate from PRD: ${numTasks}`);
+      }
+    } else {
+      // Simplified CLI logging
+      console.log(`Scanning workspace: ${directory}`);
+      console.log(`Output will be saved to: ${outputFile}`);
+      console.log('');  // Empty line before progress starts
+    }
+    
+    // Scan the workspace and generate tasks with progress reporting
     const tasks = await scanWorkspace(directory, {
       ignoreDirs,
       outputPath: outputFile,
       maxFiles,
       maxSizePerFile,
       numTasks,
-      generatePRD
-    });
+      generatePRD,
+      cliMode // Pass CLI mode option to the scanner
+    }, reportProgress ? async (progressData) => {
+      await reportProgress(progressData);
+    } : null);
     
     const successMessage = generatePRD ? 
       `Successfully generated PRD and ${tasks.length} tasks from workspace analysis` :
       `Successfully generated ${tasks.length} tasks from codebase analysis`;
     
-    logger.info(successMessage);
+    if (cliMode) {
+      console.log(''); // Empty line after progress completes
+      console.log(successMessage);
+      console.log(`Tasks saved to: ${outputFile}`);
+    } else {
+      logger.info(successMessage);
+    }
     
     return {
       success: true,
@@ -125,7 +187,11 @@ export async function scanWorkspaceFunction(options) {
       prdGenerated: generatePRD
     };
   } catch (error) {
-    logger.error(`Error scanning workspace: ${error.message}`);
+    if (options.cliMode) {
+      console.error(`Error scanning workspace: ${error.message}`);
+    } else {
+      logger.error(`Error scanning workspace: ${error.message}`);
+    }
     return {
       success: false,
       error: error.message

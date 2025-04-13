@@ -37,7 +37,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `addAliases`: `Add shell aliases (tm, taskmaster) (default: false).` (CLI: `--aliases`)
     *   `yes`: `Skip prompts and use defaults/provided arguments (default: false).` (CLI: `-y, --yes`)
 *   **Usage:** Run this once at the beginning of a new project, typically via an integrated tool like Cursor. Operates on the current working directory of the MCP server.
-
+*   **Important:** Once complete, you *MUST* parse a prd in order to generate tasks. There will be no tasks files until then. The next step after initializing should be to create a PRD using the example PRD in scripts/example_prd.txt.
 
 ### 2. Parse PRD (`parse_prd`)
 
@@ -51,13 +51,50 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `force`: `Use this to allow Taskmaster to overwrite an existing 'tasks.json' without asking for confirmation.` (CLI: `-f, --force`)
 *   **Usage:** Useful for bootstrapping a project from an existing requirements document.
 *   **Notes:** Task Master will strictly adhere to any specific requirements mentioned in the PRD (libraries, database schemas, frameworks, tech stacks, etc.) while filling in any gaps where the PRD isn't fully specified. Tasks are designed to provide the most direct implementation path while avoiding over-engineering.
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress. If the user does not have a PRD, suggest discussing their idea and then use the example PRD in scripts/example_prd.txt as a template for creating the PRD based on their idea, for use with parse-prd.
+
+### 3. Scan Workspace (`scan_workspace`)
+
+*   **MCP Tool:** `scan_workspace`
+*   **CLI Command:** `task-master scan [options]`
+*   **Description:** `Intelligently scan and analyze the existing codebase to generate a comprehensive project structure summary and optionally create a PRD for task generation.`
+*   **Key Parameters/Options:**
+    *   `directory`: `Specific directory to scan (defaults to current directory).` (CLI: `-d, --directory <dir>`)
+    *   `output`: `Path to save JSON project summary or generated PRD.` (CLI: `-o, --output <file>`)
+    *   `format`: `Output format: 'json', 'prd', or 'both'.` (CLI: `-f, --format <format>`)
+    *   `ignoreDirs`: `Comma-separated list of directories to ignore during scanning.` (CLI: `-i, --ignore <dirs>`)
+    *   `maxFiles`: `Maximum number of files to analyze deeply.` (CLI: not directly exposed)
+    *   `numTasks`: `Number of tasks to generate if generating a PRD.` (CLI: not directly exposed)
+    *   `generatePRD`: `Whether to generate a PRD from the codebase analysis.` (CLI: automatic based on format)
+    *   `debug`: `Enable verbose debugging information during the scanning process.` (CLI: `--debug`)
+*   **Usage:** Perfect for analyzing existing codebases to understand their structure before generating tasks. Run first when adopting Task Master for an existing project.
+*   **Process:** 
+    *   Performs iterative, recursive scans of the project
+    *   Step 1: Root Directory Scan - Identifies project type and technology
+    *   Step 2: Entry Point and Core Files Identification
+    *   Step 3: Core Structure and Directory Analysis
+    *   Step 4+: Recursive Deepening Scans with Iterative Analysis
+    *   Results in a structured JSON summary with detailed file and directory-level descriptions
+    *   Optionally generates a comprehensive PRD for task generation
+*   **Notes:** Uses AI-driven analysis to intelligently identify project structure, patterns, and organization. The generated output can be used directly with parse-prd to create tasks tailored to the existing codebase.
+*   **Example:** `task-master scan --directory=. --output=project_scan.json --format=both`
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+
+### 4. Generate Files (`generate`)
+
+*   **MCP Tool:** `generate`
+*   **CLI Command:** `task-master generate [options]`
+*   **Description:** `Generate individual task files in the tasks/ directory based on your tasks.json configuration.`
+*   **Key Parameters/Options:**
+    *   `file`: `Path to your Taskmaster 'tasks.json' file if it's not in the default location.` (CLI: `-f, --file <file>`)
+    *   `output`: `Specify the directory where Taskmaster should create task files (default: 'tasks').` (CLI: `-o, --output <dir>`)
+*   **Usage:** Run after creating or updating tasks.json to generate readable Markdown task files with full details.
 
 ---
 
 ## Task Listing & Viewing
 
-### 3. Get Tasks (`get_tasks`)
+### 5. Get Tasks (`get_tasks`)
 
 *   **MCP Tool:** `get_tasks`
 *   **CLI Command:** `task-master list [options]`
@@ -68,7 +105,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Get an overview of the project status, often used at the start of a work session.
 
-### 4. Get Next Task (`next_task`)
+### 6. Get Next Task (`next_task`)
 
 *   **MCP Tool:** `next_task`
 *   **CLI Command:** `task-master next [options]`
@@ -77,7 +114,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Identify what to work on next according to the plan.
 
-### 5. Get Task Details (`get_task`)
+### 7. Get Task Details (`get_task`)
 
 *   **MCP Tool:** `get_task`
 *   **CLI Command:** `task-master show [id] [options]`
@@ -91,7 +128,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Task Creation & Modification
 
-### 6. Add Task (`add_task`)
+### 8. Add Task (`add_task`)
 
 *   **MCP Tool:** `add_task`
 *   **CLI Command:** `task-master add-task [options]`
@@ -104,7 +141,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Quickly add newly identified tasks during development.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 7. Add Subtask (`add_subtask`)
+### 9. Add Subtask (`add_subtask`)
 
 *   **MCP Tool:** `add_subtask`
 *   **CLI Command:** `task-master add-subtask [options]`
@@ -121,7 +158,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Break down tasks manually or reorganize existing tasks.
 
-### 8. Update Tasks (`update`)
+### 10. Update Tasks (`update`)
 
 *   **MCP Tool:** `update`
 *   **CLI Command:** `task-master update [options]`
@@ -134,7 +171,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Handle significant implementation changes or pivots that affect multiple future tasks. Example CLI: `task-master update --from='18' --prompt='Switching to React Query.\nNeed to refactor data fetching...'`
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 9. Update Task (`update_task`)
+### 11. Update Task (`update_task`)
 
 *   **MCP Tool:** `update_task`
 *   **CLI Command:** `task-master update-task [options]`
@@ -147,7 +184,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Refine a specific task based on new understanding or feedback. Example CLI: `task-master update-task --id='15' --prompt='Clarification: Use PostgreSQL instead of MySQL.\nUpdate schema details...'`
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 10. Update Subtask (`update_subtask`)
+### 12. Update Subtask (`update_subtask`)
 
 *   **MCP Tool:** `update_subtask`
 *   **CLI Command:** `task-master update-subtask [options]`
@@ -160,7 +197,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Add implementation notes, code snippets, or clarifications to a subtask during development. Before calling, review the subtask's current details to append only fresh insights, helping to build a detailed log of the implementation journey and avoid redundancy. Example CLI: `task-master update-subtask --id='15.2' --prompt='Discovered that the API requires header X.\nImplementation needs adjustment...'`
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 11. Set Task Status (`set_task_status`)
+### 13. Set Task Status (`set_task_status`)
 
 *   **MCP Tool:** `set_task_status`
 *   **CLI Command:** `task-master set-status [options]`
@@ -171,7 +208,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Mark progress as tasks move through the development cycle.
 
-### 12. Remove Task (`remove_task`)
+### 14. Remove Task (`remove_task`)
 
 *   **MCP Tool:** `remove_task`
 *   **CLI Command:** `task-master remove-task [options]`
@@ -187,7 +224,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Task Structure & Breakdown
 
-### 13. Expand Task (`expand_task`)
+### 15. Expand Task (`expand_task`)
 
 *   **MCP Tool:** `expand_task`
 *   **CLI Command:** `task-master expand [options]`
@@ -202,7 +239,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Generate a detailed implementation plan for a complex task before starting coding.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 14. Expand All Tasks (`expand_all`)
+### 16. Expand All Tasks (`expand_all`)
 
 *   **MCP Tool:** `expand_all`
 *   **CLI Command:** `task-master expand --all [options]` (Note: CLI uses the `expand` command with the `--all` flag)
@@ -216,7 +253,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Useful after initial task generation or complexity analysis to break down multiple tasks at once.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 15. Clear Subtasks (`clear_subtasks`)
+### 17. Clear Subtasks (`clear_subtasks`)
 
 *   **MCP Tool:** `clear_subtasks`
 *   **CLI Command:** `task-master clear-subtasks [options]`
@@ -227,7 +264,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Used before regenerating subtasks with `expand_task` if the previous breakdown needs replacement.
 
-### 16. Remove Subtask (`remove_subtask`)
+### 18. Remove Subtask (`remove_subtask`)
 
 *   **MCP Tool:** `remove_subtask`
 *   **CLI Command:** `task-master remove-subtask [options]`
@@ -243,7 +280,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Dependency Management
 
-### 17. Add Dependency (`add_dependency`)
+### 19. Add Dependency (`add_dependency`)
 
 *   **MCP Tool:** `add_dependency`
 *   **CLI Command:** `task-master add-dependency [options]`
@@ -254,7 +291,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Establish the correct order of execution between tasks.
 
-### 18. Remove Dependency (`remove_dependency`)
+### 20. Remove Dependency (`remove_dependency`)
 
 *   **MCP Tool:** `remove_dependency`
 *   **CLI Command:** `task-master remove-dependency [options]`
@@ -265,7 +302,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Update task relationships when the order of execution changes.
 
-### 19. Validate Dependencies (`validate_dependencies`)
+### 21. Validate Dependencies (`validate_dependencies`)
 
 *   **MCP Tool:** `validate_dependencies`
 *   **CLI Command:** `task-master validate-dependencies [options]`
@@ -274,7 +311,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Audit the integrity of your task dependencies.
 
-### 20. Fix Dependencies (`fix_dependencies`)
+### 22. Fix Dependencies (`fix_dependencies`)
 
 *   **MCP Tool:** `fix_dependencies`
 *   **CLI Command:** `task-master fix-dependencies [options]`
@@ -287,7 +324,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Analysis & Reporting
 
-### 21. Analyze Project Complexity (`analyze_project_complexity`)
+### 23. Analyze Project Complexity (`analyze_project_complexity`)
 
 *   **MCP Tool:** `analyze_project_complexity`
 *   **CLI Command:** `task-master analyze-complexity [options]`
@@ -300,7 +337,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Used before breaking down tasks to identify which ones need the most attention.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 22. View Complexity Report (`complexity_report`)
+### 24. View Complexity Report (`complexity_report`)
 
 *   **MCP Tool:** `complexity_report`
 *   **CLI Command:** `task-master complexity-report [options]`
@@ -313,7 +350,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## File Management
 
-### 23. Generate Task Files (`generate`)
+### 25. Generate Task Files (`generate`)
 
 *   **MCP Tool:** `generate`
 *   **CLI Command:** `task-master generate [options]`

@@ -9,12 +9,15 @@ import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	archiveTasksBeforeOverwrite
 } from '../../../../scripts/modules/utils.js';
 import {
 	getAnthropicClientForMCP,
 	getModelConfig
 } from '../utils/ai-client-utils.js';
+import { createErrorResponse } from '../../tools/utils.js';
+import { ApiClient } from '../api-client/client.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
@@ -75,6 +78,28 @@ export async function parsePRDDirect(args, log, context = {}) {
 			outputPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
 		}
 
+		// Check if output file exists and archive it if needed and force flag is used
+		if (fs.existsSync(outputPath)) {
+			// If force is not explicitly true, exit with error
+			if (args.force !== true) {
+				const errorMessage = `Output file already exists at ${outputPath}. Use force=true to overwrite.`;
+				log.warn(errorMessage);
+				return {
+					success: false,
+					error: { code: 'OUTPUT_FILE_EXISTS', message: errorMessage },
+					fromCache: false
+				};
+			}
+			
+			// Archive the existing tasks file before overwriting
+			const archiveResult = archiveTasksBeforeOverwrite(outputPath);
+			if (!archiveResult.success) {
+				log.warn(`Could not archive existing tasks file: ${archiveResult.error}. Proceeding with overwrite.`);
+			} else if (archiveResult.archived) {
+				log.info(`Existing tasks file has been archived to ${archiveResult.archivePath}`);
+			}
+		}
+
 		// Verify input file exists
 		if (!fs.existsSync(inputPath)) {
 			const errorMessage = `Input file not found: ${inputPath}`;
@@ -103,19 +128,22 @@ export async function parsePRDDirect(args, log, context = {}) {
 			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks`
 		);
 
-		// Create the logger wrapper for proper logging in the core function
-		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args),
-			success: (message, ...args) => log.info(message, ...args) // Map success to info
+		// Prepare model config from args if provided
+		const modelConfig = {
+			model: args.model,
+			maxTokens: args.maxTokens ? parseInt(args.maxTokens, 10) : undefined,
+			temperature: args.temperature ? parseFloat(args.temperature) : undefined,
 		};
 
-		// Get model config from session
-		const modelConfig = getModelConfig(session);
+		// Create a log wrapper that uses our logger
+		const logWrapper = {
+			debug: (msg) => log.debug(msg),
+			info: (msg) => log.info(msg),
+			warn: (msg) => log.warn(msg),
+			error: (msg) => log.error(msg),
+		};
 
-		// Enable silent mode to prevent console logs from interfering with JSON response
+		// Enable silent mode to prevent logs from interfering with the response
 		enableSilentMode();
 		try {
 			// Execute core parsePRD function with AI client
@@ -125,7 +153,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 				numTasks,
 				{
 					mcpLog: logWrapper,
-					session
+					session,
+					force: args.force
 				},
 				aiClient,
 				modelConfig
