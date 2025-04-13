@@ -370,6 +370,7 @@ program
 	.option('--parallel', 'Enable parallel processing for faster results with multiple smaller API calls')
 	.option('--skip-complexity', 'Skip the automatic task complexity analysis step')
 	.option('-d, --debug', 'Enable debug output')
+	.option('-q, --quiet', 'Suppress INFO and WARN log messages, showing only progress bar and errors')
 	.action(async (directory, options) => {
 		// Create a visually enhanced header for the scanner
 		console.clear();
@@ -418,6 +419,12 @@ ${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
 		if (args.includes('--debug') || options.debug) {
 			process.env.DEBUG = '1';
 			console.log(chalk.gray('Debug mode enabled - verbose output will be shown'));
+		}
+		
+		// Check if quiet flag is present and set LOG_LEVEL to 'error' to suppress INFO and WARN logs
+		if (args.includes('--quiet') || options.quiet) {
+			process.env.LOG_LEVEL = 'error';
+			// Don't log anything about quiet mode to keep it truly quiet
 		}
 		
 		// Add notification for parallel processing
@@ -470,7 +477,8 @@ ${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
 				force: options.force === true,
 				useParallel: options.parallel === true, // Add parallel option
 				cliMode: true, // Enable CLI mode for better terminal output
-				skipComplexity: options.skipComplexity === true
+				skipComplexity: options.skipComplexity === true,
+				logLevel: process.env.LOG_LEVEL || 'info' // Pass LOG_LEVEL to scanner
 			}, progressEnabled ? updateProgressFn : null);
 			
 			// Success message is handled by the CLI output in the scanner itself

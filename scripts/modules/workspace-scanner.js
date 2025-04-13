@@ -16,6 +16,19 @@ import { writeJSON } from './utils.js';
 import readline from 'readline';
 import gradient from 'gradient-string';
 
+// Check for quiet mode and set LOG_LEVEL at module load time
+if (process.env.LOG_LEVEL === 'error') {
+  // This will disable all logs except error logs
+  console.log(chalk.dim('Running in quiet mode - showing only errors and progress bar'));
+  // Set a 200ms delay to ensure the message is shown before clearing
+  setTimeout(() => {
+    // Clear console to create a cleaner interface
+    if (process.stdout.isTTY) {
+      console.clear();
+    }
+  }, 200);
+}
+
 // Define colorize functions to replace the missing import
 const colorize = {
   yellow: (text) => chalk.yellow(text),
