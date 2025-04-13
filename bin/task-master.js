@@ -471,7 +471,7 @@ registerCommands(tempProgram);
 // For each command in the temp instance, add a modified version to our actual program
 tempProgram.commands.forEach((cmd) => {
 	// Skip commands we've already defined specially
-	if (['init', 'dev', 'scan', 'scan-workspace'].includes(cmd.name())) {
+	if (['init', 'dev', 'scan-workspace'].includes(cmd.name())) {
 		return;
 	}
 

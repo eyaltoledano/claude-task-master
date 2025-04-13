@@ -25,15 +25,6 @@ export function registerCommands(program) {
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-o, --output <dir>', 'Output directory', 'tasks');
 
-  program
-    .command('scan')
-    .description('Intelligently scan and analyze existing codebase to generate project structure summary')
-    .option('-o, --output <file>', 'Path to save JSON project summary', 'project_scan.json')
-    .option('-d, --directory <dir>', 'Specific directory to scan', '.')
-    .option('-i, --ignore <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build')
-    .option('-f, --format <format>', 'Output format (json, prd, or both)', 'json')
-    .option('--debug', 'Print verbose debugging information during scanning');
-
   // Task Management Commands
   program
     .command('set-status')

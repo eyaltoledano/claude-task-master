@@ -194,7 +194,7 @@ export function displayHelp() {
   ));
   
   console.log(chalk.cyan('  1. Scan your codebase:'));
-  console.log(`     ${chalk.yellow('node scripts/dev.js scan --format=both')}`);
+  console.log(`     ${chalk.yellow('node scripts/dev.js scan-workspace')}`);
   console.log(chalk.cyan('  2. Generate tasks from generated PRD:'));
   console.log(`     ${chalk.yellow('node scripts/dev.js parse-prd --input=scripts/generated_prd.txt')}`);
   console.log(chalk.cyan('  3. Generate task files:'));
