@@ -23,8 +23,6 @@ import {
 	findTaskById
 } from '../../scripts/modules/utils.js';
 
-// Skip the import of detectCamelCaseFlags as we'll implement our own version for testing
-
 // Mock chalk functions
 jest.mock('chalk', () => ({
 	gray: jest.fn((text) => `gray:${text}`),
@@ -33,33 +31,6 @@ jest.mock('chalk', () => ({
 	red: jest.fn((text) => `red:${text}`),
 	green: jest.fn((text) => `green:${text}`)
 }));
-
-// Test implementation of detectCamelCaseFlags
-function testDetectCamelCaseFlags(args) {
-	const camelCaseFlags = [];
-	for (const arg of args) {
-		if (arg.startsWith('--')) {
-			const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
-
-			// Skip single-word flags - they can't be camelCase
-			if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
-				continue;
-			}
-
-			// Check for camelCase pattern (lowercase followed by uppercase)
-			if (/[a-z][A-Z]/.test(flagName)) {
-				const kebabVersion = toKebabCase(flagName);
-				if (kebabVersion !== flagName) {
-					camelCaseFlags.push({
-						original: flagName,
-						kebabCase: kebabVersion
-					});
-				}
-			}
-		}
-	}
-	return camelCaseFlags;
-}
 
 describe('Utils Module', () => {
 	// Setup fs mocks for each test
