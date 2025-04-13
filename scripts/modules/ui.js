@@ -75,7 +75,7 @@ export function displayHelp() {
           desc: 'Generate tasks from a PRD document' },
         { name: 'generate', args: '', 
           desc: 'Create individual task files from tasks.json' },
-        { name: 'scan', args: '[--output=file.json] [--directory=.] [--format=json|prd|both]',
+        { name: 'scan-workspace', args: '[--output=file.json] [--directory=.] [--format=json|prd|both]',
           desc: 'Intelligently analyze codebase to generate project structure summary' }
       ]
     },
