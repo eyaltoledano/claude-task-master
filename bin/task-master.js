@@ -365,6 +365,7 @@ program
 	.option('--no-prd', 'Do not generate a PRD document')
 	.option('-f, --force', 'Force overwrite of existing tasks.json file')
 	.option('--parallel', 'Enable parallel processing for faster results with multiple smaller API calls')
+	.option('--skip-complexity', 'Skip the automatic task complexity analysis step')
 	.option('-d, --debug', 'Enable debug output')
 	.action(async (directory, options) => {
 		console.log('\n  _____           _        __  __            _                ');
@@ -378,6 +379,8 @@ program
 		console.log('2. Analyzing file content and code patterns');
 		console.log('3. Generating a comprehensive PRD document');
 		console.log('4. Creating structured tasks from requirements');
+		console.log('5. Analyzing task complexity to identify which tasks need further breakdown');
+		console.log('6. Generating individual task files for easier reference');
 		console.log('\nThis operation may take 2-5 minutes depending on codebase size.');
 		console.log(chalk.yellow('\n⚠️  Important Note:'));
 		console.log(chalk.yellow('  • The AI analysis phase (step 3) is the longest part of the process'));
@@ -445,7 +448,8 @@ program
 				generatePRD: options.prd !== false,
 				force: options.force === true,
 				useParallel: options.parallel === true, // Add parallel option
-				cliMode: true // Enable CLI mode for better terminal output
+				cliMode: true, // Enable CLI mode for better terminal output
+				skipComplexity: options.skipComplexity === true
 			}, progressEnabled ? updateProgressFn : null);
 			
 			// Success message is handled by the CLI output in the scanner itself

@@ -14,6 +14,7 @@ import { log, archiveTasksBeforeOverwrite } from './utils.js';
 import chalk from 'chalk';
 import { writeJSON } from './utils.js';
 import readline from 'readline';
+import { analyzeTaskComplexity } from './task-manager.js';
 
 // Define colorize functions to replace the missing import
 const colorize = {
@@ -280,8 +281,8 @@ Focus on being detailed, specific, and actionable. This is just one batch of fil
       
       return response.content;
     } catch (error) {
-      log('error', `Error processing batch ${index + 1}: ${error.message}`);
-      return `Batch ${index + 1} analysis failed: ${error.message}`;
+      console.error(`Error analyzing batch: ${error.message}`);
+      return `Error analyzing batch: ${error.message}`;
     }
   });
   
@@ -484,11 +485,15 @@ async function generateTasksFromCodeAnalysis(sampledFiles) {
     });
     
     if (!response || !response.content) {
-      throw new Error('Failed to get a valid response from the AI service');
+      throw new Error('Invalid response from AI service');
     }
     
-    // Extract JSON array from response
-    const jsonMatch = response.content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    // Ensure response.content is a string before using match()
+    const contentStr = typeof response.content === 'string' 
+      ? response.content 
+      : JSON.stringify(response.content);
+    
+    const jsonMatch = contentStr.match(/\[\s*\{[\s\S]*\}\s*\]/);
     if (!jsonMatch) {
       throw new Error('Could not extract valid JSON from the AI response');
     }
@@ -552,7 +557,7 @@ async function generatePRDFromCodeAnalysis(sampledFiles, workspacePath, options 
       })
       .join('\n');
     
-    log('Generating PRD from codebase analysis...');
+    log('info', 'Generating PRD from codebase analysis...');
     
     // Enhanced progress tracking function
     let currentStep = 0;
@@ -854,51 +859,18 @@ The PRD will be used to generate tasks automatically, so be specific about imple
         };
         
         const response = await callLLMWithProgressUpdates({
-          system: 'You are an expert software architect and product manager. You analyze codebases and create detailed PRDs (Product Requirements Documents) that outline improvements and feature implementations.',
-          messages: [
-            { 
-              role: 'user', 
-              content: `Based on the codebase sample provided, generate a comprehensive PRD focused on code improvements and feature implementations.
-
-CODEBASE SUMMARY:
-- Total files sampled: ${fileCount}
-- File extensions found:
-${extSummary}
-
-FILE STRUCTURE:
-${fileStructure}
-
-SAMPLE FILE CONTENTS:
-${fileContentSample}
-
-Create a Product Requirements Document (PRD) in plain text format that:
-1. Starts with a high-level overview of the project based on the code
-2. Identifies key areas for improvement in the codebase
-3. Outlines specific requirements for:
-   - Code quality improvements
-   - Feature implementations
-   - Architecture enhancements
-   - Testing improvements
-   - Dependency management
-   - Performance optimizations
-   - User experience improvements
-   - Documentation needs
-   - Technical debt reduction
-4. For each section, provide detailed, actionable requirements that can be implemented
-
-Format as a detailed PRD with sections and numbered requirements. Make it comprehensive enough to generate at least 15-20 specific tasks.
-The PRD will be used to generate tasks automatically, so be specific about implementations needed.`
-            }
-          ],
-          max_tokens: 8000,
-          temperature: 0.2
+          systemPrompt: 'You are a professional software architect and technical writer, skilled at creating comprehensive PRD documents.',
+          userPrompt: prdPrompt,
+          model: finalizationModel
         });
         
-        prdContent = response.content;
+        // Ensure response.content is a string before using it
+        prdContent = typeof response.content === 'string' 
+          ? response.content 
+          : JSON.stringify(response.content);
         
-        // Clear the interval if it exists
-        if (progressInterval) {
-          clearInterval(progressInterval);
+        if (updateProgressFn) {
+          await updateProgressFn(7, 'PRD document generated', 80);
         }
       } catch (err) {
         // Clear the interval if it exists
@@ -983,7 +955,7 @@ The PRD will be used to generate tasks automatically, so be specific about imple
     }
     
     await writeFile(prdPath, contentToWrite);
-    log(`Generated PRD saved to ${colorize.green(prdPath)}`);
+    log('info', `Generated PRD saved to ${colorize.green(prdPath)}`);
     
     return prdPath;
   } catch (err) {
@@ -1071,6 +1043,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     generatePRD = true, // Option to control PRD generation
     force = false, // Option to force overwrite existing files
     useParallel = false, // Option to use parallel processing
+    skipComplexity = false, // Option to skip complexity analysis
     cliMode = false // New option for CLI mode
   } = options;
   
@@ -1094,17 +1067,17 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Define symbols for different phases
     const symbols = {
-      'init': '🔍',
-      'fileDiscovery': '📁',
-      'fileAnalysis': '📄',
-      'sampling': '📊',
-      'prdGeneration': '📝',
-      'aiAnalysis': '🧠',
-      'taskGeneration': '✅',
-      'finalization': '📦',
-      'complete': '✨',
-      'error': '❌',
-      'unknown': '⚡'
+      'init': '🔍 ',
+      'fileDiscovery': '📁 ',
+      'fileAnalysis': '📄 ',
+      'sampling': '📊 ',
+      'prdGeneration': '📝 ',
+      'aiAnalysis': '🧠 ',  // Added extra space here
+      'taskGeneration': '✅ ',
+      'finalization': '📦 ',
+      'complete': '✨ ',
+      'error': '❌ ',
+      'unknown': '⚡ '
     };
     
     // Get the appropriate symbol, defaulting to the unknown symbol if phase is not recognized
@@ -1176,7 +1149,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       fileAnalysis: 'Reading and analyzing file contents',
       sampling: 'Sampling representative files for analysis',
       prdGeneration: 'Creating comprehensive requirements document',
-      aiAnalysis: 'Performing AI analysis of code patterns',
+      aiAnalysis: 'AI: Analyzing code patterns and complexity',
       taskGeneration: 'Converting analysis into actionable tasks',
       finalization: 'Finalizing and saving outputs',
       complete: 'Scan completed successfully'
@@ -1283,12 +1256,12 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       // Use the parsePRD function to generate tasks from the PRD
       try {
         // Add better error handling and pass the required options object
-        tasks = await parsePRD(
+        const tasksData = await parsePRD(
           prdPath, 
           outputPath, 
           numTasks, 
           { 
-            force, 
+            force: true, // Force overwrite to ensure fresh task generation
             mcpLog: {
               info: (msg) => log('info', msg),
               error: (msg) => log('error', msg),
@@ -1298,21 +1271,117 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
           null, // No AI client - will use default
           {
             model: process.env.MODEL,
-            maxTokens: 4000,
+            maxTokens: 8000, // Increase token limit for better task generation
             temperature: 0.2
           }
         );
         
-        if (!tasks || !Array.isArray(tasks)) {
-          log('warn', 'Tasks generated from PRD are not in expected format, defaulting to empty array');
-          tasks = [];
+        // Extract tasks array from the returned data object
+        if (tasksData && tasksData.tasks && Array.isArray(tasksData.tasks)) {
+          tasks = tasksData.tasks;
+          
+          // Validate that tasks have required fields
+          const validTasks = tasks.filter(task => 
+            task && 
+            task.id && 
+            task.title && 
+            task.description
+          );
+          
+          if (validTasks.length < tasks.length) {
+            log('warn', `Filtered out ${tasks.length - validTasks.length} incomplete tasks`);
+            tasks = validTasks;
+          }
+          
+          if (tasks.length === 0) {
+            log('warn', 'No valid tasks generated from PRD, attempting direct generation');
+            // Fallback to direct task generation
+            tasks = await generateTasksFromCodeAnalysis(sampledFiles);
+          } else {
+            log('info', `Generated ${colorize.green(tasks.length)} valid tasks from PRD`);
+            
+            // Check if complexity analysis should be skipped
+            if (skipComplexity) {
+              log('info', 'Skipping complexity analysis due to skipComplexity option');
+            } else {
+              // Update progress for complexity analysis
+              if (enhancedReportProgress) {
+                enhancedReportProgress({
+                  phase: 'aiAnalysis',
+                  message: 'Analyzing task complexity',
+                  detail: 'Evaluating complexity of generated tasks',
+                  progress: 85
+                });
+              }
+              
+              // Run complexity analysis on the tasks
+              try {
+                log('info', 'Automatically running task complexity analysis...');
+                const complexityReportPath = path.resolve(path.dirname(outputPath), '../scripts/task-complexity-report.json');
+                
+                // Ensure scripts directory exists
+                const scriptsDir = path.dirname(complexityReportPath);
+                if (!fs.existsSync(scriptsDir)) {
+                  await mkdir(scriptsDir, { recursive: true });
+                }
+                
+                // Run the complexity analysis
+                await analyzeTaskComplexity(
+                  {
+                    file: outputPath,
+                    output: complexityReportPath,
+                    threshold: 5 // Default threshold
+                  },
+                  {
+                    mcpLog: {
+                      info: (msg) => log('info', msg),
+                      error: (msg) => log('error', msg),
+                      debug: (msg) => log('debug', msg)
+                    }
+                  }
+                );
+                
+                log('info', `Complexity analysis completed and saved to ${colorize.green(complexityReportPath)}`);
+              } catch (analysisErr) {
+                log('warn', `Failed to run automatic complexity analysis: ${analysisErr.message}`);
+                log('warn', 'You can manually run this step with: task-master analyze-complexity');
+              }
+            }
+            
+            // Always generate task files regardless of complexity analysis
+            try {
+              // Update progress for task file generation
+              if (enhancedReportProgress) {
+                enhancedReportProgress({
+                  phase: 'finalization',
+                  message: 'Generating individual task files',
+                  detail: 'Creating task files from tasks.json',
+                  progress: 95
+                });
+              }
+              
+              // Generate individual task files
+              const tasksDir = path.dirname(outputPath);
+              
+              // Import the generate function to create task files
+              const { generate } = await import('./task-files.js');
+              await generate(outputPath, tasksDir);
+              
+              log('info', `Generated individual task files in ${colorize.green(tasksDir)}`);
+            } catch (genErr) {
+              log('warn', `Failed to generate task files: ${genErr.message}`);
+              log('warn', 'You can manually run this step with: task-master generate');
+            }
+          }
+        } else {
+          log('warn', 'Tasks generated from PRD are not in expected format, falling back to direct generation');
+          // Fallback to direct task generation
+          tasks = await generateTasksFromCodeAnalysis(sampledFiles);
         }
-        
-        log('info', `Generated ${colorize.green(tasks.length)} tasks from PRD`);
       } catch (prdErr) {
-        log('error', `Error generating tasks from PRD: ${prdErr.message}`);
-        // Return empty tasks array in case of error
-        tasks = [];
+        log('error', `Error generating tasks from PRD: ${prdErr.message}, falling back to direct generation`);
+        // Fallback to direct task generation
+        tasks = await generateTasksFromCodeAnalysis(sampledFiles);
       }
     } else {
       // Update progress

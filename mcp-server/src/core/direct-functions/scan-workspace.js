@@ -184,7 +184,18 @@ export async function scanWorkspaceFunction(options, reportProgress = null) {
     } : null);
     
     // Get a valid task count even if tasks is undefined or not an array
-    const taskCount = Array.isArray(tasks) ? tasks.length : 0;
+    const taskCount = Array.isArray(tasks) ? tasks.length : 
+                     (tasks && tasks.tasks && Array.isArray(tasks.tasks)) ? tasks.tasks.length : 0;
+    
+    // Check if tasks were actually generated
+    if (taskCount === 0) {
+      logger.warn('No tasks were generated from the workspace scan');
+      return {
+        success: false,
+        error: 'Task generation failed. No tasks were created from the workspace scan.',
+        code: 'NO_TASKS_GENERATED'
+      };
+    }
     
     const successMessage = generatePRD ? 
       `Successfully generated PRD and ${taskCount} tasks from workspace analysis` :

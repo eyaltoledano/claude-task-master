@@ -56,7 +56,12 @@ export function registerScanWorkspaceTool(server) {
         .boolean()
         .optional()
         .default(false)
-        .describe('Use CLI-friendly progress reporting')
+        .describe('Use CLI-friendly progress reporting'),
+      skipComplexity: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Skip the automatic task complexity analysis step')
     }),
     execute: async (params, { reportProgress, log, session }) => {
       try {
@@ -73,7 +78,8 @@ export function registerScanWorkspaceTool(server) {
           'sampling': 'Creating codebase representation',
           'prdGeneration': 'Generating Product Requirements Document',
           'taskGeneration': 'Converting requirements to actionable tasks',
-          'finalization': 'Finalizing task generation',
+          'aiAnalysis': 'Analyzing task complexity for better breakdown',
+          'finalization': 'Generating individual task files',
           'complete': 'Scan completed successfully',
           'error': 'Error encountered during scan'
         };

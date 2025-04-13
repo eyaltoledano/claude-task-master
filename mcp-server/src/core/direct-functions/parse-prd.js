@@ -18,6 +18,7 @@ import {
 } from '../utils/ai-client-utils.js';
 import { createErrorResponse } from '../../tools/utils.js';
 import { ApiClient } from '../api-client/client.js';
+import { analyzeTaskComplexityDirect } from './analyze-task-complexity.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
@@ -168,15 +169,63 @@ export async function parsePRDDirect(args, log, context = {}) {
 					`Successfully parsed PRD and generated ${tasksData.tasks?.length || 0} tasks`
 				);
 
-				return {
-					success: true,
-					data: {
-						message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
-						taskCount: tasksData.tasks?.length || 0,
-						outputPath
-					},
-					fromCache: false // This operation always modifies state and should never be cached
-				};
+				// Check if we should skip complexity analysis
+				if (args.skipComplexity === true) {
+					log.info('Skipping automatic complexity analysis due to --skip-complexity flag');
+					return {
+						success: true,
+						data: {
+							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
+							taskCount: tasksData.tasks?.length || 0,
+							outputPath
+						},
+						fromCache: false // This operation always modifies state and should never be cached
+					};
+				}
+
+				// Automatically run complexity analysis after successfully generating tasks
+				log.info('Automatically running task complexity analysis...');
+				try {
+					const complexityResult = await analyzeTaskComplexityDirect(
+						{
+							file: outputPath,
+							projectRoot: args.projectRoot,
+							output: path.resolve(path.dirname(outputPath), '../scripts/task-complexity-report.json'),
+							// Use the same model config if provided
+							model: args.model,
+							// Default threshold of 5
+							threshold: 5
+						},
+						log,
+						context
+					);
+
+					return {
+						success: true,
+						data: {
+							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD and analyzed task complexity`,
+							taskCount: tasksData.tasks?.length || 0,
+							outputPath,
+							complexityAnalysis: complexityResult.success 
+								? complexityResult.data 
+								: { error: 'Complexity analysis failed but tasks were generated successfully' }
+						},
+						fromCache: false // This operation always modifies state and should never be cached
+					};
+				} catch (complexityError) {
+					log.warn(`Complexity analysis failed, but tasks were generated successfully: ${complexityError.message}`);
+					
+					return {
+						success: true,
+						data: {
+							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD. Note: Automatic complexity analysis failed.`,
+							taskCount: tasksData.tasks?.length || 0,
+							outputPath,
+							complexityAnalysisError: complexityError.message
+						},
+						fromCache: false
+					};
+				}
 			} else {
 				const errorMessage = `Tasks file was not created at ${outputPath}`;
 				log.error(errorMessage);

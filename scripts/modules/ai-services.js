@@ -106,7 +106,11 @@ export async function callLLMWithRetry(options) {
         messages: cleanedMessages,
       });
 
-      return response;
+      // Ensure we're using the correct response structure
+      // Claude API returns content in response.content
+      return {
+        content: response.content?.[0]?.text || response.content || "No content returned"
+      };
     } catch (error) {
       log('error', `Claude API error: ${error.message}`);
       throw error;

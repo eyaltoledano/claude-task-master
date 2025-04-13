@@ -172,8 +172,13 @@ async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium'
   // Parse the response and create the task object
   let task;
   try {
+    // Ensure response.content is a string
+    const responseContent = typeof taskData.content === 'string' 
+      ? taskData.content 
+      : JSON.stringify(taskData.content);
+
     // Extract JSON from the response (handle potential text before/after the JSON)
-    const jsonMatch = taskData.match(/\{[\s\S]*\}/);
+    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       task = JSON.parse(jsonMatch[0]);
     } else {
@@ -319,7 +324,10 @@ Return ONLY a JSON array with the tasks. Each task should have these properties:
           }
         ]
       });
-      parsedData = response.content;
+      // Ensure response.content is properly handled as a string
+      parsedData = typeof response.content === 'string'
+        ? response.content
+        : JSON.stringify(response.content);
     } else {
       // Fallback to callLLMWithRetry
       const response = await callLLMWithRetry({
@@ -346,7 +354,10 @@ Return ONLY a JSON array with the tasks. Each task should have these properties:
           }
         ]
       });
-      parsedData = response.content;
+      // Ensure response.content is properly handled as a string
+      parsedData = typeof response.content === 'string'
+        ? response.content
+        : JSON.stringify(response.content);
     }
 
     // Process the response to extract JSON
@@ -561,5 +572,215 @@ async function listArchives(projectRoot) {
   }
 }
 
+/**
+ * Analyze task complexity and generate expansion recommendations
+ * @param {Object} options - Options for the analysis
+ * @param {string} [options.file] - Path to the tasks file
+ * @param {string} [options.output] - Output file path for the report
+ * @param {string} [options.model] - LLM model to use for analysis
+ * @param {number|string} [options.threshold] - Minimum complexity score to recommend expansion (1-10)
+ * @param {boolean} [options.research] - Use Perplexity AI for research-backed analysis
+ * @param {Object} [context] - Context object containing session and logging data
+ * @returns {Promise<Object>} Generated complexity report
+ */
+async function analyzeTaskComplexity(options, context = {}) {
+  try {
+    const { file = 'tasks/tasks.json', output = 'scripts/task-complexity-report.json', model, threshold = 5, research = false } = options;
+    
+    // Set up logging - use provided logger or fallback to console
+    const log = (context.mcpLog || {
+      info: console.log,
+      warn: console.warn,
+      error: console.error,
+      debug: console.debug || console.log,
+      success: console.log
+    });
+    
+    log.info(`Analyzing task complexity from: ${file}`);
+    log.info(`Output report will be saved to: ${output}`);
+    
+    if (research) {
+      log.info('Using Perplexity AI for research-backed complexity analysis');
+    }
+    
+    // Validate input file
+    if (!fs.existsSync(file)) {
+      throw new Error(`Tasks file not found at ${file}`);
+    }
+    
+    // Read the tasks file
+    const data = readJSON(file);
+    if (!data || !data.tasks || !Array.isArray(data.tasks)) {
+      throw new Error('No valid tasks found in tasks.json');
+    }
+    
+    // Generate prompt for analysis
+    const systemPrompt = `You are an expert software architect and project manager. Your task is to analyze the complexity of development tasks and determine how many subtasks each should be broken down into.`;
+    
+    const userPrompt = `
+Analyze the complexity of each development task below. For each task:
+1. Assess its complexity on a scale of 1-10
+2. Recommend the optimal number of subtasks (between 3-8)
+3. Suggest a specific prompt that would help generate good subtasks for this task
+4. Explain your reasoning briefly
+
+Tasks:
+${data.tasks.map(task => `
+ID: ${task.id}
+Title: ${task.title}
+Description: ${task.description}
+Details: ${task.details || 'N/A'}
+Dependencies: ${JSON.stringify(task.dependencies || [])}
+Priority: ${task.priority || 'medium'}
+`).join('\n---\n')}
+
+Analyze each task and return a JSON array with the following structure for each task:
+[
+  {
+    "taskId": number,
+    "taskTitle": string,
+    "complexityScore": number (1-10),
+    "recommendedSubtasks": number (3-8),
+    "expansionPrompt": string (a specific prompt for generating good subtasks),
+    "reasoning": string (brief explanation of your assessment)
+  },
+  ...
+]
+
+IMPORTANT: Make sure to include an analysis for EVERY task listed above, with the correct taskId matching each task's ID.
+`;
+    
+    // Starting the analysis process
+    log.info('Starting task complexity analysis...');
+    
+    // Select the appropriate AI client based on options
+    let analysisResponse;
+    if (research) {
+      // Use Perplexity for research-backed analysis if available
+      try {
+        // Check if Perplexity API key is available
+        if (!process.env.PERPLEXITY_API_KEY) {
+          throw new Error('PERPLEXITY_API_KEY not found in environment variables');
+        }
+        
+        const perplexityModel = process.env.PERPLEXITY_MODEL || 'sonar-small-online';
+        
+        // Import OpenAI dynamically if needed
+        const OpenAI = (await import('openai')).default;
+        const perplexity = new OpenAI({
+          apiKey: process.env.PERPLEXITY_API_KEY,
+          baseURL: 'https://api.perplexity.ai'
+        });
+        
+        log.info(`Using Perplexity AI with model ${perplexityModel} for research-backed analysis`);
+        
+        analysisResponse = await perplexity.chat.completions.create({
+          model: perplexityModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 4000
+        });
+      } catch (error) {
+        log.warn(`Error using Perplexity AI: ${error.message}`);
+        log.warn('Falling back to default AI service...');
+        analysisResponse = await callLLMWithRetry({
+          model: model || process.env.MODEL || 'claude-3-opus-20240229',
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+          temperature: 0.2,
+          max_tokens: 4000
+        });
+      }
+    } else {
+      // Use default AI service
+      analysisResponse = await callLLMWithRetry({
+        model: model || process.env.MODEL || 'claude-3-opus-20240229',
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.2,
+        max_tokens: 4000
+      });
+    }
+    
+    // Parse the response to extract the JSON analysis
+    let analysisData;
+    try {
+      // Handle different response formats
+      const responseContent = typeof analysisResponse.content === 'string' 
+        ? analysisResponse.content 
+        : JSON.stringify(analysisResponse.content);
+      
+      // Extract JSON from the response
+      const jsonMatch = responseContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Could not find valid JSON array in the response');
+      }
+    } catch (err) {
+      throw new Error(`Failed to parse analysis response: ${err.message}`);
+    }
+    
+    // Validate the threshold value
+    const thresholdValue = parseInt(threshold, 10) || 5;
+    if (isNaN(thresholdValue) || thresholdValue < 1 || thresholdValue > 10) {
+      log.warn(`Invalid threshold value: ${threshold}, using default of 5`);
+    }
+    
+    // Generate expansion commands for tasks meeting the threshold
+    analysisData.forEach(task => {
+      // Create a suggested expansion command for each high-complexity task
+      const complexity = parseInt(task.complexityScore, 10);
+      const numSubtasks = parseInt(task.recommendedSubtasks, 10);
+      
+      if (complexity >= thresholdValue) {
+        const sanitizedPrompt = task.expansionPrompt.replace(/"/g, '\\"');
+        task.expansionCommand = `task-master expand --id=${task.taskId} --num=${numSubtasks} --prompt="${sanitizedPrompt}"${research ? ' --research' : ''}`;
+      }
+    });
+    
+    // Create the output report
+    const report = {
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        taskCount: data.tasks.length,
+        thresholdValue,
+        model: model || process.env.MODEL || 'claude-3-opus-20240229',
+        researchBacked: research
+      },
+      complexityAnalysis: analysisData
+    };
+    
+    // Ensure the output directory exists
+    const outputDir = path.dirname(output);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    // Write the report to the output file
+    writeJSON(output, report);
+    
+    log.info(`Task complexity analysis complete. Report saved to ${output}`);
+    
+    // Count tasks by complexity category
+    const highComplexityTasks = analysisData.filter(t => t.complexityScore >= 8).length;
+    const mediumComplexityTasks = analysisData.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length;
+    const lowComplexityTasks = analysisData.filter(t => t.complexityScore < 5).length;
+    
+    log.info('Complexity Distribution:');
+    log.info(`- High (8-10): ${highComplexityTasks} tasks`);
+    log.info(`- Medium (5-7): ${mediumComplexityTasks} tasks`);
+    log.info(`- Low (1-4): ${lowComplexityTasks} tasks`);
+    
+    return report;
+  } catch (error) {
+    // Re-throw with a clear message
+    throw new Error(`Error in analyzeTaskComplexity: ${error.message}`);
+  }
+}
+
 // Export functions
-export { addTask, parsePRD, listArchives, restoreArchive, validateAndFixDependencies, isCircularDependency };
+export { addTask, parsePRD, listArchives, restoreArchive, validateAndFixDependencies, isCircularDependency, analyzeTaskComplexity };

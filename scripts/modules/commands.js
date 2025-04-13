@@ -14,10 +14,11 @@ export function registerCommands(program) {
   // Task Generation Commands
   program
     .command('parse-prd')
-    .description('Parse a PRD file and generate tasks')
+    .description('Parse a PRD file and generate tasks (automatically runs complexity analysis after generation)')
     .argument('[file]', 'Path to the PRD file')
     .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
-    .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10');
+    .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+    .option('--skip-complexity', 'Skip the automatic complexity analysis step');
 
   program
     .command('generate')

@@ -57,7 +57,7 @@ export function log(level, message) {
       console.error(chalk.red(`[${timestamp}] ERROR: ${message}`));
       break;
     default:
-      console.log(`[${timestamp}] ${message}`);
+      console.log(`[${timestamp}] ${level}: ${message}`);
   }
 }
 

@@ -19,7 +19,7 @@ export function registerParsePRDTool(server) {
 	server.addTool({
 		name: 'parse_prd',
 		description:
-			'Parse a Product Requirements Document (PRD) or text file to automatically generate initial tasks.',
+			'Parse a Product Requirements Document (PRD) or text file to automatically generate initial tasks. Automatically runs task complexity analysis after generation unless skipComplexity is true.',
 		parameters: z.object({
 			input: z
 				.string()
@@ -43,6 +43,10 @@ export function registerParsePRDTool(server) {
 				.boolean()
 				.optional()
 				.describe('Allow overwriting an existing tasks.json file.'),
+			skipComplexity: z
+				.boolean()
+				.optional()
+				.describe('Skip the automatic complexity analysis step'),
 			projectRoot: z
 				.string()
 				.optional()
