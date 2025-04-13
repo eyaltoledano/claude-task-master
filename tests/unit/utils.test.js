@@ -20,7 +20,6 @@ import {
 	formatTaskId,
 	findCycles,
 	CONFIG,
-	LOG_LEVELS,
 	findTaskById
 } from '../../scripts/modules/utils.js';
 

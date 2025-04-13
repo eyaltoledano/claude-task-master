@@ -20,7 +20,6 @@ import {
 	displayHelp,
 	displayNextTask,
 	displayTaskById,
-	displayTaskList,
 	displayComplexityReport,
 	getStatusWithColor,
 	confirmTaskOverwrite,

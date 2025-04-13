@@ -782,11 +782,11 @@ ${reportJson}
 /**
  * Find the next task to work on based on dependencies and status.
  * Fetches tasks (provider-specific) and applies logic.
- * @param {string} tasksPath - Path for local provider context (unused by Jira)
- * @param {object} options - Additional options { taskProvider }
+ * @param {string} tasksPath - Path for local provider context (maybe unused by provider)
+ * @param {object} options - Additional options { taskProvider, findTaskByIdFunc }
  * @returns {Promise<Object|null>} The next task object or null if none found
  */
-async function findNextTask(tasksPath, { taskProvider } = {}) {
+async function findNextTask(tasksPath, { taskProvider, findTaskByIdFunc } = {}) {
     log('debug', 'Finding next task using provider...');
     try {
         const data = await taskProvider.getTasks({ status: 'pending' }); // Fetch pending tasks
@@ -808,8 +808,10 @@ async function findNextTask(tasksPath, { taskProvider } = {}) {
             }
             // Check if all dependencies are 'done'
             return task.dependencies.every((depId) => {
-                // Need findTaskById equivalent for the provider, or fetch all and filter
-                const { task: depTask } = findTaskById(allTasks.tasks, depId); // Use local find for now
+                // TODO: Revert findTaskByIdFunc injection when Jest ESM mocking for utils.js is reliable.
+                // Use the injected function if available, otherwise fall back to imported one
+                const finder = findTaskByIdFunc || findTaskById;
+                const { task: depTask } = finder(allTasks.tasks, depId); 
                 // TODO: Adapt dependency checking based on provider capabilities (e.g., Jira link status)
                 return depTask && depTask.status === 'done';
             });
