@@ -1080,7 +1080,17 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
   
   // Enhanced CLI progress reporter that formats output for the terminal
   const cliReportProgress = (data) => {
-    const { phase, message, detail, progress } = data;
+    // Ensure data object exists and has expected properties
+    if (!data) {
+      log('warn', 'Progress data is undefined');
+      return;
+    }
+    
+    // Extract properties with defaults to prevent undefined values
+    const phase = data.phase || 'unknown';
+    const message = data.message || 'Processing';
+    const detail = data.detail || '';
+    const progress = typeof data.progress === 'number' ? data.progress : 0;
     
     // Define symbols for different phases
     const symbols = {
@@ -1093,8 +1103,12 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       'taskGeneration': '✅',
       'finalization': '📦',
       'complete': '✨',
-      'error': '❌'
+      'error': '❌',
+      'unknown': '⚡'
     };
+    
+    // Get the appropriate symbol, defaulting to the unknown symbol if phase is not recognized
+    const symbol = symbols[phase] || symbols['unknown'];
     
     // Clear previous line if we're in CLI mode and not in a new phase
     if (cliMode && process.stdout.clearLine) {
@@ -1110,32 +1124,27 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     }
     
     // Create a progress bar
-    const progressBar = cliMode ? createCliProgressBar(progress || 0, 30) : '';
+    const progressBar = cliMode ? createCliProgressBar(progress, 30) : '';
     
     // Format the output message
-    const symbol = symbols[phase] || '•';
     const progressPrefix = cliMode ? `${symbol} ` : '';
-    const progressSuffix = cliMode ? ` ${progressBar} ${progress || 0}%` : '';
-    
-    // Make sure we have valid values for message and detail to avoid undefined
-    const safeMessage = message || `Processing ${phase} phase`;
-    const safeDetail = detail || '';
+    const progressSuffix = cliMode ? ` ${progressBar} ${progress}%` : '';
     
     // Log the progress message
     if (cliMode) {
       // Format for CLI output (no newline to allow overwriting)
-      process.stdout.write(`${progressPrefix}${safeMessage}${progressSuffix}`);
+      process.stdout.write(`${progressPrefix}${message}${progressSuffix}`);
       
       // Add detail on the next line if provided
-      if (safeDetail && process.stdout.clearLine) {
-        process.stdout.write(`\n  → ${safeDetail}`);
+      if (detail && process.stdout.clearLine) {
+        process.stdout.write(`\n  → ${detail}`);
         process.stdout.cursorTo(0);
       }
     } else {
       // Use normal logging for non-CLI mode
-      log(`[${phase}] ${safeMessage} - ${progress || 0}%`);
-      if (safeDetail) {
-        log(`  Detail: ${safeDetail}`);
+      log('info', `[${phase}] ${message} - ${progress}%`);
+      if (detail) {
+        log('debug', `  Detail: ${detail}`);
       }
     }
     
@@ -1189,7 +1198,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       throw new Error(`Workspace path is not a directory: ${workspacePath}`);
     }
     
-    log(`Scanning workspace: ${colorize.yellow(workspacePath)}`);
+    log('info', `Scanning workspace: ${colorize.yellow(workspacePath)}`);
     
     // Update progress
     if (enhancedReportProgress) {
@@ -1203,7 +1212,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Find all matching files
     const filePaths = await scanDirectory(workspacePath, fileTypes, ignoreDirs);
-    log(`Found ${colorize.green(filePaths.length)} files to analyze`);
+    log('info', `Found ${colorize.green(filePaths.length)} files to analyze`);
     
     // Update progress
     if (enhancedReportProgress) {
@@ -1231,7 +1240,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Sample files to keep within token limits
     const sampledFiles = sampleFiles(fileAnalysisResults, maxFiles, maxSizePerFile);
-    log(`Sampled ${colorize.green(sampledFiles.length)} files for deep analysis`);
+    log('info', `Sampled ${colorize.green(sampledFiles.length)} files for deep analysis`);
     
     let tasks;
     
@@ -1253,7 +1262,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
         useParallel 
       });
       
-      log(`Using generated PRD to create tasks via parse-prd...`);
+      log('info', `Using generated PRD to create tasks via parse-prd...`);
       
       // Update progress with enhanced message
       if (enhancedReportProgress) {
@@ -1272,8 +1281,39 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
       
       // Use the parsePRD function to generate tasks from the PRD
-      tasks = await parsePRD(prdPath, outputPath, numTasks, { force }, null, {});
-      log(`Generated ${colorize.green(tasks.length)} tasks from PRD`);
+      try {
+        // Add better error handling and pass the required options object
+        tasks = await parsePRD(
+          prdPath, 
+          outputPath, 
+          numTasks, 
+          { 
+            force, 
+            mcpLog: {
+              info: (msg) => log('info', msg),
+              error: (msg) => log('error', msg),
+              debug: (msg) => log('debug', msg)
+            } 
+          }, 
+          null, // No AI client - will use default
+          {
+            model: process.env.MODEL,
+            maxTokens: 4000,
+            temperature: 0.2
+          }
+        );
+        
+        if (!tasks || !Array.isArray(tasks)) {
+          log('warn', 'Tasks generated from PRD are not in expected format, defaulting to empty array');
+          tasks = [];
+        }
+        
+        log('info', `Generated ${colorize.green(tasks.length)} tasks from PRD`);
+      } catch (prdErr) {
+        log('error', `Error generating tasks from PRD: ${prdErr.message}`);
+        // Return empty tasks array in case of error
+        tasks = [];
+      }
     } else {
       // Update progress
       if (enhancedReportProgress) {
@@ -1286,8 +1326,18 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
       
       // Use direct codebase analysis to generate tasks (original approach)
-      tasks = await generateTasksFromCodeAnalysis(sampledFiles);
-      log(`Generated ${colorize.green(tasks.length)} tasks from codebase analysis`);
+      try {
+        tasks = await generateTasksFromCodeAnalysis(sampledFiles);
+        if (!tasks || !Array.isArray(tasks)) {
+          log('warn', 'Tasks generated from codebase analysis are not in expected format, defaulting to empty array');
+          tasks = [];
+        }
+        log('info', `Generated ${colorize.green(tasks.length)} tasks from codebase analysis`);
+      } catch (analysisErr) {
+        log('error', `Error generating tasks from codebase analysis: ${analysisErr.message}`);
+        // Return empty tasks array in case of error
+        tasks = [];
+      }
       
       // Update progress
       if (enhancedReportProgress) {
@@ -1300,12 +1350,16 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
       
       // Validate generated tasks
-      const validatedTasks = validateTasks(tasks);
+      const validatedTasks = validateTasks(tasks || []);
       
       // Save tasks to file
       if (outputPath) {
-        await saveTasksToFile(validatedTasks, outputPath);
-        log(`Tasks saved to ${colorize.green(outputPath)}`);
+        try {
+          await saveTasksToFile(validatedTasks, outputPath);
+          log('info', `Tasks saved to ${colorize.green(outputPath)}`);
+        } catch (saveErr) {
+          log('error', `Error saving tasks to file: ${saveErr.message}`);
+        }
       }
       
       tasks = validatedTasks;
@@ -1313,13 +1367,23 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Final progress update with enhanced message
     if (enhancedReportProgress) {
-      // Make sure we have a valid task count to display
-      const taskCount = Array.isArray(tasks) ? tasks.length : 0;
+      // Ensure we have a valid tasks array and compute the count
+      const validTasks = Array.isArray(tasks) ? tasks : [];
+      const taskCount = validTasks.length;
       
+      // Create a detailed message showing exactly what was accomplished
+      let detailMessage = `Successfully generated ${taskCount} tasks`;
+      if (generatePRD) {
+        detailMessage += ` from PRD document`;
+      } else {
+        detailMessage += ` from workspace analysis`;
+      }
+      
+      // Send the final progress update
       enhancedReportProgress({
         phase: 'complete',
         message: statusMessages.complete,
-        detail: `Successfully generated ${taskCount} tasks from workspace analysis`,
+        detail: detailMessage,
         progress: 100
       });
       
@@ -1329,14 +1393,19 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
     }
     
-    return tasks;
+    // Return the tasks (ensuring we always return an array)
+    return Array.isArray(tasks) ? tasks : [];
   } catch (err) {
     // Report error in progress with enhanced message
     if (enhancedReportProgress) {
+      // Create a user-friendly error message with troubleshooting advice
+      const errorMessage = err.message || 'Unknown error occurred';
+      const detailMessage = `${errorMessage} - Try running with --debug for more information`;
+      
       enhancedReportProgress({
         phase: 'error',
         message: 'Error scanning workspace',
-        detail: `${err.message} - Try running with --debug for more information`,
+        detail: detailMessage,
         progress: 100
       });
       
@@ -1346,7 +1415,13 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       }
     }
     
+    // Log the error with full stack trace in debug mode
     log('error', `Workspace scanning failed: ${err.message}`);
+    if (process.env.DEBUG === '1') {
+      log('debug', `Error stack trace: ${err.stack}`);
+    }
+    
+    // Rethrow the error for upstream handling
     throw err;
   }
 }
