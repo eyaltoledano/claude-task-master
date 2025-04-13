@@ -84,8 +84,8 @@ This is a mock PRD with project requirements.`
       // Verify PRD was generated
       expect(callLLMWithRetry).toHaveBeenCalledWith(
         expect.objectContaining({
+          system: expect.stringContaining('expert software architect'),
           messages: expect.arrayContaining([
-            { role: 'system', content: expect.stringContaining('expert software architect') },
             { role: 'user', content: expect.stringContaining('Create a Product Requirements Document') }
           ])
         })
@@ -149,8 +149,8 @@ This is a mock PRD with project requirements.`
       
       // Verify that task generation was called directly
       expect(callLLMWithRetry).toHaveBeenCalledWith(expect.objectContaining({
+        system: expect.stringContaining('software development expert'),
         messages: expect.arrayContaining([
-          { role: 'system', content: expect.stringContaining('software development expert') },
           { role: 'user', content: expect.stringContaining('generate a set of tasks') }
         ]),
       }));
