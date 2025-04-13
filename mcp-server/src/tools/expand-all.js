@@ -27,8 +27,9 @@ export function registerExpandAllTool(server) {
 			research: z
 				.boolean()
 				.optional()
+				.default(true)
 				.describe(
-					'Enable Perplexity AI for research-backed subtask generation'
+					'Enable Perplexity AI for research-backed subtask generation (default: true)'
 				),
 			prompt: z
 				.string()
@@ -60,6 +61,12 @@ export function registerExpandAllTool(server) {
 				if (!rootFolder && args.projectRoot) {
 					rootFolder = args.projectRoot;
 					log.info(`Using project root from args as fallback: ${rootFolder}`);
+				}
+
+				// Default research to true if not specified
+				if (args.research === undefined) {
+					args.research = true;
+					log.info('Setting research=true by default for better subtask generation');
 				}
 
 				const result = await expandAllTasksDirect(

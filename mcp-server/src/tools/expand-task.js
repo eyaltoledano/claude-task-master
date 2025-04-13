@@ -30,7 +30,8 @@ export function registerExpandTaskTool(server) {
 			research: z
 				.boolean()
 				.optional()
-				.describe('Use Perplexity AI for research-backed generation'),
+				.default(true)
+				.describe('Use Perplexity AI for research-backed generation (default: true)'),
 			prompt: z
 				.string()
 				.optional()
@@ -66,6 +67,12 @@ export function registerExpandTaskTool(server) {
 					args.file = tasksJsonPath;
 				} else {
 					log.warn(`Could not find tasks.json at ${tasksJsonPath}`);
+				}
+
+				// Default research to true if not specified
+				if (args.research === undefined) {
+					args.research = true;
+					log.info('Setting research=true by default for better subtask generation');
 				}
 
 				// Call direct function with only session in the context, not reportProgress

@@ -20,13 +20,29 @@ import gradient from 'gradient-string';
 if (process.env.LOG_LEVEL === 'error') {
   // This will disable all logs except error logs
   console.log(chalk.dim('Running in quiet mode - showing only errors and progress bar'));
-  // Set a 200ms delay to ensure the message is shown before clearing
-  setTimeout(() => {
-    // Clear console to create a cleaner interface
-    if (process.stdout.isTTY) {
-      console.clear();
-    }
-  }, 200);
+  
+  // Ensure terminal is properly set up for progress bar display in quiet mode
+  const hasTerminalSupport = process.stdout.isTTY && 
+                            typeof process.stdout.clearLine === 'function' && 
+                            typeof process.stdout.cursorTo === 'function';
+  
+  if (hasTerminalSupport) {
+    // Set a longer delay to ensure the message is shown before clearing
+    setTimeout(() => {
+      try {
+        // Clear console to create a cleaner interface
+        console.clear();
+        // Or alternative approach if console.clear() doesn't work
+        if (process.stdout.isTTY) {
+          process.stdout.write('\x1Bc'); // ANSI escape sequence to clear the terminal
+          process.stdout.cursorTo(0, 0); // Move cursor to top-left
+        }
+      } catch (e) {
+        // Fallback method if the above doesn't work
+        console.log('\n'.repeat(process.stdout.rows || 10));
+      }
+    }, 500); // Increased delay to ensure message is visible
+  }
 }
 
 // Define colorize functions to replace the missing import
@@ -35,6 +51,9 @@ const colorize = {
   green: (text) => chalk.green(text),
   red: (text) => chalk.red(text)
 };
+
+// Global flag to force CLI progress mode in quiet mode
+const forceCliProgressBar = process.env.LOG_LEVEL === 'error';
 
 /**
  * Validate generated tasks from workspace scanning
@@ -1057,7 +1076,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     force = false, // Option to force overwrite existing files
     useParallel = false, // Option to use parallel processing
     skipComplexity = false, // Option to skip complexity analysis
-    cliMode = false // New option for CLI mode
+    cliMode = forceCliProgressBar || false // Enable CLI mode automatically in quiet mode
   } = options;
   
   // CLI-specific progress reporting setup
@@ -1096,6 +1115,11 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       'error': '❌ ',
       'unknown': '⚡ '
     };
+
+    // Chiptune sounds for different phases
+    const playChiptune = (phase, progress) => {
+      // Function is now empty - chiptune functionality removed
+    };
     
     // Enhanced color gradients based on progress for visual feedback
     const coolGradient = gradient(['#00b4d8', '#0077b6', '#023e8a']);
@@ -1105,16 +1129,39 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     // Get the appropriate symbol, defaulting to the unknown symbol if phase is not recognized
     const symbol = symbols[phase] || symbols['unknown'];
     
-    // Clear previous line if we're in CLI mode and not in a new phase
-    if (cliMode && process.stdout.clearLine) {
-      // If phase changed, add a newline
-      if (lastPhase !== phase) {
-        console.log(); // Add a newline
-        lastPhase = phase;
-      } else {
-        // Otherwise overwrite the current line
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
+    // Play chiptune sounds based on phase and progress
+    playChiptune(phase, progress);
+    
+    // Only attempt cursor manipulation if we have the necessary functions
+    const hasTerminalSupport = process.stdout.isTTY && 
+                              typeof process.stdout.clearLine === 'function' && 
+                              typeof process.stdout.cursorTo === 'function';
+    
+    if (cliMode && hasTerminalSupport) {
+      try {
+        // If phase changed, add a newline to start a new progress section
+        if (lastPhase !== phase) {
+          process.stdout.write('\n');
+          lastPhase = phase;
+        } else {
+          // Go back to the start of the line to overwrite previous progress
+          process.stdout.clearLine(0);
+          process.stdout.cursorTo(0);
+          
+          // If there was a detail line, we need to clear that too
+          if (detail) {
+            // Move up one line
+            process.stdout.moveCursor(0, -1);
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+          }
+        }
+      } catch (e) {
+        // If there's an error with terminal control, just log it and continue
+        // This can happen in some CI environments or if stdout is redirected
+        if (process.env.DEBUG === '1') {
+          console.error('Terminal control error:', e.message);
+        }
       }
     }
     
@@ -1142,13 +1189,20 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       // Add animated spinner for ongoing operations
       const spinner = progress < 100 ? spinnerFrame + ' ' : '';
       
-      // Format for CLI output (no newline to allow overwriting)
-      process.stdout.write(`${progressPrefix}${progressPhase} ${progressDisplay} ${spinner}${progressPercentage}`);
-      
-      // Add detail on the next line if provided
-      if (detail && process.stdout.clearLine) {
-        process.stdout.write(`\n  → ${chalk.italic(detail)}`);
-        process.stdout.cursorTo(0);
+      try {
+        // Format for CLI output (no newline to allow overwriting)
+        process.stdout.write(`${progressPrefix}${progressPhase} ${progressDisplay} ${spinner}${progressPercentage}`);
+        
+        // Add detail on the next line if provided
+        if (detail && hasTerminalSupport) {
+          process.stdout.write(`\n  → ${chalk.italic(detail)}`);
+        }
+      } catch (e) {
+        // Fallback if writing to stdout fails
+        console.log(`${progressPrefix}${progressPhase} ${progressPercentage}`);
+        if (detail) {
+          console.log(`  → ${detail}`);
+        }
       }
     } else {
       // Use normal logging for non-CLI mode
@@ -1200,8 +1254,8 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
   // Use CLI progress reporter when in CLI mode, otherwise use the provided reportProgress
   const enhancedReportProgress = cliMode ? cliReportProgress : reportProgress;
   
-  // Log parallel processing mode if enabled
-  if (useParallel) {
+  // Log parallel processing mode if enabled (but only if not in quiet mode)
+  if (useParallel && process.env.LOG_LEVEL !== 'error') {
     log('info', 'Using parallel processing mode for faster file analysis');
   }
   
@@ -1235,7 +1289,10 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       throw new Error(`Workspace path is not a directory: ${workspacePath}`);
     }
     
-    log('info', `Scanning workspace: ${colorize.yellow(workspacePath)}`);
+    // Only log this in normal mode (not quiet mode)
+    if (process.env.LOG_LEVEL !== 'error') {
+      log('info', `Scanning workspace: ${colorize.yellow(workspacePath)}`);
+    }
     
     // Update progress
     if (enhancedReportProgress) {
@@ -1249,7 +1306,11 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Find all matching files
     const filePaths = await scanDirectory(workspacePath, fileTypes, ignoreDirs);
-    log('info', `Found ${colorize.green(filePaths.length)} files to analyze`);
+    
+    // Only log this in normal mode (not quiet mode)
+    if (process.env.LOG_LEVEL !== 'error') {
+      log('info', `Found ${colorize.green(filePaths.length)} files to analyze`);
+    }
     
     // Update progress
     if (enhancedReportProgress) {
@@ -1277,7 +1338,11 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Sample files to keep within token limits
     const sampledFiles = sampleFiles(fileAnalysisResults, maxFiles, maxSizePerFile);
-    log('info', `Sampled ${colorize.green(sampledFiles.length)} files for deep analysis`);
+    
+    // Only log this in normal mode (not quiet mode)
+    if (process.env.LOG_LEVEL !== 'error') {
+      log('info', `Sampled ${colorize.green(sampledFiles.length)} files for deep analysis`);
+    }
     
     let tasks;
     
@@ -1327,9 +1392,9 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
           { 
             force: true, // Force overwrite to ensure fresh task generation
             mcpLog: {
-              info: (msg) => log('info', msg),
+              info: (msg) => process.env.LOG_LEVEL !== 'error' ? log('info', msg) : null,
               error: (msg) => log('error', msg),
-              debug: (msg) => log('debug', msg)
+              debug: (msg) => process.env.LOG_LEVEL !== 'error' ? log('debug', msg) : null
             } 
           }, 
           null, // No AI client - will use default
@@ -1362,11 +1427,17 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
             // Fallback to direct task generation
             tasks = await generateTasksFromCodeAnalysis(sampledFiles);
           } else {
-            log('info', `Generated ${colorize.green(tasks.length)} valid tasks from PRD`);
+            // Only log this in normal mode (not quiet mode)
+            if (process.env.LOG_LEVEL !== 'error') {
+              log('info', `Generated ${colorize.green(tasks.length)} valid tasks from PRD`);
+            }
             
             // Check if complexity analysis should be skipped
             if (skipComplexity) {
-              log('info', 'Skipping complexity analysis due to skipComplexity option');
+              // Only log this in normal mode (not quiet mode)
+              if (process.env.LOG_LEVEL !== 'error') {
+                log('info', 'Skipping complexity analysis due to skipComplexity option');
+              }
             } else {
               // Update progress for complexity analysis
               if (enhancedReportProgress) {
@@ -1380,7 +1451,11 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
               
               // Run complexity analysis on the tasks
               try {
-                log('info', 'Automatically running task complexity analysis...');
+                // Only log this in normal mode (not quiet mode)
+                if (process.env.LOG_LEVEL !== 'error') {
+                  log('info', 'Automatically running task complexity analysis...');
+                }
+                
                 const complexityReportPath = path.resolve(path.dirname(outputPath), '../scripts/task-complexity-report.json');
                 
                 // Ensure scripts directory exists
@@ -1389,7 +1464,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
                   await mkdir(scriptsDir, { recursive: true });
                 }
                 
-                // Run the complexity analysis
+                // Run the complexity analysis with modified logging for quiet mode
                 await analyzeTaskComplexity(
                   {
                     file: outputPath,
@@ -1398,17 +1473,23 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
                   },
                   {
                     mcpLog: {
-                      info: (msg) => log('info', msg),
+                      info: (msg) => process.env.LOG_LEVEL !== 'error' ? log('info', msg) : null,
                       error: (msg) => log('error', msg),
-                      debug: (msg) => log('debug', msg)
+                      debug: (msg) => process.env.LOG_LEVEL !== 'error' ? log('debug', msg) : null
                     }
                   }
                 );
                 
-                log('info', `Complexity analysis completed and saved to ${colorize.green(complexityReportPath)}`);
+                // Only log this in normal mode (not quiet mode)
+                if (process.env.LOG_LEVEL !== 'error') {
+                  log('info', `Complexity analysis completed and saved to ${colorize.green(complexityReportPath)}`);
+                }
               } catch (analysisErr) {
                 log('warn', `Failed to run automatic complexity analysis: ${analysisErr.message}`);
-                log('warn', 'You can manually run this step with: task-master analyze-complexity');
+                // Only log this in normal mode (not quiet mode)
+                if (process.env.LOG_LEVEL !== 'error') {
+                  log('warn', 'You can manually run this step with: task-master analyze-complexity');
+                }
               }
             }
             
@@ -1429,12 +1510,55 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
               
               // Import the generate function to create task files
               const { generate } = await import('./task-files.js');
-              await generate(outputPath, tasksDir);
               
-              log('info', `Generated individual task files in ${colorize.green(tasksDir)}`);
-            } catch (genErr) {
-              log('warn', `Failed to generate task files: ${genErr.message}`);
-              log('warn', 'You can manually run this step with: task-master generate');
+              // Temporarily redirect stdout if in quiet mode to prevent interference
+              let originalStdoutWrite;
+              if (process.env.LOG_LEVEL === 'error' && cliMode) {
+                // Save original stdout.write
+                originalStdoutWrite = process.stdout.write;
+                // Replace with a version that filters out unwanted output
+                process.stdout.write = (function(write) {
+                  return function(string, encoding, fd) {
+                    // Only allow progress bar updates through
+                    if (string.includes('Generating') || string.includes('→')) {
+                      write.apply(process.stdout, [string, encoding, fd]);
+                    }
+                  };
+                })(process.stdout.write);
+              }
+              
+              try {
+                // Run the generate function
+                await generate(outputPath, tasksDir);
+                
+                // Only log this in normal mode (not quiet mode)
+                if (process.env.LOG_LEVEL !== 'error') {
+                  log('info', `Generated individual task files in ${colorize.green(tasksDir)}`);
+                }
+                
+                // Update progress after generation is complete
+                if (enhancedReportProgress) {
+                  enhancedReportProgress({
+                    phase: 'finalization',
+                    message: 'Task files generated successfully',
+                    detail: `Created task files in ${path.basename(tasksDir)}`,
+                    progress: 98
+                  });
+                }
+              } catch (genErr) {
+                log('warn', `Failed to generate task files: ${genErr.message}`);
+                // Only log this advice in normal mode (not quiet mode)
+                if (process.env.LOG_LEVEL !== 'error') {
+                  log('warn', 'You can manually run this step with: task-master generate');
+                }
+              } finally {
+                // Restore original stdout if we modified it
+                if (originalStdoutWrite) {
+                  process.stdout.write = originalStdoutWrite;
+                }
+              }
+            } catch (outerErr) {
+              log('warn', `Error preparing to generate task files: ${outerErr.message}`);
             }
           }
         } else {
@@ -1465,7 +1589,10 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
           log('warn', 'Tasks generated from codebase analysis are not in expected format, defaulting to empty array');
           tasks = [];
         }
-        log('info', `Generated ${colorize.green(tasks.length)} tasks from codebase analysis`);
+        // Only log this in normal mode (not quiet mode)
+        if (process.env.LOG_LEVEL !== 'error') {
+          log('info', `Generated ${colorize.green(tasks.length)} tasks from codebase analysis`);
+        }
       } catch (analysisErr) {
         log('error', `Error generating tasks from codebase analysis: ${analysisErr.message}`);
         // Return empty tasks array in case of error
@@ -1489,7 +1616,10 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       if (outputPath) {
         try {
           await saveTasksToFile(validatedTasks, outputPath);
-          log('info', `Tasks saved to ${colorize.green(outputPath)}`);
+          // Only log this in normal mode (not quiet mode)
+          if (process.env.LOG_LEVEL !== 'error') {
+            log('info', `Tasks saved to ${colorize.green(outputPath)}`);
+          }
         } catch (saveErr) {
           log('error', `Error saving tasks to file: ${saveErr.message}`);
         }
@@ -1520,9 +1650,13 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
         progress: 100
       });
       
-      // Add a newline at the end in CLI mode
+      // Add a newline at the end in CLI mode to ensure we don't overwrite the final status
       if (cliMode && process.stdout.write) {
-        console.log(); // End with a newline
+        try {
+          process.stdout.write('\n\n');  // Add two newlines for better separation
+        } catch (e) {
+          console.log('\n');  // Fallback
+        }
       }
     }
     
@@ -1544,11 +1678,15 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
       
       // Add a newline at the end in CLI mode
       if (cliMode && process.stdout.write) {
-        console.log(); // End with a newline
+        try {
+          process.stdout.write('\n\n');  // Add two newlines for better separation
+        } catch (e) {
+          console.log('\n');  // Fallback
+        }
       }
     }
     
-    // Log the error with full stack trace in debug mode
+    // Log the error with full stack trace in debug mode - even in quiet mode for errors
     log('error', `Workspace scanning failed: ${err.message}`);
     if (process.env.DEBUG === '1') {
       log('debug', `Error stack trace: ${err.stack}`);
