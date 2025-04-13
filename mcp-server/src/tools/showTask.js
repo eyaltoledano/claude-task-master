@@ -7,7 +7,8 @@ import { z } from "zod";
 import {
   executeTaskMasterCommand,
   createErrorResponse,
-  handleApiResult
+  handleApiResult,
+  formatCommandResultForDisplay
 } from "./utils.js";
 
 /**
@@ -44,17 +45,20 @@ export function registerShowTaskTool(server) {
           args.projectRoot // Pass raw project root, function will normalize it
         );
 
+        // Format the result with rich text
+        const formattedResult = formatCommandResultForDisplay(result, 'task');
+
         // Process CLI result into API result format for handleApiResult
-        if (result.success) {
+        if (formattedResult.success) {
           try {
             // Try to parse response as JSON
-            const data = JSON.parse(result.stdout);
+            const data = JSON.parse(formattedResult.stdout);
             // Return equivalent of a successful API call with data
             return handleApiResult({ success: true, data }, log, 'Error showing task');
           } catch (e) {
-            // If parsing fails, still return success but with raw string data
+            // If parsing fails, still return success but with rich text formatted string data
             return handleApiResult(
-              { success: true, data: result.stdout }, 
+              { success: true, data: formattedResult.stdout }, 
               log, 
               'Error showing task',
               // Skip data processing for string data
@@ -64,7 +68,7 @@ export function registerShowTaskTool(server) {
         } else {
           // Return equivalent of a failed API call
           return handleApiResult(
-            { success: false, error: { message: result.error } },
+            { success: false, error: { message: formattedResult.error } },
             log,
             'Error showing task'
           );

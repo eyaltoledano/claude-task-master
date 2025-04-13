@@ -108,6 +108,20 @@ Tasks in tasks.json have the following structure:
 - `testStrategy`: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`)
 - `subtasks`: List of smaller, more specific tasks that make up the main task (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`)
 
+## Rich Text Rendering in the Terminal
+
+Task Master now includes built-in support for rendering task files, PRD documents, complexity reports, and JSON data as rich text in your terminal. This feature enhances readability with:
+
+- Formatted headers and sections
+- Syntax highlighting for code blocks and JSON data
+- Bold and italic text
+- Lists and tables with proper formatting
+- And more!
+
+The rich text rendering is powered by the [marked](https://www.npmjs.com/package/marked) and [marked-terminal](https://www.npmjs.com/package/marked-terminal) libraries, providing a more visually appealing and organized display for all Task Master output.
+
+See the [markdown-rendering.md](docs/markdown-rendering.md) documentation for more details on how this feature is implemented and how you can customize it.
+
 ## Integrating with Cursor AI
 
 Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.

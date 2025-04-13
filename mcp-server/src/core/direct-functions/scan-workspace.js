@@ -14,6 +14,40 @@ import { validatePath } from '../utils/path-utils.js';
 import { getLogger } from '../../utils/logger.js';
 
 /**
+ * Reads and returns the content of a file if it exists
+ * @param {string} filePath - Path to the file to read
+ * @returns {Object} - Object containing success flag and content or error
+ */
+function readFileIfExists(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      return { success: true, content };
+    }
+    return { success: false, error: 'File does not exist' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Gets a listing of files in a directory
+ * @param {string} dirPath - Path to the directory
+ * @returns {Array<string>} - Array of files in the directory
+ */
+function getDirectoryListing(dirPath) {
+  try {
+    if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+      return fs.readdirSync(dirPath).map(file => path.join(dirPath, file));
+    }
+    return [];
+  } catch (error) {
+    logger.error(`Error reading directory ${dirPath}: ${error.message}`);
+    return [];
+  }
+}
+
+/**
  * Validates path and makes it absolute if relative
  * @param {string} basePath - Base path to resolve against
  * @param {string} targetPath - Path to validate and resolve
@@ -162,6 +196,7 @@ export async function scanWorkspaceFunction(options, reportProgress = null) {
       maxSizePerFile,
       numTasks,
       generatePRD,
+      useParallel: true, // Always use parallel processing
       cliMode // Pass CLI mode option to the scanner
     }, reportProgress ? async (progressData) => {
       // Ensure progressData has all required fields to prevent undefined values
@@ -209,12 +244,42 @@ export async function scanWorkspaceFunction(options, reportProgress = null) {
       logger.info(successMessage);
     }
     
+    // Gather all generated files and their contents for display in the UI
+    const tasksDir = path.dirname(outputFile);
+    const taskFiles = getDirectoryListing(tasksDir)
+      .filter(file => path.basename(file).startsWith('task_') && file.endsWith('.txt'));
+    
+    // Read tasks.json content
+    const tasksJsonResult = readFileIfExists(outputFile);
+    
+    // Read complexity report if it was generated
+    const complexityReportPath = path.join(resolvedProjectRoot, 'scripts', 'task-complexity-report.json');
+    const complexityReportResult = readFileIfExists(complexityReportPath);
+    
+    // Read PRD file if it was generated
+    const prdPath = path.join(resolvedProjectRoot, 'scripts', 'prd.txt');
+    const prdResult = readFileIfExists(prdPath);
+    
+    // Prepare file info for display
+    const generatedFiles = [
+      ...(tasksJsonResult.success ? [{ path: outputFile, type: 'tasks.json', content: tasksJsonResult.content }] : []),
+      ...(complexityReportResult.success ? [{ path: complexityReportPath, type: 'complexity-report', content: complexityReportResult.content }] : []),
+      ...(prdResult.success ? [{ path: prdPath, type: 'prd', content: prdResult.content }] : []),
+      ...taskFiles.map(file => ({ 
+        path: file, 
+        type: 'task-file', 
+        taskId: path.basename(file, '.txt').replace('task_', ''),
+        content: readFileIfExists(file).success ? readFileIfExists(file).content : 'Could not read file' 
+      }))
+    ];
+    
     return {
       success: true,
       message: successMessage,
       output: outputFile,
       taskCount: taskCount,
-      prdGenerated: generatePRD
+      prdGenerated: generatePRD,
+      generatedFiles: generatedFiles
     };
   } catch (error) {
     if (options.cliMode) {

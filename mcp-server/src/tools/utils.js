@@ -6,6 +6,16 @@
 
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
 import { getProjectRootFromSession } from '../core/utils/session-utils.js';
+import { execSync } from 'child_process';
+import path from 'path';
+import logger from '../logger.js';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { renderTaskContent, renderComplexityReport, renderPrd, renderJsonContent } from '../../../scripts/modules/markdown-renderer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Create a success response with optional fromCache flag
@@ -136,3 +146,51 @@ export const safeExecuteOperation = async (asyncOperation, timeoutMs = 30000, lo
     throw error;
   }
 };
+
+/**
+ * Format command result for display
+ * 
+ * @param {Object} result - The result object from the command execution
+ * @param {string} type - The type of content ('task', 'complexity-report', 'prd', 'json', etc.)
+ * @returns {Object} - Formatted result object with rich text if appropriate
+ */
+export function formatCommandResultForDisplay(result, type = 'text') {
+  if (!result || !result.stdout) {
+    return result;
+  }
+
+  try {
+    // Try to parse as JSON first
+    const parsedResult = JSON.parse(result.stdout);
+
+    // If type is explicitly 'json' or result is valid JSON and no specific type,
+    // use the JSON renderer
+    if (type === 'json' || type === 'text') {
+      return { ...result, stdout: renderJsonContent(parsedResult) };
+    }
+
+    // For other types that might contain JSON data but need specific formatting,
+    // just stringify with pretty printing
+    return { ...result, stdout: JSON.stringify(parsedResult, null, 2) };
+  } catch (e) {
+    // If not JSON, apply rich text formatting based on content type
+    if (type === 'task' && result.stdout) {
+      return { ...result, stdout: renderTaskContent(result.stdout) };
+    } else if (type === 'complexity-report' && result.stdout) {
+      return { ...result, stdout: renderComplexityReport(result.stdout) };
+    } else if (type === 'prd' && result.stdout) {
+      return { ...result, stdout: renderPrd(result.stdout) };
+    } else if (type === 'json' && result.stdout) {
+      // If explicitly asked for JSON but it's not valid, try to make it pretty anyway
+      try {
+        return { ...result, stdout: renderJsonContent(result.stdout) };
+      } catch (jsonError) {
+        // Fall back to original if that fails too
+        return result;
+      }
+    }
+    
+    // Return original result if no formatting applied
+    return result;
+  }
+}

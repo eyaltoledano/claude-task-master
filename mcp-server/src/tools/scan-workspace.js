@@ -8,6 +8,73 @@ import { scanWorkspaceFunction } from '../core/direct-functions/scan-workspace.j
 import logger from '../logger.js';
 
 /**
+ * Formats the generated files for display in the UI
+ * @param {Array} generatedFiles - Array of generated file objects
+ * @returns {string} - Formatted string for display
+ */
+function formatGeneratedFilesForDisplay(generatedFiles) {
+  if (!generatedFiles || !Array.isArray(generatedFiles) || generatedFiles.length === 0) {
+    return "No files were generated.";
+  }
+
+  // Group files by type
+  const filesByType = {
+    'tasks.json': [],
+    'prd': [],
+    'complexity-report': [],
+    'task-file': []
+  };
+
+  generatedFiles.forEach(file => {
+    if (filesByType[file.type] !== undefined) {
+      filesByType[file.type].push(file);
+    }
+  });
+
+  let output = "=== GENERATED FILES ===\n\n";
+
+  // Display PRD if exists
+  if (filesByType['prd'].length > 0) {
+    output += "=== PRD ===\n";
+    output += filesByType['prd'][0].content;
+    output += "\n\n";
+  }
+
+  // Display Tasks.json if exists
+  if (filesByType['tasks.json'].length > 0) {
+    output += "=== TASKS.JSON ===\n";
+    output += filesByType['tasks.json'][0].content;
+    output += "\n\n";
+  }
+
+  // Display complexity report if exists
+  if (filesByType['complexity-report'].length > 0) {
+    output += "=== COMPLEXITY REPORT ===\n";
+    output += filesByType['complexity-report'][0].content;
+    output += "\n\n";
+  }
+
+  // Display task files
+  if (filesByType['task-file'].length > 0) {
+    output += "=== TASK FILES ===\n";
+    // Sort task files by ID
+    const sortedTaskFiles = filesByType['task-file'].sort((a, b) => {
+      const idA = parseInt(a.taskId, 10);
+      const idB = parseInt(b.taskId, 10);
+      return idA - idB;
+    });
+
+    sortedTaskFiles.forEach(file => {
+      output += `--- TASK ${file.taskId} ---\n`;
+      output += file.content;
+      output += "\n\n";
+    });
+  }
+
+  return output;
+}
+
+/**
  * Register the scan-workspace tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
@@ -137,12 +204,21 @@ export function registerScanWorkspaceTool(server) {
         
         // Final progress report
         if (result.success) {
+          // Display all the generated files
+          const formattedFiles = formatGeneratedFilesForDisplay(result.generatedFiles);
+          
           await updateProgress({
             phase: 'complete',
             message: 'Scan complete',
-            detail: `Generated ${result.taskCount || 0} tasks based on ${params.generatePRD ? 'PRD and ' : ''}code analysis`,
-            progress: 100
+            detail: `Generated ${result.taskCount || 0} tasks based on ${params.generatePRD ? 'PRD and ' : ''}code analysis. Displaying all generated documents.`,
+            progress: 100,
+            generatedFiles: formattedFiles
           });
+          
+          // Print generated files to the console in CLI mode
+          if (params.cliMode) {
+            console.log(formattedFiles);
+          }
         } else {
           await updateProgress({
             phase: 'error',
@@ -150,6 +226,11 @@ export function registerScanWorkspaceTool(server) {
             detail: result.error || 'Unknown error. Try running with --debug flag for more information.',
             progress: 100
           });
+        }
+        
+        // Add formatted files to the result
+        if (result.success && result.generatedFiles) {
+          result.formattedFiles = formatGeneratedFilesForDisplay(result.generatedFiles);
         }
         
         // Return the result directly

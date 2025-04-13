@@ -367,7 +367,6 @@ program
 	.option('--no-progress', 'Disable progress information')
 	.option('--no-prd', 'Do not generate a PRD document')
 	.option('-f, --force', 'Force overwrite of existing tasks.json file')
-	.option('--parallel', 'Enable parallel processing for faster results with multiple smaller API calls')
 	.option('--skip-complexity', 'Skip the automatic task complexity analysis step')
 	.option('-d, --debug', 'Enable debug output')
 	.option('-q, --quiet', 'Suppress INFO and WARN log messages, showing only progress bar and errors')
@@ -397,7 +396,7 @@ ${chalk.cyan('6.')} Generating individual task files for easier reference
 
 This operation may take ${chalk.yellow('2-5 minutes')} depending on codebase size.
 
-${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
+${chalk.yellow('⚠️')} ${chalk.bold('Important Note:')}
   • The AI analysis phase (step 3) is the longest part of the process
   • If progress appears to stall at "Finalizing and optimizing output":
     - The system may be retrying API calls due to network issues or rate limits
@@ -405,9 +404,9 @@ ${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
     - Please be patient during this phase`),
 			{
 				padding: 1,
-				margin: { top: 0, bottom: 1 },
+				margin: { top: 0, bottom: 1, right: 1 },
 				borderStyle: 'round',
-				borderColor: 'cyan'
+				borderColor: '#0077b6'
 			}
 		));
 		
@@ -427,13 +426,11 @@ ${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
 			// Don't log anything about quiet mode to keep it truly quiet
 		}
 		
-		// Add notification for parallel processing
-		if (args.includes('--parallel') || options.parallel) {
-			console.log(chalk.cyan('\nParallel processing mode enabled:'));
-			console.log('• Files will be analyzed in smaller batches');
-			console.log('• Multiple smaller API calls instead of one large call');
-			console.log('• This can reduce timeouts but may increase total tokens used\n');
-		}
+		// Parallel processing is always enabled
+		console.log(chalk.cyan('\nParallel processing mode enabled:'));
+		console.log('• Files will be analyzed in smaller batches');
+		console.log('• Multiple smaller API calls instead of one large call');
+		console.log('• This can reduce timeouts but may increase total tokens used\n');
 		
 		// Set CLI mode option - this enables the enhanced terminal reporting
 		options.cliMode = true;
@@ -475,14 +472,62 @@ ${chalk.yellow('⚠️')}  ${chalk.bold('Important Note:')}
 				numTasks: options.numTasks ? parseInt(options.numTasks, 10) : undefined,
 				generatePRD: options.prd !== false,
 				force: options.force === true,
-				useParallel: options.parallel === true, // Add parallel option
+				useParallel: true, // Always use parallel processing
 				cliMode: true, // Enable CLI mode for better terminal output
 				skipComplexity: options.skipComplexity === true,
 				logLevel: process.env.LOG_LEVEL || 'info' // Pass LOG_LEVEL to scanner
 			}, progressEnabled ? updateProgressFn : null);
 			
-			// Success message is handled by the CLI output in the scanner itself
-			process.exit(0);
+			// After scanWorkspace completes, run continue-scan.sh
+			const continueScanPath = path.resolve(__dirname, '../continue-scan.sh');
+			const continuePath = path.resolve(__dirname, '../continue.sh');
+			
+			// Check for either continue-scan.sh or continue.sh
+			const scriptToRun = fs.existsSync(continueScanPath) ? continueScanPath : 
+			                    fs.existsSync(continuePath) ? continuePath : null;
+			
+			if (scriptToRun) {
+				console.log(chalk.cyan(`\nRunning continuation script: ${path.basename(scriptToRun)}...`));
+				
+				// Get arguments to pass to the continuation script
+				const continueArgs = [];
+				if (options.skipComplexity) {
+					continueArgs.push('--skip-complexity');
+				}
+				if (options.force) {
+					continueArgs.push('--force');
+				}
+				if (options.quiet) {
+					continueArgs.push('--no-display');
+				}
+				
+				// Make sure the script is executable
+				try {
+					fs.chmodSync(scriptToRun, '755');
+				} catch (chmodErr) {
+					console.warn(chalk.yellow(`Warning: Could not set executable permissions for ${scriptToRun}`));
+				}
+				
+				// Spawn the continuation script
+				const continueChild = spawn(scriptToRun, continueArgs, {
+					stdio: 'inherit',
+					cwd: process.cwd()
+				});
+				
+				// Wait for the script to complete
+				continueChild.on('close', (code) => {
+					if (code === 0) {
+						console.log(chalk.green('\nWorkspace scan and continuation completed successfully!'));
+					} else {
+						console.error(chalk.red(`\nContinuation script exited with code ${code}`));
+					}
+					process.exit(code);
+				});
+			} else {
+				console.warn(chalk.yellow(`\nWarning: Continuation script not found (checked for continue.sh and continue-scan.sh)`));
+				// Success message is handled by the CLI output in the scanner itself
+				process.exit(0);
+			}
 		} catch (error) {
 			console.error(chalk.red(`\nError: ${error.message}`));
 			

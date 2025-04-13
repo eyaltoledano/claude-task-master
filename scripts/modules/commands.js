@@ -26,6 +26,19 @@ export function registerCommands(program) {
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-o, --output <dir>', 'Output directory', 'tasks');
 
+  // Automated Workflow Command
+  program
+    .command('scan-workspace')
+    .description('Automatically scan workspace, generate tasks, analyze complexity, expand tasks, and list all tasks')
+    .option('-i, --input <file>', 'Path to save the generated PRD file', 'scripts/generated_prd.txt')
+    .option('-o, --output <file>', 'Output file path for tasks', 'tasks/tasks.json')
+    .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+    .option('-t, --threshold <number>', 'Complexity threshold for task expansion (1-10)', '5')
+    .option('-r, --research', 'Use Perplexity AI for research-backed analysis', false)
+    .option('--expand-all', 'Expand all tasks with complexity above threshold', false)
+    .option('--skip-steps <steps>', 'Comma-separated list of steps to skip (scan,prd,generate,analyze,expand,list)')
+    .option('--verbose', 'Show detailed output for each step');
+
   // Task Management Commands
   program
     .command('set-status')

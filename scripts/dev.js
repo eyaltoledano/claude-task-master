@@ -147,7 +147,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, resolve, join, basename } from 'path';
 import readline from 'readline';
 import { program } from 'commander';
 import chalk from 'chalk';
@@ -163,6 +163,8 @@ import { callLLMWithRetry } from './modules/ai-services.js';
 import pLimit from 'p-limit';
 import inquirer from 'inquirer';
 import { validateAndFixDependencies } from './modules/task-manager.js';
+import { Command } from 'commander';
+import { renderTaskContent } from './modules/markdown-renderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -2672,278 +2674,238 @@ async function main() {
     });
 
   program
-    .command('scan')
-    .description('Intelligently scan and analyze existing codebase to generate project structure summary')
-    .option('-o, --output <file>', 'Path to save JSON project summary (default: project_scan.json)', 'project_scan.json')
-    .option('-d, --directory <dir>', 'Specific directory to scan (default: current directory)', '.')
-    .option('-i, --ignore <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build')
-    .option('-f, --format <format>', 'Output format (json, prd, or both)', 'json')
-    .option('--debug', 'Print verbose debugging information during scanning')
-    .option('--progress', 'Show detailed progress for each scan phase')
-    .option('--max-files <number>', 'Maximum number of files to analyze', '30')
-    .option('--max-size <number>', 'Maximum size per file in bytes', '5000')
-    .option('--num-tasks <number>', 'Number of tasks to generate', '15')
-    .option('--force', 'Force overwrite of existing files')
-    .option('--ignore-dirs <dirs>', 'Comma-separated list of directories to ignore', '.git,node_modules,dist,build,vendor,bin')
-    .option('-p, --parallel', 'Enable parallel processing mode for faster API calls')
+    .command('scan-workspace')
+    .description('Automatically scan workspace, generate tasks, analyze complexity, expand tasks, and list all tasks')
+    .option('-i, --input <file>', 'Path to save the generated PRD file', 'scripts/generated_prd.txt')
+    .option('-o, --output <file>', 'Output file path for tasks', 'tasks/tasks.json')
+    .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+    .option('-t, --threshold <number>', 'Complexity threshold for task expansion (1-10)', '5')
+    .option('-r, --research', 'Use Perplexity AI for research-backed analysis', false)
+    .option('--expand-all', 'Expand all tasks with complexity above threshold', false)
+    .option('--skip-steps <steps>', 'Comma-separated list of steps to skip (scan,prd,generate,analyze,expand,list,continue)')
+    .option('--verbose', 'Show detailed output for each step')
     .action(async (options) => {
+      const inputPRDPath = options.input;
+      const tasksOutputPath = options.output;
+      const numTasks = parseInt(options.numTasks, 10);
+      const threshold = parseInt(options.threshold, 10);
+      const useResearch = options.research === true;
+      const expandAll = options.expandAll === true;
+      const verbose = options.verbose === true;
+      const skipStepsStr = options.skipSteps || '';
+      const skipSteps = skipStepsStr.split(',').map(s => s.trim().toLowerCase());
+      
+      const boxOptions = {
+        padding: 1,
+        margin: 1,
+        borderStyle: 'double',
+        borderColor: 'blue',
+        title: 'Task Master - Automated Workflow',
+        titleAlignment: 'center'
+      };
+      
+      console.log(boxen(
+        chalk.bold(gradient.atlas('Starting automatic workspace analysis and task generation')), 
+        boxOptions
+      ));
+      
       try {
-        displayBanner();
-        
-        const { 
-          directory = '.', 
-          output = 'project_scan.json', 
-          format = 'json', 
-          debug = false, 
-          progress = false,
-          maxFiles = 30,
-          maxSize = 5000,
-          numTasks = 15,
-          force = false,
-          ignoreDirs = '.git,node_modules,dist,build,vendor,bin',
-          parallel = 'false'
-        } = options;
-        
-        // Handle ignore directories
-        const ignoreArray = ignoreDirs.split(',').map(dir => dir.trim());
-        const workspacePath = path.resolve(process.cwd(), directory);
-        
-        // Set up output paths
-        const jsonOutputPath = path.resolve(process.cwd(), output);
-        const prdOutputPath = path.resolve(process.cwd(), 'scripts/prd.txt');
-        
-        console.log(`Scanning project structure in ${directory}`);
-        console.log(`Ignoring directories: ${ignoreArray.join(', ')}`);
-        
-        // Set up debug mode
-        if (debug || process.env.DEBUG === '1') {
-          process.env.DEBUG = '1';
-          process.env.LOG_LEVEL = 'debug';
-          console.log(chalk.gray('Debug mode enabled - verbose output will be shown'));
-        }
-        
-        let spinner;
-        let updateProgressFn = null;
-        
-        if (progress) {
-          // Create an advanced loading indicator that shows phase information
-          let currentPhase = 0;
-          let currentMessage = '';
-          let currentDetail = '';
-          let currentProgress = 0;
-          let startTime = Date.now();
-          let phaseStartTime = Date.now();
+        // Step 1: Scan workspace
+        if (!skipSteps.includes('scan')) {
+          console.log(chalk.bold.blue('\n🔍 Step 1: Scanning workspace...\n'));
           
-          // Track time spent in each phase to provide better estimates
-          const phaseTimeTracking = {
-            1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0,
-            'validation': 0, 'setup': 0, 'preparation': 0,
-            'error': 0, 'complete': 0
-          };
+          const { scanWorkspace } = await import('./modules/workspace-scanner.js');
+          await scanWorkspace('.', {
+            generatePRD: true,
+            outputPath: inputPRDPath,
+            numTasks: numTasks,
+            cliMode: true
+          });
           
-          // Enhanced phase descriptions for better context
-          const phaseDescriptions = {
-            1: 'Workspace Initialization',
-            2: 'File Discovery',
-            3: 'Code Analysis',
-            4: 'Sample Selection',
-            5: 'AI Analysis',
-            6: 'Task Generation',
-            7: 'Final Processing',
-            'validation': 'Parameter Validation',
-            'setup': 'Environment Setup',
-            'preparation': 'Scan Preparation',
-            'complete': 'Scan Complete',
-            'error': 'Error Processing'
-          };
-          
-          // Initialize the spinner with phase information
-          spinner = ora({
-            text: `Initializing scan...`,
-            color: 'cyan',
-            spinner: 'dots'
-          }).start();
-          
-          // Function to update the progress representation
-          updateProgressFn = ({ phase, message, detail, progress, phaseDescription }) => {
-            // Track time in previous phase if phase has changed
-            if (phase !== currentPhase && currentPhase !== 0) {
-              const timeInPhase = Date.now() - phaseStartTime;
-              phaseTimeTracking[currentPhase] = (phaseTimeTracking[currentPhase] || 0) + timeInPhase;
-              phaseStartTime = Date.now();
-            }
-            
-            currentPhase = phase;
-            currentMessage = message;
-            currentDetail = detail;
-            currentProgress = progress;
-            
-            // Calculate elapsed time and estimate
-            const elapsedTime = Date.now() - startTime;
-            const elapsedMinutes = Math.floor(elapsedTime / 60000);
-            const elapsedSeconds = Math.floor((elapsedTime % 60000) / 1000);
-            
-            // Estimate remaining time based on progress
-            let remainingText = '';
-            if (progress > 10 && progress < 95) {
-              const estimatedTotalTime = elapsedTime / (progress / 100);
-              const remainingTime = estimatedTotalTime - elapsedTime;
-              const remainingMinutes = Math.floor(remainingTime / 60000);
-              const remainingSeconds = Math.floor((remainingTime % 60000) / 1000);
-              
-              if (phase === 5) {
-                // For AI analysis phase, provide context about typical processing time
-                remainingText = chalk.yellow(`(AI analysis typically takes 2-3 minutes)`);
-              } else {
-                remainingText = chalk.yellow(`Est. remaining: ~${remainingMinutes}m ${remainingSeconds}s`);
-              }
-            }
-            
-            // Create a more descriptive progress bar
-            const barLength = 25;
-            const filledLength = Math.round(progress / 100 * barLength);
-            const emptyLength = barLength - filledLength;
-            
-            let progressBar;
-            if (phase === 'error') {
-              progressBar = chalk.red(`[${'!'.repeat(barLength)}]`);
-            } else if (phase === 'complete') {
-              progressBar = chalk.green(`[${'='.repeat(barLength)}]`);
-            } else if (phase === 5) {
-              // Special progress bar for AI analysis phase to show "thinking" animation
-              const thinkingChars = ['▖', '▘', '▝', '▗'];
-              const thinkingChar = thinkingChars[Math.floor(Date.now() / 200) % thinkingChars.length];
-              progressBar = chalk.cyan(`[${'='.repeat(filledLength)}`) + 
-                            chalk.yellow(`${thinkingChar}`) + 
-                            chalk.cyan(`${'.'.repeat(Math.max(0, emptyLength - 1))}]`);
-            } else {
-              progressBar = chalk.cyan(`[${'='.repeat(filledLength)}${'.'.repeat(emptyLength)}]`);
-            }
-            
-            // Create phase indicator
-            let phaseIndicator = '';
-            if (typeof phase === 'number') {
-              // Special handling for the AI Analysis phase
-              if (phase === 5) {
-                phaseIndicator = `${chalk.bold(`Phase ${phase}/7:`)} ${chalk.magenta('AI Analysis')}`;
-              } else {
-                phaseIndicator = `${chalk.bold(`Phase ${phase}/7:`)} ${chalk.cyan(phaseDescriptions[phase] || message)}`;
-              }
-            } else {
-              phaseIndicator = `${chalk.bold(phaseDescriptions[phase] || phase)}`;
-            }
-            
-            // Add timing information
-            const timingInfo = `${chalk.gray(`Elapsed: ${elapsedMinutes}m ${elapsedSeconds}s`)} ${remainingText}`;
-            
-            // Enhanced display for AI analysis phase
-            let additionalContext = '';
-            if (phase === 5) {
-              // Extract specific phase information from the detail
-              const currentAnalysisStep = detail.split(':')[0].trim();
-              
-              // Check if this is a retry situation
-              const isRetry = detail.includes('retry') || detail.includes('attempt');
-              
-              // Add a visualization of what's happening  
-              additionalContext = `\n  ${chalk.gray('AI Analysis Status:')}
-              ${chalk.yellow('→')} ${chalk.white(currentAnalysisStep)}`;
-              
-              // If we're not in a retry, show the normal process steps
-              if (!isRetry) {
-                additionalContext += `
-  ${chalk.gray('→')} ${chalk.gray('Analyzing files and dependencies')}
-  ${chalk.gray('→')} ${chalk.gray('Building code model representation')}
-  ${chalk.gray('→')} ${chalk.gray('Extracting feature requirements')}`;
-              }
-              
-              // Add helpful context about the AI process
-              if (detail.includes('Finalizing') || detail.includes('retry') || detail.includes('attempt')) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('If progress seems stalled at this stage, the system may be:')}`; 
-                additionalContext += `\n  ${chalk.gray('- Making API retry attempts due to rate limits or network issues')}`; 
-                additionalContext += `\n  ${chalk.gray('- Processing a large response from the AI service')}`; 
-                additionalContext += `\n  ${chalk.gray('- Waiting for Anthropic API to complete the request')}`; 
-              } else if (progress > 55 && progress < 63) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is currently analyzing your codebase structure')}`;
-              } else if (progress >= 63 && progress < 70) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is formulating requirements based on code patterns')}`;
-              } else if (progress >= 70) {
-                additionalContext += `\n  ${chalk.blue('ℹ')} ${chalk.gray('The AI is finalizing the PRD document structure')}`;
-              }
-            }
-            
-            // Build detailed spinner text with rich information
-            spinner.text = `${phaseIndicator}
-${chalk.cyan('→')} ${detail}
-${progressBar} ${progress}% ${timingInfo}${additionalContext}`;
-            
-            // If we're in debug mode, output more detailed information
-            if (process.env.DEBUG === '1') {
-              console.log(`DEBUG: Phase=${phase}, Progress=${progress}%, Detail=${detail}`);
-            }
-          };
+          console.log(chalk.green(`✅ Workspace scanned and PRD generated at: ${inputPRDPath}`));
         } else {
-          // Use simple spinner for basic progress indication
-          spinner = startLoadingIndicator('Scanning project (this may take a while)...');
+          console.log(chalk.yellow('⏩ Skipping workspace scan (as requested)'));
         }
         
-        // Parse options for scanWorkspace
-        const scanOptions = {
-          ignoreDirs: ignoreArray,
-          outputPath: jsonOutputPath,
-          generatePRD: format === 'prd' || format === 'both',
-          maxFiles: parseInt(maxFiles, 10),
-          maxSizePerFile: parseInt(maxSize, 10),
-          numTasks: parseInt(numTasks, 10),
-          force: force,
-          // Handle parallel as a boolean flag
-          useParallel: !!parallel
-        };
-        
-        // Debug for parallel option
-        if (debug) {
-          console.log(chalk.gray(`Debug: raw parallel option value: "${parallel}" (${typeof parallel})`));
-          console.log(chalk.gray(`Debug: useParallel calculated as: ${scanOptions.useParallel} (${typeof scanOptions.useParallel})`));
-          console.log(chalk.gray('Debug: Scan options:'), scanOptions);
+        // Step 2: Parse PRD and generate tasks
+        if (!skipSteps.includes('prd')) {
+          console.log(chalk.bold.blue('\n📝 Step 2: Generating tasks from PRD...\n'));
+          
+          if (verbose) {
+            console.log(chalk.blue(`Parsing PRD file: ${inputPRDPath}`));
+            console.log(chalk.blue(`Generating ${numTasks} tasks...`));
+          }
+          
+          await parsePRD(inputPRDPath, tasksOutputPath, numTasks);
+          console.log(chalk.green(`✅ Tasks generated and saved to: ${tasksOutputPath}`));
+        } else {
+          console.log(chalk.yellow('⏩ Skipping PRD parsing (as requested)'));
         }
         
-        // If parallel mode is enabled, show information
-        if (scanOptions.useParallel) {
-          console.log(chalk.cyan('\nParallel processing mode enabled:'));
-          console.log('• Files will be analyzed in smaller batches');
-          console.log('• Multiple smaller API calls instead of one large call');
-          console.log('• This can reduce timeouts but may increase token usage\n');
+        // Step 3: Generate task files
+        if (!skipSteps.includes('generate')) {
+          console.log(chalk.bold.blue('\n📄 Step 3: Generating individual task files...\n'));
+          
+          if (verbose) {
+            console.log(chalk.blue(`Generating task files from: ${tasksOutputPath}`));
+            console.log(chalk.blue('Output directory: tasks'));
+          }
+          
+          await generateTaskFiles(tasksOutputPath, 'tasks');
+          console.log(chalk.green('✅ Individual task files generated'));
+        } else {
+          console.log(chalk.yellow('⏩ Skipping task file generation (as requested)'));
         }
         
-        // Import and use scanWorkspace from workspace-scanner.js
-        const { scanWorkspace } = await import('./modules/workspace-scanner.js');
-        
-        // Run the scan with progress reporting if enabled
-        const tasks = await scanWorkspace(workspacePath, scanOptions, updateProgressFn);
-        
-        spinner.stop();
-        
-        // Output results based on format
-        if (format === 'json' || format === 'both') {
-          console.log(chalk.green(`✓ Project scan complete! JSON summary saved to ${output}`));
+        // Step 4: Analyze task complexity
+        let complexityReportPath = 'scripts/task-complexity-report.json';
+        if (!skipSteps.includes('analyze')) {
+          console.log(chalk.bold.blue('\n🧠 Step 4: Analyzing task complexity...\n'));
+          
+          if (verbose) {
+            console.log(chalk.blue(`Analyzing tasks from: ${tasksOutputPath}`));
+            console.log(chalk.blue(`Complexity threshold: ${threshold}`));
+            if (useResearch) {
+              console.log(chalk.blue('Using Perplexity AI for research-backed analysis'));
+            }
+          }
+          
+          await analyzeTaskComplexity({
+            file: tasksOutputPath,
+            output: complexityReportPath,
+            threshold: threshold,
+            research: useResearch
+          });
+          
+          console.log(chalk.green(`✅ Complexity analysis completed and saved to: ${complexityReportPath}`));
+        } else {
+          console.log(chalk.yellow('⏩ Skipping complexity analysis (as requested)'));
         }
         
-        if (format === 'prd' || format === 'both') {
-          console.log(chalk.green(`✓ Generated PRD saved to scripts/prd.txt`));
-          console.log(`\nTo generate tasks from this PRD, run:`);
-          console.log(chalk.yellow(`  node scripts/dev.js parse-prd --input=scripts/prd.txt`));
+        // Step 5: Expand complex tasks
+        if (!skipSteps.includes('expand')) {
+          console.log(chalk.bold.blue('\n🔄 Step 5: Expanding complex tasks into subtasks...\n'));
+          
+          // Read the complexity report to find tasks to expand
+          if (fs.existsSync(complexityReportPath)) {
+            const report = readComplexityReport(complexityReportPath);
+            
+            if (expandAll) {
+              if (verbose) {
+                console.log(chalk.blue('Expanding all tasks based on complexity recommendations'));
+                if (useResearch) {
+                  console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+                }
+              }
+              
+              await expandAllTasks(CONFIG.defaultSubtasks, useResearch, '', true);
+              console.log(chalk.green('✅ All complex tasks expanded with subtasks'));
+            } else {
+              // Find tasks that exceed the threshold
+              const tasksToExpand = report.tasks.filter(t => t.complexityScore >= threshold);
+              
+              if (tasksToExpand.length > 0) {
+                if (verbose) {
+                  console.log(chalk.blue(`Found ${tasksToExpand.length} tasks with complexity score >= ${threshold}`));
+                }
+                
+                for (const task of tasksToExpand) {
+                  if (verbose) {
+                    console.log(chalk.blue(`Expanding task ${task.id} (complexity: ${task.complexityScore})`));
+                  }
+                  
+                  await expandTask(parseInt(task.id, 10), task.recommendedSubtasks || CONFIG.defaultSubtasks, 
+                                  useResearch, task.expansionPrompt || '');
+                }
+                
+                console.log(chalk.green(`✅ ${tasksToExpand.length} complex tasks expanded with subtasks`));
+              } else {
+                console.log(chalk.yellow(`ℹ️ No tasks found with complexity score >= ${threshold}`));
+              }
+            }
+          } else {
+            console.log(chalk.yellow(`⚠️ Complexity report not found at ${complexityReportPath}, skipping targeted expansion`));
+            
+            if (expandAll) {
+              console.log(chalk.blue('Falling back to expanding all tasks...'));
+              await expandAllTasks(CONFIG.defaultSubtasks, useResearch, '', true);
+              console.log(chalk.green('✅ All tasks expanded with subtasks'));
+            }
+          }
+        } else {
+          console.log(chalk.yellow('⏩ Skipping task expansion (as requested)'));
         }
         
-        console.log(`\nNext steps:`);
-        console.log(`  1. Review the generated ${format === 'prd' ? 'PRD' : 'project summary'}`);
-        console.log(`  2. ${format === 'json' ? 'Create a PRD based on the summary' : 'Generate tasks from the PRD'}`);
-        console.log(`  3. Run task-master generate to create task files`);
+        // Step 6: List all tasks
+        if (!skipSteps.includes('list')) {
+          console.log(chalk.bold.blue('\n📋 Step 6: Listing all tasks and subtasks...\n'));
+          
+          await listTasks(tasksOutputPath, null, true);
+        } else {
+          console.log(chalk.yellow('⏩ Skipping task listing (as requested)'));
+        }
+        
+        // Step 7: Run continue-scan.js to display all generated files
+        if (!skipSteps.includes('continue')) {
+          console.log(chalk.bold.blue('\n📑 Step 7: Displaying all generated files...\n'));
+          
+          try {
+            // Import and run the continueScan function from continue-scan.js
+            const continueScanPath = path.join(__dirname, 'continue-scan.js');
+            if (fs.existsSync(continueScanPath)) {
+              // Dynamic import of the module
+              const continueScanModule = await import(continueScanPath);
+              if (typeof continueScanModule.default === 'function') {
+                // If the module exports a default function, call it
+                await continueScanModule.default();
+              } else if (typeof continueScanModule.continueScan === 'function') {
+                // If the module exports a named continueScan function, call it
+                await continueScanModule.continueScan();
+              } else {
+                // Fallback: Run the script using child_process
+                console.log(chalk.blue('Running continue-scan.js script...'));
+                const { spawn } = await import('child_process');
+                const child = spawn('node', [continueScanPath], {
+                  stdio: 'inherit',
+                  cwd: process.cwd()
+                });
+                
+                await new Promise((resolve, reject) => {
+                  child.on('close', (code) => {
+                    if (code === 0) {
+                      resolve();
+                    } else {
+                      reject(new Error(`continue-scan.js script exited with code ${code}`));
+                    }
+                  });
+                });
+              }
+              
+              console.log(chalk.green('✅ All generated files displayed'));
+            } else {
+              console.log(chalk.yellow(`⚠️ continue-scan.js not found at ${continueScanPath}, skipping file display`));
+            }
+          } catch (error) {
+            console.error(chalk.yellow(`⚠️ Error running continue-scan.js: ${error.message}`));
+            console.log(chalk.yellow('Continuing with the workflow...'));
+          }
+        } else {
+          console.log(chalk.yellow('⏩ Skipping file display (as requested)'));
+        }
+        
+        // Summary
+        console.log(boxen(
+          chalk.bold(gradient.atlas('🎉 Workspace analysis complete! Your tasks are ready to use.')), 
+          {...boxOptions, title: 'Complete'}
+        ));
+        
+        console.log(chalk.cyan('\nNext steps:'));
+        console.log(chalk.cyan('  1. Run `node scripts/dev.js next` to see the first task to work on'));
+        console.log(chalk.cyan('  2. Run `node scripts/dev.js show <id>` to view details of a specific task'));
+        console.log(chalk.cyan('  3. Run `node scripts/dev.js set-status --id=<id> --status=done` when you complete a task'));
         
       } catch (error) {
-        console.error(chalk.red(`Error scanning workspace: ${error.message}`));
-        if (process.env.DEBUG === '1') {
-          console.error(error);
-        }
+        console.error(chalk.red('\n❌ Error during workspace analysis:'), error);
         process.exit(1);
       }
     });
@@ -3997,11 +3959,23 @@ async function displayTaskById(tasksPath, taskId) {
   
   // If task has details, show them in a separate box
   if (task.details && task.details.trim().length > 0) {
-    console.log(boxen(
-      chalk.white.bold('Implementation Details:') + '\n\n' + 
-      task.details,
-      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
-    ));
+    // Try to find and use task file content with markdown rendering
+    const taskPath = join(dirname(tasksPath), `task_${String(task.id).padStart(3, '0')}.txt`);
+    if (fs.existsSync(taskPath)) {
+      const taskContent = fs.readFileSync(taskPath, 'utf8');
+      console.log(boxen(
+        chalk.white.bold('Implementation Details:') + '\n\n' + 
+        renderTaskContent(taskContent),
+        { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+    } else {
+      // Fallback if task file doesn't exist
+      console.log(boxen(
+        chalk.white.bold('Implementation Details:') + '\n\n' + 
+        task.details,
+        { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+      ));
+    }
   }
   
   // Show test strategy if available

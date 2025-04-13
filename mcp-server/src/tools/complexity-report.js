@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	getProjectRootFromSession,
+	formatCommandResultForDisplay
 } from './utils.js';
 import { complexityReportDirect } from '../core/task-master-core.js';
 
@@ -55,20 +56,23 @@ export function registerComplexityReportTool(server) {
 					log /*, { reportProgress, mcpLog: log, session}*/
 				);
 
+				// Format the result with rich text
+				const formattedResult = formatCommandResultForDisplay(result, 'complexity-report');
+
 				// await reportProgress({ progress: 100 });
 
-				if (result.success) {
+				if (formattedResult.success) {
 					log.info(
-						`Successfully retrieved complexity report${result.fromCache ? ' (from cache)' : ''}`
+						`Successfully retrieved complexity report${formattedResult.fromCache ? ' (from cache)' : ''}`
 					);
 				} else {
 					log.error(
-						`Failed to retrieve complexity report: ${result.error.message}`
+						`Failed to retrieve complexity report: ${formattedResult.error.message}`
 					);
 				}
 
 				return handleApiResult(
-					result,
+					formattedResult,
 					log,
 					'Error retrieving complexity report'
 				);

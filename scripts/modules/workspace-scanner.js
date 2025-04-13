@@ -629,42 +629,41 @@ async function generatePRDFromCodeAnalysis(sampledFiles, workspacePath, options 
     
     let prdContent;
     
-    if (useParallel && fileCount > 5) {
-      // Use parallel processing for larger codebases
-      if (updateProgressDuringGeneration) {
-        updateProgressDuringGeneration(1, 'Splitting codebase into smaller batches for parallel analysis');
-      }
+    // Always use parallel processing regardless of file count
+    if (updateProgressDuringGeneration) {
+      updateProgressDuringGeneration(1, 'Splitting codebase into smaller batches for parallel analysis');
+    }
+    
+    // Create batches of files for parallel processing
+    const batches = createFileBatches(sampledFiles, 5);
+    
+    if (updateProgressDuringGeneration) {
+      updateProgressDuringGeneration(2, `Created ${batches.length} batches for parallel processing`);
+    }
+    
+    // Process batches in parallel
+    const batchAnalyses = await processFileBatchesInParallel(batches, workspacePath, updateProgressDuringGeneration);
+    
+    if (updateProgressDuringGeneration) {
+      updateProgressDuringGeneration(8, 'Combining batch analyses into comprehensive PRD');
+    }
+    
+    // Fast path: For small codebases (3 or fewer batches), use a direct approach
+    if (batchAnalyses.length <= 3) {
+      log('info', 'Small analysis dataset, using direct PRD generation');
       
-      // Create batches of files for parallel processing
-      const batches = createFileBatches(sampledFiles, 5);
+      // Combine all batches into a single analysis for faster processing
+      const combinedBatchContent = batchAnalyses.join('\n\n');
       
-      if (updateProgressDuringGeneration) {
-        updateProgressDuringGeneration(2, `Created ${batches.length} batches for parallel processing`);
-      }
-      
-      // Process batches in parallel
-      const batchAnalyses = await processFileBatchesInParallel(batches, workspacePath, updateProgressDuringGeneration);
-      
-      if (updateProgressDuringGeneration) {
-        updateProgressDuringGeneration(8, 'Combining batch analyses into comprehensive PRD');
-      }
-      
-      // Fast path: For small codebases (3 or fewer batches), use a direct approach
-      if (batchAnalyses.length <= 3) {
-        log('info', 'Small analysis dataset, using direct PRD generation');
-        
-        // Combine all batches into a single analysis for faster processing
-        const combinedBatchContent = batchAnalyses.join('\n\n');
-        
-        // Process with timeout
-        try {
-          const timeoutMs = 45000; // 45 second timeout
-          const combinedResponse = await Promise.race([
-            callLLMWithRetry({
-              system: 'You are a technical writer creating a concise PRD document.',
-              messages: [{
-                role: 'user',
-                content: `Create a concise Product Requirements Document based on these code analyses:
+      // Process with timeout
+      try {
+        const timeoutMs = 45000; // 45 second timeout
+        const combinedResponse = await Promise.race([
+          callLLMWithRetry({
+            system: 'You are a technical writer creating a concise PRD document.',
+            messages: [{
+              role: 'user',
+              content: `Create a concise Product Requirements Document based on these code analyses:
 
 ANALYSES:
 ${combinedBatchContent}
@@ -674,37 +673,37 @@ Create a brief PRD with:
 2. Core technology identification
 3. Key requirements only, organized by category
 4. Make it concise but comprehensive`
-              }],
-              max_tokens: 4000,
-              temperature: 0.2
-            }),
-            // Timeout promise
-            new Promise((resolve) => {
-              setTimeout(() => {
-                log('warn', `Direct PRD generation timed out after ${timeoutMs}ms`);
-                resolve({ 
-                  content: `# Project Requirements Document\n\n## Overview\nThis document captures key requirements identified from codebase analysis.\n\n## Requirements\n1. Implement core functionality\n2. Improve error handling\n3. Add proper documentation\n4. Enhance test coverage` 
-                });
-              }, timeoutMs);
-            })
-          ]);
-          
-          prdContent = combinedResponse?.content || 'PRD generation failed.';
-        } catch (error) {
-          log('error', `Error in direct PRD generation: ${error.message}`);
-          prdContent = `# Project Requirements Document\n\n## Overview\nThis document captures key requirements identified from codebase analysis.\n\n## Requirements\n1. Implement core functionality\n2. Improve error handling\n3. Add proper documentation\n4. Enhance test coverage`;
-        }
-      } else {
-        // Original approach for larger codebases
-        try {
-          const timeoutMs = 60000; // 60 second timeout
-          const combinedAnalysis = await Promise.race([
-            callLLMWithRetry({
-              system: 'You are an expert software architect and product manager synthesizing multiple code analyses into a comprehensive PRD.',
-              messages: [
-                {
-                  role: 'user',
-                  content: `Synthesize these ${batches.length} separate code analysis results into a comprehensive PRD document.
+            }],
+            max_tokens: 4000,
+            temperature: 0.2
+          }),
+          // Timeout promise
+          new Promise((resolve) => {
+            setTimeout(() => {
+              log('warn', `Direct PRD generation timed out after ${timeoutMs}ms`);
+              resolve({ 
+                content: `# Project Requirements Document\n\n## Overview\nThis document captures key requirements identified from codebase analysis.\n\n## Requirements\n1. Implement core functionality\n2. Improve error handling\n3. Add proper documentation\n4. Enhance test coverage` 
+              });
+            }, timeoutMs);
+          })
+        ]);
+        
+        prdContent = combinedResponse?.content || 'PRD generation failed.';
+      } catch (error) {
+        log('error', `Error in direct PRD generation: ${error.message}`);
+        prdContent = `# Project Requirements Document\n\n## Overview\nThis document captures key requirements identified from codebase analysis.\n\n## Requirements\n1. Implement core functionality\n2. Improve error handling\n3. Add proper documentation\n4. Enhance test coverage`;
+      }
+    } else {
+      // Original approach for larger codebases
+      try {
+        const timeoutMs = 60000; // 60 second timeout
+        const combinedAnalysis = await Promise.race([
+          callLLMWithRetry({
+            system: 'You are an expert software architect and product manager synthesizing multiple code analyses into a comprehensive PRD.',
+            messages: [
+              {
+                role: 'user',
+                content: `Synthesize these ${batches.length} separate code analysis results into a comprehensive PRD document.
 
 CODEBASE SUMMARY:
 - Total files analyzed: ${fileCount}
@@ -734,182 +733,26 @@ Create a unified Product Requirements Document (PRD) in plain text format that:
 
 Format as a detailed PRD with sections and numbered requirements. Make it comprehensive enough to generate at least 15-20 specific tasks.
 The PRD will be used to generate tasks automatically, so be specific about implementations needed.`
-                }
-              ],
-              max_tokens: 8000,
-              temperature: 0.2
-            }),
-            // Timeout promise
-            new Promise((resolve) => {
-              setTimeout(() => {
-                log('warn', `PRD generation timed out after ${timeoutMs}ms`);
-                resolve({ 
-                  content: `# Project Requirements Document\n\n## Overview\nThis document captures the key requirements identified from the codebase analysis. The analysis was limited due to processing time constraints.\n\n## Requirements\n1. Implement core functionality based on identified patterns\n2. Improve error handling and validation\n3. Enhance documentation and code comments\n4. Add comprehensive test coverage\n5. Optimize performance bottlenecks\n6. Address technical debt\n7. Improve user experience` 
-                });
-              }, timeoutMs);
-            })
-          ]);
-          
-          prdContent = combinedAnalysis?.content || 'PRD generation failed.';
-        } catch (error) {
-          log('error', `Error in PRD generation: ${error.message}`);
-          prdContent = `# Project Requirements Document\n\n## Overview\nThis document captures the key requirements identified from the codebase analysis.\n\n## Requirements\n1. Implement core functionality based on identified patterns\n2. Improve error handling and validation\n3. Enhance documentation and code comments\n4. Add comprehensive test coverage\n5. Optimize performance bottlenecks\n6. Address technical debt\n7. Improve user experience`;
-        }
-      }
-    } else {
-      // Use single call for smaller codebases
-      // Set up a timer to provide updates during the long API call
-      let progressInterval;
-      let subPhaseDetails = [
-        'Examining code structure and organization',
-        'Identifying file relationships and dependencies',
-        'Analyzing naming conventions and coding patterns',
-        'Detecting frameworks and libraries in use',
-        'Evaluating architecture patterns and components',
-        'Identifying database models and schemas',
-        'Analyzing API endpoints and interfaces',
-        'Evaluating test coverage and patterns',
-        'Identifying potential improvements and features',
-        'Formulating implementation recommendations',
-        'Structuring requirements documentation',
-        'Finalizing specifications and organization'
-      ];
-      
-      if (updateProgressDuringGeneration) {
-        // Track time for more accurate updates
-        const startTime = Date.now();
-        const estimatedTotalTime = 120000; // 2 minutes estimate
+              }
+            ],
+            max_tokens: 8000,
+            temperature: 0.2
+          }),
+          // Timeout promise
+          new Promise((resolve) => {
+            setTimeout(() => {
+              log('warn', `PRD generation timed out after ${timeoutMs}ms`);
+              resolve({ 
+                content: `# Project Requirements Document\n\n## Overview\nThis document captures the key requirements identified from the codebase analysis. The analysis was limited due to processing time constraints.\n\n## Requirements\n1. Implement core functionality based on identified patterns\n2. Improve error handling and validation\n3. Enhance documentation and code comments\n4. Add comprehensive test coverage\n5. Optimize performance bottlenecks\n6. Address technical debt\n7. Improve user experience` 
+              });
+            }, timeoutMs);
+          })
+        ]);
         
-        progressInterval = setInterval(() => {
-          // More intelligent progress tracking
-          const elapsedTime = Date.now() - startTime;
-          const estimatedProgress = Math.min(Math.floor((elapsedTime / estimatedTotalTime) * 100), 95);
-          
-          // Don't increment beyond our steps
-          if (currentStep < totalSteps - 1) {
-            // Calculate which step we should be in based on elapsed time
-            const targetStep = Math.min(
-              Math.floor((elapsedTime / estimatedTotalTime) * totalSteps),
-              totalSteps - 1
-            );
-            
-            // Only update if we're moving to a new step
-            if (targetStep > currentStep) {
-              currentStep = targetStep;
-              
-              // Get an appropriate detail message
-              const subPhaseIndex = Math.min(
-                Math.floor(elapsedTime / 10000) % subPhaseDetails.length,
-                subPhaseDetails.length - 1
-              );
-              
-              updateProgressDuringGeneration(
-                currentStep,
-                subPhaseDetails[subPhaseIndex]
-              );
-            } else {
-              // If we're still in the same step, rotate through detail messages
-              const subPhaseIndex = Math.floor(elapsedTime / 10000) % subPhaseDetails.length;
-              updateProgressDuringGeneration(
-                currentStep,
-                `${subPhaseDetails[subPhaseIndex]} (${Math.floor(estimatedProgress)}% complete)`
-              );
-            }
-          }
-        }, 5000); // Update every 5 seconds for more responsive progress
-      }
-      
-      try {
-        // Update the constructor for the callLLMWithProgressUpdates function
-        const callLLMWithProgressUpdates = async (options) => {
-          // Track the start time of the API call process
-          const apiStartTime = Date.now();
-          
-          // Helper function to format elapsed time
-          const getElapsedTimeString = () => {
-            const elapsed = Date.now() - apiStartTime;
-            const minutes = Math.floor(elapsed / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            return `${minutes}m ${seconds}s`;
-          };
-          
-          if (updateProgressDuringGeneration) {
-            updateProgressDuringGeneration(
-              totalSteps - 1,
-              `Preparing to generate PRD from codebase...`
-            );
-          }
-          
-          // Define a callback for retry events
-          const retryCallback = (retryCount, delayMs, error) => {
-            if (updateProgressDuringGeneration) {
-              updateProgressDuringGeneration(
-                totalSteps - 1,
-                `Retry ${retryCount} needed after error: ${error.message}. Waiting ${Math.round(delayMs/1000)}s... (Elapsed: ${getElapsedTimeString()})`
-              );
-            }
-          };
-          
-          try {
-            // Add our custom callback to the options
-            const enhancedOptions = {
-              ...options,
-              onRetry: retryCallback,
-              fastFail: true // Fail immediately on permanent errors
-            };
-            
-            // Display initial status
-            if (updateProgressDuringGeneration) {
-              updateProgressDuringGeneration(
-                totalSteps - 1,
-                `Sending request to Claude API... (Elapsed: ${getElapsedTimeString()})`
-              );
-            }
-            
-            // Use the enhanced callLLMWithRetry that now supports the callback
-            const response = await callLLMWithRetry(enhancedOptions);
-            
-            // Success! Update UI
-            if (updateProgressDuringGeneration) {
-              updateProgressDuringGeneration(
-                totalSteps - 1,
-                `Successfully generated PRD (Elapsed: ${getElapsedTimeString()})`
-              );
-            }
-            
-            return response;
-          } catch (error) {
-            // Final error after all retries
-            if (updateProgressDuringGeneration) {
-              updateProgressDuringGeneration(
-                totalSteps - 1,
-                `Failed to generate PRD after multiple attempts: ${error.message} (Elapsed: ${getElapsedTimeString()})`
-              );
-            }
-            throw error;
-          }
-        };
-        
-        const response = await callLLMWithProgressUpdates({
-          systemPrompt: 'You are a professional software architect and technical writer, skilled at creating comprehensive PRD documents.',
-          userPrompt: prdPrompt,
-          model: finalizationModel
-        });
-        
-        // Ensure response.content is a string before using it
-        prdContent = typeof response.content === 'string' 
-          ? response.content 
-          : JSON.stringify(response.content);
-        
-        if (updateProgressFn) {
-          await updateProgressFn(7, 'PRD document generated', 80);
-        }
-      } catch (err) {
-        // Clear the interval if it exists
-        if (progressInterval) {
-          clearInterval(progressInterval);
-        }
-        throw err;
+        prdContent = combinedAnalysis?.content || 'PRD generation failed.';
+      } catch (error) {
+        log('error', `Error in PRD generation: ${error.message}`);
+        prdContent = `# Project Requirements Document\n\n## Overview\nThis document captures the key requirements identified from the codebase analysis.\n\n## Requirements\n1. Implement core functionality based on identified patterns\n2. Improve error handling and validation\n3. Enhance documentation and code comments\n4. Add comprehensive test coverage\n5. Optimize performance bottlenecks\n6. Address technical debt\n7. Improve user experience`;
       }
     }
     
@@ -1074,7 +917,7 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     numTasks = 15,
     generatePRD = true, // Option to control PRD generation
     force = false, // Option to force overwrite existing files
-    useParallel = false, // Option to use parallel processing
+    useParallel = true, // Always use parallel processing by default
     skipComplexity = false, // Option to skip complexity analysis
     cliMode = forceCliProgressBar || false // Enable CLI mode automatically in quiet mode
   } = options;
@@ -1254,8 +1097,8 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
   // Use CLI progress reporter when in CLI mode, otherwise use the provided reportProgress
   const enhancedReportProgress = cliMode ? cliReportProgress : reportProgress;
   
-  // Log parallel processing mode if enabled (but only if not in quiet mode)
-  if (useParallel && process.env.LOG_LEVEL !== 'error') {
+  // Log parallel processing mode (but only if not in quiet mode)
+  if (process.env.LOG_LEVEL !== 'error') {
     log('info', 'Using parallel processing mode for faster file analysis');
   }
   
