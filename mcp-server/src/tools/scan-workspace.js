@@ -82,17 +82,30 @@ export function registerScanWorkspaceTool(server) {
         const updateProgress = async (progressData) => {
           if (reportProgress) {
             try {
+              // Get context values from progressData or use defaults to avoid undefined
+              const {
+                context = {}, 
+                workspacePath = params.directory || params.projectRoot || "workspace",
+                phase = "processing"
+              } = progressData;
+              
               // Enhanced progress data with more detailed information
               const enhancedProgressData = {
                 ...progressData,
                 // Add phase description if available
                 phaseDescription: phaseDescriptions[progressData.phase] || '',
-                // Enhance message to include phase context
-                message: `${progressData.message}`,
+                // Enhance message to include phase context if message is undefined
+                message: progressData.message || `Processing ${phase} phase`,
+                // Make sure detail is always defined
+                detail: progressData.detail || '',
+                // Ensure we always have a workspace path
+                workspacePath: workspacePath,
                 // If LLM processing is occurring, add timing context
-                detail: progressData.phase === 'prdGeneration' && !progressData.detail.includes('minutes')
+                detail: progressData.phase === 'prdGeneration' && 
+                       progressData.detail && 
+                       !progressData.detail.includes('minutes')
                   ? `${progressData.detail} (may take 2-3 minutes)`
-                  : progressData.detail
+                  : (progressData.detail || "Processing...")
               };
               
               await reportProgress(enhancedProgressData);
@@ -121,7 +134,7 @@ export function registerScanWorkspaceTool(server) {
           await updateProgress({
             phase: 'complete',
             message: 'Scan complete',
-            detail: `Generated ${result.taskCount} tasks based on ${params.generatePRD ? 'PRD and ' : ''}code analysis`,
+            detail: `Generated ${result.taskCount || 0} tasks based on ${params.generatePRD ? 'PRD and ' : ''}code analysis`,
             progress: 100
           });
         } else {

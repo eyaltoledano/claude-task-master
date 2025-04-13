@@ -164,12 +164,31 @@ export async function scanWorkspaceFunction(options, reportProgress = null) {
       generatePRD,
       cliMode // Pass CLI mode option to the scanner
     }, reportProgress ? async (progressData) => {
-      await reportProgress(progressData);
+      // Ensure progressData has all required fields to prevent undefined values
+      const enhancedProgressData = {
+        ...progressData,
+        // Add baseline context information if not provided in the progress data
+        detail: progressData.detail || "Processing...",
+        workspacePath: directory, // Ensure workspace path is always available
+        // Add any additional runtime context that might be needed
+        context: {
+          ...(progressData.context || {}),
+          projectRoot: resolvedProjectRoot,
+          outputFile: outputFile,
+          maxFiles: maxFiles,
+          numTasks: numTasks
+        }
+      };
+      
+      await reportProgress(enhancedProgressData);
     } : null);
     
+    // Get a valid task count even if tasks is undefined or not an array
+    const taskCount = Array.isArray(tasks) ? tasks.length : 0;
+    
     const successMessage = generatePRD ? 
-      `Successfully generated PRD and ${tasks.length} tasks from workspace analysis` :
-      `Successfully generated ${tasks.length} tasks from codebase analysis`;
+      `Successfully generated PRD and ${taskCount} tasks from workspace analysis` :
+      `Successfully generated ${taskCount} tasks from codebase analysis`;
     
     if (cliMode) {
       console.log(''); // Empty line after progress completes
@@ -183,7 +202,7 @@ export async function scanWorkspaceFunction(options, reportProgress = null) {
       success: true,
       message: successMessage,
       output: outputFile,
-      taskCount: tasks.length,
+      taskCount: taskCount,
       prdGenerated: generatePRD
     };
   } catch (error) {

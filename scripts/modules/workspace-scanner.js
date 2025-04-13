@@ -1110,28 +1110,32 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     }
     
     // Create a progress bar
-    const progressBar = cliMode ? createCliProgressBar(progress, 30) : '';
+    const progressBar = cliMode ? createCliProgressBar(progress || 0, 30) : '';
     
     // Format the output message
     const symbol = symbols[phase] || '•';
     const progressPrefix = cliMode ? `${symbol} ` : '';
-    const progressSuffix = cliMode ? ` ${progressBar} ${progress}%` : '';
+    const progressSuffix = cliMode ? ` ${progressBar} ${progress || 0}%` : '';
+    
+    // Make sure we have valid values for message and detail to avoid undefined
+    const safeMessage = message || `Processing ${phase} phase`;
+    const safeDetail = detail || '';
     
     // Log the progress message
     if (cliMode) {
       // Format for CLI output (no newline to allow overwriting)
-      process.stdout.write(`${progressPrefix}${message}${progressSuffix}`);
+      process.stdout.write(`${progressPrefix}${safeMessage}${progressSuffix}`);
       
       // Add detail on the next line if provided
-      if (detail && process.stdout.clearLine) {
-        process.stdout.write(`\n  → ${detail}`);
+      if (safeDetail && process.stdout.clearLine) {
+        process.stdout.write(`\n  → ${safeDetail}`);
         process.stdout.cursorTo(0);
       }
     } else {
       // Use normal logging for non-CLI mode
-      log(`[${phase}] ${message} - ${progress}%`);
-      if (detail) {
-        log(`  Detail: ${detail}`);
+      log(`[${phase}] ${safeMessage} - ${progress || 0}%`);
+      if (safeDetail) {
+        log(`  Detail: ${safeDetail}`);
       }
     }
     
@@ -1309,10 +1313,13 @@ export async function scanWorkspace(workspacePath, options = {}, reportProgress 
     
     // Final progress update with enhanced message
     if (enhancedReportProgress) {
+      // Make sure we have a valid task count to display
+      const taskCount = Array.isArray(tasks) ? tasks.length : 0;
+      
       enhancedReportProgress({
         phase: 'complete',
         message: statusMessages.complete,
-        detail: `Successfully generated ${tasks.length} tasks from workspace analysis`,
+        detail: `Successfully generated ${taskCount} tasks from workspace analysis`,
         progress: 100
       });
       
