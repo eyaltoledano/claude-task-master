@@ -1,0 +1,176 @@
+# Task ID: 51
+# Title: Implement Perplexity Research Command
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Create a command that allows users to quickly research topics using Perplexity AI, with options to include task context or custom prompts.
+# Details:
+Develop a new command called 'research' that integrates with Perplexity AI's API to fetch information on specified topics. The command should:
+
+1. Accept the following parameters:
+   - A search query string (required)
+   - A task or subtask ID for context (optional)
+   - A custom prompt to guide the research (optional)
+
+2. When a task/subtask ID is provided, extract relevant information from it to enrich the research query with context.
+
+3. Implement proper API integration with Perplexity, including authentication and rate limiting handling.
+
+4. Format and display the research results in a readable format in the terminal, with options to:
+   - Save the results to a file
+   - Copy results to clipboard
+   - Generate a summary of key points
+
+5. Cache research results to avoid redundant API calls for the same queries.
+
+6. Provide a configuration option to set the depth/detail level of research (quick overview vs. comprehensive).
+
+7. Handle errors gracefully, especially network issues or API limitations.
+
+The command should follow the existing CLI structure and maintain consistency with other commands in the system.
+
+# Test Strategy:
+1. Unit tests:
+   - Test the command with various combinations of parameters (query only, query+task, query+custom prompt, all parameters)
+   - Mock the Perplexity API responses to test different scenarios (successful response, error response, rate limiting)
+   - Verify that task context is correctly extracted and incorporated into the research query
+
+2. Integration tests:
+   - Test actual API calls to Perplexity with valid credentials (using a test account)
+   - Verify the caching mechanism works correctly for repeated queries
+   - Test error handling with intentionally invalid requests
+
+3. User acceptance testing:
+   - Have team members use the command for real research needs and provide feedback
+   - Verify the command works in different network environments
+   - Test the command with very long queries and responses
+
+4. Performance testing:
+   - Measure and optimize response time for queries
+   - Test behavior under poor network conditions
+
+Validate that the research results are properly formatted, readable, and that all output options (save, copy) function correctly.
+
+# Subtasks:
+## 1. Create Perplexity API Client Service [pending]
+### Dependencies: None
+### Description: Develop a service module that handles all interactions with the Perplexity AI API, including authentication, request formatting, and response handling.
+### Details:
+Implementation details:
+1. Create a new service file `services/perplexityService.js`
+2. Implement authentication using the PERPLEXITY_API_KEY from environment variables
+3. Create functions for making API requests to Perplexity with proper error handling:
+   - `queryPerplexity(searchQuery, options)` - Main function to query the API
+   - `handleRateLimiting(response)` - Logic to handle rate limits with exponential backoff
+4. Implement response parsing and formatting functions
+5. Add proper error handling for network issues, authentication problems, and API limitations
+6. Create a simple caching mechanism using a Map or object to store recent query results
+7. Add configuration options for different detail levels (quick vs comprehensive)
+
+Testing approach:
+- Write unit tests using Jest to verify API client functionality with mocked responses
+- Test error handling with simulated network failures
+- Verify caching mechanism works correctly
+- Test with various query types and options
+
+## 2. Implement Task Context Extraction Logic [pending]
+### Dependencies: None
+### Description: Create utility functions to extract relevant context from tasks and subtasks to enhance research queries with project-specific information.
+### Details:
+Implementation details:
+1. Create a new utility file `utils/contextExtractor.js`
+2. Implement a function `extractTaskContext(taskId)` that:
+   - Loads the task/subtask data from tasks.json
+   - Extracts relevant information (title, description, details)
+   - Formats the extracted information into a context string for research
+3. Add logic to handle both task and subtask IDs
+4. Implement a function to combine extracted context with the user's search query
+5. Create a function to identify and extract key terminology from tasks
+6. Add functionality to include parent task context when a subtask ID is provided
+7. Implement proper error handling for invalid task IDs
+
+Testing approach:
+- Write unit tests to verify context extraction from sample tasks
+- Test with various task structures and content types
+- Verify error handling for missing or invalid tasks
+- Test the quality of extracted context with sample queries
+
+## 3. Build Research Command CLI Interface [pending]
+### Dependencies: 51.1, 51.2
+### Description: Implement the Commander.js command structure for the 'research' command with all required options and parameters.
+### Details:
+Implementation details:
+1. Create a new command file `commands/research.js`
+2. Set up the Commander.js command structure with the following options:
+   - Required search query parameter
+   - `--task` or `-t` option for task/subtask ID
+   - `--prompt` or `-p` option for custom research prompt
+   - `--save` or `-s` option to save results to a file
+   - `--copy` or `-c` option to copy results to clipboard
+   - `--summary` or `-m` option to generate a summary
+   - `--detail` or `-d` option to set research depth (default: medium)
+3. Implement command validation logic
+4. Connect the command to the Perplexity service created in subtask 1
+5. Integrate the context extraction logic from subtask 2
+6. Register the command in the main CLI application
+7. Add help text and examples
+
+Testing approach:
+- Test command registration and option parsing
+- Verify command validation logic works correctly
+- Test with various combinations of options
+- Ensure proper error messages for invalid inputs
+
+## 4. Implement Results Processing and Output Formatting [pending]
+### Dependencies: 51.1, 51.3
+### Description: Create functionality to process, format, and display research results in the terminal with options for saving, copying, and summarizing.
+### Details:
+Implementation details:
+1. Create a new module `utils/researchFormatter.js`
+2. Implement terminal output formatting with:
+   - Color-coded sections for better readability
+   - Proper text wrapping for terminal width
+   - Highlighting of key points
+3. Add functionality to save results to a file:
+   - Create a `research-results` directory if it doesn't exist
+   - Save results with timestamp and query in filename
+   - Support multiple formats (text, markdown, JSON)
+4. Implement clipboard copying using a library like `clipboardy`
+5. Create a summarization function that extracts key points from research results
+6. Add progress indicators during API calls
+7. Implement pagination for long results
+
+Testing approach:
+- Test output formatting with various result lengths and content types
+- Verify file saving functionality creates proper files with correct content
+- Test clipboard functionality
+- Verify summarization produces useful results
+
+## 5. Implement Caching and Results Management System [pending]
+### Dependencies: 51.1, 51.4
+### Description: Create a persistent caching system for research results and implement functionality to manage, retrieve, and reference previous research.
+### Details:
+Implementation details:
+1. Create a research results database using a simple JSON file or SQLite:
+   - Store queries, timestamps, and results
+   - Index by query and related task IDs
+2. Implement cache retrieval and validation:
+   - Check for cached results before making API calls
+   - Validate cache freshness with configurable TTL
+3. Add commands to manage research history:
+   - List recent research queries
+   - Retrieve past research by ID or search term
+   - Clear cache or delete specific entries
+4. Create functionality to associate research results with tasks:
+   - Add metadata linking research to specific tasks
+   - Implement command to show all research related to a task
+5. Add configuration options for cache behavior in user settings
+6. Implement export/import functionality for research data
+
+Testing approach:
+- Test cache storage and retrieval with various queries
+- Verify cache invalidation works correctly
+- Test history management commands
+- Verify task association functionality
+- Test with large cache sizes to ensure performance
+

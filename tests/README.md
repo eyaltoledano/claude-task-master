@@ -60,4 +60,4 @@ We aim for at least 80% test coverage for all code paths. Coverage reports can b
 
 ```bash
 npm run test:coverage
-``` 
+```

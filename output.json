@@ -1,6 +1,6 @@
 {
-  "key": "value",
-  "nested": {
-    "prop": true
-  }
+	"key": "value",
+	"nested": {
+		"prop": true
+	}
 }

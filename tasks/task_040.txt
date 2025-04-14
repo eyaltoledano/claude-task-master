@@ -1,102 +1,39 @@
 # Task ID: 40
-# Title: Implement Project Funding Documentation and Support Infrastructure
-# Status: in-progress
+# Title: Implement 'plan' Command for Task Implementation Planning
+# Status: pending
 # Dependencies: None
 # Priority: medium
-# Description: Create FUNDING.yml for GitHub Sponsors integration that outlines all financial support options for the Task Master project.
+# Description: Create a new 'plan' command that appends a structured implementation plan to tasks or subtasks, generating step-by-step instructions for execution based on the task content.
 # Details:
-This task involves creating a FUNDING.yml file to enable and manage funding options for the Task Master project:
+Implement a new 'plan' command that will append a structured implementation plan to existing tasks or subtasks. The implementation should:
 
-**FUNDING.yml file**:
-   - Create a .github/FUNDING.yml file following GitHub's specifications
-   - Include configuration for multiple funding platforms:
-     - GitHub Sponsors (primary if available)
-     - Open Collective
-     - Patreon
-     - Ko-fi
-     - Liberapay
-     - Custom funding URLs (project website donation page)
-   - Research and reference successful implementation patterns from Vue.js, React, and TypeScript projects
-   - Ensure the FUNDING.yml contains sufficient information to guide users on how to support the project
-   - Include comments within the YAML file to provide context for each funding option
+1. Accept an '--id' parameter that can reference either a task or subtask ID
+2. Determine whether the ID refers to a task or subtask and retrieve the appropriate content from tasks.json and/or individual task files
+3. Generate a step-by-step implementation plan using AI (Claude by default)
+4. Support a '--research' flag to use Perplexity instead of Claude when needed
+5. Format the generated plan within XML tags like `<implementation_plan as of timestamp>...</implementation_plan>`
+6. Append this plan to the implementation details section of the task/subtask
+7. Display a confirmation card indicating the implementation plan was successfully created
 
-The implementation should maintain consistent branding and messaging with the rest of the Task Master project. Research at least 5 successful open source projects to identify best practices in funding configuration.
+The implementation plan should be detailed and actionable, containing specific steps such as searching for files, creating new files, modifying existing files, etc. The goal is to frontload planning work into the task/subtask so execution can begin immediately.
+
+Reference the existing 'update-subtask' command implementation as a starting point, as it uses a similar approach for appending content to tasks. Ensure proper error handling for cases where the specified ID doesn't exist or when API calls fail.
 
 # Test Strategy:
-Testing should verify the technical implementation of the FUNDING.yml file:
+Testing should verify:
 
-1. **FUNDING.yml validation**:
-   - Verify the file is correctly placed in the .github directory
-   - Validate YAML syntax using a linter
-   - Test that GitHub correctly displays funding options on the repository page
-   - Verify all links to external funding platforms are functional
+1. Command correctly identifies and retrieves content for both task and subtask IDs
+2. Implementation plans are properly generated and formatted with XML tags and timestamps
+3. Plans are correctly appended to the implementation details section without overwriting existing content
+4. The '--research' flag successfully switches the backend from Claude to Perplexity
+5. Appropriate error messages are displayed for invalid IDs or API failures
+6. Confirmation card is displayed after successful plan creation
 
-2. **User experience testing**:
-   - Test the complete funding workflow from a potential supporter's perspective
-   - Verify the process is intuitive and barriers to contribution are minimized
-   - Check that the Sponsor button appears correctly on GitHub
-   - Ensure all funding platform links resolve to the correct destinations
-   - Gather feedback from 2-3 potential users on clarity and ease of use
+Test cases should include:
+- Running 'plan --id 123' on an existing task
+- Running 'plan --id 123.1' on an existing subtask
+- Running 'plan --id 123 --research' to test the Perplexity integration
+- Running 'plan --id 999' with a non-existent ID to verify error handling
+- Running the command on tasks with existing implementation plans to ensure proper appending
 
-# Subtasks:
-## 1. Research and Create FUNDING.yml File [done]
-### Dependencies: None
-### Description: Research successful funding configurations and create the .github/FUNDING.yml file for GitHub Sponsors integration and other funding platforms.
-### Details:
-Implementation steps:
-1. Create the .github directory at the project root if it doesn't exist
-2. Research funding configurations from 5 successful open source projects (Vue.js, React, TypeScript, etc.)
-3. Document the patterns and approaches used in these projects
-4. Create the FUNDING.yml file with the following platforms:
-   - GitHub Sponsors (primary)
-   - Open Collective
-   - Patreon
-   - Ko-fi
-   - Liberapay
-   - Custom donation URL for the project website
-5. Validate the YAML syntax using a linter
-6. Test the file by pushing to a test branch and verifying the Sponsor button appears correctly on GitHub
-
-Testing approach:
-- Validate YAML syntax using yamllint or similar tool
-- Test on GitHub by checking if the Sponsor button appears in the repository
-- Verify each funding link resolves to the correct destination
-
-## 4. Add Documentation Comments to FUNDING.yml [pending]
-### Dependencies: 40.1
-### Description: Add comprehensive comments within the FUNDING.yml file to provide context and guidance for each funding option.
-### Details:
-Implementation steps:
-1. Add a header comment explaining the purpose of the file
-2. For each funding platform entry, add comments that explain:
-   - What the platform is
-   - How funds are processed on this platform
-   - Any specific benefits of using this platform
-   - Brief instructions for potential sponsors
-3. Include a comment about how sponsors will be acknowledged
-4. Add information about fund allocation (maintenance, new features, infrastructure)
-5. Ensure comments follow YAML comment syntax and don't break the file structure
-
-Testing approach:
-- Validate that the YAML file still passes linting with comments added
-- Verify the file still functions correctly on GitHub
-- Have at least one team member review the comments for clarity and completeness
-
-## 5. Integrate Funding Information in Project README [pending]
-### Dependencies: 40.1, 40.4
-### Description: Add a section to the project README that highlights the funding options and directs users to the Sponsor button.
-### Details:
-Implementation steps:
-1. Create a 'Support the Project' or 'Sponsorship' section in the README.md
-2. Explain briefly why financial support matters for the project
-3. Direct users to the GitHub Sponsor button
-4. Mention the alternative funding platforms available
-5. Include a brief note on how funds will be used
-6. Add any relevant funding badges (e.g., Open Collective, GitHub Sponsors)
-
-Testing approach:
-- Review the README section for clarity and conciseness
-- Verify all links work correctly
-- Ensure the section is appropriately visible but doesn't overshadow project information
-- Check that badges render correctly
-
+Manually review the quality of generated plans to ensure they provide actionable, step-by-step guidance that accurately reflects the task requirements.

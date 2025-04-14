@@ -3,27 +3,173 @@
  * Utility functions for Task Master CLI integration
  */
 
-import { spawnSync } from "child_process";
-import path from "path";
+import { spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 
+// Import path utilities to ensure consistent path resolution
+import {
+	lastFoundProjectRoot,
+	PROJECT_MARKERS
+} from '../core/utils/path-utils.js';
+
 /**
- * Get normalized project root path 
+ * Get normalized project root path
  * @param {string|undefined} projectRootRaw - Raw project root from arguments
  * @param {Object} log - Logger object
  * @returns {string} - Normalized absolute path to project root
  */
-export function getProjectRoot(projectRootRaw, log) {
-  // Make sure projectRoot is set
-  const rootPath = projectRootRaw || process.cwd();
-  
-  // Ensure projectRoot is absolute
-  const projectRoot = path.isAbsolute(rootPath) 
-    ? rootPath 
-    : path.resolve(process.cwd(), rootPath);
-  
-  log.info(`Using project root: ${projectRoot}`);
-  return projectRoot;
+function getProjectRoot(projectRootRaw, log) {
+	// PRECEDENCE ORDER:
+	// 1. Environment variable override
+	// 2. Explicitly provided projectRoot in args
+	// 3. Previously found/cached project root
+	// 4. Current directory if it has project markers
+	// 5. Current directory with warning
+
+	// 1. Check for environment variable override
+	if (process.env.TASK_MASTER_PROJECT_ROOT) {
+		const envRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+		const absolutePath = path.isAbsolute(envRoot)
+			? envRoot
+			: path.resolve(process.cwd(), envRoot);
+		log.info(
+			`Using project root from TASK_MASTER_PROJECT_ROOT environment variable: ${absolutePath}`
+		);
+		return absolutePath;
+	}
+
+	// 2. If project root is explicitly provided, use it
+	if (projectRootRaw) {
+		const absolutePath = path.isAbsolute(projectRootRaw)
+			? projectRootRaw
+			: path.resolve(process.cwd(), projectRootRaw);
+
+		log.info(`Using explicitly provided project root: ${absolutePath}`);
+		return absolutePath;
+	}
+
+	// 3. If we have a last found project root from a tasks.json search, use that for consistency
+	if (lastFoundProjectRoot) {
+		log.info(
+			`Using last known project root where tasks.json was found: ${lastFoundProjectRoot}`
+		);
+		return lastFoundProjectRoot;
+	}
+
+	// 4. Check if the current directory has any indicators of being a task-master project
+	const currentDir = process.cwd();
+	if (
+		PROJECT_MARKERS.some((marker) => {
+			const markerPath = path.join(currentDir, marker);
+			return fs.existsSync(markerPath);
+		})
+	) {
+		log.info(
+			`Using current directory as project root (found project markers): ${currentDir}`
+		);
+		return currentDir;
+	}
+
+	// 5. Default to current working directory but warn the user
+	log.warn(
+		`No task-master project detected in current directory. Using ${currentDir} as project root.`
+	);
+	log.warn(
+		'Consider using --project-root to specify the correct project location or set TASK_MASTER_PROJECT_ROOT environment variable.'
+	);
+	return currentDir;
+}
+
+/**
+ * Extracts the project root path from the FastMCP session object.
+ * @param {Object} session - The FastMCP session object.
+ * @param {Object} log - Logger object.
+ * @returns {string|null} - The absolute path to the project root, or null if not found.
+ */
+function getProjectRootFromSession(session, log) {
+	try {
+		// Add detailed logging of session structure
+		log.info(
+			`Session object: ${JSON.stringify({
+				hasSession: !!session,
+				hasRoots: !!session?.roots,
+				rootsType: typeof session?.roots,
+				isRootsArray: Array.isArray(session?.roots),
+				rootsLength: session?.roots?.length,
+				firstRoot: session?.roots?.[0],
+				hasRootsRoots: !!session?.roots?.roots,
+				rootsRootsType: typeof session?.roots?.roots,
+				isRootsRootsArray: Array.isArray(session?.roots?.roots),
+				rootsRootsLength: session?.roots?.roots?.length,
+				firstRootsRoot: session?.roots?.roots?.[0]
+			})}`
+		);
+
+		// ALWAYS ensure we return a valid path for project root
+		const cwd = process.cwd();
+
+		// If we have a session with roots array
+		if (session?.roots?.[0]?.uri) {
+			const rootUri = session.roots[0].uri;
+			log.info(`Found rootUri in session.roots[0].uri: ${rootUri}`);
+			const rootPath = rootUri.startsWith('file://')
+				? decodeURIComponent(rootUri.slice(7))
+				: rootUri;
+			log.info(`Decoded rootPath: ${rootPath}`);
+			return rootPath;
+		}
+
+		// If we have a session with roots.roots array (different structure)
+		if (session?.roots?.roots?.[0]?.uri) {
+			const rootUri = session.roots.roots[0].uri;
+			log.info(`Found rootUri in session.roots.roots[0].uri: ${rootUri}`);
+			const rootPath = rootUri.startsWith('file://')
+				? decodeURIComponent(rootUri.slice(7))
+				: rootUri;
+			log.info(`Decoded rootPath: ${rootPath}`);
+			return rootPath;
+		}
+
+		// Get the server's location and try to find project root -- this is a fallback necessary in Cursor IDE
+		const serverPath = process.argv[1]; // This should be the path to server.js, which is in mcp-server/
+		if (serverPath && serverPath.includes('mcp-server')) {
+			// Find the mcp-server directory first
+			const mcpServerIndex = serverPath.indexOf('mcp-server');
+			if (mcpServerIndex !== -1) {
+				// Get the path up to mcp-server, which should be the project root
+				const projectRoot = serverPath.substring(0, mcpServerIndex - 1); // -1 to remove trailing slash
+
+				// Verify this looks like our project root by checking for key files/directories
+				if (
+					fs.existsSync(path.join(projectRoot, '.cursor')) ||
+					fs.existsSync(path.join(projectRoot, 'mcp-server')) ||
+					fs.existsSync(path.join(projectRoot, 'package.json'))
+				) {
+					log.info(`Found project root from server path: ${projectRoot}`);
+					return projectRoot;
+				}
+			}
+		}
+
+		// ALWAYS ensure we return a valid path as a last resort
+		log.info(`Using current working directory as ultimate fallback: ${cwd}`);
+		return cwd;
+	} catch (e) {
+		// If we have a server path, use it as a basis for project root
+		const serverPath = process.argv[1];
+		if (serverPath && serverPath.includes('mcp-server')) {
+			const mcpServerIndex = serverPath.indexOf('mcp-server');
+			return mcpServerIndex !== -1
+				? serverPath.substring(0, mcpServerIndex - 1)
+				: process.cwd();
+		}
+
+		// Only use cwd if it's not "/"
+		const cwd = process.cwd();
+		return cwd !== '/' ? cwd : '/';
+	}
 }
 
 /**
@@ -34,101 +180,116 @@ export function getProjectRoot(projectRootRaw, log) {
  * @param {Function} processFunction - Optional function to process successful result data
  * @returns {Object} - Standardized MCP response object
  */
-export function handleApiResult(result, log, errorPrefix = 'API error', processFunction = processMCPResponseData) {
-  if (!result.success) {
-    const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
-    // Include cache status in error logs
-    log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
-    return createErrorResponse(errorMsg);
-  }
-  
-  // Process the result data if needed
-  const processedData = processFunction ? processFunction(result.data) : result.data;
-  
-  // Log success including cache status
-  log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+function handleApiResult(
+	result,
+	log,
+	errorPrefix = 'API error',
+	processFunction = processMCPResponseData
+) {
+	if (!result.success) {
+		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
+		// Include cache status in error logs
+		log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
+		return createErrorResponse(errorMsg);
+	}
 
-  // Create the response payload including the fromCache flag
-  const responsePayload = {
-    fromCache: result.fromCache, // Get the flag from the original 'result'
-    data: processedData         // Nest the processed data under a 'data' key
-  };
-  
-  // Pass this combined payload to createContentResponse
-  return createContentResponse(responsePayload);
+	// Process the result data if needed
+	const processedData = processFunction
+		? processFunction(result.data)
+		: result.data;
+
+	// Log success including cache status
+	log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+
+	// Create the response payload including the fromCache flag
+	const responsePayload = {
+		fromCache: result.fromCache, // Get the flag from the original 'result'
+		data: processedData // Nest the processed data under a 'data' key
+	};
+
+	// Pass this combined payload to createContentResponse
+	return createContentResponse(responsePayload);
 }
 
 /**
- * Execute a Task Master CLI command using child_process
- * @param {string} command - The command to execute
- * @param {Object} log - The logger object from FastMCP
+ * Executes a task-master CLI command synchronously.
+ * @param {string} command - The command to execute (e.g., 'add-task')
+ * @param {Object} log - Logger instance
  * @param {Array} args - Arguments for the command
  * @param {string|undefined} projectRootRaw - Optional raw project root path (will be normalized internally)
+ * @param {Object|null} customEnv - Optional object containing environment variables to pass to the child process
  * @returns {Object} - The result of the command execution
  */
-export function executeTaskMasterCommand(
-  command,
-  log,
-  args = [],
-  projectRootRaw = null
+function executeTaskMasterCommand(
+	command,
+	log,
+	args = [],
+	projectRootRaw = null,
+	customEnv = null // Changed from session to customEnv
 ) {
-  try {
-    // Normalize project root internally using the getProjectRoot utility
-    const cwd = getProjectRoot(projectRootRaw, log);
+	try {
+		// Normalize project root internally using the getProjectRoot utility
+		const cwd = getProjectRoot(projectRootRaw, log);
 
-    log.info(
-      `Executing task-master ${command} with args: ${JSON.stringify(
-        args
-      )} in directory: ${cwd}`
-    );
+		log.info(
+			`Executing task-master ${command} with args: ${JSON.stringify(
+				args
+			)} in directory: ${cwd}`
+		);
 
-    // Prepare full arguments array
-    const fullArgs = [command, ...args];
+		// Prepare full arguments array
+		const fullArgs = [command, ...args];
 
-    // Common options for spawn
-    const spawnOptions = {
-      encoding: "utf8",
-      cwd: cwd,
-    };
+		// Common options for spawn
+		const spawnOptions = {
+			encoding: 'utf8',
+			cwd: cwd,
+			// Merge process.env with customEnv, giving precedence to customEnv
+			env: { ...process.env, ...(customEnv || {}) }
+		};
 
-    // Execute the command using the global task-master CLI or local script
-    // Try the global CLI first
-    let result = spawnSync("task-master", fullArgs, spawnOptions);
+		// Log the environment being passed (optional, for debugging)
+		// log.info(`Spawn options env: ${JSON.stringify(spawnOptions.env)}`);
 
-    // If global CLI is not available, try fallback to the local script
-    if (result.error && result.error.code === "ENOENT") {
-      log.info("Global task-master not found, falling back to local script");
-      result = spawnSync("node", ["scripts/dev.js", ...fullArgs], spawnOptions);
-    }
+		// Execute the command using the global task-master CLI or local script
+		// Try the global CLI first
+		let result = spawnSync('task-master', fullArgs, spawnOptions);
 
-    if (result.error) {
-      throw new Error(`Command execution error: ${result.error.message}`);
-    }
+		// If global CLI is not available, try fallback to the local script
+		if (result.error && result.error.code === 'ENOENT') {
+			log.info('Global task-master not found, falling back to local script');
+			// Pass the same spawnOptions (including env) to the fallback
+			result = spawnSync('node', ['scripts/dev.js', ...fullArgs], spawnOptions);
+		}
 
-    if (result.status !== 0) {
-      // Improve error handling by combining stderr and stdout if stderr is empty
-      const errorOutput = result.stderr
-        ? result.stderr.trim()
-        : result.stdout
-        ? result.stdout.trim()
-        : "Unknown error";
-      throw new Error(
-        `Command failed with exit code ${result.status}: ${errorOutput}`
-      );
-    }
+		if (result.error) {
+			throw new Error(`Command execution error: ${result.error.message}`);
+		}
 
-    return {
-      success: true,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    };
-  } catch (error) {
-    log.error(`Error executing task-master command: ${error.message}`);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
+		if (result.status !== 0) {
+			// Improve error handling by combining stderr and stdout if stderr is empty
+			const errorOutput = result.stderr
+				? result.stderr.trim()
+				: result.stdout
+					? result.stdout.trim()
+					: 'Unknown error';
+			throw new Error(
+				`Command failed with exit code ${result.status}: ${errorOutput}`
+			);
+		}
+
+		return {
+			success: true,
+			stdout: result.stdout,
+			stderr: result.stderr
+		};
+	} catch (error) {
+		log.error(`Error executing task-master command: ${error.message}`);
+		return {
+			success: false,
+			error: error.message
+		};
+	}
 }
 
 /**
@@ -143,130 +304,45 @@ export function executeTaskMasterCommand(
  * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
  *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
-export async function getCachedOrExecute({ cacheKey, actionFn, log }) {
-  // Check cache first
-  const cachedResult = contextManager.getCachedData(cacheKey);
-  
-  if (cachedResult !== undefined) {
-    log.info(`Cache hit for key: ${cacheKey}`);
-    // Return the cached data in the same structure as a fresh result
-    return {
-      ...cachedResult,  // Spread the cached result to maintain its structure
-      fromCache: true   // Just add the fromCache flag
-    };
-  }
+async function getCachedOrExecute({ cacheKey, actionFn, log }) {
+	// Check cache first
+	const cachedResult = contextManager.getCachedData(cacheKey);
 
-  log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
-  
-  // Execute the action function if cache missed
-  const result = await actionFn();
-  
-  // If the action was successful, cache the result (but without fromCache flag)
-  if (result.success && result.data !== undefined) {
-    log.info(`Action successful. Caching result for key: ${cacheKey}`);
-    // Cache the entire result structure (minus the fromCache flag)
-    const { fromCache, ...resultToCache } = result;
-    contextManager.setCachedData(cacheKey, resultToCache);
-  } else if (!result.success) {
-    log.warn(`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`);
-  } else {
-    log.warn(`Action for cache key ${cacheKey} succeeded but returned no data. Result not cached.`);
-  }
-  
-  // Return the fresh result, indicating it wasn't from cache
-  return {
-    ...result,
-    fromCache: false
-  };
-}
+	if (cachedResult !== undefined) {
+		log.info(`Cache hit for key: ${cacheKey}`);
+		// Return the cached data in the same structure as a fresh result
+		return {
+			...cachedResult, // Spread the cached result to maintain its structure
+			fromCache: true // Just add the fromCache flag
+		};
+	}
 
-/**
- * Executes a Task Master tool action with standardized error handling, logging, and response formatting.
- * Integrates caching logic via getCachedOrExecute if a cacheKeyGenerator is provided.
- *
- * @param {Object} options - Options for executing the tool action
- * @param {Function} options.actionFn - The core action function (e.g., listTasksDirect) to execute. Should return {success, data, error}.
- * @param {Object} options.args - Arguments for the action, passed to actionFn and cacheKeyGenerator.
- * @param {Object} options.log - Logger object from FastMCP.
- * @param {string} options.actionName - Name of the action for logging purposes.
- * @param {Function} [options.cacheKeyGenerator] - Optional function to generate a cache key based on args. If provided, caching is enabled.
- * @param {Function} [options.processResult=processMCPResponseData] - Optional function to process the result data before returning.
- * @returns {Promise<Object>} - Standardized response for FastMCP.
- */
-export async function executeMCPToolAction({
-  actionFn,
-  args,
-  log,
-  actionName,
-  cacheKeyGenerator, // Note: We decided not to use this for listTasks for now
-  processResult = processMCPResponseData
-}) {
-  try {
-    // Log the action start
-    log.info(`${actionName} with args: ${JSON.stringify(args)}`);
+	log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
 
-    // Normalize project root path - common to almost all tools
-    const projectRootRaw = args.projectRoot || process.cwd();
-    const projectRoot = path.isAbsolute(projectRootRaw)
-      ? projectRootRaw
-      : path.resolve(process.cwd(), projectRootRaw);
+	// Execute the action function if cache missed
+	const result = await actionFn();
 
-    log.info(`Using project root: ${projectRoot}`);
-    const executionArgs = { ...args, projectRoot };
+	// If the action was successful, cache the result (but without fromCache flag)
+	if (result.success && result.data !== undefined) {
+		log.info(`Action successful. Caching result for key: ${cacheKey}`);
+		// Cache the entire result structure (minus the fromCache flag)
+		const { fromCache, ...resultToCache } = result;
+		contextManager.setCachedData(cacheKey, resultToCache);
+	} else if (!result.success) {
+		log.warn(
+			`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`
+		);
+	} else {
+		log.warn(
+			`Action for cache key ${cacheKey} succeeded but returned no data. Result not cached.`
+		);
+	}
 
-    let result;
-    const cacheKey = cacheKeyGenerator ? cacheKeyGenerator(executionArgs) : null;
-
-    if (cacheKey) {
-      // Use caching utility
-      log.info(`Caching enabled for ${actionName} with key: ${cacheKey}`);
-      const cacheWrappedAction = async () => await actionFn(executionArgs, log);
-      result = await getCachedOrExecute({
-         cacheKey,
-         actionFn: cacheWrappedAction,
-         log
-      });
-    } else {
-      // Execute directly without caching
-      log.info(`Caching disabled for ${actionName}. Executing directly.`);
-      // We need to ensure the result from actionFn has a fromCache field
-      // Let's assume actionFn now consistently returns { success, data/error, fromCache }
-      // The current listTasksDirect does this if it calls getCachedOrExecute internally.
-      result = await actionFn(executionArgs, log);
-      // If the action function itself doesn't determine caching (like our original listTasksDirect refactor attempt),
-      // we'd set it here:
-      // result.fromCache = false; 
-    }
-
-    // Handle error case
-    if (!result.success) {
-      const errorMsg = result.error?.message || `Unknown error during ${actionName.toLowerCase()}`;
-      // Include fromCache in error logs too, might be useful
-      log.error(`Error during ${actionName.toLowerCase()}: ${errorMsg}. From cache: ${result.fromCache}`);
-      return createErrorResponse(errorMsg);
-    }
-
-    // Log success
-    log.info(`Successfully completed ${actionName.toLowerCase()}. From cache: ${result.fromCache}`);
-
-    // Process the result data if needed
-    const processedData = processResult ? processResult(result.data) : result.data;
-
-    // Create a new object that includes both the processed data and the fromCache flag
-    const responsePayload = {
-      fromCache: result.fromCache, // Include the flag here
-      data: processedData         // Embed the actual data under a 'data' key
-    };
-    
-    // Pass this combined payload to createContentResponse
-    return createContentResponse(responsePayload);
-
-  } catch (error) {
-    // Handle unexpected errors during the execution wrapper itself
-    log.error(`Unexpected error during ${actionName.toLowerCase()} execution wrapper: ${error.message}`);
-    console.error(error.stack); // Log stack for debugging wrapper errors
-    return createErrorResponse(`Internal server error during ${actionName.toLowerCase()}: ${error.message}`);
-  }
+	// Return the fresh result, indicating it wasn't from cache
+	return {
+		...result,
+		fromCache: false
+	};
 }
 
 /**
@@ -276,56 +352,68 @@ export async function executeMCPToolAction({
  * @param {string[]} fieldsToRemove - An array of field names to remove.
  * @returns {Object|Array} - The processed data with specified fields removed.
  */
-export function processMCPResponseData(taskOrData, fieldsToRemove = ['details', 'testStrategy']) {
-  if (!taskOrData) {
-    return taskOrData;
-  }
+function processMCPResponseData(
+	taskOrData,
+	fieldsToRemove = ['details', 'testStrategy']
+) {
+	if (!taskOrData) {
+		return taskOrData;
+	}
 
-  // Helper function to process a single task object
-  const processSingleTask = (task) => {
-    if (typeof task !== 'object' || task === null) {
-        return task;
-    }
-      
-    const processedTask = { ...task };
-    
-    // Remove specified fields from the task
-    fieldsToRemove.forEach(field => {
-      delete processedTask[field];
-    });
+	// Helper function to process a single task object
+	const processSingleTask = (task) => {
+		if (typeof task !== 'object' || task === null) {
+			return task;
+		}
 
-    // Recursively process subtasks if they exist and are an array
-    if (processedTask.subtasks && Array.isArray(processedTask.subtasks)) {
-      // Use processArrayOfTasks to handle the subtasks array
-      processedTask.subtasks = processArrayOfTasks(processedTask.subtasks); 
-    }
-    
-    return processedTask;
-  };
-  
-  // Helper function to process an array of tasks
-  const processArrayOfTasks = (tasks) => {
-      return tasks.map(processSingleTask);
-  };
+		const processedTask = { ...task };
 
-  // Check if the input is a data structure containing a 'tasks' array (like from listTasks)
-  if (typeof taskOrData === 'object' && taskOrData !== null && Array.isArray(taskOrData.tasks)) {
-    return {
-      ...taskOrData, // Keep other potential fields like 'stats', 'filter'
-      tasks: processArrayOfTasks(taskOrData.tasks),
-    };
-  } 
-  // Check if the input is likely a single task object (add more checks if needed)
-  else if (typeof taskOrData === 'object' && taskOrData !== null && 'id' in taskOrData && 'title' in taskOrData) {
-    return processSingleTask(taskOrData);
-  }
-  // Check if the input is an array of tasks directly (less common but possible)
-  else if (Array.isArray(taskOrData)) {
-      return processArrayOfTasks(taskOrData);
-  }
-  
-  // If it doesn't match known task structures, return it as is
-  return taskOrData; 
+		// Remove specified fields from the task
+		fieldsToRemove.forEach((field) => {
+			delete processedTask[field];
+		});
+
+		// Recursively process subtasks if they exist and are an array
+		if (processedTask.subtasks && Array.isArray(processedTask.subtasks)) {
+			// Use processArrayOfTasks to handle the subtasks array
+			processedTask.subtasks = processArrayOfTasks(processedTask.subtasks);
+		}
+
+		return processedTask;
+	};
+
+	// Helper function to process an array of tasks
+	const processArrayOfTasks = (tasks) => {
+		return tasks.map(processSingleTask);
+	};
+
+	// Check if the input is a data structure containing a 'tasks' array (like from listTasks)
+	if (
+		typeof taskOrData === 'object' &&
+		taskOrData !== null &&
+		Array.isArray(taskOrData.tasks)
+	) {
+		return {
+			...taskOrData, // Keep other potential fields like 'stats', 'filter'
+			tasks: processArrayOfTasks(taskOrData.tasks)
+		};
+	}
+	// Check if the input is likely a single task object (add more checks if needed)
+	else if (
+		typeof taskOrData === 'object' &&
+		taskOrData !== null &&
+		'id' in taskOrData &&
+		'title' in taskOrData
+	) {
+		return processSingleTask(taskOrData);
+	}
+	// Check if the input is an array of tasks directly (less common but possible)
+	else if (Array.isArray(taskOrData)) {
+		return processArrayOfTasks(taskOrData);
+	}
+
+	// If it doesn't match known task structures, return it as is
+	return taskOrData;
 }
 
 /**
@@ -333,20 +421,21 @@ export function processMCPResponseData(taskOrData, fieldsToRemove = ['details', 
  * @param {string|Object} content - Content to include in response
  * @returns {Object} - Content response object in FastMCP format
  */
-export function createContentResponse(content) {
-  // FastMCP requires text type, so we format objects as JSON strings
-  return {
-    content: [
-      {
-        type: "text", 
-        text: typeof content === 'object' ? 
-          // Format JSON nicely with indentation
-          JSON.stringify(content, null, 2) : 
-          // Keep other content types as-is
-          String(content)
-      }
-    ]
-  };
+function createContentResponse(content) {
+	// FastMCP requires text type, so we format objects as JSON strings
+	return {
+		content: [
+			{
+				type: 'text',
+				text:
+					typeof content === 'object'
+						? // Format JSON nicely with indentation
+							JSON.stringify(content, null, 2)
+						: // Keep other content types as-is
+							String(content)
+			}
+		]
+	};
 }
 
 /**
@@ -355,13 +444,24 @@ export function createContentResponse(content) {
  * @returns {Object} - Error content response object in FastMCP format
  */
 export function createErrorResponse(errorMessage) {
-  return {
-    content: [
-      {
-        type: "text",
-        text: `Error: ${errorMessage}`
-      }
-    ],
-    isError: true
-  };
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `Error: ${errorMessage}`
+			}
+		],
+		isError: true
+	};
 }
+
+// Ensure all functions are exported
+export {
+	getProjectRoot,
+	getProjectRootFromSession,
+	handleApiResult,
+	executeTaskMasterCommand,
+	getCachedOrExecute,
+	processMCPResponseData,
+	createContentResponse
+};

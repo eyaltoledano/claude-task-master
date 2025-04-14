@@ -10,62 +10,68 @@ const mockLog = jest.fn();
 
 // Mock dependencies
 jest.mock('@anthropic-ai/sdk', () => {
-  const mockCreate = jest.fn().mockResolvedValue({
-    content: [{ text: 'AI response' }],
-  });
-  const mockAnthropicInstance = {
-    messages: {
-      create: mockCreate
-    }
-  };
-  const mockAnthropicConstructor = jest.fn().mockImplementation(() => mockAnthropicInstance);
-  return {
-    Anthropic: mockAnthropicConstructor
-  };
+	const mockCreate = jest.fn().mockResolvedValue({
+		content: [{ text: 'AI response' }]
+	});
+	const mockAnthropicInstance = {
+		messages: {
+			create: mockCreate
+		}
+	};
+	const mockAnthropicConstructor = jest
+		.fn()
+		.mockImplementation(() => mockAnthropicInstance);
+	return {
+		Anthropic: mockAnthropicConstructor
+	};
 });
 
 // Use jest.fn() directly for OpenAI mock
 const mockOpenAIInstance = {
-  chat: {
-    completions: {
-      create: jest.fn().mockResolvedValue({
-        choices: [{ message: { content: 'Perplexity response' } }],
-      }),
-    },
-  },
+	chat: {
+		completions: {
+			create: jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'Perplexity response' } }]
+			})
+		}
+	}
 };
 const mockOpenAI = jest.fn().mockImplementation(() => mockOpenAIInstance);
 
 jest.mock('openai', () => {
-  return { default: mockOpenAI };
+	return { default: mockOpenAI };
 });
 
 jest.mock('dotenv', () => ({
-  config: jest.fn(),
+	config: jest.fn()
 }));
 
 jest.mock('../../scripts/modules/utils.js', () => ({
-  CONFIG: {
-    model: 'claude-3-sonnet-20240229',
-    temperature: 0.7,
-    maxTokens: 4000,
-  },
-  log: mockLog,
-  sanitizePrompt: jest.fn(text => text),
+	CONFIG: {
+		model: 'claude-3-sonnet-20240229',
+		temperature: 0.7,
+		maxTokens: 4000
+	},
+	log: mockLog,
+	sanitizePrompt: jest.fn((text) => text)
 }));
 
 jest.mock('../../scripts/modules/ui.js', () => ({
-  startLoadingIndicator: jest.fn().mockReturnValue('mockLoader'),
-  stopLoadingIndicator: jest.fn(),
+	startLoadingIndicator: jest.fn().mockReturnValue('mockLoader'),
+	stopLoadingIndicator: jest.fn()
 }));
 
 // Mock anthropic global object
 global.anthropic = {
-  messages: {
-    create: jest.fn().mockResolvedValue({
-      content: [{ text: '[{"id": 1, "title": "Test", "description": "Test", "dependencies": [], "details": "Test"}]' }],
-    }),
-  },
+	messages: {
+		create: jest.fn().mockResolvedValue({
+			content: [
+				{
+					text: '[{"id": 1, "title": "Test", "description": "Test", "dependencies": [], "details": "Test"}]'
+				}
+			]
+		})
+	}
 };
 
 // Mock process.env
@@ -75,20 +81,20 @@ const originalEnv = process.env;
 import { Anthropic } from '@anthropic-ai/sdk';
 
 describe('AI Services Module', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env = { ...originalEnv };
-    process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
-    process.env.PERPLEXITY_API_KEY = 'test-perplexity-key';
-  });
+	beforeEach(() => {
+		jest.clearAllMocks();
+		process.env = { ...originalEnv };
+		process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+		process.env.PERPLEXITY_API_KEY = 'test-perplexity-key';
+	});
 
-  afterEach(() => {
-    process.env = originalEnv;
-  });
+	afterEach(() => {
+		process.env = originalEnv;
+	});
 
-  describe('parseSubtasksFromText function', () => {
-    test('should parse subtasks from JSON text', () => {
-      const text = `Here's your list of subtasks:
+	describe('parseSubtasksFromText function', () => {
+		test('should parse subtasks from JSON text', () => {
+			const text = `Here's your list of subtasks:
       
 [
   {
@@ -109,31 +115,31 @@ describe('AI Services Module', () => {
 
 These subtasks will help you implement the parent task efficiently.`;
 
-      const result = parseSubtasksFromText(text, 1, 2, 5);
-      
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        id: 1,
-        title: 'Implement database schema',
-        description: 'Design and implement the database schema for user data',
-        status: 'pending',
-        dependencies: [],
-        details: 'Create tables for users, preferences, and settings',
-        parentTaskId: 5
-      });
-      expect(result[1]).toEqual({
-        id: 2,
-        title: 'Create API endpoints',
-        description: 'Develop RESTful API endpoints for user operations',
-        status: 'pending',
-        dependencies: [],
-        details: 'Implement CRUD operations for user management',
-        parentTaskId: 5
-      });
-    });
+			const result = parseSubtasksFromText(text, 1, 2, 5);
 
-    test('should handle subtasks with dependencies', () => {
-      const text = `
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual({
+				id: 1,
+				title: 'Implement database schema',
+				description: 'Design and implement the database schema for user data',
+				status: 'pending',
+				dependencies: [],
+				details: 'Create tables for users, preferences, and settings',
+				parentTaskId: 5
+			});
+			expect(result[1]).toEqual({
+				id: 2,
+				title: 'Create API endpoints',
+				description: 'Develop RESTful API endpoints for user operations',
+				status: 'pending',
+				dependencies: [],
+				details: 'Implement CRUD operations for user management',
+				parentTaskId: 5
+			});
+		});
+
+		test('should handle subtasks with dependencies', () => {
+			const text = `
 [
   {
     "id": 1,
@@ -151,15 +157,15 @@ These subtasks will help you implement the parent task efficiently.`;
   }
 ]`;
 
-      const result = parseSubtasksFromText(text, 1, 2, 5);
-      
-      expect(result).toHaveLength(2);
-      expect(result[0].dependencies).toEqual([]);
-      expect(result[1].dependencies).toEqual([1]);
-    });
+			const result = parseSubtasksFromText(text, 1, 2, 5);
 
-    test('should handle complex dependency lists', () => {
-      const text = `
+			expect(result).toHaveLength(2);
+			expect(result[0].dependencies).toEqual([]);
+			expect(result[1].dependencies).toEqual([1]);
+		});
+
+		test('should handle complex dependency lists', () => {
+			const text = `
 [
   {
     "id": 1,
@@ -184,39 +190,22 @@ These subtasks will help you implement the parent task efficiently.`;
   }
 ]`;
 
-      const result = parseSubtasksFromText(text, 1, 3, 5);
-      
-      expect(result).toHaveLength(3);
-      expect(result[2].dependencies).toEqual([1, 2]);
-    });
+			const result = parseSubtasksFromText(text, 1, 3, 5);
 
-    test('should create fallback subtasks for empty text', () => {
-      const emptyText = '';
-      
-      const result = parseSubtasksFromText(emptyText, 1, 2, 5);
-      
-      // Verify fallback subtasks structure
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        id: 1,
-        title: 'Subtask 1',
-        description: 'Auto-generated fallback subtask',
-        status: 'pending',
-        dependencies: [],
-        parentTaskId: 5
-      });
-      expect(result[1]).toMatchObject({
-        id: 2,
-        title: 'Subtask 2',
-        description: 'Auto-generated fallback subtask',
-        status: 'pending',
-        dependencies: [],
-        parentTaskId: 5
-      });
-    });
+			expect(result).toHaveLength(3);
+			expect(result[2].dependencies).toEqual([1, 2]);
+		});
 
-    test('should normalize subtask IDs', () => {
-      const text = `
+		test('should throw an error for empty text', () => {
+			const emptyText = '';
+
+			expect(() => parseSubtasksFromText(emptyText, 1, 2, 5)).toThrow(
+				'Empty text provided, cannot parse subtasks'
+			);
+		});
+
+		test('should normalize subtask IDs', () => {
+			const text = `
 [
   {
     "id": 10,
@@ -234,15 +223,15 @@ These subtasks will help you implement the parent task efficiently.`;
   }
 ]`;
 
-      const result = parseSubtasksFromText(text, 1, 2, 5);
-      
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(1); // Should normalize to starting ID
-      expect(result[1].id).toBe(2); // Should normalize to starting ID + 1
-    });
+			const result = parseSubtasksFromText(text, 1, 2, 5);
 
-    test('should convert string dependencies to numbers', () => {
-      const text = `
+			expect(result).toHaveLength(2);
+			expect(result[0].id).toBe(1); // Should normalize to starting ID
+			expect(result[1].id).toBe(2); // Should normalize to starting ID + 1
+		});
+
+		test('should convert string dependencies to numbers', () => {
+			const text = `
 [
   {
     "id": 1,
@@ -260,140 +249,125 @@ These subtasks will help you implement the parent task efficiently.`;
   }
 ]`;
 
-      const result = parseSubtasksFromText(text, 1, 2, 5);
-      
-      expect(result[1].dependencies).toEqual([1]);
-      expect(typeof result[1].dependencies[0]).toBe('number');
-    });
+			const result = parseSubtasksFromText(text, 1, 2, 5);
 
-    test('should create fallback subtasks for invalid JSON', () => {
-      const text = `This is not valid JSON and cannot be parsed`;
+			expect(result[1].dependencies).toEqual([1]);
+			expect(typeof result[1].dependencies[0]).toBe('number');
+		});
 
-      const result = parseSubtasksFromText(text, 1, 2, 5);
-      
-      // Verify fallback subtasks structure
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        id: 1,
-        title: 'Subtask 1',
-        description: 'Auto-generated fallback subtask',
-        status: 'pending',
-        dependencies: [],
-        parentTaskId: 5
-      });
-      expect(result[1]).toMatchObject({
-        id: 2,
-        title: 'Subtask 2',
-        description: 'Auto-generated fallback subtask',
-        status: 'pending',
-        dependencies: [],
-        parentTaskId: 5
-      });
-    });
-  });
+		test('should throw an error for invalid JSON', () => {
+			const text = `This is not valid JSON and cannot be parsed`;
 
-  describe('handleClaudeError function', () => {
-    // Import the function directly for testing
-    let handleClaudeError;
-    
-    beforeAll(async () => {
-      // Dynamic import to get the actual function
-      const module = await import('../../scripts/modules/ai-services.js');
-      handleClaudeError = module.handleClaudeError;
-    });
+			expect(() => parseSubtasksFromText(text, 1, 2, 5)).toThrow(
+				'Could not locate valid JSON array in the response'
+			);
+		});
+	});
 
-    test('should handle overloaded_error type', () => {
-      const error = {
-        type: 'error',
-        error: {
-          type: 'overloaded_error',
-          message: 'Claude is experiencing high volume'
-        }
-      };
-      
-      // Mock process.env to include PERPLEXITY_API_KEY
-      const originalEnv = process.env;
-      process.env = { ...originalEnv, PERPLEXITY_API_KEY: 'test-key' };
-      
-      const result = handleClaudeError(error);
-      
-      // Restore original env
-      process.env = originalEnv;
-      
-      expect(result).toContain('Claude is currently overloaded');
-      expect(result).toContain('fall back to Perplexity AI');
-    });
+	describe('handleClaudeError function', () => {
+		// Import the function directly for testing
+		let handleClaudeError;
 
-    test('should handle rate_limit_error type', () => {
-      const error = {
-        type: 'error',
-        error: {
-          type: 'rate_limit_error',
-          message: 'Rate limit exceeded'
-        }
-      };
-      
-      const result = handleClaudeError(error);
-      
-      expect(result).toContain('exceeded the rate limit');
-    });
+		beforeAll(async () => {
+			// Dynamic import to get the actual function
+			const module = await import('../../scripts/modules/ai-services.js');
+			handleClaudeError = module.handleClaudeError;
+		});
 
-    test('should handle invalid_request_error type', () => {
-      const error = {
-        type: 'error',
-        error: {
-          type: 'invalid_request_error',
-          message: 'Invalid request parameters'
-        }
-      };
-      
-      const result = handleClaudeError(error);
-      
-      expect(result).toContain('issue with the request format');
-    });
+		test('should handle overloaded_error type', () => {
+			const error = {
+				type: 'error',
+				error: {
+					type: 'overloaded_error',
+					message: 'Claude is experiencing high volume'
+				}
+			};
 
-    test('should handle timeout errors', () => {
-      const error = {
-        message: 'Request timed out after 60000ms'
-      };
-      
-      const result = handleClaudeError(error);
-      
-      expect(result).toContain('timed out');
-    });
+			// Mock process.env to include PERPLEXITY_API_KEY
+			const originalEnv = process.env;
+			process.env = { ...originalEnv, PERPLEXITY_API_KEY: 'test-key' };
 
-    test('should handle network errors', () => {
-      const error = {
-        message: 'Network error occurred'
-      };
-      
-      const result = handleClaudeError(error);
-      
-      expect(result).toContain('network error');
-    });
+			const result = handleClaudeError(error);
 
-    test('should handle generic errors', () => {
-      const error = {
-        message: 'Something unexpected happened'
-      };
-      
-      const result = handleClaudeError(error);
-      
-      expect(result).toContain('Error communicating with Claude');
-      expect(result).toContain('Something unexpected happened');
-    });
-  });
+			// Restore original env
+			process.env = originalEnv;
 
-  describe('Anthropic client configuration', () => {
-    test('should include output-128k beta header in client configuration', async () => {
-      // Read the file content to verify the change is present
-      const fs = await import('fs');
-      const path = await import('path');
-      const filePath = path.resolve('./scripts/modules/ai-services.js');
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      
-      // Check if the beta header is in the file
-      expect(fileContent).toContain("'anthropic-beta': 'output-128k-2025-02-19'");
-    });
-  });
-}); 
+			expect(result).toContain('Claude is currently overloaded');
+			expect(result).toContain('fall back to Perplexity AI');
+		});
+
+		test('should handle rate_limit_error type', () => {
+			const error = {
+				type: 'error',
+				error: {
+					type: 'rate_limit_error',
+					message: 'Rate limit exceeded'
+				}
+			};
+
+			const result = handleClaudeError(error);
+
+			expect(result).toContain('exceeded the rate limit');
+		});
+
+		test('should handle invalid_request_error type', () => {
+			const error = {
+				type: 'error',
+				error: {
+					type: 'invalid_request_error',
+					message: 'Invalid request parameters'
+				}
+			};
+
+			const result = handleClaudeError(error);
+
+			expect(result).toContain('issue with the request format');
+		});
+
+		test('should handle timeout errors', () => {
+			const error = {
+				message: 'Request timed out after 60000ms'
+			};
+
+			const result = handleClaudeError(error);
+
+			expect(result).toContain('timed out');
+		});
+
+		test('should handle network errors', () => {
+			const error = {
+				message: 'Network error occurred'
+			};
+
+			const result = handleClaudeError(error);
+
+			expect(result).toContain('network error');
+		});
+
+		test('should handle generic errors', () => {
+			const error = {
+				message: 'Something unexpected happened'
+			};
+
+			const result = handleClaudeError(error);
+
+			expect(result).toContain('Error communicating with Claude');
+			expect(result).toContain('Something unexpected happened');
+		});
+	});
+
+	describe('Anthropic client configuration', () => {
+		test('should include output-128k beta header in client configuration', async () => {
+			// Read the file content to verify the change is present
+			const fs = await import('fs');
+			const path = await import('path');
+			const filePath = path.resolve('./scripts/modules/ai-services.js');
+			const fileContent = fs.readFileSync(filePath, 'utf8');
+
+			// Check if the beta header is in the file
+			expect(fileContent).toContain(
+				"'anthropic-beta': 'output-128k-2025-02-19'"
+			);
+		});
+	});
+});

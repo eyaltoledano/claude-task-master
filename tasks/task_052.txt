@@ -1,0 +1,51 @@
+# Task ID: 52
+# Title: Implement Task Suggestion Command for CLI
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Create a new CLI command 'suggest-task' that generates contextually relevant task suggestions based on existing tasks and allows users to accept, decline, or regenerate suggestions.
+# Details:
+Implement a new command 'suggest-task' that can be invoked from the CLI to generate intelligent task suggestions. The command should:
+
+1. Collect a snapshot of all existing tasks including their titles, descriptions, statuses, and dependencies
+2. Extract parent task subtask titles (not full objects) to provide context
+3. Use this information to generate a contextually appropriate new task suggestion
+4. Present the suggestion to the user in a clear format
+5. Provide an interactive interface with options to:
+   - Accept the suggestion (creating a new task with the suggested details)
+   - Decline the suggestion (exiting without creating a task)
+   - Regenerate a new suggestion (requesting an alternative)
+
+The implementation should follow a similar pattern to the 'generate-subtask' command but operate at the task level rather than subtask level. The command should use the project's existing AI integration to analyze the current task structure and generate relevant suggestions. Ensure proper error handling for API failures and implement a timeout mechanism for suggestion generation.
+
+The command should accept optional flags to customize the suggestion process, such as:
+- `--parent=<task-id>` to suggest a task related to a specific parent task
+- `--type=<task-type>` to suggest a specific type of task (feature, bugfix, refactor, etc.)
+- `--context=<additional-context>` to provide additional information for the suggestion
+
+# Test Strategy:
+Testing should verify both the functionality and user experience of the suggest-task command:
+
+1. Unit tests:
+   - Test the task collection mechanism to ensure it correctly gathers existing task data
+   - Test the context extraction logic to verify it properly isolates relevant subtask titles
+   - Test the suggestion generation with mocked AI responses
+   - Test the command's parsing of various flag combinations
+
+2. Integration tests:
+   - Test the end-to-end flow with a mock project structure
+   - Verify the command correctly interacts with the AI service
+   - Test the task creation process when a suggestion is accepted
+
+3. User interaction tests:
+   - Test the accept/decline/regenerate interface works correctly
+   - Verify appropriate feedback is displayed to the user
+   - Test handling of unexpected user inputs
+
+4. Edge cases:
+   - Test behavior when run in an empty project with no existing tasks
+   - Test with malformed task data
+   - Test with API timeouts or failures
+   - Test with extremely large numbers of existing tasks
+
+Manually verify the command produces contextually appropriate suggestions that align with the project's current state and needs.

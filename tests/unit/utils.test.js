@@ -8,547 +8,607 @@ import path from 'path';
 import chalk from 'chalk';
 
 // Import the actual module to test
-import { 
-  truncate, 
-  log, 
-  readJSON, 
-  writeJSON, 
-  sanitizePrompt, 
-  readComplexityReport, 
-  findTaskInComplexityReport, 
-  taskExists, 
-  formatTaskId, 
-  findCycles,
-  CONFIG,
-  LOG_LEVELS,
-  findTaskById,
-  toKebabCase
+import {
+	truncate,
+	log,
+	readJSON,
+	writeJSON,
+	sanitizePrompt,
+	readComplexityReport,
+	findTaskInComplexityReport,
+	taskExists,
+	formatTaskId,
+	findCycles,
+	CONFIG,
+	LOG_LEVELS,
+	findTaskById,
+	toKebabCase
 } from '../../scripts/modules/utils.js';
 
 // Skip the import of detectCamelCaseFlags as we'll implement our own version for testing
 
 // Mock chalk functions
 jest.mock('chalk', () => ({
-  gray: jest.fn(text => `gray:${text}`),
-  blue: jest.fn(text => `blue:${text}`),
-  yellow: jest.fn(text => `yellow:${text}`),
-  red: jest.fn(text => `red:${text}`),
-  green: jest.fn(text => `green:${text}`)
+	gray: jest.fn((text) => `gray:${text}`),
+	blue: jest.fn((text) => `blue:${text}`),
+	yellow: jest.fn((text) => `yellow:${text}`),
+	red: jest.fn((text) => `red:${text}`),
+	green: jest.fn((text) => `green:${text}`)
 }));
 
 // Test implementation of detectCamelCaseFlags
 function testDetectCamelCaseFlags(args) {
-  const camelCaseFlags = [];
-  for (const arg of args) {
-    if (arg.startsWith('--')) {
-      const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
-      
-      // Skip single-word flags - they can't be camelCase
-      if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
-        continue;
-      }
-      
-      // Check for camelCase pattern (lowercase followed by uppercase)
-      if (/[a-z][A-Z]/.test(flagName)) {
-        const kebabVersion = toKebabCase(flagName);
-        if (kebabVersion !== flagName) {
-          camelCaseFlags.push({ 
-            original: flagName, 
-            kebabCase: kebabVersion 
-          });
-        }
-      }
-    }
-  }
-  return camelCaseFlags;
+	const camelCaseFlags = [];
+	for (const arg of args) {
+		if (arg.startsWith('--')) {
+			const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
+
+			// Skip single-word flags - they can't be camelCase
+			if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
+				continue;
+			}
+
+			// Check for camelCase pattern (lowercase followed by uppercase)
+			if (/[a-z][A-Z]/.test(flagName)) {
+				const kebabVersion = toKebabCase(flagName);
+				if (kebabVersion !== flagName) {
+					camelCaseFlags.push({
+						original: flagName,
+						kebabCase: kebabVersion
+					});
+				}
+			}
+		}
+	}
+	return camelCaseFlags;
 }
 
 describe('Utils Module', () => {
-  // Setup fs mocks for each test
-  let fsReadFileSyncSpy;
-  let fsWriteFileSyncSpy;
-  let fsExistsSyncSpy;
-  let pathJoinSpy;
+	// Setup fs mocks for each test
+	let fsReadFileSyncSpy;
+	let fsWriteFileSyncSpy;
+	let fsExistsSyncSpy;
+	let pathJoinSpy;
 
-  beforeEach(() => {
-    // Setup fs spy functions for each test
-    fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation();
-    fsWriteFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
-    fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation();
-    pathJoinSpy = jest.spyOn(path, 'join').mockImplementation();
-    
-    // Clear all mocks before each test
-    jest.clearAllMocks();
-  });
+	beforeEach(() => {
+		// Setup fs spy functions for each test
+		fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation();
+		fsWriteFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+		fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation();
+		pathJoinSpy = jest.spyOn(path, 'join').mockImplementation();
 
-  afterEach(() => {
-    // Restore all mocked functions
-    fsReadFileSyncSpy.mockRestore();
-    fsWriteFileSyncSpy.mockRestore();
-    fsExistsSyncSpy.mockRestore();
-    pathJoinSpy.mockRestore();
-  });
+		// Clear all mocks before each test
+		jest.clearAllMocks();
+	});
 
-  describe('truncate function', () => {
-    test('should return the original string if shorter than maxLength', () => {
-      const result = truncate('Hello', 10);
-      expect(result).toBe('Hello');
-    });
+	afterEach(() => {
+		// Restore all mocked functions
+		fsReadFileSyncSpy.mockRestore();
+		fsWriteFileSyncSpy.mockRestore();
+		fsExistsSyncSpy.mockRestore();
+		pathJoinSpy.mockRestore();
+	});
 
-    test('should truncate the string and add ellipsis if longer than maxLength', () => {
-      const result = truncate('This is a long string that needs truncation', 20);
-      expect(result).toBe('This is a long st...');
-    });
+	describe('truncate function', () => {
+		test('should return the original string if shorter than maxLength', () => {
+			const result = truncate('Hello', 10);
+			expect(result).toBe('Hello');
+		});
 
-    test('should handle empty string', () => {
-      const result = truncate('', 10);
-      expect(result).toBe('');
-    });
+		test('should truncate the string and add ellipsis if longer than maxLength', () => {
+			const result = truncate(
+				'This is a long string that needs truncation',
+				20
+			);
+			expect(result).toBe('This is a long st...');
+		});
 
-    test('should return null when input is null', () => {
-      const result = truncate(null, 10);
-      expect(result).toBe(null);
-    });
+		test('should handle empty string', () => {
+			const result = truncate('', 10);
+			expect(result).toBe('');
+		});
 
-    test('should return undefined when input is undefined', () => {
-      const result = truncate(undefined, 10);
-      expect(result).toBe(undefined);
-    });
+		test('should return null when input is null', () => {
+			const result = truncate(null, 10);
+			expect(result).toBe(null);
+		});
 
-    test('should handle maxLength of 0 or negative', () => {
-      // When maxLength is 0, slice(0, -3) returns 'He'
-      const result1 = truncate('Hello', 0);
-      expect(result1).toBe('He...');
-      
-      // When maxLength is negative, slice(0, -8) returns nothing
-      const result2 = truncate('Hello', -5);
-      expect(result2).toBe('...');
-    });
-  });
+		test('should return undefined when input is undefined', () => {
+			const result = truncate(undefined, 10);
+			expect(result).toBe(undefined);
+		});
 
-  describe('log function', () => {
-    // Save original console.log
-    const originalConsoleLog = console.log;
-    
-    beforeEach(() => {
-      // Mock console.log for each test
-      console.log = jest.fn();
-    });
-    
-    afterEach(() => {
-      // Restore original console.log after each test
-      console.log = originalConsoleLog;
-    });
+		test('should handle maxLength of 0 or negative', () => {
+			// When maxLength is 0, slice(0, -3) returns 'He'
+			const result1 = truncate('Hello', 0);
+			expect(result1).toBe('He...');
 
-    test('should log messages according to log level', () => {
-      // Test with info level (1)
-      CONFIG.logLevel = 'info';
-      
-      log('debug', 'Debug message');
-      log('info', 'Info message');
-      log('warn', 'Warning message');
-      log('error', 'Error message');
-      
-      // Debug should not be logged (level 0 < 1)
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Debug message'));
-      
-      // Info and above should be logged
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Info message'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Warning message'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Error message'));
-      
-      // Verify the formatting includes icons
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('ℹ️'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('⚠️'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('❌'));
-    });
+			// When maxLength is negative, slice(0, -8) returns nothing
+			const result2 = truncate('Hello', -5);
+			expect(result2).toBe('...');
+		});
+	});
 
-    test('should not log messages below the configured log level', () => {
-      // Set log level to error (3)
-      CONFIG.logLevel = 'error';
-      
-      log('debug', 'Debug message');
-      log('info', 'Info message');
-      log('warn', 'Warning message');
-      log('error', 'Error message');
-      
-      // Only error should be logged
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Debug message'));
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Info message'));
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Warning message'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Error message'));
-    });
-    
-    test('should join multiple arguments into a single message', () => {
-      CONFIG.logLevel = 'info';
-      log('info', 'Message', 'with', 'multiple', 'parts');
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Message with multiple parts'));
-    });
-  });
+	describe('log function', () => {
+		// Save original console.log
+		const originalConsoleLog = console.log;
 
-  describe('readJSON function', () => {
-    test('should read and parse a valid JSON file', () => {
-      const testData = { key: 'value', nested: { prop: true } };
-      fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testData));
-      
-      const result = readJSON('test.json');
-      
-      expect(fsReadFileSyncSpy).toHaveBeenCalledWith('test.json', 'utf8');
-      expect(result).toEqual(testData);
-    });
+		beforeEach(() => {
+			// Mock console.log for each test
+			console.log = jest.fn();
+		});
 
-    test('should handle file not found errors', () => {
-      fsReadFileSyncSpy.mockImplementation(() => {
-        throw new Error('ENOENT: no such file or directory');
-      });
-      
-      // Mock console.error
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
-      const result = readJSON('nonexistent.json');
-      
-      expect(result).toBeNull();
-      
-      // Restore console.error
-      consoleSpy.mockRestore();
-    });
+		afterEach(() => {
+			// Restore original console.log after each test
+			console.log = originalConsoleLog;
+		});
 
-    test('should handle invalid JSON format', () => {
-      fsReadFileSyncSpy.mockReturnValue('{ invalid json: }');
-      
-      // Mock console.error
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
-      const result = readJSON('invalid.json');
-      
-      expect(result).toBeNull();
-      
-      // Restore console.error
-      consoleSpy.mockRestore();
-    });
-  });
+		test('should log messages according to log level', () => {
+			// Test with info level (1)
+			CONFIG.logLevel = 'info';
 
-  describe('writeJSON function', () => {
-    test('should write JSON data to a file', () => {
-      const testData = { key: 'value', nested: { prop: true } };
-      
-      writeJSON('output.json', testData);
-      
-      expect(fsWriteFileSyncSpy).toHaveBeenCalledWith(
-        'output.json', 
-        JSON.stringify(testData, null, 2)
-      );
-    });
+			log('debug', 'Debug message');
+			log('info', 'Info message');
+			log('warn', 'Warning message');
+			log('error', 'Error message');
 
-    test('should handle file write errors', () => {
-      const testData = { key: 'value' };
-      
-      fsWriteFileSyncSpy.mockImplementation(() => {
-        throw new Error('Permission denied');
-      });
-      
-      // Mock console.error
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
-      // Function shouldn't throw, just log error
-      expect(() => writeJSON('protected.json', testData)).not.toThrow();
-      
-      // Restore console.error
-      consoleSpy.mockRestore();
-    });
-  });
+			// Debug should not be logged (level 0 < 1)
+			expect(console.log).not.toHaveBeenCalledWith(
+				expect.stringContaining('Debug message')
+			);
 
-  describe('sanitizePrompt function', () => {
-    test('should escape double quotes in prompts', () => {
-      const prompt = 'This is a "quoted" prompt with "multiple" quotes';
-      const expected = 'This is a \\"quoted\\" prompt with \\"multiple\\" quotes';
-      
-      expect(sanitizePrompt(prompt)).toBe(expected);
-    });
+			// Info and above should be logged
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('Info message')
+			);
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('Warning message')
+			);
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('Error message')
+			);
 
-    test('should handle prompts with no special characters', () => {
-      const prompt = 'This is a regular prompt without quotes';
-      
-      expect(sanitizePrompt(prompt)).toBe(prompt);
-    });
-    
-    test('should handle empty strings', () => {
-      expect(sanitizePrompt('')).toBe('');
-    });
-  });
+			// Verify the formatting includes text prefixes
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('[INFO]')
+			);
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('[WARN]')
+			);
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('[ERROR]')
+			);
+		});
 
-  describe('readComplexityReport function', () => {
-    test('should read and parse a valid complexity report', () => {
-      const testReport = {
-        meta: { generatedAt: new Date().toISOString() },
-        complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
-      };
-      
-      fsExistsSyncSpy.mockReturnValue(true);
-      fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
-      pathJoinSpy.mockReturnValue('/path/to/report.json');
-      
-      const result = readComplexityReport();
-      
-      expect(fsExistsSyncSpy).toHaveBeenCalled();
-      expect(fsReadFileSyncSpy).toHaveBeenCalledWith('/path/to/report.json', 'utf8');
-      expect(result).toEqual(testReport);
-    });
+		test('should not log messages below the configured log level', () => {
+			// Set log level to error (3)
+			CONFIG.logLevel = 'error';
 
-    test('should handle missing report file', () => {
-      fsExistsSyncSpy.mockReturnValue(false);
-      pathJoinSpy.mockReturnValue('/path/to/report.json');
-      
-      const result = readComplexityReport();
-      
-      expect(result).toBeNull();
-      expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
-    });
+			log('debug', 'Debug message');
+			log('info', 'Info message');
+			log('warn', 'Warning message');
+			log('error', 'Error message');
 
-    test('should handle custom report path', () => {
-      const testReport = {
-        meta: { generatedAt: new Date().toISOString() },
-        complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
-      };
-      
-      fsExistsSyncSpy.mockReturnValue(true);
-      fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
-      
-      const customPath = '/custom/path/report.json';
-      const result = readComplexityReport(customPath);
-      
-      expect(fsExistsSyncSpy).toHaveBeenCalledWith(customPath);
-      expect(fsReadFileSyncSpy).toHaveBeenCalledWith(customPath, 'utf8');
-      expect(result).toEqual(testReport);
-    });
-  });
+			// Only error should be logged
+			expect(console.log).not.toHaveBeenCalledWith(
+				expect.stringContaining('Debug message')
+			);
+			expect(console.log).not.toHaveBeenCalledWith(
+				expect.stringContaining('Info message')
+			);
+			expect(console.log).not.toHaveBeenCalledWith(
+				expect.stringContaining('Warning message')
+			);
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('Error message')
+			);
+		});
 
-  describe('findTaskInComplexityReport function', () => {
-    test('should find a task by ID in a valid report', () => {
-      const testReport = {
-        complexityAnalysis: [
-          { taskId: 1, complexityScore: 7 },
-          { taskId: 2, complexityScore: 4 },
-          { taskId: 3, complexityScore: 9 }
-        ]
-      };
-      
-      const result = findTaskInComplexityReport(testReport, 2);
-      
-      expect(result).toEqual({ taskId: 2, complexityScore: 4 });
-    });
+		test('should join multiple arguments into a single message', () => {
+			CONFIG.logLevel = 'info';
+			log('info', 'Message', 'with', 'multiple', 'parts');
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining('Message with multiple parts')
+			);
+		});
+	});
 
-    test('should return null for non-existent task ID', () => {
-      const testReport = {
-        complexityAnalysis: [
-          { taskId: 1, complexityScore: 7 },
-          { taskId: 2, complexityScore: 4 }
-        ]
-      };
-      
-      const result = findTaskInComplexityReport(testReport, 99);
-      
-      // Fixing the expectation to match actual implementation
-      // The function might return null or undefined based on implementation
-      expect(result).toBeFalsy();
-    });
+	describe('readJSON function', () => {
+		test('should read and parse a valid JSON file', () => {
+			const testData = { key: 'value', nested: { prop: true } };
+			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testData));
 
-    test('should handle invalid report structure', () => {
-      // Test with null report
-      expect(findTaskInComplexityReport(null, 1)).toBeNull();
-      
-      // Test with missing complexityAnalysis
-      expect(findTaskInComplexityReport({}, 1)).toBeNull();
-      
-      // Test with non-array complexityAnalysis
-      expect(findTaskInComplexityReport({ complexityAnalysis: {} }, 1)).toBeNull();
-    });
-  });
+			const result = readJSON('test.json');
 
-  describe('taskExists function', () => {
-    const sampleTasks = [
-      { id: 1, title: 'Task 1' },
-      { id: 2, title: 'Task 2' },
-      { 
-        id: 3, 
-        title: 'Task with subtasks',
-        subtasks: [
-          { id: 1, title: 'Subtask 1' },
-          { id: 2, title: 'Subtask 2' }
-        ]
-      }
-    ];
+			expect(fsReadFileSyncSpy).toHaveBeenCalledWith('test.json', 'utf8');
+			expect(result).toEqual(testData);
+		});
 
-    test('should return true for existing task IDs', () => {
-      expect(taskExists(sampleTasks, 1)).toBe(true);
-      expect(taskExists(sampleTasks, 2)).toBe(true);
-      expect(taskExists(sampleTasks, '2')).toBe(true); // String ID should work too
-    });
+		test('should handle file not found errors', () => {
+			fsReadFileSyncSpy.mockImplementation(() => {
+				throw new Error('ENOENT: no such file or directory');
+			});
 
-    test('should return true for existing subtask IDs', () => {
-      expect(taskExists(sampleTasks, '3.1')).toBe(true);
-      expect(taskExists(sampleTasks, '3.2')).toBe(true);
-    });
+			// Mock console.error
+			const consoleSpy = jest
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
 
-    test('should return false for non-existent task IDs', () => {
-      expect(taskExists(sampleTasks, 99)).toBe(false);
-      expect(taskExists(sampleTasks, '99')).toBe(false);
-    });
-    
-    test('should return false for non-existent subtask IDs', () => {
-      expect(taskExists(sampleTasks, '3.99')).toBe(false);
-      expect(taskExists(sampleTasks, '99.1')).toBe(false);
-    });
+			const result = readJSON('nonexistent.json');
 
-    test('should handle invalid inputs', () => {
-      expect(taskExists(null, 1)).toBe(false);
-      expect(taskExists(undefined, 1)).toBe(false);
-      expect(taskExists([], 1)).toBe(false);
-      expect(taskExists(sampleTasks, null)).toBe(false);
-      expect(taskExists(sampleTasks, undefined)).toBe(false);
-    });
-  });
+			expect(result).toBeNull();
 
-  describe('formatTaskId function', () => {
-    test('should format numeric task IDs as strings', () => {
-      expect(formatTaskId(1)).toBe('1');
-      expect(formatTaskId(42)).toBe('42');
-    });
+			// Restore console.error
+			consoleSpy.mockRestore();
+		});
 
-    test('should preserve string task IDs', () => {
-      expect(formatTaskId('1')).toBe('1');
-      expect(formatTaskId('task-1')).toBe('task-1');
-    });
+		test('should handle invalid JSON format', () => {
+			fsReadFileSyncSpy.mockReturnValue('{ invalid json: }');
 
-    test('should preserve dot notation for subtask IDs', () => {
-      expect(formatTaskId('1.2')).toBe('1.2');
-      expect(formatTaskId('42.7')).toBe('42.7');
-    });
-    
-    test('should handle edge cases', () => {
-      // These should return as-is, though your implementation may differ
-      expect(formatTaskId(null)).toBe(null);
-      expect(formatTaskId(undefined)).toBe(undefined);
-      expect(formatTaskId('')).toBe('');
-    });
-  });
+			// Mock console.error
+			const consoleSpy = jest
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
 
-  describe('findCycles function', () => {
-    test('should detect simple cycles in dependency graph', () => {
-      // A -> B -> A (cycle)
-      const dependencyMap = new Map([
-        ['A', ['B']],
-        ['B', ['A']]
-      ]);
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles.length).toBeGreaterThan(0);
-      expect(cycles).toContain('A');
-    });
+			const result = readJSON('invalid.json');
 
-    test('should detect complex cycles in dependency graph', () => {
-      // A -> B -> C -> A (cycle)
-      const dependencyMap = new Map([
-        ['A', ['B']],
-        ['B', ['C']],
-        ['C', ['A']]
-      ]);
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles.length).toBeGreaterThan(0);
-      expect(cycles).toContain('A');
-    });
+			expect(result).toBeNull();
 
-    test('should return empty array for acyclic graphs', () => {
-      // A -> B -> C (no cycle)
-      const dependencyMap = new Map([
-        ['A', ['B']],
-        ['B', ['C']],
-        ['C', []]
-      ]);
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles.length).toBe(0);
-    });
+			// Restore console.error
+			consoleSpy.mockRestore();
+		});
+	});
 
-    test('should handle empty dependency maps', () => {
-      const dependencyMap = new Map();
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles.length).toBe(0);
-    });
-    
-    test('should handle nodes with no dependencies', () => {
-      const dependencyMap = new Map([
-        ['A', []],
-        ['B', []],
-        ['C', []]
-      ]);
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles.length).toBe(0);
-    });
-    
-    test('should identify the breaking edge in a cycle', () => {
-      // A -> B -> C -> D -> B (cycle)
-      const dependencyMap = new Map([
-        ['A', ['B']],
-        ['B', ['C']],
-        ['C', ['D']],
-        ['D', ['B']]
-      ]);
-      
-      const cycles = findCycles('A', dependencyMap);
-      
-      expect(cycles).toContain('B');
-    });
-  });
+	describe('writeJSON function', () => {
+		test('should write JSON data to a file', () => {
+			const testData = { key: 'value', nested: { prop: true } };
+
+			writeJSON('output.json', testData);
+
+			expect(fsWriteFileSyncSpy).toHaveBeenCalledWith(
+				'output.json',
+				JSON.stringify(testData, null, 2),
+				'utf8'
+			);
+		});
+
+		test('should handle file write errors', () => {
+			const testData = { key: 'value' };
+
+			fsWriteFileSyncSpy.mockImplementation(() => {
+				throw new Error('Permission denied');
+			});
+
+			// Mock console.error
+			const consoleSpy = jest
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
+
+			// Function shouldn't throw, just log error
+			expect(() => writeJSON('protected.json', testData)).not.toThrow();
+
+			// Restore console.error
+			consoleSpy.mockRestore();
+		});
+	});
+
+	describe('sanitizePrompt function', () => {
+		test('should escape double quotes in prompts', () => {
+			const prompt = 'This is a "quoted" prompt with "multiple" quotes';
+			const expected =
+				'This is a \\"quoted\\" prompt with \\"multiple\\" quotes';
+
+			expect(sanitizePrompt(prompt)).toBe(expected);
+		});
+
+		test('should handle prompts with no special characters', () => {
+			const prompt = 'This is a regular prompt without quotes';
+
+			expect(sanitizePrompt(prompt)).toBe(prompt);
+		});
+
+		test('should handle empty strings', () => {
+			expect(sanitizePrompt('')).toBe('');
+		});
+	});
+
+	describe('readComplexityReport function', () => {
+		test('should read and parse a valid complexity report', () => {
+			const testReport = {
+				meta: { generatedAt: new Date().toISOString() },
+				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
+			};
+
+			fsExistsSyncSpy.mockReturnValue(true);
+			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
+			pathJoinSpy.mockReturnValue('/path/to/report.json');
+
+			const result = readComplexityReport();
+
+			expect(fsExistsSyncSpy).toHaveBeenCalled();
+			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(
+				'/path/to/report.json',
+				'utf8'
+			);
+			expect(result).toEqual(testReport);
+		});
+
+		test('should handle missing report file', () => {
+			fsExistsSyncSpy.mockReturnValue(false);
+			pathJoinSpy.mockReturnValue('/path/to/report.json');
+
+			const result = readComplexityReport();
+
+			expect(result).toBeNull();
+			expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
+		});
+
+		test('should handle custom report path', () => {
+			const testReport = {
+				meta: { generatedAt: new Date().toISOString() },
+				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
+			};
+
+			fsExistsSyncSpy.mockReturnValue(true);
+			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
+
+			const customPath = '/custom/path/report.json';
+			const result = readComplexityReport(customPath);
+
+			expect(fsExistsSyncSpy).toHaveBeenCalledWith(customPath);
+			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(customPath, 'utf8');
+			expect(result).toEqual(testReport);
+		});
+	});
+
+	describe('findTaskInComplexityReport function', () => {
+		test('should find a task by ID in a valid report', () => {
+			const testReport = {
+				complexityAnalysis: [
+					{ taskId: 1, complexityScore: 7 },
+					{ taskId: 2, complexityScore: 4 },
+					{ taskId: 3, complexityScore: 9 }
+				]
+			};
+
+			const result = findTaskInComplexityReport(testReport, 2);
+
+			expect(result).toEqual({ taskId: 2, complexityScore: 4 });
+		});
+
+		test('should return null for non-existent task ID', () => {
+			const testReport = {
+				complexityAnalysis: [
+					{ taskId: 1, complexityScore: 7 },
+					{ taskId: 2, complexityScore: 4 }
+				]
+			};
+
+			const result = findTaskInComplexityReport(testReport, 99);
+
+			// Fixing the expectation to match actual implementation
+			// The function might return null or undefined based on implementation
+			expect(result).toBeFalsy();
+		});
+
+		test('should handle invalid report structure', () => {
+			// Test with null report
+			expect(findTaskInComplexityReport(null, 1)).toBeNull();
+
+			// Test with missing complexityAnalysis
+			expect(findTaskInComplexityReport({}, 1)).toBeNull();
+
+			// Test with non-array complexityAnalysis
+			expect(
+				findTaskInComplexityReport({ complexityAnalysis: {} }, 1)
+			).toBeNull();
+		});
+	});
+
+	describe('taskExists function', () => {
+		const sampleTasks = [
+			{ id: 1, title: 'Task 1' },
+			{ id: 2, title: 'Task 2' },
+			{
+				id: 3,
+				title: 'Task with subtasks',
+				subtasks: [
+					{ id: 1, title: 'Subtask 1' },
+					{ id: 2, title: 'Subtask 2' }
+				]
+			}
+		];
+
+		test('should return true for existing task IDs', () => {
+			expect(taskExists(sampleTasks, 1)).toBe(true);
+			expect(taskExists(sampleTasks, 2)).toBe(true);
+			expect(taskExists(sampleTasks, '2')).toBe(true); // String ID should work too
+		});
+
+		test('should return true for existing subtask IDs', () => {
+			expect(taskExists(sampleTasks, '3.1')).toBe(true);
+			expect(taskExists(sampleTasks, '3.2')).toBe(true);
+		});
+
+		test('should return false for non-existent task IDs', () => {
+			expect(taskExists(sampleTasks, 99)).toBe(false);
+			expect(taskExists(sampleTasks, '99')).toBe(false);
+		});
+
+		test('should return false for non-existent subtask IDs', () => {
+			expect(taskExists(sampleTasks, '3.99')).toBe(false);
+			expect(taskExists(sampleTasks, '99.1')).toBe(false);
+		});
+
+		test('should handle invalid inputs', () => {
+			expect(taskExists(null, 1)).toBe(false);
+			expect(taskExists(undefined, 1)).toBe(false);
+			expect(taskExists([], 1)).toBe(false);
+			expect(taskExists(sampleTasks, null)).toBe(false);
+			expect(taskExists(sampleTasks, undefined)).toBe(false);
+		});
+	});
+
+	describe('formatTaskId function', () => {
+		test('should format numeric task IDs as strings', () => {
+			expect(formatTaskId(1)).toBe('1');
+			expect(formatTaskId(42)).toBe('42');
+		});
+
+		test('should preserve string task IDs', () => {
+			expect(formatTaskId('1')).toBe('1');
+			expect(formatTaskId('task-1')).toBe('task-1');
+		});
+
+		test('should preserve dot notation for subtask IDs', () => {
+			expect(formatTaskId('1.2')).toBe('1.2');
+			expect(formatTaskId('42.7')).toBe('42.7');
+		});
+
+		test('should handle edge cases', () => {
+			// These should return as-is, though your implementation may differ
+			expect(formatTaskId(null)).toBe(null);
+			expect(formatTaskId(undefined)).toBe(undefined);
+			expect(formatTaskId('')).toBe('');
+		});
+	});
+
+	describe('findCycles function', () => {
+		test('should detect simple cycles in dependency graph', () => {
+			// A -> B -> A (cycle)
+			const dependencyMap = new Map([
+				['A', ['B']],
+				['B', ['A']]
+			]);
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles.length).toBeGreaterThan(0);
+			expect(cycles).toContain('A');
+		});
+
+		test('should detect complex cycles in dependency graph', () => {
+			// A -> B -> C -> A (cycle)
+			const dependencyMap = new Map([
+				['A', ['B']],
+				['B', ['C']],
+				['C', ['A']]
+			]);
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles.length).toBeGreaterThan(0);
+			expect(cycles).toContain('A');
+		});
+
+		test('should return empty array for acyclic graphs', () => {
+			// A -> B -> C (no cycle)
+			const dependencyMap = new Map([
+				['A', ['B']],
+				['B', ['C']],
+				['C', []]
+			]);
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles.length).toBe(0);
+		});
+
+		test('should handle empty dependency maps', () => {
+			const dependencyMap = new Map();
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles.length).toBe(0);
+		});
+
+		test('should handle nodes with no dependencies', () => {
+			const dependencyMap = new Map([
+				['A', []],
+				['B', []],
+				['C', []]
+			]);
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles.length).toBe(0);
+		});
+
+		test('should identify the breaking edge in a cycle', () => {
+			// A -> B -> C -> D -> B (cycle)
+			const dependencyMap = new Map([
+				['A', ['B']],
+				['B', ['C']],
+				['C', ['D']],
+				['D', ['B']]
+			]);
+
+			const cycles = findCycles('A', dependencyMap);
+
+			expect(cycles).toContain('B');
+		});
+	});
 });
 
 describe('CLI Flag Format Validation', () => {
-  test('toKebabCase should convert camelCase to kebab-case', () => {
-    expect(toKebabCase('promptText')).toBe('prompt-text');
-    expect(toKebabCase('userID')).toBe('user-id');
-    expect(toKebabCase('numTasks')).toBe('num-tasks');
-    expect(toKebabCase('alreadyKebabCase')).toBe('already-kebab-case');
-  });
-  
-  test('detectCamelCaseFlags should identify camelCase flags', () => {
-    const args = ['node', 'task-master', 'add-task', '--promptText=test', '--userID=123'];
-    const flags = testDetectCamelCaseFlags(args);
-    
-    expect(flags).toHaveLength(2);
-    expect(flags).toContainEqual({
-      original: 'promptText',
-      kebabCase: 'prompt-text'
-    });
-    expect(flags).toContainEqual({
-      original: 'userID',
-      kebabCase: 'user-id'
-    });
-  });
-  
-  test('detectCamelCaseFlags should not flag kebab-case flags', () => {
-    const args = ['node', 'task-master', 'add-task', '--prompt-text=test', '--user-id=123'];
-    const flags = testDetectCamelCaseFlags(args);
-    
-    expect(flags).toHaveLength(0);
-  });
-  
-  test('detectCamelCaseFlags should respect single-word flags', () => {
-    const args = ['node', 'task-master', 'add-task', '--prompt=test', '--file=test.json', '--priority=high', '--promptText=test'];
-    const flags = testDetectCamelCaseFlags(args);
-    
-    // Should only flag promptText, not the single-word flags
-    expect(flags).toHaveLength(1);
-    expect(flags).toContainEqual({
-      original: 'promptText',
-      kebabCase: 'prompt-text'
-    });
-  });
-}); 
+	test('toKebabCase should convert camelCase to kebab-case', () => {
+		expect(toKebabCase('promptText')).toBe('prompt-text');
+		expect(toKebabCase('userID')).toBe('user-id');
+		expect(toKebabCase('numTasks')).toBe('num-tasks');
+		expect(toKebabCase('alreadyKebabCase')).toBe('already-kebab-case');
+	});
+
+	test('detectCamelCaseFlags should identify camelCase flags', () => {
+		const args = [
+			'node',
+			'task-master',
+			'add-task',
+			'--promptText=test',
+			'--userID=123'
+		];
+		const flags = testDetectCamelCaseFlags(args);
+
+		expect(flags).toHaveLength(2);
+		expect(flags).toContainEqual({
+			original: 'promptText',
+			kebabCase: 'prompt-text'
+		});
+		expect(flags).toContainEqual({
+			original: 'userID',
+			kebabCase: 'user-id'
+		});
+	});
+
+	test('detectCamelCaseFlags should not flag kebab-case flags', () => {
+		const args = [
+			'node',
+			'task-master',
+			'add-task',
+			'--prompt-text=test',
+			'--user-id=123'
+		];
+		const flags = testDetectCamelCaseFlags(args);
+
+		expect(flags).toHaveLength(0);
+	});
+
+	test('detectCamelCaseFlags should respect single-word flags', () => {
+		const args = [
+			'node',
+			'task-master',
+			'add-task',
+			'--prompt=test',
+			'--file=test.json',
+			'--priority=high',
+			'--promptText=test'
+		];
+		const flags = testDetectCamelCaseFlags(args);
+
+		// Should only flag promptText, not the single-word flags
+		expect(flags).toHaveLength(1);
+		expect(flags).toContainEqual({
+			original: 'promptText',
+			kebabCase: 'prompt-text'
+		});
+	});
+});
