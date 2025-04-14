@@ -50,6 +50,16 @@ export function registerInitializeProjectTool(server) {
 				.describe(
 					'Add shell aliases (tm, taskmaster) to shell config file. User input not needed.'
 				),
+			projectType: z
+				.enum(['node', 'python', 'skeleton'])
+				.optional()
+				.default('skeleton')
+				.describe('Specify the project type template (node, python, skeleton)'),
+			providerType: z
+				.enum(['local', 'jira'])
+				.optional()
+				.default('local')
+				.describe('Specify the task provider type (local, jira)'),
 			yes: z
 				.boolean()
 				.optional()
