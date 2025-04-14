@@ -1,118 +1,134 @@
 /**
  * set-task-status.js
- * Direct function implementation for setting task status
+ * Direct function implementation for setting task status using appropriate provider.
  */
 
-import { setTaskStatus } from '../../../../scripts/modules/task-manager.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
-	isSilentMode
+	isSilentMode,
+	CONFIG // Import CONFIG
 } from '../../../../scripts/modules/utils.js';
 
 /**
- * Direct function wrapper for setTaskStatus with error handling.
+ * Direct function wrapper for setTaskStatus via configured provider.
  *
- * @param {Object} args - Command arguments containing id, status and tasksJsonPath.
+ * @param {Object} args - Command arguments (id, status, file, projectRoot).
  * @param {Object} log - Logger object.
- * @returns {Promise<Object>} - Result object with success status and data/error information.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
  */
-export async function setTaskStatusDirect(args, log) {
-	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, status } = args;
+export async function setTaskStatusDirect(args, log, context = {}) {
+	const { session } = context;
+	const { projectRoot, id: taskIdString, status, file } = args;
+
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
-			};
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('setTaskStatusDirect called without projectRoot.');
 		}
-
-		// Check required parameters (id and status)
-		if (!id) {
-			const errorMessage =
-				'No task ID specified. Please provide a task ID to update.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage },
-				fromCache: false
-			};
+		if (!taskIdString) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Task ID(s) (id) is required' }, fromCache: false };
 		}
-
 		if (!status) {
-			const errorMessage =
-				'No status specified. Please provide a new status value.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_STATUS', message: errorMessage },
-				fromCache: false
-			};
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Status (status) is required' }, fromCache: false };
 		}
+		// --- End Argument Validation ---
 
-		// Use the provided path
-		const tasksPath = tasksJsonPath;
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		log.info(`Requesting ${providerType} provider to set status '${status}' for task(s) ${taskIdString}.`);
 
-		// Execute core setTaskStatus function
-		const taskId = id;
-		const newStatus = status;
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's setTaskStatus method
+			// Likely requires: get_issue, update_issue, get_transitions, transition_issue
+			const requiredTools = ['get_issue', 'update_issue', 'get_transitions', 'transition_issue']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
+				}
+			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
+		}
+		// --- End Jira MCP Tools Preparation ---
 
-		log.info(`Setting task ${taskId} status to "${newStatus}"`);
+		const taskIds = taskIdString.split(',').map(id => id.trim());
 
-		// Call the core function with proper silent mode handling
-		enableSilentMode(); // Enable silent mode before calling core function
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		enableSilentMode();
 		try {
-			// Call the core function
-			await setTaskStatus(tasksPath, taskId, newStatus, { mcpLog: log });
-
-			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
-
-			// Return success data
-			const result = {
-				success: true,
-				data: {
-					message: `Successfully updated task ${taskId} status to "${newStatus}"`,
-					taskId,
-					status: newStatus,
-					tasksPath: tasksPath // Return the path used
-				},
-				fromCache: false // This operation always modifies state and should never be cached
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+			const providerOptions = {
+				file,
+				mcpLog: logWrapper,
+				session
 			};
-			return result;
+
+			// Call the provider's setTaskStatus method
+			const setResult = await provider.setTaskStatus(taskIds, status, providerOptions);
+
+			disableSilentMode();
+
+			// Check provider result
+			if (setResult && setResult.success) {
+				log.info(`Provider successfully set status '${status}' for task(s) ${taskIds.join(', ')}.`);
+				return {
+					success: true,
+					data: setResult.data || { message: `Successfully set status to '${status}'.` },
+					fromCache: false // State modification
+				};
+			} else {
+				const errorMsg = setResult?.error?.message || 'Provider failed to set task status.';
+				const errorCode = setResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error setting status for ${taskIds.join(', ')}: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: setResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
+				};
+			}
 		} catch (error) {
-			log.error(`Error setting task status: ${error.message}`);
+			disableSilentMode();
+			log.error(`Error during setTaskStatusDirect execution: ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: 'SET_STATUS_ERROR',
-					message: error.message || 'Unknown error setting task status'
+					code: error.code || 'PROVIDER_SET_STATUS_ERROR',
+					message: error.message || `Failed to set status for task(s) ${taskIds.join(', ')}`
 				},
 				fromCache: false
 			};
 		} finally {
-			// ALWAYS restore normal logging in finally block
-			disableSilentMode();
+			if (isSilentMode()) {
+				disableSilentMode();
+			}
 		}
 	} catch (error) {
-		// Ensure silent mode is disabled if there was an uncaught error in the outer try block
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in setTaskStatusDirect: ${error.message}`);
 		if (isSilentMode()) {
 			disableSilentMode();
 		}
-
-		log.error(`Error setting task status: ${error.message}`);
 		return {
 			success: false,
-			error: {
-				code: 'SET_STATUS_ERROR',
-				message: error.message || 'Unknown error setting task status'
-			},
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
 			fromCache: false
 		};
 	}

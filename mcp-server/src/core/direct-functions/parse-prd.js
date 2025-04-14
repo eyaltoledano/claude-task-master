@@ -1,209 +1,155 @@
 /**
  * parse-prd.js
- * Direct function implementation for parsing PRD documents
+ * Direct function implementation for parsing a PRD using appropriate provider.
  */
 
-import path from 'path';
-import fs from 'fs';
-import os from 'os'; // Import os module for home directory check
-import { parsePRD } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode,
+	CONFIG // Import CONFIG
 } from '../../../../scripts/modules/utils.js';
 import {
 	getAnthropicClientForMCP,
 	getModelConfig
 } from '../utils/ai-client-utils.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
- * Direct function wrapper for parsing PRD documents and generating tasks.
+ * Direct function wrapper for parsePRD via configured provider.
  *
- * @param {Object} args - Command arguments containing input, numTasks or tasks, and output options.
+ * @param {Object} args - Command arguments (input, output, numTasks, force, file, projectRoot).
  * @param {Object} log - Logger object.
- * @param {Object} context - Context object containing session data.
- * @returns {Promise<Object>} - Result object with success status and data/error information.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
 export async function parsePRDDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
+	const { session } = context;
+	// input: Path to the PRD file.
+	// output: Path where the tasks.json should be saved.
+	const { projectRoot, input: prdInputPath, output: tasksOutputPath, numTasks, force, file } = args;
 
 	try {
-		log.info(`Parsing PRD document with args: ${JSON.stringify(args)}`);
+		log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
 
-		// Initialize AI client for PRD parsing
-		let aiClient;
-		try {
-			aiClient = getAnthropicClientForMCP(session, log);
-		} catch (error) {
-			log.error(`Failed to initialize AI client: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: `Cannot initialize AI client: ${error.message}`
-				},
-				fromCache: false
-			};
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('parsePRDDirect called without projectRoot.');
 		}
-
-		// Validate required parameters
-		if (!args.projectRoot) {
-			const errorMessage = 'Project root is required for parsePRDDirect';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_PROJECT_ROOT', message: errorMessage },
-				fromCache: false
-			};
+		if (!prdInputPath) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'PRD input path (input) is required' } };
 		}
-
-		if (!args.input) {
-			const errorMessage = 'Input file path is required for parsePRDDirect';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_INPUT_PATH', message: errorMessage },
-				fromCache: false
-			};
+		if (!fs.existsSync(prdInputPath)) {
+			return { success: false, error: { code: 'FILE_NOT_FOUND', message: `PRD input file not found: ${prdInputPath}` } };
 		}
+		// Output path defaults within the provider if not specified
+		// --- End Argument Validation ---
 
-		if (!args.output) {
-			const errorMessage = 'Output file path is required for parsePRDDirect';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_OUTPUT_PATH', message: errorMessage },
-				fromCache: false
-			};
-		}
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		log.info(`Requesting ${providerType} provider to parse PRD: ${prdInputPath}.`);
 
-		// Resolve input path (expecting absolute path or path relative to project root)
-		const projectRoot = args.projectRoot;
-		const inputPath = path.isAbsolute(args.input)
-			? args.input
-			: path.resolve(projectRoot, args.input);
-
-		// Verify input file exists
-		if (!fs.existsSync(inputPath)) {
-			const errorMessage = `Input file not found: ${inputPath}`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: {
-					code: 'INPUT_FILE_NOT_FOUND',
-					message: errorMessage,
-					details: `Checked path: ${inputPath}\nProject root: ${projectRoot}\nInput argument: ${args.input}`
-				},
-				fromCache: false
-			};
-		}
-
-		// Resolve output path (expecting absolute path or path relative to project root)
-		const outputPath = path.isAbsolute(args.output)
-			? args.output
-			: path.resolve(projectRoot, args.output);
-
-		// Ensure output directory exists
-		const outputDir = path.dirname(outputPath);
-		if (!fs.existsSync(outputDir)) {
-			log.info(`Creating output directory: ${outputDir}`);
-			fs.mkdirSync(outputDir, { recursive: true });
-		}
-
-		// Parse number of tasks - handle both string and number values
-		let numTasks = 10; // Default
-		if (args.numTasks) {
-			numTasks =
-				typeof args.numTasks === 'string'
-					? parseInt(args.numTasks, 10)
-					: args.numTasks;
-			if (isNaN(numTasks)) {
-				numTasks = 10; // Fallback to default if parsing fails
-				log.warn(`Invalid numTasks value: ${args.numTasks}. Using default: 10`);
+		// --- Prepare Jira MCP Tools if needed ---
+		// parsePRD is primarily an AI/local task generation function.
+		// A Jira provider might use tools to check for existing epics or structure,
+		// but typically wouldn't need tools for the core parsing.
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			const requiredTools = ['search', 'get_issue']; // Example: Might search for matching epics
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
+				}
 			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
 		}
+		// --- End Jira MCP Tools Preparation ---
 
-		log.info(
-			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks`
-		);
-
-		// Create the logger wrapper for proper logging in the core function
 		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args),
-			success: (message, ...args) => log.info(message, ...args) // Map success to info
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
 		};
 
-		// Get model config from session
-		const modelConfig = getModelConfig(session);
-
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		enableSilentMode();
 		try {
-			// Make sure the output directory exists
-			const outputDir = path.dirname(outputPath);
-			if (!fs.existsSync(outputDir)) {
-				log.info(`Creating output directory: ${outputDir}`);
-				fs.mkdirSync(outputDir, { recursive: true });
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+
+			// AI client setup needed for the provider
+			let anthropicClient = null;
+			try {
+				anthropicClient = getAnthropicClientForMCP(session, log);
+			} catch (error) {
+				throw { code: 'AI_CLIENT_ERROR', message: `Cannot initialize Anthropic client: ${error.message}` };
 			}
+			const modelConfig = getModelConfig(session);
 
-			// Execute core parsePRD function with AI client
-			await parsePRD(
-				inputPath,
-				outputPath,
+			const providerOptions = {
+				output: tasksOutputPath, // Pass output path
 				numTasks,
-				{
-					mcpLog: logWrapper,
-					session
-				},
-				aiClient,
+				force,
+				file, // Pass tasks file path if provider needs it (e.g., for overwrite check)
+				mcpLog: logWrapper,
+				session,
+				anthropicClient,
 				modelConfig
-			);
+			};
 
-			// Since parsePRD doesn't return a value but writes to a file, we'll read the result
-			// to return it to the caller
-			if (fs.existsSync(outputPath)) {
-				const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
-				log.info(
-					`Successfully parsed PRD and generated ${tasksData.tasks?.length || 0} tasks`
-				);
+			// Call the provider's parsePRD method
+			// Assuming signature: parsePRD(inputPath, options)
+			const parseResult = await provider.parsePRD(prdInputPath, providerOptions);
 
+			// Check provider result
+			if (parseResult && parseResult.success) {
+				const generatedFilePath = parseResult.data?.tasksFilePath || tasksOutputPath || 'tasks/tasks.json';
+				log.info(`Provider successfully parsed PRD and generated tasks at ${generatedFilePath}.`);
 				return {
 					success: true,
-					data: {
-						message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
-						taskCount: tasksData.tasks?.length || 0,
-						outputPath
-					},
-					fromCache: false // This operation always modifies state and should never be cached
+					data: parseResult.data || { message: `Successfully parsed PRD. Tasks saved to ${generatedFilePath}.` },
+					fromCache: false // File system operation
 				};
 			} else {
-				const errorMessage = `Tasks file was not created at ${outputPath}`;
-				log.error(errorMessage);
+				const errorMsg = parseResult?.error?.message || 'Provider failed to parse PRD.';
+				const errorCode = parseResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error parsing PRD: ${errorMsg} (Code: ${errorCode})`);
 				return {
 					success: false,
-					error: { code: 'OUTPUT_FILE_NOT_CREATED', message: errorMessage },
+					error: parseResult?.error || { code: errorCode, message: errorMsg },
 					fromCache: false
 				};
 			}
-		} finally {
-			// Always restore normal logging
-			disableSilentMode();
+		} catch (error) {
+			// No silent mode needed here usually, but check just in case
+			if (isSilentMode()) {
+				disableSilentMode();
+			}
+			log.error(`Error during parsePRDDirect execution: ${error.message}`);
+			console.error(error.stack);
+			return {
+				success: false,
+				error: {
+					code: error.code || 'PROVIDER_PARSE_PRD_ERROR',
+					message: error.message || 'Failed to parse PRD'
+				},
+				fromCache: false
+			};
 		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
-
-		log.error(`Error parsing PRD: ${error.message}`);
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in parsePRDDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'PARSE_PRD_ERROR',
-				message: error.message || 'Unknown error parsing PRD'
-			},
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
 			fromCache: false
 		};
 	}

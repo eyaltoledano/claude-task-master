@@ -1,104 +1,132 @@
 /**
- * Direct function wrapper for removeDependency
+ * remove-dependency.js
+ * Direct function implementation for removing a task dependency using appropriate provider.
  */
 
-import { removeDependency } from '../../../../scripts/modules/dependency-manager.js';
+// Corrected import path for task-provider-factory
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode,
+	CONFIG
 } from '../../../../scripts/modules/utils.js';
+// Removed config loader import
 
 /**
- * Remove a dependency from a task
- * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string|number} args.id - Task ID to remove dependency from
- * @param {string|number} args.dependsOn - Task ID to remove as a dependency
- * @param {Object} log - Logger object
- * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
+ * Direct function wrapper for removeDependency via configured provider.
+ *
+ * @param {Object} args - Command arguments (id, dependsOn, file, projectRoot).
+ * @param {Object} log - Logger object.
+ * @param {Object} context - Tool context { session }.
+ * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function removeDependencyDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id, dependsOn } = args;
+export async function removeDependencyDirect(args, log, context = {}) {
+	const { session } = context;
+	const { projectRoot, id, dependsOn, file } = args; // Added file
+
 	try {
 		log.info(`Removing dependency with args: ${JSON.stringify(args)}`);
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('removeDependencyDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('removeDependencyDirect called without projectRoot.');
 		}
-
-		// Validate required parameters
-		if (!id) {
-			return {
-				success: false,
-				error: {
-					code: 'INPUT_VALIDATION_ERROR',
-					message: 'Task ID (id) is required'
-				}
-			};
+		if (!id || !dependsOn) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Both Task ID (id) and Depends On ID (dependsOn) are required' } };
 		}
+		// --- End Argument Validation ---
 
-		if (!dependsOn) {
-			return {
-				success: false,
-				error: {
-					code: 'INPUT_VALIDATION_ERROR',
-					message: 'Dependency ID (dependsOn) is required'
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		log.info(`Requesting ${providerType} provider to remove dependency: task ${id} no longer depends on ${dependsOn}.`);
+
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's removeDependency method
+			// Likely requires: search, update_issue, get_issue, delete_link?
+			const requiredTools = ['search', 'update_issue', 'get_issue', 'delete_link']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
 				}
-			};
-		}
-
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
-		// Format IDs for the core function
-		const taskId =
-			id && id.includes && id.includes('.') ? id : parseInt(id, 10);
-		const dependencyId =
-			dependsOn && dependsOn.includes && dependsOn.includes('.')
-				? dependsOn
-				: parseInt(dependsOn, 10);
-
-		log.info(
-			`Removing dependency: task ${taskId} no longer depends on ${dependencyId}`
-		);
-
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		enableSilentMode();
-
-		// Call the core function using the provided tasksPath
-		await removeDependency(tasksPath, taskId, dependencyId);
-
-		// Restore normal logging
-		disableSilentMode();
-
-		return {
-			success: true,
-			data: {
-				message: `Successfully removed dependency: Task ${taskId} no longer depends on ${dependencyId}`,
-				taskId: taskId,
-				dependencyId: dependencyId
 			}
-		};
-	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
+		}
+		// --- End Jira MCP Tools Preparation ---
 
-		log.error(`Error in removeDependencyDirect: ${error.message}`);
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
+		enableSilentMode();
+		try {
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
+			const providerOptions = {
+				file,
+				mcpLog: logWrapper,
+				session
+			};
+
+			// Call the provider's removeDependency method
+			const removeResult = await provider.removeDependency(id, dependsOn, providerOptions);
+
+			disableSilentMode();
+
+			// Check provider result
+			if (removeResult && removeResult.success) {
+				log.info(`Provider successfully removed dependency: task ${id} from ${dependsOn}.`);
+				return {
+					success: true,
+					data: removeResult.data || { message: `Successfully removed dependency ${dependsOn} from task ${id}.` },
+					fromCache: false // State modification
+				};
+			} else {
+				const errorMsg = removeResult?.error?.message || 'Provider failed to remove dependency.';
+				const errorCode = removeResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error removing dependency: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: removeResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
+				};
+			}
+		} catch (error) {
+			disableSilentMode();
+			log.error(`Error during removeDependencyDirect execution: ${error.message}`);
+			console.error(error.stack);
+			return {
+				success: false,
+				error: {
+					code: error.code || 'PROVIDER_REMOVE_DEPENDENCY_ERROR',
+					message: error.message || `Failed to remove dependency ${dependsOn} from task ${id}`
+				},
+				fromCache: false
+			};
+		} finally {
+			if (isSilentMode()) {
+				disableSilentMode();
+			}
+		}
+	} catch (error) {
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in removeDependencyDirect: ${error.message}`);
+		if (isSilentMode()) {
+			disableSilentMode();
+		}
 		return {
 			success: false,
-			error: {
-				code: 'CORE_FUNCTION_ERROR',
-				message: error.message
-			}
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
+			fromCache: false
 		};
 	}
 }

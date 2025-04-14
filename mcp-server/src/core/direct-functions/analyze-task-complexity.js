@@ -1,21 +1,27 @@
 /**
- * Direct function wrapper for analyzeTaskComplexity
+ * analyze-task-complexity.js
+ * Direct function implementation for analyzing task complexity using appropriate provider.
  */
 
-import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
 	isSilentMode,
-	readJSON
+	CONFIG
 } from '../../../../scripts/modules/utils.js';
 import fs from 'fs';
 import path from 'path';
+import { findTasksJsonPath } from '../utils/path-utils.js';
+import {
+	getAnthropicClientForMCP,
+	getModelConfig
+} from '../utils/ai-client-utils.js'; // Keep AI utils import path
 
 /**
  * Analyze task complexity and generate recommendations
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.projectRoot - Absolute path to the project root directory.
  * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string} [args.model] - LLM model to use for analysis
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
@@ -25,158 +31,116 @@ import path from 'path';
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-	// Destructure expected args
-	const { tasksJsonPath, outputPath, model, threshold, research } = args;
+	const { session } = context;
+	const { projectRoot, id: taskIdString, research, file } = args; // Added file
 
 	try {
 		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
 
-		// Check if required paths were provided
-		if (!tasksJsonPath) {
-			log.error('analyzeTaskComplexityDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
+		// --- Argument Validation ---
+		if (!projectRoot) {
+			log.warn('analyzeTaskComplexityDirect called without projectRoot.');
+		}
+		if (!taskIdString) {
+			return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'Task ID(s) (id) is required' } };
+		}
+		// --- End Argument Validation ---
+
+		const providerType = CONFIG.TASK_PROVIDER?.toLowerCase() || 'local';
+		log.info(`Requesting ${providerType} provider to analyze complexity for task(s) ${taskIdString}${research ? ' with research' : ''}.`);
+
+		// --- Prepare Jira MCP Tools if needed ---
+		let jiraMcpTools = {};
+		if (providerType === 'jira') {
+			const toolPrefix = CONFIG.JIRA_MCP_TOOL_PREFIX || 'mcp_atlassian_jira';
+			// Define the tools required by JiraTaskManager's analyzeTaskComplexity method
+			// Likely requires: search, get_issue
+			const requiredTools = ['search', 'get_issue']; // Adjust as needed
+			for (const toolName of requiredTools) {
+				const fullToolName = `${toolPrefix}_${toolName}`;
+				if (typeof global[fullToolName] === 'function') {
+					jiraMcpTools[toolName] = global[fullToolName];
+				} else {
+					log.warn(`Jira MCP tool function not found in global scope: ${fullToolName}`);
 				}
-			};
-		}
-		if (!outputPath) {
-			log.error('analyzeTaskComplexityDirect called without outputPath');
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: 'outputPath is required' }
-			};
-		}
-
-		// Use the provided paths
-		const tasksPath = tasksJsonPath;
-		const resolvedOutputPath = outputPath;
-
-		log.info(`Analyzing task complexity from: ${tasksPath}`);
-		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
-
-		if (research) {
-			log.info('Using Perplexity AI for research-backed complexity analysis');
-		}
-
-		// Create options object for analyzeTaskComplexity using provided paths
-		const options = {
-			file: tasksPath,
-			output: resolvedOutputPath,
-			model: model,
-			threshold: threshold,
-			research: research === true
-		};
-
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		const wasSilent = isSilentMode();
-		if (!wasSilent) {
-			enableSilentMode();
-		}
-
-		// Create a logWrapper that matches the expected mcpLog interface as specified in utilities.mdc
-		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args),
-			success: (message, ...args) => log.info(message, ...args) // Map success to info
-		};
-
-		try {
-			// Call the core function with session and logWrapper as mcpLog
-			await analyzeTaskComplexity(options, {
-				session,
-				mcpLog: logWrapper // Use the wrapper instead of passing log directly
-			});
-		} catch (error) {
-			log.error(`Error in analyzeTaskComplexity: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'ANALYZE_ERROR',
-					message: `Error running complexity analysis: ${error.message}`
-				}
-			};
-		} finally {
-			// Always restore normal logging in finally block, but only if we enabled it
-			if (!wasSilent) {
-				disableSilentMode();
 			}
+			log.debug('Prepared Jira MCP Tools for factory:', Object.keys(jiraMcpTools));
 		}
+		// --- End Jira MCP Tools Preparation ---
 
-		// Verify the report file was created
-		if (!fs.existsSync(resolvedOutputPath)) {
-			return {
-				success: false,
-				error: {
-					code: 'ANALYZE_ERROR',
-					message: 'Analysis completed but no report file was created'
-				}
-			};
-		}
+		const taskIds = taskIdString.split(',').map(id => id.trim());
 
-		// Read the report file
-		let report;
+		const logWrapper = {
+			info: (message, ...rest) => log.info(message, ...rest),
+			warn: (message, ...rest) => log.warn(message, ...rest),
+			error: (message, ...rest) => log.error(message, ...rest),
+			debug: (message, ...rest) => log.debug && log.debug(message, ...rest),
+			success: (message, ...rest) => log.info(message, ...rest)
+		};
+
 		try {
-			report = JSON.parse(fs.readFileSync(resolvedOutputPath, 'utf8'));
+			// Pass jiraMcpTools in options to the factory
+			const provider = await getTaskProvider({ jiraMcpTools });
 
-			// Important: Handle different report formats
-			// The core function might return an array or an object with a complexityAnalysis property
-			const analysisArray = Array.isArray(report)
-				? report
-				: report.complexityAnalysis || [];
+			let anthropicClient = null;
+			try {
+				anthropicClient = getAnthropicClientForMCP(session, log);
+			} catch (error) {
+				throw { code: 'AI_CLIENT_ERROR', message: `Cannot initialize Anthropic client: ${error.message}` };
+			}
+			const modelConfig = getModelConfig(session);
 
-			// Count tasks by complexity
-			const highComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 8
-			).length;
-			const mediumComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 5 && t.complexityScore < 8
-			).length;
-			const lowComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore < 5
-			).length;
-
-			return {
-				success: true,
-				data: {
-					message: `Task complexity analysis complete. Report saved to ${resolvedOutputPath}`,
-					reportPath: resolvedOutputPath,
-					reportSummary: {
-						taskCount: analysisArray.length,
-						highComplexityTasks,
-						mediumComplexityTasks,
-						lowComplexityTasks
-					}
-				}
+			const providerOptions = {
+				research,
+				file,
+				mcpLog: logWrapper,
+				session,
+				anthropicClient,
+				modelConfig
 			};
-		} catch (parseError) {
-			log.error(`Error parsing report file: ${parseError.message}`);
+
+			// Call the provider's analyzeTaskComplexity method
+			const analyzeResult = await provider.analyzeTaskComplexity(taskIds, providerOptions);
+
+			if (analyzeResult && analyzeResult.success) {
+				log.info(`Provider successfully analyzed complexity for task(s) ${taskIds.join(', ')}.`);
+				return {
+					success: true,
+					data: analyzeResult.data || { message: `Successfully analyzed complexity for ${taskIds.join(', ')}.` },
+					fromCache: false
+				};
+			} else {
+				const errorMsg = analyzeResult?.error?.message || 'Provider failed to analyze task complexity.';
+				const errorCode = analyzeResult?.error?.code || 'PROVIDER_ERROR';
+				log.error(`Provider error analyzing complexity for ${taskIds.join(', ')}: ${errorMsg} (Code: ${errorCode})`);
+				return {
+					success: false,
+					error: analyzeResult?.error || { code: errorCode, message: errorMsg },
+					fromCache: false
+				};
+			}
+		} catch (error) {
+			log.error(`Error calling provider analyzeTaskComplexity: ${error.message}`);
+			console.error(error.stack);
 			return {
 				success: false,
 				error: {
-					code: 'REPORT_PARSE_ERROR',
-					message: `Error parsing complexity report: ${parseError.message}`
-				}
+					code: error.code || 'PROVIDER_ANALYZE_COMPLEXITY_ERROR',
+					message: error.message || `Failed to analyze complexity for task(s) ${taskIds.join(', ')}`
+				},
+				fromCache: false
 			};
 		}
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
+		// Catch errors from argument validation or initial setup
+		log.error(`Outer error in analyzeTaskComplexityDirect: ${error.message}`);
 		if (isSilentMode()) {
 			disableSilentMode();
 		}
-
-		log.error(`Error in analyzeTaskComplexityDirect: ${error.message}`);
 		return {
 			success: false,
-			error: {
-				code: 'CORE_FUNCTION_ERROR',
-				message: error.message
-			}
+			error: { code: 'DIRECT_FUNCTION_SETUP_ERROR', message: error.message },
+			fromCache: false
 		};
 	}
 }

@@ -1,88 +1,87 @@
 /**
  * list-tasks.js
- * Direct function implementation for listing tasks
+ * Direct function implementation for listing tasks using appropriate provider.
  */
 
-import { listTasks } from '../../../../scripts/modules/task-manager.js';
+import path from 'path';
+import { findTasksJsonPath } from '../utils/path-utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
-import {
-	enableSilentMode,
-	disableSilentMode
-} from '../../../../scripts/modules/utils.js';
+// Import the Task Provider Factory
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
+// Utilities for silent mode are likely not needed here anymore if provider handles logging
+// import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
 
 /**
- * Direct function wrapper for listTasks with error handling and caching.
- *
- * @param {Object} args - Command arguments (now expecting tasksJsonPath explicitly).
- * @param {Object} log - Logger object.
- * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
+ * Direct function wrapper for listing tasks via the configured provider.
+ * Handles caching and provider instantiation.
+ * @param {object} args - Arguments containing options like status, withSubtasks, file, projectRoot.
+ * @param {object} log - Logger instance.
+ * @param {object} [context={}] - Optional context, e.g., { session }.
+ * @returns {Promise<object>} - Result object { success, data/error, fromCache }.
  */
-export async function listTasksDirect(args, log) {
-	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, status, withSubtasks } = args;
+export async function listTasksDirect(args, log, context = {}) {
+	const { session } = context;
+	const { status, withSubtasks, file, projectRoot } = args;
 
-	if (!tasksJsonPath) {
-		log.error('listTasksDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
-		};
-	}
+	// Determine provider type for logging/debugging
+	const providerType = process.env.TASK_PROVIDER || 'local';
 
-	// Use the explicit tasksJsonPath for cache key
+	// Update cache key to include provider type and relevant filters
 	const statusFilter = status || 'all';
 	const withSubtasksFilter = withSubtasks || false;
-	const cacheKey = `listTasks:${tasksJsonPath}:${statusFilter}:${withSubtasksFilter}`;
+	const cacheKey = `getTasks:${projectRoot || 'unknown'}:${providerType}:${file || 'default'}:${statusFilter}:${withSubtasksFilter}`;
+	const ttl = 30000; // Cache for 30 seconds
 
-	// Define the action function to be executed on cache miss
-	const coreListTasksAction = async () => {
+	// Define the action function to call the PROVIDER's getTasks method
+	const providerGetTasksAction = async () => {
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
+			// Get the configured task provider, passing necessary context (e.g., Jira tools)
+			// Assuming MCP context/tools are implicitly available or passed via options if needed by factory
+			const provider = await getTaskProvider({ /* Pass MCP Jira tools if needed */ });
+
+			// Prepare options for the provider's getTasks method
+			const providerOptions = {
+				status: status, // Pass original status filter
+				withSubtasks: withSubtasks,
+				file: file, // Pass file hint if applicable
+				projectRoot: projectRoot, // Pass project root
+				// Pass logger and session if the provider method expects them
+				// mcpLog: log, 
+				// session: session 
+			};
 
 			log.info(
-				`Executing core listTasks function for path: ${tasksJsonPath}, filter: ${statusFilter}, subtasks: ${withSubtasksFilter}`
-			);
-			// Pass the explicit tasksJsonPath to the core function
-			const resultData = listTasks(
-				tasksJsonPath,
-				statusFilter,
-				withSubtasksFilter,
-				'json'
+				`Calling ${providerType} provider.getTasks. Options: ${JSON.stringify(providerOptions)}`
 			);
 
-			if (!resultData || !resultData.tasks) {
-				log.error('Invalid or empty response from listTasks core function');
+			// Call the provider's getTasks method
+			const resultData = await provider.getTasks(providerOptions);
+
+			// Provider should return { tasks: [...] } or similar standard structure
+			if (!resultData || !Array.isArray(resultData.tasks)) { 
+				log.error('Invalid or empty response structure from provider.getTasks', resultData);
 				return {
 					success: false,
 					error: {
-						code: 'INVALID_CORE_RESPONSE',
-						message: 'Invalid or empty response from listTasks core function'
+						code: 'INVALID_PROVIDER_RESPONSE',
+						message: 'Invalid response structure from provider. Expected { tasks: [...] }.'
 					}
 				};
 			}
 			log.info(
-				`Core listTasks function retrieved ${resultData.tasks.length} tasks`
+				`Provider ${providerType} retrieved ${resultData.tasks.length} tasks`
 			);
 
-			// Restore normal logging
-			disableSilentMode();
+			return { success: true, data: resultData.tasks }; // Return just the tasks array
 
-			return { success: true, data: resultData };
 		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
-
-			log.error(`Core listTasks function failed: ${error.message}`);
+			log.error(`Provider getTasks function failed: ${error.message}`);
+			console.error(error.stack); // Log stack for debugging server-side
 			return {
 				success: false,
 				error: {
-					code: 'LIST_TASKS_CORE_ERROR',
-					message: error.message || 'Failed to list tasks'
+					code: 'PROVIDER_GET_TASKS_ERROR',
+					message: error.message || 'Provider failed to get tasks'
 				}
 			};
 		}
@@ -90,15 +89,11 @@ export async function listTasksDirect(args, log) {
 
 	// Use the caching utility
 	try {
-		const result = await getCachedOrExecute({
-			cacheKey,
-			actionFn: coreListTasksAction,
-			log
-		});
+		// Pass the log object to getCachedOrExecute
+		const result = await getCachedOrExecute(cacheKey, ttl, providerGetTasksAction, log);
 		log.info(`listTasksDirect completed. From cache: ${result.fromCache}`);
-		return result; // Returns { success, data/error, fromCache }
+		return result;
 	} catch (error) {
-		// Catch unexpected errors from getCachedOrExecute itself (though unlikely)
 		log.error(
 			`Unexpected error during getCachedOrExecute for listTasks: ${error.message}`
 		);
@@ -106,7 +101,7 @@ export async function listTasksDirect(args, log) {
 		return {
 			success: false,
 			error: { code: 'CACHE_UTIL_ERROR', message: error.message },
-			fromCache: false
+			fromCache: false // Ensure fromCache is always present
 		};
 	}
 }

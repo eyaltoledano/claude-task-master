@@ -1,98 +1,74 @@
 /**
  * generate-task-files.js
- * Direct function implementation for generating task files from tasks.json
+ * Direct function implementation for generating task files, specific to local provider.
  */
 
-import { generateTaskFiles } from '../../../../scripts/modules/task-manager.js';
-import {
-	enableSilentMode,
-	disableSilentMode
-} from '../../../../scripts/modules/utils.js';
-import path from 'path';
+// Removed direct import of generateTaskFiles
+// Removed silent mode utils
+// Removed path import
+import { getTaskProvider } from '../../../../scripts/modules/task-provider-factory.js';
+import { log as mcpLogUtil } from '../../../../scripts/modules/utils.js'; // Use a distinct name if log is passed
 
 /**
- * Direct function wrapper for generateTaskFiles with error handling.
+ * Direct function wrapper for generating task files, checking provider compatibility.
  *
- * @param {Object} args - Command arguments containing tasksJsonPath and outputDir.
- * @param {Object} log - Logger object.
+ * @param {Object} args - Command arguments.
+ * @param {string} [args.file] - Optional path to the tasks.json file (for local provider).
+ * @param {string} [args.outputDir] - Optional output directory path.
+ * @param {Object} log - Logger object provided by MCP framework.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function generateTaskFilesDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, outputDir } = args;
+	const { file, outputDir } = args;
 	try {
-		log.info(`Generating task files with args: ${JSON.stringify(args)}`);
+		log.info(`Attempting to generate task files with args: ${JSON.stringify(args)}`);
 
-		// Check if paths were provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
+		const provider = await getTaskProvider();
+
+		// Check if the provider supports generating task files
+		if (typeof provider.generateTaskFiles !== 'function') {
+			const errorMsg = 'Generating task files is not supported by the current task provider (e.g., Jira).';
+			log.warn(errorMsg);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
-			};
-		}
-		if (!outputDir) {
-			const errorMessage = 'outputDir is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: {
+					code: 'UNSUPPORTED_PROVIDER',
+					message: errorMsg
+				}
 			};
 		}
 
-		// Use the provided paths
-		const tasksPath = tasksJsonPath;
-		const resolvedOutputDir = outputDir;
+		// Provider supports it, proceed (likely LocalTaskManager)
+		const providerOptions = { file, outputDir, mcpLog: log };
 
-		log.info(`Generating task files from ${tasksPath} to ${resolvedOutputDir}`);
+		// Call the provider's method
+		// Assuming it returns { success: boolean, data?: { message, generatedCount }, error?: { code, message } }
+		const result = await provider.generateTaskFiles(providerOptions);
 
-		// Execute core generateTaskFiles function in a separate try/catch
-		try {
-			// Enable silent mode to prevent logs from being written to stdout
-			enableSilentMode();
-
-			// The function is synchronous despite being awaited elsewhere
-			generateTaskFiles(tasksPath, resolvedOutputDir);
-
-			// Restore normal logging after task generation
-			disableSilentMode();
-		} catch (genError) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
-
-			log.error(`Error in generateTaskFiles: ${genError.message}`);
+		if (result.success) {
+			log.info(`Provider successfully generated task files: ${result.data?.message || 'Operation completed.'}`);
+			return {
+				success: true,
+				data: result.data || { message: 'Task files generated successfully.' },
+				fromCache: false // Operation modifies state
+			};
+		} else {
+			log.error(`Provider failed to generate task files: ${result.error?.message || 'Unknown provider error'}`);
 			return {
 				success: false,
-				error: { code: 'GENERATE_FILES_ERROR', message: genError.message },
+				error: result.error || { code: 'PROVIDER_ERROR', message: 'Provider failed to generate task files.' },
 				fromCache: false
 			};
 		}
 
-		// Return success with file paths
-		return {
-			success: true,
-			data: {
-				message: `Successfully generated task files`,
-				tasksPath: tasksPath,
-				outputDir: resolvedOutputDir,
-				taskFiles:
-					'Individual task files have been generated in the output directory'
-			},
-			fromCache: false // This operation always modifies state and should never be cached
-		};
 	} catch (error) {
-		// Make sure to restore normal logging if an outer error occurs
-		disableSilentMode();
-
-		log.error(`Error generating task files: ${error.message}`);
+		// Catch errors during provider retrieval or execution
+		log.error(`Error in generateTaskFilesDirect: ${error.message}`);
 		return {
 			success: false,
 			error: {
-				code: 'GENERATE_TASKS_ERROR',
-				message: error.message || 'Unknown error generating task files'
+				code: 'MCP_DIRECT_FUNCTION_ERROR',
+				message: error.message || 'An unexpected error occurred while generating task files.'
 			},
 			fromCache: false
 		};

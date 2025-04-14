@@ -956,30 +956,48 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
 }
 
 /**
- * Generate a prompt for complexity analysis
- * @param {Object} tasksData - Tasks data object containing tasks array
- * @returns {string} Generated prompt
+ * Generate the prompt for task complexity analysis.
+ * Includes task details and, if available, issue link information.
+ * @param {Array<Object>} tasks - Array of task objects (potentially with task.issueLinks)
+ * @param {boolean} useResearch - Flag indicating if research/web context is needed
+ * @returns {string} The generated prompt
  */
-function generateComplexityAnalysisPrompt(tasksData) {
-	return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
+function generateComplexityAnalysisPrompt(tasks, useResearch = false) {
+	const taskDetails = tasks
+		.map((task) => {
+			let linkInfo = '';
+			if (task.issueLinks && Array.isArray(task.issueLinks)) {
+				const blocksCount = task.issueLinks.filter(link => link.type?.name === 'Blocks' && link.outwardIssue?.key === task.id).length;
+				const isBlockedByCount = task.issueLinks.filter(link => link.type?.name === 'Blocks' && link.inwardIssue?.key === task.id).length;
+				const relatesCount = task.issueLinks.filter(link => link.type?.name === 'Relates').length;
+				linkInfo = `\nIssue Links: Blocks: ${blocksCount}, Is Blocked By: ${isBlockedByCount}, Relates: ${relatesCount}`;
+			}
 
-${tasksData.tasks
-	.map(
-		(task) => `
+			return `
 Task ID: ${task.id}
 Title: ${task.title}
 Description: ${task.description}
 Details: ${task.details}
-Dependencies: ${JSON.stringify(task.dependencies || [])}
+Dependencies (TM Field): ${JSON.stringify(task.dependencies || [])}${linkInfo}
 Priority: ${task.priority || 'medium'}
-`
-	)
-	.join('\n---\n')}
+`;
+		})
+		.join('\n---\n');
+
+	const researchNote = useResearch
+		? 'Consider external factors and best practices based on your web knowledge when assessing complexity.'
+		: '';
+
+	return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
+
+${taskDetails}
+
+${researchNote}
 
 Analyze each task and return a JSON array with the following structure for each task:
 [
   {
-    "taskId": number,
+    "taskId": "${tasks[0]?.id || 'exampleId'}", // Use string for ID to accommodate Jira keys
     "taskTitle": string,
     "complexityScore": number (1-10),
     "recommendedSubtasks": number (${Math.max(3, CONFIG.defaultSubtasks - 1)}-${Math.min(8, CONFIG.defaultSubtasks + 2)}),
@@ -989,7 +1007,7 @@ Analyze each task and return a JSON array with the following structure for each 
   ...
 ]
 
-IMPORTANT: Make sure to include an analysis for EVERY task listed above, with the correct taskId matching each task's ID.
+IMPORTANT: Make sure to include an analysis for EVERY task listed above, with the correct taskId matching each task's ID. Return ONLY the JSON array.
 `;
 }
 

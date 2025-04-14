@@ -3,6 +3,14 @@
  */
 
 import { jest } from '@jest/globals';
+
+// --- Mock task-manager BEFORE importing ui.js --- 
+jest.unstable_mockModule('../../scripts/modules/task-manager.js', () => ({
+	findNextTask: jest.fn(),
+	analyzeTaskComplexity: jest.fn()
+}));
+
+// --- Now import from ui.js --- 
 import {
 	getStatusWithColor,
 	formatDependenciesWithStatus,
@@ -66,11 +74,6 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	readComplexityReport: jest.fn(),
 	truncate: jest.fn((text) => text)
-}));
-
-jest.mock('../../scripts/modules/task-manager.js', () => ({
-	findNextTask: jest.fn(),
-	analyzeTaskComplexity: jest.fn()
 }));
 
 describe('UI Module', () => {

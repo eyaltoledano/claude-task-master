@@ -96,3 +96,8 @@ export {
 	removeTaskDirect,
 	initializeProjectDirect
 };
+
+// Export MCP Utilities as well if they are intended for broader use
+export { handleApiResult, processMCPResponseData, getCachedOrExecute, getProjectRootFromSession } from '../tools/utils.js';
+
+export * from './direct-functions/get-attachment-dir-direct.js';
