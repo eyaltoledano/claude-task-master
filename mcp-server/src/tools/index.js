@@ -29,6 +29,7 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { asyncOperationManager } from '../core/utils/async-manager.js';
 import { registerGetAttachmentDirTool } from './get-attachment-dir.js';
+import { registerGetMcpConfigTool } from './get-mcp-config.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -62,6 +63,7 @@ export function registerTaskMasterTools(server, asyncManager) {
 		registerRemoveTaskTool(server);
 		registerInitializeProjectTool(server);
 		registerGetAttachmentDirTool(server);
+		registerGetMcpConfigTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;
