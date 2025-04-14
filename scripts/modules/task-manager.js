@@ -106,7 +106,7 @@ async function parsePRD(
 	aiClient = null,
 	modelConfig = null
 ) {
-	const { reportProgress, mcpLog, session } = options;
+	const { reportProgress, mcpLog, session, append } = options;
 
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';
@@ -127,26 +127,53 @@ async function parsePRD(
 		// Read the PRD content
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 
+		// If appending and tasks.json exists, read it first
+		let existingTasks = { tasks: [] };
+		let lastTaskId = 0;
+		if (append && fs.existsSync(tasksPath)) {
+			try {
+				existingTasks = readJSON(tasksPath);
+				if (existingTasks.tasks && existingTasks.tasks.length > 0) {
+					// Find the highest task ID
+					lastTaskId = Math.max(...existingTasks.tasks.map(task => {
+						const mainId = parseInt(task.id.toString().split('.')[0], 10);
+						return isNaN(mainId) ? 0 : mainId;
+					}));
+				}
+			} catch (error) {
+				report(`Warning: Could not read existing tasks file: ${error.message}`, 'warn');
+				existingTasks = { tasks: [] };
+			}
+		}
+
 		// Call Claude to generate tasks, passing the provided AI client if available
-		const tasksData = await callClaude(
+		const newTasksData = await callClaude(
 			prdContent,
 			prdPath,
 			numTasks,
-			0,
+			lastTaskId, // Pass the last task ID so new tasks continue the sequence
 			{ reportProgress, mcpLog, session },
 			aiClient,
 			modelConfig
 		);
+
+		// Merge tasks if appending
+		const tasksData = append ? {
+			...existingTasks,
+			tasks: [...existingTasks.tasks, ...newTasksData.tasks]
+		} : newTasksData;
 
 		// Create the directory if it doesn't exist
 		const tasksDir = path.dirname(tasksPath);
 		if (!fs.existsSync(tasksDir)) {
 			fs.mkdirSync(tasksDir, { recursive: true });
 		}
+
 		// Write the tasks to the file
 		writeJSON(tasksPath, tasksData);
+		const actionVerb = append ? 'appended' : 'generated';
 		report(
-			`Successfully generated ${tasksData.tasks.length} tasks from PRD`,
+			`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`,
 			'success'
 		);
 		report(`Tasks saved to: ${tasksPath}`, 'info');
@@ -166,7 +193,7 @@ async function parsePRD(
 			console.log(
 				boxen(
 					chalk.green(
-						`Successfully generated ${tasksData.tasks.length} tasks from PRD`
+						`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`
 					),
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
@@ -175,9 +202,9 @@ async function parsePRD(
 			console.log(
 				boxen(
 					chalk.white.bold('Next Steps:') +
-						'\n\n' +
-						`${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
-						`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks`,
+					'\n\n' +
+					`${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
+					`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks`,
 					{
 						padding: 1,
 						borderColor: 'cyan',
@@ -302,19 +329,19 @@ async function updateTasks(
 			console.log(
 				boxen(
 					chalk.cyan.bold('How Completed Subtasks Are Handled:') +
-						'\n\n' +
-						chalk.white(
-							'• Subtasks marked as "done" or "completed" will be preserved\n'
-						) +
-						chalk.white(
-							'• New subtasks will build upon what has already been completed\n'
-						) +
-						chalk.white(
-							'• If completed work needs revision, a new subtask will be created instead of modifying done items\n'
-						) +
-						chalk.white(
-							'• This approach maintains a clear record of completed work and new requirements'
-						),
+					'\n\n' +
+					chalk.white(
+						'• Subtasks marked as "done" or "completed" will be preserved\n'
+					) +
+					chalk.white(
+						'• New subtasks will build upon what has already been completed\n'
+					) +
+					chalk.white(
+						'• If completed work needs revision, a new subtask will be created instead of modifying done items\n'
+					) +
+					chalk.white(
+						'• This approach maintains a clear record of completed work and new requirements'
+					),
 					{
 						padding: 1,
 						borderColor: 'blue',
@@ -424,13 +451,13 @@ Return only the updated tasks as a valid JSON array.`
 							],
 							temperature: parseFloat(
 								process.env.TEMPERATURE ||
-									session?.env?.TEMPERATURE ||
-									CONFIG.temperature
+								session?.env?.TEMPERATURE ||
+								CONFIG.temperature
 							),
 							max_tokens: parseInt(
 								process.env.MAX_TOKENS ||
-									session?.env?.MAX_TOKENS ||
-									CONFIG.maxTokens
+								session?.env?.MAX_TOKENS ||
+								CONFIG.maxTokens
 							)
 						});
 
@@ -796,16 +823,16 @@ async function updateTaskById(
 						chalk.yellow(
 							`Task ${taskId} is already marked as ${taskToUpdate.status} and cannot be updated.`
 						) +
-							'\n\n' +
-							chalk.white(
-								'Completed tasks are locked to maintain consistency. To modify a completed task, you must first:'
-							) +
-							'\n' +
-							chalk.white(
-								'1. Change its status to "pending" or "in-progress"'
-							) +
-							'\n' +
-							chalk.white('2. Then run the update-task command'),
+						'\n\n' +
+						chalk.white(
+							'Completed tasks are locked to maintain consistency. To modify a completed task, you must first:'
+						) +
+						'\n' +
+						chalk.white(
+							'1. Change its status to "pending" or "in-progress"'
+						) +
+						'\n' +
+						chalk.white('2. Then run the update-task command'),
 						{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
 					)
 				);
@@ -846,19 +873,19 @@ async function updateTaskById(
 			console.log(
 				boxen(
 					chalk.cyan.bold('How Completed Subtasks Are Handled:') +
-						'\n\n' +
-						chalk.white(
-							'• Subtasks marked as "done" or "completed" will be preserved\n'
-						) +
-						chalk.white(
-							'• New subtasks will build upon what has already been completed\n'
-						) +
-						chalk.white(
-							'• If completed work needs revision, a new subtask will be created instead of modifying done items\n'
-						) +
-						chalk.white(
-							'• This approach maintains a clear record of completed work and new requirements'
-						),
+					'\n\n' +
+					chalk.white(
+						'• Subtasks marked as "done" or "completed" will be preserved\n'
+					) +
+					chalk.white(
+						'• New subtasks will build upon what has already been completed\n'
+					) +
+					chalk.white(
+						'• If completed work needs revision, a new subtask will be created instead of modifying done items\n'
+					) +
+					chalk.white(
+						'• This approach maintains a clear record of completed work and new requirements'
+					),
 					{
 						padding: 1,
 						borderColor: 'blue',
@@ -969,13 +996,13 @@ Return only the updated task as a valid JSON object.`
 							],
 							temperature: parseFloat(
 								process.env.TEMPERATURE ||
-									session?.env?.TEMPERATURE ||
-									CONFIG.temperature
+								session?.env?.TEMPERATURE ||
+								CONFIG.temperature
 							),
 							max_tokens: parseInt(
 								process.env.MAX_TOKENS ||
-									session?.env?.MAX_TOKENS ||
-									CONFIG.maxTokens
+								session?.env?.MAX_TOKENS ||
+								CONFIG.maxTokens
 							)
 						});
 
@@ -1297,10 +1324,10 @@ Return only the updated task as a valid JSON object.`
 				console.log(
 					boxen(
 						chalk.green(`Successfully updated task #${taskId}`) +
-							'\n\n' +
-							chalk.white.bold('Updated Title:') +
-							' ' +
-							updatedTask.title,
+						'\n\n' +
+						chalk.white.bold('Updated Title:') +
+						' ' +
+						updatedTask.title,
 						{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 					)
 				);
@@ -1568,9 +1595,9 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 				console.log(
 					boxen(
 						chalk.white.bold(`Successfully updated task ${id} status:`) +
-							'\n' +
-							`From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
-							`To:   ${chalk.green(newStatus)}`,
+						'\n' +
+						`From: ${chalk.yellow(task ? task.status : 'unknown')}\n` +
+						`To:   ${chalk.green(newStatus)}`,
 						{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 					)
 				);
@@ -1754,10 +1781,10 @@ function listTasks(
 		const filteredTasks =
 			statusFilter && statusFilter.toLowerCase() !== 'all' // <-- Added check for 'all'
 				? data.tasks.filter(
-						(task) =>
-							task.status &&
-							task.status.toLowerCase() === statusFilter.toLowerCase()
-					)
+					(task) =>
+						task.status &&
+						task.status.toLowerCase() === statusFilter.toLowerCase()
+				)
 				: data.tasks; // Default to all tasks if no filter or filter is 'all'
 
 		// Calculate completion statistics
@@ -1974,10 +2001,10 @@ function listTasks(
 		const nextTask = findNextTask(data.tasks);
 		const nextTaskInfo = nextTask
 			? `ID: ${chalk.cyan(nextTask.id)} - ${chalk.white.bold(truncate(nextTask.title, 40))}\n` +
-				`Priority: ${chalk.white(nextTask.priority || 'medium')}  Dependencies: ${formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)}`
+			`Priority: ${chalk.white(nextTask.priority || 'medium')}  Dependencies: ${formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)}`
 			: chalk.yellow(
-					'No eligible tasks found. All tasks are either completed or have unsatisfied dependencies.'
-				);
+				'No eligible tasks found. All tasks are either completed or have unsatisfied dependencies.'
+			);
 
 		// Get terminal width - more reliable method
 		let terminalWidth;
@@ -2333,14 +2360,14 @@ function listTasks(
 						.bold(
 							`🔥 Next Task to Work On: #${nextTask.id} - ${nextTask.title}`
 						) +
-						'\n\n' +
-						`${chalk.white('Priority:')} ${priorityColors[nextTask.priority || 'medium'](nextTask.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextTask.status, true)}\n` +
-						`${chalk.white('Dependencies:')} ${nextTask.dependencies && nextTask.dependencies.length > 0 ? formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true) : chalk.gray('None')}\n\n` +
-						`${chalk.white('Description:')} ${nextTask.description}` +
-						subtasksSection +
-						'\n\n' +
-						`${chalk.cyan('Start working:')} ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
-						`${chalk.cyan('View details:')} ${chalk.yellow(`task-master show ${nextTask.id}`)}`,
+					'\n\n' +
+					`${chalk.white('Priority:')} ${priorityColors[nextTask.priority || 'medium'](nextTask.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextTask.status, true)}\n` +
+					`${chalk.white('Dependencies:')} ${nextTask.dependencies && nextTask.dependencies.length > 0 ? formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true) : chalk.gray('None')}\n\n` +
+					`${chalk.white('Description:')} ${nextTask.description}` +
+					subtasksSection +
+					'\n\n' +
+					`${chalk.cyan('Start working:')} ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+					`${chalk.cyan('View details:')} ${chalk.yellow(`task-master show ${nextTask.id}`)}`,
 					{
 						padding: { left: 2, right: 2, top: 1, bottom: 1 },
 						borderColor: '#FF8800',
@@ -2357,8 +2384,8 @@ function listTasks(
 			console.log(
 				boxen(
 					chalk.hex('#FF8800').bold('No eligible next task found') +
-						'\n\n' +
-						'All pending tasks have dependencies that are not yet completed, or all tasks are done.',
+					'\n\n' +
+					'All pending tasks have dependencies that are not yet completed, or all tasks are done.',
 					{
 						padding: 1,
 						borderColor: '#FF8800',
@@ -2376,10 +2403,10 @@ function listTasks(
 		console.log(
 			boxen(
 				chalk.white.bold('Suggested Next Steps:') +
-					'\n\n' +
-					`${chalk.cyan('1.')} Run ${chalk.yellow('task-master next')} to see what to work on next\n` +
-					`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks\n` +
-					`${chalk.cyan('3.')} Run ${chalk.yellow('task-master set-status --id=<id> --status=done')} to mark a task as complete`,
+				'\n\n' +
+				`${chalk.cyan('1.')} Run ${chalk.yellow('task-master next')} to see what to work on next\n` +
+				`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks\n` +
+				`${chalk.cyan('3.')} Run ${chalk.yellow('task-master set-status --id=<id> --status=done')} to mark a task as complete`,
 				{
 					padding: 1,
 					borderColor: 'gray',
@@ -2943,14 +2970,14 @@ async function expandAllTasks(
 			console.log(
 				boxen(
 					chalk.white.bold(`Task Expansion Completed`) +
-						'\n\n' +
-						chalk.white(
-							`Expanded ${expandedCount} out of ${tasksToExpand.length} tasks`
-						) +
-						'\n' +
-						chalk.white(
-							`Each task now has detailed subtasks to guide implementation`
-						),
+					'\n\n' +
+					chalk.white(
+						`Expanded ${expandedCount} out of ${tasksToExpand.length} tasks`
+					) +
+					'\n' +
+					chalk.white(
+						`Each task now has detailed subtasks to guide implementation`
+					),
 					{
 						padding: 1,
 						borderColor: 'green',
@@ -3094,9 +3121,9 @@ function clearSubtasks(tasksPath, taskIds) {
 		console.log(
 			boxen(
 				chalk.white.bold('Next Steps:') +
-					'\n\n' +
-					`${chalk.cyan('1.')} Run ${chalk.yellow('task-master expand --id=<id>')} to generate new subtasks\n` +
-					`${chalk.cyan('2.')} Run ${chalk.yellow('task-master list --with-subtasks')} to verify changes`,
+				'\n\n' +
+				`${chalk.cyan('1.')} Run ${chalk.yellow('task-master expand --id=<id>')} to generate new subtasks\n` +
+				`${chalk.cyan('2.')} Run ${chalk.yellow('task-master list --with-subtasks')} to verify changes`,
 				{
 					padding: 1,
 					borderColor: 'cyan',
@@ -3299,13 +3326,13 @@ async function addTask(
 								],
 								temperature: parseFloat(
 									process.env.TEMPERATURE ||
-										session?.env?.TEMPERATURE ||
-										CONFIG.temperature
+									session?.env?.TEMPERATURE ||
+									CONFIG.temperature
 								),
 								max_tokens: parseInt(
 									process.env.MAX_TOKENS ||
-										session?.env?.MAX_TOKENS ||
-										CONFIG.maxTokens
+									session?.env?.MAX_TOKENS ||
+									CONFIG.maxTokens
 								)
 							});
 
@@ -3501,32 +3528,32 @@ async function addTask(
 			console.log(
 				boxen(
 					chalk.white.bold(`Task ${newTaskId} Created Successfully`) +
-						'\n\n' +
-						chalk.white(`Title: ${newTask.title}`) +
-						'\n' +
-						chalk.white(`Status: ${getStatusWithColor(newTask.status)}`) +
-						'\n' +
-						chalk.white(
-							`Priority: ${chalk.keyword(getPriorityColor(newTask.priority))(newTask.priority)}`
-						) +
-						'\n' +
-						(dependencies.length > 0
-							? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n'
-							: '') +
-						'\n' +
-						chalk.white.bold('Next Steps:') +
-						'\n' +
-						chalk.cyan(
-							`1. Run ${chalk.yellow(`task-master show ${newTaskId}`)} to see complete task details`
-						) +
-						'\n' +
-						chalk.cyan(
-							`2. Run ${chalk.yellow(`task-master set-status --id=${newTaskId} --status=in-progress`)} to start working on it`
-						) +
-						'\n' +
-						chalk.cyan(
-							`3. Run ${chalk.yellow(`task-master expand --id=${newTaskId}`)} to break it down into subtasks`
-						),
+					'\n\n' +
+					chalk.white(`Title: ${newTask.title}`) +
+					'\n' +
+					chalk.white(`Status: ${getStatusWithColor(newTask.status)}`) +
+					'\n' +
+					chalk.white(
+						`Priority: ${chalk.keyword(getPriorityColor(newTask.priority))(newTask.priority)}`
+					) +
+					'\n' +
+					(dependencies.length > 0
+						? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n'
+						: '') +
+					'\n' +
+					chalk.white.bold('Next Steps:') +
+					'\n' +
+					chalk.cyan(
+						`1. Run ${chalk.yellow(`task-master show ${newTaskId}`)} to see complete task details`
+					) +
+					'\n' +
+					chalk.cyan(
+						`2. Run ${chalk.yellow(`task-master set-status --id=${newTaskId} --status=in-progress`)} to start working on it`
+					) +
+					'\n' +
+					chalk.cyan(
+						`3. Run ${chalk.yellow(`task-master expand --id=${newTaskId}`)} to break it down into subtasks`
+					),
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
 			);
@@ -4387,10 +4414,10 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 					console.log(
 						boxen(
 							chalk.white.bold('Suggested Next Steps:') +
-								'\n\n' +
-								`${chalk.cyan('1.')} Run ${chalk.yellow('task-master complexity-report')} to review detailed findings\n` +
-								`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down complex tasks\n` +
-								`${chalk.cyan('3.')} Run ${chalk.yellow('task-master expand --all')} to expand all pending tasks based on complexity`,
+							'\n\n' +
+							`${chalk.cyan('1.')} Run ${chalk.yellow('task-master complexity-report')} to review detailed findings\n` +
+							`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down complex tasks\n` +
+							`${chalk.cyan('3.')} Run ${chalk.yellow('task-master expand --all')} to expand all pending tasks based on complexity`,
 							{
 								padding: 1,
 								borderColor: 'cyan',
@@ -4951,16 +4978,16 @@ async function updateSubtaskById(
 						chalk.yellow(
 							`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`
 						) +
-							'\n\n' +
-							chalk.white(
-								'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
-							) +
-							'\n' +
-							chalk.white(
-								'1. Change its status to "pending" or "in-progress"'
-							) +
-							'\n' +
-							chalk.white('2. Then run the update-subtask command'),
+						'\n\n' +
+						chalk.white(
+							'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
+						) +
+						'\n' +
+						chalk.white(
+							'1. Change its status to "pending" or "in-progress"'
+						) +
+						'\n' +
+						chalk.white('2. Then run the update-subtask command'),
 						{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
 					)
 				);
@@ -5061,13 +5088,13 @@ Provide concrete examples, code snippets, or implementation details when relevan
 						],
 						temperature: parseFloat(
 							process.env.TEMPERATURE ||
-								session?.env?.TEMPERATURE ||
-								CONFIG.temperature
+							session?.env?.TEMPERATURE ||
+							CONFIG.temperature
 						),
 						max_tokens: parseInt(
 							process.env.MAX_TOKENS ||
-								session?.env?.MAX_TOKENS ||
-								CONFIG.maxTokens
+							session?.env?.MAX_TOKENS ||
+							CONFIG.maxTokens
 						)
 					});
 					additionalInformation = response.choices[0].message.content.trim();
@@ -5318,14 +5345,14 @@ Provide concrete examples, code snippets, or implementation details when relevan
 			console.log(
 				boxen(
 					chalk.green(`Successfully updated subtask #${subtaskId}`) +
-						'\n\n' +
-						chalk.white.bold('Title:') +
-						' ' +
-						subtask.title +
-						'\n\n' +
-						chalk.white.bold('Information Added:') +
-						'\n' +
-						chalk.white(truncate(additionalInformation, 300, true)),
+					'\n\n' +
+					chalk.white.bold('Title:') +
+					' ' +
+					subtask.title +
+					'\n\n' +
+					chalk.white.bold('Information Added:') +
+					'\n' +
+					chalk.white(truncate(additionalInformation, 300, true)),
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
 			);

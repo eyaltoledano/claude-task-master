@@ -88,6 +88,7 @@ function registerCommands(programInstance) {
 		.option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
 		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
+		.option('--append', 'Append new tasks to existing tasks.json instead of overwriting')
 		.action(async (file, options) => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
@@ -95,10 +96,11 @@ function registerCommands(programInstance) {
 			const numTasks = parseInt(options.numTasks, 10);
 			const outputPath = options.output;
 			const force = options.force || false;
+			const append = options.append || false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
-				if (fs.existsSync(outputPath) && !force) {
+				if (fs.existsSync(outputPath) && !force && !append) {
 					const shouldContinue = await confirmTaskOverwrite(outputPath);
 					if (!shouldContinue) {
 						console.log(chalk.yellow('Operation cancelled by user.'));
@@ -117,7 +119,7 @@ function registerCommands(programInstance) {
 					if (!(await confirmOverwriteIfNeeded())) return;
 
 					console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-					await parsePRD(defaultPrdPath, outputPath, numTasks);
+					await parsePRD(defaultPrdPath, outputPath, numTasks, { append });
 					return;
 				}
 
@@ -129,26 +131,30 @@ function registerCommands(programInstance) {
 				console.log(
 					boxen(
 						chalk.white.bold('Parse PRD Help') +
-							'\n\n' +
-							chalk.cyan('Usage:') +
-							'\n' +
-							`  task-master parse-prd <prd-file.txt> [options]\n\n` +
-							chalk.cyan('Options:') +
-							'\n' +
-							'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
-							'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
-							'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
-							'  -f, --force              Skip confirmation when overwriting existing tasks\n\n' +
-							chalk.cyan('Example:') +
-							'\n' +
-							'  task-master parse-prd requirements.txt --num-tasks 15\n' +
-							'  task-master parse-prd --input=requirements.txt\n' +
-							'  task-master parse-prd --force\n\n' +
-							chalk.yellow('Note: This command will:') +
-							'\n' +
-							'  1. Look for a PRD file at scripts/prd.txt by default\n' +
-							'  2. Use the file specified by --input or positional argument if provided\n' +
-							'  3. Generate tasks from the PRD and overwrite any existing tasks.json file',
+						'\n\n' +
+						chalk.cyan('Usage:') +
+						'\n' +
+						`  task-master parse-prd <prd-file.txt> [options]\n\n` +
+						chalk.cyan('Options:') +
+						'\n' +
+						'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
+						'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
+						'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
+						'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
+						'  --append                 Append new tasks to existing tasks.json instead of overwriting\n\n' +
+						chalk.cyan('Example:') +
+						'\n' +
+						'  task-master parse-prd requirements.txt --num-tasks 15\n' +
+						'  task-master parse-prd --input=requirements.txt\n' +
+						'  task-master parse-prd --force\n' +
+						'  task-master parse-prd requirements_v2.txt --append\n\n' +
+						chalk.yellow('Note: This command will:') +
+						'\n' +
+						'  1. Look for a PRD file at scripts/prd.txt by default\n' +
+						'  2. Use the file specified by --input or positional argument if provided\n' +
+						'  3. Generate tasks from the PRD and either:\n' +
+						'     - Overwrite any existing tasks.json file (default)\n' +
+						'     - Append to existing tasks.json if --append is used',
 						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 					)
 				);
@@ -160,8 +166,11 @@ function registerCommands(programInstance) {
 
 			console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
 			console.log(chalk.blue(`Generating ${numTasks} tasks...`));
+			if (append) {
+				console.log(chalk.blue('Appending to existing tasks...'));
+			}
 
-			await parsePRD(inputFile, outputPath, numTasks);
+			await parsePRD(inputFile, outputPath, numTasks, { append });
 		});
 
 	// update command
@@ -1132,25 +1141,25 @@ function registerCommands(programInstance) {
 							chalk.white.bold(
 								`Subtask ${parentId}.${subtask.id} Added Successfully`
 							) +
-								'\n\n' +
-								chalk.white(`Title: ${subtask.title}`) +
-								'\n' +
-								chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) +
-								'\n' +
-								(dependencies.length > 0
-									? chalk.white(`Dependencies: ${dependencies.join(', ')}`) +
-										'\n'
-									: '') +
-								'\n' +
-								chalk.white.bold('Next Steps:') +
-								'\n' +
-								chalk.cyan(
-									`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`
-								) +
-								'\n' +
-								chalk.cyan(
-									`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`
-								),
+							'\n\n' +
+							chalk.white(`Title: ${subtask.title}`) +
+							'\n' +
+							chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) +
+							'\n' +
+							(dependencies.length > 0
+								? chalk.white(`Dependencies: ${dependencies.join(', ')}`) +
+								'\n'
+								: '') +
+							'\n' +
+							chalk.white.bold('Next Steps:') +
+							'\n' +
+							chalk.cyan(
+								`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`
+							) +
+							'\n' +
+							chalk.cyan(
+								`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`
+							),
 							{
 								padding: 1,
 								borderColor: 'green',
@@ -1166,19 +1175,19 @@ function registerCommands(programInstance) {
 					console.log(
 						boxen(
 							chalk.white.bold('Usage Examples:') +
-								'\n\n' +
-								chalk.white('Convert existing task to subtask:') +
-								'\n' +
-								chalk.yellow(
-									`  task-master add-subtask --parent=5 --task-id=8`
-								) +
-								'\n\n' +
-								chalk.white('Create new subtask:') +
-								'\n' +
-								chalk.yellow(
-									`  task-master add-subtask --parent=5 --title="Implement login UI" --description="Create the login form"`
-								) +
-								'\n\n',
+							'\n\n' +
+							chalk.white('Convert existing task to subtask:') +
+							'\n' +
+							chalk.yellow(
+								`  task-master add-subtask --parent=5 --task-id=8`
+							) +
+							'\n\n' +
+							chalk.white('Create new subtask:') +
+							'\n' +
+							chalk.yellow(
+								`  task-master add-subtask --parent=5 --title="Implement login UI" --description="Create the login form"`
+							) +
+							'\n\n',
 							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 						)
 					);
@@ -1200,25 +1209,25 @@ function registerCommands(programInstance) {
 		console.log(
 			boxen(
 				chalk.white.bold('Add Subtask Command Help') +
-					'\n\n' +
-					chalk.cyan('Usage:') +
-					'\n' +
-					`  task-master add-subtask --parent=<id> [options]\n\n` +
-					chalk.cyan('Options:') +
-					'\n' +
-					'  -p, --parent <id>         Parent task ID (required)\n' +
-					'  -i, --task-id <id>        Existing task ID to convert to subtask\n' +
-					'  -t, --title <title>       Title for the new subtask\n' +
-					'  -d, --description <text>  Description for the new subtask\n' +
-					'  --details <text>          Implementation details for the new subtask\n' +
-					'  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
-					'  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
-					'  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
-					'  --skip-generate           Skip regenerating task files\n\n' +
-					chalk.cyan('Examples:') +
-					'\n' +
-					'  task-master add-subtask --parent=5 --task-id=8\n' +
-					'  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"',
+				'\n\n' +
+				chalk.cyan('Usage:') +
+				'\n' +
+				`  task-master add-subtask --parent=<id> [options]\n\n` +
+				chalk.cyan('Options:') +
+				'\n' +
+				'  -p, --parent <id>         Parent task ID (required)\n' +
+				'  -i, --task-id <id>        Existing task ID to convert to subtask\n' +
+				'  -t, --title <title>       Title for the new subtask\n' +
+				'  -d, --description <text>  Description for the new subtask\n' +
+				'  --details <text>          Implementation details for the new subtask\n' +
+				'  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
+				'  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
+				'  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
+				'  --skip-generate           Skip regenerating task files\n\n' +
+				chalk.cyan('Examples:') +
+				'\n' +
+				'  task-master add-subtask --parent=5 --task-id=8\n' +
+				'  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"',
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -1291,24 +1300,24 @@ function registerCommands(programInstance) {
 								chalk.white.bold(
 									`Subtask ${subtaskId} Converted to Task #${result.id}`
 								) +
-									'\n\n' +
-									chalk.white(`Title: ${result.title}`) +
-									'\n' +
-									chalk.white(`Status: ${getStatusWithColor(result.status)}`) +
-									'\n' +
-									chalk.white(
-										`Dependencies: ${result.dependencies.join(', ')}`
-									) +
-									'\n\n' +
-									chalk.white.bold('Next Steps:') +
-									'\n' +
-									chalk.cyan(
-										`1. Run ${chalk.yellow(`task-master show ${result.id}`)} to see details of the new task`
-									) +
-									'\n' +
-									chalk.cyan(
-										`2. Run ${chalk.yellow(`task-master set-status --id=${result.id} --status=in-progress`)} to start working on it`
-									),
+								'\n\n' +
+								chalk.white(`Title: ${result.title}`) +
+								'\n' +
+								chalk.white(`Status: ${getStatusWithColor(result.status)}`) +
+								'\n' +
+								chalk.white(
+									`Dependencies: ${result.dependencies.join(', ')}`
+								) +
+								'\n\n' +
+								chalk.white.bold('Next Steps:') +
+								'\n' +
+								chalk.cyan(
+									`1. Run ${chalk.yellow(`task-master show ${result.id}`)} to see details of the new task`
+								) +
+								'\n' +
+								chalk.cyan(
+									`2. Run ${chalk.yellow(`task-master set-status --id=${result.id} --status=in-progress`)} to start working on it`
+								),
 								{
 									padding: 1,
 									borderColor: 'green',
@@ -1322,8 +1331,8 @@ function registerCommands(programInstance) {
 						console.log(
 							boxen(
 								chalk.white.bold(`Subtask ${subtaskId} Removed`) +
-									'\n\n' +
-									chalk.white('The subtask has been successfully deleted.'),
+								'\n\n' +
+								chalk.white('The subtask has been successfully deleted.'),
 								{
 									padding: 1,
 									borderColor: 'green',
@@ -1351,21 +1360,21 @@ function registerCommands(programInstance) {
 		console.log(
 			boxen(
 				chalk.white.bold('Remove Subtask Command Help') +
-					'\n\n' +
-					chalk.cyan('Usage:') +
-					'\n' +
-					`  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
-					chalk.cyan('Options:') +
-					'\n' +
-					'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
-					'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
-					'  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
-					'  --skip-generate     Skip regenerating task files\n\n' +
-					chalk.cyan('Examples:') +
-					'\n' +
-					'  task-master remove-subtask --id=5.2\n' +
-					'  task-master remove-subtask --id=5.2,6.3,7.1\n' +
-					'  task-master remove-subtask --id=5.2 --convert',
+				'\n\n' +
+				chalk.cyan('Usage:') +
+				'\n' +
+				`  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
+				chalk.cyan('Options:') +
+				'\n' +
+				'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
+				'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
+				'  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
+				'  --skip-generate     Skip regenerating task files\n\n' +
+				chalk.cyan('Examples:') +
+				'\n' +
+				'  task-master remove-subtask --id=5.2\n' +
+				'  task-master remove-subtask --id=5.2,6.3,7.1\n' +
+				'  task-master remove-subtask --id=5.2 --convert',
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -1719,7 +1728,7 @@ function compareVersions(v1, v2) {
 function displayUpgradeNotification(currentVersion, latestVersion) {
 	const message = boxen(
 		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
-			`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
+		`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
 		{
 			padding: 1,
 			margin: { top: 1, bottom: 1 },
