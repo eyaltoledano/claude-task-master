@@ -537,13 +537,23 @@ function registerCommands(programInstance) {
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
+		.option('-t, --project-type <type>', 'Specify project type (node, python, skeleton)', 'skeleton')
 		.action(async (cmdOptions) => {
 			console.log('DEBUG: Running init command action in commands.js');
 			console.log(
 				'DEBUG: Options received by action:',
 				JSON.stringify(cmdOptions)
 			);
-			await initializeProject(cmdOptions);
+			await initializeProject({
+				projectName: cmdOptions.name,
+				projectDescription: cmdOptions.description,
+				projectVersion: cmdOptions.version,
+				authorName: cmdOptions.author,
+				skipInstall: cmdOptions.skipInstall,
+				addAliases: cmdOptions.aliases,
+				projectType: cmdOptions.projectType,
+				yes: cmdOptions.yes
+			});
 		});
 
 	programInstance
