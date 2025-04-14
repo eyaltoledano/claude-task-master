@@ -114,28 +114,14 @@ function log(level, ...args) {
 
 // Function to create directory if it doesn't exist
 function ensureDirectoryExists(dirPath, log) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
 	if (!fs.existsSync(dirPath)) {
 		fs.mkdirSync(dirPath, { recursive: true });
-		effectiveLog.info(`Created directory: ${dirPath}`);
+		log.info(`Created directory: ${dirPath}`);
 	}
 }
 
 // Function to add shell aliases to the user's shell configuration
 function addShellAliases(log) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
 	const homeDir = process.env.HOME || process.env.USERPROFILE;
 	let shellConfigFile;
 
@@ -145,14 +131,14 @@ function addShellAliases(log) {
 	} else if (process.env.SHELL?.includes('bash')) {
 		shellConfigFile = path.join(homeDir, '.bashrc');
 	} else {
-		effectiveLog.warn('Could not determine shell type. Aliases not added.');
+		log.warn('Could not determine shell type. Aliases not added.');
 		return false;
 	}
 
 	try {
 		// Check if file exists
 		if (!fs.existsSync(shellConfigFile)) {
-			effectiveLog.warn(
+			log.warn(
 				`Shell config file ${shellConfigFile} not found. Aliases not added.`
 			);
 			return false;
@@ -161,7 +147,7 @@ function addShellAliases(log) {
 		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
 		if (configContent.includes("alias tm='task-master'")) {
-			effectiveLog.info('Task Master aliases already exist in shell config.');
+			log.info('Task Master aliases already exist in shell config.');
 			return true;
 		}
 
@@ -173,29 +159,21 @@ alias taskmaster='task-master'
 `;
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
-		effectiveLog.success(`Added Task Master aliases to ${shellConfigFile}`);
-		effectiveLog.info(
+		log.success(`Added Task Master aliases to ${shellConfigFile}`);
+		log.info(
 			'To use the aliases in your current terminal, run: source ' +
 				shellConfigFile
 		);
 
 		return true;
 	} catch (error) {
-		effectiveLog.error(`Failed to add aliases: ${error.message}`);
+		log.error(`Failed to add aliases: ${error.message}`);
 		return false;
 	}
 }
 
 // Function to copy a file from the package to the target directory
 function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
-
 	// Get the file content from the appropriate source directory
 	let sourcePath;
 
@@ -259,7 +237,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 		// Fall back to templates directory for files that might not have been moved yet
 		sourcePath = path.join(__dirname, '..', 'assets', templateName);
 		if (!fs.existsSync(sourcePath)) {
-			effectiveLog.error(`Source file not found: ${sourcePath}`);
+			log.error(`Source file not found: ${sourcePath}`);
 			return;
 		}
 	}
@@ -278,7 +256,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 
 		// Handle .gitignore - append lines that don't exist
 		if (filename === '.gitignore') {
-			effectiveLog.info(`${targetPath} already exists, merging content...`);
+			log.info(`${targetPath} already exists, merging content...`);
 			const existingContent = fs.readFileSync(targetPath, 'utf8');
 			const existingLines = new Set(
 				existingContent.split('\n').map((line) => line.trim())
@@ -294,16 +272,16 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 					'\n\n# Added by Claude Task Master\n' +
 					newLines.join('\n');
 				fs.writeFileSync(targetPath, updatedContent);
-				effectiveLog.success(`Updated ${targetPath} with additional entries`);
+				log.success(`Updated ${targetPath} with additional entries`);
 			} else {
-				effectiveLog.info(`No new content to add to ${targetPath}`);
+				log.info(`No new content to add to ${targetPath}`);
 			}
 			return;
 		}
 
 		// Handle .windsurfrules - append the entire content
 		if (filename === '.windsurfrules') {
-			effectiveLog.info(
+			log.info(
 				`${targetPath} already exists, appending content instead of overwriting...`
 			);
 			const existingContent = fs.readFileSync(targetPath, 'utf8');
@@ -314,13 +292,13 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 				'\n\n# Added by Task Master - Development Workflow Rules\n\n' +
 				content;
 			fs.writeFileSync(targetPath, updatedContent);
-			effectiveLog.success(`Updated ${targetPath} with additional rules`);
+			log.success(`Updated ${targetPath} with additional rules`);
 			return;
 		}
 
 		// Handle package.json - merge dependencies
 		if (filename === 'package.json') {
-			effectiveLog.info(`${targetPath} already exists, merging dependencies...`);
+			log.info(`${targetPath} already exists, merging dependencies...`);
 			try {
 				const existingPackageJson = JSON.parse(
 					fs.readFileSync(targetPath, 'utf8')
@@ -352,17 +330,17 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 					targetPath,
 					JSON.stringify(existingPackageJson, null, 2)
 				);
-				effectiveLog.success(
+				log.success(
 					`Updated ${targetPath} with required dependencies and scripts`
 				);
 			} catch (error) {
-				effectiveLog.error(`Failed to merge package.json: ${error.message}`);
+				log.error(`Failed to merge package.json: ${error.message}`);
 				// Fallback to writing a backup of the existing file and creating a new one
 				const backupPath = `${targetPath}.backup-${Date.now()}`;
 				fs.copyFileSync(targetPath, backupPath);
-				effectiveLog.info(`Created backup of existing package.json at ${backupPath}`);
+				log.info(`Created backup of existing package.json at ${backupPath}`);
 				fs.writeFileSync(targetPath, content);
-				effectiveLog.warn(
+				log.warn(
 					`Replaced ${targetPath} with new content (due to JSON parsing error)`
 				);
 			}
@@ -371,21 +349,21 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 
 		// Handle README.md - offer to preserve or create a different file
 		if (filename === 'README.md') {
-			effectiveLog.info(`${targetPath} already exists`);
+			log.info(`${targetPath} already exists`);
 			// Create a separate README file specifically for this project
 			const taskMasterReadmePath = path.join(
 				path.dirname(targetPath),
 				'README-task-master.md'
 			);
 			fs.writeFileSync(taskMasterReadmePath, content);
-			effectiveLog.success(
+			log.success(
 				`Created ${taskMasterReadmePath} (preserved original README.md)`
 			);
 			return;
 		}
 
 		// For other files, warn and prompt before overwriting
-		effectiveLog.warn(
+		log.warn(
 			`${targetPath} already exists. Skipping file creation to avoid overwriting existing content.`
 		);
 		return;
@@ -393,19 +371,11 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 
 	// If the file doesn't exist, create it normally
 	fs.writeFileSync(targetPath, content);
-	effectiveLog.info(`Created file: ${targetPath}`);
+	log.info(`Created file: ${targetPath}`);
 }
 
 // Main function to initialize a new project (Now relies solely on passed options)
 async function initializeProject(options = {}, log) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
-
 	// Use provided options or prompt if needed and not skipped
 	let {
 		projectName = '',
@@ -423,9 +393,9 @@ async function initializeProject(options = {}, log) {
 	// If targetDirectory wasn't passed (e.g., direct CLI usage), use current working dir
 	if (!targetDirectory) {
 		targetDirectory = process.cwd();
-		effectiveLog.info(`Target directory not specified, using current working directory: ${targetDirectory}`);
+		log.info(`Target directory not specified, using current working directory: ${targetDirectory}`);
 	} else {
-		effectiveLog.info(`Using specified target directory: ${targetDirectory}`);
+		log.info(`Using specified target directory: ${targetDirectory}`);
 	}
 
 	// Display banner unless silent
@@ -435,10 +405,10 @@ async function initializeProject(options = {}, log) {
 		// ... (Prompting logic - replace log with effectiveLog if needed) ...
 		// Example:
 		// effectiveLog('info', 'Proceeding with provided/prompted details...');
-		 effectiveLog.info('Proceeding with provided/prompted details...'); // Or keep using original log if prompting doesn't need wrapper
+		 log.info('Proceeding with provided/prompted details...'); // Or keep using original log if prompting doesn't need wrapper
 	} else {
 		// effectiveLog('info', 'Skipping prompts due to --yes flag...');
-		 effectiveLog.info('Skipping prompts due to --yes flag. Using defaults/provided options.'); // Keep original log?
+		 log.info('Skipping prompts due to --yes flag. Using defaults/provided options.'); // Keep original log?
 	}
 
 	authorName = authorName || 'Task Master User';
@@ -455,7 +425,7 @@ async function initializeProject(options = {}, log) {
 			projectType,
 			providerType, // Pass providerType
 			targetDirectory, // Pass validated targetDirectory
-			effectiveLog
+			log
 		);
 
 		if (!success) {
@@ -464,9 +434,9 @@ async function initializeProject(options = {}, log) {
 
 		return true; // Indicate success from initializeProject
 	} catch (error) {
-		effectiveLog.error(`Project initialization failed: ${error.message}`);
-		effectiveLog.error(`Original error stack trace from createProjectStructure:`);
-		effectiveLog.error(error.stack || 'No stack trace available'); 
+		log.error(`Project initialization failed: ${error.message}`);
+		log.error(`Original error stack trace from createProjectStructure:`);
+		log.error(error.stack || 'No stack trace available'); 
 		// Throw a new error including the original message
 		throw new Error(`Initialization failed within createProjectStructure: ${error.message}`);
 		// return false; // REMOVED - Throw instead
@@ -495,22 +465,14 @@ async function createProjectStructure(
 	targetDirectory, // Add targetDirectory parameter
 	log
 ) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
-	// const targetDir = process.cwd(); // REMOVED - Use passed targetDirectory
-	effectiveLog.info(`Starting project creation in: ${targetDirectory}`);
+	log.info(`Starting project creation in: ${targetDirectory}`);
 
 	// 1. Dynamically load and execute project type initializer
-	effectiveLog.info(`Initializing project structure for type: ${projectType}...`);
+	log.info(`Initializing project structure for type: ${projectType}...`);
 	try {
 		// Construct the path to the project type initializer module
 		const projectInitializerPath = path.join(__dirname, 'modules', 'init-project', `${projectType}.js`);
-		effectiveLog.debug(`Attempting to load project initializer from: ${projectInitializerPath}`);
+		log.debug(`Attempting to load project initializer from: ${projectInitializerPath}`);
 
 		if (!fs.existsSync(projectInitializerPath)) {
 			throw new Error(`Project type initializer not found for type: ${projectType} at ${projectInitializerPath}`);
@@ -523,25 +485,25 @@ async function createProjectStructure(
 			throw new Error(`Invalid project initializer export for type: ${projectType}. Expected 'initializeProject' function.`);
 		}
 
-		// Execute the initializer
-		await projectInitializer(targetDirectory, { projectName, projectDescription, projectVersion, authorName, skipInstall }, effectiveLog);
-		effectiveLog.success(`Project structure initialized for type: ${projectType}`);
+		// Execute the initializer, passing the same logger down
+		await projectInitializer(targetDirectory, { projectName, projectDescription, projectVersion, authorName, skipInstall }, log);
+		log.success(`Project structure initialized for type: ${projectType}`);
 
 	} catch (error) {
-		effectiveLog.error(`Error initializing project type structure: ${error.message}`);
-		effectiveLog.error(error.stack); // Log stack trace for debugging
+		log.error(`Error initializing project type structure: ${error.message}`);
+		log.error(error.stack); // Log stack trace for debugging
 		throw error; // Re-throw the error to be caught by initializeProject
 	}
 
 	// 2. Dynamically load and execute provider type initializer
-	effectiveLog.info(`Initializing provider configuration for type: ${providerType}...`);
+	log.info(`Initializing provider configuration for type: ${providerType}...`);
 	try {
 		// Construct the path to the provider type initializer module
 		const providerInitializerPath = path.join(__dirname, 'modules', 'init-provider', `${providerType}.js`);
-		effectiveLog.debug(`Attempting to load provider initializer from: ${providerInitializerPath}`);
+		log.debug(`Attempting to load provider initializer from: ${providerInitializerPath}`);
 
 		// Ensure the directory exists before trying to access the file
-		ensureDirectoryExists(path.dirname(providerInitializerPath), effectiveLog);
+		ensureDirectoryExists(path.dirname(providerInitializerPath), log);
 
 		// Check if the specific initializer file exists
 		if (!fs.existsSync(providerInitializerPath)) {
@@ -558,70 +520,70 @@ async function createProjectStructure(
 				throw new Error(`Invalid provider initializer export for type: ${providerType}. Expected 'initializeProvider' function.`);
 			}
 
-			// Execute the initializer
-			// Pass necessary options, potentially including project details if needed by provider setup
-			await providerInitializer(targetDirectory, { projectName, projectType /* add other options if needed */ }, effectiveLog);
-			effectiveLog.success(`Provider configuration initialized for type: ${providerType}`);
+			// Execute the initializer, passing the same logger down
+			await providerInitializer(targetDirectory, { projectName, projectType /* add other options if needed */ }, log);
+			log.success(`Provider configuration initialized for type: ${providerType}`);
 		}
 
 	} catch (error) {
-		effectiveLog.error(`Error initializing provider type configuration: ${error.message}`);
-		effectiveLog.error(error.stack); // Log stack trace for debugging
-		effectiveLog.warn(`Proceeding with initialization despite provider setup error.`);
+		log.error(`Error initializing provider type configuration: ${error.message}`);
+		log.error(error.stack); // Log stack trace for debugging
+		log.warn(`Proceeding with initialization despite provider setup error.`);
 		// Do not throw here, allow initialization to continue if provider fails
 	}
 
 
 	// 3. Common setup (directories, core files) - Moved after dynamic initializers
-	effectiveLog.info('Creating common project directories...');
-	ensureDirectoryExists(path.join(targetDirectory, 'scripts'), effectiveLog);
-	ensureDirectoryExists(path.join(targetDirectory, 'tasks'), effectiveLog);
-	ensureDirectoryExists(path.join(targetDirectory, '.cursor', 'rules'), effectiveLog);
+	log.info('Creating common project directories...');
+	ensureDirectoryExists(path.join(targetDirectory, 'scripts'), log);
+	ensureDirectoryExists(path.join(targetDirectory, 'tasks'), log);
+	ensureDirectoryExists(path.join(targetDirectory, '.cursor', 'rules'), log);
 	// ... rest of the common setup ...
 
 	// 4. Copy common template files (might be better inside specific initializers if they differ)
-	effectiveLog.info('Copying common template files...');
-	copyTemplateFile('.gitignore', path.join(targetDirectory, '.gitignore'), {}, effectiveLog);
+	if (log && typeof log.info === 'function')
+		log.info('Copying common template files...');
+	copyTemplateFile('.gitignore', path.join(targetDirectory, '.gitignore'), {}, log);
 	// ... copy other common files like dev.js, READMEs, rule files ...
-	copyTemplateFile('dev.js', path.join(targetDirectory, 'scripts', 'dev.js'), {}, effectiveLog);
-	copyTemplateFile('scripts_README.md', path.join(targetDirectory, 'scripts', 'README.md'), {}, effectiveLog);
-	copyTemplateFile('dev_workflow.mdc', path.join(targetDirectory, '.cursor', 'rules', 'dev_workflow.mdc'), {}, effectiveLog);
-	copyTemplateFile('taskmaster.mdc', path.join(targetDirectory, '.cursor', 'rules', 'taskmaster.mdc'), {}, effectiveLog);
-	copyTemplateFile('cursor_rules.mdc', path.join(targetDirectory, '.cursor', 'rules', 'cursor_rules.mdc'), {}, effectiveLog);
-	copyTemplateFile('self_improve.mdc', path.join(targetDirectory, '.cursor', 'rules', 'self_improve.mdc'), {}, effectiveLog);
-	copyTemplateFile('README-task-master.md', path.join(targetDirectory, 'README.md'), {}, effectiveLog);
-	copyTemplateFile('windsurfrules', path.join(targetDirectory, '.windsurfrules'), {}, effectiveLog);
+	// REMOVED: copyTemplateFile('dev.js', path.join(targetDirectory, 'scripts', 'dev.js'), {}, log);
+	copyTemplateFile('scripts_README.md', path.join(targetDirectory, 'scripts', 'README.md'), {}, log);
+	copyTemplateFile('dev_workflow.mdc', path.join(targetDirectory, '.cursor', 'rules', 'dev_workflow.mdc'), {}, log);
+	copyTemplateFile('taskmaster.mdc', path.join(targetDirectory, '.cursor', 'rules', 'taskmaster.mdc'), {}, log);
+	copyTemplateFile('cursor_rules.mdc', path.join(targetDirectory, '.cursor', 'rules', 'cursor_rules.mdc'), {}, log);
+	copyTemplateFile('self_improve.mdc', path.join(targetDirectory, '.cursor', 'rules', 'self_improve.mdc'), {}, log);
+	copyTemplateFile('README-task-master.md', path.join(targetDirectory, 'README.md'), {}, log);
+	copyTemplateFile('windsurfrules', path.join(targetDirectory, '.windsurfrules'), {}, log);
 	copyTemplateFile('.env.example', path.join(targetDirectory, '.env.example'), {
 		PROJECT_NAME: projectName,
 		PROJECT_VERSION: projectVersion,
-	}, effectiveLog);
-	copyTemplateFile('example_prd.txt', path.join(targetDirectory, 'scripts', 'example_prd.txt'), {}, effectiveLog);
+	}, log);
+	copyTemplateFile('example_prd.txt', path.join(targetDirectory, 'scripts', 'example_prd.txt'), {}, log);
 
 
 	// 5. Setup MCP configuration
-	setupMCPConfiguration(targetDirectory, projectName, effectiveLog);
+	setupMCPConfiguration(targetDirectory, projectName, log);
 
 	// 6. Add shell aliases if requested
 	let aliasesAdded = false;
 	if (addAliases) {
-		aliasesAdded = addShellAliases(effectiveLog);
+		aliasesAdded = addShellAliases(log);
 	}
 
 	// 7. Initialize git repository (only if not already in one)
 	if (!fs.existsSync(path.join(targetDirectory, '.git'))) {
 		try {
-			effectiveLog.info('Initializing git repository...');
+			log.info('Initializing git repository...');
 			execSync('git init', { cwd: targetDirectory, stdio: 'ignore' }); // Use cwd option
-			effectiveLog.success('Git repository initialized.');
+			log.success('Git repository initialized.');
 		} catch (error) {
-			effectiveLog.error(`Failed to initialize git repository: ${error.message}`);
+			log.error(`Failed to initialize git repository: ${error.message}`);
 		}
 	} else {
-		effectiveLog.info('Git repository already exists.');
+		log.info('Git repository already exists.');
 	}
 
 	// Final Summary
-	effectiveLog.success(`Project '${projectName}' initialized successfully!`);
+	log.success(`Project '${projectName}' initialized successfully!`);
 	// Only display the boxen summary if NOT in silent mode (i.e., running via CLI)
 	if (!isSilentMode()) {
 		console.log(boxen(
@@ -645,28 +607,13 @@ async function createProjectStructure(
 
 // Function to set up MCP server configuration (Keep this here for now, might make generic later)
 function setupMCPConfiguration(targetDir, projectName, log) {
-	const effectiveLog = {
-		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-		error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
-		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
-	};
+	log.info(`Setting up MCP configuration in ${targetDir} for ${projectName}...`);
+	
+	const mcpConfigDir = path.join(targetDir, '.cursor');
+	const mcpConfigFile = path.join(mcpConfigDir, 'mcp.json');
 
-	const mcpServerDir = path.join(targetDir, 'mcp-server');
-	const mcpSrcDir = path.join(mcpServerDir, 'src');
-	const mcpToolsDir = path.join(mcpSrcDir, 'tools');
-	const mcpCoreDir = path.join(mcpSrcDir, 'core');
-	const mcpUtilsDir = path.join(mcpCoreDir, 'utils');
+	ensureDirectoryExists(mcpConfigDir, log); // Pass log here too
 
-	effectiveLog.info('Setting up MCP Server configuration...');
-	ensureDirectoryExists(mcpServerDir, effectiveLog);
-	ensureDirectoryExists(mcpSrcDir, effectiveLog);
-	ensureDirectoryExists(mcpToolsDir, effectiveLog);
-	ensureDirectoryExists(mcpCoreDir, effectiveLog);
-	ensureDirectoryExists(mcpUtilsDir, effectiveLog);
-
-	// Basic MCP config file
 	const mcpConfig = {
 		projectName: projectName,
 		port: process.env.MCP_PORT || 3000,
@@ -674,39 +621,38 @@ function setupMCPConfiguration(targetDir, projectName, log) {
 		authEnabled: false, // Example: Default auth setting
 		// Add other MCP specific configurations
 	};
-	const mcpConfigPath = path.join(mcpServerDir, 'mcp-config.json');
 	try {
-		fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), 'utf8');
-		effectiveLog.success('Created mcp-server/mcp-config.json');
+		fs.writeFileSync(mcpConfigFile, JSON.stringify(mcpConfig, null, 2), 'utf8');
+		log.success('Created mcp-server/mcp-config.json');
 	} catch (error) {
-		effectiveLog.error(`Failed to write MCP config: ${error.message}`);
+		log.error(`Failed to write MCP config: ${error.message}`);
 	}
 
 	// Copy essential MCP server files (adjust paths as needed)
 	const mcpUtilsSource = path.join(__dirname, 'modules', 'utils.js'); // Assumes utils are in modules
-	const mcpUtilsTarget = path.join(mcpUtilsDir, 'utils.js');
+	const mcpUtilsTarget = path.join(mcpConfigDir, 'utils.js');
 	if (fs.existsSync(mcpUtilsSource)) {
 		 try {
 			fs.copyFileSync(mcpUtilsSource, mcpUtilsTarget);
-			effectiveLog.info('Copied utils.js to MCP server.');
+			log.info('Copied utils.js to MCP server.');
 		} catch (error) {
-			effectiveLog.error(`Failed to copy MCP utils: ${error.message}`);
+			log.error(`Failed to copy MCP utils: ${error.message}`);
 		}
 	} else {
-		 effectiveLog.warn(`MCP utils source not found at ${mcpUtilsSource}`);
+		 log.warn(`MCP utils source not found at ${mcpUtilsSource}`);
 	}
 
 	// Add placeholder files if needed (e.g., server entry point)
-	const serverEntryPath = path.join(mcpSrcDir, 'server.js');
+	const serverEntryPath = path.join(mcpConfigDir, 'server.js');
 	if (!fs.existsSync(serverEntryPath)) {
 		 try {
 			fs.writeFileSync(serverEntryPath, '// Basic MCP Server setup\nconsole.log("MCP Server starting...");\n', 'utf8');
-			effectiveLog.info('Created placeholder mcp-server/src/server.js');
+			log.info('Created placeholder mcp-server/mcp-config.json');
 		} catch (error) {
-			effectiveLog.error(`Failed to create placeholder server file: ${error.message}`);
+			log.error(`Failed to create placeholder server file: ${error.message}`);
 		}
 	}
-	effectiveLog.info('MCP Server setup complete.');
+	log.info('MCP Server setup complete.');
 }
 
 // Ensure necessary functions are exported
