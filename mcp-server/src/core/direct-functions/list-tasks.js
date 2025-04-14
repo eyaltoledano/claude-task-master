@@ -96,12 +96,16 @@ export async function listTasksDirect(args, log) {
 		}
 	};
 
-	// Use the caching utility
+	// Use the caching utility with updated options
 	try {
 		const result = await getCachedOrExecute({
 			cacheKey,
 			actionFn: coreListTasksAction,
-			log
+			log,
+			cacheOptions: {
+				// Cache for a shorter time (30 seconds) since task statuses can change
+				ttl: 30000
+			}
 		});
 		log.info(`listTasksDirect completed. From cache: ${result.fromCache}`);
 		return result; // Returns { success, data/error, fromCache }

@@ -114,12 +114,16 @@ export async function showTaskDirect(args, log) {
 		}
 	};
 
-	// Use the caching utility
+	// Use the caching utility with updated options
 	try {
 		const result = await getCachedOrExecute({
 			cacheKey,
 			actionFn: coreShowTaskAction,
-			log
+			log,
+			cacheOptions: {
+				// Cache for a shorter time (30 seconds) since task statuses can change
+				ttl: 30000
+			}
 		});
 		log.info(`showTaskDirect completed. From cache: ${result.fromCache}`);
 		return result; // Returns { success, data/error, fromCache }

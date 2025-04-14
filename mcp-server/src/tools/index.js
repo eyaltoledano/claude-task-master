@@ -31,6 +31,7 @@ import { registerScanWorkspaceTool } from './scan-workspace.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerListArchivesTool } from './list-archives.js';
 import { registerRestoreArchiveTool } from './restore-archive.js';
+import { registerClearCacheTool } from './clear-cache.js';
 
 /**
  * Register all MCP tools with the provided server
@@ -98,4 +99,7 @@ export function registerAllTools(server) {
   registerTool(registerRemoveDependencyTool);
   registerTool(registerValidateDependenciesTool);
   registerTool(registerFixDependenciesTool);
+  
+  // Utilities
+  registerTool(registerClearCacheTool);
 }

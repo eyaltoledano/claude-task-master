@@ -5,6 +5,7 @@
 
 import { setTaskStatus } from '../../../../scripts/modules/task-manager.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
+import { clearCacheByPattern } from '../../tools/utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
@@ -77,6 +78,27 @@ export async function setTaskStatusDirect(args, log) {
 			await setTaskStatus(tasksPath, taskId, newStatus, { mcpLog: log });
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
+
+			// Invalidate cache for next-task and list-tasks after updating status
+			try {
+				log.info('Invalidating related task caches due to status change...');
+				
+				// Clear next-task cache using the pattern
+				const nextTaskCacheCleared = clearCacheByPattern('nextTask:', log);
+				
+				// Clear list-tasks cache using the pattern
+				const listTasksCacheCleared = clearCacheByPattern('listTasks:', log);
+				
+				const totalCleared = nextTaskCacheCleared + listTasksCacheCleared;
+				if (totalCleared > 0) {
+					log.info(`Successfully cleared ${totalCleared} cached entries`);
+				} else {
+					log.info('No cached entries found to clear');
+				}
+			} catch (cacheError) {
+				// Log cache clearing errors but don't fail the operation
+				log.warn(`Error clearing cache: ${cacheError.message}`);
+			}
 
 			// Return success data
 			result = {

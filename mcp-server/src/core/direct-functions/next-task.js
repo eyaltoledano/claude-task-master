@@ -106,12 +106,16 @@ export async function nextTaskDirect(args, log) {
 		}
 	};
 
-	// Use the caching utility
+	// Use the caching utility with new parameter format
 	try {
 		const result = await getCachedOrExecute({
 			cacheKey,
 			actionFn: coreNextTaskAction,
-			log
+			log,
+			cacheOptions: {
+				// Cache for a shorter time (30 seconds) since task statuses can change
+				ttl: 30000
+			}
 		});
 		log.info(`nextTaskDirect completed. From cache: ${result.fromCache}`);
 		return result; // Returns { success, data/error, fromCache }
