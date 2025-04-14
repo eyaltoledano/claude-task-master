@@ -23,7 +23,7 @@ const ensureDirectoryExists = (dirPath, log) => {
  * @param {string} projectName - The name of the project.
  * @param {object} log - The logger instance passed from the caller.
  */
-export async function initializeSkeletonProject(
+export async function initializeProject(
   targetDir,
   projectName,
   log // Accept log object

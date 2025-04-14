@@ -1,4 +1,4 @@
-import initializeProject from '../../../../scripts/init.js'; // Import default export
+import { initializeProject } from '../../../../scripts/init.js'; // Import named export
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -84,9 +84,9 @@ export async function initializeProjectDirect(args, log, context = {}) {
 	let errorResult = null;
 
 	log.info(
-		`Temporarily changing CWD to ${targetDirectory} for initialization.`
+		`Target directory determined: ${targetDirectory}. Proceeding without changing CWD.`
 	);
-	process.chdir(targetDirectory); // Change CWD to the *validated* targetDirectory
+	// process.chdir(targetDirectory); // DO NOT Change CWD
 
 	// --- Create the Log Wrapper --- 
 	const logWrapper = {
@@ -112,41 +112,47 @@ export async function initializeProjectDirect(args, log, context = {}) {
 			skipInstall: args.skipInstall,
 			addAliases: args.addAliases,
 			projectType: args.projectType,
+			providerType: args.providerType,
+			targetDirectory: targetDirectory, // Pass the validated target directory
 			yes: true // Force yes mode
 		};
 
 		log.info(`[initializeProjectDirect] Calling core initializeProject with options: ${JSON.stringify(options)}`);
-		const result = await initializeProject(options, logWrapper); // Call core logic
+		const initSucceeded = await initializeProject(options, logWrapper); // Call core logic
 
-		// Check the boolean result
-		if (result) {
-			// Format success result for handleApiResult
-			resultData = {
-				message: 'Project initialized successfully.',
-				next_step:
-					'Now that the project is initialized, the next step is to create the tasks by parsing a PRD. This will create the tasks folder and the initial task files (tasks folder will be created when parse-prd is run). The parse-prd tool will require a prd.txt file as input (typically found in the project root directory, scripts/ directory). You can create a prd.txt file by asking the user about their idea, and then using the scripts/example_prd.txt file as a template to genrate a prd.txt file in scripts/. You may skip all of this if the user already has a prd.txt file. You can THEN use the parse-prd tool to create the tasks. So: step 1 after initialization is to create a prd.txt file in scripts/prd.txt or confirm the user already has one. Step 2 is to use the parse-prd tool to create the tasks. Do not bother looking for tasks after initialization, just use the parse-prd tool to create the tasks after creating a prd.txt from which to parse the tasks. You do NOT need to reinitialize the project to parse-prd.',
-				...result // Include details returned by initializeProject
-			};
-			success = true;
-			log.info(
-				`Project initialization completed successfully in ${targetDirectory}.`
-			);
-		} else {
-			// If core function returned false, treat it as an error
-			throw new Error('Core initializeProject function returned false, indicating failure.');
+		if (!initSucceeded) {
+			// If core function returned false, treat it as a specific kind of failure
+			// We won't have a stack trace here, as the error was likely caught internally
+			// But we already added logging within the core function's catch block
+			throw new Error('Core initializeProject function returned false, indicating caught failure within createProjectStructure.');
 		}
+
+		// If initSucceeded is true, format success result
+		resultData = {
+			message: 'Project initialized successfully.',
+			next_step:
+				'Now that the project is initialized, the next step is to create the tasks by parsing a PRD. This will create the tasks folder and the initial task files (tasks folder will be created when parse-prd is run). The parse-prd tool will require a prd.txt file as input (typically found in the project root directory, scripts/ directory). You can create a prd.txt file by asking the user about their idea, and then using the scripts/example_prd.txt file as a template to genrate a prd.txt file in scripts/. You may skip all of this if the user already has a prd.txt file. You can THEN use the parse-prd tool to create the tasks. So: step 1 after initialization is to create a prd.txt file in scripts/prd.txt or confirm the user already has one. Step 2 is to use the parse-prd tool to create the tasks. Do not bother looking for tasks after initialization, just use the parse-prd tool to create the tasks after creating a prd.txt from which to parse the tasks. You do NOT need to reinitialize the project to parse-prd.',
+		};
+		success = true;
+		log.info(
+			`Project initialization completed successfully in ${targetDirectory}.`
+		);
 	} catch (error) {
-		log.error(`Error during direct project initialization: ${error.message}`, error);
+		// Log the error directly here using the MCP logger
+		log.error(`Error caught during direct project initialization call: ${error.message}`);
+		log.error(`Stack Trace:
+${error.stack}`);
+
 		errorResult = {
 			code: 'INITIALIZATION_FAILED',
 			message: `Project initialization failed: ${error.message}`,
-			details: error.stack
+			details: error.stack // Include stack in response details too
 		};
 		success = false;
 	} finally {
 		disableSilentMode(); // ALWAYS disable silent mode in finally
-		log.info(`Restoring original CWD: ${originalCwd}`);
-		process.chdir(originalCwd); // Change back to original CWD
+		log.info(`Initialization attempt finished. Original CWD was not changed: ${originalCwd}`);
+		// process.chdir(originalCwd); // No need to change back CWD
 	}
 
 	// Return in format expected by handleApiResult

@@ -55,6 +55,11 @@ export function registerInitializeProjectTool(server) {
 				.optional()
 				.default('skeleton')
 				.describe('Specify the project type template (node, python, skeleton)'),
+			providerType: z
+				.enum(['local', 'jira'])
+				.optional()
+				.default('local')
+				.describe('Specify the task provider type (local, jira)'),
 			yes: z
 				.boolean()
 				.optional()

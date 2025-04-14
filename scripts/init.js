@@ -398,7 +398,6 @@ function copyTemplateFile(templateName, targetPath, replacements = {}, log) {
 
 // Main function to initialize a new project (Now relies solely on passed options)
 async function initializeProject(options = {}, log) {
-	// Use the passed log object, fallback to console if not provided (for direct CLI use)
 	const effectiveLog = {
 		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
 		warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
@@ -407,12 +406,7 @@ async function initializeProject(options = {}, log) {
 		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
 	};
 
-	// Replace internal `log` calls with `effectiveLog`
-	if (!isSilentMode()) {
-		// Use effectiveLog for banner if needed, or keep console?
-		// displayBanner(); // Assuming banner uses console directly
-	}
-
+	// Use provided options or prompt if needed and not skipped
 	let {
 		projectName = '',
 		projectDescription = '',
@@ -420,9 +414,22 @@ async function initializeProject(options = {}, log) {
 		authorName = '',
 		skipInstall = false,
 		addAliases = false,
-		projectType = 'skeleton',
-		yes = false 
+		projectType = 'skeleton', // Default project type
+		providerType = 'local', // Default provider type
+		targetDirectory = null, // Added targetDirectory
+		yes = false
 	} = options;
+
+	// If targetDirectory wasn't passed (e.g., direct CLI usage), use current working dir
+	if (!targetDirectory) {
+		targetDirectory = process.cwd();
+		effectiveLog.info(`Target directory not specified, using current working directory: ${targetDirectory}`);
+	} else {
+		effectiveLog.info(`Using specified target directory: ${targetDirectory}`);
+	}
+
+	// Display banner unless silent
+	displayBanner();
 
 	if (!yes) {
 		// ... (Prompting logic - replace log with effectiveLog if needed) ...
@@ -436,19 +443,34 @@ async function initializeProject(options = {}, log) {
 
 	authorName = authorName || 'Task Master User';
 
-	// Pass the effectiveLog down to createProjectStructure
-	// Note: createProjectStructure itself needs to accept and use the log object now
-	const success = await createProjectStructure(
-		projectName,
-		projectDescription,
-		projectVersion,
-		authorName,
-		skipInstall,
-		addAliases,
-		projectType,
-		effectiveLog // Pass the logger
-	);
-	return success; // Return the boolean result
+	try {
+		// Call createProjectStructure and capture its success/failure
+		const success = await createProjectStructure(
+			projectName,
+			projectDescription,
+			projectVersion,
+			authorName,
+			skipInstall,
+			addAliases,
+			projectType,
+			providerType, // Pass providerType
+			targetDirectory, // Pass validated targetDirectory
+			effectiveLog
+		);
+
+		if (!success) {
+			throw new Error('createProjectStructure function failed.');
+		}
+
+		return true; // Indicate success from initializeProject
+	} catch (error) {
+		effectiveLog.error(`Project initialization failed: ${error.message}`);
+		effectiveLog.error(`Original error stack trace from createProjectStructure:`);
+		effectiveLog.error(error.stack || 'No stack trace available'); 
+		// Throw a new error including the original message
+		throw new Error(`Initialization failed within createProjectStructure: ${error.message}`);
+		// return false; // REMOVED - Throw instead
+	}
 }
 
 // Helper function to promisify readline question
@@ -469,7 +491,9 @@ async function createProjectStructure(
 	skipInstall,
 	addAliases,
 	projectType = 'skeleton',
-	log 
+	providerType = 'local', // Add providerType parameter with default
+	targetDirectory, // Add targetDirectory parameter
+	log
 ) {
 	const effectiveLog = {
 		info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
@@ -478,144 +502,145 @@ async function createProjectStructure(
 		debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : null),
 		success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
 	};
-	const targetDir = process.cwd();
-	effectiveLog.info(`Starting project structure creation in: ${targetDir} (Type: ${projectType})`);
+	// const targetDir = process.cwd(); // REMOVED - Use passed targetDirectory
+	effectiveLog.info(`Starting project creation in: ${targetDirectory}`);
 
+	// 1. Dynamically load and execute project type initializer
+	effectiveLog.info(`Initializing project structure for type: ${projectType}...`);
 	try {
-		// 1. --- General Setup (Language Agnostic) ---
-		ensureDirectoryExists(targetDir, effectiveLog);
-		effectiveLog.info(`Ensured project directory exists: ${targetDir}`);
+		// Construct the path to the project type initializer module
+		const projectInitializerPath = path.join(__dirname, 'modules', 'init-project', `${projectType}.js`);
+		effectiveLog.debug(`Attempting to load project initializer from: ${projectInitializerPath}`);
 
-		// Initialize Git repository if it doesn't exist
-		if (!fs.existsSync(path.join(targetDir, '.git'))) {
-			try {
-				execSync('git init', { cwd: targetDir, stdio: 'ignore' });
-				effectiveLog.success('Initialized empty Git repository.');
-			} catch (gitError) {
-				effectiveLog.warn(`Failed to initialize Git repository: ${gitError.message}`);
-			}
-		} else {
-			effectiveLog.info('Git repository already exists.');
+		if (!fs.existsSync(projectInitializerPath)) {
+			throw new Error(`Project type initializer not found for type: ${projectType} at ${projectInitializerPath}`);
 		}
 
-		// Create scripts/config directory
-		const scriptsConfigDir = path.join(targetDir, 'scripts', 'config');
-		ensureDirectoryExists(scriptsConfigDir, effectiveLog);
+		// Dynamically import the module
+		const { initializeProject: projectInitializer } = await import(projectInitializerPath);
 
-		// Copy .gitignore (base version - language specifics handled by modules)
-		copyTemplateFile('.gitignore', path.join(targetDir, '.gitignore'), {}, effectiveLog);
-		effectiveLog.info('Created base .gitignore file.');
-
-		// Create .env.example
-		copyTemplateFile('env.example', path.join(targetDir, '.env.example'), {}, effectiveLog);
-		effectiveLog.info('Created .env.example file.');
-
-		// Copy Cursor rules directory
-		const rulesSourceDir = path.join(__dirname, '..', '.cursor', 'rules');
-		const rulesTargetDir = path.join(targetDir, '.cursor', 'rules');
-		if (fs.existsSync(rulesSourceDir)) {
-			ensureDirectoryExists(path.dirname(rulesTargetDir), effectiveLog);
-			fs.cpSync(rulesSourceDir, rulesTargetDir, { recursive: true });
-			effectiveLog.info('Copied Cursor rules to .cursor/rules/');
+		if (typeof projectInitializer !== 'function') {
+			throw new Error(`Invalid project initializer export for type: ${projectType}. Expected 'initializeProject' function.`);
 		}
 
-		// Copy assets/prompts directory (if exists)
-		const promptsSourceDir = path.join(__dirname, '..', 'assets', 'prompts');
-		const promptsTargetDir = path.join(targetDir, 'scripts', 'prompts');
-		if (fs.existsSync(promptsSourceDir)) {
-			ensureDirectoryExists(promptsTargetDir, effectiveLog);
-			fs.cpSync(promptsSourceDir, promptsTargetDir, { recursive: true });
-			effectiveLog.info('Copied prompt templates to scripts/prompts/');
-		}
+		// Execute the initializer
+		await projectInitializer(targetDirectory, { projectName, projectDescription, projectVersion, authorName, skipInstall }, effectiveLog);
+		effectiveLog.success(`Project structure initialized for type: ${projectType}`);
 
-		// Copy example PRD
-		const examplePrdSource = path.join(__dirname, '..', 'assets', 'example_prd.txt');
-		const examplePrdTarget = path.join(targetDir, 'scripts', 'example_prd.txt');
-		if (fs.existsSync(examplePrdSource)) {
-			ensureDirectoryExists(path.dirname(examplePrdTarget), effectiveLog);
-			fs.copyFileSync(examplePrdSource, examplePrdTarget);
-			effectiveLog.info('Copied example PRD to scripts/example_prd.txt');
-		}
-
-		// Copy scripts README
-		copyTemplateFile(
-			'scripts_README.md',
-			path.join(targetDir, 'scripts', 'README.md'),
-			{},
-			effectiveLog
-		);
-		effectiveLog.info('Created scripts/README.md.');
-
-		effectiveLog.info('Completed general setup.');
-
-		// 2. --- Language Specific Setup (Restored Dynamic Logic) --- 
-		effectiveLog.info(`Initiating setup for project type: ${projectType}...`);
-		let initializerModule;
-		try {
-			// Dynamically import the correct module
-			if (projectType === 'node') {
-				// Use dynamic import for Node.js module
-				initializerModule = await import('./modules/init-project/node.js');
-				// Pass effectiveLog
-				await initializerModule.initializeNodeProject(
-					targetDir,
-					projectName,
-					projectVersion,
-					authorName,
-					skipInstall,
-					effectiveLog 
-				);
-			} else if (projectType === 'python') {
-				// Placeholder for Python
-				effectiveLog.warn('Python project initialization not yet implemented.');
-				// Fallback to skeleton
-				initializerModule = await import('./modules/init-project/skeleton.js');
-				await initializerModule.initializeSkeletonProject(targetDir, projectName, effectiveLog);
-			} else { // Default to skeleton
-				initializerModule = await import('./modules/init-project/skeleton.js');
-				await initializerModule.initializeSkeletonProject(targetDir, projectName, effectiveLog);
-			}
-			effectiveLog.success(`Completed specific setup for project type: ${projectType}`);
-		} catch (moduleError) {
-			effectiveLog.error(`Failed during ${projectType} initialization: ${moduleError.message}`);
-			effectiveLog.debug(moduleError.stack);
-			throw new Error(`Initialization failed for type ${projectType}: ${moduleError.message}`);
-		}
-
-		// 3. --- Final Setup (Potentially language agnostic) ---
-		// Add aliases if requested
-		if (addAliases) {
-			addShellAliases(effectiveLog);
-		}
-
-		effectiveLog.success('Project structure creation successfully orchestrated!');
-
-		// Post-initialization message
-		if (!isSilentMode()) {
-			const nextSteps = [
-				`Navigate to your project: ${chalk.cyan(`cd ${targetDir}`)}`,
-				`Review the ${chalk.cyan('.env.example')} file and create a ${chalk.cyan('.env')} file with your API keys.`,
-				`Create a Product Requirements Document (PRD) in ${chalk.cyan('scripts/prd.txt')} (see ${chalk.cyan('scripts/example_prd.txt')} for structure).`,
-				`Generate initial tasks: ${chalk.cyan('task-master parse-prd scripts/prd.txt')}`,
-				`Start development: See ${chalk.cyan('scripts/README.md')} and potentially language-specific docs.`
-			];
-
-			console.log(
-				boxen(chalk.white(`${chalk.bold('Next Steps:')}\n\n${nextSteps.join('\n')}`), {
-					padding: 1,
-					margin: { top: 1 },
-					borderStyle: 'round',
-					borderColor: 'green'
-				})
-			);
-		}
-
-		return true;
 	} catch (error) {
-		effectiveLog.error(`Project structure creation failed: ${error.message}`);
-		effectiveLog.debug(error.stack); 
-		return false;
+		effectiveLog.error(`Error initializing project type structure: ${error.message}`);
+		effectiveLog.error(error.stack); // Log stack trace for debugging
+		throw error; // Re-throw the error to be caught by initializeProject
 	}
+
+	// 2. Dynamically load and execute provider type initializer
+	effectiveLog.info(`Initializing provider configuration for type: ${providerType}...`);
+	try {
+		// Construct the path to the provider type initializer module
+		const providerInitializerPath = path.join(__dirname, 'modules', 'init-provider', `${providerType}.js`);
+		effectiveLog.debug(`Attempting to load provider initializer from: ${providerInitializerPath}`);
+
+		// Ensure the directory exists before trying to access the file
+		ensureDirectoryExists(path.dirname(providerInitializerPath), effectiveLog);
+
+		// Check if the specific initializer file exists
+		if (!fs.existsSync(providerInitializerPath)) {
+			// If the specific file doesn't exist, maybe create a placeholder or log a warning
+			// For now, we'll throw an error similar to project type
+			throw new Error(`Provider type initializer not found for type: ${providerType} at ${providerInitializerPath}`);
+			// Alternatively, could default silently:
+			// effectiveLog.warn(`Provider type initializer not found for type: ${providerType}. Skipping provider-specific setup.`);
+		} else {
+			// Dynamically import the module
+			const { initializeProvider: providerInitializer } = await import(providerInitializerPath);
+
+			if (typeof providerInitializer !== 'function') {
+				throw new Error(`Invalid provider initializer export for type: ${providerType}. Expected 'initializeProvider' function.`);
+			}
+
+			// Execute the initializer
+			// Pass necessary options, potentially including project details if needed by provider setup
+			await providerInitializer(targetDirectory, { projectName, projectType /* add other options if needed */ }, effectiveLog);
+			effectiveLog.success(`Provider configuration initialized for type: ${providerType}`);
+		}
+
+	} catch (error) {
+		effectiveLog.error(`Error initializing provider type configuration: ${error.message}`);
+		effectiveLog.error(error.stack); // Log stack trace for debugging
+		effectiveLog.warn(`Proceeding with initialization despite provider setup error.`);
+		// Do not throw here, allow initialization to continue if provider fails
+	}
+
+
+	// 3. Common setup (directories, core files) - Moved after dynamic initializers
+	effectiveLog.info('Creating common project directories...');
+	ensureDirectoryExists(path.join(targetDirectory, 'scripts'), effectiveLog);
+	ensureDirectoryExists(path.join(targetDirectory, 'tasks'), effectiveLog);
+	ensureDirectoryExists(path.join(targetDirectory, '.cursor', 'rules'), effectiveLog);
+	// ... rest of the common setup ...
+
+	// 4. Copy common template files (might be better inside specific initializers if they differ)
+	effectiveLog.info('Copying common template files...');
+	copyTemplateFile('.gitignore', path.join(targetDirectory, '.gitignore'), {}, effectiveLog);
+	// ... copy other common files like dev.js, READMEs, rule files ...
+	copyTemplateFile('dev.js', path.join(targetDirectory, 'scripts', 'dev.js'), {}, effectiveLog);
+	copyTemplateFile('scripts_README.md', path.join(targetDirectory, 'scripts', 'README.md'), {}, effectiveLog);
+	copyTemplateFile('dev_workflow.mdc', path.join(targetDirectory, '.cursor', 'rules', 'dev_workflow.mdc'), {}, effectiveLog);
+	copyTemplateFile('taskmaster.mdc', path.join(targetDirectory, '.cursor', 'rules', 'taskmaster.mdc'), {}, effectiveLog);
+	copyTemplateFile('cursor_rules.mdc', path.join(targetDirectory, '.cursor', 'rules', 'cursor_rules.mdc'), {}, effectiveLog);
+	copyTemplateFile('self_improve.mdc', path.join(targetDirectory, '.cursor', 'rules', 'self_improve.mdc'), {}, effectiveLog);
+	copyTemplateFile('README-task-master.md', path.join(targetDirectory, 'README.md'), {}, effectiveLog);
+	copyTemplateFile('windsurfrules', path.join(targetDirectory, '.windsurfrules'), {}, effectiveLog);
+	copyTemplateFile('.env.example', path.join(targetDirectory, '.env.example'), {
+		PROJECT_NAME: projectName,
+		PROJECT_VERSION: projectVersion,
+	}, effectiveLog);
+	copyTemplateFile('example_prd.txt', path.join(targetDirectory, 'scripts', 'example_prd.txt'), {}, effectiveLog);
+
+
+	// 5. Setup MCP configuration
+	setupMCPConfiguration(targetDirectory, projectName, effectiveLog);
+
+	// 6. Add shell aliases if requested
+	let aliasesAdded = false;
+	if (addAliases) {
+		aliasesAdded = addShellAliases(effectiveLog);
+	}
+
+	// 7. Initialize git repository (only if not already in one)
+	if (!fs.existsSync(path.join(targetDirectory, '.git'))) {
+		try {
+			effectiveLog.info('Initializing git repository...');
+			execSync('git init', { cwd: targetDirectory, stdio: 'ignore' }); // Use cwd option
+			effectiveLog.success('Git repository initialized.');
+		} catch (error) {
+			effectiveLog.error(`Failed to initialize git repository: ${error.message}`);
+		}
+	} else {
+		effectiveLog.info('Git repository already exists.');
+	}
+
+	// Final Summary
+	effectiveLog.success(`Project '${projectName}' initialized successfully!`);
+	// Only display the boxen summary if NOT in silent mode (i.e., running via CLI)
+	if (!isSilentMode()) {
+		console.log(boxen(
+			chalk.white(`${chalk.bold('Project Setup Complete!')}\n\n` +
+			`Type: ${chalk.cyan(projectType)}\n` +
+			`Provider: ${chalk.cyan(providerType)}\n` +
+			`Directory: ${chalk.yellow(targetDirectory)}\n\n` +
+			chalk.white.bold('Next Steps:') + '\n' +
+			`1. Review ${chalk.yellow('.env.example')} and create ${chalk.yellow('.env')} with your API keys.\n` +
+			`2. Create your PRD in ${chalk.yellow('scripts/prd.txt')} (or use ${chalk.yellow('--input')}).\n` +
+			`3. Run ${chalk.cyan(`task-master parse-prd`)} to generate initial tasks.\n` +
+			(aliasesAdded ? `4. Reload your shell or run ${chalk.cyan(`source ~/.${process.env.SHELL?.includes('zsh') ? 'zshrc' : 'bashrc'}`)} to use aliases (tm, taskmaster).\n` : '') +
+			`5. Run ${chalk.cyan('task-master --help')} to see available commands.`
+			),
+			{ padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+		));
+	} // End if (!isSilentMode())
+
+	return true; // Indicate success at the end of the function
 }
 
 // Function to set up MCP server configuration (Keep this here for now, might make generic later)
@@ -685,4 +710,4 @@ function setupMCPConfiguration(targetDir, projectName, log) {
 }
 
 // Ensure necessary functions are exported
-export default initializeProject;
+export { initializeProject };

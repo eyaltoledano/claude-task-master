@@ -3,36 +3,41 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 // Placeholder for logging - needs to be passed or imported properly later
-const log = (level, ...args) => {
-    if (process.env.NODE_ENV !== 'test') { // Avoid excessive logging in tests
-        console.log(`[${level.toUpperCase()}]`, ...args);
-    }
-};
+// REMOVED - Logging handled by passed object
+// const log = (level, ...args) => { ... };
 
 // Placeholder for utility - needs proper import/passing
+// Ensure this uses the passed log object STRICTLY
 const ensureDirectoryExists = (dirPath, effectiveLog) => {
-    // Basic check for effectiveLog existence
-    const logDebug = effectiveLog && effectiveLog.debug ? effectiveLog.debug : () => {};
-    const logError = effectiveLog && effectiveLog.error ? effectiveLog.error : console.error;
+    if (!effectiveLog || typeof effectiveLog.debug !== 'function' || typeof effectiveLog.error !== 'function') {
+        console.error('[ensureDirectoryExists] Error: Invalid logger passed.');
+        // Decide how to handle - throw error or attempt to continue silently?
+        // For now, let's throw to make the issue obvious during debugging
+        throw new Error('Invalid logger provided to ensureDirectoryExists');
+    }
 
     if (!fs.existsSync(dirPath)) {
         try {
             fs.mkdirSync(dirPath, { recursive: true });
-            logDebug(`Created directory: ${dirPath}`); 
+            effectiveLog.debug(`Created directory: ${dirPath}`); 
         } catch (error) {
-            logError(`Failed to create directory ${dirPath}: ${error.message}`);
+            effectiveLog.error(`Failed to create directory ${dirPath}: ${error.message}`);
             throw error; 
         }
     }
 };
 
 // Placeholder utility (replace with proper injection/import)
+// Ensure this uses the passed log object STRICTLY
 const copyTemplateFile = (templateName, targetPath, replacements = {}, effectiveLog) => {
-     const logWarn = effectiveLog && effectiveLog.warn ? effectiveLog.warn : console.warn;
-     const logDebug = effectiveLog && effectiveLog.debug ? effectiveLog.debug : () => {};
-     const logError = effectiveLog && effectiveLog.error ? effectiveLog.error : console.error;
+    if (!effectiveLog || typeof effectiveLog.warn !== 'function' || typeof effectiveLog.debug !== 'function' || typeof effectiveLog.error !== 'function') {
+         console.error('[copyTemplateFile] Error: Invalid logger passed.');
+         throw new Error('Invalid logger provided to copyTemplateFile');
+     }
 
-     logWarn(`[copyTemplateFile in node.js] Placeholder implementation used for ${templateName}. Needs proper source path logic.`);
+     // Placeholder: Needs actual template loading logic from a source directory
+     // This should probably be passed in or determined more robustly
+     effectiveLog.warn(`[copyTemplateFile in node.js] Placeholder implementation used for ${templateName}. Needs proper template source path logic.`);
      const templateContent = `Placeholder for ${templateName}`; 
      let content = templateContent;
      Object.entries(replacements).forEach(([key, value]) => {
@@ -43,22 +48,25 @@ const copyTemplateFile = (templateName, targetPath, replacements = {}, effective
          // Pass the *same* effectiveLog down
          ensureDirectoryExists(path.dirname(targetPath), effectiveLog); 
          fs.writeFileSync(targetPath, content, 'utf8');
-         logDebug(`Copied/Created placeholder template file: ${targetPath}`);
+         effectiveLog.debug(`Copied/Created placeholder template file: ${targetPath}`);
      } catch (error) {
-         logError(`Failed to copy placeholder template ${templateName} to ${targetPath}: ${error.message}`);
+         effectiveLog.error(`Failed to copy placeholder template ${templateName} to ${targetPath}: ${error.message}`);
      }
  };
 
 // Placeholder utility (replace with proper injection/import)
+// Ensure this uses the passed log object STRICTLY
 const setupMCPConfiguration = (targetDir, projectName, effectiveLog) => {
-    const logInfo = effectiveLog && effectiveLog.info ? effectiveLog.info : console.log;
-    const logSuccess = effectiveLog && effectiveLog.success ? effectiveLog.success : console.log;
+    if (!effectiveLog || typeof effectiveLog.info !== 'function' || typeof effectiveLog.success !== 'function') {
+        console.error('[setupMCPConfiguration] Error: Invalid logger passed.');
+        throw new Error('Invalid logger provided to setupMCPConfiguration');
+    }
     
-    logInfo(`Executing Node-specific MCP setup for ${projectName} in ${targetDir}`);
+    effectiveLog.info(`Executing Node-specific MCP setup for ${projectName} in ${targetDir}`);
     const mcpServerDir = path.join(targetDir, 'mcp-server');
     // Pass the *same* effectiveLog down
     ensureDirectoryExists(mcpServerDir, effectiveLog); 
-    logSuccess('Node-specific MCP setup placeholder complete.');
+    effectiveLog.success('Node-specific MCP setup placeholder complete.');
 };
 
 /**
@@ -69,7 +77,7 @@ const setupMCPConfiguration = (targetDir, projectName, effectiveLog) => {
  * @param {string} authorName - The author's name.
  * @param {boolean} skipInstall - Whether to skip npm install.
  */
-export async function initializeNodeProject(
+export async function initializeProject(
   targetDir,
   projectName,
   projectVersion,
@@ -77,13 +85,15 @@ export async function initializeNodeProject(
   skipInstall,
   log // Still accept the original log object from the caller
 ) {
-  // --- Define effectiveLog ONCE here --- 
+  // --- Define effectiveLog ONCE here, using the passed 'log' object --- 
   const effectiveLog = {
-      info: (msg, ...args) => log && log.info ? log.info(msg, ...args) : console.log("[INFO]", msg, ...args),
-      warn: (msg, ...args) => log && log.warn ? log.warn(msg, ...args) : console.warn("[WARN]", msg, ...args),
-      error: (msg, ...args) => log && log.error ? log.error(msg, ...args) : console.error("[ERROR]", msg, ...args),
-      debug: (msg, ...args) => log && log.debug ? log.debug(msg, ...args) : (process.env.DEBUG === 'true' ? console.log("[DEBUG]", msg, ...args) : ()=>{}),
-      success: (msg, ...args) => log && log.success ? log.success(msg, ...args) : console.log("[SUCCESS]", msg, ...args),
+      info: (msg, ...args) => log && typeof log.info === 'function' ? log.info(msg, ...args) : (() => {}), // No console fallback
+      warn: (msg, ...args) => log && typeof log.warn === 'function' ? log.warn(msg, ...args) : (() => {}), // No console fallback
+      error: (msg, ...args) => log && typeof log.error === 'function' ? log.error(msg, ...args) : (() => {}), // No console fallback
+      // Debug can fallback to no-op if not present
+      debug: (msg, ...args) => log && typeof log.debug === 'function' ? log.debug(msg, ...args) : (() => {}), 
+      // Success can map to info if not present, or no-op
+      success: (msg, ...args) => log && typeof log.success === 'function' ? log.success(msg, ...args) : (log && typeof log.info === 'function' ? log.info(`[SUCCESS] ${msg}`, ...args) : (() => {}))
   };
   // --- End effectiveLog Definition ---
 
@@ -227,7 +237,7 @@ yarn-error.log*
     if (!skipInstall) {
       effectiveLog.info('Running npm install...');
       try {
-        execSync('npm install', { cwd: targetDir, stdio: 'inherit', timeout: 300000 });
+        execSync('npm install', { cwd: targetDir, stdio: 'ignore', timeout: 300000 });
         effectiveLog.success('Dependencies installed.');
       } catch (installError) {
         effectiveLog.error(`npm install failed: ${installError.message}`);

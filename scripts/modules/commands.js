@@ -538,6 +538,7 @@ function registerCommands(programInstance) {
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.option('-t, --project-type <type>', 'Specify project type (node, python, skeleton)', 'skeleton')
+		.option('--provider-type <type>', 'Specify task provider type (local, jira)', 'local')
 		.action(async (cmdOptions) => {
 			console.log('DEBUG: Running init command action in commands.js');
 			console.log(
@@ -552,7 +553,8 @@ function registerCommands(programInstance) {
 				skipInstall: cmdOptions.skipInstall,
 				addAliases: cmdOptions.aliases,
 				projectType: cmdOptions.projectType,
-				yes: cmdOptions.yes
+				yes: cmdOptions.yes,
+				providerType: cmdOptions.providerType
 			});
 		});
 
