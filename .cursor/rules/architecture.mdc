@@ -14,13 +14,13 @@ alwaysApply: false
     - **Purpose**: Defines and registers all CLI commands using Commander.js.
     - **Responsibilities** (See also: [`commands.mdc`](mdc:.cursor/rules/commands.mdc)):
       - Parses command-line arguments and options.
-      - Invokes appropriate functions from other modules to execute commands.
+      - Invokes appropriate functions from other modules to execute commands (e.g., calls `initializeProject` from `init.js` for the `init` command).
       - Handles user input and output related to command execution.
       - Implements input validation and error handling for CLI commands.
     - **Key Components**:
       - `programInstance` (Commander.js `Command` instance): Manages command definitions.
       - `registerCommands(programInstance)`: Function to register all application commands.
-      - Command action handlers: Functions executed when a specific command is invoked.
+      - Command action handlers: Functions executed when a specific command is invoked, delegating to core modules.
 
   - **[`task-manager.js`](mdc:scripts/modules/task-manager.js): Task Data Management**
     - **Purpose**: Manages task data, including loading, saving, creating, updating, deleting, and querying tasks.
@@ -86,7 +86,6 @@ alwaysApply: false
 
   - **[`utils.js`](mdc:scripts/modules/utils.js): Utility Functions and Configuration**
     - **Purpose**: Provides reusable utility functions and global configuration settings used across the **CLI application**.
-    - 
     - **Responsibilities** (See also: [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc)):
       - Manages global configuration settings loaded from environment variables and defaults.
       - Implements logging utility with different log levels and output formatting.
@@ -95,7 +94,6 @@ alwaysApply: false
       - Offers task-specific utility functions (e.g., `formatTaskId`, `findTaskById`, `taskExists`).
       - Implements graph algorithms like cycle detection for dependency management.
       - **Silent Mode Control**: Provides `enableSilentMode` and `disableSilentMode` functions to control log output.
-
     - **Key Components**:
       - `CONFIG`: Global configuration object.
       - `log(level, ...args)`: Logging function.
@@ -150,10 +148,23 @@ alwaysApply: false
         - Robust error handling for background tasks
       - **Usage**: Used for CPU-intensive operations like task expansion and PRD parsing
 
+  - **[`init.js`](mdc:scripts/init.js): Project Initialization Logic**
+    - **Purpose**: Contains the core logic for setting up a new Task Master project structure.
+    - **Responsibilities**:
+      - Creates necessary directories (`.cursor/rules`, `scripts`, `tasks`).
+      - Copies template files (`.env.example`, `.gitignore`, rule files, `dev.js`, etc.).
+      - Creates or merges `package.json` with required dependencies and scripts.
+      - Sets up MCP configuration (`.cursor/mcp.json`).
+      - Optionally initializes a git repository and installs dependencies.
+      - Handles user prompts for project details *if* called without skip flags (`-y`).
+    - **Key Function**:
+      - `initializeProject(options)`: The main function exported and called by the `init` command's action handler in [`commands.js`](mdc:scripts/modules/commands.js). It receives parsed options directly.
+    - **Note**: This script is used as a module and no longer handles its own argument parsing or direct execution via a separate `bin` file.
+
 - **Data Flow and Module Dependencies**:
 
-  - **Commands Initiate Actions**: User commands entered via the CLI (handled by [`commands.js`](mdc:scripts/modules/commands.js)) are the entry points for most operations.
-  - **Command Handlers Delegate to Managers**: Command handlers in [`commands.js`](mdc:scripts/modules/commands.js) call functions in [`task-manager.js`](mdc:scripts/modules/task-manager.js) and [`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js) to perform core task and dependency management logic.
+  - **Commands Initiate Actions**: User commands entered via the CLI (parsed by `commander` based on definitions in [`commands.js`](mdc:scripts/modules/commands.js)) are the entry points for most operations.
+  - **Command Handlers Delegate to Core Logic**: Action handlers within [`commands.js`](mdc:scripts/modules/commands.js) call functions in core modules like [`task-manager.js`](mdc:scripts/modules/task-manager.js), [`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js), and [`init.js`](mdc:scripts/init.js) (for the `init` command) to perform the actual work.
   - **UI for Presentation**:  [`ui.js`](mdc:scripts/modules/ui.js) is used by command handlers and task/dependency managers to display information to the user. UI functions primarily consume data and format it for output, without modifying core application state.
   - **Utilities for Common Tasks**: [`utils.js`](mdc:scripts/modules/utils.js) provides helper functions used by all other modules for configuration, logging, file operations, and common data manipulations.
   - **AI Services Integration**: AI functionalities (complexity analysis, task expansion, PRD parsing) are invoked from [`task-manager.js`](mdc:scripts/modules/task-manager.js) and potentially [`commands.js`](mdc:scripts/modules/commands.js), likely using functions that would reside in a dedicated `ai-services.js` module or be integrated within `utils.js` or `task-manager.js`.
@@ -371,5 +382,3 @@ The AsyncOperationManager provides background task execution capabilities:
   3. Tool returns immediate response with operation ID
   4. Client polls `get_operation_status` tool with the ID
   5. Once completed, client can access operation results
-
-This architectural overview should help AI models understand the structure and organization of the Task Master CLI codebase, enabling them to more effectively assist with code generation, modification, and understanding.

@@ -3,7 +3,6 @@
  */
 
 import { addSubtask } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -12,6 +11,7 @@ import {
 /**
  * Add a subtask to an existing task
  * @param {Object} args - Function arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Parent task ID
  * @param {string} [args.taskId] - Existing task ID to convert to subtask (optional)
  * @param {string} [args.title] - Title for new subtask (when creating a new subtask)
@@ -19,17 +19,39 @@ import {
  * @param {string} [args.details] - Implementation details for new subtask
  * @param {string} [args.status] - Status for new subtask (default: 'pending')
  * @param {string} [args.dependencies] - Comma-separated list of dependency IDs
- * @param {string} [args.file] - Path to the tasks file
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
- * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
 export async function addSubtaskDirect(args, log) {
+	// Destructure expected args
+	const {
+		tasksJsonPath,
+		id,
+		taskId,
+		title,
+		description,
+		details,
+		status,
+		dependencies: dependenciesStr,
+		skipGenerate
+	} = args;
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 
-		if (!args.id) {
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('addSubtaskDirect called without tasksJsonPath');
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
+
+		if (!id) {
 			return {
 				success: false,
 				error: {
@@ -40,7 +62,7 @@ export async function addSubtaskDirect(args, log) {
 		}
 
 		// Either taskId or title must be provided
-		if (!args.taskId && !args.title) {
+		if (!taskId && !title) {
 			return {
 				success: false,
 				error: {
@@ -50,26 +72,26 @@ export async function addSubtaskDirect(args, log) {
 			};
 		}
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+		// Use provided path
+		const tasksPath = tasksJsonPath;
 
 		// Parse dependencies if provided
 		let dependencies = [];
-		if (args.dependencies) {
-			dependencies = args.dependencies.split(',').map((id) => {
+		if (dependenciesStr) {
+			dependencies = dependenciesStr.split(',').map((depId) => {
 				// Handle both regular IDs and dot notation
-				return id.includes('.') ? id.trim() : parseInt(id.trim(), 10);
+				return depId.includes('.') ? depId.trim() : parseInt(depId.trim(), 10);
 			});
 		}
 
 		// Convert existingTaskId to a number if provided
-		const existingTaskId = args.taskId ? parseInt(args.taskId, 10) : null;
+		const existingTaskId = taskId ? parseInt(taskId, 10) : null;
 
 		// Convert parent ID to a number
-		const parentId = parseInt(args.id, 10);
+		const parentId = parseInt(id, 10);
 
 		// Determine if we should generate files
-		const generateFiles = !args.skipGenerate;
+		const generateFiles = !skipGenerate;
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
@@ -101,10 +123,10 @@ export async function addSubtaskDirect(args, log) {
 			log.info(`Creating new subtask for parent task ${parentId}`);
 
 			const newSubtaskData = {
-				title: args.title,
-				description: args.description || '',
-				details: args.details || '',
-				status: args.status || 'pending',
+				title: title,
+				description: description || '',
+				details: details || '',
+				status: status || 'pending',
 				dependencies: dependencies
 			};
 

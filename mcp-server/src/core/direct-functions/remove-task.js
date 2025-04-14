@@ -8,35 +8,35 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 
 /**
  * Direct function wrapper for removeTask with error handling.
  *
  * @param {Object} args - Command arguments
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.id - The ID of the task or subtask to remove.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: false }
  */
 export async function removeTaskDirect(args, log) {
+	// Destructure expected args
+	const { tasksJsonPath, id } = args;
 	try {
-		// Find the tasks path first
-		let tasksPath;
-		try {
-			tasksPath = findTasksJsonPath(args, log);
-		} catch (error) {
-			log.error(`Tasks file not found: ${error.message}`);
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			log.error('removeTaskDirect called without tasksJsonPath');
 			return {
 				success: false,
 				error: {
-					code: 'FILE_NOT_FOUND_ERROR',
-					message: error.message
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
 				},
 				fromCache: false
 			};
 		}
 
 		// Validate task ID parameter
-		const taskId = args.id;
+		const taskId = id;
 		if (!taskId) {
 			log.error('Task ID is required');
 			return {
@@ -50,14 +50,14 @@ export async function removeTaskDirect(args, log) {
 		}
 
 		// Skip confirmation in the direct function since it's handled by the client
-		log.info(`Removing task with ID: ${taskId} from ${tasksPath}`);
+		log.info(`Removing task with ID: ${taskId} from ${tasksJsonPath}`);
 
 		try {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
-			// Call the core removeTask function
-			const result = await removeTask(tasksPath, taskId);
+			// Call the core removeTask function using the provided path
+			const result = await removeTask(tasksJsonPath, taskId);
 
 			// Restore normal logging
 			disableSilentMode();
@@ -70,7 +70,7 @@ export async function removeTaskDirect(args, log) {
 				data: {
 					message: result.message,
 					taskId: taskId,
-					tasksPath: tasksPath,
+					tasksPath: tasksJsonPath,
 					removedTask: result.removedTask
 				},
 				fromCache: false

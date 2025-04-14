@@ -12,37 +12,6 @@ task-master parse-prd <prd-file.txt>
 task-master parse-prd <prd-file.txt> --num-tasks=10
 ```
 
-## Scan Codebase
-
-```bash
-# Scan codebase and generate a structured JSON summary
-task-master scan
-
-# Specify a custom output file
-task-master scan --output=my-project-scan.json
-
-# Scan a specific directory
-task-master scan --directory=src
-
-# Generate both JSON summary and a PRD
-task-master scan --format=both
-
-# Specify directories to ignore
-task-master scan --ignore=.git,node_modules,dist,coverage
-
-# Enable verbose debug output
-task-master scan --debug
-```
-
-The `scan` command performs an intelligent, multi-stage analysis of your codebase:
-
-1. **Scan #1**: Identifies project type and key technologies
-2. **Scan #2**: Discovers entry points and critical files
-3. **Scan #3**: Maps core directories and their purposes
-4. **Scan #4+**: Performs deep recursive analysis of key files and components
-
-The command produces a structured JSON summary with detailed file and directory-level descriptions, making it easy to understand the project structure and generate accurate tasks.
-
 ## List Tasks
 
 ```bash

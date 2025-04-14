@@ -3,7 +3,6 @@
  */
 
 import { validateDependenciesCommand } from '../../../../scripts/modules/dependency-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -13,17 +12,30 @@ import fs from 'fs';
 /**
  * Validate dependencies in tasks.json
  * @param {Object} args - Function arguments
- * @param {string} [args.file] - Path to the tasks file
- * @param {string} [args.projectRoot] - Project root directory
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function validateDependenciesDirect(args, log) {
-	try {
-		log.info(`Validating dependencies in tasks...`);
+	// Destructure the explicit tasksJsonPath
+	const { tasksJsonPath } = args;
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
+	if (!tasksJsonPath) {
+		log.error('validateDependenciesDirect called without tasksJsonPath');
+		return {
+			success: false,
+			error: {
+				code: 'MISSING_ARGUMENT',
+				message: 'tasksJsonPath is required'
+			}
+		};
+	}
+
+	try {
+		log.info(`Validating dependencies in tasks: ${tasksJsonPath}`);
+
+		// Use the provided tasksJsonPath
+		const tasksPath = tasksJsonPath;
 
 		// Verify the file exists
 		if (!fs.existsSync(tasksPath)) {
@@ -39,7 +51,7 @@ export async function validateDependenciesDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
-		// Call the original command function
+		// Call the original command function using the provided tasksPath
 		await validateDependenciesCommand(tasksPath);
 
 		// Restore normal logging

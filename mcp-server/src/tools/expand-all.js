@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the expandAll tool with the MCP server
@@ -27,9 +28,8 @@ export function registerExpandAllTool(server) {
 			research: z
 				.boolean()
 				.optional()
-				.default(true)
 				.describe(
-					'Enable Perplexity AI for research-backed subtask generation (default: true)'
+					'Enable Perplexity AI for research-backed subtask generation'
 				),
 			prompt: z
 				.string()
@@ -44,35 +44,51 @@ export function registerExpandAllTool(server) {
 			file: z
 				.string()
 				.optional()
-				.describe('Path to the tasks file (default: tasks/tasks.json)'),
+				.describe(
+					'Absolute path to the tasks file (default: tasks/tasks.json)'
+				),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Expanding all tasks with args: ${JSON.stringify(args)}`);
 
-				let rootFolder = getProjectRootFromSession(session, log);
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
 				}
 
-				// Default research to true if not specified
-				if (args.research === undefined) {
-					args.research = true;
-					log.info('Setting research=true by default for better subtask generation');
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
 				}
 
 				const result = await expandAllTasksDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						num: args.num,
+						research: args.research,
+						prompt: args.prompt,
+						force: args.force
 					},
 					log,
 					{ session }

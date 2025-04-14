@@ -6,412 +6,415 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 
-// Default log level
-let LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+// Global silent mode flag
+let silentMode = false;
+
+// Configuration and constants
+const CONFIG = {
+	model: process.env.MODEL || 'claude-3-7-sonnet-20250219',
+	maxTokens: parseInt(process.env.MAX_TOKENS || '4000'),
+	temperature: parseFloat(process.env.TEMPERATURE || '0.7'),
+	debug: process.env.DEBUG === 'true',
+	logLevel: process.env.LOG_LEVEL || 'info',
+	defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || '3'),
+	defaultPriority: process.env.DEFAULT_PRIORITY || 'medium',
+	projectName: process.env.PROJECT_NAME || 'Task Master',
+	projectVersion: '1.5.0' // Hardcoded version - ALWAYS use this value, ignore environment variable
+};
 
 // Log level priorities
 const LOG_LEVELS = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
+	debug: 0,
+	info: 1,
+	warn: 2,
+	error: 3,
+	success: 1 // Treat success like info level
 };
 
 /**
- * Set the current logging level
- * @param {string} level - Log level ('debug', 'info', 'warn', 'error')
+ * Returns the task manager module
+ * @returns {Promise<Object>} The task manager module object
  */
-export function setLogLevel(level) {
-  if (LOG_LEVELS[level] !== undefined) {
-    LOG_LEVEL = level;
-  } else {
-    console.warn(`Invalid log level: ${level}. Using 'info' instead.`);
-    LOG_LEVEL = 'info';
-  }
+async function getTaskManager() {
+	return import('./task-manager.js');
 }
 
 /**
- * Log a message with a specified level
- * @param {string} level - Log level ('debug', 'info', 'warn', 'error')
- * @param {string} message - Message to log
+ * Enable silent logging mode
  */
-export function log(level, message) {
-  // Skip logging if level is below current LOG_LEVEL
-  if (LOG_LEVELS[level] < LOG_LEVELS[LOG_LEVEL]) {
-    return;
-  }
-
-  const timestamp = new Date().toISOString();
-  
-  switch (level) {
-    case 'debug':
-      console.debug(chalk.blue(`[${timestamp}] DEBUG: ${message}`));
-      break;
-    case 'info':
-      console.info(chalk.green(`[${timestamp}] INFO: ${message}`));
-      break;
-    case 'warn':
-      console.warn(chalk.yellow(`[${timestamp}] WARN: ${message}`));
-      break;
-    case 'error':
-      console.error(chalk.red(`[${timestamp}] ERROR: ${message}`));
-      break;
-    default:
-      console.log(`[${timestamp}] ${level}: ${message}`);
-  }
+function enableSilentMode() {
+	silentMode = true;
 }
 
 /**
- * Read a JSON file
- * @param {string} filePath - Path to the JSON file
- * @returns {Object|null} Parsed JSON content or null on error
+ * Disable silent logging mode
  */
-export function readJSON(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    log('error', `Error reading JSON file ${filePath}: ${err.message}`);
-    return null;
-  }
+function disableSilentMode() {
+	silentMode = false;
 }
 
 /**
- * Write data to a JSON file
- * @param {string} filePath - Path to the JSON file
+ * Check if silent mode is enabled
+ * @returns {boolean} True if silent mode is enabled
+ */
+function isSilentMode() {
+	return silentMode;
+}
+
+/**
+ * Logs a message at the specified level
+ * @param {string} level - The log level (debug, info, warn, error)
+ * @param  {...any} args - Arguments to log
+ */
+function log(level, ...args) {
+	// Immediately return if silentMode is enabled
+	if (isSilentMode()) {
+		return;
+	}
+
+	// Use text prefixes instead of emojis
+	const prefixes = {
+		debug: chalk.gray('[DEBUG]'),
+		info: chalk.blue('[INFO]'),
+		warn: chalk.yellow('[WARN]'),
+		error: chalk.red('[ERROR]'),
+		success: chalk.green('[SUCCESS]')
+	};
+
+	// Ensure level exists, default to info if not
+	const currentLevel = LOG_LEVELS.hasOwnProperty(level) ? level : 'info';
+	const configLevel = CONFIG.logLevel || 'info'; // Ensure configLevel has a default
+
+	// Check log level configuration
+	if (
+		LOG_LEVELS[currentLevel] >= (LOG_LEVELS[configLevel] ?? LOG_LEVELS.info)
+	) {
+		const prefix = prefixes[currentLevel] || '';
+		// Use console.log for all levels, let chalk handle coloring
+		// Construct the message properly
+		const message = args
+			.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg))
+			.join(' ');
+		console.log(`${prefix} ${message}`);
+	}
+}
+
+/**
+ * Reads and parses a JSON file
+ * @param {string} filepath - Path to the JSON file
+ * @returns {Object|null} Parsed JSON data or null if error occurs
+ */
+function readJSON(filepath) {
+	try {
+		const rawData = fs.readFileSync(filepath, 'utf8');
+		return JSON.parse(rawData);
+	} catch (error) {
+		log('error', `Error reading JSON file ${filepath}:`, error.message);
+		if (CONFIG.debug) {
+			// Use log utility for debug output too
+			log('error', 'Full error details:', error);
+		}
+		return null;
+	}
+}
+
+/**
+ * Writes data to a JSON file
+ * @param {string} filepath - Path to the JSON file
  * @param {Object} data - Data to write
- * @returns {boolean} True if successful, false otherwise
  */
-export function writeJSON(filePath, data) {
-  try {
-    // Ensure directory exists
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    log('error', `Error writing JSON file ${filePath}: ${err.message}`);
-    return false;
-  }
+function writeJSON(filepath, data) {
+	try {
+		const dir = path.dirname(filepath);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+		fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
+	} catch (error) {
+		log('error', `Error writing JSON file ${filepath}:`, error.message);
+		if (CONFIG.debug) {
+			// Use log utility for debug output too
+			log('error', 'Full error details:', error);
+		}
+	}
 }
 
 /**
- * Detect camelCase flags in command-line arguments
- * @param {Array<string>} argv - Command-line arguments
- * @returns {Array<Object>} Array of objects with original and kebab-case versions
+ * Sanitizes a prompt string for use in a shell command
+ * @param {string} prompt The prompt to sanitize
+ * @returns {string} Sanitized prompt
  */
-export function detectCamelCaseFlags(argv) {
-  return argv
-    .filter(arg => arg.startsWith('--') && /[A-Z]/.test(arg))
-    .map(arg => {
-      const original = arg.replace(/^--/, '').split('=')[0];
-      const kebabCase = original.replace(/([A-Z])/g, '-$1').toLowerCase();
-      return { original, kebabCase };
-    });
+function sanitizePrompt(prompt) {
+	// Replace double quotes with escaped double quotes
+	return prompt.replace(/"/g, '\\"');
 }
 
 /**
- * Retry a function with exponential backoff
- * @param {Function} fn - Function to retry
- * @param {number} maxRetries - Maximum number of retries
- * @param {number} initialDelay - Initial delay in ms
- * @param {number} maxDelay - Maximum delay in ms
- * @param {Object} options - Additional options
- * @param {boolean} options.useRateLimit - Whether to respect rate limit headers
- * @param {boolean} options.fastFail - Fail fast on permanent errors
- * @param {Function} options.onRetry - Callback function when retry happens
- * @returns {Promise<any>} - Result of the function
+ * Reads and parses the complexity report if it exists
+ * @param {string} customPath - Optional custom path to the report
+ * @returns {Object|null} The parsed complexity report or null if not found
  */
-export async function retryWithExponentialBackoff(
-  fn,
-  maxRetries = 3,
-  initialDelay = 1000,
-  maxDelay = 10000,
-  options = {}
+function readComplexityReport(customPath = null) {
+	try {
+		const reportPath =
+			customPath ||
+			path.join(process.cwd(), 'scripts', 'task-complexity-report.json');
+		if (!fs.existsSync(reportPath)) {
+			return null;
+		}
+
+		const reportData = fs.readFileSync(reportPath, 'utf8');
+		return JSON.parse(reportData);
+	} catch (error) {
+		log('warn', `Could not read complexity report: ${error.message}`);
+		return null;
+	}
+}
+
+/**
+ * Finds a task analysis in the complexity report
+ * @param {Object} report - The complexity report
+ * @param {number} taskId - The task ID to find
+ * @returns {Object|null} The task analysis or null if not found
+ */
+function findTaskInComplexityReport(report, taskId) {
+	if (
+		!report ||
+		!report.complexityAnalysis ||
+		!Array.isArray(report.complexityAnalysis)
+	) {
+		return null;
+	}
+
+	return report.complexityAnalysis.find((task) => task.taskId === taskId);
+}
+
+/**
+ * Checks if a task exists in the tasks array
+ * @param {Array} tasks - The tasks array
+ * @param {string|number} taskId - The task ID to check
+ * @returns {boolean} True if the task exists, false otherwise
+ */
+function taskExists(tasks, taskId) {
+	if (!taskId || !tasks || !Array.isArray(tasks)) {
+		return false;
+	}
+
+	// Handle both regular task IDs and subtask IDs (e.g., "1.2")
+	if (typeof taskId === 'string' && taskId.includes('.')) {
+		const [parentId, subtaskId] = taskId
+			.split('.')
+			.map((id) => parseInt(id, 10));
+		const parentTask = tasks.find((t) => t.id === parentId);
+
+		if (!parentTask || !parentTask.subtasks) {
+			return false;
+		}
+
+		return parentTask.subtasks.some((st) => st.id === subtaskId);
+	}
+
+	const id = parseInt(taskId, 10);
+	return tasks.some((t) => t.id === id);
+}
+
+/**
+ * Formats a task ID as a string
+ * @param {string|number} id - The task ID to format
+ * @returns {string} The formatted task ID
+ */
+function formatTaskId(id) {
+	if (typeof id === 'string' && id.includes('.')) {
+		return id; // Already formatted as a string with a dot (e.g., "1.2")
+	}
+
+	if (typeof id === 'number') {
+		return id.toString();
+	}
+
+	return id;
+}
+
+/**
+ * Finds a task by ID in the tasks array
+ * @param {Array} tasks - The tasks array
+ * @param {string|number} taskId - The task ID to find
+ * @returns {Object|null} The task object or null if not found
+ */
+function findTaskById(tasks, taskId) {
+	if (!taskId || !tasks || !Array.isArray(tasks)) {
+		return null;
+	}
+
+	// Check if it's a subtask ID (e.g., "1.2")
+	if (typeof taskId === 'string' && taskId.includes('.')) {
+		const [parentId, subtaskId] = taskId
+			.split('.')
+			.map((id) => parseInt(id, 10));
+		const parentTask = tasks.find((t) => t.id === parentId);
+
+		if (!parentTask || !parentTask.subtasks) {
+			return null;
+		}
+
+		const subtask = parentTask.subtasks.find((st) => st.id === subtaskId);
+		if (subtask) {
+			// Add reference to parent task for context
+			subtask.parentTask = {
+				id: parentTask.id,
+				title: parentTask.title,
+				status: parentTask.status
+			};
+			subtask.isSubtask = true;
+		}
+
+		return subtask || null;
+	}
+
+	const id = parseInt(taskId, 10);
+	return tasks.find((t) => t.id === id) || null;
+}
+
+/**
+ * Truncates text to a specified length
+ * @param {string} text - The text to truncate
+ * @param {number} maxLength - The maximum length
+ * @returns {string} The truncated text
+ */
+function truncate(text, maxLength) {
+	if (!text || text.length <= maxLength) {
+		return text;
+	}
+
+	return text.slice(0, maxLength - 3) + '...';
+}
+
+/**
+ * Find cycles in a dependency graph using DFS
+ * @param {string} subtaskId - Current subtask ID
+ * @param {Map} dependencyMap - Map of subtask IDs to their dependencies
+ * @param {Set} visited - Set of visited nodes
+ * @param {Set} recursionStack - Set of nodes in current recursion stack
+ * @returns {Array} - List of dependency edges that need to be removed to break cycles
+ */
+function findCycles(
+	subtaskId,
+	dependencyMap,
+	visited = new Set(),
+	recursionStack = new Set(),
+	path = []
 ) {
-  const { 
-    useRateLimit = true, 
-    fastFail = true,
-    onRetry = null
-  } = options;
-  
-  let numRetries = 0;
-  let delay = initialDelay;
+	// Mark the current node as visited and part of recursion stack
+	visited.add(subtaskId);
+	recursionStack.add(subtaskId);
+	path.push(subtaskId);
 
-  // Helper to determine if an error is permanent or can be retried
-  const isPermanentError = (error) => {
-    // List of error types/codes that should not be retried
-    const permanentErrorPatterns = [
-      'authentication', 
-      'authorization',
-      'invalid_api_key',
-      'billing',
-      'payment',
-      'access denied',
-      'access_denied',
-      'forbidden',
-      'invalid request',
-      'invalid parameter',
-      'invalid_parameter'
-    ];
-    
-    // Check if error message matches any permanent error patterns
-    if (error && error.message) {
-      const errorMessage = error.message.toLowerCase();
-      if (permanentErrorPatterns.some(pattern => errorMessage.includes(pattern))) {
-        return true;
-      }
-    }
-    
-    // Check status code if available
-    if (error && error.status) {
-      // 4xx errors except 408, 429, and 425 are typically permanent
-      return error.status >= 400 && error.status < 500 && 
-             ![408, 429, 425].includes(error.status);
-    }
-    
-    return false;
-  };
-  
-  // Helper to get delay from rate limit headers if available
-  const getRateLimitDelay = (error) => {
-    // Check for rate limit headers from common APIs
-    if (error && error.headers) {
-      // Anthropic rate limit header
-      const retryAfter = error.headers['retry-after'] || 
-                          error.headers['x-retry-after'] ||
-                          null;
-                          
-      if (retryAfter) {
-        const retrySeconds = parseInt(retryAfter, 10);
-        if (!isNaN(retrySeconds)) {
-          return retrySeconds * 1000; // Convert to ms
-        }
-      }
-      
-      // Check for other rate limit headers
-      const resetTime = error.headers['x-rate-limit-reset'] ||
-                        error.headers['ratelimit-reset'] ||
-                        null;
-                        
-      if (resetTime) {
-        const resetTimestamp = parseInt(resetTime, 10);
-        if (!isNaN(resetTimestamp)) {
-          const now = Date.now();
-          const timeUntilReset = resetTimestamp * 1000 - now;
-          if (timeUntilReset > 0) {
-            return Math.min(timeUntilReset + 100, maxDelay); // Add small buffer
-          }
-        }
-      }
-    }
-    
-    // Default to regular exponential backoff
-    return null;
-  };
+	const cyclesToBreak = [];
 
-  while (true) {
-    try {
-      return await fn();
-    } catch (error) {
-      numRetries++;
-      
-      // If fastFail is enabled and this is a permanent error, don't retry
-      if (fastFail && isPermanentError(error)) {
-        log('error', `Permanent error detected, not retrying: ${error.message}`);
-        throw error;
-      }
-      
-      if (numRetries > maxRetries) {
-        log('error', `Maximum retries (${maxRetries}) exceeded. Giving up.`);
-        throw error;
-      }
-      
-      // Get rate limit delay if available and enabled
-      let retryDelay = delay;
-      if (useRateLimit) {
-        const rateLimitDelay = getRateLimitDelay(error);
-        if (rateLimitDelay) {
-          retryDelay = rateLimitDelay;
-          log('warn', `Rate limit detected. Waiting ${retryDelay}ms before next attempt.`);
-        }
-      }
-      
-      log('warn', `Attempt ${numRetries} failed. Retrying in ${retryDelay}ms...`);
-      
-      // Call onRetry callback if provided
-      if (onRetry && typeof onRetry === 'function') {
-        try {
-          onRetry(numRetries, retryDelay, error);
-        } catch (callbackError) {
-          // Don't let callback errors interrupt the retry process
-          log('warn', `Error in retry callback: ${callbackError.message}`);
-        }
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
-      
-      // Exponential backoff with jitter
-      delay = Math.min(delay * 2, maxDelay) * (0.9 + Math.random() * 0.2);
-    }
-  }
+	// Get all dependencies of the current subtask
+	const dependencies = dependencyMap.get(subtaskId) || [];
+
+	// For each dependency
+	for (const depId of dependencies) {
+		// If not visited, recursively check for cycles
+		if (!visited.has(depId)) {
+			const cycles = findCycles(depId, dependencyMap, visited, recursionStack, [
+				...path
+			]);
+			cyclesToBreak.push(...cycles);
+		}
+		// If the dependency is in the recursion stack, we found a cycle
+		else if (recursionStack.has(depId)) {
+			// Find the position of the dependency in the path
+			const cycleStartIndex = path.indexOf(depId);
+			// The last edge in the cycle is what we want to remove
+			const cycleEdges = path.slice(cycleStartIndex);
+			// We'll remove the last edge in the cycle (the one that points back)
+			cyclesToBreak.push(depId);
+		}
+	}
+
+	// Remove the node from recursion stack before returning
+	recursionStack.delete(subtaskId);
+
+	return cyclesToBreak;
 }
 
 /**
- * Validate and clean file paths
- * @param {string} basePath - Base directory path
- * @param {string} targetPath - Path to validate
- * @returns {string} Validated path
+ * Convert a string from camelCase to kebab-case
+ * @param {string} str - The string to convert
+ * @returns {string} The kebab-case version of the string
  */
-export function validatePath(basePath, targetPath) {
-  // Convert to absolute path if relative
-  const absPath = path.isAbsolute(targetPath) 
-    ? targetPath 
-    : path.join(basePath, targetPath);
-  
-  // Check it doesn't escape the base directory
-  const relative = path.relative(basePath, absPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`Path escapes base directory: ${targetPath}`);
-  }
-  
-  return absPath;
-}
+const toKebabCase = (str) => {
+	// Special handling for common acronyms
+	const withReplacedAcronyms = str
+		.replace(/ID/g, 'Id')
+		.replace(/API/g, 'Api')
+		.replace(/UI/g, 'Ui')
+		.replace(/URL/g, 'Url')
+		.replace(/URI/g, 'Uri')
+		.replace(/JSON/g, 'Json')
+		.replace(/XML/g, 'Xml')
+		.replace(/HTML/g, 'Html')
+		.replace(/CSS/g, 'Css');
+
+	// Insert hyphens before capital letters and convert to lowercase
+	return withReplacedAcronyms
+		.replace(/([A-Z])/g, '-$1')
+		.toLowerCase()
+		.replace(/^-/, ''); // Remove leading hyphen if present
+};
 
 /**
- * Archive tasks and PRD files before overwriting
- * @param {string} filePath - Path to the file being overwritten (tasks.json or prd file)
- * @param {boolean} createBackup - Whether to create a backup (defaults to true)
- * @returns {Object} Object containing success status and archive path or error
+ * Detect camelCase flags in command arguments
+ * @param {string[]} args - Command line arguments to check
+ * @returns {Array<{original: string, kebabCase: string}>} - List of flags that should be converted
  */
-export function archiveTasksBeforeOverwrite(filePath, createBackup = true) {
-  if (!createBackup || !fs.existsSync(filePath)) {
-    return { success: true, archived: false };
-  }
+function detectCamelCaseFlags(args) {
+	const camelCaseFlags = [];
+	for (const arg of args) {
+		if (arg.startsWith('--')) {
+			const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
 
-  try {
-    // Create archives directory relative to the tasks directory
-    const baseDir = path.dirname(filePath);
-    const archiveDir = path.join(baseDir, 'archives');
-    
-    if (!fs.existsSync(archiveDir)) {
-      fs.mkdirSync(archiveDir, { recursive: true });
-    }
-    
-    // Create a unique filename with timestamp
-    const fileName = path.basename(filePath);
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const archivePath = path.join(archiveDir, `${path.parse(fileName).name}-${timestamp}${path.parse(fileName).ext}`);
-    
-    // Copy the file to the archive
-    fs.copyFileSync(filePath, archivePath);
-    
-    log('info', `Archived ${filePath} to ${archivePath}`);
-    return { 
-      success: true, 
-      archived: true, 
-      archivePath 
-    };
-  } catch (err) {
-    log('error', `Error archiving ${filePath}: ${err.message}`);
-    return { 
-      success: false, 
-      error: err.message 
-    };
-  }
+			// Skip single-word flags - they can't be camelCase
+			if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
+				continue;
+			}
+
+			// Check for camelCase pattern (lowercase followed by uppercase)
+			if (/[a-z][A-Z]/.test(flagName)) {
+				const kebabVersion = toKebabCase(flagName);
+				if (kebabVersion !== flagName) {
+					camelCaseFlags.push({
+						original: flagName,
+						kebabCase: kebabVersion
+					});
+				}
+			}
+		}
+	}
+	return camelCaseFlags;
 }
 
-/**
- * Restore an archived file to its original location
- * @param {string} archivePath - Path to the archived file
- * @param {string} [destinationPath] - Target path to restore to (optional, will be inferred if not provided)
- * @param {boolean} [createBackup] - Whether to backup existing file at destination (defaults to true)
- * @returns {Object} Object containing success status and destination path or error
- */
-export function restoreArchive(archivePath, destinationPath = null, createBackup = true) {
-  try {
-    if (!fs.existsSync(archivePath)) {
-      return { 
-        success: false, 
-        error: `Archive file not found: ${archivePath}` 
-      };
-    }
-
-    // Parse the archive path to determine the type and original location if not provided
-    const fileName = path.basename(archivePath);
-    const archiveDir = path.dirname(archivePath);
-    let targetPath = destinationPath;
-
-    if (!targetPath) {
-      const baseDir = path.dirname(archiveDir); // Parent directory of archives
-      
-      // Determine original filename based on archive naming convention
-      let originalName;
-      if (fileName.startsWith('tasks-')) {
-        originalName = 'tasks.json';
-      } else if (fileName.startsWith('prd-')) {
-        // Extract the original extension if present
-        const originalExt = path.extname(fileName);
-        originalName = `prd${originalExt}`;
-      } else {
-        // If not following known pattern, just use the filename without timestamp
-        // Extract timestamp portion (assuming ISO format)
-        const parts = path.parse(fileName).name.split('-');
-        // Remove timestamp parts (last 6 segments from an ISO date)
-        const nameWithoutTimestamp = parts.slice(0, parts.length - 6).join('-');
-        originalName = `${nameWithoutTimestamp}${path.extname(fileName)}`;
-      }
-      
-      targetPath = path.join(baseDir, originalName);
-    }
-    
-    // Check if destination file exists and archive it if needed
-    if (fs.existsSync(targetPath) && createBackup) {
-      const backupResult = archiveTasksBeforeOverwrite(targetPath);
-      if (!backupResult.success) {
-        log('warn', `Could not archive existing file before restore: ${backupResult.error}`);
-      } else if (backupResult.archived) {
-        log('info', `Existing file has been archived to ${backupResult.archivePath} before restore`);
-      }
-    }
-    
-    // Ensure target directory exists
-    const targetDir = path.dirname(targetPath);
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-    
-    // Copy the archive to the destination
-    fs.copyFileSync(archivePath, targetPath);
-    
-    log('info', `Restored archive ${archivePath} to ${targetPath}`);
-    return { 
-      success: true, 
-      restoredTo: targetPath 
-    };
-  } catch (err) {
-    log('error', `Error restoring archive: ${err.message}`);
-    return { 
-      success: false, 
-      error: err.message 
-    };
-  }
-}
-
-export default {
-  log,
-  setLogLevel,
-  readJSON,
-  writeJSON,
-  detectCamelCaseFlags,
-  retryWithExponentialBackoff,
-  validatePath,
-  archiveTasksBeforeOverwrite,
-  restoreArchive
+// Export all utility functions and configuration
+export {
+	CONFIG,
+	LOG_LEVELS,
+	log,
+	readJSON,
+	writeJSON,
+	sanitizePrompt,
+	readComplexityReport,
+	findTaskInComplexityReport,
+	taskExists,
+	formatTaskId,
+	findTaskById,
+	truncate,
+	findCycles,
+	toKebabCase,
+	detectCamelCaseFlags,
+	enableSilentMode,
+	disableSilentMode,
+	isSilentMode,
+	getTaskManager
 };

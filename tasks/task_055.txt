@@ -1,0 +1,50 @@
+# Task ID: 55
+# Title: Implement Positional Arguments Support for CLI Commands
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Upgrade CLI commands to support positional arguments alongside the existing flag-based syntax, allowing for more intuitive command usage.
+# Details:
+This task involves modifying the command parsing logic in commands.js to support positional arguments as an alternative to the current flag-based approach. The implementation should:
+
+1. Update the argument parsing logic to detect when arguments are provided without flag prefixes (--)
+2. Map positional arguments to their corresponding parameters based on their order
+3. For each command in commands.js, define a consistent positional argument order (e.g., for set-status: first arg = id, second arg = status)
+4. Maintain backward compatibility with the existing flag-based syntax
+5. Handle edge cases such as:
+   - Commands with optional parameters
+   - Commands with multiple parameters
+   - Commands that accept arrays or complex data types
+6. Update the help text for each command to show both usage patterns
+7. Modify the cursor rules to work with both input styles
+8. Ensure error messages are clear when positional arguments are provided incorrectly
+
+Example implementations:
+- `task-master set-status 25 done` should be equivalent to `task-master set-status --id=25 --status=done`
+- `task-master add-task "New task name" "Task description"` should be equivalent to `task-master add-task --name="New task name" --description="Task description"`
+
+The code should prioritize maintaining the existing functionality while adding this new capability.
+
+# Test Strategy:
+Testing should verify both the new positional argument functionality and continued support for flag-based syntax:
+
+1. Unit tests:
+   - Create tests for each command that verify it works with both positional and flag-based arguments
+   - Test edge cases like missing arguments, extra arguments, and mixed usage (some positional, some flags)
+   - Verify help text correctly displays both usage patterns
+
+2. Integration tests:
+   - Test the full CLI with various commands using both syntax styles
+   - Verify that output is identical regardless of which syntax is used
+   - Test commands with different numbers of arguments
+
+3. Manual testing:
+   - Run through a comprehensive set of real-world usage scenarios with both syntax styles
+   - Verify cursor behavior works correctly with both input methods
+   - Check that error messages are helpful when incorrect positional arguments are provided
+
+4. Documentation verification:
+   - Ensure README and help text accurately reflect the new dual syntax support
+   - Verify examples in documentation show both styles where appropriate
+
+All tests should pass with 100% of commands supporting both argument styles without any regression in existing functionality.

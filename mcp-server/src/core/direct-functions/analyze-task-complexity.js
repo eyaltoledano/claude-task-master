@@ -3,7 +3,6 @@
  */
 
 import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
@@ -16,45 +15,60 @@ import path from 'path';
 /**
  * Analyze task complexity and generate recommendations
  * @param {Object} args - Function arguments
- * @param {string} [args.file] - Path to the tasks file
- * @param {string} [args.output] - Output file path for the report
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string} [args.model] - LLM model to use for analysis
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
- * @param {string} [args.projectRoot] - Project root directory
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
+	// Destructure expected args
+	const { tasksJsonPath, outputPath, model, threshold, research } = args;
 
 	try {
 		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
 
-		// Find the tasks.json path
-		const tasksPath = findTasksJsonPath(args, log);
-
-		// Determine output path
-		let outputPath = args.output || 'scripts/task-complexity-report.json';
-		if (!path.isAbsolute(outputPath) && args.projectRoot) {
-			outputPath = path.join(args.projectRoot, outputPath);
+		// Check if required paths were provided
+		if (!tasksJsonPath) {
+			log.error('analyzeTaskComplexityDirect called without tasksJsonPath');
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ARGUMENT',
+					message: 'tasksJsonPath is required'
+				}
+			};
+		}
+		if (!outputPath) {
+			log.error('analyzeTaskComplexityDirect called without outputPath');
+			return {
+				success: false,
+				error: { code: 'MISSING_ARGUMENT', message: 'outputPath is required' }
+			};
 		}
 
-		log.info(`Analyzing task complexity from: ${tasksPath}`);
-		log.info(`Output report will be saved to: ${outputPath}`);
+		// Use the provided paths
+		const tasksPath = tasksJsonPath;
+		const resolvedOutputPath = outputPath;
 
-		if (args.research) {
+		log.info(`Analyzing task complexity from: ${tasksPath}`);
+		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
+
+		if (research) {
 			log.info('Using Perplexity AI for research-backed complexity analysis');
 		}
 
-		// Create options object for analyzeTaskComplexity
+		// Create options object for analyzeTaskComplexity using provided paths
 		const options = {
 			file: tasksPath,
-			output: outputPath,
-			model: args.model,
-			threshold: args.threshold,
-			research: args.research === true
+			output: resolvedOutputPath,
+			model: model,
+			threshold: threshold,
+			research: research === true
 		};
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
@@ -95,7 +109,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		}
 
 		// Verify the report file was created
-		if (!fs.existsSync(outputPath)) {
+		if (!fs.existsSync(resolvedOutputPath)) {
 			return {
 				success: false,
 				error: {
@@ -108,7 +122,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		// Read the report file
 		let report;
 		try {
-			report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+			report = JSON.parse(fs.readFileSync(resolvedOutputPath, 'utf8'));
 
 			// Important: Handle different report formats
 			// The core function might return an array or an object with a complexityAnalysis property
@@ -130,8 +144,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${outputPath}`,
-					reportPath: outputPath,
+					message: `Task complexity analysis complete. Report saved to ${resolvedOutputPath}`,
+					reportPath: resolvedOutputPath,
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,

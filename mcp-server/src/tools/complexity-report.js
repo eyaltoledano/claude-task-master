@@ -7,10 +7,10 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession,
-	formatCommandResultForDisplay
+	getProjectRootFromSession
 } from './utils.js';
 import { complexityReportDirect } from '../core/task-master-core.js';
+import path from 'path';
 
 /**
  * Register the complexityReport tool with the MCP server
@@ -29,50 +29,52 @@ export function registerComplexityReportTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(
 					`Getting complexity report with args: ${JSON.stringify(args)}`
 				);
-				// await reportProgress({ progress: 0 });
 
-				let rootFolder = getProjectRootFromSession(session, log);
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
 				}
+
+				// Resolve the path to the complexity report file
+				// Default to scripts/task-complexity-report.json relative to root
+				const reportPath = args.file
+					? path.resolve(rootFolder, args.file)
+					: path.resolve(rootFolder, 'scripts', 'task-complexity-report.json');
 
 				const result = await complexityReportDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						// Pass the explicitly resolved path
+						reportPath: reportPath
+						// No other args specific to this tool
 					},
-					log /*, { reportProgress, mcpLog: log, session}*/
+					log
 				);
 
-				// Format the result with rich text
-				const formattedResult = formatCommandResultForDisplay(result, 'complexity-report');
-
-				// await reportProgress({ progress: 100 });
-
-				if (formattedResult.success) {
+				if (result.success) {
 					log.info(
-						`Successfully retrieved complexity report${formattedResult.fromCache ? ' (from cache)' : ''}`
+						`Successfully retrieved complexity report${result.fromCache ? ' (from cache)' : ''}`
 					);
 				} else {
 					log.error(
-						`Failed to retrieve complexity report: ${formattedResult.error.message}`
+						`Failed to retrieve complexity report: ${result.error.message}`
 					);
 				}
 
 				return handleApiResult(
-					formattedResult,
+					result,
 					log,
 					'Error retrieving complexity report'
 				);

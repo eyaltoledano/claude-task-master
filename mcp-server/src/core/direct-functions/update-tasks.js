@@ -8,7 +8,6 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	getAnthropicClientForMCP,
 	getPerplexityClientForMCP
@@ -17,19 +16,31 @@ import {
 /**
  * Direct function wrapper for updating tasks based on new context/prompt.
  *
- * @param {Object} args - Command arguments containing fromId, prompt, useResearch and file path options.
+ * @param {Object} args - Command arguments containing fromId, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
+	const { tasksJsonPath, from, prompt, research } = args;
 
 	try {
 		log.info(`Updating tasks with args: ${JSON.stringify(args)}`);
 
+		// Check if tasksJsonPath was provided
+		if (!tasksJsonPath) {
+			const errorMessage = 'tasksJsonPath is required but was not provided.';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
+				fromCache: false
+			};
+		}
+
 		// Check for the common mistake of using 'id' instead of 'from'
-		if (args.id !== undefined && args.from === undefined) {
+		if (args.id !== undefined && from === undefined) {
 			const errorMessage =
 				"You specified 'id' parameter but 'update' requires 'from' parameter. Use 'from' for this tool or use 'update_task' tool if you want to update a single task.";
 			log.error(errorMessage);
@@ -46,7 +57,7 @@ export async function updateTasksDirect(args, log, context = {}) {
 		}
 
 		// Check required parameters
-		if (!args.from) {
+		if (!from) {
 			const errorMessage =
 				'No from ID specified. Please provide a task ID to start updating from.';
 			log.error(errorMessage);
@@ -57,7 +68,7 @@ export async function updateTasksDirect(args, log, context = {}) {
 			};
 		}
 
-		if (!args.prompt) {
+		if (!prompt) {
 			const errorMessage =
 				'No prompt specified. Please provide a prompt with new context for task updates.';
 			log.error(errorMessage);
@@ -70,10 +81,10 @@ export async function updateTasksDirect(args, log, context = {}) {
 
 		// Parse fromId - handle both string and number values
 		let fromId;
-		if (typeof args.from === 'string') {
-			fromId = parseInt(args.from, 10);
+		if (typeof from === 'string') {
+			fromId = parseInt(from, 10);
 			if (isNaN(fromId)) {
-				const errorMessage = `Invalid from ID: ${args.from}. Task ID must be a positive integer.`;
+				const errorMessage = `Invalid from ID: ${from}. Task ID must be a positive integer.`;
 				log.error(errorMessage);
 				return {
 					success: false,
@@ -82,24 +93,11 @@ export async function updateTasksDirect(args, log, context = {}) {
 				};
 			}
 		} else {
-			fromId = args.from;
-		}
-
-		// Get tasks file path
-		let tasksPath;
-		try {
-			tasksPath = findTasksJsonPath(args, log);
-		} catch (error) {
-			log.error(`Error finding tasks file: ${error.message}`);
-			return {
-				success: false,
-				error: { code: 'TASKS_FILE_ERROR', message: error.message },
-				fromCache: false
-			};
+			fromId = from;
 		}
 
 		// Get research flag
-		const useResearch = args.research === true;
+		const useResearch = research === true;
 
 		// Initialize appropriate AI client based on research flag
 		let aiClient;
@@ -124,16 +122,25 @@ export async function updateTasksDirect(args, log, context = {}) {
 		}
 
 		log.info(
-			`Updating tasks from ID ${fromId} with prompt "${args.prompt}" and research: ${useResearch}`
+			`Updating tasks from ID ${fromId} with prompt "${prompt}" and research: ${useResearch}`
 		);
+
+		// Create the logger wrapper to ensure compatibility with core functions
+		const logWrapper = {
+			info: (message, ...args) => log.info(message, ...args),
+			warn: (message, ...args) => log.warn(message, ...args),
+			error: (message, ...args) => log.error(message, ...args),
+			debug: (message, ...args) => log.debug && log.debug(message, ...args), // Handle optional debug
+			success: (message, ...args) => log.info(message, ...args) // Map success to info if needed
+		};
 
 		try {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
 			// Execute core updateTasks function, passing the AI client and session
-			await updateTasks(tasksPath, fromId, args.prompt, useResearch, {
-				mcpLog: log,
+			await updateTasks(tasksJsonPath, fromId, prompt, useResearch, {
+				mcpLog: logWrapper, // Pass the wrapper instead of the raw log object
 				session
 			});
 
@@ -144,7 +151,7 @@ export async function updateTasksDirect(args, log, context = {}) {
 				data: {
 					message: `Successfully updated tasks from ID ${fromId} based on the prompt`,
 					fromId,
-					tasksPath,
+					tasksPath: tasksJsonPath,
 					useResearch
 				},
 				fromCache: false // This operation always modifies state and should never be cached

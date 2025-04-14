@@ -4,68 +4,346 @@
  * Common utility functions for MCP tools
  */
 
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
-import { getProjectRootFromSession } from '../core/utils/session-utils.js';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import path from 'path';
-import logger from '../logger.js';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { renderTaskContent, renderComplexityReport, renderPrd, renderJsonContent } from '../../../scripts/modules/markdown-renderer.js';
+import { contextManager } from '../core/context-manager.js'; // Import the singleton
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Import path utilities to ensure consistent path resolution
+import {
+	lastFoundProjectRoot,
+	PROJECT_MARKERS
+} from '../core/utils/path-utils.js';
 
 /**
- * Create a success response with optional fromCache flag
- * @param {any} data - The data to include in the response
- * @param {boolean} fromCache - Whether the response was retrieved from cache
- * @returns {Object} Success response object
+ * Get normalized project root path
+ * @param {string|undefined} projectRootRaw - Raw project root from arguments
+ * @param {Object} log - Logger object
+ * @returns {string} - Normalized absolute path to project root
  */
-export function createSuccessResponse(data, fromCache = false) {
-  return {
-    success: true,
-    data,
-    fromCache
-  };
+function getProjectRoot(projectRootRaw, log) {
+	// PRECEDENCE ORDER:
+	// 1. Environment variable override
+	// 2. Explicitly provided projectRoot in args
+	// 3. Previously found/cached project root
+	// 4. Current directory if it has project markers
+	// 5. Current directory with warning
+
+	// 1. Check for environment variable override
+	if (process.env.TASK_MASTER_PROJECT_ROOT) {
+		const envRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+		const absolutePath = path.isAbsolute(envRoot)
+			? envRoot
+			: path.resolve(process.cwd(), envRoot);
+		log.info(
+			`Using project root from TASK_MASTER_PROJECT_ROOT environment variable: ${absolutePath}`
+		);
+		return absolutePath;
+	}
+
+	// 2. If project root is explicitly provided, use it
+	if (projectRootRaw) {
+		const absolutePath = path.isAbsolute(projectRootRaw)
+			? projectRootRaw
+			: path.resolve(process.cwd(), projectRootRaw);
+
+		log.info(`Using explicitly provided project root: ${absolutePath}`);
+		return absolutePath;
+	}
+
+	// 3. If we have a last found project root from a tasks.json search, use that for consistency
+	if (lastFoundProjectRoot) {
+		log.info(
+			`Using last known project root where tasks.json was found: ${lastFoundProjectRoot}`
+		);
+		return lastFoundProjectRoot;
+	}
+
+	// 4. Check if the current directory has any indicators of being a task-master project
+	const currentDir = process.cwd();
+	if (
+		PROJECT_MARKERS.some((marker) => {
+			const markerPath = path.join(currentDir, marker);
+			return fs.existsSync(markerPath);
+		})
+	) {
+		log.info(
+			`Using current directory as project root (found project markers): ${currentDir}`
+		);
+		return currentDir;
+	}
+
+	// 5. Default to current working directory but warn the user
+	log.warn(
+		`No task-master project detected in current directory. Using ${currentDir} as project root.`
+	);
+	log.warn(
+		'Consider using --project-root to specify the correct project location or set TASK_MASTER_PROJECT_ROOT environment variable.'
+	);
+	return currentDir;
 }
 
 /**
- * Create an error response with optional error code and metadata
- * @param {string} message - Error message
- * @param {Object} options - Additional error options
- * @param {string} [options.code] - Error code
- * @returns {Object} Error response object
+ * Extracts the project root path from the FastMCP session object.
+ * @param {Object} session - The FastMCP session object.
+ * @param {Object} log - Logger object.
+ * @returns {string|null} - The absolute path to the project root, or null if not found.
  */
-export function createErrorResponse(message, options = {}) {
-  return {
-    success: false,
-    error: {
-      code: options.code || 'EXECUTION_ERROR',
-      message: message || 'An unknown error occurred'
-    },
-    fromCache: false
-  };
+function getProjectRootFromSession(session, log) {
+	try {
+		// Add detailed logging of session structure
+		log.info(
+			`Session object: ${JSON.stringify({
+				hasSession: !!session,
+				hasRoots: !!session?.roots,
+				rootsType: typeof session?.roots,
+				isRootsArray: Array.isArray(session?.roots),
+				rootsLength: session?.roots?.length,
+				firstRoot: session?.roots?.[0],
+				hasRootsRoots: !!session?.roots?.roots,
+				rootsRootsType: typeof session?.roots?.roots,
+				isRootsRootsArray: Array.isArray(session?.roots?.roots),
+				rootsRootsLength: session?.roots?.roots?.length,
+				firstRootsRoot: session?.roots?.roots?.[0]
+			})}`
+		);
+
+		// ALWAYS ensure we return a valid path for project root
+		const cwd = process.cwd();
+
+		// If we have a session with roots array
+		if (session?.roots?.[0]?.uri) {
+			const rootUri = session.roots[0].uri;
+			log.info(`Found rootUri in session.roots[0].uri: ${rootUri}`);
+			const rootPath = rootUri.startsWith('file://')
+				? decodeURIComponent(rootUri.slice(7))
+				: rootUri;
+			log.info(`Decoded rootPath: ${rootPath}`);
+			return rootPath;
+		}
+
+		// If we have a session with roots.roots array (different structure)
+		if (session?.roots?.roots?.[0]?.uri) {
+			const rootUri = session.roots.roots[0].uri;
+			log.info(`Found rootUri in session.roots.roots[0].uri: ${rootUri}`);
+			const rootPath = rootUri.startsWith('file://')
+				? decodeURIComponent(rootUri.slice(7))
+				: rootUri;
+			log.info(`Decoded rootPath: ${rootPath}`);
+			return rootPath;
+		}
+
+		// Get the server's location and try to find project root -- this is a fallback necessary in Cursor IDE
+		const serverPath = process.argv[1]; // This should be the path to server.js, which is in mcp-server/
+		if (serverPath && serverPath.includes('mcp-server')) {
+			// Find the mcp-server directory first
+			const mcpServerIndex = serverPath.indexOf('mcp-server');
+			if (mcpServerIndex !== -1) {
+				// Get the path up to mcp-server, which should be the project root
+				const projectRoot = serverPath.substring(0, mcpServerIndex - 1); // -1 to remove trailing slash
+
+				// Verify this looks like our project root by checking for key files/directories
+				if (
+					fs.existsSync(path.join(projectRoot, '.cursor')) ||
+					fs.existsSync(path.join(projectRoot, 'mcp-server')) ||
+					fs.existsSync(path.join(projectRoot, 'package.json'))
+				) {
+					log.info(`Found project root from server path: ${projectRoot}`);
+					return projectRoot;
+				}
+			}
+		}
+
+		// ALWAYS ensure we return a valid path as a last resort
+		log.info(`Using current working directory as ultimate fallback: ${cwd}`);
+		return cwd;
+	} catch (e) {
+		// If we have a server path, use it as a basis for project root
+		const serverPath = process.argv[1];
+		if (serverPath && serverPath.includes('mcp-server')) {
+			const mcpServerIndex = serverPath.indexOf('mcp-server');
+			return mcpServerIndex !== -1
+				? serverPath.substring(0, mcpServerIndex - 1)
+				: process.cwd();
+		}
+
+		// Only use cwd if it's not "/"
+		const cwd = process.cwd();
+		return cwd !== '/' ? cwd : '/';
+	}
 }
 
 /**
- * Execute a cached function with proper error handling
- * @param {string} cacheKey - Cache key
- * @param {Function} executeFn - Function to execute
- * @param {Object} cacheOptions - Cache options
+ * Handle API result with standardized error handling and response formatting
+ * @param {Object} result - Result object from API call with success, data, and error properties
+ * @param {Object} log - Logger object
+ * @param {string} errorPrefix - Prefix for error messages
+ * @param {Function} processFunction - Optional function to process successful result data
+ * @returns {Object} - Standardized MCP response object
+ */
+function handleApiResult(
+	result,
+	log,
+	errorPrefix = 'API error',
+	processFunction = processMCPResponseData
+) {
+	if (!result.success) {
+		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
+		// Include cache status in error logs
+		log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
+		return createErrorResponse(errorMsg);
+	}
+
+	// Process the result data if needed
+	const processedData = processFunction
+		? processFunction(result.data)
+		: result.data;
+
+	// Log success including cache status
+	log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+
+	// Create the response payload including the fromCache flag
+	const responsePayload = {
+		fromCache: result.fromCache, // Get the flag from the original 'result'
+		data: processedData // Nest the processed data under a 'data' key
+	};
+
+	// Pass this combined payload to createContentResponse
+	return createContentResponse(responsePayload);
+}
+
+/**
+ * Executes a task-master CLI command synchronously.
+ * @param {string} command - The command to execute (e.g., 'add-task')
  * @param {Object} log - Logger instance
- * @returns {Promise<{result: any, fromCache: boolean}>} Result and cache status
+ * @param {Array} args - Arguments for the command
+ * @param {string|undefined} projectRootRaw - Optional raw project root path (will be normalized internally)
+ * @param {Object|null} customEnv - Optional object containing environment variables to pass to the child process
+ * @returns {Object} - The result of the command execution
  */
-export async function getCachedOrExecute(cacheKey, executeFn, cacheOptions = {}, log) {
-  try {
-    // Simple implementation without actual caching for now
-    const result = await executeFn();
-    return { result, fromCache: false };
-  } catch (error) {
-    log.error(`Error executing function: ${error.message}`);
-    throw error;
-  }
+function executeTaskMasterCommand(
+	command,
+	log,
+	args = [],
+	projectRootRaw = null,
+	customEnv = null // Changed from session to customEnv
+) {
+	try {
+		// Normalize project root internally using the getProjectRoot utility
+		const cwd = getProjectRoot(projectRootRaw, log);
+
+		log.info(
+			`Executing task-master ${command} with args: ${JSON.stringify(
+				args
+			)} in directory: ${cwd}`
+		);
+
+		// Prepare full arguments array
+		const fullArgs = [command, ...args];
+
+		// Common options for spawn
+		const spawnOptions = {
+			encoding: 'utf8',
+			cwd: cwd,
+			// Merge process.env with customEnv, giving precedence to customEnv
+			env: { ...process.env, ...(customEnv || {}) }
+		};
+
+		// Log the environment being passed (optional, for debugging)
+		// log.info(`Spawn options env: ${JSON.stringify(spawnOptions.env)}`);
+
+		// Execute the command using the global task-master CLI or local script
+		// Try the global CLI first
+		let result = spawnSync('task-master', fullArgs, spawnOptions);
+
+		// If global CLI is not available, try fallback to the local script
+		if (result.error && result.error.code === 'ENOENT') {
+			log.info('Global task-master not found, falling back to local script');
+			// Pass the same spawnOptions (including env) to the fallback
+			result = spawnSync('node', ['scripts/dev.js', ...fullArgs], spawnOptions);
+		}
+
+		if (result.error) {
+			throw new Error(`Command execution error: ${result.error.message}`);
+		}
+
+		if (result.status !== 0) {
+			// Improve error handling by combining stderr and stdout if stderr is empty
+			const errorOutput = result.stderr
+				? result.stderr.trim()
+				: result.stdout
+					? result.stdout.trim()
+					: 'Unknown error';
+			throw new Error(
+				`Command failed with exit code ${result.status}: ${errorOutput}`
+			);
+		}
+
+		return {
+			success: true,
+			stdout: result.stdout,
+			stderr: result.stderr
+		};
+	} catch (error) {
+		log.error(`Error executing task-master command: ${error.message}`);
+		return {
+			success: false,
+			error: error.message
+		};
+	}
+}
+
+/**
+ * Checks cache for a result using the provided key. If not found, executes the action function,
+ * caches the result upon success, and returns the result.
+ *
+ * @param {Object} options - Configuration options.
+ * @param {string} options.cacheKey - The unique key for caching this operation's result.
+ * @param {Function} options.actionFn - The async function to execute if the cache misses.
+ *                                      Should return an object like { success: boolean, data?: any, error?: { code: string, message: string } }.
+ * @param {Object} options.log - The logger instance.
+ * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
+ *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ */
+async function getCachedOrExecute({ cacheKey, actionFn, log }) {
+	// Check cache first
+	const cachedResult = contextManager.getCachedData(cacheKey);
+
+	if (cachedResult !== undefined) {
+		log.info(`Cache hit for key: ${cacheKey}`);
+		// Return the cached data in the same structure as a fresh result
+		return {
+			...cachedResult, // Spread the cached result to maintain its structure
+			fromCache: true // Just add the fromCache flag
+		};
+	}
+
+	log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
+
+	// Execute the action function if cache missed
+	const result = await actionFn();
+
+	// If the action was successful, cache the result (but without fromCache flag)
+	if (result.success && result.data !== undefined) {
+		log.info(`Action successful. Caching result for key: ${cacheKey}`);
+		// Cache the entire result structure (minus the fromCache flag)
+		const { fromCache, ...resultToCache } = result;
+		contextManager.setCachedData(cacheKey, resultToCache);
+	} else if (!result.success) {
+		log.warn(
+			`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`
+		);
+	} else {
+		log.warn(
+			`Action for cache key ${cacheKey} succeeded but returned no data. Result not cached.`
+		);
+	}
+
+	// Return the fresh result, indicating it wasn't from cache
+	return {
+		...result,
+		fromCache: false
+	};
 }
 
 /**
@@ -75,47 +353,68 @@ export async function getCachedOrExecute(cacheKey, executeFn, cacheOptions = {},
  * @param {string} errorPrefix - Prefix for error messages
  * @returns {Object} Standardized response
  */
-export function handleApiResult(result, log, errorPrefix = 'Error') {
-  if (!result) {
-    log.error(`${errorPrefix}: No result returned`);
-    return createErrorResponse(`${errorPrefix}: No result returned`);
-  }
+function processMCPResponseData(
+	taskOrData,
+	fieldsToRemove = ['details', 'testStrategy']
+) {
+	if (!taskOrData) {
+		return taskOrData;
+	}
 
-  if (!result.success) {
-    log.error(`${errorPrefix}: ${result.error?.message || 'Unknown error'}`);
-    return result; // Return the error result directly
-  }
+	// Helper function to process a single task object
+	const processSingleTask = (task) => {
+		if (typeof task !== 'object' || task === null) {
+			return task;
+		}
 
-  return result; // Return success result
-}
+		const processedTask = { ...task };
 
-/**
- * Execute an MCP tool action with standard error handling
- * @param {Object} options - Options for execution
- * @param {Function} options.actionFn - The direct function to call
- * @param {Object} options.args - Arguments to pass to the function
- * @param {Object} options.log - Logger instance
- * @param {string} options.actionName - Name of the action for error messages
- * @param {Function} [options.processResult] - Optional function to process the result
- * @returns {Promise<Object>} Standardized response
- */
-export async function executeMCPToolAction(options) {
-  const { actionFn, args, log, actionName, processResult } = options;
+		// Remove specified fields from the task
+		fieldsToRemove.forEach((field) => {
+			delete processedTask[field];
+		});
 
-  try {
-    const result = await actionFn(args, log);
-    
-    // If a custom processor is provided, use it
-    if (processResult && typeof processResult === 'function') {
-      return processResult(result);
-    }
-    
-    // Otherwise use the standard handler
-    return handleApiResult(result, log, `Error executing ${actionName}`);
-  } catch (error) {
-    log.error(`Error in ${actionName}: ${error.message}`);
-    return createErrorResponse(`Error in ${actionName}: ${error.message}`);
-  }
+		// Recursively process subtasks if they exist and are an array
+		if (processedTask.subtasks && Array.isArray(processedTask.subtasks)) {
+			// Use processArrayOfTasks to handle the subtasks array
+			processedTask.subtasks = processArrayOfTasks(processedTask.subtasks);
+		}
+
+		return processedTask;
+	};
+
+	// Helper function to process an array of tasks
+	const processArrayOfTasks = (tasks) => {
+		return tasks.map(processSingleTask);
+	};
+
+	// Check if the input is a data structure containing a 'tasks' array (like from listTasks)
+	if (
+		typeof taskOrData === 'object' &&
+		taskOrData !== null &&
+		Array.isArray(taskOrData.tasks)
+	) {
+		return {
+			...taskOrData, // Keep other potential fields like 'stats', 'filter'
+			tasks: processArrayOfTasks(taskOrData.tasks)
+		};
+	}
+	// Check if the input is likely a single task object (add more checks if needed)
+	else if (
+		typeof taskOrData === 'object' &&
+		taskOrData !== null &&
+		'id' in taskOrData &&
+		'title' in taskOrData
+	) {
+		return processSingleTask(taskOrData);
+	}
+	// Check if the input is an array of tasks directly (less common but possible)
+	else if (Array.isArray(taskOrData)) {
+		return processArrayOfTasks(taskOrData);
+	}
+
+	// If it doesn't match known task structures, return it as is
+	return taskOrData;
 }
 
 /**
@@ -127,25 +426,22 @@ export async function executeMCPToolAction(options) {
  * @param {Object} logger - Optional logger instance
  * @returns {Promise<any>} - Result of the operation
  */
-export const safeExecuteOperation = async (asyncOperation, timeoutMs = 30000, logger = console) => {
-  // Create a timeout promise
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-  
-  try {
-    // Race the operation against the timeout
-    return await Promise.race([
-      asyncOperation(),
-      timeoutPromise
-    ]);
-  } catch (error) {
-    logger.error(`Operation failed: ${error.message}`);
-    throw error;
-  }
-};
+function createContentResponse(content) {
+	// FastMCP requires text type, so we format objects as JSON strings
+	return {
+		content: [
+			{
+				type: 'text',
+				text:
+					typeof content === 'object'
+						? // Format JSON nicely with indentation
+							JSON.stringify(content, null, 2)
+						: // Keep other content types as-is
+							String(content)
+			}
+		]
+	};
+}
 
 /**
  * Format command result for display
@@ -154,43 +450,25 @@ export const safeExecuteOperation = async (asyncOperation, timeoutMs = 30000, lo
  * @param {string} type - The type of content ('task', 'complexity-report', 'prd', 'json', etc.)
  * @returns {Object} - Formatted result object with rich text if appropriate
  */
-export function formatCommandResultForDisplay(result, type = 'text') {
-  if (!result || !result.stdout) {
-    return result;
-  }
-
-  try {
-    // Try to parse as JSON first
-    const parsedResult = JSON.parse(result.stdout);
-
-    // If type is explicitly 'json' or result is valid JSON and no specific type,
-    // use the JSON renderer
-    if (type === 'json' || type === 'text') {
-      return { ...result, stdout: renderJsonContent(parsedResult) };
-    }
-
-    // For other types that might contain JSON data but need specific formatting,
-    // just stringify with pretty printing
-    return { ...result, stdout: JSON.stringify(parsedResult, null, 2) };
-  } catch (e) {
-    // If not JSON, apply rich text formatting based on content type
-    if (type === 'task' && result.stdout) {
-      return { ...result, stdout: renderTaskContent(result.stdout) };
-    } else if (type === 'complexity-report' && result.stdout) {
-      return { ...result, stdout: renderComplexityReport(result.stdout) };
-    } else if (type === 'prd' && result.stdout) {
-      return { ...result, stdout: renderPrd(result.stdout) };
-    } else if (type === 'json' && result.stdout) {
-      // If explicitly asked for JSON but it's not valid, try to make it pretty anyway
-      try {
-        return { ...result, stdout: renderJsonContent(result.stdout) };
-      } catch (jsonError) {
-        // Fall back to original if that fails too
-        return result;
-      }
-    }
-    
-    // Return original result if no formatting applied
-    return result;
-  }
+export function createErrorResponse(errorMessage) {
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `Error: ${errorMessage}`
+			}
+		],
+		isError: true
+	};
 }
+
+// Ensure all functions are exported
+export {
+	getProjectRoot,
+	getProjectRootFromSession,
+	handleApiResult,
+	executeTaskMasterCommand,
+	getCachedOrExecute,
+	processMCPResponseData,
+	createContentResponse
+};

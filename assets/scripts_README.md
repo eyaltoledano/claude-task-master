@@ -51,6 +51,10 @@ The script can be configured through environment variables in a `.env` file at t
    You can run the commands via:
 
    ```bash
+   # If installed globally
+   task-master [command] [options]
+
+   # If using locally within the project
    node scripts/dev.js [command] [options]
    ```
 
@@ -365,25 +369,25 @@ The output report structure is:
 
 ```json
 {
-  "meta": {
-    "generatedAt": "2023-06-15T12:34:56.789Z",
-    "tasksAnalyzed": 20,
-    "thresholdScore": 5,
-    "projectName": "Your Project Name",
-    "usedResearch": true
-  },
-  "complexityAnalysis": [
-    {
-      "taskId": 8,
-      "taskTitle": "Develop Implementation Drift Handling",
-      "complexityScore": 9.5,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Create subtasks that handle detecting...",
-      "reasoning": "This task requires sophisticated logic...",
-      "expansionCommand": "node scripts/dev.js expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
-    },
-    // More tasks sorted by complexity score (highest first)
-  ]
+	"meta": {
+		"generatedAt": "2023-06-15T12:34:56.789Z",
+		"tasksAnalyzed": 20,
+		"thresholdScore": 5,
+		"projectName": "Your Project Name",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 8,
+			"taskTitle": "Develop Implementation Drift Handling",
+			"complexityScore": 9.5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create subtasks that handle detecting...",
+			"reasoning": "This task requires sophisticated logic...",
+			"expansionCommand": "task-master expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
+		}
+		// More tasks sorted by complexity score (highest first)
+	]
 }
 ```
 

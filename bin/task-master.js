@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --trace-deprecation
 
 /**
  * Task Master
@@ -230,47 +230,47 @@ function createDevScriptAction(commandName) {
 	};
 }
 
-// Special case for the 'init' command which uses a different script
-function registerInitCommand(program) {
-	program
-		.command('init')
-		.description('Initialize a new project')
-		.option('-y, --yes', 'Skip prompts and use default values')
-		.option('-n, --name <name>', 'Project name')
-		.option('-d, --description <description>', 'Project description')
-		.option('-v, --version <version>', 'Project version')
-		.option('-a, --author <author>', 'Author name')
-		.option('--skip-install', 'Skip installing dependencies')
-		.option('--dry-run', 'Show what would be done without making changes')
-		.action((options) => {
-			// Pass through any options to the init script
-			const args = [
-				'--yes',
-				'name',
-				'description',
-				'version',
-				'author',
-				'skip-install',
-				'dry-run'
-			]
-				.filter((opt) => options[opt])
-				.map((opt) => {
-					if (opt === 'yes' || opt === 'skip-install' || opt === 'dry-run') {
-						return `--${opt}`;
-					}
-					return `--${opt}=${options[opt]}`;
-				});
+// // Special case for the 'init' command which uses a different script
+// function registerInitCommand(program) {
+// 	program
+// 		.command('init')
+// 		.description('Initialize a new project')
+// 		.option('-y, --yes', 'Skip prompts and use default values')
+// 		.option('-n, --name <name>', 'Project name')
+// 		.option('-d, --description <description>', 'Project description')
+// 		.option('-v, --version <version>', 'Project version')
+// 		.option('-a, --author <author>', 'Author name')
+// 		.option('--skip-install', 'Skip installing dependencies')
+// 		.option('--dry-run', 'Show what would be done without making changes')
+// 		.action((options) => {
+// 			// Pass through any options to the init script
+// 			const args = [
+// 				'--yes',
+// 				'name',
+// 				'description',
+// 				'version',
+// 				'author',
+// 				'skip-install',
+// 				'dry-run'
+// 			]
+// 				.filter((opt) => options[opt])
+// 				.map((opt) => {
+// 					if (opt === 'yes' || opt === 'skip-install' || opt === 'dry-run') {
+// 						return `--${opt}`;
+// 					}
+// 					return `--${opt}=${options[opt]}`;
+// 				});
 
-			const child = spawn('node', [initScriptPath, ...args], {
-				stdio: 'inherit',
-				cwd: process.cwd()
-			});
+// 			const child = spawn('node', [initScriptPath, ...args], {
+// 				stdio: 'inherit',
+// 				cwd: process.cwd()
+// 			});
 
-			child.on('close', (code) => {
-				process.exit(code);
-			});
-		});
-}
+// 			child.on('close', (code) => {
+// 				process.exit(code);
+// 			});
+// 		});
+// }
 
 // Set up the command-line interface
 const program = new Command();
@@ -287,9 +287,12 @@ program
 
 // Add custom help option to directly call our help display
 program.helpOption('-h, --help', 'Display help information');
+program.on('--help', () => {
+	displayHelp();
+});
 
-// Add special case commands
-registerInitCommand(program);
+// // Add special case commands
+// registerInitCommand(program);
 
 program
 	.command('dev')
@@ -299,257 +302,14 @@ program
 		runDevScript(args);
 	});
 
-// Add scan command 
-program
-	.command('scan')
-	.description('Intelligently scan and analyze existing codebase to generate project structure summary')
-	.option('-o, --output <file>', 'Path to save JSON project summary', 'project_scan.json')
-	.option('-d, --directory <dir>', 'Specific directory to scan', '.')
-	.option('-f, --format <format>', 'Output format: json, prd, both', 'json')
-	.option('-p, --progress', 'Show detailed progress bar during scanning')
-	.option('--debug', 'Print verbose debugging information during scanning')
-	.option('--max-files <number>', 'Maximum number of files to analyze', '30')
-	.option('--max-size <number>', 'Maximum size per file in bytes', '5000')
-	.option('--ignore-dirs <dirs>', 'Comma-separated list of directories to ignore')
-	.option('--force', 'Force overwrite of existing files')
-	.option('--num-tasks <number>', 'Number of tasks to generate from PRD', '15')
-	.action(() => {
-		console.log('\n  _____           _     __  __            _                _    ___ ');
-		console.log(' |_   _|__ _  ___| |__ |  \\/  | __ _  ___| |_  ___  _ _    /_\\  |_ _|');
-		console.log('   | | / _` |(_-<| / / | |\\/| |/ _` |(_-<|  _|/ -_)| \'_|  / _ \\  | | ');
-		console.log('   |_| \\__,_|/__/|_\\_\\ |_|  |_|\\__,_|/__/ \\__|\\___||_|   /_/ \\_\\|___|');
-		console.log('                                                                     ');
-		console.log('Scanning project structure in .');
-		console.log('Ignoring directories: .git, node_modules, dist, build');
-		
-		// Extract CLI arguments and handle debug flag
-		const args = process.argv.slice(process.argv.indexOf('scan') + 1);
-		
-		// Check if debug flag is present and explicitly set environment variable
-		if (args.includes('--debug')) {
-			process.env.DEBUG = '1';
-			console.log(chalk.gray('Debug mode enabled - verbose output will be shown'));
-		}
-		
-		// Add progress indicators by default unless explicitly disabled
-		if (!args.includes('--progress') && !args.includes('-p') && !args.includes('--no-progress')) {
-			args.push('--progress');
-		}
-		
-		// Ensure all CLI arguments are properly passed to dev.js
-		const scanArgs = ['scan'];
-		
-		// Process all args
-		args.forEach(arg => {
-			if (arg !== 'scan') {
-				scanArgs.push(arg);
-			}
-		});
-		
-		// Let user know this might take a while for larger codebases
-		if (args.includes('--format=prd') || args.includes('--format=both')) {
-			console.log(chalk.yellow('\nNote: Generating a PRD typically takes 2-5 minutes depending on codebase size.'));
-		}
-		
-		runDevScript(scanArgs);
-	});
-
-// Add specific scan-workspace command that always generates a PRD
-program
-	.command('scan-workspace [directory]')
-	.description('Scan workspace to generate a PRD and tasks (shortcut for scan with prd format)')
-	.option('-o, --output <path>', 'Output file path for generated tasks.json')
-	.option('-m, --max-files <number>', 'Maximum number of files to analyze')
-	.option('-s, --max-size <number>', 'Maximum size per file in KB')
-	.option('-i, --ignore-dirs <dirs>', 'Comma-separated list of directories to ignore')
-	.option('-n, --num-tasks <number>', 'Number of tasks to generate')
-	.option('-p, --progress', 'Display progress information (default: true)')
-	.option('--no-progress', 'Disable progress information')
-	.option('--no-prd', 'Do not generate a PRD document')
-	.option('-f, --force', 'Force overwrite of existing tasks.json file')
-	.option('--skip-complexity', 'Skip the automatic task complexity analysis step')
-	.option('-d, --debug', 'Enable debug output')
-	.option('-q, --quiet', 'Suppress INFO and WARN log messages, showing only progress bar and errors')
-	.action(async (directory, options) => {
-		// Create a visually enhanced header for the scanner
-		console.clear();
-		
-		// Create a gradient banner using figlet and gradient-string
-		const figletText = figlet.textSync('Workspace Scanner', {
-			font: 'Slant',
-			horizontalLayout: 'default',
-			verticalLayout: 'default'
-		});
-		const coolGradient = gradient(['#00b4d8', '#0077b6', '#023e8a']);
-		console.log(coolGradient(figletText));
-		
-		// Add information box with enhanced formatting
-		console.log(boxen(
-			chalk.white(`${chalk.bold('Analyzing codebase to generate PRD and tasks')}
-This process involves:
-${chalk.cyan('1.')} Discovering code files in your project
-${chalk.cyan('2.')} Analyzing file content and code patterns
-${chalk.cyan('3.')} Generating a comprehensive PRD document
-${chalk.cyan('4.')} Creating structured tasks from requirements
-${chalk.cyan('5.')} Analyzing task complexity to identify which tasks need further breakdown
-${chalk.cyan('6.')} Generating individual task files for easier reference
-
-This operation may take ${chalk.yellow('2-5 minutes')} depending on codebase size.
-
-${chalk.yellow('⚠️')} ${chalk.bold('Important Note:')}
-  • The AI analysis phase (step 3) is the longest part of the process
-  • If progress appears to stall at "Finalizing and optimizing output":
-    - The system may be retrying API calls due to network issues or rate limits
-    - These retry attempts are normal and will be reflected in the progress display
-    - Please be patient during this phase`),
-			{
-				padding: 1,
-				margin: { top: 0, bottom: 1, right: 1 },
-				borderStyle: 'round',
-				borderColor: '#0077b6'
-			}
-		));
-		
-		// Extract CLI arguments and handle debug flag
-		const args = process.argv.slice(process.argv.indexOf('scan-workspace') + 1);
-		
-		// After handling debug flag, add notification for parallel processing
-		// Check if debug flag is present and explicitly add it if needed
-		if (args.includes('--debug') || options.debug) {
-			process.env.DEBUG = '1';
-			console.log(chalk.gray('Debug mode enabled - verbose output will be shown'));
-		}
-		
-		// Check if quiet flag is present and set LOG_LEVEL to 'error' to suppress INFO and WARN logs
-		if (args.includes('--quiet') || options.quiet) {
-			process.env.LOG_LEVEL = 'error';
-			// Don't log anything about quiet mode to keep it truly quiet
-		}
-		
-		// Parallel processing is always enabled
-		console.log(chalk.cyan('\nParallel processing mode enabled:'));
-		console.log('• Files will be analyzed in smaller batches');
-		console.log('• Multiple smaller API calls instead of one large call');
-		console.log('• This can reduce timeouts but may increase total tokens used\n');
-		
-		// Set CLI mode option - this enables the enhanced terminal reporting
-		options.cliMode = true;
-		
-		try {
-			// Determine workspace path
-			const workspacePath = directory ? path.resolve(process.cwd(), directory) : process.cwd();
-			
-			// Check if the directory exists
-			if (!fs.existsSync(workspacePath)) {
-				console.error(chalk.red(`Error: Directory '${workspacePath}' does not exist`));
-				process.exit(1);
-			}
-			
-			// Determine output file path
-			const outputFile = options.output ? 
-				path.resolve(workspacePath, options.output) : 
-				path.join(workspacePath, 'tasks', 'tasks.json');
-			
-			// If progress option is true (default), set up our progress handler
-			const progressEnabled = options.progress !== false;
-			
-			// Simple progress handler for direct CLI use - will be overridden by our CLI-mode reporter
-			const updateProgressFn = (data) => {
-				if (progressEnabled && !options.cliMode) {
-					// This is a fallback if CLI mode isn't working for some reason
-					const { phase, message, progress } = data;
-					console.log(`[${phase}] ${message} - ${progress}%`);
-				}
-			};
-			
-			// Call scanWorkspace with CLI mode enabled
-			const { scanWorkspace } = await import('../scripts/modules/workspace-scanner.js');
-			const tasks = await scanWorkspace(workspacePath, {
-				outputPath: outputFile,
-				maxFiles: options.maxFiles ? parseInt(options.maxFiles, 10) : undefined,
-				maxSizePerFile: options.maxSize ? parseInt(options.maxSize, 10) * 1024 : undefined, // Convert KB to bytes
-				ignoreDirs: options.ignoreDirs ? options.ignoreDirs.split(',').map(d => d.trim()) : undefined,
-				numTasks: options.numTasks ? parseInt(options.numTasks, 10) : undefined,
-				generatePRD: options.prd !== false,
-				force: options.force === true,
-				useParallel: true, // Always use parallel processing
-				cliMode: true, // Enable CLI mode for better terminal output
-				skipComplexity: options.skipComplexity === true,
-				logLevel: process.env.LOG_LEVEL || 'info' // Pass LOG_LEVEL to scanner
-			}, progressEnabled ? updateProgressFn : null);
-			
-			// After scanWorkspace completes, run continue-scan.sh
-			const continueScanPath = path.resolve(__dirname, '../continue-scan.sh');
-			const continuePath = path.resolve(__dirname, '../continue.sh');
-			
-			// Check for either continue-scan.sh or continue.sh
-			const scriptToRun = fs.existsSync(continueScanPath) ? continueScanPath : 
-			                    fs.existsSync(continuePath) ? continuePath : null;
-			
-			if (scriptToRun) {
-				console.log(chalk.cyan(`\nRunning continuation script: ${path.basename(scriptToRun)}...`));
-				
-				// Get arguments to pass to the continuation script
-				const continueArgs = [];
-				if (options.skipComplexity) {
-					continueArgs.push('--skip-complexity');
-				}
-				if (options.force) {
-					continueArgs.push('--force');
-				}
-				if (options.quiet) {
-					continueArgs.push('--no-display');
-				}
-				
-				// Make sure the script is executable
-				try {
-					fs.chmodSync(scriptToRun, '755');
-				} catch (chmodErr) {
-					console.warn(chalk.yellow(`Warning: Could not set executable permissions for ${scriptToRun}`));
-				}
-				
-				// Spawn the continuation script
-				const continueChild = spawn(scriptToRun, continueArgs, {
-					stdio: 'inherit',
-					cwd: process.cwd()
-				});
-				
-				// Wait for the script to complete
-				continueChild.on('close', (code) => {
-					if (code === 0) {
-						console.log(chalk.green('\nWorkspace scan and continuation completed successfully!'));
-					} else {
-						console.error(chalk.red(`\nContinuation script exited with code ${code}`));
-					}
-					process.exit(code);
-				});
-			} else {
-				console.warn(chalk.yellow(`\nWarning: Continuation script not found (checked for continue.sh and continue-scan.sh)`));
-				// Success message is handled by the CLI output in the scanner itself
-				process.exit(0);
-			}
-		} catch (error) {
-			console.error(chalk.red(`\nError: ${error.message}`));
-			
-			if (process.env.DEBUG === '1') {
-				console.error(chalk.gray('Stack trace:'));
-				console.error(chalk.gray(error.stack));
-			} else {
-				console.error(chalk.yellow('Run with --debug flag for more information'));
-			}
-			
-			process.exit(1);
-		}
-	});
-
 // Use a temporary Command instance to get all command definitions
 const tempProgram = new Command();
 registerCommands(tempProgram);
 
 // For each command in the temp instance, add a modified version to our actual program
 tempProgram.commands.forEach((cmd) => {
-	// Skip commands we've already defined specially
-	if (['init', 'dev', 'scan-workspace'].includes(cmd.name())) {
+	if (['dev'].includes(cmd.name())) {
+		// Skip commands we've already defined specially
 		return;
 	}
 

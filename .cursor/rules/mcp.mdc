@@ -116,11 +116,11 @@ When implementing a new direct function in `mcp-server/src/core/direct-functions
      );
      ```
    - **Critical For JSON Output Format**: Passing the `logWrapper` as `mcpLog` serves a dual purpose:
-     1. **Prevents Runtime Errors**: It ensures the `mcpLog[level](mdc:...)` calls within the core function succeed
+     1. **Prevents Runtime Errors**: It ensures the `mcpLog[level](...)` calls within the core function succeed
      2. **Controls Output Format**: In functions like `updateTaskById` and `updateSubtaskById`, the presence of `mcpLog` in the options triggers setting `outputFormat = 'json'` (instead of 'text'). This prevents UI elements (spinners, boxes) from being generated, which would break the JSON response.
    - **Proven Solution**: This pattern has successfully fixed multiple issues in our MCP tools (including `update-task` and `update-subtask`), where direct passing of the `log` object or omitting `mcpLog` led to either runtime errors or JSON parsing failures from UI output.
    - **When To Use**: Implement this wrapper in any direct function that calls a core function with an `options` object that might use `mcpLog` for logging or output format control.
-   - **Why it Works**: The `logWrapper` explicitly defines the `.info()`, `.warn()`, `.error()`, etc., methods that the core function's `report` helper needs, ensuring the `mcpLog[level](mdc:...)` call succeeds. It simply forwards the logging calls to the actual FastMCP `log` object.
+   - **Why it Works**: The `logWrapper` explicitly defines the `.info()`, `.warn()`, `.error()`, etc., methods that the core function's `report` helper needs, ensuring the `mcpLog[level](...)` call succeeds. It simply forwards the logging calls to the actual FastMCP `log` object.
    - **Combined with Silent Mode**: Remember that using the `logWrapper` for `mcpLog` is **necessary *in addition* to using `enableSilentMode()` / `disableSilentMode()`** (see next point). The wrapper handles structured logging *within* the core function, while silent mode suppresses direct `console.log` and UI elements (spinners, boxes) that would break the MCP JSON response.
 
 6. **Silent Mode Implementation**:
@@ -470,7 +470,7 @@ Resources provide LLMs with static or dynamic data without executing tools.
 
 - **Implementation**: Use `@mcp.resource()` decorator pattern or `server.addResource`/`server.addResourceTemplate` in `mcp-server/src/core/resources/`.
 - **Registration**: Register resources during server initialization in [`mcp-server/src/index.js`](mdc:mcp-server/src/index.js).
-- **Best Practices**: Organize resources, validate parameters, use consistent URIs, handle errors. See [`fastmcp-core.txt`](mdc:docs/fastmcp-core.txt) for underlying SDK details.
+- **Best Practices**: Organize resources, validate parameters, use consistent URIs, handle errors. See [`fastmcp-core.txt`](docs/fastmcp-core.txt) for underlying SDK details.
 
 *(Self-correction: Removed detailed Resource implementation examples as they were less relevant to the current user focus on tool execution flow and project roots. Kept the overview.)*
 

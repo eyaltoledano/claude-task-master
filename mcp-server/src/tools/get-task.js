@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -39,15 +40,12 @@ export function registerShowTaskTool(server) {
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
 			id: z.string().describe('Task ID to get'),
-			file: z.string().optional().describe('Path to the tasks file'),
+			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: current working directory)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			// Log the session right at the start of execute
 			log.info(
 				`Session object received in execute: ${JSON.stringify(session)}`
@@ -60,26 +58,43 @@ export function registerShowTaskTool(server) {
 					`Session object received in execute: ${JSON.stringify(session)}`
 				); // Use JSON.stringify for better visibility
 
-				let rootFolder = getProjectRootFromSession(session, log);
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
-				} else if (!rootFolder) {
-					// Ensure we always have *some* root, even if session failed and args didn't provide one
-					rootFolder = process.cwd();
-					log.warn(
-						`Session and args failed to provide root, using CWD: ${rootFolder}`
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
 					);
 				}
 
 				log.info(`Attempting to use project root: ${rootFolder}`); // Log the final resolved root
 
 				log.info(`Root folder: ${rootFolder}`); // Log the final resolved root
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
+				}
+
+				log.info(`Attempting to use tasks file path: ${tasksJsonPath}`);
+
 				const result = await showTaskDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						// Pass the explicitly resolved path
+						tasksJsonPath: tasksJsonPath,
+						// Pass other relevant args
+						id: args.id
 					},
 					log
 				);

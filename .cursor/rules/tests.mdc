@@ -5,6 +5,8 @@ globs: "**/*.test.js,tests/**/*"
 
 # Testing Guidelines for Task Master CLI
 
+*Note:* Never use asynchronous operations in tests. Always mock tests properly based on the way the tested functions are defined and used. Do not arbitrarily create tests. Based them on the low-level details and execution of the underlying code being tested. 
+
 ## Test Organization Structure
 
 - **Unit Tests** (See [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for module breakdown)
@@ -87,6 +89,122 @@ describe('Feature or Function Name', () => {
   });
 });
 ```
+
+## Commander.js Command Testing Best Practices
+
+When testing CLI commands built with Commander.js, several special considerations must be made to avoid common pitfalls:
+
+- **Direct Action Handler Testing**
+  - ✅ **DO**: Test the command action handlers directly rather than trying to mock the entire Commander.js chain
+  - ✅ **DO**: Create simplified test-specific implementations of command handlers that match the original behavior
+  - ✅ **DO**: Explicitly handle all options, including defaults and shorthand flags (e.g., `-p` for `--prompt`)
+  - ✅ **DO**: Include null/undefined checks in test implementations for parameters that might be optional
+  - ✅ **DO**: Use fixtures from `tests/fixtures/` for consistent sample data across tests
+  
+  ```javascript
+  // ✅ DO: Create a simplified test version of the command handler
+  const testAddTaskAction = async (options) => {
+    options = options || {}; // Ensure options aren't undefined
+    
+    // Validate parameters
+    const isManualCreation = options.title && options.description;
+    const prompt = options.prompt || options.p; // Handle shorthand flags
+    
+    if (!prompt && !isManualCreation) {
+      throw new Error('Expected error message');
+    }
+    
+    // Call the mocked task manager
+    return mockTaskManager.addTask(/* parameters */);
+  };
+  
+  test('should handle required parameters correctly', async () => {
+    // Call the test implementation directly
+    await expect(async () => {
+      await testAddTaskAction({ file: 'tasks.json' });
+    }).rejects.toThrow('Expected error message');
+  });
+  ```
+
+- **Commander Chain Mocking (If Necessary)**
+  - ✅ **DO**: Mock ALL chainable methods (`option`, `argument`, `action`, `on`, etc.)
+  - ✅ **DO**: Return `this` (or the mock object) from all chainable method mocks
+  - ✅ **DO**: Remember to mock not only the initial object but also all objects returned by methods
+  - ✅ **DO**: Implement a mechanism to capture the action handler for direct testing
+  
+  ```javascript
+  // If you must mock the Commander.js chain:
+  const mockCommand = {
+    command: jest.fn().mockReturnThis(),
+    description: jest.fn().mockReturnThis(),
+    option: jest.fn().mockReturnThis(),
+    argument: jest.fn().mockReturnThis(), // Don't forget this one
+    action: jest.fn(fn => { 
+      actionHandler = fn; // Capture the handler for testing
+      return mockCommand; 
+    }),
+    on: jest.fn().mockReturnThis() // Don't forget this one
+  };
+  ```
+
+- **Parameter Handling**
+  - ✅ **DO**: Check for both main flag and shorthand flags (e.g., `prompt` and `p`)
+  - ✅ **DO**: Handle parameters like Commander would (comma-separated lists, etc.)
+  - ✅ **DO**: Set proper default values as defined in the command
+  - ✅ **DO**: Validate that required parameters are actually required in tests
+  
+  ```javascript
+  // Parse dependencies like Commander would
+  const dependencies = options.dependencies 
+    ? options.dependencies.split(',').map(id => id.trim())
+    : [];
+  ```
+
+- **Environment and Session Handling**
+  - ✅ **DO**: Properly mock session objects when required by functions
+  - ✅ **DO**: Reset environment variables between tests if modified
+  - ✅ **DO**: Use a consistent pattern for environment-dependent tests
+  
+  ```javascript
+  // Session parameter mock pattern
+  const sessionMock = { session: process.env };
+  
+  // In test:
+  expect(mockAddTask).toHaveBeenCalledWith(
+    expect.any(String),
+    'Test prompt',
+    [],
+    'medium',
+    sessionMock,
+    false,
+    null,
+    null
+  );
+  ```
+
+- **Common Pitfalls to Avoid**
+  - ❌ **DON'T**: Try to use the real action implementation without proper mocking
+  - ❌ **DON'T**: Mock Commander partially - either mock it completely or test the action directly
+  - ❌ **DON'T**: Forget to handle optional parameters that may be undefined
+  - ❌ **DON'T**: Neglect to test shorthand flag functionality (e.g., `-p`, `-r`)
+  - ❌ **DON'T**: Create circular dependencies in your test mocks
+  - ❌ **DON'T**: Access variables before initialization in your test implementations
+  - ❌ **DON'T**: Include actual command execution in unit tests
+  - ❌ **DON'T**: Overwrite the same file path in multiple tests
+  
+  ```javascript
+  // ❌ DON'T: Create circular references in mocks
+  const badMock = {
+    method: jest.fn().mockImplementation(() => badMock.method())
+  };
+  
+  // ❌ DON'T: Access uninitialized variables
+  const badImplementation = () => {
+    const result = uninitialized;
+    let uninitialized = 'value';
+    return result;
+  };
+  ```
 
 ## Jest Module Mocking Best Practices
 
@@ -552,6 +670,102 @@ npm test -- -t "pattern to match"
   });
   ```
 
+## Testing AI Service Integrations
+
+- **DO NOT import real AI service clients**
+  - ❌ DON'T: Import actual AI clients from their libraries
+  - ✅ DO: Create fully mocked versions that return predictable responses
+
+  ```javascript
+  // ❌ DON'T: Import and instantiate real AI clients
+  import { Anthropic } from '@anthropic-ai/sdk';
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  // ✅ DO: Mock the entire module with controlled behavior
+  jest.mock('@anthropic-ai/sdk', () => ({
+    Anthropic: jest.fn().mockImplementation(() => ({
+      messages: {
+        create: jest.fn().mockResolvedValue({
+          content: [{ type: 'text', text: 'Mocked AI response' }]
+        })
+      }
+    }))
+  }));
+  ```
+
+- **DO NOT rely on environment variables for API keys**
+  - ❌ DON'T: Assume environment variables are set in tests
+  - ✅ DO: Set mock environment variables in test setup
+
+  ```javascript
+  // In tests/setup.js or at the top of test file
+  process.env.ANTHROPIC_API_KEY = 'test-mock-api-key-for-tests';
+  process.env.PERPLEXITY_API_KEY = 'test-mock-perplexity-key-for-tests';
+  ```
+
+- **DO NOT use real AI client initialization logic**
+  - ❌ DON'T: Use code that attempts to initialize or validate real AI clients
+  - ✅ DO: Create test-specific paths that bypass client initialization
+
+  ```javascript
+  // ❌ DON'T: Test functions that require valid AI client initialization
+  // This will fail without proper API keys or network access
+  test('should use AI client', async () => {
+    const result = await functionThatInitializesAIClient();
+    expect(result).toBeDefined();
+  });
+
+  // ✅ DO: Test with bypassed initialization or manual task paths
+  test('should handle manual task creation without AI', () => {
+    // Using a path that doesn't require AI client initialization
+    const result = addTaskDirect({ 
+      title: 'Manual Task', 
+      description: 'Test Description'
+    }, mockLogger);
+    
+    expect(result.success).toBe(true);
+  });
+  ```
+
+## Testing Asynchronous Code
+
+- **DO NOT rely on asynchronous operations in tests**
+  - ❌ DON'T: Use real async/await or Promise resolution in tests
+  - ✅ DO: Make all mocks return synchronous values when possible
+
+  ```javascript
+  // ❌ DON'T: Use real async functions that might fail unpredictably
+  test('should handle async operation', async () => {
+    const result = await realAsyncFunction(); // Can time out or fail for external reasons
+    expect(result).toBe(expectedValue);
+  });
+
+  // ✅ DO: Make async operations synchronous in tests
+  test('should handle operation', () => {
+    mockAsyncFunction.mockReturnValue({ success: true, data: 'test' });
+    const result = functionUnderTest();
+    expect(result).toEqual({ success: true, data: 'test' });
+  });
+  ```
+
+- **DO NOT test exact error messages**
+  - ❌ DON'T: Assert on exact error message text that might change
+  - ✅ DO: Test for error presence and general properties
+
+  ```javascript
+  // ❌ DON'T: Test for exact error message text
+  expect(result.error).toBe('Could not connect to API: Network error');
+
+  // ✅ DO: Test for general error properties or message patterns
+  expect(result.success).toBe(false);
+  expect(result.error).toContain('Could not connect');
+  // Or even better:
+  expect(result).toMatchObject({ 
+    success: false,
+    error: expect.stringContaining('connect')
+  });
+  ```
+
 ## Reliable Testing Techniques
 
 - **Create Simplified Test Functions**
@@ -564,99 +778,125 @@ npm test -- -t "pattern to match"
   const setTaskStatus = async (taskId, newStatus) => {
     const tasksPath = 'tasks/tasks.json';
     const data = await readJSON(tasksPath);
-    // Update task status logic
+    // [implementation]
     await writeJSON(tasksPath, data);
-    return data;
+    return { success: true };
   };
   
-  // Test-friendly simplified function (easy to test)
-  const testSetTaskStatus = (tasksData, taskIdInput, newStatus) => {
-    // Same core logic without file operations
-    // Update task status logic on provided tasksData object
-    return tasksData; // Return updated data for assertions
+  // Test-friendly version (easier to test)
+  const updateTaskStatus = (tasks, taskId, newStatus) => {
+    // Pure logic without side effects
+    const updatedTasks = [...tasks];
+    const taskIndex = findTaskById(updatedTasks, taskId);
+    if (taskIndex === -1) return { success: false, error: 'Task not found' };
+    updatedTasks[taskIndex].status = newStatus;
+    return { success: true, tasks: updatedTasks };
   };
-  ```
-
-- **Avoid Real File System Operations**
-  - Never write to real files during tests
-  - Create test-specific versions of file operation functions
-  - Mock all file system operations including read, write, exists, etc.
-  - Verify function behavior using the in-memory data structures
-  
-  ```javascript
-  // Mock file operations
-  const mockReadJSON = jest.fn();
-  const mockWriteJSON = jest.fn();
-  
-  jest.mock('../../scripts/modules/utils.js', () => ({
-    readJSON: mockReadJSON,
-    writeJSON: mockWriteJSON,
-  }));
-  
-  test('should update task status correctly', () => {
-    // Setup mock data
-    const testData = JSON.parse(JSON.stringify(sampleTasks));
-    mockReadJSON.mockReturnValue(testData);
-    
-    // Call the function that would normally modify files
-    const result = testSetTaskStatus(testData, '1', 'done');
-    
-    // Assert on the in-memory data structure
-    expect(result.tasks[0].status).toBe('done');
-  });
-  ```
-
-- **Data Isolation Between Tests**
-  - Always create fresh copies of test data for each test
-  - Use `JSON.parse(JSON.stringify(original))` for deep cloning
-  - Reset all mocks before each test with `jest.clearAllMocks()`
-  - Avoid state that persists between tests
-  
-  ```javascript
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Deep clone the test data
-    testTasksData = JSON.parse(JSON.stringify(sampleTasks));
-  });
-  ```
-
-- **Test All Path Variations**
-  - Regular tasks and subtasks
-  - Single items and multiple items
-  - Success paths and error paths
-  - Edge cases (empty data, invalid inputs, etc.)
-  
-  ```javascript
-  // Multiple test cases covering different scenarios
-  test('should update regular task status', () => {
-    /* test implementation */
-  });
-  
-  test('should update subtask status', () => {
-    /* test implementation */
-  });
-  
-  test('should update multiple tasks when given comma-separated IDs', () => {
-    /* test implementation */
-  });
-  
-  test('should throw error for non-existent task ID', () => {
-    /* test implementation */
-  });
-  ```
-
-- **Stabilize Tests With Predictable Input/Output**
-  - Use consistent, predictable test fixtures
-  - Avoid random values or time-dependent data
-  - Make tests deterministic for reliable CI/CD
-  - Control all variables that might affect test outcomes
-  
-  ```javascript
-  // Use a specific known date instead of current date
-  const fixedDate = new Date('2023-01-01T12:00:00Z');
-  jest.spyOn(global, 'Date').mockImplementation(() => fixedDate);
   ```
 
 See [tests/README.md](mdc:tests/README.md) for more details on the testing approach.
 
-Refer to [jest.config.js](mdc:jest.config.js) for Jest configuration options. 
+Refer to [jest.config.js](mdc:jest.config.js) for Jest configuration options.
+
+## Variable Hoisting and Module Initialization Issues
+
+When testing ES modules or working with complex module imports, you may encounter variable hoisting and initialization issues. These can be particularly tricky to debug and often appear as "Cannot access 'X' before initialization" errors.
+
+- **Understanding Module Initialization Order**
+  - ✅ **DO**: Declare and initialize global variables at the top of modules
+  - ✅ **DO**: Use proper function declarations to avoid hoisting issues
+  - ✅ **DO**: Initialize variables before they are referenced, especially in imported modules
+  - ✅ **DO**: Be aware that imports are hoisted to the top of the file
+  
+  ```javascript
+  // ✅ DO: Define global state variables at the top of the module
+  let silentMode = false; // Declare and initialize first
+  
+  const CONFIG = { /* configuration */ };
+  
+  function isSilentMode() {
+    return silentMode; // Reference variable after it's initialized
+  }
+  
+  function log(level, message) {
+    if (isSilentMode()) return; // Use the function instead of accessing variable directly
+    // ...
+  }
+  ```
+
+- **Testing Modules with Initialization-Dependent Functions**
+  - ✅ **DO**: Create test-specific implementations that initialize all variables correctly
+  - ✅ **DO**: Use factory functions in mocks to ensure proper initialization order
+  - ✅ **DO**: Be careful with how you mock or stub functions that depend on module state
+  
+  ```javascript
+  // ✅ DO: Test-specific implementation that avoids initialization issues
+  const testLog = (level, ...args) => {
+    // Local implementation with proper initialization
+    const isSilent = false; // Explicit initialization
+    if (isSilent) return;
+    // Test implementation...
+  };
+  ```
+
+- **Common Hoisting-Related Errors to Avoid**
+  - ❌ **DON'T**: Reference variables before their declaration in module scope
+  - ❌ **DON'T**: Create circular dependencies between modules
+  - ❌ **DON'T**: Rely on variable initialization order across module boundaries
+  - ❌ **DON'T**: Define functions that use hoisted variables before they're initialized
+  
+  ```javascript
+  // ❌ DON'T: Create reference-before-initialization patterns
+  function badFunction() {
+    if (silentMode) { /* ... */ } // ReferenceError if silentMode is declared later
+  }
+  
+  let silentMode = false;
+  
+  // ❌ DON'T: Create cross-module references that depend on initialization order
+  // module-a.js
+  import { getSetting } from './module-b.js';
+  export const config = { value: getSetting() };
+  
+  // module-b.js
+  import { config } from './module-a.js';
+  export function getSetting() {
+    return config.value; // Circular dependency causing initialization issues
+  }
+  ```
+
+- **Dynamic Imports as a Solution**
+  - ✅ **DO**: Use dynamic imports (`import()`) to avoid initialization order issues
+  - ✅ **DO**: Structure modules to avoid circular dependencies that cause initialization issues
+  - ✅ **DO**: Consider factory functions for modules with complex state
+  
+  ```javascript
+  // ✅ DO: Use dynamic imports to avoid initialization issues
+  async function getTaskManager() {
+    return import('./task-manager.js');
+  }
+  
+  async function someFunction() {
+    const taskManager = await getTaskManager();
+    return taskManager.someMethod();
+  }
+  ```
+
+- **Testing Approach for Modules with Initialization Issues**
+  - ✅ **DO**: Create self-contained test implementations rather than using real implementations
+  - ✅ **DO**: Mock dependencies at module boundaries instead of trying to mock deep dependencies
+  - ✅ **DO**: Isolate module-specific state in tests
+  
+  ```javascript
+  // ✅ DO: Create isolated test implementation instead of reusing module code
+  test('should log messages when not in silent mode', () => {
+    // Local test implementation instead of importing from module
+    const testLog = (level, message) => {
+      if (false) return; // Always non-silent for this test
+      mockConsole(level, message);
+    };
+    
+    testLog('info', 'test message');
+    expect(mockConsole).toHaveBeenCalledWith('info', 'test message');
+  });
+  ``` 

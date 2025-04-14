@@ -3,11 +3,6 @@ description: Guide for using Task Master to manage task-driven development workf
 globs: **/*
 alwaysApply: true
 ---
----
-description: Guide for using Task Master to manage task-driven development workflows
-globs: **/*
-alwaysApply: true
----
 
 # Task Master Development Workflow
 
@@ -32,18 +27,6 @@ Task Master offers two primary ways to interact:
     - The CLI commands often mirror the MCP tools (e.g., `task-master list` corresponds to `get_tasks`).
     - Refer to [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for a detailed command reference.
 
-## Global CLI Commands
-- Task Master provides a global CLI through the `task-master` command (See [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for details)
-- All functionality from `scripts/dev.js` is available through this interface
-- Install globally with `npm install -g claude-task-master` or use locally via `npx`
-- Use `task-master <command>` instead of `node scripts/dev.js <command>`
-- Examples:
-  - `task-master list`
-  - `task-master next`
-  - `task-master expand --id=3`
-- All commands accept the same options as their script equivalents
-- The CLI (`task-master`) is the **primary** way for users to interact with the application.
-
 ## Standard Development Workflow Process
 
 -   Start new projects by running `init` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input='<prd-file.txt>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to generate initial tasks.json
@@ -67,7 +50,6 @@ Task Master offers two primary ways to interact:
 -   Maintain valid dependency structure with `add_dependency`/`remove_dependency` tools or `task-master add-dependency`/`remove-dependency` commands, `validate_dependencies` / `task-master validate-dependencies`, and `fix_dependencies` / `task-master fix-dependencies` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) when needed
 -   Respect dependency chains and task priorities when selecting work
 -   Report progress regularly using `get_tasks` / `task-master list`
--   **MCP Server**: For integrations (like Cursor), interact via the MCP server which prefers direct function calls. Restart the MCP server if core logic in `scripts/modules` changes. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc).
 
 ## Task Complexity Analysis
 
@@ -86,7 +68,6 @@ Task Master offers two primary ways to interact:
 -   Review and adjust generated subtasks as necessary
 -   Use `--all` flag with `expand` or `expand_all` to expand multiple pending tasks at once
 -   If subtasks need regeneration, clear them first with `clear_subtasks` / `task-master clear-subtasks` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
--   If subtasks need regeneration, clear them first with `clear-subtasks` command (See Command Reference below)
 
 ## Implementation Drift Handling
 
@@ -112,112 +93,123 @@ Task Master offers two primary ways to interact:
 - **dependencies**: IDs of prerequisite tasks (Example: `[1, 2.1]`)
     - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending)
     - This helps quickly identify which prerequisite tasks are blocking work
+- **priority**: Importance level (Example: `"high"`, `"medium"`, `"low"`)
+- **details**: In-depth implementation instructions (Example: `"Use GitHub client ID/secret, handle callback, set session token."`) 
+- **testStrategy**: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`) 
+- **subtasks**: List of smaller, more specific tasks (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`) 
+- Refer to [`tasks.mdc`](mdc:.cursor/rules/tasks.mdc) for more details on the task data structure.
 
-## Command Reference: parse-prd
-- CLI Syntax: `task-master parse-prd --input=<prd-file.txt>`
-- Description: Parses a PRD document and generates a `tasks.json` file with structured tasks
-- Parameters: 
-  - `--input=<file>`: Path to the PRD text file (default: sample-prd.txt)
-- Example: `task-master parse-prd --input=requirements.txt`
-- Notes: Will overwrite existing tasks.json file. Use with caution.
+## Environment Variables Configuration
 
-## Command Reference: update
-- CLI Syntax: `task-master update --from=<id> --prompt="<prompt>"`
-- Description: Updates tasks with ID >= specified ID based on the provided prompt
-- Parameters:
-  - `--from=<id>`: Task ID from which to start updating (required)
-  - `--prompt="<text>"`: Explanation of changes or new context (required)
-- Example: `task-master update --from=4 --prompt="Now we are using Express instead of Fastify."`
-- Notes: Only updates tasks not marked as 'done'. Completed tasks remain unchanged.
+- Task Master behavior is configured via environment variables:
+  - **ANTHROPIC_API_KEY** (Required): Your Anthropic API key for Claude.
+  - **MODEL**: Claude model to use (e.g., `claude-3-opus-20240229`).
+  - **MAX_TOKENS**: Maximum tokens for AI responses.
+  - **TEMPERATURE**: Temperature for AI model responses.
+  - **DEBUG**: Enable debug logging (`true`/`false`).
+  - **LOG_LEVEL**: Console output level (`debug`, `info`, `warn`, `error`).
+  - **DEFAULT_SUBTASKS**: Default number of subtasks for `expand`.
+  - **DEFAULT_PRIORITY**: Default priority for new tasks.
+  - **PROJECT_NAME**: Project name used in metadata.
+  - **PROJECT_VERSION**: Project version used in metadata.
+  - **PERPLEXITY_API_KEY**: API key for Perplexity AI (for `--research` flags).
+  - **PERPLEXITY_MODEL**: Perplexity model to use (e.g., `sonar-medium-online`).
+- See [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for default values and examples.
 
-## Command Reference: update-task
-- CLI Syntax: `task-master update-task --id=<id> --prompt="<prompt>"`
-- Description: Updates a single task by ID with new information
-- Parameters:
-  - `--id=<id>`: ID of the task to update (required)
-  - `--prompt="<text>"`: New information or context to update the task (required)
-  - `--research`: Use Perplexity AI for research-backed updates
-- Example: `task-master update-task --id=5 --prompt="Use JWT for authentication instead of sessions."`
-- Notes: Only updates tasks not marked as 'done'. Preserves completed subtasks.
+## Determining the Next Task
 
-## Command Reference: update-subtask
-- CLI Syntax: `task-master update-subtask --id=<id> --prompt="<prompt>"`
-- Description: Appends additional information to a specific subtask without replacing existing content
-- Parameters:
-  - `--id=<id>`: ID of the subtask to update in format "parentId.subtaskId" (required)
-  - `--prompt="<text>"`: Information to add to the subtask (required)
-  - `--research`: Use Perplexity AI for research-backed updates
-- Example: `task-master update-subtask --id=5.2 --prompt="Add details about API rate limiting."`
-- Notes: 
-  - Appends new information to subtask details with timestamp
-  - Does not replace existing content, only adds to it
-  - Uses XML-like tags to clearly mark added information
-  - Will not update subtasks marked as 'done' or 'completed'
+- Run `next_task` / `task-master next` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to show the next task to work on
+- The command identifies tasks with all dependencies satisfied
+- Tasks are prioritized by priority level, dependency count, and ID
+- The command shows comprehensive task information including:
+    - Basic task details and description
+    - Implementation details
+    - Subtasks (if they exist)
+    - Contextual suggested actions
+- Recommended before starting any new development work
+- Respects your project's dependency structure
+- Ensures tasks are completed in the appropriate sequence
+- Provides ready-to-use commands for common task actions
 
-## Command Reference: generate
-- CLI Syntax: `task-master generate`
-- Description: Generates individual task files in tasks/ directory based on tasks.json
-- Parameters: 
-  - `--file=<path>, -f`: Use alternative tasks.json file (default: 'tasks/tasks.json')
-  - `--output=<dir>, -o`: Output directory (default: 'tasks')
-- Example: `task-master generate`
-- Notes: Overwrites existing task files. Creates tasks/ directory if needed.
+## Viewing Specific Task Details
 
-## Command Reference: set-status
-- CLI Syntax: `task-master set-status --id=<id> --status=<status>`
-- Description: Updates the status of a specific task in tasks.json
-- Parameters:
-  - `--id=<id>`: ID of the task to update (required)
-  - `--status=<status>`: New status value (required)
-- Example: `task-master set-status --id=3 --status=done`
-- Notes: Common values are 'done', 'pending', and 'deferred', but any string is accepted.
+- Run `get_task` / `task-master show <id>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to view a specific task
+- Use dot notation for subtasks: `task-master show 1.2` (shows subtask 2 of task 1)
+- Displays comprehensive information similar to the next command, but for a specific task
+- For parent tasks, shows all subtasks and their current status
+- For subtasks, shows parent task information and relationship
+- Provides contextual suggested actions appropriate for the specific task
+- Useful for examining task details before implementation or checking status
 
-## Command Reference: list
-- CLI Syntax: `task-master list`
-- Description: Lists all tasks in tasks.json with IDs, titles, and status
-- Parameters: 
-  - `--status=<status>, -s`: Filter by status
-  - `--with-subtasks`: Show subtasks for each task
-  - `--file=<path>, -f`: Use alternative tasks.json file (default: 'tasks/tasks.json')
-- Example: `task-master list`
-- Notes: Provides quick overview of project progress. Use at start of sessions.
+## Managing Task Dependencies
 
-## Command Reference: expand
-- CLI Syntax: `task-master expand --id=<id> [--num=<number>] [--research] [--prompt="<context>"]`
-- Description: Expands a task with subtasks for detailed implementation
-- Parameters:
-  - `--id=<id>`: ID of task to expand (required unless using --all)
-  - `--all`: Expand all pending tasks, prioritized by complexity
-  - `--num=<number>`: Number of subtasks to generate (default: from complexity report)
-  - `--research`: Use Perplexity AI for research-backed generation
-  - `--prompt="<text>"`: Additional context for subtask generation
-  - `--force`: Regenerate subtasks even for tasks that already have them
-- Example: `task-master expand --id=3 --num=5 --research --prompt="Focus on security aspects"`
-- Notes: Uses complexity report recommendations if available.
+- Use `add_dependency` / `task-master add-dependency --id=<id> --depends-on=<id>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to add a dependency
+- Use `remove_dependency` / `task-master remove-dependency --id=<id> --depends-on=<id>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to remove a dependency
+- The system prevents circular dependencies and duplicate dependency entries
+- Dependencies are checked for existence before being added or removed
+- Task files are automatically regenerated after dependency changes
+- Dependencies are visualized with status indicators in task listings and files
 
-## Command Reference: analyze-complexity
-- CLI Syntax: `task-master analyze-complexity [options]`
-- Description: Analyzes task complexity and generates expansion recommendations
-- Parameters:
-  - `--output=<file>, -o`: Output file path (default: scripts/task-complexity-report.json)
-  - `--model=<model>, -m`: Override LLM model to use
-  - `--threshold=<number>, -t`: Minimum score for expansion recommendation (default: 5)
-  - `--file=<path>, -f`: Use alternative tasks.json file
-  - `--research, -r`: Use Perplexity AI for research-backed analysis
-- Example: `task-master analyze-complexity --research`
-- Notes: Report includes complexity scores, recommended subtasks, and tailored prompts.
+## Iterative Subtask Implementation
 
-## Command Reference: clear-subtasks
-- CLI Syntax: `task-master clear-subtasks --id=<id>`
-- Description: Removes subtasks from specified tasks to allow regeneration
-- Parameters:
-  - `--id=<id>`: ID or comma-separated IDs of tasks to clear subtasks from
-  - `--all`: Clear subtasks from all tasks
-- Examples:
-  - `task-master clear-subtasks --id=3`
-  - `task-master clear-subtasks --id=1,2,3`
-  - `task-master clear-subtasks --all`
-- Notes: 
-  - Task files are automatically regenerated after clearing subtasks
-  - Can be combined with expand command to immediately generate new subtasks
-  - Works with both parent tasks and individual subtasks
+Once a task has been broken down into subtasks using `expand_task` or similar methods, follow this iterative process for implementation:
+
+1.  **Understand the Goal (Preparation):**
+    *   Use `get_task` / `task-master show <subtaskId>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to thoroughly understand the specific goals and requirements of the subtask.
+
+2.  **Initial Exploration & Planning (Iteration 1):**
+    *   This is the first attempt at creating a concrete implementation plan.
+    *   Explore the codebase to identify the precise files, functions, and even specific lines of code that will need modification.
+    *   Determine the intended code changes (diffs) and their locations.
+    *   Gather *all* relevant details from this exploration phase.
+
+3.  **Log the Plan:**
+    *   Run `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<detailed plan>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
+    *   Provide the *complete and detailed* findings from the exploration phase in the prompt. Include file paths, line numbers, proposed diffs, reasoning, and any potential challenges identified. Do not omit details. The goal is to create a rich, timestamped log within the subtask's `details`.
+
+4.  **Verify the Plan:**
+    *   Run `get_task` / `task-master show <subtaskId>` again to confirm that the detailed implementation plan has been successfully appended to the subtask's details.
+
+5.  **Begin Implementation:**
+    *   Set the subtask status using `set_task_status` / `task-master set-status --id=<subtaskId> --status=in-progress` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)).
+    *   Start coding based on the logged plan.
+
+6.  **Refine and Log Progress (Iteration 2+):**
+    *   As implementation progresses, you will encounter challenges, discover nuances, or confirm successful approaches.
+    *   **Before appending new information**: Briefly review the *existing* details logged in the subtask (using `get_task` or recalling from context) to ensure the update adds fresh insights and avoids redundancy.
+    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>\n- What worked...\n- What didn't work...'` to append new findings.
+    *   **Crucially, log:**
+        *   What worked ("fundamental truths" discovered).
+        *   What didn't work and why (to avoid repeating mistakes).
+        *   Specific code snippets or configurations that were successful.
+        *   Decisions made, especially if confirmed with user input.
+        *   Any deviations from the initial plan and the reasoning.
+    *   The objective is to continuously enrich the subtask's details, creating a log of the implementation journey that helps the AI (and human developers) learn, adapt, and avoid repeating errors.
+
+7.  **Review & Update Rules (Post-Implementation):**
+    *   Once the implementation for the subtask is functionally complete, review all code changes and the relevant chat history.
+    *   Identify any new or modified code patterns, conventions, or best practices established during the implementation.
+    *   Create new or update existing Cursor rules in the `.cursor/rules/` directory to capture these patterns, following the guidelines in [`cursor_rules.mdc`](mdc:.cursor/rules/cursor_rules.mdc) and [`self_improve.mdc`](mdc:.cursor/rules/self_improve.mdc).
+
+8.  **Mark Task Complete:**
+    *   After verifying the implementation and updating any necessary rules, mark the subtask as completed: `set_task_status` / `task-master set-status --id=<subtaskId> --status=done`.
+
+9.  **Commit Changes (If using Git):**
+    *   Stage the relevant code changes and any updated/new rule files (`git add .`).
+    *   Craft a comprehensive Git commit message summarizing the work done for the subtask, including both code implementation and any rule adjustments.
+    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>\n\n- Details about changes...\n- Updated rule Y for pattern Z'`).
+    *   Consider if a Changeset is needed according to [`changeset.mdc`](mdc:.cursor/rules/changeset.mdc). If so, run `npm run changeset`, stage the generated file, and amend the commit or create a new one.
+
+10. **Proceed to Next Subtask:**
+    *   Identify the next subtask in the dependency chain (e.g., using `next_task` / `task-master next`) and repeat this iterative process starting from step 1.
+
+## Code Analysis & Refactoring Techniques
+
+- **Top-Level Function Search**:
+    - Useful for understanding module structure or planning refactors.
+    - Use grep/ripgrep to find exported functions/constants:
+      `rg "export (async function|function|const) \w+"` or similar patterns.
+    - Can help compare functions between files during migrations or identify potential naming conflicts.
+
+---
+*This workflow provides a general guideline. Adapt it based on your specific project needs and team practices.*

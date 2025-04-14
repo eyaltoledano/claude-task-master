@@ -10,6 +10,7 @@ import {
 	getProjectRootFromSession
 } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the getTasks tool with the MCP server
@@ -39,32 +40,46 @@ export function registerListTasksTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
-				.describe(
-					'Root directory of the project (default: automatically detected from session or CWD)'
-				)
+				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session, reportProgress }) => {
+		execute: async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
-				// await reportProgress({ progress: 0 });
 
-				let rootFolder = getProjectRootFromSession(session, log);
+				// Get project root from args or session
+				const rootFolder =
+					args.projectRoot || getProjectRootFromSession(session, log);
 
-				if (!rootFolder && args.projectRoot) {
-					rootFolder = args.projectRoot;
-					log.info(`Using project root from args as fallback: ${rootFolder}`);
+				// Ensure project root was determined
+				if (!rootFolder) {
+					return createErrorResponse(
+						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+					);
+				}
+
+				// Resolve the path to tasks.json
+				let tasksJsonPath;
+				try {
+					tasksJsonPath = findTasksJsonPath(
+						{ projectRoot: rootFolder, file: args.file },
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding tasks.json: ${error.message}`);
+					// Use the error message from findTasksJsonPath for better context
+					return createErrorResponse(
+						`Failed to find tasks.json: ${error.message}`
+					);
 				}
 
 				const result = await listTasksDirect(
 					{
-						projectRoot: rootFolder,
-						...args
+						tasksJsonPath: tasksJsonPath,
+						status: args.status,
+						withSubtasks: args.withSubtasks
 					},
-					log /*, { reportProgress, mcpLog: log, session}*/
+					log
 				);
-
-				// await reportProgress({ progress: 100 });
 
 				log.info(
 					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`

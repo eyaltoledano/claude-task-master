@@ -4,3 +4,4 @@ coverage
 .changeset
 tasks
 package-lock.json
+tests/fixture/*.json

@@ -1,0 +1,55 @@
+# Task ID: 45
+# Title: Implement GitHub Issue Import Feature
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add a '--from-github' flag to the add-task command that accepts a GitHub issue URL and automatically generates a corresponding task with relevant details.
+# Details:
+Implement a new flag '--from-github' for the add-task command that allows users to create tasks directly from GitHub issues. The implementation should:
+
+1. Accept a GitHub issue URL as an argument (e.g., 'taskmaster add-task --from-github https://github.com/owner/repo/issues/123')
+2. Parse the URL to extract the repository owner, name, and issue number
+3. Use the GitHub API to fetch the issue details including:
+   - Issue title (to be used as task title)
+   - Issue description (to be used as task description)
+   - Issue labels (to be potentially used as tags)
+   - Issue assignees (for reference)
+   - Issue status (open/closed)
+4. Generate a well-formatted task with this information
+5. Include a reference link back to the original GitHub issue
+6. Handle authentication for private repositories using GitHub tokens from environment variables or config file
+7. Implement proper error handling for:
+   - Invalid URLs
+   - Non-existent issues
+   - API rate limiting
+   - Authentication failures
+   - Network issues
+8. Allow users to override or supplement the imported details with additional command-line arguments
+9. Add appropriate documentation in help text and user guide
+
+# Test Strategy:
+Testing should cover the following scenarios:
+
+1. Unit tests:
+   - Test URL parsing functionality with valid and invalid GitHub issue URLs
+   - Test GitHub API response parsing with mocked API responses
+   - Test error handling for various failure cases
+
+2. Integration tests:
+   - Test with real GitHub public issues (use well-known repositories)
+   - Test with both open and closed issues
+   - Test with issues containing various elements (labels, assignees, comments)
+
+3. Error case tests:
+   - Invalid URL format
+   - Non-existent repository
+   - Non-existent issue number
+   - API rate limit exceeded
+   - Authentication failures for private repos
+
+4. End-to-end tests:
+   - Verify that a task created from a GitHub issue contains all expected information
+   - Verify that the task can be properly managed after creation
+   - Test the interaction with other flags and commands
+
+Create mock GitHub API responses for testing to avoid hitting rate limits during development and testing. Use environment variables to configure test credentials if needed.

@@ -5,20 +5,17 @@
 
 import path from 'path';
 import fs from 'fs';
+import os from 'os'; // Import os module for home directory check
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
-	disableSilentMode,
-	archiveTasksBeforeOverwrite
+	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import {
 	getAnthropicClientForMCP,
 	getModelConfig
 } from '../utils/ai-client-utils.js';
-import { createErrorResponse } from '../../tools/utils.js';
-import { ApiClient } from '../api-client/client.js';
-import { analyzeTaskComplexityDirect } from './analyze-task-complexity.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
@@ -50,56 +47,42 @@ export async function parsePRDDirect(args, log, context = {}) {
 			};
 		}
 
-		// Parameter validation and path resolution
-		if (!args.input) {
-			const errorMessage =
-				'No input file specified. Please provide an input PRD document path.';
+		// Validate required parameters
+		if (!args.projectRoot) {
+			const errorMessage = 'Project root is required for parsePRDDirect';
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_INPUT_FILE', message: errorMessage },
+				error: { code: 'MISSING_PROJECT_ROOT', message: errorMessage },
 				fromCache: false
 			};
 		}
 
-		// Resolve input path (relative to project root if provided)
-		const projectRoot = args.projectRoot || process.cwd();
+		if (!args.input) {
+			const errorMessage = 'Input file path is required for parsePRDDirect';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_INPUT_PATH', message: errorMessage },
+				fromCache: false
+			};
+		}
+
+		if (!args.output) {
+			const errorMessage = 'Output file path is required for parsePRDDirect';
+			log.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'MISSING_OUTPUT_PATH', message: errorMessage },
+				fromCache: false
+			};
+		}
+
+		// Resolve input path (expecting absolute path or path relative to project root)
+		const projectRoot = args.projectRoot;
 		const inputPath = path.isAbsolute(args.input)
 			? args.input
 			: path.resolve(projectRoot, args.input);
-
-		// Determine output path
-		let outputPath;
-		if (args.output) {
-			outputPath = path.isAbsolute(args.output)
-				? args.output
-				: path.resolve(projectRoot, args.output);
-		} else {
-			// Default to tasks/tasks.json in the project root
-			outputPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
-		}
-
-		// Check if output file exists and archive it if needed and force flag is used
-		if (fs.existsSync(outputPath)) {
-			// If force is not explicitly true, exit with error
-			if (args.force !== true) {
-				const errorMessage = `Output file already exists at ${outputPath}. Use force=true to overwrite.`;
-				log.warn(errorMessage);
-				return {
-					success: false,
-					error: { code: 'OUTPUT_FILE_EXISTS', message: errorMessage },
-					fromCache: false
-				};
-			}
-			
-			// Archive the existing tasks file before overwriting
-			const archiveResult = archiveTasksBeforeOverwrite(outputPath);
-			if (!archiveResult.success) {
-				log.warn(`Could not archive existing tasks file: ${archiveResult.error}. Proceeding with overwrite.`);
-			} else if (archiveResult.archived) {
-				log.info(`Existing tasks file has been archived to ${archiveResult.archivePath}`);
-			}
-		}
 
 		// Verify input file exists
 		if (!fs.existsSync(inputPath)) {
@@ -107,9 +90,25 @@ export async function parsePRDDirect(args, log, context = {}) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INPUT_FILE_NOT_FOUND', message: errorMessage },
+				error: {
+					code: 'INPUT_FILE_NOT_FOUND',
+					message: errorMessage,
+					details: `Checked path: ${inputPath}\nProject root: ${projectRoot}\nInput argument: ${args.input}`
+				},
 				fromCache: false
 			};
+		}
+
+		// Resolve output path (expecting absolute path or path relative to project root)
+		const outputPath = path.isAbsolute(args.output)
+			? args.output
+			: path.resolve(projectRoot, args.output);
+
+		// Ensure output directory exists
+		const outputDir = path.dirname(outputPath);
+		if (!fs.existsSync(outputDir)) {
+			log.info(`Creating output directory: ${outputDir}`);
+			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
 		// Parse number of tasks - handle both string and number values
@@ -129,24 +128,28 @@ export async function parsePRDDirect(args, log, context = {}) {
 			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks`
 		);
 
-		// Prepare model config from args if provided
-		const modelConfig = {
-			model: args.model,
-			maxTokens: args.maxTokens ? parseInt(args.maxTokens, 10) : undefined,
-			temperature: args.temperature ? parseFloat(args.temperature) : undefined,
-		};
-
-		// Create a log wrapper that uses our logger
+		// Create the logger wrapper for proper logging in the core function
 		const logWrapper = {
-			debug: (msg) => log.debug(msg),
-			info: (msg) => log.info(msg),
-			warn: (msg) => log.warn(msg),
-			error: (msg) => log.error(msg),
+			info: (message, ...args) => log.info(message, ...args),
+			warn: (message, ...args) => log.warn(message, ...args),
+			error: (message, ...args) => log.error(message, ...args),
+			debug: (message, ...args) => log.debug && log.debug(message, ...args),
+			success: (message, ...args) => log.info(message, ...args) // Map success to info
 		};
 
-		// Enable silent mode to prevent logs from interfering with the response
+		// Get model config from session
+		const modelConfig = getModelConfig(session);
+
+		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 		try {
+			// Make sure the output directory exists
+			const outputDir = path.dirname(outputPath);
+			if (!fs.existsSync(outputDir)) {
+				log.info(`Creating output directory: ${outputDir}`);
+				fs.mkdirSync(outputDir, { recursive: true });
+			}
+
 			// Execute core parsePRD function with AI client
 			await parsePRD(
 				inputPath,
@@ -154,8 +157,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				numTasks,
 				{
 					mcpLog: logWrapper,
-					session,
-					force: args.force
+					session
 				},
 				aiClient,
 				modelConfig
@@ -169,63 +171,15 @@ export async function parsePRDDirect(args, log, context = {}) {
 					`Successfully parsed PRD and generated ${tasksData.tasks?.length || 0} tasks`
 				);
 
-				// Check if we should skip complexity analysis
-				if (args.skipComplexity === true) {
-					log.info('Skipping automatic complexity analysis due to --skip-complexity flag');
-					return {
-						success: true,
-						data: {
-							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
-							taskCount: tasksData.tasks?.length || 0,
-							outputPath
-						},
-						fromCache: false // This operation always modifies state and should never be cached
-					};
-				}
-
-				// Automatically run complexity analysis after successfully generating tasks
-				log.info('Automatically running task complexity analysis...');
-				try {
-					const complexityResult = await analyzeTaskComplexityDirect(
-						{
-							file: outputPath,
-							projectRoot: args.projectRoot,
-							output: path.resolve(path.dirname(outputPath), '../scripts/task-complexity-report.json'),
-							// Use the same model config if provided
-							model: args.model,
-							// Default threshold of 5
-							threshold: 5
-						},
-						log,
-						context
-					);
-
-					return {
-						success: true,
-						data: {
-							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD and analyzed task complexity`,
-							taskCount: tasksData.tasks?.length || 0,
-							outputPath,
-							complexityAnalysis: complexityResult.success 
-								? complexityResult.data 
-								: { error: 'Complexity analysis failed but tasks were generated successfully' }
-						},
-						fromCache: false // This operation always modifies state and should never be cached
-					};
-				} catch (complexityError) {
-					log.warn(`Complexity analysis failed, but tasks were generated successfully: ${complexityError.message}`);
-					
-					return {
-						success: true,
-						data: {
-							message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD. Note: Automatic complexity analysis failed.`,
-							taskCount: tasksData.tasks?.length || 0,
-							outputPath,
-							complexityAnalysisError: complexityError.message
-						},
-						fromCache: false
-					};
-				}
+				return {
+					success: true,
+					data: {
+						message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
+						taskCount: tasksData.tasks?.length || 0,
+						outputPath
+					},
+					fromCache: false // This operation always modifies state and should never be cached
+				};
 			} else {
 				const errorMessage = `Tasks file was not created at ${outputPath}`;
 				log.error(errorMessage);

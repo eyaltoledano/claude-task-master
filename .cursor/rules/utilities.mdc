@@ -44,6 +44,12 @@ alwaysApply: false
   }
   ```
 
+- **Location**:
+    - **Core CLI Utilities**: Place utilities used primarily by the core `task-master` CLI logic and command modules (`scripts/modules/*`) into [`scripts/modules/utils.js`](mdc:scripts/modules/utils.js).
+    - **MCP Server Utilities**: Place utilities specifically designed to support the MCP server implementation into the appropriate subdirectories within `mcp-server/src/`.
+        - Path/Core Logic Helpers: [`mcp-server/src/core/utils/`](mdc:mcp-server/src/core/utils/) (e.g., `path-utils.js`).
+        - Tool Execution/Response Helpers: [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js).
+
 ## Documentation Standards
 
 - **JSDoc Format**:
@@ -211,8 +217,46 @@ alwaysApply: false
       return;
     }
     
-    // Normal logging logic...
+    // Rest of logging logic...
   }
+  ```
+
+- **Common Patterns for Silent Mode**:
+  - ✅ DO: In **direct functions** (`mcp-server/src/core/direct-functions/*`) that call **core functions** (`scripts/modules/*`), ensure console output from the core function is suppressed to avoid breaking MCP JSON responses.
+    - **Preferred Method**: Update the core function to accept an `outputFormat` parameter (e.g., `outputFormat = 'text'`) and make it check `outputFormat === 'text'` before displaying any UI elements (banners, spinners, boxes, direct `console.log`s). Pass `'json'` from the direct function.
+    - **Necessary Fallback/Guarantee**: If the core function *cannot* be modified or its output suppression via `outputFormat` is unreliable, **wrap the core function call within the direct function** using `enableSilentMode()` and `disableSilentMode()` in a `try/finally` block. This acts as a safety net.
+  ```javascript
+  // Example in a direct function
+  export async function someOperationDirect(args, log) {
+    let result;
+    const tasksPath = findTasksJsonPath(args, log); // Get path first
+    
+    // Option 1: Core function handles 'json' format (Preferred)
+    try {
+      result = await coreFunction(tasksPath, ...otherArgs, 'json'); // Pass 'json'
+      return { success: true, data: result, fromCache: false };
+    } catch (error) {
+      // Handle error...
+    }
+
+    // Option 2: Core function output unreliable (Fallback/Guarantee)
+    try {
+      enableSilentMode(); // Enable before call
+      result = await coreFunction(tasksPath, ...otherArgs); // Call without format param
+    } catch (error) {
+      // Handle error...
+      log.error(`Failed: ${error.message}`);
+      return { success: false, error: { /* ... */ } };
+    } finally {
+      disableSilentMode(); // ALWAYS disable in finally
+    }
+    return { success: true, data: result, fromCache: false }; // Assuming success if no error caught
+  }
+  ```
+  - ✅ DO: For functions that accept a silent mode parameter but also need to check global state (less common):
+  ```javascript
+  // Check both the passed parameter and global silent mode
+  const isSilent = options.silentMode || (typeof options.silentMode === 'undefined' && isSilentMode());
   ```
 
 ## File Operations (in `scripts/modules/utils.js`)
@@ -363,6 +407,56 @@ alwaysApply: false
     return cyclesToBreak;
   }
   ```
+
+## MCP Server Core Utilities (`mcp-server/src/core/utils/`)
+
+### Project Root and Task File Path Detection (`path-utils.js`)
+
+- **Purpose**: This module ([`mcp-server/src/core/utils/path-utils.js`](mdc:mcp-server/src/core/utils/path-utils.js)) provides the mechanism for locating the user's `tasks.json` file, used by direct functions.
+- **`findTasksJsonPath(args, log)`**:
+    - ✅ **DO**: Call this function from within **direct function wrappers** (e.g., `listTasksDirect` in `mcp-server/src/core/direct-functions/`) to get the absolute path to the relevant `tasks.json`.
+    - Pass the *entire `args` object* received by the MCP tool (which should include `projectRoot` derived from the session) and the `log` object.
+    - Implements a **simplified precedence system** for finding the `tasks.json` path:
+        1.  Explicit `projectRoot` passed in `args` (Expected from MCP tools).
+        2.  Cached `lastFoundProjectRoot` (CLI fallback).
+        3.  Search upwards from `process.cwd()` (CLI fallback).
+    - Throws a specific error if the `tasks.json` file cannot be located.
+    - Updates the `lastFoundProjectRoot` cache on success.
+- **`PROJECT_MARKERS`**: An exported array of common file/directory names used to identify a likely project root during the CLI fallback search.
+- **`getPackagePath()`**: Utility to find the installation path of the `task-master-ai` package itself (potentially removable).
+
+## MCP Server Tool Utilities (`mcp-server/src/tools/utils.js`)
+
+- **Purpose**: These utilities specifically support the MCP server tools ([`mcp-server/src/tools/*.js`](mdc:mcp-server/src/tools/*.js)), handling MCP communication patterns, response formatting, caching integration, and the CLI fallback mechanism.
+- **Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)** for detailed usage patterns within the MCP tool `execute` methods and direct function wrappers.
+
+- **`getProjectRootFromSession(session, log)`**: 
+    - ✅ **DO**: Call this utility **within the MCP tool's `execute` method** to extract the project root path from the `session` object.
+    - Decodes the `file://` URI and handles potential errors.
+    - Returns the project path string or `null`.
+    - The returned path should then be passed in the `args` object when calling the corresponding `*Direct` function (e.g., `yourDirectFunction({ ...args, projectRoot: rootFolder }, log)`).
+
+- **`handleApiResult(result, log, errorPrefix, processFunction)`**:
+    - ✅ **DO**: Call this from the MCP tool's `execute` method after receiving the result from the `*Direct` function wrapper.
+    - Takes the standard `{ success, data/error, fromCache }` object.
+    - Formats the standard MCP success or error response, including the `fromCache` flag.
+    - Uses `processMCPResponseData` by default to filter response data.
+
+- **`executeTaskMasterCommand(command, log, args, projectRootRaw)`**:
+    - Executes a Task Master CLI command as a child process.
+    - Handles fallback between global `task-master` and local `node scripts/dev.js`.
+    - ❌ **DON'T**: Use this as the primary method for MCP tools. Prefer direct function calls via `*Direct` wrappers.
+
+- **`processMCPResponseData(taskOrData, fieldsToRemove)`**:
+    - Filters task data (e.g., removing `details`, `testStrategy`) before sending to the MCP client. Called by `handleApiResult`.
+
+- **`createContentResponse(content)` / `createErrorResponse(errorMessage)`**:
+    - Formatters for standard MCP success/error responses.
+
+- **`getCachedOrExecute({ cacheKey, actionFn, log })`**:
+    - ✅ **DO**: Use this utility *inside direct function wrappers* to implement caching.
+    - Checks cache, executes `actionFn` on miss, stores result.
+    - Returns standard `{ success, data/error, fromCache: boolean }`.
 
 ## Export Organization
 
