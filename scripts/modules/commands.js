@@ -11,6 +11,7 @@ import fs from 'fs';
 import https from 'https';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import Table from 'cli-table3';
 
 import { CONFIG, log, readJSON, writeJSON } from './utils.js';
 import {
@@ -39,6 +40,22 @@ import {
 	validateDependenciesCommand,
 	fixDependenciesCommand
 } from './dependency-manager.js';
+
+import {
+	getMainModelId,
+	getResearchModelId,
+	getFallbackModelId,
+	setMainModel,
+	setResearchModel,
+	setFallbackModel,
+	getAvailableModels,
+	VALID_PROVIDERS,
+	getMainProvider,
+	getResearchProvider,
+	getFallbackProvider,
+	hasApiKeyForProvider,
+	getMcpApiKeyStatus
+} from './config-manager.js';
 
 import {
 	displayBanner,
@@ -1548,7 +1565,527 @@ function registerCommands(programInstance) {
 			}
 		});
 
-	// Add more commands as needed...
+	// models command
+	programInstance
+		.command('models')
+		.description('Manage AI model configurations')
+		.option(
+			'--set-main <model_id>',
+			'Set the primary model for task generation/updates'
+		)
+		.option(
+			'--set-research <model_id>',
+			'Set the model for research-backed operations'
+		)
+		.option(
+			'--set-fallback <model_id>',
+			'Set the model to use if the primary fails'
+		)
+		.option('--setup', 'Run interactive setup to configure models')
+		.action(async (options) => {
+			let modelSetAction = false; // Track if any set action was performed
+			const availableModels = getAvailableModels(); // Get available models once
+
+			// Helper to find provider for a given model ID
+			const findProvider = (modelId) => {
+				const modelInfo = availableModels.find((m) => m.id === modelId);
+				return modelInfo?.provider;
+			};
+
+			try {
+				if (options.setMain) {
+					const modelId = options.setMain;
+					if (typeof modelId !== 'string' || modelId.trim() === '') {
+						console.error(
+							chalk.red('Error: --set-main flag requires a valid model ID.')
+						);
+						process.exit(1);
+					}
+					const provider = findProvider(modelId);
+					if (!provider) {
+						console.error(
+							chalk.red(
+								`Error: Model ID "${modelId}" not found in available models.`
+							)
+						);
+						process.exit(1);
+					}
+					if (setMainModel(provider, modelId)) {
+						// Call specific setter
+						console.log(
+							chalk.green(
+								`Main model set to: ${modelId} (Provider: ${provider})`
+							)
+						);
+						modelSetAction = true;
+					} else {
+						console.error(chalk.red(`Failed to set main model.`));
+						process.exit(1);
+					}
+				}
+
+				if (options.setResearch) {
+					const modelId = options.setResearch;
+					if (typeof modelId !== 'string' || modelId.trim() === '') {
+						console.error(
+							chalk.red('Error: --set-research flag requires a valid model ID.')
+						);
+						process.exit(1);
+					}
+					const provider = findProvider(modelId);
+					if (!provider) {
+						console.error(
+							chalk.red(
+								`Error: Model ID "${modelId}" not found in available models.`
+							)
+						);
+						process.exit(1);
+					}
+					if (setResearchModel(provider, modelId)) {
+						// Call specific setter
+						console.log(
+							chalk.green(
+								`Research model set to: ${modelId} (Provider: ${provider})`
+							)
+						);
+						modelSetAction = true;
+					} else {
+						console.error(chalk.red(`Failed to set research model.`));
+						process.exit(1);
+					}
+				}
+
+				if (options.setFallback) {
+					const modelId = options.setFallback;
+					if (typeof modelId !== 'string' || modelId.trim() === '') {
+						console.error(
+							chalk.red('Error: --set-fallback flag requires a valid model ID.')
+						);
+						process.exit(1);
+					}
+					const provider = findProvider(modelId);
+					if (!provider) {
+						console.error(
+							chalk.red(
+								`Error: Model ID "${modelId}" not found in available models.`
+							)
+						);
+						process.exit(1);
+					}
+					if (setFallbackModel(provider, modelId)) {
+						// Call specific setter
+						console.log(
+							chalk.green(
+								`Fallback model set to: ${modelId} (Provider: ${provider})`
+							)
+						);
+						modelSetAction = true;
+					} else {
+						console.error(chalk.red(`Failed to set fallback model.`));
+						process.exit(1);
+					}
+				}
+
+				// Handle interactive setup first
+				if (options.setup) {
+					console.log(chalk.cyan.bold('\nInteractive Model Setup:'));
+
+					// Filter out placeholder models for selection
+					const selectableModels = availableModels
+						.filter(
+							(model) => !(model.id.startsWith('[') && model.id.endsWith(']'))
+						)
+						.map((model) => ({
+							name: `${model.provider} / ${model.id}`,
+							value: { provider: model.provider, id: model.id }
+						}));
+
+					if (selectableModels.length === 0) {
+						console.error(
+							chalk.red('Error: No selectable models found in configuration.')
+						);
+						process.exit(1);
+					}
+
+					const answers = await inquirer.prompt([
+						{
+							type: 'list',
+							name: 'mainModel',
+							message: 'Select the main model for generation/updates:',
+							choices: selectableModels,
+							default: selectableModels.findIndex(
+								(m) => m.value.id === getMainModelId()
+							)
+						},
+						{
+							type: 'list',
+							name: 'researchModel',
+							message: 'Select the research model:',
+							// Filter choices to only include models allowed for research
+							choices: selectableModels.filter((modelChoice) => {
+								// Need to find the original model data to check allowed_roles
+								const originalModel = availableModels.find(
+									(m) => m.id === modelChoice.value.id
+								);
+								return originalModel?.allowed_roles?.includes('research');
+							}),
+							default: selectableModels.findIndex(
+								(m) => m.value.id === getResearchModelId()
+							)
+						},
+						{
+							type: 'list',
+							name: 'fallbackModel',
+							message: 'Select the fallback model (optional):',
+							choices: [
+								{ name: 'None (disable fallback)', value: null },
+								new inquirer.Separator(),
+								...selectableModels
+							],
+							default:
+								selectableModels.findIndex(
+									(m) => m.value.id === getFallbackModelId()
+								) + 2 // Adjust for separator and None
+						}
+					]);
+
+					let setupSuccess = true;
+
+					// Set Main Model
+					if (answers.mainModel) {
+						if (
+							!setMainModel(answers.mainModel.provider, answers.mainModel.id)
+						) {
+							console.error(chalk.red('Failed to set main model.'));
+							setupSuccess = false;
+						} else {
+							// Success message printed by setMainModel
+						}
+					}
+
+					// Set Research Model
+					if (answers.researchModel) {
+						if (
+							!setResearchModel(
+								answers.researchModel.provider,
+								answers.researchModel.id
+							)
+						) {
+							console.error(chalk.red('Failed to set research model.'));
+							setupSuccess = false;
+						} else {
+							// Success message printed by setResearchModel
+						}
+					}
+
+					// Set Fallback Model
+					if (answers.fallbackModel) {
+						if (
+							!setFallbackModel(
+								answers.fallbackModel.provider,
+								answers.fallbackModel.id
+							)
+						) {
+							console.error(chalk.red('Failed to set fallback model.'));
+							setupSuccess = false;
+						} else {
+							console.log(
+								chalk.green(
+									`Fallback model set to: ${answers.fallbackModel.provider} / ${answers.fallbackModel.id}`
+								)
+							);
+						}
+					} else {
+						// User selected None - attempt to remove fallback from config
+						const config = readConfig();
+						if (config.models.fallback) {
+							delete config.models.fallback;
+							if (!writeConfig(config)) {
+								console.error(
+									chalk.red('Failed to remove fallback model configuration.')
+								);
+								setupSuccess = false;
+							} else {
+								console.log(chalk.green('Fallback model disabled.'));
+							}
+						}
+					}
+
+					if (setupSuccess) {
+						console.log(chalk.green.bold('\nModel setup complete!'));
+					}
+					return; // Exit after setup
+				}
+
+				// If no set flags were used and not in setup mode, list the models
+				if (!modelSetAction && !options.setup) {
+					// Fetch current settings
+					const mainProvider = getMainProvider();
+					const mainModelId = getMainModelId();
+					const researchProvider = getResearchProvider();
+					const researchModelId = getResearchModelId();
+					const fallbackProvider = getFallbackProvider(); // May be undefined
+					const fallbackModelId = getFallbackModelId(); // May be undefined
+
+					// Check API keys for both CLI (.env) and MCP (mcp.json)
+					const mainCliKeyOk = hasApiKeyForProvider(mainProvider);
+					const mainMcpKeyOk = getMcpApiKeyStatus(mainProvider);
+					const researchCliKeyOk = hasApiKeyForProvider(researchProvider);
+					const researchMcpKeyOk = getMcpApiKeyStatus(researchProvider);
+					const fallbackCliKeyOk = fallbackProvider
+						? hasApiKeyForProvider(fallbackProvider)
+						: true; // No key needed if no fallback is set
+					const fallbackMcpKeyOk = fallbackProvider
+						? getMcpApiKeyStatus(fallbackProvider)
+						: true; // No key needed if no fallback is set
+
+					// --- Generate Warning Messages ---
+					const warnings = [];
+					if (!mainCliKeyOk || !mainMcpKeyOk) {
+						warnings.push(
+							`Main model (${mainProvider}): API key missing for ${!mainCliKeyOk ? 'CLI (.env)' : ''}${!mainCliKeyOk && !mainMcpKeyOk ? ' / ' : ''}${!mainMcpKeyOk ? 'MCP (.cursor/mcp.json)' : ''}`
+						);
+					}
+					if (!researchCliKeyOk || !researchMcpKeyOk) {
+						warnings.push(
+							`Research model (${researchProvider}): API key missing for ${!researchCliKeyOk ? 'CLI (.env)' : ''}${!researchCliKeyOk && !researchMcpKeyOk ? ' / ' : ''}${!researchMcpKeyOk ? 'MCP (.cursor/mcp.json)' : ''}`
+						);
+					}
+					if (fallbackProvider && (!fallbackCliKeyOk || !fallbackMcpKeyOk)) {
+						warnings.push(
+							`Fallback model (${fallbackProvider}): API key missing for ${!fallbackCliKeyOk ? 'CLI (.env)' : ''}${!fallbackCliKeyOk && !fallbackMcpKeyOk ? ' / ' : ''}${!fallbackMcpKeyOk ? 'MCP (.cursor/mcp.json)' : ''}`
+						);
+					}
+
+					// --- Display Warning Banner (if any) ---
+					if (warnings.length > 0) {
+						console.log(
+							boxen(
+								chalk.red.bold('API Key Warnings:') +
+									'\n\n' +
+									warnings.join('\n'),
+								{
+									padding: 1,
+									margin: { top: 1, bottom: 1 },
+									borderColor: 'red',
+									borderStyle: 'round'
+								}
+							)
+						);
+					}
+
+					// --- Active Configuration Section ---
+					console.log(chalk.cyan.bold('\nActive Model Configuration:'));
+					const activeTable = new Table({
+						head: [
+							'Role',
+							'Provider',
+							'Model ID',
+							'SWE Score', // Update column name
+							'Cost ($/1M tkns)', // Add Cost column
+							'API Key Status'
+						].map((h) => chalk.cyan.bold(h)),
+						colWidths: [10, 14, 30, 18, 20, 28], // Adjust widths for stars
+						style: { head: ['cyan', 'bold'] }
+					});
+
+					const allAvailableModels = getAvailableModels(); // Get all models once for lookup
+
+					// --- Calculate Tertile Thresholds for SWE Scores ---
+					const validScores = allAvailableModels
+						.map((m) => m.swe_score)
+						.filter((s) => s !== null && s !== undefined && s > 0);
+					const sortedScores = [...validScores].sort((a, b) => b - a); // Sort descending
+					const n = sortedScores.length;
+					let minScore3Stars = -Infinity;
+					let minScore2Stars = -Infinity;
+					if (n > 0) {
+						const topThirdIndex = Math.max(0, Math.floor(n / 3) - 1);
+						const midThirdIndex = Math.max(0, Math.floor((2 * n) / 3) - 1);
+						minScore3Stars = sortedScores[topThirdIndex];
+						minScore2Stars = sortedScores[midThirdIndex];
+					}
+
+					// Helper to find the full model object
+					const findModelData = (modelId) => {
+						return allAvailableModels.find((m) => m.id === modelId);
+					};
+
+					// --- Helper to format SWE score and add tertile stars ---
+					const formatSweScoreWithTertileStars = (score) => {
+						if (score === null || score === undefined || score <= 0)
+							return 'N/A'; // Handle non-positive scores
+
+						const formattedPercentage = `${(score * 100).toFixed(1)}%`;
+						let stars = '';
+
+						if (n === 0) {
+							// No valid scores to compare against
+							stars = chalk.gray('☆☆☆');
+						} else if (score >= minScore3Stars) {
+							stars = chalk.yellow('★★★'); // Top Third
+						} else if (score >= minScore2Stars) {
+							stars = chalk.yellow('★★') + chalk.gray('☆'); // Middle Third
+						} else {
+							stars = chalk.yellow('★') + chalk.gray('☆☆'); // Bottom Third (but > 0)
+						}
+
+						return `${formattedPercentage} ${stars}`;
+					};
+
+					// Helper to format cost
+					const formatCost = (costObj) => {
+						if (!costObj) return 'N/A';
+
+						const formatSingleCost = (costValue) => {
+							if (costValue === null || costValue === undefined) return 'N/A';
+							// Check if the number is an integer
+							const isInteger = Number.isInteger(costValue);
+							return `$${costValue.toFixed(isInteger ? 0 : 2)}`;
+						};
+
+						const inputCost = formatSingleCost(costObj.input);
+						const outputCost = formatSingleCost(costObj.output);
+
+						return `${inputCost} in, ${outputCost} out`; // Use cleaner separator
+					};
+
+					const getCombinedStatus = (cliOk, mcpOk) => {
+						const cliSymbol = cliOk ? chalk.green('✓') : chalk.red('✗');
+						const mcpSymbol = mcpOk ? chalk.green('✓') : chalk.red('✗');
+
+						if (cliOk && mcpOk) {
+							// Both symbols green, default text color
+							return `${cliSymbol} CLI & ${mcpSymbol} MCP OK`;
+						} else if (cliOk && !mcpOk) {
+							// Symbols colored individually, default text color
+							return `${cliSymbol} CLI OK / ${mcpSymbol} MCP Missing`;
+						} else if (!cliOk && mcpOk) {
+							// Symbols colored individually, default text color
+							return `${cliSymbol} CLI Missing / ${mcpSymbol} MCP OK`;
+						} else {
+							// Both symbols gray, apply overall gray to text as well
+							return chalk.gray(`${cliSymbol} CLI & MCP Both Missing`);
+						}
+					};
+
+					const mainModelData = findModelData(mainModelId);
+					const researchModelData = findModelData(researchModelId);
+					const fallbackModelData = findModelData(fallbackModelId);
+
+					activeTable.push([
+						chalk.white('Main'),
+						mainProvider,
+						mainModelId,
+						formatSweScoreWithTertileStars(mainModelData?.swe_score), // Use tertile formatter
+						formatCost(mainModelData?.cost_per_1m_tokens),
+						getCombinedStatus(mainCliKeyOk, mainMcpKeyOk)
+					]);
+					activeTable.push([
+						chalk.white('Research'),
+						researchProvider,
+						researchModelId,
+						formatSweScoreWithTertileStars(researchModelData?.swe_score), // Use tertile formatter
+						formatCost(researchModelData?.cost_per_1m_tokens),
+						getCombinedStatus(researchCliKeyOk, researchMcpKeyOk)
+					]);
+
+					if (fallbackProvider && fallbackModelId) {
+						activeTable.push([
+							chalk.white('Fallback'),
+							fallbackProvider,
+							fallbackModelId,
+							formatSweScoreWithTertileStars(fallbackModelData?.swe_score), // Use tertile formatter
+							formatCost(fallbackModelData?.cost_per_1m_tokens),
+							getCombinedStatus(fallbackCliKeyOk, fallbackMcpKeyOk)
+						]);
+					}
+					console.log(activeTable.toString());
+
+					// --- Available Models Section ---
+					// const availableModels = getAvailableModels(); // Already fetched
+					if (!allAvailableModels || allAvailableModels.length === 0) {
+						console.log(chalk.yellow('\nNo available models defined.'));
+						return;
+					}
+
+					// Filter out placeholders and active models for the available list
+					const activeIds = [
+						mainModelId,
+						researchModelId,
+						fallbackModelId
+					].filter(Boolean);
+					const filteredAvailable = allAvailableModels.filter(
+						(model) =>
+							!(model.id.startsWith('[') && model.id.endsWith(']')) &&
+							!activeIds.includes(model.id)
+					);
+
+					if (filteredAvailable.length > 0) {
+						console.log(chalk.cyan.bold('\nOther Available Models:'));
+						const availableTable = new Table({
+							head: [
+								'Provider',
+								'Model ID',
+								'SWE Score', // Update column name
+								'Cost ($/1M tkns)' // Add Cost column
+							].map((h) => chalk.cyan.bold(h)),
+							colWidths: [15, 40, 18, 25], // Adjust widths for stars
+							style: { head: ['cyan', 'bold'] }
+						});
+
+						filteredAvailable.forEach((model) => {
+							availableTable.push([
+								model.provider || 'N/A',
+								model.id,
+								formatSweScoreWithTertileStars(model.swe_score), // Use tertile formatter
+								formatCost(model.cost_per_1m_tokens)
+							]);
+						});
+						console.log(availableTable.toString());
+					} else {
+						console.log(
+							chalk.gray('\n(All available models are currently configured)')
+						);
+					}
+
+					// --- Suggested Actions Section ---
+					console.log(
+						boxen(
+							chalk.white.bold('Next Steps:') +
+								'\n' +
+								chalk.cyan(
+									`1. Set main model: ${chalk.yellow('task-master models --set-main <model_id>')}`
+								) +
+								'\n' +
+								chalk.cyan(
+									`2. Set research model: ${chalk.yellow('task-master models --set-research <model_id>')}`
+								) +
+								'\n' +
+								chalk.cyan(
+									`3. Set fallback model: ${chalk.yellow('task-master models --set-fallback <model_id>')}`
+								) +
+								'\n' +
+								chalk.cyan(
+									`4. Run interactive setup: ${chalk.yellow('task-master models --setup')}`
+								),
+							{
+								padding: 1,
+								borderColor: 'yellow',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
+						)
+					);
+				}
+			} catch (error) {
+				log(`Error processing models command: ${error.message}`, 'error');
+				if (error.stack && CONFIG.debug) {
+					log(error.stack, 'debug');
+				}
+				process.exit(1);
+			}
+		});
 
 	return programInstance;
 }

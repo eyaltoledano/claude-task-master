@@ -1,0 +1,256 @@
+{
+	"anthropic": [
+		{
+			"id": "claude-3.5-sonnet-20240620",
+			"swe_score": 0.49,
+			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "claude-3-7-sonnet-20250219",
+			"swe_score": 0.623,
+			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "claude-3.5-haiku-20241022",
+			"swe_score": 0.406,
+			"cost_per_1m_tokens": { "input": 0.8, "output": 4.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "claude-3-haiku-20240307",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 0.25, "output": 1.25 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "claude-3-opus-20240229",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		}
+	],
+	"openai": [
+		{
+			"id": "gpt-4o",
+			"swe_score": 0.332,
+			"cost_per_1m_tokens": { "input": 5.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-4-turbo",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 10.0, "output": 30.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "o1",
+			"swe_score": 0.489,
+			"cost_per_1m_tokens": { "input": 15.0, "output": 60.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "o3-mini",
+			"swe_score": 0.493,
+			"cost_per_1m_tokens": { "input": 1.1, "output": 4.4 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "o1-pro",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 150.0, "output": 600.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-4.1",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": { "input": 2.0, "output": 8.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-4.5-preview",
+			"swe_score": 0.38,
+			"cost_per_1m_tokens": { "input": 75.0, "output": 150.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-4.1-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 0.4, "output": 1.6 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-4.1-nano",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 0.1, "output": 0.4 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gpt-3.5-turbo",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 0.5, "output": 1.5 },
+			"allowed_roles": ["main", "fallback"]
+		}
+	],
+	"google": [
+		{
+			"id": "gemini-2.5-pro-latest",
+			"swe_score": 0.638,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gemini-1.5-flash-latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gemini-2.0-flash-experimental",
+			"swe_score": 0.754,
+			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gemini-2.0-flash-thinking-experimental",
+			"swe_score": 0.754,
+			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gemini-2.0-pro",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "gemma-3-7b",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		}
+	],
+	"perplexity": [
+		{
+			"id": "sonar-pro",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"]
+		},
+		{
+			"id": "sonar-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"]
+		},
+		{
+			"id": "deep-research",
+			"swe_score": 0.211,
+			"cost_per_1m_tokens": { "input": 2.0, "output": 8.0 },
+			"allowed_roles": ["main", "fallback", "research"]
+		}
+	],
+	"ollama": [
+		{
+			"id": "llava",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "deepseek-coder-v2",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "dolphin3",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "olmo2-7b",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "olmo2-13b",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		}
+	],
+	"openrouter": [
+		{
+			"id": "meta-llama/llama-4-scout",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "google/gemini-2.5-pro-exp-03-25",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "openrouter/optimus-alpha",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 30.0, "output": 60.0 },
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "openrouter/quasar-alpha",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "kimi-vl-a3b-thinking",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "qwen2.5-max",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		}
+	],
+	"grok": [
+		{
+			"id": "grok3-beta",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"]
+		},
+		{
+			"id": "grok-3-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "grok-2",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "grok-2-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "grok-1.5",
+			"swe_score": 0,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"]
+		}
+	]
+}

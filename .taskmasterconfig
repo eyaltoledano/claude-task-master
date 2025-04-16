@@ -1,0 +1,16 @@
+{
+  "models": {
+    "main": {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro-latest"
+    },
+    "research": {
+      "provider": "perplexity",
+      "modelId": "deep-research"
+    },
+    "fallback": {
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet-20250219"
+    }
+  }
+}

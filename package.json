@@ -39,6 +39,7 @@
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.39.0",
+		"ai": "^4.3.6",
 		"boxen": "^8.0.1",
 		"chalk": "^4.1.2",
 		"cli-table3": "^0.6.5",

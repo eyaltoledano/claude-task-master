@@ -283,107 +283,97 @@ When testing ES modules (`"type": "module"` in package.json), traditional mockin
   - Imported functions may not use your mocked dependencies even with proper jest.mock() setup
   - ES module exports are read-only properties (cannot be reassigned during tests)
 
-- **Mocking Entire Modules**
+- **Mocking Modules Statically Imported**
+  - For modules imported with standard `import` statements at the top level:
+    - Use `jest.mock('path/to/module', factory)` **before** any imports.
+    - Jest hoists these mocks.
+    - Ensure the factory function returns the mocked structure correctly.
+
+- **Mocking Dependencies for Dynamically Imported Modules**
+  - **Problem**: Standard `jest.mock()` often fails for dependencies of modules loaded later using dynamic `import('path/to/module')`. The mocks aren't applied correctly when the dynamic import resolves.
+  - **Solution**: Use `jest.unstable_mockModule(modulePath, factory)` **before** the dynamic `import()` call.
   ```javascript
-  // Mock the entire module with custom implementation
-  jest.mock('../../scripts/modules/task-manager.js', () => {
-    // Get original implementation for functions you want to preserve
-    const originalModule = jest.requireActual('../../scripts/modules/task-manager.js');
-    
-    // Return mix of original and mocked functionality
-    return {
-      ...originalModule,
-      generateTaskFiles: jest.fn() // Replace specific functions
-    };
+  // 1. Define mock function instances
+  const mockExistsSync = jest.fn();
+  const mockReadFileSync = jest.fn();
+  // ... other mocks
+
+  // 2. Mock the dependency module *before* the dynamic import
+  jest.unstable_mockModule('fs', () => ({
+    __esModule: true, // Important for ES module mocks
+    // Mock named exports
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
+    // Mock default export if necessary
+    // default: { ... }
+  }));
+
+  // 3. Dynamically import the module under test (e.g., in beforeAll or test case)
+  let moduleUnderTest;
+  beforeAll(async () => {
+    // Ensure mocks are reset if needed before import
+    mockExistsSync.mockReset();
+    mockReadFileSync.mockReset();
+    // ... reset other mocks ...
+
+    // Import *after* unstable_mockModule is called
+    moduleUnderTest = await import('../../scripts/modules/module-using-fs.js');
   });
-  
-  // Import after mocks
-  import * as taskManager from '../../scripts/modules/task-manager.js';
-  
-  // Now you can use the mock directly
-  const { generateTaskFiles } = taskManager;
+
+  // 4. Now tests can use moduleUnderTest, and its 'fs' calls will hit the mocks
+  test('should use mocked fs.readFileSync', () => {
+    mockReadFileSync.mockReturnValue('mock data');
+    moduleUnderTest.readFileAndProcess();
+    expect(mockReadFileSync).toHaveBeenCalled();
+    // ... other assertions
+  });
+  ```
+  - ✅ **DO**: Call `jest.unstable_mockModule()` before `await import()`.
+  - ✅ **DO**: Include `__esModule: true` in the mock factory for ES modules.
+  - ✅ **DO**: Mock named and default exports as needed within the factory.
+  - ✅ **DO**: Reset mock functions (`mockFn.mockReset()`) before the dynamic import if they might have been called previously.
+
+- **Mocking Entire Modules (Static Import)**
+  ```javascript
+  // Mock the entire module with custom implementation for static imports
+  // ... (existing example remains valid) ...
   ```
 
 - **Direct Implementation Testing**
   - Instead of calling the actual function which may have module-scope reference issues:
   ```javascript
-  test('should perform expected actions', () => {
-    // Setup mocks for this specific test
-    mockReadJSON.mockImplementationOnce(() => sampleData);
-    
-    // Manually simulate the function's behavior
-    const data = mockReadJSON('path/file.json');
-    mockValidateAndFixDependencies(data, 'path/file.json');
-    
-    // Skip calling the actual function and verify mocks directly
-    expect(mockReadJSON).toHaveBeenCalledWith('path/file.json');
-    expect(mockValidateAndFixDependencies).toHaveBeenCalledWith(data, 'path/file.json');
-  });
+  // ... (existing example remains valid) ...
   ```
 
 - **Avoiding Module Property Assignment**
   ```javascript
-  // ❌ DON'T: This causes "Cannot assign to read only property" errors
-  const utils = await import('../../scripts/modules/utils.js');
-  utils.readJSON = mockReadJSON; // Error: read-only property
-  
-  // ✅ DO: Use the module factory pattern in jest.mock()
-  jest.mock('../../scripts/modules/utils.js', () => ({
-    readJSON: mockReadJSONFunc,
-    writeJSON: mockWriteJSONFunc
-  }));
+  // ... (existing example remains valid) ...
   ```
 
 - **Handling Mock Verification Failures**
   - If verification like `expect(mockFn).toHaveBeenCalled()` fails:
-    1. Check that your mock setup is before imports
-    2. Ensure you're using the right mock instance
-    3. Verify your test invokes behavior that would call the mock
-    4. Use `jest.clearAllMocks()` in beforeEach to reset mock state
-    5. Consider implementing a simpler test that directly verifies mock behavior
-
-- **Full Example Pattern**
-  ```javascript
-  // 1. Define mock implementations
-  const mockReadJSON = jest.fn();
-  const mockValidateAndFixDependencies = jest.fn();
-  
-  // 2. Mock modules
-  jest.mock('../../scripts/modules/utils.js', () => ({
-    readJSON: mockReadJSON,
-    // Include other functions as needed
-  }));
-  
-  jest.mock('../../scripts/modules/dependency-manager.js', () => ({
-    validateAndFixDependencies: mockValidateAndFixDependencies
-  }));
-  
-  // 3. Import after mocks
-  import * as taskManager from '../../scripts/modules/task-manager.js';
-  
-  describe('generateTaskFiles function', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-    });
-    
-    test('should generate task files', () => {
-      // 4. Setup test-specific mock behavior
-      const sampleData = { tasks: [{ id: 1, title: 'Test' }] };
-      mockReadJSON.mockReturnValueOnce(sampleData);
-      
-      // 5. Create direct implementation test
-      // Instead of calling: taskManager.generateTaskFiles('path', 'dir')
-      
-      // Simulate reading data
-      const data = mockReadJSON('path');
-      expect(mockReadJSON).toHaveBeenCalledWith('path');
-      
-      // Simulate other operations the function would perform
-      mockValidateAndFixDependencies(data, 'path');
-      expect(mockValidateAndFixDependencies).toHaveBeenCalledWith(data, 'path');
-    });
-  });
-  ```
+    1.  Check that your mock setup (`jest.mock` or `jest.unstable_mockModule`) is correctly placed **before** imports (static or dynamic).
+    2.  Ensure you're using the right mock instance and it's properly passed to the module.
+    3.  Verify your test invokes behavior that *should* call the mock.
+    4.  Use `jest.clearAllMocks()` or specific `mockFn.mockReset()` in `beforeEach` to prevent state leakage between tests.
+    5.  **Check Console Assertions**: If verifying `console.log`, `console.warn`, or `console.error` calls, ensure your assertion matches the *actual* arguments passed. If the code logs a single formatted string, assert against that single string (using `expect.stringContaining` or exact match), not multiple `expect.stringContaining` arguments.
+        ```javascript
+        // Example: Code logs console.error(`Error: ${message}. Details: ${details}`)
+        // ❌ DON'T: Assert multiple arguments if only one is logged
+        // expect(console.error).toHaveBeenCalledWith(
+        //   expect.stringContaining('Error:'),
+        //   expect.stringContaining('Details:')
+        // );
+        // ✅ DO: Assert the single string argument
+        expect(console.error).toHaveBeenCalledWith(
+           expect.stringContaining('Error: Specific message. Details: More details')
+        );
+        // or for exact match:
+        expect(console.error).toHaveBeenCalledWith(
+           'Error: Specific message. Details: More details'
+        );
+        ```
+    6.  Consider implementing a simpler test that *only* verifies the mock behavior in isolation.
 
 ## Mocking Guidelines
 

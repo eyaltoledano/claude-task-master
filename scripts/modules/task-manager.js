@@ -427,11 +427,7 @@ Return only the updated tasks as a valid JSON array.`
 									session?.env?.TEMPERATURE ||
 									CONFIG.temperature
 							),
-							max_tokens: parseInt(
-								process.env.MAX_TOKENS ||
-									session?.env?.MAX_TOKENS ||
-									CONFIG.maxTokens
-							)
+							max_tokens: 8700
 						});
 
 						const responseText = result.choices[0].message.content;
@@ -972,11 +968,7 @@ Return only the updated task as a valid JSON object.`
 									session?.env?.TEMPERATURE ||
 									CONFIG.temperature
 							),
-							max_tokens: parseInt(
-								process.env.MAX_TOKENS ||
-									session?.env?.MAX_TOKENS ||
-									CONFIG.maxTokens
-							)
+							max_tokens: 8700
 						});
 
 						const responseText = result.choices[0].message.content;
@@ -3738,7 +3730,11 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 							}
 						],
 						temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
-						max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens
+						max_tokens: 8700,
+						web_search_options: {
+							search_context_size: 'high'
+						},
+						search_recency_filter: 'day'
 					});
 
 					// Extract the response text
