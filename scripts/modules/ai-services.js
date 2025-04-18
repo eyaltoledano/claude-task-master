@@ -184,10 +184,10 @@ After your breakdown, create a JSON object containing an array of tasks and a me
   "title": string,
   "description": string,
   "status": "pending",
-  "dependencies": number[],
+  "dependencies": number[] (IDs of tasks this depends on),
   "priority": "high" | "medium" | "low",
-  "details": string,
-  "testStrategy": string
+  "details": string (implementation details),
+  "testStrategy": string (validation approach)
 }
 
 Guidelines for creating tasks:
