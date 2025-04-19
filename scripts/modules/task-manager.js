@@ -106,7 +106,7 @@ async function parsePRD(
 	aiClient = null,
 	modelConfig = null
 ) {
-	const { reportProgress, mcpLog, session } = options;
+	const { reportProgress, mcpLog, session, append } = options;
 
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';
@@ -127,26 +127,60 @@ async function parsePRD(
 		// Read the PRD content
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 
+		// If appending and tasks.json exists, read it first
+		let existingTasks = { tasks: [] };
+		let lastTaskId = 0;
+		if (append && fs.existsSync(tasksPath)) {
+			try {
+				existingTasks = readJSON(tasksPath);
+				if (existingTasks.tasks && existingTasks.tasks.length > 0) {
+					// Find the highest task ID
+					lastTaskId = Math.max(
+						...existingTasks.tasks.map((task) => {
+							const mainId = parseInt(task.id.toString().split('.')[0], 10);
+							return isNaN(mainId) ? 0 : mainId;
+						})
+					);
+				}
+			} catch (error) {
+				report(
+					`Warning: Could not read existing tasks file: ${error.message}`,
+					'warn'
+				);
+				existingTasks = { tasks: [] };
+			}
+		}
+
 		// Call Claude to generate tasks, passing the provided AI client if available
-		const tasksData = await callClaude(
+		const newTasksData = await callClaude(
 			prdContent,
 			prdPath,
 			numTasks,
-			0,
+			lastTaskId, // Pass the last task ID so new tasks continue the sequence
 			{ reportProgress, mcpLog, session },
 			aiClient,
 			modelConfig
 		);
+
+		// Merge tasks if appending
+		const tasksData = append
+			? {
+					...existingTasks,
+					tasks: [...existingTasks.tasks, ...newTasksData.tasks]
+				}
+			: newTasksData;
 
 		// Create the directory if it doesn't exist
 		const tasksDir = path.dirname(tasksPath);
 		if (!fs.existsSync(tasksDir)) {
 			fs.mkdirSync(tasksDir, { recursive: true });
 		}
+
 		// Write the tasks to the file
 		writeJSON(tasksPath, tasksData);
+		const actionVerb = append ? 'appended' : 'generated';
 		report(
-			`Successfully generated ${tasksData.tasks.length} tasks from PRD`,
+			`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`,
 			'success'
 		);
 		report(`Tasks saved to: ${tasksPath}`, 'info');
@@ -166,7 +200,7 @@ async function parsePRD(
 			console.log(
 				boxen(
 					chalk.green(
-						`Successfully generated ${tasksData.tasks.length} tasks from PRD`
+						`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`
 					),
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)

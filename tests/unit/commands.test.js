@@ -199,16 +199,35 @@ describe('Commands Module', () => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
 			const defaultPrdPath = 'scripts/prd.txt';
+			const append = options.append || false;
+			const force = options.force || false;
+			const outputPath = options.output || 'tasks/tasks.json';
+
+			// Mock confirmOverwriteIfNeeded function to test overwrite behavior
+			const mockConfirmOverwrite = jest.fn().mockResolvedValue(true);
+
+			// Helper function to check if tasks.json exists and confirm overwrite
+			async function confirmOverwriteIfNeeded() {
+				if (fs.existsSync(outputPath) && !force && !append) {
+					return mockConfirmOverwrite();
+				}
+				return true;
+			}
 
 			// If no input file specified, check for default PRD location
 			if (!inputFile) {
 				if (fs.existsSync(defaultPrdPath)) {
 					console.log(chalk.blue(`Using default PRD file: ${defaultPrdPath}`));
 					const numTasks = parseInt(options.numTasks, 10);
-					const outputPath = options.output;
+
+					// Check if we need to confirm overwrite
+					if (!(await confirmOverwriteIfNeeded())) return;
 
 					console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-					await mockParsePRD(defaultPrdPath, outputPath, numTasks);
+					if (append) {
+						console.log(chalk.blue('Appending to existing tasks...'));
+					}
+					await mockParsePRD(defaultPrdPath, outputPath, numTasks, { append });
 					return;
 				}
 
@@ -221,12 +240,20 @@ describe('Commands Module', () => {
 			}
 
 			const numTasks = parseInt(options.numTasks, 10);
-			const outputPath = options.output;
+
+			// Check if we need to confirm overwrite
+			if (!(await confirmOverwriteIfNeeded())) return;
 
 			console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
 			console.log(chalk.blue(`Generating ${numTasks} tasks...`));
+			if (append) {
+				console.log(chalk.blue('Appending to existing tasks...'));
+			}
 
-			await mockParsePRD(inputFile, outputPath, numTasks);
+			await mockParsePRD(inputFile, outputPath, numTasks, { append });
+
+			// Return mock for testing
+			return { mockConfirmOverwrite };
 		}
 
 		beforeEach(() => {
@@ -252,7 +279,8 @@ describe('Commands Module', () => {
 			expect(mockParsePRD).toHaveBeenCalledWith(
 				'scripts/prd.txt',
 				'tasks/tasks.json',
-				10 // Default value from command definition
+				10, // Default value from command definition
+				{ append: false }
 			);
 		});
 
@@ -290,7 +318,8 @@ describe('Commands Module', () => {
 			expect(mockParsePRD).toHaveBeenCalledWith(
 				testFile,
 				'tasks/tasks.json',
-				10
+				10,
+				{ append: false }
 			);
 			expect(mockExistsSync).not.toHaveBeenCalledWith('scripts/prd.txt');
 		});
@@ -313,7 +342,8 @@ describe('Commands Module', () => {
 			expect(mockParsePRD).toHaveBeenCalledWith(
 				testFile,
 				'tasks/tasks.json',
-				10
+				10,
+				{ append: false }
 			);
 			expect(mockExistsSync).not.toHaveBeenCalledWith('scripts/prd.txt');
 		});
@@ -331,7 +361,126 @@ describe('Commands Module', () => {
 			});
 
 			// Assert
-			expect(mockParsePRD).toHaveBeenCalledWith(testFile, outputFile, numTasks);
+			expect(mockParsePRD).toHaveBeenCalledWith(
+				testFile,
+				outputFile,
+				numTasks,
+				{ append: false }
+			);
+		});
+
+		test('should pass append flag to parsePRD when provided', async () => {
+			// Arrange
+			const testFile = 'test/prd.txt';
+
+			// Act - call the handler directly with append flag
+			await parsePrdAction(testFile, {
+				numTasks: '10',
+				output: 'tasks/tasks.json',
+				append: true
+			});
+
+			// Assert
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('Appending to existing tasks')
+			);
+			expect(mockParsePRD).toHaveBeenCalledWith(
+				testFile,
+				'tasks/tasks.json',
+				10,
+				{ append: true }
+			);
+		});
+
+		test('should bypass confirmation when append flag is true and tasks.json exists', async () => {
+			// Arrange
+			const testFile = 'test/prd.txt';
+			const outputFile = 'tasks/tasks.json';
+
+			// Mock that tasks.json exists
+			mockExistsSync.mockImplementation((path) => {
+				if (path === outputFile) return true;
+				if (path === testFile) return true;
+				return false;
+			});
+
+			// Act - call the handler with append flag
+			const { mockConfirmOverwrite } =
+				(await parsePrdAction(testFile, {
+					numTasks: '10',
+					output: outputFile,
+					append: true
+				})) || {};
+
+			// Assert - confirm overwrite should not be called with append flag
+			expect(mockConfirmOverwrite).not.toHaveBeenCalled();
+			expect(mockParsePRD).toHaveBeenCalledWith(testFile, outputFile, 10, {
+				append: true
+			});
+
+			// Reset mock implementation
+			mockExistsSync.mockReset();
+		});
+
+		test('should prompt for confirmation when append flag is false and tasks.json exists', async () => {
+			// Arrange
+			const testFile = 'test/prd.txt';
+			const outputFile = 'tasks/tasks.json';
+
+			// Mock that tasks.json exists
+			mockExistsSync.mockImplementation((path) => {
+				if (path === outputFile) return true;
+				if (path === testFile) return true;
+				return false;
+			});
+
+			// Act - call the handler without append flag
+			const { mockConfirmOverwrite } =
+				(await parsePrdAction(testFile, {
+					numTasks: '10',
+					output: outputFile
+					// append: false (default)
+				})) || {};
+
+			// Assert - confirm overwrite should be called without append flag
+			expect(mockConfirmOverwrite).toHaveBeenCalled();
+			expect(mockParsePRD).toHaveBeenCalledWith(testFile, outputFile, 10, {
+				append: false
+			});
+
+			// Reset mock implementation
+			mockExistsSync.mockReset();
+		});
+
+		test('should bypass confirmation when force flag is true, regardless of append flag', async () => {
+			// Arrange
+			const testFile = 'test/prd.txt';
+			const outputFile = 'tasks/tasks.json';
+
+			// Mock that tasks.json exists
+			mockExistsSync.mockImplementation((path) => {
+				if (path === outputFile) return true;
+				if (path === testFile) return true;
+				return false;
+			});
+
+			// Act - call the handler with force flag
+			const { mockConfirmOverwrite } =
+				(await parsePrdAction(testFile, {
+					numTasks: '10',
+					output: outputFile,
+					force: true,
+					append: false
+				})) || {};
+
+			// Assert - confirm overwrite should not be called with force flag
+			expect(mockConfirmOverwrite).not.toHaveBeenCalled();
+			expect(mockParsePRD).toHaveBeenCalledWith(testFile, outputFile, 10, {
+				append: false
+			});
+
+			// Reset mock implementation
+			mockExistsSync.mockReset();
 		});
 	});
 
