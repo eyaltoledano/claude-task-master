@@ -89,7 +89,9 @@ export function findTasksJsonPath(args, log) {
 
 	// 1. If project root is explicitly provided (e.g., from MCP session), use it directly
 	if (args.projectRoot) {
-		const projectRoot = args.projectRoot;
+		// Decode URL-encoded characters (like %20 to spaces) in projectRoot
+		// Fix for issues #192 and #246
+		const projectRoot = decodeURIComponent(args.projectRoot);
 		log.info(`Using explicitly provided project root: ${projectRoot}`);
 		try {
 			// This will throw if tasks.json isn't found within this root
