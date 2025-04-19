@@ -270,12 +270,14 @@ function getStatusWithColor(status, forTable = false) {
  * @param {Array} dependencies - Array of dependency IDs
  * @param {Array} allTasks - Array of all tasks
  * @param {boolean} forConsole - Whether the output is for console display
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
  * @returns {string} Formatted dependencies string
  */
 function formatDependenciesWithStatus(
 	dependencies,
 	allTasks,
-	forConsole = false
+	forConsole = false,
+	complexityReport = null // Add complexityReport parameter
 ) {
 	if (
 		!dependencies ||
@@ -338,8 +340,8 @@ function formatDependenciesWithStatus(
 		const numericDepId =
 			typeof depId === 'string' ? parseInt(depId, 10) : depId;
 
-		// Look up the task using the numeric ID
-		const depTask = findTaskById(allTasks, numericDepId);
+		// Look up the task using the numeric ID, passing the complexity report
+		const depTask = findTaskById(allTasks, numericDepId, complexityReport);
 
 		if (!depTask) {
 			return forConsole
@@ -670,7 +672,7 @@ function truncateString(str, maxLength) {
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
  */
-async function displayNextTask(tasksPath) {
+async function displayNextTask(tasksPath, complexityReportPath = null) {
 	displayBanner();
 
 	// Read the tasks file
@@ -679,6 +681,9 @@ async function displayNextTask(tasksPath) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
 	}
+
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
 
 	// Find the next task
 	const nextTask = findNextTask(data.tasks);
@@ -747,7 +752,12 @@ async function displayNextTask(tasksPath) {
 		],
 		[
 			chalk.cyan.bold('Dependencies:'),
-			formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)
+			formatDependenciesWithStatus(
+				nextTask.dependencies,
+				data.tasks,
+				true,
+				complexityReport
+			) // Pass complexityReport
 		],
 		[chalk.cyan.bold('Description:'), nextTask.description]
 	);
@@ -919,7 +929,7 @@ async function displayNextTask(tasksPath) {
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string|number} taskId - The ID of the task to display
  */
-async function displayTaskById(tasksPath, taskId) {
+async function displayTaskById(tasksPath, taskId, complexityReportPath = null) {
 	displayBanner();
 
 	// Read the tasks file
@@ -929,8 +939,11 @@ async function displayTaskById(tasksPath, taskId) {
 		process.exit(1);
 	}
 
-	// Find the task by ID
-	const task = findTaskById(data.tasks, taskId);
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
+	// Find the task by ID, passing the complexity report
+	const task = findTaskById(data.tasks, taskId, complexityReport);
 
 	if (!task) {
 		console.log(
@@ -1157,7 +1170,12 @@ async function displayTaskById(tasksPath, taskId) {
 		[chalk.cyan.bold('Priority:'), priorityColor(task.priority || 'medium')],
 		[
 			chalk.cyan.bold('Dependencies:'),
-			formatDependenciesWithStatus(task.dependencies, data.tasks, true)
+			formatDependenciesWithStatus(
+				task.dependencies,
+				data.tasks,
+				true,
+				complexityReport
+			) // Pass complexityReport
 		],
 		[chalk.cyan.bold('Description:'), task.description]
 	);

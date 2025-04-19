@@ -240,12 +240,15 @@ function formatTaskId(id) {
  * Finds a task by ID in the tasks array
  * @param {Array} tasks - The tasks array
  * @param {string|number} taskId - The task ID to find
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
  * @returns {Object|null} The task object or null if not found
  */
-function findTaskById(tasks, taskId) {
+function findTaskById(tasks, taskId, complexityReport = null) {
 	if (!taskId || !tasks || !Array.isArray(tasks)) {
 		return null;
 	}
+
+	let taskResult = null;
 
 	// Check if it's a subtask ID (e.g., "1.2")
 	if (typeof taskId === 'string' && taskId.includes('.')) {
@@ -267,13 +270,30 @@ function findTaskById(tasks, taskId) {
 				status: parentTask.status
 			};
 			subtask.isSubtask = true;
+			taskResult = subtask;
 		}
-
-		return subtask || null;
+	} else {
+		const id = parseInt(taskId, 10);
+		taskResult = tasks.find((t) => t.id === id) || null;
 	}
 
-	const id = parseInt(taskId, 10);
-	return tasks.find((t) => t.id === id) || null;
+	// If we found a task, check for complexity data
+	if (taskResult && complexityReport) {
+		if (complexityReport && complexityReport.complexityAnalysis) {
+			// For a main task, look for a direct match
+			if (!taskResult.isSubtask) {
+				const taskAnalysis = complexityReport.complexityAnalysis.find(
+					(analysis) => analysis.taskId === taskResult.id
+				);
+
+				if (taskAnalysis) {
+					taskResult.complexityScore = taskAnalysis.complexityScore;
+				}
+			}
+		}
+	}
+
+	return taskResult;
 }
 
 /**
@@ -400,22 +420,22 @@ function detectCamelCaseFlags(args) {
 // Export all utility functions and configuration
 export {
 	CONFIG,
-	LOG_LEVELS,
-	log,
-	readJSON,
-	writeJSON,
-	sanitizePrompt,
-	readComplexityReport,
-	findTaskInComplexityReport,
-	taskExists,
-	formatTaskId,
-	findTaskById,
-	truncate,
-	findCycles,
-	toKebabCase,
 	detectCamelCaseFlags,
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
+	findCycles,
+	findTaskById,
+	findTaskInComplexityReport,
+	formatTaskId,
+	getTaskManager,
 	isSilentMode,
-	getTaskManager
+	log,
+	LOG_LEVELS,
+	readComplexityReport,
+	readJSON,
+	sanitizePrompt,
+	taskExists,
+	toKebabCase,
+	truncate,
+	writeJSON
 };

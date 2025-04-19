@@ -705,6 +705,7 @@ async function updateTaskById(
 	tasksPath,
 	taskId,
 	prompt,
+	complexityReportPath = null,
 	useResearch = false,
 	{ reportProgress, mcpLog, session } = {}
 ) {
@@ -766,16 +767,17 @@ async function updateTaskById(
 			throw new Error(`Tasks file not found at path: ${tasksPath}`);
 		}
 
-		// Read the tasks file
+		// Read the tasks file and complexity report
 		const data = readJSON(tasksPath);
+		const complexityReport = readComplexityReport(complexityReportPath);
 		if (!data || !data.tasks) {
 			throw new Error(
 				`No valid tasks found in ${tasksPath}. The file may be corrupted or have an invalid format.`
 			);
 		}
 
-		// Find the specific task to update
-		const taskToUpdate = data.tasks.find((task) => task.id === taskId);
+		// Find the specific task to update, passing complexity report
+		const taskToUpdate = findTaskById(data.tasks, taskId, complexityReport);
 		if (!taskToUpdate) {
 			throw new Error(
 				`Task with ID ${taskId} not found. Please verify the task ID and try again.`
@@ -1363,10 +1365,18 @@ Return only the updated task as a valid JSON object.`
  * @param {Object} options - Additional options (mcpLog for MCP mode)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-function generateTaskFiles(tasksPath, outputDir, options = {}) {
+function generateTaskFiles(
+	tasksPath,
+	outputDir,
+	complexityReportPath = null,
+	options = {}
+) {
 	try {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
+
+		// Read complexity report once
+		const complexityReport = readComplexityReport(complexityReportPath);
 
 		log('info', `Reading tasks from ${tasksPath}...`);
 
@@ -1402,9 +1412,9 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			content += `# Title: ${task.title}\n`;
 			content += `# Status: ${task.status || 'pending'}\n`;
 
-			// Format dependencies with their status
+			// Format dependencies with their status, passing complexity report
 			if (task.dependencies && task.dependencies.length > 0) {
-				content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks, false)}\n`;
+				content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks, false, complexityReport)}\n`;
 			} else {
 				content += '# Dependencies: None\n';
 			}
@@ -1512,7 +1522,13 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
  * @param {Object} options - Additional options (mcpLog for MCP mode)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
+async function setTaskStatus(
+	tasksPath,
+	taskIdInput,
+	newStatus,
+	complexityReportPath = null,
+	options = {}
+) {
 	try {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
@@ -1562,7 +1578,8 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		// Display success message - only in CLI mode
 		if (!isMcpMode) {
 			for (const id of updatedTasks) {
-				const task = findTaskById(data.tasks, id);
+				// Pass complexityReport to findTaskById
+				const task = findTaskById(data.tasks, id, complexityReport);
 				const taskName = task ? task.title : id;
 
 				console.log(
@@ -1576,6 +1593,9 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 				);
 			}
 		}
+
+		// Read complexity report once
+		const complexityReport = readComplexityReport(complexityReportPath);
 
 		// Return success value for programmatic use
 		return {
@@ -2988,7 +3008,7 @@ async function expandAllTasks(
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIds - Task IDs to clear subtasks from
  */
-function clearSubtasks(tasksPath, taskIds) {
+function clearSubtasks(tasksPath, taskIds, complexityReportPath = null) {
 	displayBanner();
 
 	log('info', `Reading tasks from ${tasksPath}...`);
@@ -2997,6 +3017,9 @@ function clearSubtasks(tasksPath, taskIds) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
 	}
+
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
 
 	console.log(
 		boxen(chalk.white.bold('Clearing Subtasks'), {
@@ -3029,7 +3052,8 @@ function clearSubtasks(tasksPath, taskIds) {
 			return;
 		}
 
-		const task = data.tasks.find((t) => t.id === id);
+		// Pass complexityReport to findTaskById
+		const task = findTaskById(data.tasks, id, complexityReport);
 		if (!task) {
 			log('error', `Task ${id} not found`);
 			return;

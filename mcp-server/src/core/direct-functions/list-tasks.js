@@ -4,11 +4,11 @@
  */
 
 import { listTasks } from '../../../../scripts/modules/task-manager.js';
-import { getCachedOrExecute } from '../../tools/utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import { getCachedOrExecute } from '../../tools/utils.js';
 
 /**
  * Direct function wrapper for listTasks with error handling and caching.
@@ -19,7 +19,7 @@ import {
  */
 export async function listTasksDirect(args, log) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, status, withSubtasks } = args;
+	const { tasksJsonPath, reportPath, status, withSubtasks } = args;
 
 	if (!tasksJsonPath) {
 		log.error('listTasksDirect called without tasksJsonPath');
@@ -65,6 +65,21 @@ export async function listTasksDirect(args, log) {
 					}
 				};
 			}
+
+			// Add complexity scores to tasks if report exists
+			const complexityReport = readComplexityReport(reportPath);
+			if (complexityReport && complexityReport.complexityAnalysis) {
+				resultData.tasks = resultData.tasks.map((task) => {
+					const analysis = complexityReport.complexityAnalysis.find(
+						(a) => a.taskId === task.id
+					);
+					if (analysis) {
+						return { ...task, complexityScore: analysis.complexityScore };
+					}
+					return task;
+				});
+			}
+
 			log.info(
 				`Core listTasks function retrieved ${resultData.tasks.length} tasks`
 			);
