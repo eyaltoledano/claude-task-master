@@ -167,12 +167,7 @@ const testParsePRD = async (prdPath, outputPath, numTasks, options = {}) => {
 
 		const prdContent = mockReadFileSync(prdPath, 'utf8');
 		// Modify mockCallClaude to accept lastTaskId parameter
-		let newTasks = await mockCallClaude(
-			prdContent,
-			prdPath,
-			numTasks,
-			lastTaskId
-		);
+		let newTasks = await mockCallClaude(prdContent, prdPath, numTasks);
 
 		// Merge tasks if appending
 		const tasksData = append
@@ -873,7 +868,8 @@ describe('Task Manager Module', () => {
 			});
 
 			// Mock for reading existing tasks
-			mockReadJSON = jest.fn().mockReturnValue(existingTasks);
+			mockReadJSON.mockReturnValue(existingTasks);
+			// mockReadJSON = jest.fn().mockReturnValue(existingTasks);
 
 			// Mock callClaude to return new tasks with continuing IDs
 			mockCallClaude.mockResolvedValueOnce(newTasksWithContinuedIds);
