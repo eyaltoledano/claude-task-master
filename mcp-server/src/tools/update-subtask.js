@@ -20,12 +20,12 @@ export function registerUpdateSubtaskTool(server) {
 	server.addTool({
 		name: 'update_subtask',
 		description:
-			'Appends additional information to a specific subtask without replacing existing content',
+			'Appends timestamped information to a specific subtask without replacing existing content',
 		parameters: z.object({
 			id: z
 				.string()
 				.describe(
-					'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2")'
+					'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2"). Parent ID is the ID of the task that contains the subtask.'
 				),
 			prompt: z.string().describe('Information to add to the subtask'),
 			research: z

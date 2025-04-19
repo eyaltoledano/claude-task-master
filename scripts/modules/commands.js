@@ -1374,18 +1374,18 @@ function registerCommands(programInstance) {
 	// remove-task command
 	programInstance
 		.command('remove-task')
-		.description('Remove a task or subtask permanently')
+		.description('Remove one or more tasks or subtasks permanently')
 		.option(
 			'-i, --id <id>',
-			'ID of the task or subtask to remove (e.g., "5" or "5.2")'
+			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5" or "5.2" or "5,6,7")'
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			const taskId = options.id;
+			const taskIds = options.id;
 
-			if (!taskId) {
+			if (!taskIds) {
 				console.error(chalk.red('Error: Task ID is required'));
 				console.error(
 					chalk.yellow('Usage: task-master remove-task --id=<taskId>')
@@ -1394,7 +1394,7 @@ function registerCommands(programInstance) {
 			}
 
 			try {
-				// Check if the task exists
+				// Check if the tasks file exists and is valid
 				const data = readJSON(tasksPath);
 				if (!data || !data.tasks) {
 					console.error(
@@ -1403,67 +1403,81 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				if (!taskExists(data.tasks, taskId)) {
-					console.error(chalk.red(`Error: Task with ID ${taskId} not found`));
+				// Split task IDs if comma-separated
+				const taskIdArray = taskIds.split(',').map((id) => id.trim());
+
+				// Validate all task IDs exist before proceeding
+				const invalidTasks = taskIdArray.filter(
+					(id) => !taskExists(data.tasks, id)
+				);
+				if (invalidTasks.length > 0) {
+					console.error(
+						chalk.red(
+							`Error: The following tasks were not found: ${invalidTasks.join(', ')}`
+						)
+					);
 					process.exit(1);
 				}
 
-				// Load task for display
-				const task = findTaskById(data.tasks, taskId);
-
 				// Skip confirmation if --yes flag is provided
 				if (!options.yes) {
-					// Display task information
+					// Display tasks to be removed
 					console.log();
 					console.log(
 						chalk.red.bold(
-							'⚠️ WARNING: This will permanently delete the following task:'
+							'⚠️ WARNING: This will permanently delete the following tasks:'
 						)
 					);
 					console.log();
 
-					if (typeof taskId === 'string' && taskId.includes('.')) {
-						// It's a subtask
-						const [parentId, subtaskId] = taskId.split('.');
-						console.log(chalk.white.bold(`Subtask ${taskId}: ${task.title}`));
-						console.log(
-							chalk.gray(
-								`Parent Task: ${task.parentTask.id} - ${task.parentTask.title}`
-							)
-						);
-					} else {
-						// It's a main task
-						console.log(chalk.white.bold(`Task ${taskId}: ${task.title}`));
+					for (const taskId of taskIdArray) {
+						const task = findTaskById(data.tasks, taskId);
 
-						// Show if it has subtasks
-						if (task.subtasks && task.subtasks.length > 0) {
+						if (typeof taskId === 'string' && taskId.includes('.')) {
+							// It's a subtask
+							const [parentId, subtaskId] = taskId.split('.');
+							console.log(chalk.white.bold(`Subtask ${taskId}: ${task.title}`));
 							console.log(
-								chalk.yellow(
-									`⚠️ This task has ${task.subtasks.length} subtasks that will also be deleted!`
+								chalk.gray(
+									`Parent Task: ${task.parentTask.id} - ${task.parentTask.title}`
 								)
 							);
-						}
+						} else {
+							// It's a main task
+							console.log(chalk.white.bold(`Task ${taskId}: ${task.title}`));
 
-						// Show if other tasks depend on it
-						const dependentTasks = data.tasks.filter(
-							(t) =>
-								t.dependencies && t.dependencies.includes(parseInt(taskId, 10))
-						);
+							// Show if it has subtasks
+							if (task.subtasks && task.subtasks.length > 0) {
+								console.log(
+									chalk.yellow(
+										`⚠️ This task has ${task.subtasks.length} subtasks that will also be deleted!`
+									)
+								);
+							}
 
-						if (dependentTasks.length > 0) {
-							console.log(
-								chalk.yellow(
-									`⚠️ Warning: ${dependentTasks.length} other tasks depend on this task!`
-								)
+							// Show if other tasks depend on it
+							const dependentTasks = data.tasks.filter(
+								(t) =>
+									t.dependencies &&
+									t.dependencies.includes(parseInt(taskId, 10))
 							);
-							console.log(chalk.yellow('These dependencies will be removed:'));
-							dependentTasks.forEach((t) => {
-								console.log(chalk.yellow(`  - Task ${t.id}: ${t.title}`));
-							});
+
+							if (dependentTasks.length > 0) {
+								console.log(
+									chalk.yellow(
+										`⚠️ Warning: ${dependentTasks.length} other tasks depend on this task!`
+									)
+								);
+								console.log(
+									chalk.yellow('These dependencies will be removed:')
+								);
+								dependentTasks.forEach((t) => {
+									console.log(chalk.yellow(`  - Task ${t.id}: ${t.title}`));
+								});
+							}
 						}
+						console.log();
 					}
-
-					console.log();
 
 					// Prompt for confirmation
 					const { confirm } = await inquirer.prompt([
@@ -1471,7 +1485,7 @@ function registerCommands(programInstance) {
 							type: 'confirm',
 							name: 'confirm',
 							message: chalk.red.bold(
-								'Are you sure you want to permanently delete this task?'
+								`Are you sure you want to permanently delete ${taskIdArray.length > 1 ? 'these tasks' : 'this task'}?`
 							),
 							default: false
 						}
@@ -1483,31 +1497,72 @@ function registerCommands(programInstance) {
 					}
 				}
 
-				const indicator = startLoadingIndicator('Removing task...');
+				const indicator = startLoadingIndicator('Removing tasks...');
 
-				// Remove the task
-				const result = await removeTask(tasksPath, taskId);
+				// Remove each task
+				const results = [];
+				for (const taskId of taskIdArray) {
+					try {
+						const result = await removeTask(tasksPath, taskId);
+						results.push({ taskId, success: true, ...result });
+					} catch (error) {
+						results.push({ taskId, success: false, error: error.message });
+					}
+				}
 
 				stopLoadingIndicator(indicator);
 
-				// Display success message with appropriate color based on task or subtask
-				if (typeof taskId === 'string' && taskId.includes('.')) {
-					// It was a subtask
+				// Display results
+				const successfulRemovals = results.filter((r) => r.success);
+				const failedRemovals = results.filter((r) => !r.success);
+
+				if (successfulRemovals.length > 0) {
 					console.log(
 						boxen(
-							chalk.green(`Subtask ${taskId} has been successfully removed`),
-							{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+							chalk.green(
+								`Successfully removed ${successfulRemovals.length} task${successfulRemovals.length > 1 ? 's' : ''}`
+							) +
+								'\n\n' +
+								successfulRemovals
+									.map((r) =>
+										chalk.white(
+											`✓ ${r.taskId.includes('.') ? 'Subtask' : 'Task'} ${r.taskId}`
+										)
+									)
+									.join('\n'),
+							{
+								padding: 1,
+								borderColor: 'green',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
 						)
 					);
-				} else {
-					// It was a main task
+				}
+
+				if (failedRemovals.length > 0) {
 					console.log(
-						boxen(chalk.green(`Task ${taskId} has been successfully removed`), {
-							padding: 1,
-							borderColor: 'green',
-							borderStyle: 'round'
-						})
+						boxen(
+							chalk.red(
+								`Failed to remove ${failedRemovals.length} task${failedRemovals.length > 1 ? 's' : ''}`
+							) +
+								'\n\n' +
+								failedRemovals
+									.map((r) => chalk.white(`✗ ${r.taskId}: ${r.error}`))
+									.join('\n'),
+							{
+								padding: 1,
+								borderColor: 'red',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
+						)
 					);
+
+					// Exit with error if any removals failed
+					if (successfulRemovals.length === 0) {
+						process.exit(1);
+					}
 				}
 			} catch (error) {
 				console.error(

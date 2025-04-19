@@ -20,28 +20,22 @@ A task management system for AI-driven development with Claude, designed to work
 
 MCP (Model Control Protocol) provides the easiest way to get started with Task Master directly in your editor.
 
-1. **Install the package**
-
-```bash
-npm i -g task-master-ai
-```
-
-2. **Add the MCP config to your editor** (Cursor recommended, but it works with other text editors):
+1. **Add the MCP config to your editor** (Cursor recommended, but it works with other text editors):
 
 ```json
 {
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "task-master-mcp"],
+			"args": ["-y", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
 				"MODEL": "claude-3-7-sonnet-20250219",
 				"PERPLEXITY_MODEL": "sonar-pro",
-				"MAX_TOKENS": 64000,
-				"TEMPERATURE": 0.2,
-				"DEFAULT_SUBTASKS": 5,
+				"MAX_TOKENS": "64000",
+				"TEMPERATURE": "0.2",
+				"DEFAULT_SUBTASKS": "5",
 				"DEFAULT_PRIORITY": "medium"
 			}
 		}

@@ -20,7 +20,7 @@ export function registerUpdateTool(server) {
 	server.addTool({
 		name: 'update',
 		description:
-			"Update multiple upcoming tasks (with ID >= 'from' ID) based on new context or changes provided in the prompt. Use 'update_task' instead for a single specific task.",
+			"Update multiple upcoming tasks (with ID >= 'from' ID) based on new context or changes provided in the prompt. Use 'update_task' instead for a single specific task or 'update_subtask' for subtasks.",
 		parameters: z.object({
 			from: z
 				.string()

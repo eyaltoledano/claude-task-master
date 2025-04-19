@@ -10,32 +10,8 @@ export function registerInitializeProjectTool(server) {
 	server.addTool({
 		name: 'initialize_project',
 		description:
-			"Initializes a new Task Master project structure by calling the core initialization logic. Derives target directory from client session. If project details (name, description, author) are not provided, prompts the user or skips if 'yes' flag is true. DO NOT run without parameters.",
+			'Initializes a new Task Master project structure by calling the core initialization logic. Creates necessary folders and configuration files for Task Master in the current directory.',
 		parameters: z.object({
-			projectName: z
-				.string()
-				.optional()
-				.describe(
-					'The name for the new project. If not provided, prompt the user for it.'
-				),
-			projectDescription: z
-				.string()
-				.optional()
-				.describe(
-					'A brief description for the project. If not provided, prompt the user for it.'
-				),
-			projectVersion: z
-				.string()
-				.optional()
-				.describe(
-					"The initial version for the project (e.g., '0.1.0'). User input not needed unless user requests to override."
-				),
-			authorName: z
-				.string()
-				.optional()
-				.describe(
-					"The author's name. User input not needed unless user requests to override."
-				),
 			skipInstall: z
 				.boolean()
 				.optional()
@@ -47,15 +23,13 @@ export function registerInitializeProjectTool(server) {
 				.boolean()
 				.optional()
 				.default(false)
-				.describe(
-					'Add shell aliases (tm, taskmaster) to shell config file. User input not needed.'
-				),
+				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
 			yes: z
 				.boolean()
 				.optional()
-				.default(false)
+				.default(true)
 				.describe(
-					"Skip prompts and use default values or provided arguments. Use true if you wish to skip details like the project name, etc. If the project information required for the initialization is not available or provided by the user, prompt if the user wishes to provide them (name, description, author) or skip them. If the user wishes to skip, set the 'yes' flag to true and do not set any other parameters."
+					'Skip prompts and use default values. Always set to true for MCP tools.'
 				),
 			projectRoot: z
 				.string()
