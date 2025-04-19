@@ -1,14 +1,14 @@
 {
-	"tasks": [
-		{
-			"id": 1,
-			"dependencies": [],
-			"subtasks": [
-				{
-					"id": 1,
-					"dependencies": []
-				}
-			]
-		}
-	]
+  "tasks": [
+    {
+      "id": 1,
+      "dependencies": [],
+      "subtasks": [
+        {
+          "id": 1,
+          "dependencies": []
+        }
+      ]
+    }
+  ]
 }
