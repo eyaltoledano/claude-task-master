@@ -29,6 +29,11 @@ import { displayHelp, displayBanner } from '../scripts/modules/ui.js';
 import { registerCommands } from '../scripts/modules/commands.js';
 import { detectCamelCaseFlags } from '../scripts/modules/utils.js';
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
+import figlet from 'figlet';
+import gradient from 'gradient-string';
+import boxen from 'boxen';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

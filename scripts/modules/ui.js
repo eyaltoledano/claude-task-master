@@ -1,13 +1,12 @@
 /**
- * ui.js
- * User interface functions for the Task Master CLI
+ * Task Master UI Module
+ * Contains user interface related helper functions.
  */
 
-import chalk from 'chalk';
-import figlet from 'figlet';
 import boxen from 'boxen';
-import ora from 'ora';
-import Table from 'cli-table3';
+import chalk from 'chalk';
+import cliTable3 from 'cli-table3';
+import figlet from 'figlet';
 import gradient from 'gradient-string';
 import {
 	CONFIG,
@@ -19,10 +18,12 @@ import {
 } from './utils.js';
 import path from 'path';
 import fs from 'fs';
-import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
+import path from 'path';
 
-// Create a color gradient for the banner
-const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
+const Table = cliTable3;
+
+// Create cool gradients for styling
+const coolGradient = gradient(['#00b4d8', '#0077b6', '#023e8a']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
