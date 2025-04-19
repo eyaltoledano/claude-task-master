@@ -5,9 +5,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import os from 'os'; // Import os module for home directory check
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode

@@ -127,20 +127,18 @@ async function parsePRD(
 		// Read the PRD content
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 
-		// If appending and tasks.json exists, read it first
+		// If appending and tasks.json exists, read existing tasks first
 		let existingTasks = { tasks: [] };
 		let lastTaskId = 0;
 		if (append && fs.existsSync(tasksPath)) {
 			try {
 				existingTasks = readJSON(tasksPath);
-				if (existingTasks.tasks && existingTasks.tasks.length > 0) {
+				if (existingTasks.tasks?.length) {
 					// Find the highest task ID
-					lastTaskId = Math.max(
-						...existingTasks.tasks.map((task) => {
-							const mainId = parseInt(task.id.toString().split('.')[0], 10);
-							return isNaN(mainId) ? 0 : mainId;
-						})
-					);
+					lastTaskId = existingTasks.tasks.reduce((maxId, task) => {
+						const mainId = parseInt(task.id.toString().split('.')[0], 10) || 0;
+						return Math.max(maxId, mainId);
+					}, 0);
 				}
 			} catch (error) {
 				report(
@@ -156,11 +154,19 @@ async function parsePRD(
 			prdContent,
 			prdPath,
 			numTasks,
-			lastTaskId, // Pass the last task ID so new tasks continue the sequence
+			0,
 			{ reportProgress, mcpLog, session },
 			aiClient,
 			modelConfig
 		);
+
+		// Update task IDs if appending
+		if (append && lastTaskId > 0) {
+			report(`Updating task IDs to continue from ID ${lastTaskId}`, 'info');
+			newTasksData.tasks.forEach((task, index) => {
+				task.id = lastTaskId + index + 1;
+			});
+		}
 
 		// Merge tasks if appending
 		const tasksData = append
