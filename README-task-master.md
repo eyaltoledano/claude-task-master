@@ -193,7 +193,7 @@ While the standard [MCP setup](#setting-up-mcp-in-cursor) allows Taskmaster AI t
 
 For users seeking this enhanced control, a community-driven approach provides a way to manage Roo Code's behavior by fetching specific modes and rules from a dedicated repository:
 
-**Repository:** [neno-is-ooo/roo-taskmaster-patch](https://github.com/neno-is-ooo/roo-taskmaster-patch)
+**Repository:** [</> neno-is-ooo/roo-taskmaster-patch](https://github.com/neno-is-ooo/roo-taskmaster-patch)
 
 This repository contains:
 1.  An installation script (`install_taskmaster.py`) to automate the setup.
