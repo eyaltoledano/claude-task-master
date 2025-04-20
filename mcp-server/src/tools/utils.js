@@ -1,6 +1,7 @@
 /**
- * tools/utils.js
- * Utility functions for Task Master CLI integration
+ * utils.js
+ * 
+ * Common utility functions for MCP tools
  */
 
 import { spawnSync } from 'child_process';
@@ -346,11 +347,11 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 }
 
 /**
- * Recursively removes specified fields from task objects, whether single or in an array.
- * Handles common data structures returned by task commands.
- * @param {Object|Array} taskOrData - A single task object or a data object containing a 'tasks' array.
- * @param {string[]} fieldsToRemove - An array of field names to remove.
- * @returns {Object|Array} - The processed data with specified fields removed.
+ * Process API result and transform into standard response format
+ * @param {Object} result - Result from direct function
+ * @param {Object} log - Logger instance
+ * @param {string} errorPrefix - Prefix for error messages
+ * @returns {Object} Standardized response
  */
 function processMCPResponseData(
 	taskOrData,
@@ -417,9 +418,13 @@ function processMCPResponseData(
 }
 
 /**
- * Creates standard content response for tools
- * @param {string|Object} content - Content to include in response
- * @returns {Object} - Content response object in FastMCP format
+ * Safely handle long-running operations with proper timeout management
+ * This helps prevent connection drops and improves tool reliability
+ * 
+ * @param {Function} asyncOperation - The async function to execute
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 30000)
+ * @param {Object} logger - Optional logger instance
+ * @returns {Promise<any>} - Result of the operation
  */
 function createContentResponse(content) {
 	// FastMCP requires text type, so we format objects as JSON strings
@@ -439,9 +444,11 @@ function createContentResponse(content) {
 }
 
 /**
- * Creates error response for tools
- * @param {string} errorMessage - Error message to include in response
- * @returns {Object} - Error content response object in FastMCP format
+ * Format command result for display
+ * 
+ * @param {Object} result - The result object from the command execution
+ * @param {string} type - The type of content ('task', 'complexity-report', 'prd', 'json', etc.)
+ * @returns {Object} - Formatted result object with rich text if appropriate
  */
 export function createErrorResponse(errorMessage) {
 	return {

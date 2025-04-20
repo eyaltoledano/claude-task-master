@@ -1,10 +1,12 @@
 name: Release
+
 on:
   push:
     branches:
       - main
 jobs:
   release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +32,23 @@ jobs:
         run: npm ci
         timeout-minutes: 2
 
-      - name: Create Release Pull Request or Publish to npm
-        uses: changesets/action@v1
-        with:
-          publish: npm run release
+      - name: Run Tests
+        run: npm test
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_ENV: test
+          CI: true
+
+      - name: Build
+        run: npm run build
+
+      # Publish to npm
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true

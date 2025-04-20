@@ -1,13 +1,16 @@
 /**
- * task-manager.js
- * Task management functions for the Task Master CLI
+ * Task Manager Module
+ * 
+ * This module provides core task management functionality by re-exporting functions from dev.js
+ * or implementing equivalent functionality for use by other modules.
  */
 
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import Table from 'cli-table3';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { callLLMWithRetry } from './ai-services.js';
+import { log, readJSON, writeJSON, archiveTasksBeforeOverwrite, restoreArchive } from './utils.js';
 import readline from 'readline';
 import { Anthropic } from '@anthropic-ai/sdk';
 import ora from 'ora';
@@ -4759,12 +4762,12 @@ function isTaskDependentOn(allTasks, task, targetTaskId) {
 }
 
 /**
- * Remove a subtask from its parent task
+ * Add a new task to the tasks.json file
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {string} subtaskId - ID of the subtask to remove in format "parentId.subtaskId"
- * @param {boolean} convertToTask - Whether to convert the subtask to a standalone task
- * @param {boolean} generateFiles - Whether to regenerate task files after removing the subtask
- * @returns {Object|null} The removed subtask if convertToTask is true, otherwise null
+ * @param {string} prompt - Description of the task to create
+ * @param {Array} dependencies - Array of task IDs this task depends on
+ * @param {string} priority - Priority level for the task (high, medium, low)
+ * @returns {Promise<Object>} The newly created task
  */
 async function removeSubtask(
 	tasksPath,

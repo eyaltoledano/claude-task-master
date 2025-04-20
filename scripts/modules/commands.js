@@ -1,6 +1,7 @@
 /**
  * commands.js
- * Command-line interface for the Task Master CLI
+ * 
+ * Central registry for all CLI commands
  */
 
 import { program } from 'commander';
@@ -55,8 +56,8 @@ import {
 import { initializeProject } from '../init.js';
 
 /**
- * Configure and register CLI commands
- * @param {Object} program - Commander program instance
+ * Register all available CLI commands
+ * @param {Command} program - Commander program instance to register commands with
  */
 function registerCommands(programInstance) {
 	// Add global error handler for unknown options
@@ -1621,8 +1622,8 @@ function registerCommands(programInstance) {
 }
 
 /**
- * Setup the CLI application
- * @returns {Object} Configured Commander program
+ * Setup a CLI program with all Task Master commands
+ * @returns {Command} Configured commander program instance
  */
 function setupCLI() {
 	// Create a new program instance

@@ -1,6 +1,8 @@
 /**
- * tools/index.js
- * Export all Task Master CLI tools for MCP server
+ * index.js
+ * 
+ * This file registers all the Task Master tools with the MCP server.
+ * When adding a new tool, import its register function and add it to the registerAllTools function.
  */
 
 import { registerListTasksTool } from './get-tasks.js';

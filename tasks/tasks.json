@@ -1,12 +1,4 @@
 {
-  "meta": {
-    "projectName": "Your Project Name",
-    "version": "1.0.0",
-    "source": "scripts/prd.txt",
-    "description": "Tasks generated from PRD",
-    "totalTasksGenerated": 20,
-    "tasksIncluded": 20
-  },
   "tasks": [
     {
       "id": 1,
@@ -15,859 +7,174 @@
       "status": "done",
       "dependencies": [],
       "priority": "high",
-      "details": "Create the foundational data structure including:\n- JSON schema for tasks.json\n- Task model with all required fields (id, title, description, status, dependencies, priority, details, testStrategy, subtasks)\n- Validation functions for the task model\n- Basic file system operations for reading/writing tasks.json\n- Error handling for file operations",
-      "testStrategy": "Verify that the tasks.json structure can be created, read, and validated. Test with sample data to ensure all fields are properly handled and that validation correctly identifies invalid structures.",
-      "subtasks": [],
-      "previousStatus": "in-progress"
+      "status": "pending",
+      "dependencies": []
     },
     {
       "id": 2,
-      "title": "Develop Command Line Interface Foundation",
-      "description": "Create the basic CLI structure using Commander.js with command parsing and help documentation.",
-      "status": "done",
+      "title": "Refactor context-manager.js for better separation of concerns",
+      "description": "Restructure the context manager to improve code organization and maintainability",
+      "details": "Extract business logic into separate modules, create clear interfaces between components, ensure the context manager focuses solely on context management. Apply the single responsibility principle throughout the refactoring.",
+      "testStrategy": "Create comprehensive unit tests before refactoring to ensure behavior doesn't change. After refactoring, run the same tests to verify functionality is preserved. Add new tests for any extracted components.",
+      "priority": "medium",
+      "status": "pending",
       "dependencies": [
         1
-      ],
-      "priority": "high",
-      "details": "Implement the CLI foundation including:\n- Set up Commander.js for command parsing\n- Create help documentation for all commands\n- Implement colorized console output for better readability\n- Add logging system with configurable levels\n- Handle global options (--help, --version, --file, --quiet, --debug, --json)",
-      "testStrategy": "Test each command with various parameters to ensure proper parsing. Verify help documentation is comprehensive and accurate. Test logging at different verbosity levels.",
-      "subtasks": []
+      ]
     },
     {
       "id": 3,
-      "title": "Implement Basic Task Operations",
-      "description": "Create core functionality for managing tasks including listing, creating, updating, and deleting tasks.",
-      "status": "done",
+      "title": "Implement task prioritization mechanism",
+      "description": "Add support for prioritizing tasks with different urgency levels",
+      "details": "Implement priority levels (High, Medium, Low), create a priority queue for task execution, develop logic for dynamic reprioritization of pending tasks, and add preemption capabilities for high-priority tasks.",
+      "testStrategy": "Create unit tests for priority queue implementation. Develop integration tests that verify tasks are executed in priority order. Test edge cases like reprioritization during execution.",
+      "priority": "high",
+      "status": "pending",
       "dependencies": [
         1
-      ],
-      "priority": "high",
-      "details": "Implement the following task operations:\n- List tasks with filtering options\n- Create new tasks with required fields\n- Update existing task properties\n- Delete tasks\n- Change task status (pending/done/deferred)\n- Handle dependencies between tasks\n- Manage task priorities",
-      "testStrategy": "Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file.",
-      "subtasks": []
+      ]
     },
     {
       "id": 4,
-      "title": "Create Task File Generation System",
-      "description": "Implement the system for generating individual task files from the tasks.json data structure.",
-      "status": "done",
+      "title": "Add task failure recovery strategies",
+      "description": "Implement mechanisms to handle and recover from task failures",
+      "details": "Add automatic retry logic with configurable attempts, implement exponential backoff, create fallback mechanisms for failed tasks, add dead-letter queue for persistently failing tasks, and implement a notification system for critical failures.",
+      "testStrategy": "Create tests that simulate various failure scenarios. Verify retry logic works correctly with the configured number of attempts. Test that dead-letter queue captures failed tasks properly.",
+      "priority": "high",
+      "status": "pending",
       "dependencies": [
         1,
         3
-      ],
-      "priority": "medium",
-      "details": "Build the task file generation system including:\n- Create task file templates\n- Implement generation of task files from tasks.json\n- Add bi-directional synchronization between task files and tasks.json\n- Implement proper file naming and organization\n- Handle updates to task files reflecting back to tasks.json",
-      "testStrategy": "Generate task files from sample tasks.json data and verify the content matches the expected format. Test synchronization by modifying task files and ensuring changes are reflected in tasks.json.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Design Task File Template Structure",
-          "description": "Create the template structure for individual task files that will be generated from tasks.json. This includes defining the format with sections for task ID, title, status, dependencies, priority, description, details, test strategy, and subtasks. Implement a template engine or string formatting system that can populate these templates with task data. The template should follow the format specified in the PRD's Task File Format section.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Template structure matches the specification in the PRD\n- Template includes all required sections (ID, title, status, dependencies, etc.)\n- Template supports proper formatting of multi-line content like details and test strategy\n- Template handles subtasks correctly, including proper indentation and formatting\n- Template system is modular and can be easily modified if requirements change"
-        },
-        {
-          "id": 2,
-          "title": "Implement Task File Generation Logic",
-          "description": "Develop the core functionality to generate individual task files from the tasks.json data structure. This includes reading the tasks.json file, iterating through each task, applying the template to each task's data, and writing the resulting content to appropriately named files in the tasks directory. Ensure proper error handling for file operations and data validation.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Successfully reads tasks from tasks.json\n- Correctly applies template to each task's data\n- Generates files with proper naming convention (e.g., task_001.txt)\n- Creates the tasks directory if it doesn't exist\n- Handles errors gracefully (file not found, permission issues, etc.)\n- Validates task data before generation to prevent errors\n- Logs generation process with appropriate verbosity levels"
-        },
-        {
-          "id": 3,
-          "title": "Implement File Naming and Organization System",
-          "description": "Create a consistent system for naming and organizing task files. Implement a function that generates standardized filenames based on task IDs (e.g., task_001.txt for task ID 1). Design the directory structure for storing task files according to the PRD specification. Ensure the system handles task ID formatting consistently and prevents filename collisions.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Generates consistent filenames based on task IDs with proper zero-padding\n- Creates and maintains the correct directory structure as specified in the PRD\n- Handles special characters or edge cases in task IDs appropriately\n- Prevents filename collisions between different tasks\n- Provides utility functions for converting between task IDs and filenames\n- Maintains backward compatibility if the naming scheme needs to evolve"
-        },
-        {
-          "id": 4,
-          "title": "Implement Task File to JSON Synchronization",
-          "description": "Develop functionality to read modified task files and update the corresponding entries in tasks.json. This includes parsing the task file format, extracting structured data, validating the changes, and updating the tasks.json file accordingly. Ensure the system can handle concurrent modifications and resolve conflicts appropriately.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3,
-            2
-          ],
-          "acceptanceCriteria": "- Successfully parses task files to extract structured data\n- Validates parsed data against the task model schema\n- Updates tasks.json with changes from task files\n- Handles conflicts when the same task is modified in both places\n- Preserves task relationships and dependencies during synchronization\n- Provides clear error messages for parsing or validation failures\n- Updates the \"updatedAt\" timestamp in tasks.json metadata"
-        },
-        {
-          "id": 5,
-          "title": "Implement Change Detection and Update Handling",
-          "description": "Create a system to detect changes in task files and tasks.json, and handle updates bidirectionally. This includes implementing file watching or comparison mechanisms, determining which version is newer, and applying changes in the appropriate direction. Ensure the system handles edge cases like deleted files, new tasks, and conflicting changes.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3,
-            4,
-            2
-          ],
-          "acceptanceCriteria": "- Detects changes in both task files and tasks.json\n- Determines which version is newer based on modification timestamps or content\n- Applies changes in the appropriate direction (file to JSON or JSON to file)\n- Handles edge cases like deleted files, new tasks, and renamed tasks\n- Provides options for manual conflict resolution when necessary\n- Maintains data integrity during the synchronization process\n- Includes a command to force synchronization in either direction\n- Logs all synchronization activities for troubleshooting\n\nEach of these subtasks addresses a specific component of the task file generation system, following a logical progression from template design to bidirectional synchronization. The dependencies ensure that prerequisites are completed before dependent work begins, and the acceptance criteria provide clear guidelines for verifying each subtask's completion."
-        }
       ]
     },
     {
       "id": 5,
-      "title": "Integrate Anthropic Claude API",
-      "description": "Set up the integration with Claude API for AI-powered task generation and expansion.",
-      "status": "done",
+      "title": "Expand AI service integration beyond Claude",
+      "description": "Add support for additional AI services like OpenAI's GPT models",
+      "details": "Implement adapter pattern for different AI service providers, create a unified API for interacting with all AI services, develop service selection logic based on task requirements, and add configuration options for each service.",
+      "testStrategy": "Create mock implementations of each AI service for testing. Develop integration tests with actual services using test API keys. Verify the adapter pattern correctly handles differences between services.",
+      "priority": "medium",
+      "status": "pending",
       "dependencies": [
-        1
-      ],
-      "priority": "high",
-      "details": "Implement Claude API integration including:\n- API authentication using environment variables\n- Create prompt templates for various operations\n- Implement response handling and parsing\n- Add error management with retries and exponential backoff\n- Implement token usage tracking\n- Create configurable model parameters",
-      "testStrategy": "Test API connectivity with sample prompts. Verify authentication works correctly with different API keys. Test error handling by simulating API failures.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Configure API Authentication System",
-          "description": "Create a dedicated module for Anthropic API authentication. Implement a secure system to load API keys from environment variables using dotenv. Include validation to ensure API keys are properly formatted and present. Create a configuration object that will store all Claude-related settings including API keys, base URLs, and default parameters.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Environment variables are properly loaded from .env file\n- API key validation is implemented with appropriate error messages\n- Configuration object includes all necessary Claude API parameters\n- Authentication can be tested with a simple API call\n- Documentation is added for required environment variables"
-        },
-        {
-          "id": 2,
-          "title": "Develop Prompt Template System",
-          "description": "Create a flexible prompt template system for Claude API interactions. Implement a PromptTemplate class that can handle variable substitution, system and user messages, and proper formatting according to Claude's requirements. Include templates for different operations (task generation, task expansion, etc.) with appropriate instructions and constraints for each use case.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- PromptTemplate class supports variable substitution\n- System and user message separation is properly implemented\n- Templates exist for all required operations (task generation, expansion, etc.)\n- Templates include appropriate constraints and formatting instructions\n- Template system is unit tested with various inputs"
-        },
-        {
-          "id": 3,
-          "title": "Implement Response Handling and Parsing",
-          "description": "Create a response handling system that processes Claude API responses. Implement JSON parsing for structured outputs, error detection in responses, and extraction of relevant information. Build utility functions to transform Claude's responses into the application's data structures. Include validation to ensure responses meet expected formats.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- Response parsing functions handle both JSON and text formats\n- Error detection identifies malformed or unexpected responses\n- Utility functions transform responses into task data structures\n- Validation ensures responses meet expected schemas\n- Edge cases like empty or partial responses are handled gracefully"
-        },
-        {
-          "id": 4,
-          "title": "Build Error Management with Retry Logic",
-          "description": "Implement a robust error handling system for Claude API interactions. Create middleware that catches API errors, network issues, and timeout problems. Implement exponential backoff retry logic that increases wait time between retries. Add configurable retry limits and timeout settings. Include detailed logging for troubleshooting API issues.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3
-          ],
-          "acceptanceCriteria": "- All API errors are caught and handled appropriately\n- Exponential backoff retry logic is implemented\n- Retry limits and timeouts are configurable\n- Detailed error logging provides actionable information\n- System degrades gracefully when API is unavailable\n- Unit tests verify retry behavior with mocked API failures"
-        },
-        {
-          "id": 5,
-          "title": "Implement Token Usage Tracking",
-          "description": "Create a token tracking system to monitor Claude API usage. Implement functions to count tokens in prompts and responses. Build a logging system that records token usage per operation. Add reporting capabilities to show token usage trends and costs. Implement configurable limits to prevent unexpected API costs.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3
-          ],
-          "acceptanceCriteria": "- Token counting functions accurately estimate usage\n- Usage logging records tokens per operation type\n- Reporting functions show usage statistics and estimated costs\n- Configurable limits can prevent excessive API usage\n- Warning system alerts when approaching usage thresholds\n- Token tracking data is persisted between application runs"
-        },
-        {
-          "id": 6,
-          "title": "Create Model Parameter Configuration System",
-          "description": "Implement a flexible system for configuring Claude model parameters. Create a configuration module that manages model selection, temperature, top_p, max_tokens, and other parameters. Build functions to customize parameters based on operation type. Add validation to ensure parameters are within acceptable ranges. Include preset configurations for different use cases (creative, precise, etc.).",
-          "status": "done",
-          "dependencies": [
-            1,
-            5
-          ],
-          "acceptanceCriteria": "- Configuration module manages all Claude model parameters\n- Parameter customization functions exist for different operations\n- Validation ensures parameters are within acceptable ranges\n- Preset configurations exist for different use cases\n- Parameters can be overridden at runtime when needed\n- Documentation explains parameter effects and recommended values\n- Unit tests verify parameter validation and configuration loading"
-        }
+        1,
+        4
       ]
     },
     {
       "id": 6,
-      "title": "Build PRD Parsing System",
-      "description": "Create the system for parsing Product Requirements Documents into structured task lists.",
-      "status": "done",
+      "title": "Enhance Claude AI integration capabilities",
+      "description": "Improve the existing Claude integration with support for more features",
+      "details": "Add support for all Claude API parameters, implement streaming response handling, add support for different Claude models (Claude 3 Opus, Sonnet, Haiku), and create specialized prompts for different task types.",
+      "testStrategy": "Create unit tests for parameter handling. Develop integration tests with Claude API to verify correct interaction. Test streaming responses with various payload sizes.",
+      "priority": "medium",
+      "status": "pending",
       "dependencies": [
-        1,
-        5
-      ],
-      "priority": "high",
-      "details": "Implement PRD parsing functionality including:\n- PRD file reading from specified path\n- Prompt engineering for effective PRD parsing\n- Convert PRD content to task structure via Claude API\n- Implement intelligent dependency inference\n- Add priority assignment logic\n- Handle large PRDs by chunking if necessary",
-      "testStrategy": "Test with sample PRDs of varying complexity. Verify that generated tasks accurately reflect the requirements in the PRD. Check that dependencies and priorities are logically assigned.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement PRD File Reading Module",
-          "description": "Create a module that can read PRD files from a specified file path. The module should handle different file formats (txt, md, docx) and extract the text content. Implement error handling for file not found, permission issues, and invalid file formats. Add support for encoding detection and proper text extraction to ensure the content is correctly processed regardless of the source format.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Function accepts a file path and returns the PRD content as a string\n- Supports at least .txt and .md file formats (with extensibility for others)\n- Implements robust error handling with meaningful error messages\n- Successfully reads files of various sizes (up to 10MB)\n- Preserves formatting where relevant for parsing (headings, lists, code blocks)"
-        },
-        {
-          "id": 2,
-          "title": "Design and Engineer Effective PRD Parsing Prompts",
-          "description": "Create a set of carefully engineered prompts for Claude API that effectively extract structured task information from PRD content. Design prompts that guide Claude to identify tasks, dependencies, priorities, and implementation details from unstructured PRD text. Include system prompts, few-shot examples, and output format specifications to ensure consistent results.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- At least 3 different prompt templates optimized for different PRD styles/formats\n- Prompts include clear instructions for identifying tasks, dependencies, and priorities\n- Output format specification ensures Claude returns structured, parseable data\n- Includes few-shot examples to guide Claude's understanding\n- Prompts are optimized for token efficiency while maintaining effectiveness"
-        },
-        {
-          "id": 3,
-          "title": "Implement PRD to Task Conversion System",
-          "description": "Develop the core functionality that sends PRD content to Claude API and converts the response into the task data structure. This includes sending the engineered prompts with PRD content to Claude, parsing the structured response, and transforming it into valid task objects that conform to the task model. Implement validation to ensure the generated tasks meet all requirements.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Successfully sends PRD content to Claude API with appropriate prompts\n- Parses Claude's response into structured task objects\n- Validates generated tasks against the task model schema\n- Handles API errors and response parsing failures gracefully\n- Generates unique and sequential task IDs"
-        },
-        {
-          "id": 4,
-          "title": "Build Intelligent Dependency Inference System",
-          "description": "Create an algorithm that analyzes the generated tasks and infers logical dependencies between them. The system should identify which tasks must be completed before others based on the content and context of each task. Implement both explicit dependency detection (from Claude's output) and implicit dependency inference (based on task relationships and logical ordering).",
-          "status": "done",
-          "dependencies": [
-            1,
-            3
-          ],
-          "acceptanceCriteria": "- Correctly identifies explicit dependencies mentioned in task descriptions\n- Infers implicit dependencies based on task context and relationships\n- Prevents circular dependencies in the task graph\n- Provides confidence scores for inferred dependencies\n- Allows for manual override/adjustment of detected dependencies"
-        },
-        {
-          "id": 5,
-          "title": "Implement Priority Assignment Logic",
-          "description": "Develop a system that assigns appropriate priorities (high, medium, low) to tasks based on their content, dependencies, and position in the PRD. Create algorithms that analyze task descriptions, identify critical path tasks, and consider factors like technical risk and business value. Implement both automated priority assignment and manual override capabilities.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3
-          ],
-          "acceptanceCriteria": "- Assigns priorities based on multiple factors (dependencies, critical path, risk)\n- Identifies foundation/infrastructure tasks as high priority\n- Balances priorities across the project (not everything is high priority)\n- Provides justification for priority assignments\n- Allows for manual adjustment of priorities"
-        },
-        {
-          "id": 6,
-          "title": "Implement PRD Chunking for Large Documents",
-          "description": "Create a system that can handle large PRDs by breaking them into manageable chunks for processing. Implement intelligent document segmentation that preserves context across chunks, tracks section relationships, and maintains coherence in the generated tasks. Develop a mechanism to reassemble and deduplicate tasks generated from different chunks into a unified task list.",
-          "status": "done",
-          "dependencies": [
-            1,
-            5,
-            3
-          ],
-          "acceptanceCriteria": "- Successfully processes PRDs larger than Claude's context window\n- Intelligently splits documents at logical boundaries (sections, chapters)\n- Preserves context when processing individual chunks\n- Reassembles tasks from multiple chunks into a coherent task list\n- Detects and resolves duplicate or overlapping tasks\n- Maintains correct dependency relationships across chunks"
-        }
+        1
       ]
     },
     {
       "id": 7,
-      "title": "Implement Task Expansion with Claude",
-      "description": "Create functionality to expand tasks into subtasks using Claude's AI capabilities.",
-      "status": "done",
+      "title": "Implement comprehensive monitoring and observability",
+      "description": "Add monitoring capabilities to track system performance and health",
+      "details": "Implement structured logging throughout the application, add metrics collection for task execution times and success rates, create hooks for external monitoring tools, and develop health check endpoints.",
+      "testStrategy": "Verify logs contain required information. Create tests that check metrics are correctly incremented. Test health check endpoints return appropriate status based on system state.",
+      "priority": "high",
+      "status": "pending",
       "dependencies": [
-        3,
-        5
-      ],
-      "priority": "medium",
-      "details": "Build task expansion functionality including:\n- Create subtask generation prompts\n- Implement workflow for expanding a task into subtasks\n- Add context-aware expansion capabilities\n- Implement parent-child relationship management\n- Allow specification of number of subtasks to generate\n- Provide mechanism to regenerate unsatisfactory subtasks",
-      "testStrategy": "Test expanding various types of tasks into subtasks. Verify that subtasks are properly linked to parent tasks. Check that context is properly incorporated into generated subtasks.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Design and Implement Subtask Generation Prompts",
-          "description": "Create optimized prompt templates for Claude to generate subtasks from parent tasks. Design the prompts to include task context, project information, and formatting instructions that ensure consistent, high-quality subtask generation. Implement a prompt template system that allows for dynamic insertion of task details, configurable number of subtasks, and additional context parameters.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- At least two prompt templates are created (standard and detailed)\n- Prompts include clear instructions for formatting subtask output\n- Prompts dynamically incorporate task title, description, details, and context\n- Prompts include parameters for specifying the number of subtasks to generate\n- Prompt system allows for easy modification and extension of templates"
-        },
-        {
-          "id": 2,
-          "title": "Develop Task Expansion Workflow and UI",
-          "description": "Implement the command-line interface and workflow for expanding tasks into subtasks. Create a new command that allows users to select a task, specify the number of subtasks, and add optional context. Design the interaction flow to handle the API request, process the response, and update the tasks.json file with the newly generated subtasks.",
-          "status": "done",
-          "dependencies": [
-            5
-          ],
-          "acceptanceCriteria": "- Command `node scripts/dev.js expand --id=<task_id> --count=<number>` is implemented\n- Optional parameters for additional context (`--context=\"...\"`) are supported\n- User is shown progress indicators during API calls\n- Generated subtasks are displayed for review before saving\n- Command handles errors gracefully with helpful error messages\n- Help documentation for the expand command is comprehensive"
-        },
-        {
-          "id": 3,
-          "title": "Implement Context-Aware Expansion Capabilities",
-          "description": "Enhance the task expansion functionality to incorporate project context when generating subtasks. Develop a system to gather relevant information from the project, such as related tasks, dependencies, and previously completed work. Implement logic to include this context in the Claude prompts to improve the relevance and quality of generated subtasks.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- System automatically gathers context from related tasks and dependencies\n- Project metadata is incorporated into expansion prompts\n- Implementation details from dependent tasks are included in context\n- Context gathering is configurable (amount and type of context)\n- Generated subtasks show awareness of existing project structure and patterns\n- Context gathering has reasonable performance even with large task collections"
-        },
-        {
-          "id": 4,
-          "title": "Build Parent-Child Relationship Management",
-          "description": "Implement the data structure and operations for managing parent-child relationships between tasks and subtasks. Create functions to establish these relationships in the tasks.json file, update the task model to support subtask arrays, and develop utilities to navigate, filter, and display task hierarchies. Ensure all basic task operations (update, delete, etc.) properly handle subtask relationships.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Task model is updated to include subtasks array\n- Subtasks have proper ID format (parent.sequence)\n- Parent tasks track their subtasks with proper references\n- Task listing command shows hierarchical structure\n- Completing all subtasks automatically updates parent task status\n- Deleting a parent task properly handles orphaned subtasks\n- Task file generation includes subtask information"
-        },
-        {
-          "id": 5,
-          "title": "Implement Subtask Regeneration Mechanism",
-          "description": "Create functionality that allows users to regenerate unsatisfactory subtasks. Implement a command that can target specific subtasks for regeneration, preserve satisfactory subtasks, and incorporate feedback to improve the new generation. Design the system to maintain proper parent-child relationships and task IDs during regeneration.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            4
-          ],
-          "acceptanceCriteria": "- Command `node scripts/dev.js regenerate --id=<subtask_id>` is implemented\n- Option to regenerate all subtasks for a parent (`--all`)\n- Feedback parameter allows user to guide regeneration (`--feedback=\"...\"`)\n- Original subtask details are preserved in prompt context\n- Regenerated subtasks maintain proper ID sequence\n- Task relationships remain intact after regeneration\n- Command provides clear before/after comparison of subtasks"
-        }
+        1
       ]
     },
     {
       "id": 8,
-      "title": "Develop Implementation Drift Handling",
-      "description": "Create system to handle changes in implementation that affect future tasks.",
-      "status": "done",
-      "dependencies": [
-        3,
-        5,
-        7
-      ],
+      "title": "Enhance architecture for improved scalability",
+      "description": "Modify the system architecture to better handle increased load",
+      "details": "Implement horizontal scaling capabilities for the MCP server, add load balancing for task distribution, optimize resource utilization, and create a distributed task execution model.",
+      "testStrategy": "Perform load testing to verify scalability improvements. Test system behavior under various load conditions. Verify task distribution works correctly across multiple instances.",
       "priority": "medium",
-      "details": "Implement drift handling including:\n- Add capability to update future tasks based on completed work\n- Implement task rewriting based on new context\n- Create dependency chain updates when tasks change\n- Preserve completed work while updating future tasks\n- Add command to analyze and suggest updates to future tasks",
-      "testStrategy": "Simulate implementation changes and test the system's ability to update future tasks appropriately. Verify that completed tasks remain unchanged while pending tasks are updated correctly.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Create Task Update Mechanism Based on Completed Work",
-          "description": "Implement a system that can identify pending tasks affected by recently completed tasks and update them accordingly. This requires analyzing the dependency chain and determining which future tasks need modification based on implementation decisions made in completed tasks. Create a function that takes a completed task ID as input, identifies dependent tasks, and prepares them for potential updates.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Function implemented to identify all pending tasks that depend on a specified completed task\n- System can extract relevant implementation details from completed tasks\n- Mechanism to flag tasks that need updates based on implementation changes\n- Unit tests that verify the correct tasks are identified for updates\n- Command-line interface to trigger the update analysis process"
-        },
-        {
-          "id": 2,
-          "title": "Implement AI-Powered Task Rewriting",
-          "description": "Develop functionality to use Claude API to rewrite pending tasks based on new implementation context. This involves creating specialized prompts that include the original task description, the implementation details of completed dependency tasks, and instructions to update the pending task to align with the actual implementation. The system should generate updated task descriptions, details, and test strategies.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Specialized Claude prompt template for task rewriting\n- Function to gather relevant context from completed dependency tasks\n- Implementation of task rewriting logic that preserves task ID and dependencies\n- Proper error handling for API failures\n- Mechanism to preview changes before applying them\n- Unit tests with mock API responses"
-        },
-        {
-          "id": 3,
-          "title": "Build Dependency Chain Update System",
-          "description": "Create a system to update task dependencies when task implementations change. This includes adding new dependencies that weren't initially identified, removing dependencies that are no longer relevant, and reordering dependencies based on implementation decisions. The system should maintain the integrity of the dependency graph while reflecting the actual implementation requirements.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Function to analyze and update the dependency graph\n- Capability to add new dependencies to tasks\n- Capability to remove obsolete dependencies\n- Validation to prevent circular dependencies\n- Preservation of dependency chain integrity\n- CLI command to visualize dependency changes\n- Unit tests for dependency graph modifications"
-        },
-        {
-          "id": 4,
-          "title": "Implement Completed Work Preservation",
-          "description": "Develop a mechanism to ensure that updates to future tasks don't affect completed work. This includes creating a versioning system for tasks, tracking task history, and implementing safeguards to prevent modifications to completed tasks. The system should maintain a record of task changes while ensuring that completed work remains stable.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Implementation of task versioning to track changes\n- Safeguards that prevent modifications to tasks marked as \"done\"\n- System to store and retrieve task history\n- Clear visual indicators in the CLI for tasks that have been modified\n- Ability to view the original version of a modified task\n- Unit tests for completed work preservation"
-        },
-        {
-          "id": 5,
-          "title": "Create Update Analysis and Suggestion Command",
-          "description": "Implement a CLI command that analyzes the current state of tasks, identifies potential drift between completed and pending tasks, and suggests updates. This command should provide a comprehensive report of potential inconsistencies and offer recommendations for task updates without automatically applying them. It should include options to apply all suggested changes, select specific changes to apply, or ignore suggestions.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- New CLI command \"analyze-drift\" implemented\n- Comprehensive analysis of potential implementation drift\n- Detailed report of suggested task updates\n- Interactive mode to select which suggestions to apply\n- Batch mode to apply all suggested changes\n- Option to export suggestions to a file for review\n- Documentation of the command usage and options\n- Integration tests that verify the end-to-end workflow"
-        }
+      "status": "pending",
+      "dependencies": [
+        1,
+        3,
+        4
       ]
     },
     {
       "id": 9,
-      "title": "Integrate Perplexity API",
-      "description": "Add integration with Perplexity API for research-backed task generation.",
-      "status": "done",
+      "title": "Improve system resilience",
+      "description": "Enhance the application's ability to handle failures and recover gracefully",
+      "details": "Implement circuit breakers for external service calls, add rate limiting to prevent overload, create bulkhead patterns to isolate failures, and implement graceful degradation strategies.",
+      "testStrategy": "Create tests that simulate service failures and verify circuit breaker behavior. Test rate limiting under high load. Verify system continues to function when parts are unavailable.",
+      "priority": "high",
+      "status": "pending",
       "dependencies": [
-        5
-      ],
-      "priority": "low",
-      "details": "Implement Perplexity integration including:\n- API authentication via OpenAI client\n- Create research-oriented prompt templates\n- Implement response handling for Perplexity\n- Add fallback to Claude when Perplexity is unavailable\n- Implement response quality comparison logic\n- Add configuration for model selection",
-      "testStrategy": "Test connectivity to Perplexity API. Verify research-oriented prompts return useful information. Test fallback mechanism by simulating Perplexity API unavailability.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement Perplexity API Authentication Module",
-          "description": "Create a dedicated module for authenticating with the Perplexity API using the OpenAI client library. This module should handle API key management, connection setup, and basic error handling. Implement environment variable support for the PERPLEXITY_API_KEY and PERPLEXITY_MODEL variables with appropriate defaults as specified in the PRD. Include a connection test function to verify API access.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Authentication module successfully connects to Perplexity API using OpenAI client\n- Environment variables for API key and model selection are properly handled\n- Connection test function returns appropriate success/failure responses\n- Basic error handling for authentication failures is implemented\n- Documentation for required environment variables is added to .env.example"
-        },
-        {
-          "id": 2,
-          "title": "Develop Research-Oriented Prompt Templates",
-          "description": "Design and implement specialized prompt templates optimized for research tasks with Perplexity. Create a template system that can generate contextually relevant research prompts based on task information. These templates should be structured to leverage Perplexity's online search capabilities and should follow the Research-Backed Expansion Prompt Structure defined in the PRD. Include mechanisms to control prompt length and focus.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- At least 3 different research-oriented prompt templates are implemented\n- Templates can be dynamically populated with task context and parameters\n- Prompts are optimized for Perplexity's capabilities and response format\n- Template system is extensible to allow for future additions\n- Templates include appropriate system instructions to guide Perplexity's responses"
-        },
-        {
-          "id": 3,
-          "title": "Create Perplexity Response Handler",
-          "description": "Implement a specialized response handler for Perplexity API responses. This should parse and process the JSON responses from Perplexity, extract relevant information, and transform it into the task data structure format. Include validation to ensure responses meet quality standards and contain the expected information. Implement streaming response handling if supported by the API client.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Response handler successfully parses Perplexity API responses\n- Handler extracts structured task information from free-text responses\n- Validation logic identifies and handles malformed or incomplete responses\n- Response streaming is properly implemented if supported\n- Handler includes appropriate error handling for various response scenarios\n- Unit tests verify correct parsing of sample responses"
-        },
-        {
-          "id": 4,
-          "title": "Implement Claude Fallback Mechanism",
-          "description": "Create a fallback system that automatically switches to the Claude API when Perplexity is unavailable or returns errors. This system should detect API failures, rate limiting, or quality issues with Perplexity responses and seamlessly transition to using Claude with appropriate prompt modifications. Implement retry logic with exponential backoff before falling back to Claude. Log all fallback events for monitoring.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- System correctly detects Perplexity API failures and availability issues\n- Fallback to Claude is triggered automatically when needed\n- Prompts are appropriately modified when switching to Claude\n- Retry logic with exponential backoff is implemented before fallback\n- All fallback events are logged with relevant details\n- Configuration option allows setting the maximum number of retries"
-        },
-        {
-          "id": 5,
-          "title": "Develop Response Quality Comparison and Model Selection",
-          "description": "Implement a system to compare response quality between Perplexity and Claude, and provide configuration options for model selection. Create metrics for evaluating response quality (e.g., specificity, relevance, actionability). Add configuration options that allow users to specify which model to use for different types of tasks. Implement a caching mechanism to reduce API calls and costs when appropriate.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Quality comparison logic evaluates responses based on defined metrics\n- Configuration system allows selection of preferred models for different operations\n- Model selection can be controlled via environment variables and command-line options\n- Response caching mechanism reduces duplicate API calls\n- System logs quality metrics for later analysis\n- Documentation clearly explains model selection options and quality metrics\n\nThese subtasks provide a comprehensive breakdown of the Perplexity API integration task, covering all the required aspects mentioned in the original task description while ensuring each subtask is specific, actionable, and technically relevant."
-        }
+        1,
+        4,
+        8
       ]
     },
     {
       "id": 10,
-      "title": "Create Research-Backed Subtask Generation",
-      "description": "Enhance subtask generation with research capabilities from Perplexity API.",
-      "status": "done",
+      "title": "Strengthen security measures",
+      "description": "Improve application security through authentication, authorization, and secure handling of sensitive data",
+      "details": "Implement proper authentication and authorization, add input validation for all external inputs, create secure handling for API keys and credentials, and implement audit logging for security-relevant events.",
+      "testStrategy": "Perform security testing including penetration testing. Verify input validation prevents common attacks. Test authentication and authorization mechanisms against unauthorized access attempts.",
+      "priority": "high",
+      "status": "pending",
       "dependencies": [
-        7,
-        9
-      ],
-      "priority": "low",
-      "details": "Implement research-backed generation including:\n- Create specialized research prompts for different domains\n- Implement context enrichment from research results\n- Add domain-specific knowledge incorporation\n- Create more detailed subtask generation with best practices\n- Include references to relevant libraries and tools",
-      "testStrategy": "Compare subtasks generated with and without research backing. Verify that research-backed subtasks include more specific technical details and best practices.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Design Domain-Specific Research Prompt Templates",
-          "description": "Create a set of specialized prompt templates for different software development domains (e.g., web development, mobile, data science, DevOps). Each template should be structured to extract relevant best practices, libraries, tools, and implementation patterns from Perplexity API. Implement a prompt template selection mechanism based on the task context and domain.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- At least 5 domain-specific prompt templates are created and stored in a dedicated templates directory\n- Templates include specific sections for querying best practices, tools, libraries, and implementation patterns\n- A prompt selection function is implemented that can determine the appropriate template based on task metadata\n- Templates are parameterized to allow dynamic insertion of task details and context\n- Documentation is added explaining each template's purpose and structure"
-        },
-        {
-          "id": 2,
-          "title": "Implement Research Query Execution and Response Processing",
-          "description": "Build a module that executes research queries using the Perplexity API integration. This should include sending the domain-specific prompts, handling the API responses, and parsing the results into a structured format that can be used for context enrichment. Implement error handling, rate limiting, and fallback to Claude when Perplexity is unavailable.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Function to execute research queries with proper error handling and retries\n- Response parser that extracts structured data from Perplexity's responses\n- Fallback mechanism that uses Claude when Perplexity fails or is unavailable\n- Caching system to avoid redundant API calls for similar research queries\n- Logging system for tracking API usage and response quality\n- Unit tests verifying correct handling of successful and failed API calls"
-        },
-        {
-          "id": 3,
-          "title": "Develop Context Enrichment Pipeline",
-          "description": "Create a pipeline that processes research results and enriches the task context with relevant information. This should include filtering irrelevant information, organizing research findings by category (tools, libraries, best practices, etc.), and formatting the enriched context for use in subtask generation. Implement a scoring mechanism to prioritize the most relevant research findings.",
-          "status": "done",
-          "dependencies": [
-            2
-          ],
-          "acceptanceCriteria": "- Context enrichment function that takes raw research results and task details as input\n- Filtering system to remove irrelevant or low-quality information\n- Categorization of research findings into distinct sections (tools, libraries, patterns, etc.)\n- Relevance scoring algorithm to prioritize the most important findings\n- Formatted output that can be directly used in subtask generation prompts\n- Tests comparing enriched context quality against baseline"
-        },
-        {
-          "id": 4,
-          "title": "Implement Domain-Specific Knowledge Incorporation",
-          "description": "Develop a system to incorporate domain-specific knowledge into the subtask generation process. This should include identifying key domain concepts, technical requirements, and industry standards from the research results. Create a knowledge base structure that organizes domain information and can be referenced during subtask generation.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Domain knowledge extraction function that identifies key technical concepts\n- Knowledge base structure for organizing domain-specific information\n- Integration with the subtask generation prompt to incorporate relevant domain knowledge\n- Support for technical terminology and concept explanation in generated subtasks\n- Mechanism to link domain concepts to specific implementation recommendations\n- Tests verifying improved technical accuracy in generated subtasks"
-        },
-        {
-          "id": 5,
-          "title": "Enhance Subtask Generation with Technical Details",
-          "description": "Extend the existing subtask generation functionality to incorporate research findings and produce more technically detailed subtasks. This includes modifying the Claude prompt templates to leverage the enriched context, implementing specific sections for technical approach, implementation notes, and potential challenges. Ensure generated subtasks include concrete technical details rather than generic steps.",
-          "status": "done",
-          "dependencies": [
-            3,
-            4
-          ],
-          "acceptanceCriteria": "- Enhanced prompt templates for Claude that incorporate research-backed context\n- Generated subtasks include specific technical approaches and implementation details\n- Each subtask contains references to relevant tools, libraries, or frameworks\n- Implementation notes section with code patterns or architectural recommendations\n- Potential challenges and mitigation strategies are included where appropriate\n- Comparative tests showing improvement over baseline subtask generation"
-        },
-        {
-          "id": 6,
-          "title": "Implement Reference and Resource Inclusion",
-          "description": "Create a system to include references to relevant libraries, tools, documentation, and other resources in generated subtasks. This should extract specific references from research results, validate their relevance, and format them as actionable links or citations within subtasks. Implement a verification step to ensure referenced resources are current and applicable.",
-          "status": "done",
-          "dependencies": [
-            3,
-            5
-          ],
-          "acceptanceCriteria": "- Reference extraction function that identifies tools, libraries, and resources from research\n- Validation mechanism to verify reference relevance and currency\n- Formatting system for including references in subtask descriptions\n- Support for different reference types (GitHub repos, documentation, articles, etc.)\n- Optional version specification for referenced libraries and tools\n- Tests verifying that included references are relevant and accessible"
-        }
+        1
       ]
     },
     {
       "id": 11,
-      "title": "Implement Batch Operations",
-      "description": "Add functionality for performing operations on multiple tasks simultaneously.",
-      "status": "done",
-      "dependencies": [
-        3
-      ],
-      "priority": "medium",
-      "details": "Create batch operations including:\n- Implement multi-task status updates\n- Add bulk subtask generation\n- Create task filtering and querying capabilities\n- Implement advanced dependency management\n- Add batch prioritization\n- Create commands for operating on filtered task sets",
-      "testStrategy": "Test batch operations with various filters and operations. Verify that operations are applied correctly to all matching tasks. Test with large task sets to ensure performance.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement Multi-Task Status Update Functionality",
-          "description": "Create a command-line interface command that allows users to update the status of multiple tasks simultaneously. Implement the backend logic to process batch status changes, validate the requested changes, and update the tasks.json file accordingly. The implementation should include options for filtering tasks by various criteria (ID ranges, status, priority, etc.) and applying status changes to the filtered set.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Command accepts parameters for filtering tasks (e.g., `--status=pending`, `--priority=high`, `--id=1,2,3-5`)\n- Command accepts a parameter for the new status value (e.g., `--new-status=done`)\n- All matching tasks are updated in the tasks.json file\n- Command provides a summary of changes made (e.g., \"Updated 5 tasks from 'pending' to 'done'\")\n- Command handles errors gracefully (e.g., invalid status values, no matching tasks)\n- Changes are persisted correctly to tasks.json"
-        },
-        {
-          "id": 2,
-          "title": "Develop Bulk Subtask Generation System",
-          "description": "Create functionality to generate multiple subtasks across several parent tasks at once. This should include a command-line interface that accepts filtering parameters to select parent tasks and either a template for subtasks or an AI-assisted generation option. The system should validate parent tasks, generate appropriate subtasks with proper ID assignments, and update the tasks.json file.",
-          "status": "done",
-          "dependencies": [
-            3,
-            4
-          ],
-          "acceptanceCriteria": "- Command accepts parameters for filtering parent tasks\n- Command supports template-based subtask generation with variable substitution\n- Command supports AI-assisted subtask generation using Claude API\n- Generated subtasks have proper IDs following the parent.sequence format (e.g., 1.1, 1.2)\n- Subtasks inherit appropriate properties from parent tasks (e.g., dependencies)\n- Generated subtasks are added to the tasks.json file\n- Task files are regenerated to include the new subtasks\n- Command provides a summary of subtasks created"
-        },
-        {
-          "id": 3,
-          "title": "Implement Advanced Task Filtering and Querying",
-          "description": "Create a robust filtering and querying system that can be used across all batch operations. Implement a query syntax that allows for complex filtering based on task properties, including status, priority, dependencies, ID ranges, and text search within titles and descriptions. Design the system to be reusable across different batch operation commands.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Support for filtering by task properties (status, priority, dependencies)\n- Support for ID-based filtering (individual IDs, ranges, exclusions)\n- Support for text search within titles and descriptions\n- Support for logical operators (AND, OR, NOT) in filters\n- Query parser that converts command-line arguments to filter criteria\n- Reusable filtering module that can be imported by other commands\n- Comprehensive test cases covering various filtering scenarios\n- Documentation of the query syntax for users"
-        },
-        {
-          "id": 4,
-          "title": "Create Advanced Dependency Management System",
-          "description": "Implement batch operations for managing dependencies between tasks. This includes commands for adding, removing, and updating dependencies across multiple tasks simultaneously. The system should validate dependency changes to prevent circular dependencies, update the tasks.json file, and regenerate task files to reflect the changes.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Command for adding dependencies to multiple tasks at once\n- Command for removing dependencies from multiple tasks\n- Command for replacing dependencies across multiple tasks\n- Validation to prevent circular dependencies\n- Validation to ensure referenced tasks exist\n- Automatic update of affected task files\n- Summary report of dependency changes made\n- Error handling for invalid dependency operations"
-        },
-        {
-          "id": 5,
-          "title": "Implement Batch Task Prioritization and Command System",
-          "description": "Create a system for batch prioritization of tasks and a command framework for operating on filtered task sets. This includes commands for changing priorities of multiple tasks at once and a generic command execution system that can apply custom operations to filtered task sets. The implementation should include a plugin architecture that allows for extending the system with new batch operations.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Command for changing priorities of multiple tasks at once\n- Support for relative priority changes (e.g., increase/decrease priority)\n- Generic command execution framework that works with the filtering system\n- Plugin architecture for registering new batch operations\n- At least three example plugins (e.g., batch tagging, batch assignment, batch export)\n- Command for executing arbitrary operations on filtered task sets\n- Documentation for creating new batch operation plugins\n- Performance testing with large task sets (100+ tasks)"
-        }
-      ]
+      "title": "Improve test coverage across the codebase",
+      "description": "Expand test suite to cover more code paths and edge cases",
+      "details": "Achieve minimum 80% code coverage for all modules, add tests for edge cases and error conditions, implement property-based testing for complex logic, and create integration tests for all critical paths.",
+      "testStrategy": "Use code coverage tools to identify untested code. Create a test plan that prioritizes critical components. Implement continuous integration to run tests automatically.",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": []
     },
     {
       "id": 12,
-      "title": "Develop Project Initialization System",
-      "description": "Create functionality for initializing new projects with task structure and configuration.",
-      "status": "done",
-      "dependencies": [
-        1,
-        3,
-        4,
-        6
-      ],
+      "title": "Optimize task execution performance",
+      "description": "Improve the speed and efficiency of task processing",
+      "details": "Implement caching for repetitive tasks, add parallel execution capabilities, create performance profiling for identifying bottlenecks, and optimize resource utilization during task execution.",
+      "testStrategy": "Create performance benchmarks to measure improvements. Test with various workloads to verify optimization effectiveness. Measure resource utilization before and after changes.",
       "priority": "medium",
-      "details": "Implement project initialization including:\n- Create project templating system\n- Implement interactive setup wizard\n- Add environment configuration generation\n- Create initial directory structure\n- Generate example tasks.json\n- Set up default configuration",
-      "testStrategy": "Test project initialization in empty directories. Verify that all required files and directories are created correctly. Test the interactive setup with various inputs.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Create Project Template Structure",
-          "description": "Design and implement a flexible project template system that will serve as the foundation for new project initialization. This should include creating a base directory structure, template files (e.g., default tasks.json, .env.example), and a configuration file to define customizable aspects of the template.",
-          "status": "done",
-          "dependencies": [
-            4
-          ],
-          "acceptanceCriteria": "- A `templates` directory is created with at least one default project template"
-        },
-        {
-          "id": 2,
-          "title": "Implement Interactive Setup Wizard",
-          "description": "Develop an interactive command-line wizard using a library like Inquirer.js to guide users through the project initialization process. The wizard should prompt for project name, description, initial task structure, and other configurable options defined in the template configuration.",
-          "status": "done",
-          "dependencies": [
-            3
-          ],
-          "acceptanceCriteria": "- Interactive wizard prompts for essential project information"
-        },
-        {
-          "id": 3,
-          "title": "Generate Environment Configuration",
-          "description": "Create functionality to generate environment-specific configuration files based on user input and template defaults. This includes creating a .env file with necessary API keys and configuration values, and updating the tasks.json file with project-specific metadata.",
-          "status": "done",
-          "dependencies": [
-            2
-          ],
-          "acceptanceCriteria": "- .env file is generated with placeholders for required API keys"
-        },
-        {
-          "id": 4,
-          "title": "Implement Directory Structure Creation",
-          "description": "Develop the logic to create the initial directory structure for new projects based on the selected template and user inputs. This should include creating necessary subdirectories (e.g., tasks/, scripts/, .cursor/rules/) and copying template files to appropriate locations.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Directory structure is created according to the template specification"
-        },
-        {
-          "id": 5,
-          "title": "Generate Example Tasks.json",
-          "description": "Create functionality to generate an initial tasks.json file with example tasks based on the project template and user inputs from the setup wizard. This should include creating a set of starter tasks that demonstrate the task structure and provide a starting point for the project.",
-          "status": "done",
-          "dependencies": [
-            6
-          ],
-          "acceptanceCriteria": "- An initial tasks.json file is generated with at least 3 example tasks"
-        },
-        {
-          "id": 6,
-          "title": "Implement Default Configuration Setup",
-          "description": "Develop the system for setting up default configurations for the project, including initializing the .cursor/rules/ directory with dev_workflow.mdc, cursor_rules.mdc, and self_improve.mdc files. Also, create a default package.json with necessary dependencies and scripts for the project.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- .cursor/rules/ directory is created with required .mdc files"
-        }
+      "status": "pending",
+      "dependencies": [
+        3,
+        4
       ]
     },
     {
       "id": 13,
-      "title": "Create Cursor Rules Implementation",
-      "description": "Develop the Cursor AI integration rules and documentation.",
-      "status": "done",
+      "title": "Enhance command line interface",
+      "description": "Improve the usability of the CLI for better user experience",
+      "details": "Add interactive mode with command suggestions, implement colorized output for better readability, create progress indicators for long-running tasks, and add command history and recall functionality.",
+      "testStrategy": "Conduct usability testing with actual users. Create automated tests for CLI functionality. Verify all commands work as expected in different environments.",
+      "priority": "low",
+      "status": "pending",
       "dependencies": [
-        1,
-        3
-      ],
-      "priority": "medium",
-      "details": "Implement Cursor rules including:\n- Create dev_workflow.mdc documentation\n- Implement cursor_rules.mdc\n- Add self_improve.mdc\n- Design rule integration documentation\n- Set up .cursor directory structure\n- Document how Cursor AI should interact with the system",
-      "testStrategy": "Review rules documentation for clarity and completeness. Test with Cursor AI to verify the rules are properly interpreted and followed.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Set up .cursor Directory Structure",
-          "description": "Create the required directory structure for Cursor AI integration, including the .cursor folder and rules subfolder. This provides the foundation for storing all Cursor-related configuration files and rule documentation. Ensure proper permissions and gitignore settings are configured to maintain these files correctly.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- .cursor directory created at the project root\n- .cursor/rules subdirectory created\n- Directory structure matches the specification in the PRD\n- Appropriate entries added to .gitignore to handle .cursor directory correctly\n- README documentation updated to mention the .cursor directory purpose"
-        },
-        {
-          "id": 2,
-          "title": "Create dev_workflow.mdc Documentation",
-          "description": "Develop the dev_workflow.mdc file that documents the development workflow for Cursor AI. This file should outline how Cursor AI should assist with task discovery, implementation, and verification within the project. Include specific examples of commands and interactions that demonstrate the optimal workflow.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- dev_workflow.mdc file created in .cursor/rules directory\n- Document clearly explains the development workflow with Cursor AI\n- Workflow documentation includes task discovery process\n- Implementation guidance for Cursor AI is detailed\n- Verification procedures are documented\n- Examples of typical interactions are provided"
-        },
-        {
-          "id": 3,
-          "title": "Implement cursor_rules.mdc",
-          "description": "Create the cursor_rules.mdc file that defines specific rules and guidelines for how Cursor AI should interact with the codebase. This should include code style preferences, architectural patterns to follow, documentation requirements, and any project-specific conventions that Cursor AI should adhere to when generating or modifying code.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- cursor_rules.mdc file created in .cursor/rules directory\n- Rules document clearly defines code style guidelines\n- Architectural patterns and principles are specified\n- Documentation requirements for generated code are outlined\n- Project-specific naming conventions are documented\n- Rules for handling dependencies and imports are defined\n- Guidelines for test implementation are included"
-        },
-        {
-          "id": 4,
-          "title": "Add self_improve.mdc Documentation",
-          "description": "Develop the self_improve.mdc file that instructs Cursor AI on how to continuously improve its assistance capabilities within the project context. This document should outline how Cursor AI should learn from feedback, adapt to project evolution, and enhance its understanding of the codebase over time.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- self_improve.mdc file created in .cursor/rules directory\n- Document outlines feedback incorporation mechanisms\n- Guidelines for adapting to project evolution are included\n- Instructions for enhancing codebase understanding over time\n- Strategies for improving code suggestions based on past interactions\n- Methods for refining prompt responses based on user feedback\n- Approach for maintaining consistency with evolving project patterns"
-        },
-        {
-          "id": 5,
-          "title": "Create Cursor AI Integration Documentation",
-          "description": "Develop comprehensive documentation on how Cursor AI integrates with the task management system. This should include detailed instructions on how Cursor AI should interpret tasks.json, individual task files, and how it should assist with implementation. Document the specific commands and workflows that Cursor AI should understand and support.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3,
-            4
-          ],
-          "acceptanceCriteria": "- Integration documentation created and stored in an appropriate location\n- Documentation explains how Cursor AI should interpret tasks.json structure\n- Guidelines for Cursor AI to understand task dependencies and priorities\n- Instructions for Cursor AI to assist with task implementation\n- Documentation of specific commands Cursor AI should recognize\n- Examples of effective prompts for working with the task system\n- Troubleshooting section for common Cursor AI integration issues\n- Documentation references all created rule files and explains their purpose"
-        }
+        1
       ]
     },
     {
       "id": 14,
-      "title": "Develop Agent Workflow Guidelines",
-      "description": "Create comprehensive guidelines for how AI agents should interact with the task system.",
-      "status": "done",
-      "dependencies": [
-        13
-      ],
+      "title": "Improve dependency management processes",
+      "description": "Enhance how the application manages and updates its dependencies",
+      "details": "Implement automated dependency updates with security checks, create a policy for dependency evaluation and approval, add license compliance checking, and implement dependency visualization and analysis.",
+      "testStrategy": "Verify automated updates work correctly. Test the application with updated dependencies to ensure compatibility. Check that security vulnerabilities are properly identified.",
       "priority": "medium",
-      "details": "Create agent workflow guidelines including:\n- Document task discovery workflow\n- Create task selection guidelines\n- Implement implementation guidance\n- Add verification procedures\n- Define how agents should prioritize work\n- Create guidelines for handling dependencies",
-      "testStrategy": "Review guidelines with actual AI agents to verify they can follow the procedures. Test various scenarios to ensure the guidelines cover all common workflows.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Document Task Discovery Workflow",
-          "description": "Create a comprehensive document outlining how AI agents should discover and interpret new tasks within the system. This should include steps for parsing the tasks.json file, interpreting task metadata, and understanding the relationships between tasks and subtasks. Implement example code snippets in Node.js demonstrating how to traverse the task structure and extract relevant information.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Detailed markdown document explaining the task discovery process"
-        },
-        {
-          "id": 2,
-          "title": "Implement Task Selection Algorithm",
-          "description": "Develop an algorithm for AI agents to select the most appropriate task to work on based on priority, dependencies, and current project status. This should include logic for evaluating task urgency, managing blocked tasks, and optimizing workflow efficiency. Implement the algorithm in JavaScript and integrate it with the existing task management system.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- JavaScript module implementing the task selection algorithm"
-        },
-        {
-          "id": 3,
-          "title": "Create Implementation Guidance Generator",
-          "description": "Develop a system that generates detailed implementation guidance for AI agents based on task descriptions and project context. This should leverage the Anthropic Claude API to create step-by-step instructions, suggest relevant libraries or tools, and provide code snippets or pseudocode where appropriate. Implement caching to reduce API calls and improve performance.",
-          "status": "done",
-          "dependencies": [
-            5
-          ],
-          "acceptanceCriteria": "- Node.js module for generating implementation guidance using Claude API"
-        },
-        {
-          "id": 4,
-          "title": "Develop Verification Procedure Framework",
-          "description": "Create a flexible framework for defining and executing verification procedures for completed tasks. This should include a DSL (Domain Specific Language) for specifying acceptance criteria, automated test generation where possible, and integration with popular testing frameworks. Implement hooks for both automated and manual verification steps.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- JavaScript module implementing the verification procedure framework"
-        },
-        {
-          "id": 5,
-          "title": "Implement Dynamic Task Prioritization System",
-          "description": "Develop a system that dynamically adjusts task priorities based on project progress, dependencies, and external factors. This should include an algorithm for recalculating priorities, a mechanism for propagating priority changes through dependency chains, and an API for external systems to influence priorities. Implement this as a background process that periodically updates the tasks.json file.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- Node.js module implementing the dynamic prioritization system"
-        }
-      ]
+      "status": "pending",
+      "dependencies": []
     },
     {
       "id": 15,
-      "title": "Optimize Agent Integration with Cursor and dev.js Commands",
-      "description": "Document and enhance existing agent interaction patterns through Cursor rules and dev.js commands.",
-      "status": "done",
-      "dependencies": [
-        14
-      ],
-      "priority": "medium",
-      "details": "Optimize agent integration including:\n- Document and improve existing agent interaction patterns in Cursor rules\n- Enhance integration between Cursor agent capabilities and dev.js commands\n- Improve agent workflow documentation in cursor rules (dev_workflow.mdc, cursor_rules.mdc)\n- Add missing agent-specific features to existing commands\n- Leverage existing infrastructure rather than building a separate system",
-      "testStrategy": "Test the enhanced commands with AI agents to verify they can correctly interpret and use them. Verify that agents can effectively interact with the task system using the documented patterns in Cursor rules.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Document Existing Agent Interaction Patterns",
-          "description": "Review and document the current agent interaction patterns in Cursor rules (dev_workflow.mdc, cursor_rules.mdc). Create comprehensive documentation that explains how agents should interact with the task system using existing commands and patterns.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Comprehensive documentation of existing agent interaction patterns in Cursor rules"
-        },
-        {
-          "id": 2,
-          "title": "Enhance Integration Between Cursor Agents and dev.js Commands",
-          "description": "Improve the integration between Cursor's built-in agent capabilities and the dev.js command system. Ensure that agents can effectively use all task management commands and that the command outputs are optimized for agent consumption.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Enhanced integration between Cursor agents and dev.js commands"
-        },
-        {
-          "id": 3,
-          "title": "Optimize Command Responses for Agent Consumption",
-          "description": "Refine the output format of existing commands to ensure they are easily parseable by AI agents. Focus on consistent, structured outputs that agents can reliably interpret without requiring a separate parsing system.",
-          "status": "done",
-          "dependencies": [
-            2
-          ],
-          "acceptanceCriteria": "- Command outputs optimized for agent consumption"
-        },
-        {
-          "id": 4,
-          "title": "Improve Agent Workflow Documentation in Cursor Rules",
-          "description": "Enhance the agent workflow documentation in dev_workflow.mdc and cursor_rules.mdc to provide clear guidance on how agents should interact with the task system. Include example interactions and best practices for agents.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3
-          ],
-          "acceptanceCriteria": "- Enhanced agent workflow documentation in Cursor rules"
-        },
-        {
-          "id": 5,
-          "title": "Add Agent-Specific Features to Existing Commands",
-          "description": "Identify and implement any missing agent-specific features in the existing command system. This may include additional flags, parameters, or output formats that are particularly useful for agent interactions.",
-          "status": "done",
-          "dependencies": [
-            2
-          ],
-          "acceptanceCriteria": "- Agent-specific features added to existing commands"
-        },
-        {
-          "id": 6,
-          "title": "Create Agent Usage Examples and Patterns",
-          "description": "Develop a set of example interactions and usage patterns that demonstrate how agents should effectively use the task system. Include these examples in the documentation to guide future agent implementations.",
-          "status": "done",
-          "dependencies": [
-            3,
-            4
-          ],
-          "acceptanceCriteria": "- Comprehensive set of agent usage examples and patterns"
-        }
-      ]
-    },
-    {
-      "id": 16,
-      "title": "Create Configuration Management System",
-      "description": "Implement robust configuration handling with environment variables and .env files.",
-      "status": "done",
-      "dependencies": [
-        1
-      ],
+      "title": "Create comprehensive documentation",
+      "description": "Develop detailed documentation for code, APIs, and user guides",
+      "details": "Add comprehensive JSDoc comments to all functions and classes, create architecture diagrams explaining component relationships, document design patterns and architectural decisions, write installation and setup guides, and create API documentation with examples.",
+      "testStrategy": "Verify documentation accuracy by having team members follow guides. Check that JSDoc generates complete API documentation. Test examples to ensure they work as documented.",
       "priority": "high",
       "details": "Build configuration management including:\n- Environment variable handling\n- .env file support\n- Configuration validation\n- Sensible defaults with overrides\n- Create .env.example template\n- Add configuration documentation\n- Implement secure handling of API keys",
       "testStrategy": "Test configuration loading from various sources (environment variables, .env files). Verify that validation correctly identifies invalid configurations. Test that defaults are applied when values are missing.",
@@ -2737,5 +2044,10 @@
       "dependencies": [],
       "priority": "medium"
     }
-  ]
+  ],
+  "metadata": {
+    "generatedAt": "2025-04-13T15:47:12.605Z",
+    "source": "prd-parser",
+    "prdFile": "prd.txt"
+  }
 }

@@ -169,7 +169,14 @@ This will:
 
 - Parse your PRD document
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+- Automatically run task complexity analysis to identify which tasks are complex and should be broken down
 - The agent will understand this process due to the Cursor rules
+
+If you want to skip the automatic complexity analysis, you can add the `--skip-complexity` flag:
+
+```bash
+task-master parse-prd scripts/prd.txt --skip-complexity
+```
 
 ### Generate Individual Task Files
 
@@ -323,11 +330,14 @@ Here's a comprehensive reference of all available commands:
 ### Parse PRD
 
 ```bash
-# Parse a PRD file and generate tasks
+# Parse a PRD file and generate tasks (automatically runs complexity analysis)
 task-master parse-prd <prd-file.txt>
 
 # Limit the number of tasks generated
 task-master parse-prd <prd-file.txt> --num-tasks=10
+
+# Skip the automatic complexity analysis step
+task-master parse-prd <prd-file.txt> --skip-complexity
 ```
 
 ### List Tasks
@@ -627,19 +637,4 @@ We've decided to use MongoDB instead of PostgreSQL. Can you update all future ta
 
 ### Completing work
 
-```
-I've finished implementing the authentication system described in task 2. All tests are passing.
-Please mark it as complete and tell me what I should work on next.
-```
-
-### Analyzing complexity
-
-```
-Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
-```
-
-### Viewing complexity report
-
-```
-Can you show me the complexity report in a more readable format?
 ```

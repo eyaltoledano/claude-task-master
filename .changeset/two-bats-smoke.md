@@ -1,0 +1,302 @@
+---
+"task-master-ai": patch
+---
+
+- Adjusts the MCP server invokation in the mcp.json we ship with `task-master init`. Fully functional now.
+- Rename the npx -y command. It's now `npx -y task-master-ai task-master-mcp`
+- Add additional binary alias: `task-master-mcp-server` pointing to the same MCP server script
+
+- **Significant improvements to model configuration:**
+  - Increase context window from 64k to 128k tokens (MAX_TOKENS=128000) for handling larger codebases
+  - Reduce temperature from 0.4 to 0.2 for more consistent, deterministic outputs
+  - Set default model to "claude-3-7-sonnet-20250219" in configuration
+  - Update Perplexity model to "sonar-pro" for research operations
+  - Increase default subtasks generation from 4 to 5 for more granular task breakdown
+  - Set consistent default priority to "medium" for all new tasks
+
+- **Clarify environment configuration approaches:**
+  - For direct MCP usage: Configure API keys directly in `.cursor/mcp.json`
+  - For npm package usage: Configure API keys in `.env` file
+  - Update templates with clearer placeholder values and formatting
+  - Provide explicit documentation about configuration methods in both environments
+  - Use consistent placeholder format "YOUR_ANTHROPIC_API_KEY_HERE" in mcp.json
+
+- Rename MCP tools to better align with API conventions and natural language in client chat:
+  - Rename `list-tasks` to `get-tasks` for more intuitive client requests like "get my tasks"
+  - Rename `show-task` to `get-task` for consistency with GET-based API naming conventions
+
+- **Refine AI-based MCP tool implementation patterns:**
+  - Establish clear responsibilities for direct functions vs MCP tools when handling AI operations
+  - Update MCP direct function signatures to expect `context = { session }` for AI-based tools, without `reportProgress`
+  - Clarify that AI client initialization, API calls, and response parsing should be handled within the direct function
+  - Define standard error codes for AI operations (`AI_CLIENT_ERROR`, `RESPONSE_PARSING_ERROR`, etc.)
+  - Document that `reportProgress` should not be used within direct functions due to client validation issues
+  - Establish that progress indication within direct functions should use standard logging (`log.info()`)
+  - Clarify that `AsyncOperationManager` should manage progress reporting at the MCP tool layer, not in direct functions
+  - Update `mcp.mdc` rule to reflect the refined patterns for AI-based MCP tools
+  - **Document and implement the Logger Wrapper Pattern:**
+    - Add comprehensive documentation in `mcp.mdc` and `utilities.mdc` on the Logger Wrapper Pattern
+    - Explain the dual purpose of the wrapper: preventing runtime errors and controlling output format
+    - Include implementation examples with detailed explanations of why and when to use this pattern
+    - Clearly document that this pattern has proven successful in resolving issues in multiple MCP tools
+    - Cross-reference between rule files to ensure consistent guidance
+  - **Fix critical issue in `analyze-project-complexity` MCP tool:**
+    - Implement proper logger wrapper in `analyzeTaskComplexityDirect` to fix `mcpLog[level] is not a function` errors
+    - Update direct function to handle both Perplexity and Claude AI properly for research-backed analysis
+    - Improve silent mode handling with proper wasSilent state tracking
+    - Add comprehensive error handling for AI client errors and report file parsing
+    - Ensure proper report format detection and analysis with fallbacks
+    - Fix variable name conflicts between the `report` logging function and data structures in `analyzeTaskComplexity`
+  - **Fix critical issue in `update-task` MCP tool:**
+    - Implement proper logger wrapper in `updateTaskByIdDirect` to ensure mcpLog[level] calls work correctly
+    - Update Zod schema in `update-task.js` to accept both string and number type IDs
+    - Fix silent mode implementation with proper try/finally blocks
+    - Add comprehensive error handling for missing parameters, invalid task IDs, and failed updates
+  - **Refactor `update-subtask` MCP tool to follow established patterns:**
+    - Update `updateSubtaskByIdDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling for both Anthropic and Perplexity
+    - Implement the Logger Wrapper Pattern to prevent mcpLog[level] errors
+    - Support both string and number subtask IDs with appropriate validation
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Remove commented-out calls to reportProgress for cleaner code
+    - Add comprehensive error handling for various failure scenarios
+    - Implement proper silent mode with try/finally blocks
+    - Ensure detailed successful update response information
+  - **Fix issues in `set-task-status` MCP tool:**
+    - Remove reportProgress parameter as it's not needed
+    - Improve project root handling for better session awareness
+    - Reorganize function call arguments for setTaskStatusDirect
+    - Add proper silent mode handling with try/catch/finally blocks
+    - Enhance logging for both success and error cases
+  - **Refactor `update` MCP tool to follow established patterns:**
+    - Update `updateTasksDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Simplify parameter validation using string type for 'from' parameter
+    - Improve error handling for AI client errors
+    - Implement proper silent mode handling with try/finally blocks
+    - Use `isSilentMode()` function instead of accessing global variables directly
+  - **Refactor `expand-task` MCP tool to follow established patterns:**
+    - Update `expandTaskDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling
+    - Update MCP tool to pass session to direct function but not reportProgress
+    - Add comprehensive tests for the refactored implementation
+    - Improve error handling for AI client errors
+    - Remove non-existent 'force' parameter from direct function implementation
+    - Ensure direct function parameters match core function parameters
+    - Implement proper silent mode handling with try/finally blocks
+    - Use `isSilentMode()` function instead of accessing global variables directly
+  - **Refactor `parse-prd` MCP tool to follow established patterns:**
+    - Update `parsePRDDirect` function to accept `context = { session }` parameter for proper AI initialization
+    - Implement AI client initialization with proper error handling using `getAnthropicClientForMCP`
+    - Add the Logger Wrapper Pattern to ensure proper logging via `mcpLog`
+    - Update the core `parsePRD` function to accept an AI client parameter
+    - Implement proper silent mode handling with try/finally blocks
+    - Remove `reportProgress` usage from MCP tool for better client compatibility
+    - Fix console output that was breaking the JSON response format
+    - Improve error handling with specific error codes
+    - Pass session object to the direct function correctly
+    - Update task-manager-core.js to export AI client utilities for better organization
+    - Ensure proper option passing between functions to maintain logging context
+
+- **Update MCP Logger to respect silent mode:**
+  - Import and check `isSilentMode()` function in logger implementation
+  - Skip all logging when silent mode is enabled
+  - Prevent console output from interfering with JSON responses
+  - Fix "Unexpected token 'I', "[INFO] Gene"... is not valid JSON" errors by suppressing log output during silent mode
+
+- **Refactor `expand-all` MCP tool to follow established patterns:**
+    - Update `expandAllTasksDirect` function to accept `context = { session }` parameter
+    - Add proper AI client initialization with error handling for research-backed expansion
+    - Pass session to direct function but not reportProgress in the MCP tool
+    - Implement directory switching to work around core function limitations
+    - Add comprehensive error handling with specific error codes
+    - Ensure proper restoration of working directory after execution
+    - Use try/finally pattern for both silent mode and directory management
+    - Add comprehensive tests for the refactored implementation
+
+- **Standardize and improve silent mode implementation across MCP direct functions:**
+  - Add proper import of all silent mode utilities: `import { enableSilentMode, disableSilentMode, isSilentMode } from 'utils.js'`
+  - Replace direct access to global silentMode variable with `isSilentMode()` function calls
+  - Implement consistent try/finally pattern to ensure silent mode is always properly disabled
+  - Add error handling with finally blocks to prevent silent mode from remaining enabled after errors
+  - Create proper mixed parameter/global silent mode check pattern: `const isSilent = options.silentMode || (typeof options.silentMode === 'undefined' && isSilentMode())`
+  - Update all direct functions to follow the new implementation pattern
+  - Fix issues with silent mode not being properly disabled when errors occur
+
+- **Improve parameter handling between direct functions and core functions:**
+  - Verify direct function parameters match core function signatures
+  - Remove extraction and use of parameters that don't exist in core functions (e.g., 'force')
+  - Implement appropriate type conversion for parameters (e.g., `parseInt(args.id, 10)`)
+  - Set defaults that match core function expectations
+  - Add detailed documentation on parameter matching in guidelines
+  - Add explicit examples of correct parameter handling patterns
+
+- **Create standardized MCP direct function implementation checklist:**
+  - Comprehensive imports and dependencies section
+  - Parameter validation and matching guidelines
+  - Silent mode implementation best practices
+  - Error handling and response format patterns
+  - Path resolution and core function call guidelines
+  - Function export and testing verification steps
+  - Specific issues to watch for related to silent mode, parameters, and error cases
+  - Add checklist to subtasks for uniform implementation across all direct functions
+
+- **Implement centralized AI client utilities for MCP tools:**
+  - Create new `ai-client-utils.js` module with standardized client initialization functions
+  - Implement session-aware AI client initialization for both Anthropic and Perplexity
+  - Add comprehensive error handling with user-friendly error messages
+  - Create intelligent AI model selection based on task requirements
+  - Implement model configuration utilities that respect session environment variables
+  - Add extensive unit tests for all utility functions
+  - Significantly improve MCP tool reliability for AI operations
+  - **Specific implementations include:**
+    - `getAnthropicClientForMCP`: Initializes Anthropic client with session environment variables
+    - `getPerplexityClientForMCP`: Initializes Perplexity client with session environment variables
+    - `getModelConfig`: Retrieves model parameters from session or fallbacks to defaults
+    - `getBestAvailableAIModel`: Selects the best available model based on requirements
+    - `handleClaudeError`: Processes Claude API errors into user-friendly messages
+  - **Updated direct functions to use centralized AI utilities:**
+    - Refactored `addTaskDirect` to use the new AI client utilities with proper AsyncOperationManager integration
+    - Implemented comprehensive error handling for API key validation, AI processing, and response parsing
+    - Added session-aware parameter handling with proper propagation of context to AI streaming functions
+    - Ensured proper fallback to process.env when session variables aren't available
+
+- **Refine AI services for reusable operations:**
+  - Refactor `ai-services.js` to support consistent AI operations across CLI and MCP
+  - Implement shared helpers for streaming responses, prompt building, and response parsing
+  - Standardize client initialization patterns with proper session parameter handling
+  - Enhance error handling and loading indicator management
+  - Fix process exit issues to prevent MCP server termination on API errors
+  - Ensure proper resource cleanup in all execution paths
+  - Add comprehensive test coverage for AI service functions
+  - **Key improvements include:**
+    - Stream processing safety with explicit completion detection
+    - Standardized function parameter patterns
+    - Session-aware parameter extraction with sensible defaults
+    - Proper cleanup using try/catch/finally patterns
+
+- **Optimize MCP response payloads:**
+  - Add custom `processTaskResponse` function to `get-task` MCP tool to filter out unnecessary `allTasks` array data
+  - Significantly reduce response size by returning only the specific requested task instead of all tasks
+  - Preserve dependency status relationships for the UI/CLI while keeping MCP responses lean and efficient
+
+- **Implement complete remove-task functionality:**
+  - Add `removeTask` core function to permanently delete tasks or subtasks from tasks.json
+  - Implement CLI command `remove-task` with confirmation prompt and force flag support
+  - Create MCP `remove_task` tool for AI-assisted task removal
+  - Automatically handle dependency cleanup by removing references to deleted tasks
+  - Update task files after removal to maintain consistency
+  - Provide robust error handling and detailed feedback messages
+
+- **Update Cursor rules and documentation:**
+  - Enhance `new_features.mdc` with comprehensive guidelines for implementing removal commands
+  - Update `commands.mdc` with best practices for confirmation flows and cleanup procedures
+  - Expand `mcp.mdc` with detailed instructions for MCP tool implementation patterns
+  - Add examples of proper error handling and parameter validation to all relevant rules
+  - Include new sections about handling dependencies during task removal operations
+  - Document naming conventions and implementation patterns for destructive operations
+  - Update silent mode implementation documentation with proper examples
+  - Add parameter handling guidelines emphasizing matching with core functions
+  - Update architecture documentation with dedicated section on silent mode implementation
+
+- **Implement silent mode across all direct functions:**
+  - Add `enableSilentMode` and `disableSilentMode` utility imports to all direct function files
+  - Wrap all core function calls with silent mode to prevent console logs from interfering with JSON responses
+  - Add comprehensive error handling to ensure silent mode is disabled even when errors occur
+  - Fix "Unexpected token 'I', "[INFO] Gene"... is not valid JSON" errors by suppressing log output
+  - Apply consistent silent mode pattern across all MCP direct functions
+  - Maintain clean JSON responses for better integration with client tools
+
+- **Implement AsyncOperationManager for background task processing:**
+  - Add new `async-manager.js` module to handle long-running operations asynchronously
+  - Support background execution of computationally intensive tasks like expansion and analysis
+  - Implement unique operation IDs with UUID generation for reliable tracking
+  - Add operation status tracking (pending, running, completed, failed)
+  - Create `get_operation_status` MCP tool to check on background task progress
+  - Forward progress reporting from background tasks to the client
+  - Implement operation history with automatic cleanup of completed operations
+  - Support proper error handling in background tasks with detailed status reporting
+  - Maintain context (log, session) for background operations ensuring consistent behavior
+
+- **Implement initialize_project command:**
+  - Add new MCP tool to allow project setup via integrated MCP clients
+  - Create `initialize_project` direct function with proper parameter handling
+  - Improve onboarding experience by adding to mcp.json configuration
+  - Support project-specific metadata like name, description, and version
+  - Handle shell alias creation with proper confirmation
+  - Improve first-time user experience in AI environments
+
+- **Refactor project root handling for MCP Server:**
+  - **Prioritize Session Roots**: MCP tools now extract the project root path directly from `session.roots[0].uri` provided by the client (e.g., Cursor).
+  - **New Utility `getProjectRootFromSession`**: Added to `mcp-server/src/tools/utils.js` to encapsulate session root extraction and decoding. **Further refined for more reliable detection, especially in integrated environments, including deriving root from script path and avoiding fallback to '/'.**
+  - **Simplify `findTasksJsonPath`**: The core path finding utility in `mcp-server/src/core/utils/path-utils.js` now prioritizes the `projectRoot` passed in `args` (originating from the session). Removed checks for `TASK_MASTER_PROJECT_ROOT` env var (we do not use this anymore) and package directory fallback. **Enhanced error handling to include detailed debug information (paths searched, CWD, server dir, etc.) and clearer potential solutions when `tasks.json` is not found.**
+  - **Retain CLI Fallbacks**: Kept `lastFoundProjectRoot` cache check and CWD search in `findTasksJsonPath` for compatibility with direct CLI usage.
+
+- Updated all MCP tools to use the new project root handling:
+  - Tools now call `getProjectRootFromSession` to determine the root.
+  - This root is passed explicitly as `projectRoot` in the `args` object to the corresponding `*Direct` function.
+  - Direct functions continue to use the (now simplified) `findTasksJsonPath` to locate `tasks.json` within the provided root.
+  - This ensures tools work reliably in integrated environments without requiring the user to specify `--project-root`.
+
+- Add comprehensive PROJECT_MARKERS array for detecting common project files (used in CLI fallback logic).
+- Improved error messages with specific troubleshooting guidance.
+- **Enhanced logging:**
+    - Indicate the source of project root selection more clearly.
+    - **Add verbose logging in `get-task.js` to trace session object content and resolved project root path, aiding debugging.**
+
+- DRY refactoring by centralizing path utilities in `core/utils/path-utils.js` and session handling in `tools/utils.js`.
+- Keep caching of `lastFoundProjectRoot` for CLI performance.
+
+- Split monolithic task-master-core.js into separate function files within direct-functions directory.
+- Implement update-task MCP command for updating a single task by ID.
+- Implement update-subtask MCP command for appending information to specific subtasks.
+- Implement generate MCP command for creating individual task files from tasks.json.
+- Implement set-status MCP command for updating task status.
+- Implement get-task MCP command for displaying detailed task information (renamed from show-task).
+- Implement next-task MCP command for finding the next task to work on.
+- Implement expand-task MCP command for breaking down tasks into subtasks.
+- Implement add-task MCP command for creating new tasks using AI assistance.
+- Implement add-subtask MCP command for adding subtasks to existing tasks.
+- Implement remove-subtask MCP command for removing subtasks from parent tasks.
+- Implement expand-all MCP command for expanding all tasks into subtasks.
+- Implement analyze-complexity MCP command for analyzing task complexity.
+- Implement clear-subtasks MCP command for clearing subtasks from parent tasks.
+- Implement remove-dependency MCP command for removing dependencies from tasks.
+- Implement validate-dependencies MCP command for checking validity of task dependencies.
+- Implement fix-dependencies MCP command for automatically fixing invalid dependencies.
+- Implement complexity-report MCP command for displaying task complexity analysis reports.
+- Implement add-dependency MCP command for creating dependency relationships between tasks.
+- Implement get-tasks MCP command for listing all tasks (renamed from list-tasks).
+- Implement `initialize_project` MCP tool to allow project setup via MCP client and radically improve and simplify onboarding by adding to mcp.json (e.g., Cursor).
+
+- Enhance documentation and tool descriptions:
+  - Create new `taskmaster.mdc` Cursor rule for comprehensive MCP tool and CLI command reference.
+  - Bundle taskmaster.mdc with npm package and include in project initialization.
+  - Add detailed descriptions for each tool's purpose, parameters, and common use cases.
+  - Include natural language patterns and keywords for better intent recognition.
+  - Document parameter descriptions with clear examples and default values.
+  - Add usage examples and context for each command/tool.
+  - **Update documentation (`mcp.mdc`, `utilities.mdc`, `architecture.mdc`, `new_features.mdc`, `commands.mdc`) to reflect the new session-based project root handling and the preferred MCP vs. CLI interaction model.**
+  - Improve clarity around project root auto-detection in tool documentation.
+  - Update tool descriptions to better reflect their actual behavior and capabilities.
+  - Add cross-references between related tools and commands.
+  - Include troubleshooting guidance in tool descriptions.
+  - **Add default values for `DEFAULT_SUBTASKS` and `DEFAULT_PRIORITY` to the example `.cursor/mcp.json` configuration.**
+
+- Document MCP server naming conventions in architecture.mdc and mcp.mdc files (file names use kebab-case, direct functions use camelCase with Direct suffix, tool registration functions use camelCase with Tool suffix, and MCP tool names use snake_case).
+- Update MCP tool naming to follow more intuitive conventions that better align with natural language requests in client chat applications.
+- Enhance task show view with a color-coded progress bar for visualizing subtask completion percentage.
+- Add "cancelled" status to UI module status configurations for marking tasks as cancelled without deletion.
+- Improve MCP server resource documentation with comprehensive implementation examples and best practices.
+- Enhance progress bars with status breakdown visualization showing proportional sections for different task statuses.
+- Add improved status tracking for both tasks and subtasks with detailed counts by status.
+- Optimize progress bar display with width constraints to prevent UI overflow on smaller terminals.
+- Improve status counts display with clear text labels beside status icons for better readability.
+- Treat deferred and cancelled tasks as effectively complete for progress calculation while maintaining visual distinction.
+- **Fix `reportProgress` calls** to use the correct `{ progress, total? }` format.
+- **Standardize logging in core task-manager functions (`expandTask`, `expandAllTasks`, `updateTasks`, `updateTaskById`, `updateSubtaskById`, `parsePRD`, `analyzeTaskComplexity`):**
+  - Implement a local `report` function in each to handle context-aware logging.
+  - Use `report` to choose between `mcpLog` (if available) and global `log` (from `utils.js`).
+  - Only call global `log` when `outputFormat` is 'text' and silent mode is off.
+  - Wrap CLI UI elements (tables, boxes, spinners) in `outputFormat === 'text'` checks.

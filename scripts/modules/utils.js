@@ -1,6 +1,5 @@
 /**
- * utils.js
- * Utility functions for the Task Master CLI
+ * Utility functions for Task Master
  */
 
 import fs from 'fs';
@@ -23,7 +22,7 @@ const CONFIG = {
 	projectVersion: '1.5.0' // Hardcoded version - ALWAYS use this value, ignore environment variable
 };
 
-// Set up logging based on log level
+// Log level priorities
 const LOG_LEVELS = {
 	debug: 0,
 	info: 1,

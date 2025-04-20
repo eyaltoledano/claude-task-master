@@ -1,6 +1,6 @@
 /**
- * ai-services.js
- * AI service interactions for the Task Master CLI
+ * AI Services Module
+ * Handles communication with AI APIs (Anthropic, Perplexity, etc.)
  */
 
 // NOTE/TODO: Include the beta header output-128k-2025-02-19 in your API request to increase the maximum output token length to 128k tokens for Claude 3.7 Sonnet.
@@ -11,9 +11,17 @@ import dotenv from 'dotenv';
 import { CONFIG, log, sanitizePrompt, isSilentMode } from './utils.js';
 import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 import chalk from 'chalk';
+import { log } from './utils.js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = path.resolve(__dirname, '../../');
+dotenv.config({ path: path.join(projectRoot, '.env') });
 
 // Configure Anthropic client
 const anthropic = new Anthropic({
@@ -24,8 +32,10 @@ const anthropic = new Anthropic({
 	}
 });
 
-// Lazy-loaded Perplexity client
-let perplexity = null;
+// Perplexity API options
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
+const PERPLEXITY_ENDPOINT = 'https://api.perplexity.ai/chat/completions';
 
 /**
  * Get or initialize the Perplexity client
@@ -47,11 +57,17 @@ function getPerplexityClient() {
 }
 
 /**
- * Get the best available AI model for a given operation
- * @param {Object} options - Options for model selection
- * @param {boolean} options.claudeOverloaded - Whether Claude is currently overloaded
- * @param {boolean} options.requiresResearch - Whether the operation requires research capabilities
- * @returns {Object} Selected model info with type and client
+ * Call the LLM API with retry logic for reliability
+ * @param {Object} options - Request options
+ * @param {Array} options.messages - Message array to send to the LLM
+ * @param {string} [options.system] - System prompt
+ * @param {string} [options.model] - Model to use (defaults to CONFIG.model)
+ * @param {number} [options.max_tokens] - Maximum tokens in the response
+ * @param {number} [options.temperature] - Temperature for response generation
+ * @param {number} [options.retries=3] - Number of retries on failure
+ * @param {Function} [options.onRetry] - Function to call when a retry occurs
+ * @param {boolean} [options.fastFail=true] - Whether to fail immediately on permanent errors
+ * @returns {Promise<Object>} - LLM response
  */
 function getAvailableAIModel(options = {}) {
 	const { claudeOverloaded = false, requiresResearch = false } = options;
@@ -974,9 +990,8 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
 }
 
 /**
- * Generate a prompt for complexity analysis
- * @param {Object} tasksData - Tasks data object containing tasks array
- * @returns {string} Generated prompt
+ * Check if API keys are properly configured
+ * @returns {Object} Configuration status for different AI services
  */
 function generateComplexityAnalysisPrompt(tasksData) {
 	return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
