@@ -7,7 +7,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano?style=flat)](https://x.com/eyaltoledano)
 [![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom?style=flat)](https://x.com/RalphEcom)
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI [Now also on Roo Code 🦘](https://github.com/eyaltoledano/claude-task-master#integrating-with-roo-code).
+A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI [Now also on Roo Code 🦘](/README-task-master.md#integrating-with-roo-code).
 
 ## Requirements
 
