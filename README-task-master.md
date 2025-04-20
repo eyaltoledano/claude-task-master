@@ -187,7 +187,7 @@ task-master generate
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
-## Integrating with Roo Code
+## 🦘 Integrating with Roo Code 
 
 While the standard [MCP setup](#setting-up-mcp-in-cursor) allows Taskmaster AI to work effectively with AI agents like Roo Code (used by Cursor AI), some users may desire more explicit control over the rules and guidelines the AI follows, especially in team environments or for complex projects. Standard Roo Code setups might rely on default rules that may not perfectly align with Taskmaster's specific workflow or your project's unique standards.
 
