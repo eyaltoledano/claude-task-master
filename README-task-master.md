@@ -187,6 +187,36 @@ task-master generate
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
+## Integrating with Roo Code
+
+While the standard [MCP setup](#setting-up-mcp-in-cursor) allows Taskmaster AI to work effectively with AI agents like Roo Code (used by Cursor AI), some users may desire more explicit control over the rules and guidelines the AI follows, especially in team environments or for complex projects. Standard Roo Code setups might rely on default rules that may not perfectly align with Taskmaster's specific workflow or your project's unique standards.
+
+For users seeking this enhanced control, a community-driven approach provides a way to manage Roo Code's behavior by fetching specific modes and rules from a dedicated repository:
+
+**Repository:** [neno-is-ooo/roo-taskmaster-patch](https://github.com/neno-is-ooo/roo-taskmaster-patch)
+
+This repository contains:
+1.  An installation script (`install_taskmaster.py`) to automate the setup.
+2.  A set of pre-configured Roo Code modes (`.roomodes`).
+3.  Custom Roo Code rules (`.roo/rules-*/*`) specifically designed to guide Roo agents (like Boomerang and Code) when interacting with Taskmaster tasks and workflows.
+
+**How it Works:**
+
+The `install_taskmaster.py` script (found in the patch repository above) automates the following:
+*   Installs `task-master-ai` (globally or locally).
+*   Helps configure the `taskmaster-ai` MCP server within Roo Code's settings.
+*   **Crucially, it fetches the specific `.roomodes` and `.roo/rules-*` files from the `roo-taskmaster-patch` repository and places them directly into your project.** This ensures Roo Code uses these specific guidelines for this project.
+
+**Benefits of this Approach:**
+
+*   **Enhanced Safety & Control:** Roo Code operates based on rules fetched from a *specific, known repository* rather than potentially unpredictable defaults. This gives you direct control over the AI's operational guidelines for your project.
+*   **Consistency:** Ensures all developers using Roo Code within the project are guided by the *same* set of rules and modes, leading to more predictable and standardized AI behavior.
+*   **Workflow Alignment:** The custom rules are tailored to understand and follow Taskmaster concepts like task dependencies, status updates, and breakdown strategies.
+*   **Streamlined Setup:** Simplifies the integration process for developers adopting this specific controlled workflow.
+
+This method provides a robust way to ensure Roo Code agents work safely and effectively within the Taskmaster framework, adhering to project-specific guidelines defined in the patch repository. You can fork the `roo-taskmaster-patch` repository to maintain and evolve your own custom set of rules for your projects. This approach is recommended for teams or individuals seeking fine-grained control over AI agent behavior within Taskmaster.
+
+
 ## AI-Driven Development Workflow
 
 The Cursor agent is pre-configured (via the rules file) to follow this workflow:
