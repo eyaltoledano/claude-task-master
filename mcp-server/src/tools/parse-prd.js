@@ -47,6 +47,12 @@ export function registerParsePRDTool(server) {
 				.boolean()
 				.optional()
 				.describe('Allow overwriting an existing tasks.json file.'),
+			append: z
+				.boolean()
+				.optional()
+				.describe(
+					'Append new tasks to existing tasks.json instead of overwriting'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be absolute path.')
@@ -86,7 +92,8 @@ export function registerParsePRDTool(server) {
 						input: prdPath,
 						output: tasksJsonPath,
 						numTasks: args.numTasks,
-						force: args.force
+						force: args.force,
+						append: args.append
 					},
 					log,
 					{ session }

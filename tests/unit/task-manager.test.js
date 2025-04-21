@@ -134,33 +134,59 @@ jest.mock('../../scripts/modules/task-manager.js', () => {
 });
 
 // Create a simplified version of parsePRD for testing
-const testParsePRD = async (prdPath, outputPath, numTasks) => {
+const testParsePRD = async (prdPath, outputPath, numTasks, options = {}) => {
+	const { append = false } = options;
 	try {
+		// Handle existing tasks when append flag is true
+		let existingTasks = { tasks: [] };
+		let lastTaskId = 0;
+
 		// Check if the output file already exists
 		if (mockExistsSync(outputPath)) {
-			const confirmOverwrite = await mockPromptYesNo(
-				`Warning: ${outputPath} already exists. Overwrite?`,
-				false
-			);
+			if (append) {
+				// Simulate reading existing tasks.json
+				existingTasks = {
+					tasks: [
+						{ id: 1, title: 'Existing Task 1', status: 'done' },
+						{ id: 2, title: 'Existing Task 2', status: 'pending' }
+					]
+				};
+				lastTaskId = 2; // Highest existing ID
+			} else {
+				const confirmOverwrite = await mockPromptYesNo(
+					`Warning: ${outputPath} already exists. Overwrite?`,
+					false
+				);
 
-			if (!confirmOverwrite) {
-				console.log(`Operation cancelled. ${outputPath} was not modified.`);
-				return null;
+				if (!confirmOverwrite) {
+					console.log(`Operation cancelled. ${outputPath} was not modified.`);
+					return null;
+				}
 			}
 		}
 
 		const prdContent = mockReadFileSync(prdPath, 'utf8');
-		const tasks = await mockCallClaude(prdContent, prdPath, numTasks);
+		// Modify mockCallClaude to accept lastTaskId parameter
+		let newTasks = await mockCallClaude(prdContent, prdPath, numTasks);
+
+		// Merge tasks if appending
+		const tasksData = append
+			? {
+					...existingTasks,
+					tasks: [...existingTasks.tasks, ...newTasks.tasks]
+				}
+			: newTasks;
+
 		const dir = mockDirname(outputPath);
 
 		if (!mockExistsSync(dir)) {
 			mockMkdirSync(dir, { recursive: true });
 		}
 
-		mockWriteJSON(outputPath, tasks);
+		mockWriteJSON(outputPath, tasksData);
 		await mockGenerateTaskFiles(outputPath, dir);
 
-		return tasks;
+		return tasksData;
 	} catch (error) {
 		console.error(`Error parsing PRD: ${error.message}`);
 		process.exit(1);
@@ -628,6 +654,27 @@ describe('Task Manager Module', () => {
 		// Mock the sample PRD content
 		const samplePRDContent = '# Sample PRD for Testing';
 
+		// Mock existing tasks for append test
+		const existingTasks = {
+			tasks: [
+				{ id: 1, title: 'Existing Task 1', status: 'done' },
+				{ id: 2, title: 'Existing Task 2', status: 'pending' }
+			]
+		};
+
+		// Mock new tasks with continuing IDs for append test
+		const newTasksWithContinuedIds = {
+			tasks: [
+				{ id: 3, title: 'New Task 3' },
+				{ id: 4, title: 'New Task 4' }
+			]
+		};
+
+		// Mock merged tasks for append test
+		const mergedTasks = {
+			tasks: [...existingTasks.tasks, ...newTasksWithContinuedIds.tasks]
+		};
+
 		beforeEach(() => {
 			// Reset all mocks
 			jest.clearAllMocks();
@@ -810,6 +857,66 @@ describe('Task Manager Module', () => {
 				'tasks/tasks.json',
 				sampleClaudeResponse
 			);
+		});
+
+		test('should append new tasks when append option is true', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			mockExistsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock for reading existing tasks
+			mockReadJSON.mockReturnValue(existingTasks);
+			// mockReadJSON = jest.fn().mockReturnValue(existingTasks);
+
+			// Mock callClaude to return new tasks with continuing IDs
+			mockCallClaude.mockResolvedValueOnce(newTasksWithContinuedIds);
+
+			// Call the function with append option
+			const result = await testParsePRD(
+				'path/to/prd.txt',
+				'tasks/tasks.json',
+				2,
+				{ append: true }
+			);
+
+			// Verify prompt was NOT called (no confirmation needed for append)
+			expect(mockPromptYesNo).not.toHaveBeenCalled();
+
+			// Verify the file was written with merged tasks
+			expect(mockWriteJSON).toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				expect.objectContaining({
+					tasks: expect.arrayContaining([
+						expect.objectContaining({ id: 1 }),
+						expect.objectContaining({ id: 2 }),
+						expect.objectContaining({ id: 3 }),
+						expect.objectContaining({ id: 4 })
+					])
+				})
+			);
+
+			// Verify the result contains merged tasks
+			expect(result.tasks.length).toBe(4);
+		});
+
+		test('should skip prompt and not overwrite when append is true', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			mockExistsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with append option
+			await testParsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				append: true
+			});
+
+			// Verify prompt was NOT called with append flag
+			expect(mockPromptYesNo).not.toHaveBeenCalled();
 		});
 	});
 

@@ -5,9 +5,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import os from 'os'; // Import os module for home directory check
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -124,8 +122,12 @@ export async function parsePRDDirect(args, log, context = {}) {
 			}
 		}
 
+		// Extract the append flag from args
+		const append = Boolean(args.append) === true;
+
+		// Log key parameters including append flag
 		log.info(
-			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks`
+			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks, append mode: ${append}`
 		);
 
 		// Create the logger wrapper for proper logging in the core function
@@ -157,7 +159,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 				numTasks,
 				{
 					mcpLog: logWrapper,
-					session
+					session,
+					append
 				},
 				aiClient,
 				modelConfig
@@ -167,16 +170,18 @@ export async function parsePRDDirect(args, log, context = {}) {
 			// to return it to the caller
 			if (fs.existsSync(outputPath)) {
 				const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
-				log.info(
-					`Successfully parsed PRD and generated ${tasksData.tasks?.length || 0} tasks`
-				);
+				const actionVerb = append ? 'appended' : 'generated';
+				const message = `Successfully ${actionVerb} ${tasksData.tasks?.length || 0} tasks from PRD`;
+
+				log.info(message);
 
 				return {
 					success: true,
 					data: {
-						message: `Successfully generated ${tasksData.tasks?.length || 0} tasks from PRD`,
+						message,
 						taskCount: tasksData.tasks?.length || 0,
-						outputPath
+						outputPath,
+						appended: append
 					},
 					fromCache: false // This operation always modifies state and should never be cached
 				};

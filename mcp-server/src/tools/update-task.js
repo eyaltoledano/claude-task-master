@@ -24,7 +24,9 @@ export function registerUpdateTaskTool(server) {
 		parameters: z.object({
 			id: z
 				.string()
-				.describe("ID of the task or subtask (e.g., '15', '15.2') to update"),
+				.describe(
+					"ID of the task (e.g., '15') to update. Subtasks are supported using the update-subtask tool."
+				),
 			prompt: z
 				.string()
 				.describe('New information or context to incorporate into the task'),

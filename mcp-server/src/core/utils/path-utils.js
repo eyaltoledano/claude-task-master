@@ -75,6 +75,26 @@ export function getPackagePath() {
 }
 
 /**
+ * Normalizes a path with potential OS-specific or URL-encoded issues
+ * @param {string} pathStr - The path string to normalize
+ * @returns {string} - Normalized path string
+ */
+function normalizePath(pathStr) {
+	// First decode any URL-encoded characters
+	let decodedPath = decodeURIComponent(pathStr);
+	
+	// Handle paths that start with /c:/ or /C:/ (Windows paths with leading slash)
+	// Match /c: or /C: patterns at the beginning of the string or after any protocol
+	if (decodedPath.match(/^\/[a-zA-Z]:/)) {
+		// Remove the leading slash
+		decodedPath = decodedPath.substring(1);
+	}
+	
+	// Let path.normalize handle any remaining path normalization
+	return path.normalize(decodedPath);
+}
+
+/**
  * Finds the absolute path to the tasks.json file based on project root and arguments.
  * @param {Object} args - Command arguments, potentially including 'projectRoot' and 'file'.
  * @param {Object} log - Logger object.
@@ -89,9 +109,9 @@ export function findTasksJsonPath(args, log) {
 
 	// 1. If project root is explicitly provided (e.g., from MCP session), use it directly
 	if (args.projectRoot) {
-		// Decode URL-encoded characters (like %20 to spaces) in projectRoot
+		// Normalize the path, handling URL-encoded chars and leading slashes
 		// Fix for issues #192 and #246
-		const projectRoot = decodeURIComponent(args.projectRoot);
+		const projectRoot = normalizePath(args.projectRoot);
 		log.info(`Using explicitly provided project root: ${projectRoot}`);
 		try {
 			// This will throw if tasks.json isn't found within this root
