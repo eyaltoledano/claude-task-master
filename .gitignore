@@ -59,3 +59,11 @@ dist
 *.debug
 init-debug.log
 dev-debug.log
+init-js-changes.txt
+PR-DESCRIPTION.md
+scripts/test-full-init.js
+scripts/test-rule-conversion-simple.js
+scripts/test-rule-conversion.js
+setup-branch.sh
+test-init.js
+test-run.sh
