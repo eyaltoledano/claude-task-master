@@ -17,7 +17,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "task-master-ai"],
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
@@ -132,7 +132,7 @@ You can also set up the MCP server in Cursor settings:
 4. Configure with the following details:
    - Name: "Task Master"
    - Type: "Command"
-   - Command: "npx -y task-master-mcp"
+   - Command: "npx -y --package=task-master-ai task-master-ai"
 5. Save the settings
 
 Once configured, you can interact with Task Master's task management commands directly through Cursor's interface, providing a more integrated experience.
