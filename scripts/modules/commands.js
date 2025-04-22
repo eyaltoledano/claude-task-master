@@ -12,7 +12,7 @@ import https from 'https';
 import inquirer from 'inquirer';
 import ora from 'ora';
 
-import { CONFIG, log, readJSON, writeJSON } from './utils.js';
+import { CONFIG, log, readJSON, writeJSON, taskExists } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -27,7 +27,9 @@ import {
 	removeSubtask,
 	analyzeTaskComplexity,
 	updateTaskById,
-	updateSubtaskById
+	updateSubtaskById,
+	removeTask,
+	findTaskById
 } from './task-manager.js';
 
 import {
@@ -43,10 +45,13 @@ import {
 	displayNextTask,
 	displayTaskById,
 	displayComplexityReport,
-	displayComplexityAnalysisStart,
 	getStatusWithColor,
-	confirmTaskOverwrite
+	confirmTaskOverwrite,
+	startLoadingIndicator,
+	stopLoadingIndicator
 } from './ui.js';
+
+import { initializeProject } from '../init.js';
 
 /**
  * Configure and register CLI commands
@@ -1321,51 +1326,54 @@ function registerCommands(programInstance) {
 	}
 
 	// remove-task command
-	// This command requires functions from upstream/next branch that are not yet available
-	// Temporarily disabled to resolve the import issue
-	/*
 	programInstance
 		.command('remove-task')
-		.description('Remove one or more tasks or subtasks permanently')
-		.option(
-			'-i, --id <id>',
-			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5" or "5.2" or "5,6,7")'
-		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-y, --yes', 'Skip confirmation prompt', false)
+		.description('Remove a task by ID')
+		.option('-i, --id <id>', 'Task ID to remove')
 		.action(async (options) => {
-			console.log(chalk.yellow('The remove-task command is temporarily unavailable.'));
-			console.log(chalk.yellow('Please use the upstream/next branch for this functionality.'));
-			process.exit(0);
+			try {
+				const id = options.id;
+				if (!id) {
+					console.error(chalk.red('Please provide a task ID with --id <id>'));
+					process.exit(1);
+				}
+				await removeTask(id);
+				console.log(chalk.green(`Task ${id} removed successfully.`));
+			} catch (error) {
+				console.error(
+					chalk.red(`Error removing task: ${error.message}`)
+				);
+				process.exit(1);
+			}
 		});
-	*/
 
-	// init command (documentation only, implementation is in init.js)
+	// init command (Directly calls the implementation from init.js)
 	programInstance
 		.command('init')
 		.description('Initialize a new project with Task Master structure')
-		.option('-y, --yes', 'Skip prompts and use default values')
 		.option('-n, --name <name>', 'Project name')
 		.option('-d, --description <description>', 'Project description')
-		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
-		.option('-a, --author <author>', 'Author name')
+		.option('-y, --yes', 'Skip prompts and use defaults')
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
-		.action(() => {
-			console.log(
-				chalk.yellow(
-					'The init command must be run as a standalone command: task-master init'
-				)
-			);
-			console.log(chalk.cyan('Example usage:'));
-			console.log(
-				chalk.white(
-					'  task-master init -n "My Project" -d "Project description"'
-				)
-			);
-			console.log(chalk.white('  task-master init -y'));
-			process.exit(0);
+		.action(async (cmdOptions) => {
+			// cmdOptions contains parsed arguments
+			try {
+				console.log('DEBUG: Running init command action in commands.js');
+				console.log(
+					'DEBUG: Options received by action:',
+					JSON.stringify(cmdOptions)
+				);
+				// Directly call the initializeProject function, passing the parsed options
+				await initializeProject(cmdOptions);
+				// initializeProject handles its own flow, including potential process.exit()
+			} catch (error) {
+				console.error(
+					chalk.red(`Error during initialization: ${error.message}`)
+				);
+				process.exit(1);
+			}
 		});
 
 	// Add more commands as needed...
