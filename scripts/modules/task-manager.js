@@ -133,9 +133,31 @@ try {
  * @param {Object} aiClient - AI client to use (optional)
  * @param {Object} modelConfig - Model configuration (optional)
  */
-async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
+async function parsePRD(
+	prdPath,
+	tasksPath,
+	numTasks,
+	options = {},
+	aiClient = null,
+	modelConfig = null
+) {
+	const { reportProgress, mcpLog, session, append } = options;
+
 	// Define progressInterval at the top level of the function so the handler can access it
 	let progressInterval = null;
+
+	// Determine output format based on mcpLog presence (simplification)
+	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Create custom reporter that checks for MCP log and silent mode
+	const report = (message, level = 'info') => {
+		if (mcpLog) {
+			mcpLog[level](message);
+		} else if (!isSilentMode() && outputFormat === 'text') {
+			// Only log to console if not in silent mode and outputFormat is 'text'
+			log(level, message);
+		}
+	};
 
 	// Create progress emitter for streaming events
 	const progress = createProgressEmitter();
@@ -214,6 +236,28 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				'warn',
 				'The PRD content is very short. This may not provide enough context for generating meaningful tasks.'
 			);
+		}
+
+		// If appending and tasks.json exists, read existing tasks first
+		let existingTasks = { tasks: [] };
+		let lastTaskId = 0;
+		if (append && fs.existsSync(tasksPath)) {
+			try {
+				existingTasks = readJSON(tasksPath);
+				if (existingTasks.tasks?.length) {
+					// Find the highest task ID
+					lastTaskId = existingTasks.tasks.reduce((maxId, task) => {
+						const mainId = parseInt(task.id.toString().split('.')[0], 10) || 0;
+						return Math.max(maxId, mainId);
+					}, 0);
+				}
+			} catch (error) {
+				report(
+					`Warning: Could not read existing tasks file: ${error.message}`,
+					'warn'
+				);
+				existingTasks = { tasks: [] };
+			}
 		}
 
 		// Estimate total tokens (roughly 1 token per 4 chars + margin for system prompt)
