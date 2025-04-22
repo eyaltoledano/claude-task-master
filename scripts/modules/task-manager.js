@@ -223,7 +223,8 @@ async function parsePRD(
 			tasksPath,
 			numTasks,
 			CONFIG.model,
-			CONFIG.temperature
+			CONFIG.temperature,
+			append // Pass the append flag to indicate whether we're generating or appending
 		);
 
 		// Read the PRD content

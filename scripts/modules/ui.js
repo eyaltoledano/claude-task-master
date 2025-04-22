@@ -2052,17 +2052,21 @@ function displayComplexityAnalysisStart(
  * @param {number} numTasks - Number of tasks to generate
  * @param {string} model - AI model name
  * @param {number} temperature - AI temperature setting
+ * @param {boolean} append - Whether to append to existing tasks
  */
 function displayPRDParsingStart(
 	prdFilePath,
 	outputPath,
 	numTasks,
 	model = CONFIG.model,
-	temperature = CONFIG.temperature
+	temperature = CONFIG.temperature,
+	append = false
 ) {
+	// Determine the action verb based on append flag
+	const actionVerb = append ? 'Appending' : 'Generating';
 	// Create the message content with all information
 	let message =
-		chalk.bold(`🤖 Parsing PRD and Generating Tasks`) +
+		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
 		'\n' +
 		chalk.dim(`Model: ${model} | Temperature: ${temperature}`) +
 		'\n\n' +
@@ -2070,7 +2074,7 @@ function displayPRDParsingStart(
 		'\n' +
 		chalk.blue(`Output: ${outputPath}`) +
 		'\n' +
-		chalk.blue(`Tasks to Generate: ${numTasks}`);
+		chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`);
 
 	// Display everything in a single boxen
 	console.log(
