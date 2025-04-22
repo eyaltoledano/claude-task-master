@@ -22,17 +22,20 @@ npm test -- tests/integration/roo-files-inclusion.test.js
 To manually verify that the Roo files are properly included in the package:
 
 1. Create a test directory:
+
    ```bash
    mkdir test-tm
    cd test-tm
    ```
 
 2. Create a package.json file:
+
    ```bash
    npm init -y
    ```
 
 3. Install the task-master-ai package locally:
+
    ```bash
    # From the root of the claude-task-master repository
    cd ..
@@ -45,11 +48,13 @@ To manually verify that the Roo files are properly included in the package:
    ```
 
 4. Initialize a new Task Master project:
+
    ```bash
    npx task-master init --yes
    ```
 
 5. Verify that all Roo files and directories are created:
+
    ```bash
    # Check that .roomodes file exists
    ls -la | grep .roomodes
@@ -79,6 +84,7 @@ When running the tests or performing manual verification, ensure that:
 Ensure that the Roo integration works alongside existing Cursor functionality:
 
 1. Initialize a new project that uses both Cursor and Roo:
+
    ```bash
    npx task-master init --yes
    ```
