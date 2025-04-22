@@ -121,8 +121,6 @@ try {
 	log('warn', 'Research-backed features will not be available');
 }
 
-// Module-level sigintHandler declaration to be used across functions
-let sigintHandler = null;
 
 /**
  * Parse a PRD file and generate tasks
@@ -143,73 +141,10 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	// Create progress emitter for streaming events
 	const progress = createProgressEmitter();
 
-	// Add a debug listener at the process level to see if SIGINT is being received
-	const debugSignalListener = () => {
-		log('debug', 'SIGINT received by debug listener');
-	};
-	process.on('SIGINT', debugSignalListener);
 
-	// Set up SIGINT (Control-C) handler to cancel the operation gracefully
-	let sigintHandler;
-	const registerSigintHandler = () => {
-		// Only register if not already registered
-		if (!sigintHandler) {
-			sigintHandler = () => {
-				log('debug', 'SIGINT handler executing for parsePRD');
-
-				// Try to clear any intervals before exiting
-				if (progressInterval) {
-					clearInterval(progressInterval);
-					progressInterval = null;
-					log('debug', 'Cleared progress interval');
-				}
-
-				// Clear any terminal state
-				process.stdout.write('\r\x1B[K'); // Clear current line
-
-				// Show cancellation message
-				console.log(chalk.yellow('\n\nPRD parsing cancelled by user.'));
-
-				// Make sure we remove our event listeners before exiting
-				progress.removeAllListeners();
-				log('debug', 'Removed all progress event listeners');
-
-				// Clean up SIGINT handler
-				cleanupSigintHandler();
-
-				// Show cursor (in case it was hidden)
-				process.stdout.write('\u001B[?25h');
-
-				// Force exit after giving time for cleanup
-				setTimeout(() => {
-					process.exit(0);
-				}, 100);
-			};
-
-			// Register the handler
-			process.on('SIGINT', sigintHandler);
-			log('debug', 'Registered SIGINT handler for parsePRD');
-		}
-	};
-
-	// Clean up function to remove the handler when done
-	const cleanupSigintHandler = () => {
-		if (sigintHandler) {
-			process.removeListener('SIGINT', sigintHandler);
-			sigintHandler = null;
-			log('debug', 'Removed SIGINT handler');
-		}
-
-		// Also remove the debug listener
-		process.removeListener('SIGINT', debugSignalListener);
-		log('debug', 'Removed debug SIGINT listener');
-	};
 
 	// Cleanup resources function to ensure consistent state even after errors
 	const cleanupResources = () => {
-		// Clean up SIGINT handler
-		cleanupSigintHandler();
-
 		// Clean up progressInterval
 		if (progressInterval) {
 			clearInterval(progressInterval);
@@ -254,8 +189,6 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 
 		log('debug', `Parsing PRD file: ${prdPath}`);
 
-		// Register SIGINT handler to allow cancellation with Control-C
-		registerSigintHandler();
 
 		// Track start time
 		const startTime = Date.now();
@@ -1951,45 +1884,12 @@ Return only the updated tasks as a valid JSON array.`
 					});
 
 					// Process the stream
-					let responseText = ''; // Define responseText variable
-					try {
-						let chunkCount = 0;
-						let isProcessing = true;
-						// Add a local check that gets set to false if SIGINT is received
-						const originalSigintHandler = sigintHandler;
-
-						// Enhance the SIGINT handler to set isProcessing to false
-						sigintHandler = () => {
-							isProcessing = false;
-
-							// Call original handler to do the rest of cleanup and exit
-							if (originalSigintHandler) originalSigintHandler();
-						};
-
-						for await (const chunk of stream) {
-							// Check if we should stop processing (SIGINT received)
-							if (!isProcessing) {
-								break;
-							}
-
-							if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-								responseText += chunk.delta.text;
-								chunkCount++;
-							}
+					let chunkCount = 0;
+					for await (const chunk of stream) {
+						if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+							responseText += chunk.delta.text;
+							chunkCount++;
 						}
-
-						// Restore original handler if we didn't get interrupted
-						if (isProcessing) {
-							sigintHandler = originalSigintHandler;
-						}
-					} catch (streamError) {
-						// Clean up the interval even if there's an error
-						if (streamingInterval) {
-							clearInterval(streamingInterval);
-							streamingInterval = null;
-						}
-
-						throw streamError;
 					}
 
 					if (streamingInterval) clearInterval(streamingInterval);
@@ -3632,7 +3532,6 @@ async function expandTask(
 		// Generate subtasks
 		let subtasks;
 		if (useResearch) {
-			log('info', 'Using Perplexity AI for research-backed subtask generation');
 			subtasks = await generateSubtasksWithPerplexity(
 				task,
 				numSubtasks,
@@ -3640,7 +3539,6 @@ async function expandTask(
 				additionalContext
 			);
 		} else {
-			log('info', 'Generating subtasks with Claude only');
 			subtasks = await generateSubtasks(
 				task,
 				numSubtasks,
@@ -3866,25 +3764,19 @@ async function expandAllTasks(
 						task.id
 					);
 					if (taskAnalysis) {
-						// Use recommended subtasks if default wasn't overridden
+						// Use recommended number of subtasks if available and not overridden
 						if (
 							taskAnalysis.recommendedSubtasks &&
 							numSubtasks === CONFIG.defaultSubtasks
 						) {
 							taskSubtasks = taskAnalysis.recommendedSubtasks;
-							log(
-								'info',
-								`Using recommended subtasks for task ${task.id}: ${taskSubtasks}`
-							);
+							log('info', `Using recommended number of subtasks: ${taskSubtasks}`);
 						}
 
-						// Add expansion prompt if no user context was provided
+						// Use expansion prompt from analysis as additional context if available
 						if (taskAnalysis.expansionPrompt && !additionalContext) {
 							taskContext = taskAnalysis.expansionPrompt;
-							log(
-								'info',
-								`Using complexity analysis prompt for task ${task.id}`
-							);
+							log('info', 'Using expansion prompt from complexity analysis');
 						}
 					}
 				}
@@ -4250,23 +4142,8 @@ async function addTask(
 		try {
 			let chunkCount = 0;
 			let isProcessing = true;
-			// Add a local check that gets set to false if SIGINT is received
-			const originalSigintHandler = sigintHandler;
-
-			// Enhance the SIGINT handler to set isProcessing to false
-			sigintHandler = () => {
-				isProcessing = false;
-
-				// Call original handler to do the rest of cleanup and exit
-				if (originalSigintHandler) originalSigintHandler();
-			};
 
 			for await (const chunk of stream) {
-				// Check if we should stop processing (SIGINT received)
-				if (!isProcessing) {
-					break;
-				}
-
 				if (chunk.type === 'content_block_delta' && chunk.delta.text) {
 					fullResponse += chunk.delta.text;
 					chunkCount++;
@@ -4275,7 +4152,6 @@ async function addTask(
 
 			// Restore original handler if we didn't get interrupted
 			if (isProcessing) {
-				sigintHandler = originalSigintHandler;
 			}
 		} catch (streamError) {
 			// Clean up the interval even if there's an error
@@ -4288,13 +4164,7 @@ async function addTask(
 		}
 
 		if (streamingInterval) clearInterval(streamingInterval);
-		stopLoadingIndicator(loadingIndicator);
-
 		log('info', 'Completed streaming response from Claude API!');
-		log(
-			'debug',
-			`Streaming response length: ${fullResponse.length} characters`
-		);
 
 		// Parse the response - handle potential JSON formatting issues
 		let taskData;
@@ -4385,172 +4255,154 @@ async function addTask(
 	}
 }
 
+
 /**
  * Analyzes task complexity and generates expansion recommendations
  * @param {Object} options Command options
+ * @param {function} reportProgress - Function to report progress to MCP server (optional)
+ * @param {Object} mcpLog - MCP logger object (optional)
+ * @param {Object} session - Session object from MCP server (optional)
  */
-async function analyzeTaskComplexity(options) {
+async function analyzeTaskComplexity(
+	options,
+	{ reportProgress, mcpLog, session } = {}
+) {
 	const tasksPath = options.file || 'tasks/tasks.json';
 	const outputPath = options.output || 'scripts/task-complexity-report.json';
 	const modelOverride = options.model;
-
-	// Define streamingInterval at the top level of the function so the handler can access it
-	let streamingInterval = null;
-	// Track cancellation state
-	let isCancelled = false;
-	// Store original handler to restore later
-	const originalSigintHandler = sigintHandler;
-
-	// Add a debug listener at the process level to see if SIGINT is being received
-	const debugSignalListener = () => {
-		log('debug', 'SIGINT received by debug listener in analyzeTaskComplexity');
-	};
-	process.on('SIGINT', debugSignalListener);
-
-	// Set up SIGINT (Control-C) handler to cancel the operation gracefully
-	const registerSigintHandler = () => {
-		// Only register if not already registered
-		if (!sigintHandler) {
-			sigintHandler = () => {
-				log('debug', 'SIGINT handler executing for analyzeTaskComplexity');
-				isCancelled = true;
-
-				// Try to clear any intervals before exiting
-				if (streamingInterval) {
-					clearInterval(streamingInterval);
-					streamingInterval = null;
-					log('debug', 'Cleared streaming interval');
-				}
-
-				// Clear any terminal state
-				process.stdout.write('\r\x1B[K'); // Clear current line
-
-				console.log(chalk.yellow('\n\nAnalysis cancelled by user.'));
-
-				// Make sure we remove our event listeners before exiting
-				cleanupSigintHandler();
-
-				// Show cursor (in case it was hidden)
-				process.stdout.write('\u001B[?25h');
-
-				// Use isCancelled flag to signal stopping and only exit in non-test mode
-				if (process.env.NODE_ENV !== 'test') {
-					setTimeout(() => {
-						process.exit(0);
-					}, 100);
-				}
-			};
-			process.on('SIGINT', sigintHandler);
-			log('debug', 'Registered SIGINT handler for analyzeTaskComplexity');
-		}
-	};
-
-	// Clean up function to remove the handler when done
-	const cleanupSigintHandler = () => {
-		if (sigintHandler) {
-			process.removeListener('SIGINT', sigintHandler);
-			sigintHandler = originalSigintHandler; // Restore original handler if any
-			log('debug', 'Removed SIGINT handler');
-		}
-
-		// Also remove the debug listener
-		process.removeListener('SIGINT', debugSignalListener);
-		log('debug', 'Removed debug SIGINT listener');
-	};
-
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 
-	// Initialize error tracking variable
-	let apiError = false;
-	let loadingIndicator = null;
+	// Determine output format based on mcpLog presence (simplification)
+	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Create custom reporter that checks for MCP log and silent mode
+	const reportLog = (message, level = 'info') => {
+		if (mcpLog) {
+			mcpLog[level](message);
+		} else if (!isSilentMode() && outputFormat === 'text') {
+			// Only log to console if not in silent mode and outputFormat is 'text'
+			log(level, message);
+		}
+	};
+
+	// Only show UI elements for text output (CLI)
+	if (outputFormat === 'text') {
+		console.log(
+			chalk.blue(
+				`Analyzing task complexity and generating expansion recommendations...`
+			)
+		);
+	}
 
 	try {
 		// Read tasks.json
-		const tasksData = readJSON(tasksPath);
+		reportLog(`Reading tasks from ${tasksPath}...`, 'info');
 
-		if (
-			!tasksData ||
-			!tasksData.tasks ||
-			!Array.isArray(tasksData.tasks) ||
-			tasksData.tasks.length === 0
-		) {
-			throw new Error('No tasks found in the tasks file');
+		// Use either the filtered tasks data provided by the direct function or read from file
+		let tasksData;
+		let originalTaskCount = 0;
+
+		if (options._filteredTasksData) {
+			// If we have pre-filtered data from the direct function, use it
+			tasksData = options._filteredTasksData;
+			originalTaskCount = options._filteredTasksData.tasks.length;
+
+			// Get the original task count from the full tasks array
+			if (options._filteredTasksData._originalTaskCount) {
+				originalTaskCount = options._filteredTasksData._originalTaskCount;
+			} else {
+				// Try to read the original file to get the count
+				try {
+					const originalData = readJSON(tasksPath);
+					if (originalData && originalData.tasks) {
+						originalTaskCount = originalData.tasks.length;
+					}
+				} catch (e) {
+					// If we can't read the original file, just use the filtered count
+					log('warn', `Could not read original tasks file: ${e.message}`);
+				}
+			}
+		} else {
+			// No filtered data provided, read from file
+			tasksData = readJSON(tasksPath);
+
+			if (
+				!tasksData ||
+				!tasksData.tasks ||
+				!Array.isArray(tasksData.tasks) ||
+				tasksData.tasks.length === 0
+			) {
+				throw new Error('No tasks found in the tasks file');
+			}
+
+			originalTaskCount = tasksData.tasks.length;
+
+			// Filter out tasks with status done/cancelled/deferred
+			const activeStatuses = ['pending', 'blocked', 'in-progress'];
+			const filteredTasks = tasksData.tasks.filter((task) =>
+				activeStatuses.includes(task.status?.toLowerCase() || 'pending')
+			);
+
+			// Store original data before filtering
+			const skippedCount = originalTaskCount - filteredTasks.length;
+
+			// Update tasksData with filtered tasks
+			tasksData = {
+				...tasksData,
+				tasks: filteredTasks,
+				_originalTaskCount: originalTaskCount
+			};
+		}
+
+		// Calculate how many tasks we're skipping (done/cancelled/deferred)
+		const skippedCount = originalTaskCount - tasksData.tasks.length;
+
+		reportLog(
+			`Found ${originalTaskCount} total tasks in the task file.`,
+			'info'
+		);
+
+		if (skippedCount > 0) {
+			const skipMessage = `Skipping ${skippedCount} tasks marked as done/cancelled/deferred. Analyzing ${tasksData.tasks.length} active tasks.`;
+			reportLog(skipMessage, 'info');
+
+			// For CLI output, make this more visible
+			if (outputFormat === 'text') {
+				console.log(chalk.yellow(skipMessage));
+			}
 		}
 
 		// Prepare the prompt for the LLM
 		const prompt = generateComplexityAnalysisPrompt(tasksData);
 
-		// Start loading indicator
-		loadingIndicator = startLoadingIndicator(
-			'Calling AI to analyze task complexity...'
-		);
+		// Only start loading indicator for text output (CLI)
+		let loadingIndicator = null;
+		if (outputFormat === 'text') {
+			loadingIndicator = startLoadingIndicator(
+				'Calling AI to analyze task complexity...'
+			);
+		}
 
 		let fullResponse = '';
+		let streamingInterval = null;
 
 		try {
 			// If research flag is set, use Perplexity first
 			if (useResearch) {
 				try {
-					// Register SIGINT handler to allow cancellation with Control-C
-					registerSigintHandler();
+					reportLog(
+						'Using Perplexity AI for research-backed complexity analysis...',
+						'info'
+					);
 
-					// Start tracking elapsed time and update information display
-					const startTime = Date.now();
-					const totalTaskCount = tasksData.tasks.length;
-
-					// IMPORTANT: Stop the loading indicator before showing the progress bar
-					if (loadingIndicator) {
-						stopLoadingIndicator(loadingIndicator);
-						loadingIndicator = null;
-					}
-
-					// Set up the progress data
-					const progressData = {
-						model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
-						contextTokens: 0,
-						elapsed: 0,
-						temperature: CONFIG.temperature,
-						tasksAnalyzed: 0,
-						totalTasks: totalTaskCount,
-						percentComplete: 0,
-						maxTokens: CONFIG.maxTokens
-					};
-
-					// Estimate context tokens (rough approximation - 1 token ~= 4 chars)
-					const estimatedContextTokens = Math.ceil(prompt.length / 4);
-					progressData.contextTokens = estimatedContextTokens;
-
-					// Display initial progress before API call begins
-					displayAnalysisProgress(progressData);
-
-					// Update progress display at regular intervals
-					streamingInterval = setInterval(() => {
-						// Check if cancelled
-						if (isCancelled) {
-							clearInterval(streamingInterval);
-							streamingInterval = null;
-							return;
-						}
-
-						// Update elapsed time
-						progressData.elapsed = (Date.now() - startTime) / 1000;
-						progressData.percentComplete = Math.min(
-							90,
-							(progressData.elapsed / 30) * 100
-						); // Estimate based on typical 30s completion
-
-						// Estimate number of tasks analyzed based on percentage
-						progressData.tasksAnalyzed = Math.floor(
-							(progressData.percentComplete / 100) * totalTaskCount
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(
+							chalk.blue(
+								'Using Perplexity AI for research-backed complexity analysis...'
+							)
 						);
-
-						displayAnalysisProgress(progressData);
-					}, 100);
-
-					// Exit early if cancelled
-					if (isCancelled) {
-						throw new Error('Operation cancelled by user');
 					}
 
 					// Modify prompt to include more context for Perplexity and explicitly request JSON
@@ -4577,13 +4429,11 @@ Your response must be a clean JSON array only, following exactly this format:
 
 DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
 
-					// Exit early if cancelled
-					if (isCancelled) {
-						throw new Error('Operation cancelled by user');
-					}
-
 					const result = await perplexity.chat.completions.create({
-						model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
+						model:
+							process.env.PERPLEXITY_MODEL ||
+							session?.env?.PERPLEXITY_MODEL ||
+							'sonar-pro',
 						messages: [
 							{
 								role: 'system',
@@ -4595,73 +4445,58 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 								content: researchPrompt
 							}
 						],
-						temperature: CONFIG.temperature,
-						max_tokens: CONFIG.maxTokens
+						temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+						max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens
 					});
-
-					// Exit early if cancelled
-					if (isCancelled) {
-						throw new Error('Operation cancelled by user');
-					}
 
 					// Extract the response text
 					fullResponse = result.choices[0].message.content;
-					console.log(
-						chalk.green(
-							'Successfully generated complexity analysis with Perplexity AI'
-						)
+					reportLog(
+						'Successfully generated complexity analysis with Perplexity AI',
+						'success'
 					);
 
-					// Clean up the interval
-					if (streamingInterval) {
-						clearInterval(streamingInterval);
-						streamingInterval = null;
-					}
-
-					// Show completion
-					progressData.percentComplete = 100;
-					progressData.tasksAnalyzed = progressData.totalTasks;
-					progressData.completed = true;
-					displayAnalysisProgress(progressData);
-
-					stopLoadingIndicator(loadingIndicator);
-
-					// Log the first part of the response for debugging
-					console.debug(chalk.gray('Response first 200 chars:'));
-					console.debug(chalk.gray(fullResponse.substring(0, 200)));
-				} catch (perplexityError) {
-					// Check if this was a cancellation
-					if (perplexityError.message === 'Operation cancelled by user') {
-						log('info', 'Perplexity analysis cancelled');
-						throw perplexityError; // Re-throw to exit the function
-					}
-
-					console.error(
-						chalk.yellow('Falling back to Claude for complexity analysis...')
-					);
-					console.error(
-						chalk.gray('Perplexity error:'),
-						perplexityError.message
-					);
-
-					// Clean up
-					if (streamingInterval) {
-						clearInterval(streamingInterval);
-						streamingInterval = null;
-					}
-
-					// Continue to Claude as fallback if not cancelled
-					if (!isCancelled) {
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
 						console.log(
-							chalk.yellow(
-								'\nFalling back to Claude after Perplexity error: ' +
-									perplexityError.message
+							chalk.green(
+								'Successfully generated complexity analysis with Perplexity AI'
 							)
 						);
-						await useClaudeForComplexityAnalysis();
-					} else {
-						throw new Error('Operation cancelled by user');
 					}
+
+					if (streamingInterval) clearInterval(streamingInterval);
+
+					// Stop loading indicator if it was created
+					if (loadingIndicator) {
+						stopLoadingIndicator(loadingIndicator);
+						loadingIndicator = null;
+					}
+
+					// ALWAYS log the first part of the response for debugging
+					if (outputFormat === 'text') {
+						console.log(chalk.gray('Response first 200 chars:'));
+						console.log(chalk.gray(fullResponse.substring(0, 200)));
+					}
+				} catch (perplexityError) {
+					reportLog(
+						`Falling back to Claude for complexity analysis: ${perplexityError.message}`,
+						'warn'
+					);
+
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(
+							chalk.yellow('Falling back to Claude for complexity analysis...')
+						);
+						console.log(
+							chalk.gray('Perplexity error:'),
+							perplexityError.message
+						);
+					}
+
+					// Continue to Claude as fallback
+					await useClaudeForComplexityAnalysis();
 				}
 			} else {
 				// Use Claude directly if research flag is not set
@@ -4670,144 +4505,204 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 
 			// Helper function to use Claude for complexity analysis
 			async function useClaudeForComplexityAnalysis() {
-				// Register SIGINT handler to allow cancellation with Control-C
-				registerSigintHandler();
+				// Initialize retry variables for handling Claude overload
+				let retryAttempt = 0;
+				const maxRetryAttempts = 2;
+				let claudeOverloaded = false;
 
-				// Call the LLM API with streaming
-				// Add try-catch for better error handling specifically for API call
-				try {
-					const stream = await anthropic.messages.create({
-						max_tokens: CONFIG.maxTokens,
-						model: modelOverride || CONFIG.model,
-						temperature: CONFIG.temperature,
-						messages: [{ role: 'user', content: prompt }],
-						system:
-							'You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.',
-						stream: true
-					});
+				// Retry loop for Claude API calls
+				while (retryAttempt < maxRetryAttempts) {
+					retryAttempt++;
+					const isLastAttempt = retryAttempt >= maxRetryAttempts;
 
-					// Stop the default loading indicator before showing our custom UI
-					stopLoadingIndicator(loadingIndicator);
+					try {
+						reportLog(
+							`Claude API attempt ${retryAttempt}/${maxRetryAttempts}`,
+							'info'
+						);
 
-					// Start tracking elapsed time and update information display
-					const startTime = Date.now();
-					const totalTaskCount = tasksData.tasks.length;
-
-					// Set up the progress data
-					const progressData = {
-						model: modelOverride || CONFIG.model,
-						contextTokens: 0, // Will estimate based on prompt size
-						elapsed: 0,
-						temperature: CONFIG.temperature,
-						tasksAnalyzed: 0,
-						totalTasks: totalTaskCount,
-						percentComplete: 0,
-						maxTokens: CONFIG.maxTokens
-					};
-
-					// Estimate context tokens (rough approximation - 1 token ~= 4 chars)
-					const estimatedContextTokens = Math.ceil(prompt.length / 4);
-					progressData.contextTokens = estimatedContextTokens;
-
-					// Display initial progress before streaming begins
-					displayAnalysisProgress(progressData);
-
-					// Update progress display at regular intervals
-					streamingInterval = setInterval(() => {
-						// Update elapsed time
-						progressData.elapsed = (Date.now() - startTime) / 1000;
-
-						// Estimate completion percentage based on response length
-						if (fullResponse.length > 0) {
-							// Estimate based on expected response size (approx. 500 chars per task)
-							const expectedResponseSize = totalTaskCount * 500;
-							const estimatedProgress = Math.min(
-								95,
-								(fullResponse.length / expectedResponseSize) * 100
+						// Update loading indicator for CLI
+						if (outputFormat === 'text' && loadingIndicator) {
+							stopLoadingIndicator(loadingIndicator);
+							loadingIndicator = startLoadingIndicator(
+								`Claude API attempt ${retryAttempt}/${maxRetryAttempts}...`
 							);
-							progressData.percentComplete = estimatedProgress;
+						}
 
-							// Estimate analyzed tasks based on JSON objects found
-							const taskMatches = fullResponse.match(/"taskId"\s*:\s*\d+/g);
-							if (taskMatches) {
-								progressData.tasksAnalyzed = Math.min(
-									totalTaskCount,
-									taskMatches.length
+						// Call the LLM API with streaming
+						const stream = await anthropic.messages.create({
+							max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+							model:
+								modelOverride || CONFIG.model || session?.env?.ANTHROPIC_MODEL,
+							temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+							messages: [{ role: 'user', content: prompt }],
+							system:
+								'You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.',
+							stream: true
+						});
+
+						// Update loading indicator to show streaming progress - only for text output (CLI)
+						if (outputFormat === 'text') {
+							let dotCount = 0;
+							streamingInterval = setInterval(() => {
+								readline.cursorTo(process.stdout, 0);
+								process.stdout.write(
+									`Receiving streaming response from Claude${'.'.repeat(dotCount)}`
+								);
+								dotCount = (dotCount + 1) % 4;
+							}, 500);
+						}
+
+						// Process the stream
+						for await (const chunk of stream) {
+							if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+								fullResponse += chunk.delta.text;
+							}
+							if (reportProgress) {
+								await reportProgress({
+									progress: (fullResponse.length / CONFIG.maxTokens) * 100
+								});
+							}
+							if (mcpLog) {
+								mcpLog.info(
+									`Progress: ${(fullResponse.length / CONFIG.maxTokens) * 100}%`
 								);
 							}
 						}
 
-						// Display the progress information
-						displayAnalysisProgress(progressData);
-					}, 100); // Update much more frequently for smoother animation
+						if (streamingInterval) clearInterval(streamingInterval);
 
-					// Process the stream
-					for await (const chunk of stream) {
-						if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-							fullResponse += chunk.delta.text;
+						// Stop loading indicator if it was created
+						if (loadingIndicator) {
+							stopLoadingIndicator(loadingIndicator);
+							loadingIndicator = null;
+						}
+
+						reportLog(
+							'Completed streaming response from Claude API!',
+							'success'
+						);
+
+						// Only show UI elements for text output (CLI)
+						if (outputFormat === 'text') {
+							console.log(
+								chalk.green('Completed streaming response from Claude API!')
+							);
+						}
+
+						// Successfully received response, break the retry loop
+						break;
+					} catch (claudeError) {
+						if (streamingInterval) clearInterval(streamingInterval);
+
+						// Process error to check if it's an overload condition
+						reportLog(
+							`Error in Claude API call: ${claudeError.message}`,
+							'error'
+						);
+
+						// Check if this is an overload error
+						let isOverload = false;
+						// Check 1: SDK specific property
+						if (claudeError.type === 'overloaded_error') {
+							isOverload = true;
+						}
+						// Check 2: Check nested error property
+						else if (claudeError.error?.type === 'overloaded_error') {
+							isOverload = true;
+						}
+						// Check 3: Check status code
+						else if (claudeError.status === 429 || claudeError.status === 529) {
+							isOverload = true;
+						}
+						// Check 4: Check message string
+						else if (
+							claudeError.message?.toLowerCase().includes('overloaded')
+						) {
+							isOverload = true;
+						}
+
+						if (isOverload) {
+							claudeOverloaded = true;
+							reportLog(
+								`Claude overloaded (attempt ${retryAttempt}/${maxRetryAttempts})`,
+								'warn'
+							);
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(
+									chalk.yellow(
+										`Claude overloaded (attempt ${retryAttempt}/${maxRetryAttempts})`
+									)
+								);
+							}
+
+							if (isLastAttempt) {
+								reportLog(
+									'Maximum retry attempts reached for Claude API',
+									'error'
+								);
+
+								// Only show UI elements for text output (CLI)
+								if (outputFormat === 'text') {
+									console.log(
+										chalk.red('Maximum retry attempts reached for Claude API')
+									);
+								}
+
+								// Let the outer error handling take care of it
+								throw new Error(
+									`Claude API overloaded after ${maxRetryAttempts} attempts`
+								);
+							}
+
+							// Wait a bit before retrying - adds backoff delay
+							const retryDelay = 1000 * retryAttempt; // Increases with each retry
+							reportLog(
+								`Waiting ${retryDelay / 1000} seconds before retry...`,
+								'info'
+							);
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(
+									chalk.blue(
+										`Waiting ${retryDelay / 1000} seconds before retry...`
+									)
+								);
+							}
+
+							await new Promise((resolve) => setTimeout(resolve, retryDelay));
+							continue; // Try again
+						} else {
+							// Non-overload error - don't retry
+							reportLog(
+								`Non-overload Claude API error: ${claudeError.message}`,
+								'error'
+							);
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(
+									chalk.red(`Claude API error: ${claudeError.message}`)
+								);
+							}
+
+							throw claudeError; // Let the outer error handling take care of it
 						}
 					}
-
-					// Clean up the interval - stop updating progress
-					if (streamingInterval) {
-						clearInterval(streamingInterval);
-						streamingInterval = null;
-					}
-
-					// Show completion message immediately
-					progressData.percentComplete = 100;
-					progressData.elapsed = (Date.now() - startTime) / 1000;
-					progressData.tasksAnalyzed = progressData.totalTasks;
-					progressData.completed = true;
-					progressData.contextTokens = Math.max(
-						progressData.contextTokens,
-						estimatedContextTokens
-					); // Ensure the final token count is accurate
-					displayAnalysisProgress(progressData);
-
-					// Clear the line completely to remove any artifacts (after showing completion)
-					process.stdout.write('\r\x1B[K'); // Clear current line
-					process.stdout.write('\r'); // Move cursor to beginning of line
-				} catch (apiError) {
-					// Check if this was a cancellation
-					if (apiError.message === 'Operation cancelled by user') {
-						log('info', 'Claude analysis cancelled');
-						throw apiError; // Re-throw to exit the function
-					}
-
-					// Handle specific API errors here
-					if (streamingInterval) {
-						clearInterval(streamingInterval);
-						streamingInterval = null;
-					}
-
-					process.stdout.write('\r\x1B[K'); // Clear current line
-
-					console.error(
-						chalk.red(`\nAPI Error: ${apiError.message || 'Unknown error'}\n`)
-					);
-					console.log(
-						chalk.yellow('This might be a temporary issue with the Claude API.')
-					);
-					console.log(
-						chalk.yellow(
-							'Please try again in a few moments or check your API key.'
-						)
-					);
-
-					// Rethrow to be caught by outer handler
-					throw apiError;
 				}
 			}
 
-			// If cancelled at this point, exit before parsing
-			if (isCancelled) {
-				log('info', 'Analysis was cancelled. Not generating report.');
-				return;
+			// Parse the JSON response
+			reportLog(`Parsing complexity analysis...`, 'info');
+
+			// Only show UI elements for text output (CLI)
+			if (outputFormat === 'text') {
+				console.log(chalk.blue(`Parsing complexity analysis...`));
 			}
 
-			// Parse the JSON response
-			console.log(chalk.blue(`  Parsing complexity analysis...`));
 			let complexityAnalysis;
 			try {
 				// Clean up the response to ensure it's valid JSON
@@ -4819,7 +4714,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 				);
 				if (codeBlockMatch) {
 					cleanedResponse = codeBlockMatch[1];
-					console.debug(chalk.blue('Extracted JSON from code block'));
+					reportLog('Extracted JSON from code block', 'info');
+
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(chalk.blue('Extracted JSON from code block'));
+					}
 				} else {
 					// Look for a complete JSON array pattern
 					// This regex looks for an array of objects starting with [ and ending with ]
@@ -4828,7 +4728,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 					);
 					if (jsonArrayMatch) {
 						cleanedResponse = jsonArrayMatch[1];
-						console.log(chalk.blue('  Extracted JSON array pattern'));
+						reportLog('Extracted JSON array pattern', 'info');
+
+						// Only show UI elements for text output (CLI)
+						if (outputFormat === 'text') {
+							console.log(chalk.blue('Extracted JSON array pattern'));
+						}
 					} else {
 						// Try to find the start of a JSON array and capture to the end
 						const jsonStartMatch = fullResponse.match(/(\[\s*\{[\s\S]*)/);
@@ -4839,21 +4744,28 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 							if (properEndMatch) {
 								cleanedResponse = properEndMatch[1];
 							}
-							console.log(
-								chalk.blue('Extracted JSON from start of array to end')
-							);
+							reportLog('Extracted JSON from start of array to end', 'info');
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(
+									chalk.blue('Extracted JSON from start of array to end')
+								);
+							}
 						}
 					}
 				}
 
-				// Log the cleaned response for debugging
-				console.debug(chalk.gray('Attempting to parse cleaned JSON...'));
-				console.debug(chalk.gray('Cleaned response (first 100 chars):'));
-				console.debug(chalk.gray(cleanedResponse.substring(0, 100)));
-				console.debug(chalk.gray('Last 100 chars:'));
-				console.debug(
-					chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100))
-				);
+				// Log the cleaned response for debugging - only for text output (CLI)
+				if (outputFormat === 'text') {
+					console.log(chalk.gray('Attempting to parse cleaned JSON...'));
+					console.log(chalk.gray('Cleaned response (first 100 chars):'));
+					console.log(chalk.gray(cleanedResponse.substring(0, 100)));
+					console.log(chalk.gray('Last 100 chars:'));
+					console.log(
+						chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100))
+					);
+				}
 
 				// More aggressive cleaning - strip any non-JSON content at the beginning or end
 				const strictArrayMatch = cleanedResponse.match(
@@ -4861,17 +4773,30 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 				);
 				if (strictArrayMatch) {
 					cleanedResponse = strictArrayMatch[1];
-					console.debug(chalk.blue('Applied strict JSON array extraction'));
+					reportLog('Applied strict JSON array extraction', 'info');
+
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(chalk.blue('Applied strict JSON array extraction'));
+					}
 				}
 
 				try {
 					complexityAnalysis = JSON.parse(cleanedResponse);
 				} catch (jsonError) {
-					console.log(
-						chalk.yellow(
-							'Initial JSON parsing failed, attempting to fix common JSON issues...'
-						)
+					reportLog(
+						'Initial JSON parsing failed, attempting to fix common JSON issues...',
+						'warn'
 					);
+
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(
+							chalk.yellow(
+								'Initial JSON parsing failed, attempting to fix common JSON issues...'
+							)
+						);
+					}
 
 					// Try to fix common JSON issues
 					// 1. Remove any trailing commas in arrays or objects
@@ -4890,63 +4815,47 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 					);
 
 					// 4. Fix unterminated strings - common with LLM responses
+					const untermStringPattern = /:(\s*)"([^"]*)(?=[,}])/g;
 					cleanedResponse = cleanedResponse.replace(
-						/:(\s*)"([^"]*)(?=[,}])/g,
-						':$1"$2"$3'
+						untermStringPattern,
+						':$1"$2"'
 					);
 
-					// 5. Fix multi-line strings by escaping newlines
+					// 5. Fix multi-line strings by replacing newlines
 					cleanedResponse = cleanedResponse.replace(
 						/:(\s*)"([^"]*)\n([^"]*)"/g,
-						':$1"$2\\n$3"'
+						':$1"$2 $3"'
 					);
 
-					// 6. Add more aggressive fixing for unterminated strings by scanning for unclosed quotes
-					let fixedResponse = '';
-					let inString = false;
-					let lastCharWasEscape = false;
-
-					for (let i = 0; i < cleanedResponse.length; i++) {
-						const char = cleanedResponse[i];
-
-						// Handle string boundaries and escaping
-						if (char === '"' && !lastCharWasEscape) {
-							inString = !inString;
-						}
-
-						// Check for end of property or object without closing quote
-						if (
-							inString &&
-							(i === cleanedResponse.length - 1 ||
-								(char === ',' && cleanedResponse[i + 1] === '"') ||
-								(char === '}' && !lastCharWasEscape))
-						) {
-							// Close the string before the comma or brace
-							fixedResponse += '"';
-							inString = false;
-						}
-
-						fixedResponse += char;
-						lastCharWasEscape = char === '\\' && !lastCharWasEscape;
-					}
-
-					// Ensure we're not still in a string at the end
-					if (inString) {
-						fixedResponse += '"';
-					}
-
-					// Try the fixed response
 					try {
-						complexityAnalysis = JSON.parse(fixedResponse);
-						console.log(
-							chalk.green('Successfully parsed JSON after aggressive fixing')
+						complexityAnalysis = JSON.parse(cleanedResponse);
+						reportLog(
+							'Successfully parsed JSON after fixing common issues',
+							'success'
 						);
+
+						// Only show UI elements for text output (CLI)
+						if (outputFormat === 'text') {
+							console.log(
+								chalk.green(
+									'Successfully parsed JSON after fixing common issues'
+								)
+							);
+						}
 					} catch (fixedJsonError) {
-						console.log(
-							chalk.red(
-								'Failed to parse JSON even after fixes, attempting more aggressive cleanup...'
-							)
+						reportLog(
+							'Failed to parse JSON even after fixes, attempting more aggressive cleanup...',
+							'error'
 						);
+
+						// Only show UI elements for text output (CLI)
+						if (outputFormat === 'text') {
+							console.log(
+								chalk.red(
+									'Failed to parse JSON even after fixes, attempting more aggressive cleanup...'
+								)
+							);
+						}
 
 						// Try to extract and process each task individually
 						try {
@@ -4954,91 +4863,60 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 								/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g
 							);
 							if (taskMatches && taskMatches.length > 0) {
-								console.log(
-									chalk.yellow(
-										`Found ${taskMatches.length} task objects, attempting to process individually`
-									)
+								reportLog(
+									`Found ${taskMatches.length} task objects, attempting to process individually`,
+									'info'
 								);
+
+								// Only show UI elements for text output (CLI)
+								if (outputFormat === 'text') {
+									console.log(
+										chalk.yellow(
+											`Found ${taskMatches.length} task objects, attempting to process individually`
+										)
+									);
+								}
 
 								complexityAnalysis = [];
 								for (const taskMatch of taskMatches) {
 									try {
 										// Try to parse each task object individually
-										let fixedTask = taskMatch.replace(/,\s*$/, ''); // Remove trailing commas
-
-										// Attempt to fix unterminated strings in each task
-										fixedTask = fixedTask.replace(/"([^"]*?)(?=,|})/g, '"$1"');
-
-										// Add missing quotes around values
-										fixedTask = fixedTask.replace(
-											/:\s*([^",{\[\s][^,}\]]*?)(?=,|})/g,
-											':"$1"'
+										const fixedTask = taskMatch.replace(/,\s*$/, ''); // Remove trailing commas
+										const taskObj = JSON.parse(`${fixedTask}`);
+										if (taskObj && taskObj.taskId) {
+											complexityAnalysis.push(taskObj);
+										}
+									} catch (taskParseError) {
+										reportLog(
+											`Could not parse individual task: ${taskMatch.substring(0, 30)}...`,
+											'warn'
 										);
 
-										// Try to parse the fixed task
-										try {
-											const taskObj = JSON.parse(`${fixedTask}`);
-											if (taskObj && taskObj.taskId) {
-												// Ensure all required fields have valid values
-												if (!taskObj.complexityScore) {
-													taskObj.complexityScore = 5; // Default mid-level complexity
-												}
-												if (!taskObj.recommendedSubtasks) {
-													taskObj.recommendedSubtasks = 3; // Default subtask count
-												}
-												complexityAnalysis.push(taskObj);
-											}
-										} catch (individualTaskError) {
+										// Only show UI elements for text output (CLI)
+										if (outputFormat === 'text') {
 											console.log(
 												chalk.yellow(
 													`Could not parse individual task: ${taskMatch.substring(0, 30)}...`
 												)
 											);
-
-											// One last attempt - extract just the taskId and create a minimal object
-											const idMatch = taskMatch.match(/"taskId"\s*:\s*(\d+)/);
-											if (idMatch && idMatch[1]) {
-												const taskId = parseInt(idMatch[1], 10);
-												const titleMatch = taskMatch.match(
-													/"taskTitle"\s*:\s*"([^"]*)"/
-												);
-												const title = titleMatch
-													? titleMatch[1]
-													: `Task ${taskId}`;
-
-												// Create a minimal valid task analysis object
-												complexityAnalysis.push({
-													taskId: taskId,
-													taskTitle: title,
-													complexityScore: 5,
-													recommendedSubtasks: 3,
-													expansionPrompt: `Expand task ${taskId} into appropriate subtasks`,
-													reasoning:
-														'Analysis data was incomplete - using default values'
-												});
-
-												console.log(
-													chalk.blue(
-														`Created minimal analysis object for Task ${taskId}`
-													)
-												);
-											}
 										}
-									} catch (taskParseError) {
-										console.log(
-											chalk.yellow(
-												`Could not parse individual task: ${taskMatch.substring(0, 30)}...`
-											)
-										);
 									}
 								}
 
 								if (complexityAnalysis.length > 0) {
-									console.log(
-										chalk.green(
-											`Successfully parsed ${complexityAnalysis.length} tasks individually`
-										)
+									reportLog(
+										`Successfully parsed ${complexityAnalysis.length} tasks individually`,
+										'success'
 									);
+
+									// Only show UI elements for text output (CLI)
+									if (outputFormat === 'text') {
+										console.log(
+											chalk.green(
+												`Successfully parsed ${complexityAnalysis.length} tasks individually`
+											)
+										);
+									}
 								} else {
 									throw new Error('Could not parse any tasks individually');
 								}
@@ -5046,7 +4924,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 								throw fixedJsonError;
 							}
 						} catch (individualError) {
-							console.log(chalk.red('All parsing attempts failed'));
+							reportLog('All parsing attempts failed', 'error');
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(chalk.red('All parsing attempts failed'));
+							}
 							throw jsonError; // throw the original error
 						}
 					}
@@ -5054,11 +4937,19 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 
 				// Ensure complexityAnalysis is an array
 				if (!Array.isArray(complexityAnalysis)) {
-					console.log(
-						chalk.yellow(
-							'Response is not an array, checking if it contains an array property...'
-						)
+					reportLog(
+						'Response is not an array, checking if it contains an array property...',
+						'warn'
 					);
+
+					// Only show UI elements for text output (CLI)
+					if (outputFormat === 'text') {
+						console.log(
+							chalk.yellow(
+								'Response is not an array, checking if it contains an array property...'
+							)
+						);
+					}
 
 					// Handle the case where the response might be an object with an array property
 					if (
@@ -5076,7 +4967,12 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 							typeof complexityAnalysis === 'object' &&
 							complexityAnalysis !== null
 						) {
-							console.log(chalk.yellow('Converting object to array...'));
+							reportLog('Converting object to array...', 'warn');
+
+							// Only show UI elements for text output (CLI)
+							if (outputFormat === 'text') {
+								console.log(chalk.yellow('Converting object to array...'));
+							}
 							complexityAnalysis = [complexityAnalysis];
 						} else {
 							throw new Error(
@@ -5098,456 +4994,192 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
 					(id) => !analysisTaskIds.includes(id)
 				);
 
-				if (missingTaskIds.length > 0) {
-					console.log(
-						chalk.yellow(
-							`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`
-						)
+				// Only show missing task warnings for text output (CLI)
+				if (missingTaskIds.length > 0 && outputFormat === 'text') {
+					reportLog(
+						`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`,
+						'warn'
 					);
-					console.log(chalk.blue(`Attempting to analyze missing tasks...`));
 
-					// Create a subset of tasksData with just the missing tasks
-					const missingTasks = {
-						meta: tasksData.meta,
-						tasks: tasksData.tasks.filter((t) => missingTaskIds.includes(t.id))
-					};
-
-					// Generate a prompt for just the missing tasks
-					const missingTasksPrompt =
-						generateComplexityAnalysisPrompt(missingTasks);
-
-					// Call the same AI model to analyze the missing tasks
-					let missingAnalysisResponse = '';
-
-					try {
-						// Start a new loading indicator
-						const missingTasksLoadingIndicator = startLoadingIndicator(
-							'Analyzing missing tasks...'
-						);
-
-						// Use the same AI model as the original analysis
-						if (useResearch) {
-							// Register SIGINT handler again to make sure it's active for this phase
-							registerSigintHandler();
-
-							// Start tracking elapsed time for missing tasks
-							const missingTasksStartTime = Date.now();
-
-							// Stop the loading indicator before showing progress
-							stopLoadingIndicator(missingTasksLoadingIndicator);
-
-							// Set up progress tracking for missing tasks
-							const missingProgressData = {
-								model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
-								contextTokens: 0,
-								elapsed: 0,
-								temperature: CONFIG.temperature,
-								tasksAnalyzed: 0,
-								totalTasks: missingTaskIds.length,
-								percentComplete: 0,
-								maxTokens: CONFIG.maxTokens
-							};
-
-							// Estimate context tokens
-							const estimatedMissingContextTokens = Math.ceil(
-								missingTasksPrompt.length / 4
-							);
-							missingProgressData.contextTokens = estimatedMissingContextTokens;
-
-							// Display initial progress
-							displayAnalysisProgress(missingProgressData);
-
-							// Update progress display regularly
-							const missingTasksInterval = setInterval(() => {
-								missingProgressData.elapsed =
-									(Date.now() - missingTasksStartTime) / 1000;
-								missingProgressData.percentComplete = Math.min(
-									90,
-									(missingProgressData.elapsed / 20) * 100
-								); // Estimate ~20s completion
-
-								// Estimate number of tasks analyzed based on percentage
-								missingProgressData.tasksAnalyzed = Math.floor(
-									(missingProgressData.percentComplete / 100) *
-										missingTaskIds.length
-								);
-
-								displayAnalysisProgress(missingProgressData);
-							}, 100);
-
-							// Create the same research prompt but for missing tasks
-							const missingTasksResearchPrompt = `You are conducting a detailed analysis of software development tasks to determine their complexity and how they should be broken down into subtasks.
-
-Please research each task thoroughly, considering best practices, industry standards, and potential implementation challenges before providing your analysis.
-
-CRITICAL: You MUST respond ONLY with a valid JSON array. Do not include ANY explanatory text, markdown formatting, or code block markers.
-
-${missingTasksPrompt}
-
-Your response must be a clean JSON array only, following exactly this format:
-[
-  {
-    "taskId": 1,
-    "taskTitle": "Example Task",
-    "complexityScore": 7,
-    "recommendedSubtasks": 4,
-    "expansionPrompt": "Detailed prompt for expansion",
-    "reasoning": "Explanation of complexity assessment"
-  },
-  // more tasks...
-]
-
-DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
-
-							try {
-								const result = await perplexity.chat.completions.create({
-									model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
-									messages: [
-										{
-											role: 'system',
-											content:
-												'You are a technical analysis AI that only responds with clean, valid JSON. Never include explanatory text or markdown formatting in your response.'
-										},
-										{
-											role: 'user',
-											content: missingTasksResearchPrompt
-										}
-									],
-									temperature: CONFIG.temperature,
-									max_tokens: CONFIG.maxTokens
-								});
-
-								// Extract the response
-								missingAnalysisResponse = result.choices[0].message.content;
-
-								// Stop interval and show completion
-								clearInterval(missingTasksInterval);
-								missingProgressData.percentComplete = 100;
-								missingProgressData.tasksAnalyzed =
-									missingProgressData.totalTasks;
-								missingProgressData.completed = true;
-								displayAnalysisProgress(missingProgressData);
-							} catch (error) {
-								// Clean up on error
-								if (missingTasksInterval) {
-									clearInterval(missingTasksInterval);
-								}
-								throw error;
-							} finally {
-								// Always clean up SIGINT handler and interval
-								cleanupSigintHandler();
-								if (missingTasksInterval) {
-									clearInterval(missingTasksInterval);
-								}
-							}
-						} else {
-							// Use Claude
-							const stream = await anthropic.messages.create({
-								max_tokens: CONFIG.maxTokens,
-								model: modelOverride || CONFIG.model,
-								temperature: CONFIG.temperature,
-								messages: [{ role: 'user', content: missingTasksPrompt }],
-								system:
-									'You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.',
-								stream: true
-							});
-
-							// Process the stream
-							for await (const chunk of stream) {
-								if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-									missingAnalysisResponse += chunk.delta.text;
-								}
-							}
-						}
-
-						// Stop the loading indicator
-						stopLoadingIndicator(missingTasksLoadingIndicator);
-
-						// Parse the response using the same parsing logic as before
-						let missingAnalysis;
-						try {
-							// Clean up the response to ensure it's valid JSON (using same logic as above)
-							let cleanedResponse = missingAnalysisResponse;
-
-							// Use the same JSON extraction logic as before
-							// ... (code omitted for brevity, it would be the same as the original parsing)
-
-							// First check for JSON code blocks
-							const codeBlockMatch = missingAnalysisResponse.match(
-								/```(?:json)?\s*([\s\S]*?)\s*```/
-							);
-							if (codeBlockMatch) {
-								cleanedResponse = codeBlockMatch[1];
-								console.debug(
-									chalk.blue('Extracted JSON from code block for missing tasks')
-								);
-							} else {
-								// Look for a complete JSON array pattern
-								const jsonArrayMatch = missingAnalysisResponse.match(
-									/(\[\s*\{\s*"[^"]*"\s*:[\s\S]*\}\s*\])/
-								);
-								if (jsonArrayMatch) {
-									cleanedResponse = jsonArrayMatch[1];
-									console.log(
-										chalk.blue('Extracted JSON array pattern for missing tasks')
-									);
-								} else {
-									// Try to find the start of a JSON array and capture to the end
-									const jsonStartMatch =
-										missingAnalysisResponse.match(/(\[\s*\{[\s\S]*)/);
-									if (jsonStartMatch) {
-										cleanedResponse = jsonStartMatch[1];
-										// Try to find a proper closing to the array
-										const properEndMatch =
-											cleanedResponse.match(/([\s\S]*\}\s*\])/);
-										if (properEndMatch) {
-											cleanedResponse = properEndMatch[1];
-										}
-										console.log(
-											chalk.blue(
-												'Extracted JSON from start of array to end for missing tasks'
-											)
-										);
-									}
-								}
-							}
-
-							// More aggressive cleaning if needed
-							const strictArrayMatch = cleanedResponse.match(
-								/(\[\s*\{[\s\S]*\}\s*\])/
-							);
-							if (strictArrayMatch) {
-								cleanedResponse = strictArrayMatch[1];
-								console.log(
-									chalk.blue(
-										'Applied strict JSON array extraction for missing tasks'
-									)
-								);
-							}
-
-							try {
-								missingAnalysis = JSON.parse(cleanedResponse);
-							} catch (jsonError) {
-								// Try to fix common JSON issues (same as before)
-								cleanedResponse = cleanedResponse.replace(/,(\s*[\]}])/g, '$1');
-								cleanedResponse = cleanedResponse.replace(
-									/(\s*)(\w+)(\s*):(\s*)/g,
-									'$1"$2"$3:$4'
-								);
-								cleanedResponse = cleanedResponse.replace(
-									/:(\s*)'([^']*)'(\s*[,}])/g,
-									':$1"$2"$3'
-								);
-
-								try {
-									missingAnalysis = JSON.parse(cleanedResponse);
-									console.log(
-										chalk.green(
-											'Successfully parsed JSON for missing tasks after fixing common issues'
-										)
-									);
-								} catch (fixedJsonError) {
-									// Try the individual task extraction as a last resort
-									console.log(
-										chalk.red(
-											'Failed to parse JSON for missing tasks, attempting individual extraction...'
-										)
-									);
-
-									const taskMatches = cleanedResponse.match(
-										/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g
-									);
-									if (taskMatches && taskMatches.length > 0) {
-										console.log(
-											chalk.yellow(
-												`Found ${taskMatches.length} task objects, attempting to process individually`
-											)
-										);
-
-										missingAnalysis = [];
-										for (const taskMatch of taskMatches) {
-											try {
-												const fixedTask = taskMatch.replace(/,\s*$/, '');
-												const taskObj = JSON.parse(`${fixedTask}`);
-												if (taskObj && taskObj.taskId) {
-													missingAnalysis.push(taskObj);
-												}
-											} catch (taskParseError) {
-												console.log(
-													chalk.yellow(
-														`Could not parse individual task: ${taskMatch.substring(0, 30)}...`
-													)
-												);
-											}
-										}
-
-										if (missingAnalysis.length === 0) {
-											throw new Error('Could not parse any missing tasks');
-										}
-									} else {
-										throw fixedJsonError;
-									}
-								}
-							}
-
-							// Ensure it's an array
-							if (!Array.isArray(missingAnalysis)) {
-								if (missingAnalysis && typeof missingAnalysis === 'object') {
-									missingAnalysis = [missingAnalysis];
-								} else {
-									throw new Error(
-										'Missing tasks analysis is not an array or object'
-									);
-								}
-							}
-
-							// Add the missing analyses to the main analysis array
-							console.log(
-								chalk.green(
-									`Successfully analyzed ${missingAnalysis.length} missing tasks`
-								)
-							);
-							complexityAnalysis = [...complexityAnalysis, ...missingAnalysis];
-
-							// Re-check for missing tasks
-							const updatedAnalysisTaskIds = complexityAnalysis.map(
-								(a) => a.taskId
-							);
-							const stillMissingTaskIds = taskIds.filter(
-								(id) => !updatedAnalysisTaskIds.includes(id)
-							);
-
-							if (stillMissingTaskIds.length > 0) {
-								console.log(
-									chalk.yellow(
-										`Warning: Still missing analysis for ${stillMissingTaskIds.length} tasks: ${stillMissingTaskIds.join(', ')}`
-									)
-								);
-							} else {
-								console.log(
-									chalk.green(`All tasks now have complexity analysis!`)
-								);
-							}
-						} catch (error) {
-							console.error(
-								chalk.red(`Error analyzing missing tasks: ${error.message}`)
-							);
-							console.log(chalk.yellow(`Continuing with partial analysis...`));
-						}
-					} catch (error) {
-						console.error(
-							chalk.red(
-								`Error during retry for missing tasks: ${error.message}`
+					if (outputFormat === 'text') {
+						console.log(
+							chalk.yellow(
+								`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`
 							)
 						);
-						console.log(chalk.yellow(`Continuing with partial analysis...`));
+						console.log(chalk.blue(`Attempting to analyze missing tasks...`));
+					}
+
+					// Handle missing tasks with a basic default analysis
+					for (const missingId of missingTaskIds) {
+						const missingTask = tasksData.tasks.find((t) => t.id === missingId);
+						if (missingTask) {
+							reportLog(
+								`Adding default analysis for task ${missingId}`,
+								'info'
+							);
+
+							// Create a basic analysis for the missing task
+							complexityAnalysis.push({
+								taskId: missingId,
+								taskTitle: missingTask.title,
+								complexityScore: 5, // Default middle complexity
+								recommendedSubtasks: 3, // Default recommended subtasks
+								expansionPrompt: `Break down this task with a focus on ${missingTask.title.toLowerCase()}.`,
+								reasoning:
+									'Automatically added due to missing analysis in API response.'
+							});
+						}
 					}
 				}
-			} catch (error) {
-				console.error(
-					chalk.red(`Failed to parse LLM response as JSON: ${error.message}`)
-				);
-				if (CONFIG.debug) {
-					console.debug(chalk.gray(`Raw response: ${fullResponse}`));
-				}
-				throw new Error('Invalid response format from LLM. Expected JSON.');
-			}
 
-			// Create the final report
-			const report = {
-				meta: {
-					generatedAt: new Date().toISOString(),
-					tasksAnalyzed: tasksData.tasks.length,
-					thresholdScore: thresholdScore,
-					projectName: tasksData.meta?.projectName || 'Your Project Name',
-					usedResearch: useResearch
-				},
-				complexityAnalysis: complexityAnalysis
-			};
-
-			// Write the report to file
-			console.log(
-				chalk.blue(`  Writing complexity report to ${outputPath}...`)
-			);
-			writeJSON(outputPath, report);
-
-			console.log(
-				chalk.green(
-					`  Task complexity analysis complete. Report written to ${outputPath}`
-				)
-			);
-
-			// Display a summary of findings
-			const highComplexity = complexityAnalysis.filter(
-				(t) => t.complexityScore >= 8
-			).length;
-			const mediumComplexity = complexityAnalysis.filter(
-				(t) => t.complexityScore >= 5 && t.complexityScore < 8
-			).length;
-			const lowComplexity = complexityAnalysis.filter(
-				(t) => t.complexityScore < 5
-			).length;
-			const totalAnalyzed = complexityAnalysis.length;
-
-			// Only show summary if we didn't encounter an API error
-			if (!apiError) {
-				// Create a summary object for formatting
-				const summary = {
-					totalTasks: tasksData.tasks.length,
-					analyzedTasks: totalAnalyzed,
-					highComplexityCount: highComplexity,
-					mediumComplexityCount: mediumComplexity,
-					lowComplexityCount: lowComplexity,
-					researchBacked: useResearch
+				// Create the final report
+				const finalReport = {
+					meta: {
+						generatedAt: new Date().toISOString(),
+						tasksAnalyzed: tasksData.tasks.length,
+						thresholdScore: thresholdScore,
+						projectName: tasksData.meta?.projectName || 'Your Project Name',
+						usedResearch: useResearch
+					},
+					complexityAnalysis: complexityAnalysis
 				};
 
-				// Use the new formatting function from UI module
-				console.log(formatComplexitySummary(summary));
+				// Write the report to file
+				reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+				writeJSON(outputPath, finalReport);
+
+				reportLog(
+					`Task complexity analysis complete. Report written to ${outputPath}`,
+					'success'
+				);
+
+				// Only show UI elements for text output (CLI)
+				if (outputFormat === 'text') {
+					console.log(
+						chalk.green(
+							`Task complexity analysis complete. Report written to ${outputPath}`
+						)
+					);
+
+					// Display a summary of findings
+					const highComplexity = complexityAnalysis.filter(
+						(t) => t.complexityScore >= 8
+					).length;
+					const mediumComplexity = complexityAnalysis.filter(
+						(t) => t.complexityScore >= 5 && t.complexityScore < 8
+					).length;
+					const lowComplexity = complexityAnalysis.filter(
+						(t) => t.complexityScore < 5
+					).length;
+					const totalAnalyzed = complexityAnalysis.length;
+
+					console.log('\nComplexity Analysis Summary:');
+					console.log('----------------------------');
+					console.log(`Tasks in input file: ${tasksData.tasks.length}`);
+					console.log(`Tasks successfully analyzed: ${totalAnalyzed}`);
+					console.log(`High complexity tasks: ${highComplexity}`);
+					console.log(`Medium complexity tasks: ${mediumComplexity}`);
+					console.log(`Low complexity tasks: ${lowComplexity}`);
+					console.log(
+						`Sum verification: ${highComplexity + mediumComplexity + lowComplexity} (should equal ${totalAnalyzed})`
+					);
+					console.log(
+						`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`
+					);
+					console.log(
+						`\nSee ${outputPath} for the full report and expansion commands.`
+					);
+
+					// Show next steps suggestions
+					console.log(
+						boxen(
+							chalk.white.bold('Suggested Next Steps:') +
+								'\n\n' +
+								`${chalk.cyan('1.')} Run ${chalk.yellow('task-master complexity-report')} to review detailed findings\n` +
+								`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down complex tasks\n` +
+								`${chalk.cyan('3.')} Run ${chalk.yellow('task-master expand --all')} to expand all pending tasks based on complexity`,
+							{
+								padding: 1,
+								borderColor: 'cyan',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
+						)
+					);
+				}
+
+				return finalReport;
+			} catch (error) {
+				if (streamingInterval) clearInterval(streamingInterval);
+
+				// Stop loading indicator if it was created
+				if (loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator);
+				}
+
+				reportLog(
+					`Error parsing complexity analysis: ${error.message}`,
+					'error'
+				);
+
+				if (outputFormat === 'text') {
+					console.error(
+						chalk.red(`Error parsing complexity analysis: ${error.message}`)
+					);
+					if (CONFIG.debug) {
+						console.debug(
+							chalk.gray(`Raw response: ${fullResponse.substring(0, 500)}...`)
+						);
+					}
+				}
+
+				throw error;
 			}
 		} catch (error) {
 			if (streamingInterval) clearInterval(streamingInterval);
-			stopLoadingIndicator(loadingIndicator);
 
-			// Mark that we encountered an API error
-			apiError = true;
+			// Stop loading indicator if it was created
+			if (loadingIndicator) {
+				stopLoadingIndicator(loadingIndicator);
+			}
 
-			// Display a user-friendly error message
-			console.error(
-				chalk.red(`\nAPI Error: ${error.message || 'Unknown error'}\n`)
-			);
-			console.log(
-				chalk.yellow('This might be a temporary issue with the Claude API.')
-			);
-			console.log(chalk.yellow('Please try again in a few moments.'));
-			cleanupSigintHandler();
-
-			// We'll continue with any tasks we might have analyzed before the error
+			reportLog(`Error during AI analysis: ${error.message}`, 'error');
+			throw error;
 		}
 	} catch (error) {
-		console.error(
-			chalk.red(`Error analyzing task complexity: ${error.message}`)
-		);
+		reportLog(`Error analyzing task complexity: ${error.message}`, 'error');
 
-		// Clean up SIGINT handler
-		cleanupSigintHandler();
+		// Only show error UI for text output (CLI)
+		if (outputFormat === 'text') {
+			console.error(
+				chalk.red(`Error analyzing task complexity: ${error.message}`)
+			);
 
-		process.exit(1);
-	} finally {
-		// Always clean up resources, regardless of success or failure
-		cleanupSigintHandler();
+			// Provide more helpful error messages for common issues
+			if (error.message.includes('ANTHROPIC_API_KEY')) {
+				console.log(
+					chalk.yellow('\nTo fix this issue, set your Anthropic API key:')
+				);
+				console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+			} else if (error.message.includes('PERPLEXITY_API_KEY')) {
+				console.log(chalk.yellow('\nTo fix this issue:'));
+				console.log(
+					'  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here'
+				);
+				console.log(
+					'  2. Or run without the research flag: task-master analyze-complexity'
+				);
+			}
 
-		if (streamingInterval) {
-			clearInterval(streamingInterval);
-			streamingInterval = null;
+			if (CONFIG.debug) {
+				console.error(error);
+			}
+
+			process.exit(1);
+		} else {
+			throw error; // Re-throw for JSON output
 		}
-
-		if (loadingIndicator) {
-			stopLoadingIndicator(loadingIndicator);
-			loadingIndicator = null;
-		}
-
-		// Clear any terminal artifacts
-		process.stdout.write('\r\x1B[K');
 	}
 }
 
@@ -5914,17 +5546,34 @@ async function removeSubtask(
  * @param {string} subtaskId - ID of the subtask to update in format "parentId.subtaskId"
  * @param {string} prompt - Prompt for generating additional information
  * @param {boolean} useResearch - Whether to use Perplexity AI for research-backed updates
+ * @param {function} reportProgress - Function to report progress to MCP server (optional)
+ * @param {Object} mcpLog - MCP logger object (optional)
+ * @param {Object} session - Session object from MCP server (optional)
  * @returns {Object|null} - The updated subtask or null if update failed
  */
 async function updateSubtaskById(
 	tasksPath,
 	subtaskId,
 	prompt,
-	useResearch = false
+	useResearch = false,
+	{ reportProgress, mcpLog, session } = {}
 ) {
+	// Determine output format based on mcpLog presence (simplification)
+	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Create custom reporter that checks for MCP log and silent mode
+	const report = (message, level = 'info') => {
+		if (mcpLog) {
+			mcpLog[level](message);
+		} else if (!isSilentMode() && outputFormat === 'text') {
+			// Only log to console if not in silent mode and outputFormat is 'text'
+			log(level, message);
+		}
+	};
+
 	let loadingIndicator = null;
 	try {
-		log('info', `Updating subtask ${subtaskId} with prompt: "${prompt}"`);
+		report(`Updating subtask ${subtaskId} with prompt: "${prompt}"`, 'info');
 
 		// Validate subtask ID format
 		if (
@@ -5998,60 +5647,69 @@ async function updateSubtaskById(
 
 		// Check if subtask is already completed
 		if (subtask.status === 'done' || subtask.status === 'completed') {
-			log(
-				'warn',
-				`Subtask ${subtaskId} is already marked as done and cannot be updated`
+			report(
+				`Subtask ${subtaskId} is already marked as done and cannot be updated`,
+				'warn'
 			);
-			console.log(
-				boxen(
-					chalk.yellow(
-						`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`
-					) +
-						'\n\n' +
-						chalk.white(
-							'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
+
+			// Only show UI elements for text output (CLI)
+			if (outputFormat === 'text') {
+				console.log(
+					boxen(
+						chalk.yellow(
+							`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`
 						) +
-						'\n' +
-						chalk.white('1. Change its status to "pending" or "in-progress"') +
-						'\n' +
-						chalk.white('2. Then run the update-subtask command'),
-					{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-				)
-			);
+							'\n\n' +
+							chalk.white(
+								'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
+							) +
+							'\n' +
+							chalk.white(
+								'1. Change its status to "pending" or "in-progress"'
+							) +
+							'\n' +
+							chalk.white('2. Then run the update-subtask command'),
+						{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
+					)
+				);
+			}
 			return null;
 		}
 
-		// Show the subtask that will be updated
-		const table = new Table({
-			head: [
-				chalk.cyan.bold('ID'),
-				chalk.cyan.bold('Title'),
-				chalk.cyan.bold('Status')
-			],
-			colWidths: [10, 55, 10]
-		});
+		// Only show UI elements for text output (CLI)
+		if (outputFormat === 'text') {
+			// Show the subtask that will be updated
+			const table = new Table({
+				head: [
+					chalk.cyan.bold('ID'),
+					chalk.cyan.bold('Title'),
+					chalk.cyan.bold('Status')
+				],
+				colWidths: [10, 55, 10]
+			});
 
-		table.push([
-			subtaskId,
-			truncate(subtask.title, 52),
-			getStatusWithColor(subtask.status)
-		]);
+			table.push([
+				subtaskId,
+				truncate(subtask.title, 52),
+				getStatusWithColor(subtask.status)
+			]);
 
-		console.log(
-			boxen(chalk.white.bold(`Updating Subtask #${subtaskId}`), {
-				padding: 1,
-				borderColor: 'blue',
-				borderStyle: 'round',
-				margin: { top: 1, bottom: 0 }
-			})
-		);
+			console.log(
+				boxen(chalk.white.bold(`Updating Subtask #${subtaskId}`), {
+					padding: 1,
+					borderColor: 'blue',
+					borderStyle: 'round',
+					margin: { top: 1, bottom: 0 }
+				})
+			);
 
-		console.log(table.toString());
+			console.log(table.toString());
 
-		// Start the loading indicator
-		loadingIndicator = startLoadingIndicator(
-			'Generating additional information with AI...'
-		);
+			// Start the loading indicator - only for text output
+			loadingIndicator = startLoadingIndicator(
+				'Generating additional information with AI...'
+			);
+		}
 
 		// Create the system prompt (as before)
 		const systemPrompt = `You are an AI assistant helping to update software development subtasks with additional information.
@@ -6079,22 +5737,30 @@ Provide concrete examples, code snippets, or implementation details when relevan
 				modelType = result.type;
 				const client = result.client;
 
-				log(
-					'info',
-					`Attempt ${modelAttempts}/${maxModelAttempts}: Generating subtask info using ${modelType}`
+				report(
+					`Attempt ${modelAttempts}/${maxModelAttempts}: Generating subtask info using ${modelType}`,
+					'info'
 				);
-				// Update loading indicator text
-				stopLoadingIndicator(loadingIndicator); // Stop previous indicator
-				loadingIndicator = startLoadingIndicator(
-					`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`
-				);
+
+				// Update loading indicator text - only for text output
+				if (outputFormat === 'text') {
+					if (loadingIndicator) {
+						stopLoadingIndicator(loadingIndicator); // Stop previous indicator
+					}
+					loadingIndicator = startLoadingIndicator(
+						`Attempt ${modelAttempts}: Using ${modelType.toUpperCase()}...`
+					);
+				}
 
 				const subtaskData = JSON.stringify(subtask, null, 2);
 				const userMessageContent = `Here is the subtask to enhance:\n${subtaskData}\n\nPlease provide additional information addressing this request:\n${prompt}\n\nReturn ONLY the new information to add - do not repeat existing content.`;
 
 				if (modelType === 'perplexity') {
 					// Construct Perplexity payload
-					const perplexityModel = process.env.PERPLEXITY_MODEL || 'sonar-pro';
+					const perplexityModel =
+						process.env.PERPLEXITY_MODEL ||
+						session?.env?.PERPLEXITY_MODEL ||
+						'sonar-pro';
 					const response = await client.chat.completions.create({
 						model: perplexityModel,
 						messages: [
@@ -6102,26 +5768,35 @@ Provide concrete examples, code snippets, or implementation details when relevan
 							{ role: 'user', content: userMessageContent }
 						],
 						temperature: parseFloat(
-							process.env.TEMPERATURE || CONFIG.temperature
+							process.env.TEMPERATURE ||
+								session?.env?.TEMPERATURE ||
+								CONFIG.temperature
 						),
-						max_tokens: parseInt(process.env.MAX_TOKENS || CONFIG.maxTokens)
+						max_tokens: parseInt(
+							process.env.MAX_TOKENS ||
+								session?.env?.MAX_TOKENS ||
+								CONFIG.maxTokens
+						)
 					});
 					additionalInformation = response.choices[0].message.content.trim();
 				} else {
 					// Claude
 					let responseText = '';
 					let streamingInterval = null;
-					let dotCount = 0;
-					const readline = await import('readline');
 
 					try {
-						streamingInterval = setInterval(() => {
-							readline.cursorTo(process.stdout, 0);
-							process.stdout.write(
-								`Receiving streaming response from Claude${'.'.repeat(dotCount)}`
-							);
-							dotCount = (dotCount + 1) % 4;
-						}, 500);
+						// Only update streaming indicator for text output
+						if (outputFormat === 'text') {
+							let dotCount = 0;
+							const readline = await import('readline');
+							streamingInterval = setInterval(() => {
+								readline.cursorTo(process.stdout, 0);
+								process.stdout.write(
+									`Receiving streaming response from Claude${'.'.repeat(dotCount)}`
+								);
+								dotCount = (dotCount + 1) % 4;
+							}, 500);
+						}
 
 						// Construct Claude payload
 						const stream = await client.messages.create({
@@ -6137,33 +5812,46 @@ Provide concrete examples, code snippets, or implementation details when relevan
 							if (chunk.type === 'content_block_delta' && chunk.delta.text) {
 								responseText += chunk.delta.text;
 							}
+							if (reportProgress) {
+								await reportProgress({
+									progress: (responseText.length / CONFIG.maxTokens) * 100
+								});
+							}
+							if (mcpLog) {
+								mcpLog.info(
+									`Progress: ${(responseText.length / CONFIG.maxTokens) * 100}%`
+								);
+							}
 						}
 					} finally {
 						if (streamingInterval) clearInterval(streamingInterval);
-						// Clear the loading dots line
-						readline.cursorTo(process.stdout, 0);
-						process.stdout.clearLine(0);
+						// Clear the loading dots line - only for text output
+						if (outputFormat === 'text') {
+							const readline = await import('readline');
+							readline.cursorTo(process.stdout, 0);
+							process.stdout.clearLine(0);
+						}
 					}
 
-					log(
-						'info',
-						`Completed streaming response from Claude API! (Attempt ${modelAttempts})`
+					report(
+						`Completed streaming response from Claude API! (Attempt ${modelAttempts})`,
+						'info'
 					);
 					additionalInformation = responseText.trim();
 				}
 
 				// Success - break the loop
 				if (additionalInformation) {
-					log(
-						'info',
-						`Successfully generated information using ${modelType} on attempt ${modelAttempts}.`
+					report(
+						`Successfully generated information using ${modelType} on attempt ${modelAttempts}.`,
+						'info'
 					);
 					break;
 				} else {
 					// Handle case where AI gave empty response without erroring
-					log(
-						'warn',
-						`AI (${modelType}) returned empty response on attempt ${modelAttempts}.`
+					report(
+						`AI (${modelType}) returned empty response on attempt ${modelAttempts}.`,
+						'warn'
 					);
 					if (isLastAttempt) {
 						throw new Error(
@@ -6175,9 +5863,9 @@ Provide concrete examples, code snippets, or implementation details when relevan
 			} catch (modelError) {
 				const failedModel =
 					modelType || modelError.modelType || 'unknown model';
-				log(
-					'warn',
-					`Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`
+				report(
+					`Attempt ${modelAttempts} failed using ${failedModel}: ${modelError.message}`,
+					'warn'
 				);
 
 				// --- More robust overload check ---
@@ -6204,31 +5892,31 @@ Provide concrete examples, code snippets, or implementation details when relevan
 					// Use the result of the check
 					claudeOverloaded = true; // Mark Claude as overloaded for the *next* potential attempt
 					if (!isLastAttempt) {
-						log(
-							'info',
-							'Claude overloaded. Will attempt fallback model if available.'
+						report(
+							'Claude overloaded. Will attempt fallback model if available.',
+							'info'
 						);
-						// Stop the current indicator before continuing
-						if (loadingIndicator) {
+						// Stop the current indicator before continuing - only for text output
+						if (outputFormat === 'text' && loadingIndicator) {
 							stopLoadingIndicator(loadingIndicator);
 							loadingIndicator = null; // Reset indicator
 						}
 						continue; // Go to next iteration of the while loop to try fallback
 					} else {
 						// It was the last attempt, and it failed due to overload
-						log(
-							'error',
-							`Overload error on final attempt (${modelAttempts}/${maxModelAttempts}). No fallback possible.`
+						report(
+							`Overload error on final attempt (${modelAttempts}/${maxModelAttempts}). No fallback possible.`,
+							'error'
 						);
 						// Let the error be thrown after the loop finishes, as additionalInformation will be empty.
 						// We don't throw immediately here, let the loop exit and the check after the loop handle it.
-					} // <<<< ADD THIS CLOSING BRACE
+					}
 				} else {
 					// Error was NOT an overload
 					// If it's not an overload, throw it immediately to be caught by the outer catch.
-					log(
-						'error',
-						`Non-overload error on attempt ${modelAttempts}: ${modelError.message}`
+					report(
+						`Non-overload error on attempt ${modelAttempts}: ${modelError.message}`,
+						'error'
 					);
 					throw modelError; // Re-throw non-overload errors immediately.
 				}
@@ -6237,19 +5925,25 @@ Provide concrete examples, code snippets, or implementation details when relevan
 
 		// If loop finished without getting information
 		if (!additionalInformation) {
-			console.log(
-				'>>> DEBUG: additionalInformation is falsy! Value:',
-				additionalInformation
-			); // <<< ADD THIS
+			// Only show debug info for text output (CLI)
+			if (outputFormat === 'text') {
+				console.log(
+					'>>> DEBUG: additionalInformation is falsy! Value:',
+					additionalInformation
+				);
+			}
 			throw new Error(
 				'Failed to generate additional information after all attempts.'
 			);
 		}
 
-		console.log(
-			'>>> DEBUG: Got additionalInformation:',
-			additionalInformation.substring(0, 50) + '...'
-		); // <<< ADD THIS
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log(
+				'>>> DEBUG: Got additionalInformation:',
+				additionalInformation.substring(0, 50) + '...'
+			);
+		}
 
 		// Create timestamp
 		const currentDate = new Date();
@@ -6257,132 +5951,170 @@ Provide concrete examples, code snippets, or implementation details when relevan
 
 		// Format the additional information with timestamp
 		const formattedInformation = `\n\n<info added on ${timestamp}>\n${additionalInformation}\n</info added on ${timestamp}>`;
-		console.log(
-			'>>> DEBUG: formattedInformation:',
-			formattedInformation.substring(0, 70) + '...'
-		); // <<< ADD THIS
+
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log(
+				'>>> DEBUG: formattedInformation:',
+				formattedInformation.substring(0, 70) + '...'
+			);
+		}
 
 		// Append to subtask details and description
-		console.log('>>> DEBUG: Subtask details BEFORE append:', subtask.details); // <<< ADD THIS
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log('>>> DEBUG: Subtask details BEFORE append:', subtask.details);
+		}
+
 		if (subtask.details) {
 			subtask.details += formattedInformation;
 		} else {
 			subtask.details = `${formattedInformation}`;
 		}
-		console.log('>>> DEBUG: Subtask details AFTER append:', subtask.details); // <<< ADD THIS
+
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log('>>> DEBUG: Subtask details AFTER append:', subtask.details);
+		}
 
 		if (subtask.description) {
 			// Only append to description if it makes sense (for shorter updates)
 			if (additionalInformation.length < 200) {
-				console.log(
-					'>>> DEBUG: Subtask description BEFORE append:',
-					subtask.description
-				); // <<< ADD THIS
+				// Only show debug info for text output (CLI)
+				if (outputFormat === 'text') {
+					console.log(
+						'>>> DEBUG: Subtask description BEFORE append:',
+						subtask.description
+					);
+				}
 				subtask.description += ` [Updated: ${currentDate.toLocaleDateString()}]`;
-				console.log(
-					'>>> DEBUG: Subtask description AFTER append:',
-					subtask.description
-				); // <<< ADD THIS
+				// Only show debug info for text output (CLI)
+				if (outputFormat === 'text') {
+					console.log(
+						'>>> DEBUG: Subtask description AFTER append:',
+						subtask.description
+					);
+				}
 			}
 		}
 
-		// Update the subtask in the parent task (add log before write)
-		// ... index finding logic ...
-		console.log('>>> DEBUG: About to call writeJSON with updated data...'); // <<< ADD THIS
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log('>>> DEBUG: About to call writeJSON with updated data...');
+		}
+
 		// Write the updated tasks to the file
 		writeJSON(tasksPath, data);
-		console.log('>>> DEBUG: writeJSON call completed.'); // <<< ADD THIS
 
-		log('success', `Successfully updated subtask ${subtaskId}`);
+		// Only show debug info for text output (CLI)
+		if (outputFormat === 'text') {
+			console.log('>>> DEBUG: writeJSON call completed.');
+		}
+
+		report(`Successfully updated subtask ${subtaskId}`, 'success');
 
 		// Generate individual task files
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath)); // <<< Maybe log after this too
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-		// Stop indicator *before* final console output
-		stopLoadingIndicator(loadingIndicator);
-		loadingIndicator = null;
+		// Stop indicator before final console output - only for text output (CLI)
+		if (outputFormat === 'text') {
+			if (loadingIndicator) {
+				stopLoadingIndicator(loadingIndicator);
+				loadingIndicator = null;
+			}
 
-		console.log(
-			boxen(
-				chalk.green(`Successfully updated subtask #${subtaskId}`) +
-					'\n\n' +
-					chalk.white.bold('Title:') +
-					' ' +
-					subtask.title +
-					'\n\n' +
-					chalk.white.bold('Information Added:') +
-					'\n' +
-					chalk.white(truncate(additionalInformation, 300, true)),
-				{ padding: 1, borderColor: 'green', borderStyle: 'round' }
-			)
-		);
+			console.log(
+				boxen(
+					chalk.green(`Successfully updated subtask #${subtaskId}`) +
+						'\n\n' +
+						chalk.white.bold('Title:') +
+						' ' +
+						subtask.title +
+						'\n\n' +
+						chalk.white.bold('Information Added:') +
+						'\n' +
+						chalk.white(truncate(additionalInformation, 300, true)),
+					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+				)
+			);
+		}
 
 		return subtask;
 	} catch (error) {
 		// Outer catch block handles final errors after loop/attempts
-		stopLoadingIndicator(loadingIndicator); // Ensure indicator is stopped on error
-		loadingIndicator = null;
-		log('error', `Error updating subtask: ${error.message}`);
-		console.error(chalk.red(`Error: ${error.message}`));
-
-		// ... (existing helpful error message logic based on error type) ...
-		if (error.message?.includes('ANTHROPIC_API_KEY')) {
-			console.log(
-				chalk.yellow('\nTo fix this issue, set your Anthropic API key:')
-			);
-			console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
-		} else if (error.message?.includes('PERPLEXITY_API_KEY')) {
-			console.log(chalk.yellow('\nTo fix this issue:'));
-			console.log(
-				'  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here'
-			);
-			console.log(
-				'  2. Or run without the research flag: task-master update-subtask --id=<id> --prompt=\"...\"'
-			);
-		} else if (error.message?.includes('overloaded')) {
-			// Catch final overload error
-			console.log(
-				chalk.yellow(
-					'\nAI model overloaded, and fallback failed or was unavailable:'
-				)
-			);
-			console.log('  1. Try again in a few minutes.');
-			console.log('  2. Ensure PERPLEXITY_API_KEY is set for fallback.');
-			console.log('  3. Consider breaking your prompt into smaller updates.');
-		} else if (error.message?.includes('not found')) {
-			console.log(chalk.yellow('\nTo fix this issue:'));
-			console.log(
-				'  1. Run task-master list --with-subtasks to see all available subtask IDs'
-			);
-			console.log(
-				'  2. Use a valid subtask ID with the --id parameter in format \"parentId.subtaskId\"'
-			);
-		} else if (error.message?.includes('empty response from AI')) {
-			console.log(
-				chalk.yellow(
-					'\nThe AI model returned an empty response. This might be due to the prompt or API issues. Try rephrasing or trying again later.'
-				)
-			);
+		// Stop indicator on error - only for text output (CLI)
+		if (outputFormat === 'text' && loadingIndicator) {
+			stopLoadingIndicator(loadingIndicator);
+			loadingIndicator = null;
 		}
 
-		if (CONFIG.debug) {
-			console.error(error);
+		report(`Error updating subtask: ${error.message}`, 'error');
+
+		// Only show error UI for text output (CLI)
+		if (outputFormat === 'text') {
+			console.error(chalk.red(`Error: ${error.message}`));
+
+			// Provide helpful error messages based on error type
+			if (error.message?.includes('ANTHROPIC_API_KEY')) {
+				console.log(
+					chalk.yellow('\nTo fix this issue, set your Anthropic API key:')
+				);
+				console.log('  export ANTHROPIC_API_KEY=your_api_key_here');
+			} else if (error.message?.includes('PERPLEXITY_API_KEY')) {
+				console.log(chalk.yellow('\nTo fix this issue:'));
+				console.log(
+					'  1. Set your Perplexity API key: export PERPLEXITY_API_KEY=your_api_key_here'
+				);
+				console.log(
+					'  2. Or run without the research flag: task-master update-subtask --id=<id> --prompt=\"...\"'
+				);
+			} else if (error.message?.includes('overloaded')) {
+				// Catch final overload error
+				console.log(
+					chalk.yellow(
+						'\nAI model overloaded, and fallback failed or was unavailable:'
+					)
+				);
+				console.log('  1. Try again in a few minutes.');
+				console.log('  2. Ensure PERPLEXITY_API_KEY is set for fallback.');
+				console.log('  3. Consider breaking your prompt into smaller updates.');
+			} else if (error.message?.includes('not found')) {
+				console.log(chalk.yellow('\nTo fix this issue:'));
+				console.log(
+					'  1. Run task-master list --with-subtasks to see all available subtask IDs'
+				);
+				console.log(
+					'  2. Use a valid subtask ID with the --id parameter in format \"parentId.subtaskId\"'
+				);
+			} else if (error.message?.includes('empty response from AI')) {
+				console.log(
+					chalk.yellow(
+						'\nThe AI model returned an empty response. This might be due to the prompt or API issues. Try rephrasing or trying again later.'
+					)
+				);
+			}
+
+			if (CONFIG.debug) {
+				console.error(error);
+			}
+		} else {
+			throw error; // Re-throw for JSON output
 		}
 
 		return null;
 	} finally {
 		// Final cleanup check for the indicator, although it should be stopped by now
-		if (loadingIndicator) {
+		if (outputFormat === 'text' && loadingIndicator) {
 			stopLoadingIndicator(loadingIndicator);
 		}
 	}
 }
 
-// --- Implementation restored from upstream/next ---
 /**
- * Remove a task or subtask by ID
- * @param {string} tasksPath - Path to the tasks.json file
- * @param {string|number} taskId - The ID of the task or subtask to remove
+ * Removes a task or subtask from the tasks file
+ * @param {string} tasksPath - Path to the tasks file
+ * @param {string|number} taskId - ID of task or subtask to remove (e.g., '5' or '5.2')
+ * @returns {Object} Result object with success message and removed task info
  */
 async function removeTask(tasksPath, taskId) {
 	try {
@@ -6445,16 +6177,28 @@ async function removeTask(tasksPath, taskId) {
 			writeJSON(tasksPath, data);
 
 			// Generate updated task files
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			try {
+				await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			} catch (genError) {
+				log(
+					'warn',
+					`Successfully removed subtask but failed to regenerate task files: ${genError.message}`
+				);
+			}
 
-			return removedSubtask;
+			return {
+				success: true,
+				message: `Successfully removed subtask ${subtaskId} from task ${parentTaskId}`,
+				removedTask: removedSubtask,
+				parentTaskId: parentTaskId
+			};
 		}
 
-		// Handle top-level task removal
-		const id = parseInt(taskId, 10);
-		const taskIndex = data.tasks.findIndex((t) => t.id === id);
+		// Handle main task removal
+		const taskIdNum = parseInt(taskId, 10);
+		const taskIndex = data.tasks.findIndex((t) => t.id === taskIdNum);
 		if (taskIndex === -1) {
-			throw new Error(`Task with ID ${id} not found`);
+			throw new Error(`Task with ID ${taskId} not found`);
 		}
 
 		// Store the task info before removal for the result
@@ -6463,43 +6207,261 @@ async function removeTask(tasksPath, taskId) {
 		// Remove the task
 		data.tasks.splice(taskIndex, 1);
 
-		// Remove this task as a dependency from all other tasks
+		// Remove references to this task in other tasks' dependencies
 		data.tasks.forEach((task) => {
-			if (task.dependencies && task.dependencies.includes(id)) {
-				task.dependencies = task.dependencies.filter((depId) => depId !== id);
-			}
-			// Remove from subtasks' dependencies as well
-			if (task.subtasks && task.subtasks.length > 0) {
-				task.subtasks.forEach((subtask) => {
-					if (subtask.dependencies && subtask.dependencies.includes(id)) {
-						subtask.dependencies = subtask.dependencies.filter(
-							(depId) => depId !== id
-						);
-					}
-				});
+			if (task.dependencies && task.dependencies.includes(taskIdNum)) {
+				task.dependencies = task.dependencies.filter(
+					(depId) => depId !== taskIdNum
+				);
 			}
 		});
 
 		// Save the updated tasks
 		writeJSON(tasksPath, data);
 
-		// Generate updated task files
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// Delete the task file if it exists
+		const taskFileName = path.join(
+			path.dirname(tasksPath),
+			`task_${taskIdNum.toString().padStart(3, '0')}.txt`
+		);
+		if (fs.existsSync(taskFileName)) {
+			try {
+				fs.unlinkSync(taskFileName);
+			} catch (unlinkError) {
+				log(
+					'warn',
+					`Successfully removed task from tasks.json but failed to delete task file: ${unlinkError.message}`
+				);
+			}
+		}
 
-		return removedTask;
+		// Generate updated task files
+		try {
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		} catch (genError) {
+			log(
+				'warn',
+				`Successfully removed task but failed to regenerate task files: ${genError.message}`
+			);
+		}
+
+		return {
+			success: true,
+			message: `Successfully removed task ${taskId}`,
+			removedTask: removedTask
+		};
 	} catch (error) {
 		log('error', `Error removing task: ${error.message}`);
-		throw error;
+		throw {
+			code: 'REMOVE_TASK_ERROR',
+			message: error.message,
+			details: error.stack
+		};
 	}
 }
 
-// --- Stubs for missing exports from upstream/next ---
-function generateSubtaskPrompt() {
-	throw new Error('generateSubtaskPrompt is not implemented in this branch.');
+/**
+ * Checks if a task with the given ID exists
+ * @param {Array} tasks - Array of tasks to search
+ * @param {string|number} taskId - ID of task or subtask to check
+ * @returns {boolean} Whether the task exists
+ */
+function taskExists(tasks, taskId) {
+	// Handle subtask IDs (e.g., "1.2")
+	if (typeof taskId === 'string' && taskId.includes('.')) {
+		const [parentIdStr, subtaskIdStr] = taskId.split('.');
+		const parentId = parseInt(parentIdStr, 10);
+		const subtaskId = parseInt(subtaskIdStr, 10);
+
+		// Find the parent task
+		const parentTask = tasks.find((t) => t.id === parentId);
+
+		// If parent exists, check if subtask exists
+		return (
+			parentTask &&
+			parentTask.subtasks &&
+			parentTask.subtasks.some((st) => st.id === subtaskId)
+		);
+	}
+
+	// Handle regular task IDs
+	const id = parseInt(taskId, 10);
+	return tasks.some((t) => t.id === id);
 }
-function getSubtasksFromAI() {
-	throw new Error('getSubtasksFromAI is not implemented in this branch.');
+
+/**
+ * Generate a prompt for creating subtasks from a task
+ * @param {Object} task - The task to generate subtasks for
+ * @param {number} numSubtasks - Number of subtasks to generate
+ * @param {string} additionalContext - Additional context to include in the prompt
+ * @param {Object} taskAnalysis - Optional complexity analysis for the task
+ * @returns {string} - The generated prompt
+ */
+function generateSubtaskPrompt(
+	task,
+	numSubtasks,
+	additionalContext = '',
+	taskAnalysis = null
+) {
+	// Build the system prompt
+	const basePrompt = `You need to break down the following task into ${numSubtasks} specific subtasks that can be implemented one by one.
+
+Task ID: ${task.id}
+Title: ${task.title}
+Description: ${task.description || 'No description provided'}
+Current details: ${task.details || 'No details provided'}
+${additionalContext ? `\nAdditional context to consider: ${additionalContext}` : ''}
+${taskAnalysis ? `\nComplexity analysis: This task has a complexity score of ${taskAnalysis.complexityScore}/10.` : ''}
+${taskAnalysis && taskAnalysis.reasoning ? `\nReasoning for complexity: ${taskAnalysis.reasoning}` : ''}
+
+Subtasks should:
+1. Be specific and actionable implementation steps
+2. Follow a logical sequence
+3. Each handle a distinct part of the parent task
+4. Include clear guidance on implementation approach
+5. Have appropriate dependency chains between subtasks
+6. Collectively cover all aspects of the parent task
+
+Return exactly ${numSubtasks} subtasks with the following JSON structure:
+[
+  {
+    "id": 1,
+    "title": "First subtask title",
+    "description": "Detailed description",
+    "dependencies": [], 
+    "details": "Implementation details"
+  },
+  ...more subtasks...
+]
+
+Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
+
+	return basePrompt;
 }
+
+/**
+ * Call AI to generate subtasks based on a prompt
+ * @param {string} prompt - The prompt to send to the AI
+ * @param {boolean} useResearch - Whether to use Perplexity for research
+ * @param {Object} session - Session object from MCP
+ * @param {Object} mcpLog - MCP logger object
+ * @returns {Object} - Object containing generated subtasks
+ */
+async function getSubtasksFromAI(
+	prompt,
+	useResearch = false,
+	session = null,
+	mcpLog = null
+) {
+	try {
+		// Get the configured client
+		const client = getConfiguredAnthropicClient(session);
+
+		// Prepare API parameters
+		const apiParams = {
+			model: session?.env?.ANTHROPIC_MODEL || CONFIG.model,
+			max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens,
+			temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+			system:
+				'You are an AI assistant helping with task breakdown for software development.',
+			messages: [{ role: 'user', content: prompt }]
+		};
+
+		if (mcpLog) {
+			mcpLog.info('Calling AI to generate subtasks');
+		}
+
+		let responseText;
+
+		// Call the AI - with research if requested
+		if (useResearch && perplexity) {
+			if (mcpLog) {
+				mcpLog.info('Using Perplexity AI for research-backed subtasks');
+			}
+
+			const perplexityModel =
+				process.env.PERPLEXITY_MODEL ||
+				session?.env?.PERPLEXITY_MODEL ||
+				'sonar-pro';
+			const result = await perplexity.chat.completions.create({
+				model: perplexityModel,
+				messages: [
+					{
+						role: 'system',
+						content:
+							'You are an AI assistant helping with task breakdown for software development. Research implementation details and provide comprehensive subtasks.'
+					},
+					{ role: 'user', content: prompt }
+				],
+				temperature: session?.env?.TEMPERATURE || CONFIG.temperature,
+				max_tokens: session?.env?.MAX_TOKENS || CONFIG.maxTokens
+			});
+
+			responseText = result.choices[0].message.content;
+		} else {
+			// Use regular Claude
+			if (mcpLog) {
+				mcpLog.info('Using Claude for generating subtasks');
+			}
+
+			// Call the streaming API
+			responseText = await _handleAnthropicStream(
+				client,
+				apiParams,
+				{ mcpLog, silentMode: isSilentMode() },
+				!isSilentMode()
+			);
+		}
+
+		// Ensure we have a valid response
+		if (!responseText) {
+			throw new Error('Empty response from AI');
+		}
+
+		// Try to parse the subtasks
+		try {
+			const parsedSubtasks = parseSubtasksFromText(responseText);
+			if (
+				!parsedSubtasks ||
+				!Array.isArray(parsedSubtasks) ||
+				parsedSubtasks.length === 0
+			) {
+				throw new Error(
+					'Failed to parse valid subtasks array from AI response'
+				);
+			}
+			return { subtasks: parsedSubtasks };
+		} catch (parseError) {
+			if (mcpLog) {
+				mcpLog.error(`Error parsing subtasks: ${parseError.message}`);
+				mcpLog.error(`Response start: ${responseText.substring(0, 200)}...`);
+			} else {
+				log('error', `Error parsing subtasks: ${parseError.message}`);
+			}
+			// Return error information instead of fallback subtasks
+			return {
+				error: parseError.message,
+				taskId: null, // This will be filled in by the calling function
+				suggestion:
+					'Use \'task-master update-task --id=<id> --prompt="Generate subtasks for this task"\' to manually create subtasks.'
+			};
+		}
+	} catch (error) {
+		if (mcpLog) {
+			mcpLog.error(`Error generating subtasks: ${error.message}`);
+		} else {
+			log('error', `Error generating subtasks: ${error.message}`);
+		}
+		// Return error information instead of fallback subtasks
+		return {
+			error: error.message,
+			taskId: null, // This will be filled in by the calling function
+			suggestion:
+				'Use \'task-master update-task --id=<id> --prompt="Generate subtasks for this task"\' to manually create subtasks.'
+		};
+	}
+}
+
 // Export task manager functions
 export {
 	parsePRD,
@@ -6520,6 +6482,7 @@ export {
 	analyzeTaskComplexity,
 	removeTask,
 	findTaskById,
+	taskExists,
 	generateSubtaskPrompt,
 	getSubtasksFromAI
 };
