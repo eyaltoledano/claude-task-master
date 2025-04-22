@@ -2,4 +2,4 @@
 'task-master-ai': patch
 ---
 
-Direct Integration of Roo Code Support PR #285
+Add integration for Roo Code
