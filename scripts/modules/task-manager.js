@@ -129,8 +129,12 @@ let sigintHandler = null;
  * @param {string} prdPath - Path to the PRD file
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} numTasks - Number of tasks to generate
- * @param {Object} options - Options object containing:
- *   - append: Whether to append new tasks to existing tasks.json instead of overwriting
+ * @param {Object} options - Additional options
+ * @param {Object} options.reportProgress - Function to report progress to MCP server (optional)
+ * @param {Object} options.mcpLog - MCP logger object (optional)
+ * @param {Object} options.session - Session object from MCP server (optional)
+ * @param {Object} aiClient - AI client to use (optional)
+ * @param {Object} modelConfig - Model configuration (optional)
  */
 async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	// Define progressInterval at the top level of the function so the handler can access it
