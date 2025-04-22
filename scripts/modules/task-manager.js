@@ -26,7 +26,8 @@ import {
 	truncate,
 	enableSilentMode,
 	disableSilentMode,
-	isSilentMode
+	isSilentMode,
+	setupSignalHandler
 } from './utils.js';
 
 import {
@@ -174,8 +175,14 @@ async function parsePRD(
 		progress.removeAllListeners();
 
 		// Restore cursor
-		process.stdout.write('\u001B[?25h');
+		process.stdout.write("\u001B[?25h");
 	};
+
+	// Setup signal handler with the universal utility
+	const removeSignalHandler = setupSignalHandler(
+		cleanupResources, 
+		"PRD parsing cancelled by user."
+	);
 
 	// Variable for task data that will be populated in either path
 	let tasksData;
@@ -1707,6 +1714,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 		});
 
 		// Clean up all resources
+		removeSignalHandler();
 		cleanupResources();
 
 		return tasksPath;
@@ -1714,6 +1722,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 		log('error', `Error parsing PRD: ${error.message}`);
 
 		// Clean up all resources
+		removeSignalHandler();
 		cleanupResources();
 
 		// Log error for debugging
