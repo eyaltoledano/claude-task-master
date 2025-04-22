@@ -35,7 +35,7 @@ const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
  */
 function handleSigint(options = {}) {
 	const { clearIntervalFn, message = 'Operation cancelled by user' } = options;
-	
+
 	// Create a cleanup function that resets the terminal state
 	const cleanupFn = () => {
 		// Stop animation immediately if a clear function is provided
@@ -49,7 +49,7 @@ function handleSigint(options = {}) {
 			process.stdout.write('\r');
 			process.stdout.write(' '.repeat(process.stdout.columns || 100));
 			process.stdout.write('\r');
-			
+
 			// Make cursor visible
 			process.stdout.write('\u001B[?25h');
 		} catch (e) {

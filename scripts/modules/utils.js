@@ -405,7 +405,11 @@ function detectCamelCaseFlags(args) {
  * @param {boolean} [shouldExit=true] - Whether to exit the process after cancellation
  * @returns {Function} Function to remove the signal handlers
  */
-function setupSignalHandler(cleanupCallback, cancelMessage = 'Operation cancelled by user.', shouldExit = true) {
+function setupSignalHandler(
+	cleanupCallback,
+	cancelMessage = 'Operation cancelled by user.',
+	shouldExit = true
+) {
 	// Define the signal handler function
 	const signalHandler = () => {
 		// Execute the cleanup function first
