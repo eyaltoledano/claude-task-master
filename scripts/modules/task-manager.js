@@ -121,7 +121,6 @@ try {
 	log('warn', 'Research-backed features will not be available');
 }
 
-
 /**
  * Parse a PRD file and generate tasks
  * @param {string} prdPath - Path to the PRD file
@@ -140,8 +139,6 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 
 	// Create progress emitter for streaming events
 	const progress = createProgressEmitter();
-
-
 
 	// Cleanup resources function to ensure consistent state even after errors
 	const cleanupResources = () => {
@@ -188,7 +185,6 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		}
 
 		log('debug', `Parsing PRD file: ${prdPath}`);
-
 
 		// Track start time
 		const startTime = Date.now();
