@@ -1670,12 +1670,6 @@ Important: Your response must be valid JSON only, with no additional explanation
 			taskFilesGenerated: taskFilesGenerated
 		});
 
-		log(
-			'success',
-			`Successfully generated ${tasksData.tasks.length} tasks from PRD`
-		);
-		log('info', `Tasks saved to: ${tasksPath}`);
-
 		// Clean up all resources
 		cleanupResources();
 
