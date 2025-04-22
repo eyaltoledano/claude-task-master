@@ -27,10 +27,7 @@ import {
 	removeSubtask,
 	analyzeTaskComplexity,
 	updateTaskById,
-	updateSubtaskById,
-	removeTask,
-	findTaskById,
-	taskExists
+	updateSubtaskById
 } from './task-manager.js';
 
 import {
@@ -46,13 +43,10 @@ import {
 	displayNextTask,
 	displayTaskById,
 	displayComplexityReport,
+	displayComplexityAnalysisStart,
 	getStatusWithColor,
-	confirmTaskOverwrite,
-	startLoadingIndicator,
-	stopLoadingIndicator
+	confirmTaskOverwrite
 } from './ui.js';
-
-import { initializeProject } from '../init.js';
 
 /**
  * Configure and register CLI commands
@@ -651,14 +645,18 @@ function registerCommands(programInstance) {
 			'Force regeneration of subtasks for tasks that already have them'
 		)
 		.action(async (options) => {
-			const idArg = options.id;
-			const numSubtasks = options.num || CONFIG.defaultSubtasks;
-			const useResearch = options.research || false;
+			const tasksPath = options.file;
+			const idArg = options.id ? parseInt(options.id, 10) : null;
+			const allFlag = options.all;
+			const numSubtasks = parseInt(options.num, 10);
+			const forceFlag = options.force;
+			const useResearch = options.research === true;
 			const additionalContext = options.prompt || '';
-			const forceFlag = options.force || false;
-			const tasksPath = options.file || 'tasks/tasks.json';
 
-			if (options.all) {
+			// Debug log to verify the value
+			log('debug', `Research enabled: ${useResearch}`);
+
+			if (allFlag) {
 				console.log(
 					chalk.blue(`Expanding all tasks with ${numSubtasks} subtasks each...`)
 				);
@@ -749,16 +747,14 @@ function registerCommands(programInstance) {
 			const thresholdScore = parseFloat(options.threshold);
 			const useResearch = options.research || false;
 
-			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
-			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
-
-			if (useResearch) {
-				console.log(
-					chalk.blue(
-						'Using Perplexity AI for research-backed complexity analysis'
-					)
-				);
-			}
+			// Call the dedicated UI function to display complexity analysis start information
+			displayComplexityAnalysisStart(
+				tasksPath,
+				outputPath,
+				useResearch,
+				modelOverride || CONFIG.model,
+				CONFIG.temperature
+			);
 
 			await analyzeTaskComplexity(options);
 		});
@@ -832,91 +828,32 @@ function registerCommands(programInstance) {
 			'Task priority (high, medium, low)',
 			'medium'
 		)
-		.option(
-			'-r, --research',
-			'Whether to use research capabilities for task creation'
-		)
 		.action(async (options) => {
-			const isManualCreation = options.title && options.description;
+			const tasksPath = options.file;
+			const prompt = options.prompt;
+			const dependencies = options.dependencies
+				? options.dependencies.split(',').map((id) => parseInt(id.trim(), 10))
+				: [];
+			const priority = options.priority;
 
-			// Validate that either prompt or title+description are provided
-			if (!options.prompt && !isManualCreation) {
+			if (!prompt) {
 				console.error(
 					chalk.red(
-						'Error: Either --prompt or both --title and --description must be provided'
+						'Error: --prompt parameter is required. Please provide a task description.'
 					)
 				);
 				process.exit(1);
 			}
 
-			try {
-				// Prepare dependencies if provided
-				let dependencies = [];
-				if (options.dependencies) {
-					dependencies = options.dependencies
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10));
-				}
+			console.log(chalk.blue(`Adding new task with description: "${prompt}"`));
+			console.log(
+				chalk.blue(
+					`Dependencies: ${dependencies.length > 0 ? dependencies.join(', ') : 'None'}`
+				)
+			);
+			console.log(chalk.blue(`Priority: ${priority}`));
 
-				// Create manual task data if title and description are provided
-				let manualTaskData = null;
-				if (isManualCreation) {
-					manualTaskData = {
-						title: options.title,
-						description: options.description,
-						details: options.details || '',
-						testStrategy: options.testStrategy || ''
-					};
-
-					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
-					console.log(
-						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
-						)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				}
-
-				const newTaskId = await addTask(
-					options.file,
-					options.prompt,
-					dependencies,
-					options.priority,
-					{
-						session: process.env
-					},
-					options.research || false,
-					null,
-					manualTaskData
-				);
-
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
-				console.log(chalk.gray('Next: Complete this task or add more tasks'));
-			} catch (error) {
-				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && CONFIG.debug) {
-					console.error(error.stack);
-				}
-				process.exit(1);
-			}
+			await addTask(tasksPath, prompt, dependencies, priority);
 		});
 
 	// next command
@@ -1384,6 +1321,9 @@ function registerCommands(programInstance) {
 	}
 
 	// remove-task command
+	// This command requires functions from upstream/next branch that are not yet available
+	// Temporarily disabled to resolve the import issue
+	/*
 	programInstance
 		.command('remove-task')
 		.description('Remove one or more tasks or subtasks permanently')
@@ -1394,197 +1334,13 @@ function registerCommands(programInstance) {
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.action(async (options) => {
-			const tasksPath = options.file;
-			const taskIds = options.id;
-
-			if (!taskIds) {
-				console.error(chalk.red('Error: Task ID is required'));
-				console.error(
-					chalk.yellow('Usage: task-master remove-task --id=<taskId>')
-				);
-				process.exit(1);
-			}
-
-			try {
-				// Check if the tasks file exists and is valid
-				const data = readJSON(tasksPath);
-				if (!data || !data.tasks) {
-					console.error(
-						chalk.red(`Error: No valid tasks found in ${tasksPath}`)
-					);
-					process.exit(1);
-				}
-
-				// Split task IDs if comma-separated
-				const taskIdArray = taskIds.split(',').map((id) => id.trim());
-
-				// Validate all task IDs exist before proceeding
-				const invalidTasks = taskIdArray.filter(
-					(id) => !taskExists(data.tasks, id)
-				);
-				if (invalidTasks.length > 0) {
-					console.error(
-						chalk.red(
-							`Error: The following tasks were not found: ${invalidTasks.join(', ')}`
-						)
-					);
-					process.exit(1);
-				}
-
-				// Skip confirmation if --yes flag is provided
-				if (!options.yes) {
-					// Display tasks to be removed
-					console.log();
-					console.log(
-						chalk.red.bold(
-							'⚠️ WARNING: This will permanently delete the following tasks:'
-						)
-					);
-					console.log();
-
-					for (const taskId of taskIdArray) {
-						const task = findTaskById(data.tasks, taskId);
-
-						if (typeof taskId === 'string' && taskId.includes('.')) {
-							// It's a subtask
-							const [parentId, subtaskId] = taskId.split('.');
-							console.log(chalk.white.bold(`Subtask ${taskId}: ${task.title}`));
-							console.log(
-								chalk.gray(
-									`Parent Task: ${task.parentTask.id} - ${task.parentTask.title}`
-								)
-							);
-						} else {
-							// It's a main task
-							console.log(chalk.white.bold(`Task ${taskId}: ${task.title}`));
-
-							// Show if it has subtasks
-							if (task.subtasks && task.subtasks.length > 0) {
-								console.log(
-									chalk.yellow(
-										`⚠️ This task has ${task.subtasks.length} subtasks that will also be deleted!`
-									)
-								);
-							}
-
-							// Show if other tasks depend on it
-							const dependentTasks = data.tasks.filter(
-								(t) =>
-									t.dependencies &&
-									t.dependencies.includes(parseInt(taskId, 10))
-							);
-
-							if (dependentTasks.length > 0) {
-								console.log(
-									chalk.yellow(
-										`⚠️ Warning: ${dependentTasks.length} other tasks depend on this task!`
-									)
-								);
-								console.log(
-									chalk.yellow('These dependencies will be removed:')
-								);
-								dependentTasks.forEach((t) => {
-									console.log(chalk.yellow(`  - Task ${t.id}: ${t.title}`));
-								});
-							}
-						}
-						console.log();
-					}
-
-					// Prompt for confirmation
-					const { confirm } = await inquirer.prompt([
-						{
-							type: 'confirm',
-							name: 'confirm',
-							message: chalk.red.bold(
-								`Are you sure you want to permanently delete ${taskIdArray.length > 1 ? 'these tasks' : 'this task'}?`
-							),
-							default: false
-						}
-					]);
-
-					if (!confirm) {
-						console.log(chalk.blue('Task deletion cancelled.'));
-						process.exit(0);
-					}
-				}
-
-				const indicator = startLoadingIndicator('Removing tasks...');
-
-				// Remove each task
-				const results = [];
-				for (const taskId of taskIdArray) {
-					try {
-						const result = await removeTask(tasksPath, taskId);
-						results.push({ taskId, success: true, ...result });
-					} catch (error) {
-						results.push({ taskId, success: false, error: error.message });
-					}
-				}
-
-				stopLoadingIndicator(indicator);
-
-				// Display results
-				const successfulRemovals = results.filter((r) => r.success);
-				const failedRemovals = results.filter((r) => !r.success);
-
-				if (successfulRemovals.length > 0) {
-					console.log(
-						boxen(
-							chalk.green(
-								`Successfully removed ${successfulRemovals.length} task${successfulRemovals.length > 1 ? 's' : ''}`
-							) +
-								'\n\n' +
-								successfulRemovals
-									.map((r) =>
-										chalk.white(
-											`✓ ${r.taskId.includes('.') ? 'Subtask' : 'Task'} ${r.taskId}`
-										)
-									)
-									.join('\n'),
-							{
-								padding: 1,
-								borderColor: 'green',
-								borderStyle: 'round',
-								margin: { top: 1 }
-							}
-						)
-					);
-				}
-
-				if (failedRemovals.length > 0) {
-					console.log(
-						boxen(
-							chalk.red(
-								`Failed to remove ${failedRemovals.length} task${failedRemovals.length > 1 ? 's' : ''}`
-							) +
-								'\n\n' +
-								failedRemovals
-									.map((r) => chalk.white(`✗ ${r.taskId}: ${r.error}`))
-									.join('\n'),
-							{
-								padding: 1,
-								borderColor: 'red',
-								borderStyle: 'round',
-								margin: { top: 1 }
-							}
-						)
-					);
-
-					// Exit with error if any removals failed
-					if (successfulRemovals.length === 0) {
-						process.exit(1);
-					}
-				}
-			} catch (error) {
-				console.error(
-					chalk.red(`Error: ${error.message || 'An unknown error occurred'}`)
-				);
-				process.exit(1);
-			}
+			console.log(chalk.yellow('The remove-task command is temporarily unavailable.'));
+			console.log(chalk.yellow('Please use the upstream/next branch for this functionality.'));
+			process.exit(0);
 		});
+	*/
 
-	// init command (Directly calls the implementation from init.js)
+	// init command (documentation only, implementation is in init.js)
 	programInstance
 		.command('init')
 		.description('Initialize a new project with Task Master structure')
@@ -1596,23 +1352,20 @@ function registerCommands(programInstance) {
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
-		.action(async (cmdOptions) => {
-			// cmdOptions contains parsed arguments
-			try {
-				console.log('DEBUG: Running init command action in commands.js');
-				console.log(
-					'DEBUG: Options received by action:',
-					JSON.stringify(cmdOptions)
-				);
-				// Directly call the initializeProject function, passing the parsed options
-				await initializeProject(cmdOptions);
-				// initializeProject handles its own flow, including potential process.exit()
-			} catch (error) {
-				console.error(
-					chalk.red(`Error during initialization: ${error.message}`)
-				);
-				process.exit(1);
-			}
+		.action(() => {
+			console.log(
+				chalk.yellow(
+					'The init command must be run as a standalone command: task-master init'
+				)
+			);
+			console.log(chalk.cyan('Example usage:'));
+			console.log(
+				chalk.white(
+					'  task-master init -n "My Project" -d "Project description"'
+				)
+			);
+			console.log(chalk.white('  task-master init -y'));
+			process.exit(0);
 		});
 
 	// Add more commands as needed...
