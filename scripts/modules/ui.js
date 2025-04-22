@@ -102,102 +102,103 @@ function stopLoadingIndicator(spinner) {
  * @returns {string} The formatted progress bar
  */
 function createProgressBar(percent, length = 30, statusBreakdown = null) {
-       // Adjust the percent to treat deferred and cancelled as complete
-       const effectivePercent = statusBreakdown
-               ? Math.min(
-                               100,
-                               percent +
-                                       (statusBreakdown.deferred || 0) +
-                                       (statusBreakdown.cancelled || 0)
-                       )
-               : percent;
+	// Adjust the percent to treat deferred and cancelled as complete
+	const effectivePercent = statusBreakdown
+		? Math.min(
+				100,
+				percent +
+					(statusBreakdown.deferred || 0) +
+					(statusBreakdown.cancelled || 0)
+			)
+		: percent;
 
-       // Calculate how many characters to fill for "true completion"
-       const trueCompletedFilled = Math.round((percent * length) / 100);
+	// Calculate how many characters to fill for "true completion"
+	const trueCompletedFilled = Math.round((percent * length) / 100);
 
-       // Calculate how many characters to fill for "effective completion" (including deferred/cancelled)
-       const effectiveCompletedFilled = Math.round(
-               (effectivePercent * length) / 100
-       );
+	// Calculate how many characters to fill for "effective completion" (including deferred/cancelled)
+	const effectiveCompletedFilled = Math.round(
+		(effectivePercent * length) / 100
+	);
 
-       // The "deferred/cancelled" section (difference between true and effective)
-       const deferredCancelledFilled =
-               effectiveCompletedFilled - trueCompletedFilled;
+	// The "deferred/cancelled" section (difference between true and effective)
+	const deferredCancelledFilled =
+		effectiveCompletedFilled - trueCompletedFilled;
 
-       // Set the empty section (remaining after effective completion)
-       const empty = length - effectiveCompletedFilled;
+	// Set the empty section (remaining after effective completion)
+	const empty = length - effectiveCompletedFilled;
 
-       // Determine color based on percentage for the completed section
-       let completedColor;
-       if (percent < 25) {
-               completedColor = chalk.red;
-       } else if (percent < 50) {
-               completedColor = chalk.hex('#FFA500'); // Orange
-       } else if (percent < 75) {
-               completedColor = chalk.yellow;
-       } else if (percent < 100) {
-               completedColor = chalk.green;
-       } else {
-               completedColor = chalk.hex('#006400'); // Dark green
-       }
+	// Determine color based on percentage for the completed section
+	let completedColor;
+	if (percent < 25) {
+		completedColor = chalk.red;
+	} else if (percent < 50) {
+		completedColor = chalk.hex('#FFA500'); // Orange
+	} else if (percent < 75) {
+		completedColor = chalk.yellow;
+	} else if (percent < 100) {
+		completedColor = chalk.green;
+	} else {
+		completedColor = chalk.hex('#006400'); // Dark green
+	}
 
-       // Create colored sections
-       const completedSection = completedColor('█'.repeat(trueCompletedFilled));
+	// Create colored sections
+	const completedSection = completedColor('█'.repeat(trueCompletedFilled));
 
-       // Gray section for deferred/cancelled items
-       const deferredCancelledSection = chalk.gray(
-               '█'.repeat(deferredCancelledFilled)
-       );
+	// Gray section for deferred/cancelled items
+	const deferredCancelledSection = chalk.gray(
+		'█'.repeat(deferredCancelledFilled)
+	);
 
-       // If we have a status breakdown, create a multi-colored remaining section
-       let remainingSection = '';
+	// If we have a status breakdown, create a multi-colored remaining section
+	let remainingSection = '';
 
-       if (statusBreakdown && empty > 0) {
-               // Status colors (matching the statusConfig colors in getStatusWithColor)
-               const statusColors = {
-                       pending: chalk.yellow,
-                       'in-progress': chalk.hex('#FFA500'), // Orange
-                       blocked: chalk.red,
-                       review: chalk.magenta
-                       // Deferred and cancelled are treated as part of the completed section
-               };
+	if (statusBreakdown && empty > 0) {
+		// Status colors (matching the statusConfig colors in getStatusWithColor)
+		const statusColors = {
+			pending: chalk.yellow,
+			'in-progress': chalk.hex('#FFA500'), // Orange
+			blocked: chalk.red,
+			review: chalk.magenta
+			// Deferred and cancelled are treated as part of the completed section
+		};
 
-               // Calculate proportions for each status
-               const totalRemaining = Object.entries(statusBreakdown)
-                       .filter(
-                               ([status]) =>
-                                       !['deferred', 'cancelled', 'done', 'completed'].includes(status)
-                       )
-                       .reduce((sum, [_, val]) => sum + val, 0);
+		// Calculate proportions for each status
+		const totalRemaining = Object.entries(statusBreakdown)
+			.filter(
+				([status]) =>
+					!['deferred', 'cancelled', 'done', 'completed'].includes(status)
+			)
+			.reduce((sum, [_, val]) => sum + val, 0);
 
-               // If no remaining tasks with tracked statuses, just use gray
-               if (totalRemaining <= 0) {
-                       remainingSection = chalk.gray('░'.repeat(empty));
-               } else {
-                       let filled = 0;
-                       for (const [status, count] of Object.entries(statusBreakdown)) {
-                               if (['deferred', 'cancelled', 'done', 'completed'].includes(status)) continue;
-                               const color = statusColors[status] || chalk.gray;
-                               const chars = Math.round((count / totalRemaining) * empty);
-                               remainingSection += color('░'.repeat(chars));
-                               filled += chars;
-                       }
-                       // Fill any rounding error with gray
-                       if (filled < empty) {
-                               remainingSection += chalk.gray('░'.repeat(empty - filled));
-                       }
-               }
-       } else {
-               remainingSection = chalk.gray('░'.repeat(empty));
-       }
+		// If no remaining tasks with tracked statuses, just use gray
+		if (totalRemaining <= 0) {
+			remainingSection = chalk.gray('░'.repeat(empty));
+		} else {
+			let filled = 0;
+			for (const [status, count] of Object.entries(statusBreakdown)) {
+				if (['deferred', 'cancelled', 'done', 'completed'].includes(status))
+					continue;
+				const color = statusColors[status] || chalk.gray;
+				const chars = Math.round((count / totalRemaining) * empty);
+				remainingSection += color('░'.repeat(chars));
+				filled += chars;
+			}
+			// Fill any rounding error with gray
+			if (filled < empty) {
+				remainingSection += chalk.gray('░'.repeat(empty - filled));
+			}
+		}
+	} else {
+		remainingSection = chalk.gray('░'.repeat(empty));
+	}
 
-       return (
-               '[' +
-               completedSection +
-               deferredCancelledSection +
-               remainingSection +
-               `] ${percent.toFixed(1)}%`
-       );
+	return (
+		'[' +
+		completedSection +
+		deferredCancelledSection +
+		remainingSection +
+		`] ${percent.toFixed(1)}%`
+	);
 }
 
 /**
@@ -2608,27 +2609,25 @@ function displayPRDParsingSummary(summary) {
 	);
 }
 
-
-
 // Export UI functions
 export {
-    displayBanner,
-    startLoadingIndicator,
-    stopLoadingIndicator,
-    createProgressBar,
-    getStatusWithColor,
-    formatDependenciesWithStatus,
-    displayHelp,
-    getComplexityWithColor,
-    displayNextTask,
-    displayTaskById,
-    displayComplexityAnalysisStart,
-    displayComplexityReport,
-    displayAnalysisProgress,
-    formatComplexitySummary,
-    confirmTaskOverwrite,
-    displayPRDParsingStart,
-    displayPRDParsingProgress,
-    displayPRDParsingSummary,
-    formatElapsedTime
+	displayBanner,
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	createProgressBar,
+	getStatusWithColor,
+	formatDependenciesWithStatus,
+	displayHelp,
+	getComplexityWithColor,
+	displayNextTask,
+	displayTaskById,
+	displayComplexityAnalysisStart,
+	displayComplexityReport,
+	displayAnalysisProgress,
+	formatComplexitySummary,
+	confirmTaskOverwrite,
+	displayPRDParsingStart,
+	displayPRDParsingProgress,
+	displayPRDParsingSummary,
+	formatElapsedTime
 };

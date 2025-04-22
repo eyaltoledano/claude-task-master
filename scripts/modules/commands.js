@@ -1340,9 +1340,7 @@ function registerCommands(programInstance) {
 				await removeTask(id);
 				console.log(chalk.green(`Task ${id} removed successfully.`));
 			} catch (error) {
-				console.error(
-					chalk.red(`Error removing task: ${error.message}`)
-				);
+				console.error(chalk.red(`Error removing task: ${error.message}`));
 				process.exit(1);
 			}
 		});

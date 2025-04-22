@@ -6373,123 +6373,120 @@ Provide concrete examples, code snippets, or implementation details when relevan
  * @param {string|number} taskId - The ID of the task or subtask to remove
  */
 async function removeTask(tasksPath, taskId) {
-    try {
-        // Read the tasks file
-        const data = readJSON(tasksPath);
-        if (!data || !data.tasks) {
-            throw new Error(`No valid tasks found in ${tasksPath}`);
-        }
+	try {
+		// Read the tasks file
+		const data = readJSON(tasksPath);
+		if (!data || !data.tasks) {
+			throw new Error(`No valid tasks found in ${tasksPath}`);
+		}
 
-        // Check if the task ID exists
-        if (!taskExists(data.tasks, taskId)) {
-            throw new Error(`Task with ID ${taskId} not found`);
-        }
+		// Check if the task ID exists
+		if (!taskExists(data.tasks, taskId)) {
+			throw new Error(`Task with ID ${taskId} not found`);
+		}
 
-        // Handle subtask removal (e.g., '5.2')
-        if (typeof taskId === 'string' && taskId.includes('.')) {
-            const [parentTaskId, subtaskId] = taskId
-                .split('.')
-                .map((id) => parseInt(id, 10));
+		// Handle subtask removal (e.g., '5.2')
+		if (typeof taskId === 'string' && taskId.includes('.')) {
+			const [parentTaskId, subtaskId] = taskId
+				.split('.')
+				.map((id) => parseInt(id, 10));
 
-            // Find the parent task
-            const parentTask = data.tasks.find((t) => t.id === parentTaskId);
-            if (!parentTask || !parentTask.subtasks) {
-                throw new Error(
-                    `Parent task with ID ${parentTaskId} or its subtasks not found`
-                );
-            }
+			// Find the parent task
+			const parentTask = data.tasks.find((t) => t.id === parentTaskId);
+			if (!parentTask || !parentTask.subtasks) {
+				throw new Error(
+					`Parent task with ID ${parentTaskId} or its subtasks not found`
+				);
+			}
 
-            // Find the subtask to remove
-            const subtaskIndex = parentTask.subtasks.findIndex(
-                (st) => st.id === subtaskId
-            );
-            if (subtaskIndex === -1) {
-                throw new Error(
-                    `Subtask with ID ${subtaskId} not found in parent task ${parentTaskId}`
-                );
-            }
+			// Find the subtask to remove
+			const subtaskIndex = parentTask.subtasks.findIndex(
+				(st) => st.id === subtaskId
+			);
+			if (subtaskIndex === -1) {
+				throw new Error(
+					`Subtask with ID ${subtaskId} not found in parent task ${parentTaskId}`
+				);
+			}
 
-            // Store the subtask info before removal for the result
-            const removedSubtask = parentTask.subtasks[subtaskIndex];
+			// Store the subtask info before removal for the result
+			const removedSubtask = parentTask.subtasks[subtaskIndex];
 
-            // Remove the subtask
-            parentTask.subtasks.splice(subtaskIndex, 1);
+			// Remove the subtask
+			parentTask.subtasks.splice(subtaskIndex, 1);
 
-            // Remove references to this subtask in other subtasks' dependencies
-            if (parentTask.subtasks && parentTask.subtasks.length > 0) {
-                parentTask.subtasks.forEach((subtask) => {
-                    if (
-                        subtask.dependencies &&
-                        subtask.dependencies.includes(subtaskId)
-                    ) {
-                        subtask.dependencies = subtask.dependencies.filter(
-                            (depId) => depId !== subtaskId
-                        );
-                    }
-                });
-            }
+			// Remove references to this subtask in other subtasks' dependencies
+			if (parentTask.subtasks && parentTask.subtasks.length > 0) {
+				parentTask.subtasks.forEach((subtask) => {
+					if (
+						subtask.dependencies &&
+						subtask.dependencies.includes(subtaskId)
+					) {
+						subtask.dependencies = subtask.dependencies.filter(
+							(depId) => depId !== subtaskId
+						);
+					}
+				});
+			}
 
-            // Save the updated tasks
-            writeJSON(tasksPath, data);
+			// Save the updated tasks
+			writeJSON(tasksPath, data);
 
-            // Generate updated task files
-            await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// Generate updated task files
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-            return removedSubtask;
-        }
+			return removedSubtask;
+		}
 
-        // Handle top-level task removal
-        const id = parseInt(taskId, 10);
-        const taskIndex = data.tasks.findIndex((t) => t.id === id);
-        if (taskIndex === -1) {
-            throw new Error(`Task with ID ${id} not found`);
-        }
+		// Handle top-level task removal
+		const id = parseInt(taskId, 10);
+		const taskIndex = data.tasks.findIndex((t) => t.id === id);
+		if (taskIndex === -1) {
+			throw new Error(`Task with ID ${id} not found`);
+		}
 
-        // Store the task info before removal for the result
-        const removedTask = data.tasks[taskIndex];
+		// Store the task info before removal for the result
+		const removedTask = data.tasks[taskIndex];
 
-        // Remove the task
-        data.tasks.splice(taskIndex, 1);
+		// Remove the task
+		data.tasks.splice(taskIndex, 1);
 
-        // Remove this task as a dependency from all other tasks
-        data.tasks.forEach((task) => {
-            if (task.dependencies && task.dependencies.includes(id)) {
-                task.dependencies = task.dependencies.filter((depId) => depId !== id);
-            }
-            // Remove from subtasks' dependencies as well
-            if (task.subtasks && task.subtasks.length > 0) {
-                task.subtasks.forEach((subtask) => {
-                    if (
-                        subtask.dependencies &&
-                        subtask.dependencies.includes(id)
-                    ) {
-                        subtask.dependencies = subtask.dependencies.filter(
-                            (depId) => depId !== id
-                        );
-                    }
-                });
-            }
-        });
+		// Remove this task as a dependency from all other tasks
+		data.tasks.forEach((task) => {
+			if (task.dependencies && task.dependencies.includes(id)) {
+				task.dependencies = task.dependencies.filter((depId) => depId !== id);
+			}
+			// Remove from subtasks' dependencies as well
+			if (task.subtasks && task.subtasks.length > 0) {
+				task.subtasks.forEach((subtask) => {
+					if (subtask.dependencies && subtask.dependencies.includes(id)) {
+						subtask.dependencies = subtask.dependencies.filter(
+							(depId) => depId !== id
+						);
+					}
+				});
+			}
+		});
 
-        // Save the updated tasks
-        writeJSON(tasksPath, data);
+		// Save the updated tasks
+		writeJSON(tasksPath, data);
 
-        // Generate updated task files
-        await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// Generate updated task files
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-        return removedTask;
-    } catch (error) {
-        log('error', `Error removing task: ${error.message}`);
-        throw error;
-    }
+		return removedTask;
+	} catch (error) {
+		log('error', `Error removing task: ${error.message}`);
+		throw error;
+	}
 }
 
 // --- Stubs for missing exports from upstream/next ---
 function generateSubtaskPrompt() {
-    throw new Error('generateSubtaskPrompt is not implemented in this branch.');
+	throw new Error('generateSubtaskPrompt is not implemented in this branch.');
 }
 function getSubtasksFromAI() {
-    throw new Error('getSubtasksFromAI is not implemented in this branch.');
+	throw new Error('getSubtasksFromAI is not implemented in this branch.');
 }
 // Export task manager functions
 export {
