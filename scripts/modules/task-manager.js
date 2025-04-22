@@ -259,6 +259,58 @@ async function parsePRD(
 				existingTasks = { tasks: [] };
 			}
 		}
+		
+		// Call Claude to generate tasks, passing the provided AI client if available
+		const newTasksData = await callClaude(
+			prdContent,
+			prdPath,
+			numTasks,
+			0,
+			{ reportProgress, mcpLog, session },
+			aiClient,
+			modelConfig
+		);
+
+		// Update task IDs if appending
+		if (append && lastTaskId > 0) {
+			report(`Updating task IDs to continue from ID ${lastTaskId}`, 'info');
+			newTasksData.tasks.forEach((task, index) => {
+				task.id = lastTaskId + index + 1;
+			});
+		}
+
+		// Merge tasks if appending
+		const tasksData = append
+			? {
+					...existingTasks,
+					tasks: [...existingTasks.tasks, ...newTasksData.tasks]
+				}
+			: newTasksData;
+
+		// Create the directory if it doesn't exist
+		const tasksDir = path.dirname(tasksPath);
+		if (!fs.existsSync(tasksDir)) {
+			fs.mkdirSync(tasksDir, { recursive: true });
+		}
+
+		// Write the tasks to the file
+		writeJSON(tasksPath, tasksData);
+		const actionVerb = append ? 'appended' : 'generated';
+		report(
+			`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`,
+			'success'
+		);
+		report(`Tasks saved to: ${tasksPath}`, 'info');
+
+		// Generate individual task files
+		if (reportProgress && mcpLog) {
+			// Enable silent mode when being called from MCP server
+			enableSilentMode();
+			await generateTaskFiles(tasksPath, tasksDir);
+			disableSilentMode();
+		} else {
+			await generateTaskFiles(tasksPath, tasksDir);
+		}
 
 		// Estimate total tokens (roughly 1 token per 4 chars + margin for system prompt)
 		const estimatedTotalTokens = Math.ceil(prdContent.length / 4) + 1000;
