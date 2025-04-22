@@ -2709,11 +2709,8 @@ function displayPRDParsingSummary(summary) {
 		const firstTaskId = '001';
 		const lastTaskId = totalTasks.toString().padStart(3, '0');
 		const fileRange = `task_${firstTaskId}.txt -> task_${lastTaskId}.txt`;
-		
-		table.push([
-			chalk.cyan(`Files ${actionVerb}:`),
-			chalk.italic(fileRange)
-		]);
+
+		table.push([chalk.cyan(`Files ${actionVerb}:`), chalk.italic(fileRange)]);
 	}
 
 	// Add recovery mode indicator if applicable
@@ -2733,7 +2730,7 @@ function displayPRDParsingSummary(summary) {
 		table.toString()
 	].join('\n');
 
-// Remove the task file range code from here as we're moving it to the end
+	// Remove the task file range code from here as we're moving it to the end
 
 	// Return a boxed version
 	console.log(
@@ -2795,7 +2792,7 @@ function displayPRDParsingSummary(summary) {
 		)
 	);
 
-// We've moved the task file range display to be part of the main table
+	// We've moved the task file range display to be part of the main table
 }
 
 // Export UI functions

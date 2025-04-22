@@ -175,13 +175,13 @@ async function parsePRD(
 		progress.removeAllListeners();
 
 		// Restore cursor
-		process.stdout.write("\u001B[?25h");
+		process.stdout.write('\u001B[?25h');
 	};
 
 	// Setup signal handler with the universal utility
 	const removeSignalHandler = setupSignalHandler(
-		cleanupResources, 
-		"PRD parsing cancelled by user."
+		cleanupResources,
+		'PRD parsing cancelled by user.'
 	);
 
 	// Variable for task data that will be populated in either path
