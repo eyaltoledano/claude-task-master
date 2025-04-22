@@ -15,7 +15,8 @@ import {
 	findTaskById,
 	readJSON,
 	readComplexityReport,
-	truncate
+	truncate,
+	setupSignalHandler
 } from './utils.js';
 import path from 'path';
 import fs from 'fs';
@@ -26,41 +27,38 @@ const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
- * Centralized interrupt handler for cleaning up and exiting gracefully
+ * Setup a signal handler with terminal cleanup for UI operations
  * @param {Object} options - Options for cleanup
- * @param {Function} options.clearInterval - Function to clear any active intervals
- * @param {string} options.source - Source of the interrupt (for debugging)
+ * @param {Function} options.clearIntervalFn - Function to clear any active intervals
+ * @param {string} options.message - Custom cancellation message
+ * @returns {Function} Function to remove the signal handlers
  */
 function handleSigint(options = {}) {
-	const { clearIntervalFn, source = 'unknown' } = options;
+	const { clearIntervalFn, message = 'Operation cancelled by user' } = options;
+	
+	// Create a cleanup function that resets the terminal state
+	const cleanupFn = () => {
+		// Stop animation immediately if a clear function is provided
+		if (typeof clearIntervalFn === 'function') {
+			clearIntervalFn();
+		}
 
-	// Stop animation immediately if a clear function is provided
-	if (typeof clearIntervalFn === 'function') {
-		clearIntervalFn();
-	}
+		// Force terminal cleanup more aggressively
+		try {
+			// Multiple approaches to reset terminal state
+			process.stdout.write('\r');
+			process.stdout.write(' '.repeat(process.stdout.columns || 100));
+			process.stdout.write('\r');
+			
+			// Make cursor visible
+			process.stdout.write('\u001B[?25h');
+		} catch (e) {
+			// Ignore errors during cleanup
+		}
+	};
 
-	// Force terminal cleanup more aggressively
-	try {
-		// Multiple approaches to reset terminal state
-		process.stdout.write('\r');
-		process.stdout.write(' '.repeat(process.stdout.columns || 100));
-		process.stdout.write('\r');
-
-		// Add spacing and message
-		console.log('\n\n');
-		console.log('Operation cancelled by user');
-		console.log('\n');
-	} catch (e) {
-		// Ignore errors during cleanup
-	}
-
-	// Remove all signal handlers
-	process.removeListener('SIGINT', handleSigint);
-	process.removeListener('SIGTERM', handleSigint);
-	process.removeListener('SIGQUIT', handleSigint);
-
-	// Exit immediately
-	process.exit(0);
+	// Use the universal signal handler
+	return setupSignalHandler(cleanupFn, message);
 }
 
 /**
@@ -120,23 +118,20 @@ function startLoadingIndicator(message) {
 	}).start();
 
 	// Set up signal handlers for the spinner
-	const cleanupFn = () =>
-		handleSigint({
-			clearIntervalFn: () => {
-				if (spinner && spinner.stop) {
-					spinner.stop();
-				}
-			},
-			source: 'spinner'
-		});
+	const spinnerCleanupFn = () => {
+		if (spinner && spinner.stop) {
+			spinner.stop();
+		}
+	};
 
-	// Attach signal handlers
-	process.on('SIGINT', cleanupFn);
-	process.on('SIGTERM', cleanupFn);
-	process.on('SIGQUIT', cleanupFn);
+	// Create the signal handler and get the remover function
+	const removeSignalHandler = handleSigint({
+		clearIntervalFn: spinnerCleanupFn,
+		message: 'Operation cancelled by user'
+	});
 
-	// Store reference to cleanup function
-	spinner.cleanup = cleanupFn;
+	// Store reference to removal function
+	spinner.cleanup = removeSignalHandler;
 
 	return spinner;
 }
@@ -150,11 +145,9 @@ function stopLoadingIndicator(spinner) {
 		spinner.stop();
 	}
 
-	// Remove signal handlers if they exist
-	if (spinner && spinner.cleanup) {
-		process.removeListener('SIGINT', spinner.cleanup);
-		process.removeListener('SIGTERM', spinner.cleanup);
-		process.removeListener('SIGQUIT', spinner.cleanup);
+	// Call the signal handler removal function if it exists
+	if (spinner && typeof spinner.cleanup === 'function') {
+		spinner.cleanup();
 		spinner.cleanup = null;
 	}
 }
@@ -1756,28 +1749,25 @@ function displayAnalysisProgress(progressData) {
 		displayAnalysisProgress.lastProgressData = { ...progressData };
 		displayAnalysisProgress.intervalId = null;
 
-		// Create a cleanup function specific to this progress display
-		const progressCleanupFn = () =>
-			handleSigint({
-				clearIntervalFn: () => {
-					if (displayAnalysisProgress.intervalId) {
-						clearInterval(displayAnalysisProgress.intervalId);
-						displayAnalysisProgress.intervalId = null;
-					}
-					// Reset initialization state
-					displayAnalysisProgress.initialized = undefined;
-					displayAnalysisProgress.statusLineStarted = false;
-				},
-				source: 'progress-bar'
-			});
+		// Create a cleanup function for the progress display
+		const clearIntervalFn = () => {
+			if (displayAnalysisProgress.intervalId) {
+				clearInterval(displayAnalysisProgress.intervalId);
+				displayAnalysisProgress.intervalId = null;
+			}
+			// Reset initialization state
+			displayAnalysisProgress.initialized = undefined;
+			displayAnalysisProgress.statusLineStarted = false;
+		};
 
-		// Add multiple signal handlers for robustness
-		process.on('SIGINT', progressCleanupFn);
-		process.on('SIGTERM', progressCleanupFn);
-		process.on('SIGQUIT', progressCleanupFn);
+		// Setup signal handler and get the remover function
+		const removeSignalHandler = handleSigint({
+			clearIntervalFn,
+			message: 'Complexity analysis cancelled by user'
+		});
 
-		// Store reference to cleanup function
-		displayAnalysisProgress.cleanup = progressCleanupFn;
+		// Store reference to removal function
+		displayAnalysisProgress.cleanup = removeSignalHandler;
 	} else {
 		// Store the latest progress data
 		displayAnalysisProgress.lastProgressData = { ...progressData };
@@ -1947,11 +1937,9 @@ function displayAnalysisProgress(progressData) {
 			}
 
 			// Remove the signal handlers if they exist
-			if (displayAnalysisProgress.cleanup) {
-				// Remove the handlers but don't exit
-				process.removeListener('SIGINT', displayAnalysisProgress.cleanup);
-				process.removeListener('SIGTERM', displayAnalysisProgress.cleanup);
-				process.removeListener('SIGQUIT', displayAnalysisProgress.cleanup);
+			if (typeof displayAnalysisProgress.cleanup === 'function') {
+				// Call the removal function but don't exit
+				displayAnalysisProgress.cleanup();
 				displayAnalysisProgress.cleanup = null;
 			}
 		}

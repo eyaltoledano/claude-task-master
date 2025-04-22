@@ -398,6 +398,44 @@ function detectCamelCaseFlags(args) {
 }
 
 // Export all utility functions and configuration
+/**
+ * Sets up a universal signal handler for graceful cancellation of processes
+ * @param {Function} cleanupCallback - Function to call for cleanup before exiting
+ * @param {string} [cancelMessage='Operation cancelled by user.'] - Message to display when cancelled
+ * @param {boolean} [shouldExit=true] - Whether to exit the process after cancellation
+ * @returns {Function} Function to remove the signal handlers
+ */
+function setupSignalHandler(cleanupCallback, cancelMessage = 'Operation cancelled by user.', shouldExit = true) {
+	// Define the signal handler function
+	const signalHandler = () => {
+		// Execute the cleanup function first
+		if (typeof cleanupCallback === 'function') {
+			cleanupCallback();
+		}
+
+		// Show cancellation message
+		console.log('\n');
+		console.log(chalk.yellow(cancelMessage));
+
+		// Exit process if required
+		if (shouldExit) {
+			process.exit(0);
+		}
+	};
+
+	// Attach handlers to multiple signals
+	process.on('SIGINT', signalHandler);
+	process.on('SIGTERM', signalHandler);
+	process.on('SIGQUIT', signalHandler);
+
+	// Return a function to remove the handlers
+	return () => {
+		process.removeListener('SIGINT', signalHandler);
+		process.removeListener('SIGTERM', signalHandler);
+		process.removeListener('SIGQUIT', signalHandler);
+	};
+}
+
 export {
 	CONFIG,
 	LOG_LEVELS,
@@ -417,5 +455,6 @@ export {
 	enableSilentMode,
 	disableSilentMode,
 	isSilentMode,
-	getTaskManager
+	getTaskManager,
+	setupSignalHandler
 };
