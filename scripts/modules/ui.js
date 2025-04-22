@@ -2716,7 +2716,9 @@ function displayPRDParsingSummary(summary) {
 
 	// Final string output with title and footer
 	const output = [
-		chalk.bold.underline(`PRD Parsing Complete - Tasks ${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}`),
+		chalk.bold.underline(
+			`PRD Parsing Complete - Tasks ${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}`
+		),
 		'',
 		table.toString()
 	].join('\n');
