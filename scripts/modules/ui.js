@@ -1031,6 +1031,80 @@ async function displayTaskById(tasksPath, taskId) {
 			)
 		);
 
+		// Calculate and display subtask completion progress
+		if (task.subtasks && task.subtasks.length > 0) {
+			const totalSubtasks = task.subtasks.length;
+			const completedSubtasks = task.subtasks.filter(
+				(st) => st.status === 'done' || st.status === 'completed'
+			).length;
+
+			// Count other statuses for the subtasks
+			const inProgressSubtasks = task.subtasks.filter(
+				(st) => st.status === 'in-progress'
+			).length;
+			const pendingSubtasks = task.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+			const blockedSubtasks = task.subtasks.filter(
+				(st) => st.status === 'blocked'
+			).length;
+			const deferredSubtasks = task.subtasks.filter(
+				(st) => st.status === 'deferred'
+			).length;
+			const cancelledSubtasks = task.subtasks.filter(
+				(st) => st.status === 'cancelled'
+			).length;
+
+			// Calculate status breakdown as percentages
+			const statusBreakdown = {
+				'in-progress': (inProgressSubtasks / totalSubtasks) * 100,
+				pending: (pendingSubtasks / totalSubtasks) * 100,
+				blocked: (blockedSubtasks / totalSubtasks) * 100,
+				deferred: (deferredSubtasks / totalSubtasks) * 100,
+				cancelled: (cancelledSubtasks / totalSubtasks) * 100
+			};
+
+			const completionPercentage = (completedSubtasks / totalSubtasks) * 100;
+
+			// Calculate appropriate progress bar length based on terminal width
+			// Subtract padding (2), borders (2), and the percentage text (~5)
+			const availableWidth = process.stdout.columns || 80; // Default to 80 if can't detect
+			const boxPadding = 2; // 1 on each side
+			const boxBorders = 2; // 1 on each side
+			const percentTextLength = 5; // ~5 chars for " 100%"
+			// Reduce the length by adjusting the subtraction value from 20 to 35
+			const progressBarLength = Math.max(
+				20,
+				Math.min(
+					60,
+					availableWidth - boxPadding - boxBorders - percentTextLength - 35
+				)
+			); // Min 20, Max 60
+
+			// Status counts for display
+			const statusCounts =
+				`${chalk.green('✓ Done:')} ${completedSubtasks}  ${chalk.hex('#FFA500')('► In Progress:')} ${inProgressSubtasks}  ${chalk.yellow('○ Pending:')} ${pendingSubtasks}\n` +
+				`${chalk.red('! Blocked:')} ${blockedSubtasks}  ${chalk.gray('⏱ Deferred:')} ${deferredSubtasks}  ${chalk.gray('✗ Cancelled:')} ${cancelledSubtasks}`;
+
+			console.log(
+				boxen(
+					chalk.white.bold('Subtask Progress:') +
+						'\n\n' +
+						`${chalk.cyan('Completed:')} ${completedSubtasks}/${totalSubtasks} (${completionPercentage.toFixed(1)}%)\n` +
+						`${statusCounts}\n` +
+						`${chalk.cyan('Progress:')} ${createProgressBar(completionPercentage, progressBarLength, statusBreakdown)}`,
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'blue',
+						borderStyle: 'round',
+						margin: { top: 1, bottom: 0 },
+						width: Math.min(availableWidth - 10, 100), // Add width constraint to limit the box width
+						textAlignment: 'left'
+					}
+				)
+			);
+		}
+
 		return;
 	}
 
@@ -1221,6 +1295,80 @@ async function displayTaskById(tasksPath, taskId) {
 		});
 
 		console.log(subtaskTable.toString());
+
+		// Calculate and display subtask completion progress
+		if (task.subtasks && task.subtasks.length > 0) {
+			const totalSubtasks = task.subtasks.length;
+			const completedSubtasks = task.subtasks.filter(
+				(st) => st.status === 'done' || st.status === 'completed'
+			).length;
+
+			// Count other statuses for the subtasks
+			const inProgressSubtasks = task.subtasks.filter(
+				(st) => st.status === 'in-progress'
+			).length;
+			const pendingSubtasks = task.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+			const blockedSubtasks = task.subtasks.filter(
+				(st) => st.status === 'blocked'
+			).length;
+			const deferredSubtasks = task.subtasks.filter(
+				(st) => st.status === 'deferred'
+			).length;
+			const cancelledSubtasks = task.subtasks.filter(
+				(st) => st.status === 'cancelled'
+			).length;
+
+			// Calculate status breakdown as percentages
+			const statusBreakdown = {
+				'in-progress': (inProgressSubtasks / totalSubtasks) * 100,
+				pending: (pendingSubtasks / totalSubtasks) * 100,
+				blocked: (blockedSubtasks / totalSubtasks) * 100,
+				deferred: (deferredSubtasks / totalSubtasks) * 100,
+				cancelled: (cancelledSubtasks / totalSubtasks) * 100
+			};
+
+			const completionPercentage = (completedSubtasks / totalSubtasks) * 100;
+
+			// Calculate appropriate progress bar length based on terminal width
+			// Subtract padding (2), borders (2), and the percentage text (~5)
+			const availableWidth = process.stdout.columns || 80; // Default to 80 if can't detect
+			const boxPadding = 2; // 1 on each side
+			const boxBorders = 2; // 1 on each side
+			const percentTextLength = 5; // ~5 chars for " 100%"
+			// Reduce the length by adjusting the subtraction value from 20 to 35
+			const progressBarLength = Math.max(
+				20,
+				Math.min(
+					60,
+					availableWidth - boxPadding - boxBorders - percentTextLength - 35
+				)
+			); // Min 20, Max 60
+
+			// Status counts for display
+			const statusCounts =
+				`${chalk.green('✓ Done:')} ${completedSubtasks}  ${chalk.hex('#FFA500')('► In Progress:')} ${inProgressSubtasks}  ${chalk.yellow('○ Pending:')} ${pendingSubtasks}\n` +
+				`${chalk.red('! Blocked:')} ${blockedSubtasks}  ${chalk.gray('⏱ Deferred:')} ${deferredSubtasks}  ${chalk.gray('✗ Cancelled:')} ${cancelledSubtasks}`;
+
+			console.log(
+				boxen(
+					chalk.white.bold('Subtask Progress:') +
+						'\n\n' +
+						`${chalk.cyan('Completed:')} ${completedSubtasks}/${totalSubtasks} (${completionPercentage.toFixed(1)}%)\n` +
+						`${statusCounts}\n` +
+						`${chalk.cyan('Progress:')} ${createProgressBar(completionPercentage, progressBarLength, statusBreakdown)}`,
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'blue',
+						borderStyle: 'round',
+						margin: { top: 1, bottom: 0 },
+						width: Math.min(availableWidth - 10, 100), // Add width constraint to limit the box width
+						textAlignment: 'left'
+					}
+				)
+			);
+		}
 	} else {
 		// Suggest expanding if no subtasks
 		console.log(
