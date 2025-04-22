@@ -174,31 +174,48 @@ function createProgressBar(percent, length = 30, statusBreakdown = null) {
 		if (totalRemaining <= 0) {
 			remainingSection = chalk.gray('░'.repeat(empty));
 		} else {
-			let filled = 0;
-			for (const [status, count] of Object.entries(statusBreakdown)) {
+			// Track how many characters we've added
+			let addedChars = 0;
+
+			// Add each status section proportionally
+			for (const [status, percentage] of Object.entries(statusBreakdown)) {
+				// Skip statuses that are considered complete
 				if (['deferred', 'cancelled', 'done', 'completed'].includes(status))
 					continue;
-				const color = statusColors[status] || chalk.gray;
-				const chars = Math.round((count / totalRemaining) * empty);
-				remainingSection += color('░'.repeat(chars));
-				filled += chars;
+
+				// Calculate how many characters this status should fill
+				const statusChars = Math.round((percentage / totalRemaining) * empty);
+
+				// Make sure we don't exceed the total length due to rounding
+				const actualChars = Math.min(statusChars, empty - addedChars);
+
+				// Add colored section for this status
+				const colorFn = statusColors[status] || chalk.gray;
+				remainingSection += colorFn('░'.repeat(actualChars));
+
+				addedChars += actualChars;
 			}
-			// Fill any rounding error with gray
-			if (filled < empty) {
-				remainingSection += chalk.gray('░'.repeat(empty - filled));
+
+			// If we have any remaining space due to rounding, fill with gray
+			if (addedChars < empty) {
+				remainingSection += chalk.gray('░'.repeat(empty - addedChars));
 			}
 		}
 	} else {
+		// Default to gray for the empty section if no breakdown provided
 		remainingSection = chalk.gray('░'.repeat(empty));
 	}
 
-	return (
-		'[' +
-		completedSection +
-		deferredCancelledSection +
-		remainingSection +
-		`] ${percent.toFixed(1)}%`
-	);
+	// Effective percentage text color should reflect the highest category
+	const percentTextColor =
+		percent === 100
+			? chalk.hex('#006400') // Dark green for 100%
+			: effectivePercent === 100
+				? chalk.gray // Gray for 100% with deferred/cancelled
+				: completedColor; // Otherwise match the completed color
+
+	// Build the complete progress bar
+	return `${completedSection}${deferredCancelledSection}${remainingSection} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;
 }
 
 /**
@@ -219,7 +236,8 @@ function getStatusWithColor(status, forTable = false) {
 		'in-progress': { color: chalk.hex('#FFA500'), icon: '🔄', tableIcon: '►' },
 		deferred: { color: chalk.gray, icon: '⏱️', tableIcon: '⏱' },
 		blocked: { color: chalk.red, icon: '❌', tableIcon: '✗' },
-		review: { color: chalk.magenta, icon: '👀', tableIcon: '👁' }
+		review: { color: chalk.magenta, icon: '👀', tableIcon: '👁' },
+		cancelled: { color: chalk.gray, icon: '❌', tableIcon: '✗' }
 	};
 
 	const config = statusConfig[status.toLowerCase()] || {
