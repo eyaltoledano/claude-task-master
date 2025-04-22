@@ -177,6 +177,17 @@ async function parsePRD(
 		process.stdout.write('\u001B[?25h');
 	};
 
+	// Variable for task data that will be populated in either path
+	let tasksData;
+	// For task directory path
+	let tasksDir;
+	// For task files generated count
+	let taskFilesGenerated;
+	// For tracking elapsed time
+	let elapsedSeconds = 0;
+	// Track start time
+	const startTime = Date.now();
+
 	try {
 		// Input validation
 		if (!prdPath || typeof prdPath !== 'string') {
@@ -205,11 +216,6 @@ async function parsePRD(
 				'ANTHROPIC_API_KEY environment variable is missing. Required for PRD parsing.'
 			);
 		}
-
-		log('debug', `Parsing PRD file: ${prdPath}`);
-
-		// Track start time
-		const startTime = Date.now();
 
 		// Display parsing start announcement
 		displayPRDParsingStart(
@@ -259,58 +265,47 @@ async function parsePRD(
 				existingTasks = { tasks: [] };
 			}
 		}
-		
-		// Call Claude to generate tasks, passing the provided AI client if available
-		const newTasksData = await callClaude(
-			prdContent,
-			prdPath,
-			numTasks,
-			0,
-			{ reportProgress, mcpLog, session },
-			aiClient,
-			modelConfig
-		);
 
-		// Update task IDs if appending
-		if (append && lastTaskId > 0) {
-			report(`Updating task IDs to continue from ID ${lastTaskId}`, 'info');
-			newTasksData.tasks.forEach((task, index) => {
-				task.id = lastTaskId + index + 1;
-			});
+		// CLEAR EXECUTION PATH BRANCHING: MCP vs CLI mode
+		// MCP MODE: Use the original implementation without progress bar
+		if (mcpLog) {
+			log('debug', 'Using MCP mode implementation');
+			
+			// Call Claude to generate tasks, passing the provided AI client if available
+			const newTasksData = await callClaude(
+				prdContent,
+				prdPath,
+				numTasks,
+				0,
+				{ reportProgress, mcpLog, session },
+				aiClient,
+				modelConfig
+			);
+
+			// Update task IDs if appending
+			if (append && lastTaskId > 0) {
+				report(`Updating task IDs to continue from ID ${lastTaskId}`, 'info');
+				newTasksData.tasks.forEach((task, index) => {
+					task.id = lastTaskId + index + 1;
+				});
+			}
+
+			// Merge tasks if appending
+			tasksData = append
+				? {
+						...existingTasks,
+						tasks: [...existingTasks.tasks, ...newTasksData.tasks]
+					}
+				: newTasksData;
 		}
-
-		// Merge tasks if appending
-		const tasksData = append
-			? {
-					...existingTasks,
-					tasks: [...existingTasks.tasks, ...newTasksData.tasks]
-				}
-			: newTasksData;
-
-		// Create the directory if it doesn't exist
-		const tasksDir = path.dirname(tasksPath);
-		if (!fs.existsSync(tasksDir)) {
-			fs.mkdirSync(tasksDir, { recursive: true });
-		}
-
-		// Write the tasks to the file
-		writeJSON(tasksPath, tasksData);
-		const actionVerb = append ? 'appended' : 'generated';
-		report(
-			`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`,
-			'success'
-		);
-		report(`Tasks saved to: ${tasksPath}`, 'info');
-
-		// Generate individual task files
-		if (reportProgress && mcpLog) {
-			// Enable silent mode when being called from MCP server
-			enableSilentMode();
-			await generateTaskFiles(tasksPath, tasksDir);
-			disableSilentMode();
-		} else {
-			await generateTaskFiles(tasksPath, tasksDir);
-		}
+		// CLI MODE: Use the new streaming implementation with progress bar
+		else {
+			// CLI code will be in this block
+			// Create the directory if it doesn't exist
+			tasksDir = path.dirname(tasksPath);
+			if (!fs.existsSync(tasksDir)) {
+				fs.mkdirSync(tasksDir, { recursive: true });
+			}
 
 		// Estimate total tokens (roughly 1 token per 4 chars + margin for system prompt)
 		const estimatedTotalTokens = Math.ceil(prdContent.length / 4) + 1000;
@@ -1621,69 +1616,50 @@ Important: Your response must be valid JSON only, with no additional explanation
 			}
 		}
 
-		// Validate the tasks data
-		if (
-			!responseData.tasks ||
-			!Array.isArray(responseData.tasks) ||
-			responseData.tasks.length === 0
-		) {
-			throw new Error(
-				'No tasks were generated. The AI response may not have contained valid task data.'
-			);
-		}
-
-		const tasksData = responseData;
-
-		// Create tasks directory if it doesn't exist
-		const tasksDir = path.dirname(tasksPath);
-		if (!fs.existsSync(tasksDir)) {
-			fs.mkdirSync(tasksDir, { recursive: true });
-		}
-
-		// If append option is set and the tasks file exists, merge with existing tasks
-		if (options && options.append && fs.existsSync(tasksPath)) {
-			const existingData = readJSON(tasksPath);
+			// Validate the tasks data
 			if (
-				existingData &&
-				existingData.tasks &&
-				Array.isArray(existingData.tasks)
+				!responseData.tasks ||
+				!Array.isArray(responseData.tasks) ||
+				responseData.tasks.length === 0
 			) {
-				log(
-					'info',
-					`Appending ${tasksData.tasks.length} new tasks to existing ${existingData.tasks.length} tasks`
+				throw new Error(
+					'No tasks were generated. The AI response may not have contained valid task data.'
 				);
+			}
 
-				// Find max ID in existing tasks to determine starting ID for new tasks
-				const maxExistingId = existingData.tasks.reduce(
-					(max, task) => Math.max(max, task.id || 0),
-					0
-				);
+			// Set tasksData from the streaming response data
+			tasksData = responseData;
 
-				// Update IDs of new tasks to continue from the max existing ID
+			// If append option is set and the tasks file exists, update IDs and merge
+			if (append && lastTaskId > 0) {
+				log('info', `Updating task IDs to continue from ID ${lastTaskId}`);
 				tasksData.tasks.forEach((task, index) => {
-					task.id = maxExistingId + index + 1;
+					task.id = lastTaskId + index + 1;
 				});
 
-				// Merge tasks arrays
-				existingData.tasks = existingData.tasks.concat(tasksData.tasks);
-
-				// Write merged tasks back to file
-				writeJSON(tasksPath, existingData);
-			} else {
-				// File exists but doesn't contain valid tasks - overwrite with new tasks
-				log(
-					'warn',
-					'Existing tasks file does not contain valid tasks. Overwriting with new tasks.'
-				);
-				writeJSON(tasksPath, tasksData);
+				// Merge with existing tasks
+				tasksData = {
+					...existingTasks,
+					tasks: [...existingTasks.tasks, ...tasksData.tasks]
+				};
 			}
-		} else {
-			// Write the tasks to the file (overwrite or create new)
-			writeJSON(tasksPath, tasksData);
 		}
 
-		// Generate task files and get task files info
-		const taskFilesGenerated = generateTaskFiles(tasksPath, tasksDir);
+		// Write the tasks to the file (common for both paths)
+		writeJSON(tasksPath, tasksData);
+		
+		// The success message should go here after writing the file
+		const actionVerb = append ? 'appended' : 'generated';
+
+		// Generate individual task files (common for both paths)
+		if (reportProgress && mcpLog) {
+			// Enable silent mode when being called from MCP server
+			enableSilentMode();
+			taskFilesGenerated = await generateTaskFiles(tasksPath, tasksDir);
+			disableSilentMode();
+		} else {
+			taskFilesGenerated = await generateTaskFiles(tasksPath, tasksDir);
+		}
 
 		// Calculate task category breakdown
 		const taskCategories = {
@@ -1706,8 +1682,9 @@ Important: Your response must be valid JSON only, with no additional explanation
 			outputPath: tasksPath,
 			elapsedTime: elapsedSeconds,
 			taskCategories,
-			recoveryMode: responseData.metadata?.recoveryMode || false,
-			taskFilesGenerated: taskFilesGenerated
+			recoveryMode: tasksData.metadata?.recoveryMode || false,
+			taskFilesGenerated: taskFilesGenerated,
+			actionVerb: actionVerb
 		});
 
 		// Clean up all resources
@@ -2922,8 +2899,6 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 
-		log('info', `Reading tasks from ${tasksPath}...`);
-
 		const data = readJSON(tasksPath);
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
@@ -2934,17 +2909,10 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		log('info', `Found ${data.tasks.length} tasks to generate files for.`);
-
 		// Validate and fix dependencies before generating files
-		log(
-			'info',
-			`Validating and fixing dependencies before generating files...`
-		);
 		validateAndFixDependencies(data, tasksPath);
 
 		// Generate task files
-		log('info', 'Generating individual task files...');
 		data.tasks.forEach((task) => {
 			const taskPath = path.join(
 				outputDir,
@@ -3023,13 +2991,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 			// Write the file
 			fs.writeFileSync(taskPath, content);
-			log('info', `Generated: task_${task.id.toString().padStart(3, '0')}.txt`);
 		});
-
-		log(
-			'success',
-			`All ${data.tasks.length} tasks have been generated into '${outputDir}'.`
-		);
 
 		// Return success data in MCP mode
 		if (isMcpMode) {
@@ -5143,8 +5105,6 @@ async function analyzeTaskComplexity(
 
 	try {
 		// Read tasks.json
-		reportLog(`Reading tasks from ${tasksPath}...`, 'info');
-
 		// Use either the filtered tasks data provided by the direct function or read from file
 		let tasksData;
 		let originalTaskCount = 0;

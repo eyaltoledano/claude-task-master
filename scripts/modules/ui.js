@@ -2584,6 +2584,7 @@ function displayPRDParsingProgress(progressData) {
  * @param {Object} summary.taskCategories - Breakdown of tasks by category/priority
  * @param {boolean} summary.recoveryMode - Whether recovery mode was used to parse the response
  * @param {string} summary.taskFilesGenerated - Information about generated task files
+ * @param {string} summary.actionVerb - Whether tasks were 'generated' or 'appended'
  */
 function displayPRDParsingSummary(summary) {
 	// Calculate task category percentages
@@ -2594,7 +2595,8 @@ function displayPRDParsingSummary(summary) {
 		outputPath,
 		elapsedTime,
 		recoveryMode = false,
-		taskFilesGenerated
+		taskFilesGenerated,
+		actionVerb = 'generated' // Default to 'generated' if not provided
 	} = summary;
 
 	// Format the elapsed time
@@ -2624,8 +2626,9 @@ function displayPRDParsingSummary(summary) {
 	});
 
 	// Basic info
+	// Use the action verb to properly display if tasks were generated or appended
 	table.push(
-		[chalk.cyan('Total tasks generated:'), chalk.bold(totalTasks)],
+		[chalk.cyan(`Total tasks ${actionVerb}:`), chalk.bold(totalTasks)],
 		[chalk.cyan('Processing time:'), chalk.bold(timeDisplay)]
 	);
 
@@ -2709,7 +2712,7 @@ function displayPRDParsingSummary(summary) {
 
 	// Final string output with title and footer
 	const output = [
-		chalk.bold.underline('PRD Parsing Complete'),
+		chalk.bold.underline(`PRD Parsing Complete - Tasks ${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}`),
 		'',
 		table.toString()
 	].join('\n');
