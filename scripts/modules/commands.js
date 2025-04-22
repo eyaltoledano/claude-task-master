@@ -12,7 +12,7 @@ import https from 'https';
 import inquirer from 'inquirer';
 import ora from 'ora';
 
-import { CONFIG, log, readJSON, writeJSON, taskExists } from './utils.js';
+import { CONFIG, log, readJSON, writeJSON } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -29,7 +29,8 @@ import {
 	updateTaskById,
 	updateSubtaskById,
 	removeTask,
-	findTaskById
+	findTaskById,
+	taskExists
 } from './task-manager.js';
 
 import {

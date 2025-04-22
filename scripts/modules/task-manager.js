@@ -10,6 +10,8 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import readline from 'readline';
 import { Anthropic } from '@anthropic-ai/sdk';
+import ora from 'ora';
+import inquirer from 'inquirer';
 import { EventEmitter } from 'events'; // Add EventEmitter import
 
 import {
@@ -49,6 +51,12 @@ import {
 	generateComplexityAnalysisPrompt,
 	getAvailableAIModel,
 	handleClaudeError,
+	_handleAnthropicStream,
+	getConfiguredAnthropicClient,
+	sendChatWithContext,
+	parseTasksFromCompletion,
+	generateTaskDescriptionWithPerplexity,
+	parseSubtasksFromText,
 	handleStreamingRequest
 } from './ai-services.js';
 
