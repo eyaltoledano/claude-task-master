@@ -10,16 +10,29 @@ import chalk from 'chalk';
 // Global silent mode flag
 let silentMode = false;
 
+/**
+ * Sanitizes environment variables by removing comments and trimming whitespace
+ * @param {string} envVar - The environment variable to sanitize
+ * @param {string} defaultValue - Default value if environment variable is not set
+ * @returns {string} Sanitized environment variable value
+ */
+function sanitizeEnvVar(envVar, defaultValue) {
+	if (!envVar) return defaultValue;
+	
+	// Remove anything after # (comments) and trim whitespace
+	return envVar.split('#')[0].trim();
+}
+
 // Configuration and constants
 const CONFIG = {
-	model: process.env.MODEL || 'claude-3-7-sonnet-20250219',
-	maxTokens: parseInt(process.env.MAX_TOKENS || '4000'),
-	temperature: parseFloat(process.env.TEMPERATURE || '0.7'),
-	debug: process.env.DEBUG === 'true',
-	logLevel: process.env.LOG_LEVEL || 'info',
-	defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || '3'),
-	defaultPriority: process.env.DEFAULT_PRIORITY || 'medium',
-	projectName: process.env.PROJECT_NAME || 'Task Master',
+	model: sanitizeEnvVar(process.env.MODEL, 'claude-3-7-sonnet-20250219'),
+	maxTokens: parseInt(sanitizeEnvVar(process.env.MAX_TOKENS, '4000')),
+	temperature: parseFloat(sanitizeEnvVar(process.env.TEMPERATURE, '0.7')),
+	debug: sanitizeEnvVar(process.env.DEBUG, 'false') === 'true',
+	logLevel: sanitizeEnvVar(process.env.LOG_LEVEL, 'info'),
+	defaultSubtasks: parseInt(sanitizeEnvVar(process.env.DEFAULT_SUBTASKS, '3')),
+	defaultPriority: sanitizeEnvVar(process.env.DEFAULT_PRIORITY, 'medium'),
+	projectName: sanitizeEnvVar(process.env.PROJECT_NAME, 'Task Master'),
 	projectVersion: '1.5.0' // Hardcoded version - ALWAYS use this value, ignore environment variable
 };
 
@@ -397,6 +410,36 @@ function detectCamelCaseFlags(args) {
 	return camelCaseFlags;
 }
 
+/**
+ * Get the Anthropic API key, properly sanitized
+ * @param {Object} session - Optional session object that might contain the key
+ * @param {Object} customEnv - Optional custom environment that might contain the key
+ * @returns {string} The sanitized API key or empty string if not found
+ */
+function getAnthropicApiKey(session = null, customEnv = null) {
+	return sanitizeEnvVar(
+		session?.env?.ANTHROPIC_API_KEY ||
+		process.env.ANTHROPIC_API_KEY ||
+		customEnv?.ANTHROPIC_API_KEY,
+		''
+	);
+}
+
+/**
+ * Get the Perplexity API key, properly sanitized
+ * @param {Object} session - Optional session object that might contain the key
+ * @param {Object} customEnv - Optional custom environment that might contain the key
+ * @returns {string} The sanitized API key or empty string if not found
+ */
+function getPerplexityApiKey(session = null, customEnv = null) {
+	return sanitizeEnvVar(
+		session?.env?.PERPLEXITY_API_KEY ||
+		process.env.PERPLEXITY_API_KEY ||
+		customEnv?.PERPLEXITY_API_KEY,
+		''
+	);
+}
+
 // Export all utility functions and configuration
 export {
 	CONFIG,
@@ -417,5 +460,8 @@ export {
 	enableSilentMode,
 	disableSilentMode,
 	isSilentMode,
-	getTaskManager
+	getTaskManager,
+	sanitizeEnvVar,
+	getAnthropicApiKey,
+	getPerplexityApiKey
 };

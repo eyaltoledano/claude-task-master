@@ -16,7 +16,7 @@
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"prepare-package": "node scripts/prepare-package.js",
 		"prepublishOnly": "npm run prepare-package",
-		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
+		"prepare": "node -e \"try { require('fs').chmodSync('./bin/task-master.js', '755'); require('fs').chmodSync('./mcp-server/server.js', '755'); } catch(e) { console.log('Skipping chmod - probably on Windows'); }\"",
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
