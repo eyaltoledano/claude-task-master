@@ -114,112 +114,142 @@ function createProgressBar(percent, length = 30, statusBreakdown = null) {
 		: percent;
 
 	// Create a single-use progress bar
-	const bar = new cliProgress.SingleBar({
-		format: (options, params, payload) => {
-			// Determine color based on percentage
-			let completedColor;
-			if (percent < 25) {
-				completedColor = chalk.red;
-			} else if (percent < 50) {
-				completedColor = chalk.hex('#FFA500'); // Orange
-			} else if (percent < 75) {
-				completedColor = chalk.yellow;
-			} else if (percent < 100) {
-				completedColor = chalk.green;
-			} else {
-				completedColor = chalk.hex('#006400'); // Dark green
-			}
+	const bar = new cliProgress.SingleBar(
+		{
+			format: (options, params, payload) => {
+				// Determine color based on percentage
+				let completedColor;
+				if (percent < 25) {
+					completedColor = chalk.red;
+				} else if (percent < 50) {
+					completedColor = chalk.hex('#FFA500'); // Orange
+				} else if (percent < 75) {
+					completedColor = chalk.yellow;
+				} else if (percent < 100) {
+					completedColor = chalk.green;
+				} else {
+					completedColor = chalk.hex('#006400'); // Dark green
+				}
 
-			// Effective percentage text color should reflect the highest category
-			const percentTextColor =
-				percent === 100
-					? chalk.hex('#006400') // Dark green for 100%
-					: effectivePercent === 100
-						? chalk.gray // Gray for 100% with deferred/cancelled
-						: completedColor; // Otherwise match the completed color
+				// Effective percentage text color should reflect the highest category
+				const percentTextColor =
+					percent === 100
+						? chalk.hex('#006400') // Dark green for 100%
+						: effectivePercent === 100
+							? chalk.gray // Gray for 100% with deferred/cancelled
+							: completedColor; // Otherwise match the completed color
 
-			// Get the bar from cli-progress
-			let progressBar = options.barCompleteString.substring(0, Math.round(params.progress * options.barsize)) +
-				options.barIncompleteString.substring(0, options.barsize - Math.round(params.progress * options.barsize));
+				// Get the bar from cli-progress
+				let progressBar =
+					options.barCompleteString.substring(
+						0,
+						Math.round(params.progress * options.barsize)
+					) +
+					options.barIncompleteString.substring(
+						0,
+						options.barsize - Math.round(params.progress * options.barsize)
+					);
 
-			// If we have a status breakdown and remaining section, handle it
-			if (statusBreakdown && effectivePercent < 100) {
-				// Status colors (matching the statusConfig colors in getStatusWithColor)
-				const statusColors = {
-					pending: chalk.yellow,
-					'in-progress': chalk.hex('#FFA500'), // Orange
-					blocked: chalk.red,
-					review: chalk.magenta
-					// Deferred and cancelled are treated as part of the completed section
-				};
+				// If we have a status breakdown and remaining section, handle it
+				if (statusBreakdown && effectivePercent < 100) {
+					// Status colors (matching the statusConfig colors in getStatusWithColor)
+					const statusColors = {
+						pending: chalk.yellow,
+						'in-progress': chalk.hex('#FFA500'), // Orange
+						blocked: chalk.red,
+						review: chalk.magenta
+						// Deferred and cancelled are treated as part of the completed section
+					};
 
-				// Customize the incomplete section (remaining) with status colors if available
-				const emptySection = options.barsize - Math.round(params.progress * options.barsize);
-				if (emptySection > 0) {
-					// Calculate proportions for each status
-					const totalRemaining = Object.entries(statusBreakdown)
-						.filter(
-							([status]) =>
-								!['deferred', 'cancelled', 'done', 'completed'].includes(status)
-						)
-						.reduce((sum, [_, val]) => sum + val, 0);
+					// Customize the incomplete section (remaining) with status colors if available
+					const emptySection =
+						options.barsize - Math.round(params.progress * options.barsize);
+					if (emptySection > 0) {
+						// Calculate proportions for each status
+						const totalRemaining = Object.entries(statusBreakdown)
+							.filter(
+								([status]) =>
+									!['deferred', 'cancelled', 'done', 'completed'].includes(
+										status
+									)
+							)
+							.reduce((sum, [_, val]) => sum + val, 0);
 
-					// If we have remaining tasks with tracked statuses
-					if (totalRemaining > 0) {
-						// Create a colored remaining section
-						let remainingSection = '';
-						let addedChars = 0;
+						// If we have remaining tasks with tracked statuses
+						if (totalRemaining > 0) {
+							// Create a colored remaining section
+							let remainingSection = '';
+							let addedChars = 0;
 
-						// Add each status section proportionally
-						for (const [status, percentage] of Object.entries(statusBreakdown)) {
-							// Skip statuses that are considered complete
-							if (['deferred', 'cancelled', 'done', 'completed'].includes(status))
-								continue;
+							// Add each status section proportionally
+							for (const [status, percentage] of Object.entries(
+								statusBreakdown
+							)) {
+								// Skip statuses that are considered complete
+								if (
+									['deferred', 'cancelled', 'done', 'completed'].includes(
+										status
+									)
+								)
+									continue;
 
-							// Calculate how many characters this status should fill
-							const statusChars = Math.round((percentage / totalRemaining) * emptySection);
+								// Calculate how many characters this status should fill
+								const statusChars = Math.round(
+									(percentage / totalRemaining) * emptySection
+								);
 
-							// Make sure we don't exceed the total length due to rounding
-							const actualChars = Math.min(statusChars, emptySection - addedChars);
+								// Make sure we don't exceed the total length due to rounding
+								const actualChars = Math.min(
+									statusChars,
+									emptySection - addedChars
+								);
 
-							// Add colored section for this status
-							const colorFn = statusColors[status] || chalk.gray;
-							remainingSection += colorFn('░'.repeat(actualChars));
+								// Add colored section for this status
+								const colorFn = statusColors[status] || chalk.gray;
+								remainingSection += colorFn('░'.repeat(actualChars));
 
-							addedChars += actualChars;
+								addedChars += actualChars;
+							}
+
+							// If we have any remaining space due to rounding, fill with gray
+							if (addedChars < emptySection) {
+								remainingSection += chalk.gray(
+									'░'.repeat(emptySection - addedChars)
+								);
+							}
+
+							// Replace the incomplete part of the progress bar with our custom colored version
+							progressBar =
+								progressBar.substring(
+									0,
+									Math.round(params.progress * options.barsize)
+								) + remainingSection;
 						}
-
-						// If we have any remaining space due to rounding, fill with gray
-						if (addedChars < emptySection) {
-							remainingSection += chalk.gray('░'.repeat(emptySection - addedChars));
-						}
-
-						// Replace the incomplete part of the progress bar with our custom colored version
-						progressBar = progressBar.substring(0, Math.round(params.progress * options.barsize)) + remainingSection;
 					}
 				}
-			}
 
-			// Return the formatted progress bar with percentage
-			return `${progressBar} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;  
+				// Return the formatted progress bar with percentage
+				return `${progressBar} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;
+			},
+			barCompleteChar: '█',
+			barIncompleteChar: '░',
+			barsize: length,
+			hideCursor: true,
+			clearOnComplete: false,
+			forceRedraw: true
 		},
-		barCompleteChar: '█',
-		barIncompleteChar: '░',
-		barsize: length,
-		hideCursor: true,
-		clearOnComplete: false,
-		forceRedraw: true
-	}, cliProgress.Presets.shades_classic);
+		cliProgress.Presets.shades_classic
+	);
 
 	// Start and update the bar with the percent value
 	bar.start(100, 0, {
-		speed: "N/A"
+		speed: 'N/A'
 	});
 	bar.update(effectivePercent);
 
 	// Get the rendered output as a string
 	const output = bar.render.call(bar);
-	
+
 	// Stop and clean up the bar
 	bar.stop();
 

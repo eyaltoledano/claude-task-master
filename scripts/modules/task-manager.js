@@ -409,92 +409,99 @@ async function parsePRD(
 
 			// Initialize and start our progress tracker
 			tracker.start(prdPath, numTasks);
-			
+
 			// Setup custom tracking with our tracker for compatibility with existing code
-			tracker.on('progress', (data) => {
-				elapsedSeconds = (Date.now() - startTime) / 1000;
+			tracker.on(
+				'progress',
+				(data) => {
+					elapsedSeconds = (Date.now() - startTime) / 1000;
 
-				// Get current thinking state from tracker
-				const currentThinkingState = tracker.getThinkingState() || {};
+					// Get current thinking state from tracker
+					const currentThinkingState = tracker.getThinkingState() || {};
 
-				// Get latest task info from tracker
-				const latestTaskInfo = tracker.getLatestTaskInfo() || {};
+					// Get latest task info from tracker
+					const latestTaskInfo = tracker.getLatestTaskInfo() || {};
 
-				log(
-					'debug',
-					`Progress interval: seenTaskIds.size=${seenTaskIds.size}, tasksGenerated=${tasksGenerated}, numTasks=${numTasks}`
-				);
-				if (latestTaskInfo) {
 					log(
 						'debug',
-						`Progress interval: latestTaskInfo.taskId=${latestTaskInfo.taskId}, latestTaskInfo.taskCount=${latestTaskInfo.taskCount}`
+						`Progress interval: seenTaskIds.size=${seenTaskIds.size}, tasksGenerated=${tasksGenerated}, numTasks=${numTasks}`
 					);
-				}
+					if (latestTaskInfo) {
+						log(
+							'debug',
+							`Progress interval: latestTaskInfo.taskId=${latestTaskInfo.taskId}, latestTaskInfo.taskCount=${latestTaskInfo.taskCount}`
+						);
+					}
 
-				// Calculate continuous micro-progress
-				const now = Date.now();
-				const timeSinceLastUpdate = now - lastMicroUpdateTime;
+					// Calculate continuous micro-progress
+					const now = Date.now();
+					const timeSinceLastUpdate = now - lastMicroUpdateTime;
 
-				// Update progress every interval (100ms)
-				if (timeSinceLastUpdate >= 100) {
-					// Direct calculation based on actual tasks detected
-					// No micro-progress estimation
-					if (seenTaskIds.size === 0) {
-						percentComplete = 0;
-					} else {
-						// Calculate progress as a percentage of tasks completed (0-95%)
-						percentComplete = (seenTaskIds.size / numTasks) * 95;
+					// Update progress every interval (100ms)
+					if (timeSinceLastUpdate >= 100) {
+						// Direct calculation based on actual tasks detected
+						// No micro-progress estimation
+						if (seenTaskIds.size === 0) {
+							percentComplete = 0;
+						} else {
+							// Calculate progress as a percentage of tasks completed (0-95%)
+							percentComplete = (seenTaskIds.size / numTasks) * 95;
+						}
+
+						log(
+							'debug',
+							`SYNC: Direct progress calculation: ${percentComplete}% based on ${seenTaskIds.size}/${numTasks} tasks`
+						);
+
+						lastMicroUpdateTime = now;
+
+						// Cap total progress at 99% until completion
+						const totalProgress = Math.min(99, percentComplete);
+
+						// Emit progress update based on actual task count
+						progress.emitProgress({
+							percentComplete: totalProgress,
+							tokenCount: contextTokens,
+							estimatedTotalTokens,
+							tasksGenerated: seenTaskIds.size, // Always use seenTaskIds.size
+							totalTasks: numTasks,
+							elapsed: elapsedSeconds,
+							microProgress: false // Not using micro-progress anymore
+						});
 					}
 
 					log(
 						'debug',
-						`SYNC: Direct progress calculation: ${percentComplete}% based on ${seenTaskIds.size}/${numTasks} tasks`
+						`Updating progress tracker with tasksGenerated=${tasksGenerated}, totalTasks=${numTasks}`
 					);
+					if (latestTaskInfo) {
+						log(
+							'debug',
+							`Passing taskInfo with taskId=${latestTaskInfo.taskId}`
+						);
+					}
 
-					lastMicroUpdateTime = now;
-
-					// Cap total progress at 99% until completion
-					const totalProgress = Math.min(99, percentComplete);
-
-					// Emit progress update based on actual task count
-					progress.emitProgress({
-						percentComplete: totalProgress,
-						tokenCount: contextTokens,
+					tracker.update({
+						percentComplete: Math.min(99, percentComplete),
+						elapsed: elapsedSeconds,
+						contextTokens,
 						estimatedTotalTokens,
+						promptTokens,
+						completionTokens,
 						tasksGenerated: seenTaskIds.size, // Always use seenTaskIds.size
 						totalTasks: numTasks,
-						elapsed: elapsedSeconds,
-						microProgress: false // Not using micro-progress anymore
+						completed: false,
+						message: currentThinkingState.message, // Pass current thinking message
+						state: currentThinkingState.state, // Pass current state
+						taskInfo: latestTaskInfo, // Pass latest task info
+						microProgress: false // No longer using micro-progress
 					});
-				}
 
-				log(
-					'debug',
-					`Updating progress tracker with tasksGenerated=${tasksGenerated}, totalTasks=${numTasks}`
-				);
-				if (latestTaskInfo) {
-					log('debug', `Passing taskInfo with taskId=${latestTaskInfo.taskId}`);
-				}
-
-				tracker.update({
-					percentComplete: Math.min(99, percentComplete),
-					elapsed: elapsedSeconds,
-					contextTokens,
-					estimatedTotalTokens,
-					promptTokens,
-					completionTokens,
-					tasksGenerated: seenTaskIds.size, // Always use seenTaskIds.size
-					totalTasks: numTasks,
-					completed: false,
-					message: currentThinkingState.message, // Pass current thinking message
-					state: currentThinkingState.state, // Pass current state
-					taskInfo: latestTaskInfo, // Pass latest task info
-					microProgress: false // No longer using micro-progress
-				});
-
-				// Reset latest task info after it's displayed
-				// Reset task info tracking - now handled by the tracker
-			}, 100); // Update every 100ms
+					// Reset latest task info after it's displayed
+					// Reset task info tracking - now handled by the tracker
+				},
+				100
+			); // Update every 100ms
 
 			// Build the system prompt
 			const systemPrompt = `You are an AI assistant helping to break down a Product Requirements Document (PRD) into a set of sequential development tasks. 
@@ -1315,8 +1322,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 					case 'generating_tasks':
 						// Sync the task message with UI display - use the last displayed task ID from UI
 						// to ensure we're always showing the next task after what the user has seen
-						const lastDisplayedTaskId =
-							tracker.getLastTaskId() || 0;
+						const lastDisplayedTaskId = tracker.getLastTaskId() || 0;
 
 						// Make sure we never show more tasks than we actually have
 						const currentTaskNumber = Math.min(
@@ -1712,7 +1718,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 
 		// Clean up all resources
 		// Remove the signal handler
-	process.removeListener('SIGINT', signalHandler);
+		process.removeListener('SIGINT', signalHandler);
 		cleanupResources(true, finalStats);
 
 		return tasksPath;
@@ -1721,7 +1727,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 
 		// Clean up all resources
 		// Remove the signal handler
-	process.removeListener('SIGINT', signalHandler);
+		process.removeListener('SIGINT', signalHandler);
 		cleanupResources(false, { error: error.message });
 
 		// Log error for debugging
