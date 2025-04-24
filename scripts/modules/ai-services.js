@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import { CONFIG, log, sanitizePrompt, isSilentMode } from './utils.js';
 import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 import chalk from 'chalk';
+import { createPrdParseTracker } from './progress/prdParseTracker.js';
 
 // Load environment variables
 dotenv.config();
@@ -156,7 +157,7 @@ async function callClaude(
 	prdPath,
 	numTasks,
 	retryCount = 0,
-	{ reportProgress, mcpLog, session } = {},
+	{ reportProgress, mcpLog, session, streamingTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -238,7 +239,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 			numTasks,
 			modelConfig?.maxTokens || CONFIG.maxTokens,
 			systemPrompt,
-			{ reportProgress, mcpLog, session },
+			{ reportProgress, mcpLog, session, streamingTracker },
 			aiClient || anthropic,
 			modelConfig
 		);
@@ -266,7 +267,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 				prdPath,
 				numTasks,
 				retryCount + 1,
-				{ reportProgress, mcpLog, session },
+				{ reportProgress, mcpLog, session, streamingTracker },
 				aiClient,
 				modelConfig
 			);
@@ -291,10 +292,8 @@ Your response should be valid JSON only, with no additional explanation or comme
  *   - reportProgress: Function to report progress to MCP server (optional)
  *   - mcpLog: MCP logger object (optional)
  *   - session: Session object from MCP server (optional)
- *   - useProgressBar: Whether to display the advanced progress bar (optional)
  * @param {Object} aiClient - AI client instance (optional - will use default if not provided)
  * @param {Object} modelConfig - Model configuration (optional)
- * @param {Function} progressCallback - Optional callback for detailed progress tracking
  * @returns {Object} Claude's response
  */
 async function handleStreamingRequest(
@@ -303,10 +302,9 @@ async function handleStreamingRequest(
 	numTasks,
 	maxTokens,
 	systemPrompt,
-	{ reportProgress, mcpLog, session, useProgressBar = false } = {},
+	{ reportProgress, mcpLog, session } = {},
 	aiClient = null,
-	modelConfig = null,
-	progressCallback = null
+	modelConfig = null
 ) {
 	// Determine output format based on mcpLog presence
 	const outputFormat = mcpLog ? 'json' : 'text';
@@ -354,92 +352,32 @@ async function handleStreamingRequest(
 			stream: true
 		});
 
+		// Update loading indicator to show streaming progress - only for text output
+		if (outputFormat === 'text' && !isSilentMode()) {
+			let dotCount = 0;
+			const readline = await import('readline');
+			streamingInterval = setInterval(() => {
+				readline.cursorTo(process.stdout, 0);
+				process.stdout.write(
+					`Receiving streaming response from Claude${'.'.repeat(dotCount)}`
+				);
+				dotCount = (dotCount + 1) % 4;
+			}, 500);
+		}
+
 		// Process the stream
 		for await (const chunk of stream) {
 			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
 				responseText += chunk.delta.text;
 
-				// Update progress metrics
-				if (useProgressBar && outputFormat === 'text' && !isSilentMode()) {
-					// Update context tokens count
-					contextTokens = Math.ceil(responseText.length / 4);
-
-					// Calculate percentage complete
-					percentComplete = Math.min(90, (contextTokens / maxTokens) * 100);
-
-					// Update processing state based on content analysis
-					if (
-						responseText.includes('Task 1:') ||
-						responseText.includes('"id": 1,')
-					) {
-						processingState = 'Generating tasks';
-
-						// Try to detect task count
-						let highestTaskNumber = 0;
-						const taskRegex = /Task\s+(\d+):|"id":\s*(\d+)/g;
-						let taskMatch;
-
-						while ((taskMatch = taskRegex.exec(responseText)) !== null) {
-							const taskNum = parseInt(taskMatch[1] || taskMatch[2], 10);
-							if (!isNaN(taskNum) && taskNum > highestTaskNumber) {
-								highestTaskNumber = taskNum;
-							}
-						}
-
-						tasksGenerated = highestTaskNumber;
-					} else if (
-						responseText.includes('Let me analyze') ||
-						responseText.includes('understand the requirements')
-					) {
-						processingState = 'Analyzing PRD';
-					} else if (
-						responseText.includes('create a set of tasks') ||
-						responseText.includes('I will generate')
-					) {
-						processingState = 'Planning task structure';
-					}
-
-					// If we have a task match, extract the title to display
-					const lastTaskMatch = responseText.match(
-						/Task\s+(\d+)\s*:\s*([^\n\r]+)|"title":\s*"([^"]+)"/g
-					);
-					if (lastTaskMatch) {
-						const lastTaskTitle = lastTaskMatch[lastTaskMatch.length - 1]
-							.replace(/Task\s+\d+\s*:\s*/, '')
-							.replace(/"title":\s*"/, '')
-							.replace(/"$/, '')
-							.trim();
-
-						// Update progress with task info
-						displayPRDParsingProgress({
-							percentComplete,
-							elapsed: (Date.now() - startTime) / 1000,
-							contextTokens,
-							estimatedTotalTokens: maxTokens,
-							promptTokens: prdContent.length / 4,
-							completionTokens: responseText.length / 4,
-							tasksGenerated,
-							processingState,
-							taskInfo: {
-								title: lastTaskTitle
-							}
-						});
-					}
-
-					// Call custom progress callback if provided
-					if (progressCallback) {
-						progressCallback(responseText, {
-							percentComplete,
-							elapsed: (Date.now() - startTime) / 1000,
-							contextTokens,
-							tasksGenerated,
-							processingState
-						});
-					}
+				/* realtime tracker hook (CLI-only) */
+				if (streamingTracker) {
+					streamingTracker(chunk.delta.text, {
+						percent: (responseText.length / maxTokens) * 100,
+						message: 'Generating tasks…'
+					});
 				}
 			}
-
-			// Standard progress reporting
 			if (reportProgress) {
 				await reportProgress({
 					progress: (responseText.length / maxTokens) * 100
@@ -884,45 +822,18 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
 		try {
-			// For the enhanced progress display
-			let startTime = Date.now();
-			let elapsed = 0;
-			let percentComplete = 0;
-			let contextTokens = 0;
-			let tasksGenerated = 0;
-			let processingState = 'Initializing request';
-
-			// Update loading indicator to show streaming progress - only for text output
+			// Update loading indicator to show streaming progress
+			// Only create if not in silent mode
 			if (!isSilent) {
-				if (useProgressBar) {
-					// Use the advanced progress bar
-					streamingInterval = setInterval(() => {
-						elapsed = (Date.now() - startTime) / 1000;
-
-						// Call the enhanced progress display
-						displayPRDParsingProgress({
-							percentComplete,
-							elapsed,
-							contextTokens,
-							estimatedTotalTokens: CONFIG.maxTokens,
-							promptTokens: userPrompt.length / 4, // Rough estimate
-							completionTokens: responseText.length / 4, // Rough estimate
-							tasksGenerated,
-							processingState
-						});
-					}, 500);
-				} else {
-					// Use the traditional spinner
-					let dotCount = 0;
-					const readline = await import('readline');
-					streamingInterval = setInterval(() => {
-						readline.cursorTo(process.stdout, 0);
-						process.stdout.write(
-							`Generating research-backed subtasks for task ${task.id}${'.'.repeat(dotCount)}`
-						);
-						dotCount = (dotCount + 1) % 4;
-					}, 500);
-				}
+				let dotCount = 0;
+				const readline = await import('readline');
+				streamingInterval = setInterval(() => {
+					readline.cursorTo(process.stdout, 0);
+					process.stdout.write(
+						`Generating research-backed subtasks for task ${task.id}${'.'.repeat(dotCount)}`
+					);
+					dotCount = (dotCount + 1) % 4;
+				}, 500);
 			}
 
 			// Use streaming API call via our helper function
@@ -1131,7 +1042,8 @@ async function _handleAnthropicStream(
 	client,
 	params,
 	{ reportProgress, mcpLog, silentMode } = {},
-	cliMode = false
+	cliMode = false,
+	onChunk
 ) {
 	// Only set up loading indicator in CLI mode and not in silent mode
 	let loadingIndicator = null;
@@ -1204,6 +1116,13 @@ async function _handleAnthropicStream(
 				// Process the chunk
 				if (chunk && chunk.type === 'content_block_delta' && chunk.delta.text) {
 					responseText += chunk.delta.text;
+
+					// invoke realtime tracker if supplied
+					if (onChunk) {
+						onChunk(chunk.delta.text, {
+							percent: (responseText.length / maxTokens) * 100
+						});
+					}
 				}
 
 				// Report progress - use only mcpLog in MCP context and avoid direct reportProgress calls

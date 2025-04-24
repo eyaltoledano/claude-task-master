@@ -14,6 +14,9 @@ import ora from 'ora';
 import inquirer from 'inquirer';
 import { EventEmitter } from 'events'; // Add EventEmitter import
 
+// Import our enhanced progress tracking system
+import { createPrdParseTracker } from './progress/index.js';
+
 import {
 	CONFIG,
 	log,
@@ -26,8 +29,7 @@ import {
 	truncate,
 	enableSilentMode,
 	disableSilentMode,
-	isSilentMode,
-	setupSignalHandler
+	isSilentMode
 } from './utils.js';
 
 import {
@@ -38,10 +40,7 @@ import {
 	startLoadingIndicator,
 	stopLoadingIndicator,
 	createProgressBar,
-	displayAnalysisProgress,
-	formatComplexitySummary,
 	displayPRDParsingStart,
-	displayPRDParsingProgress,
 	displayPRDParsingSummary
 } from './ui.js';
 
@@ -144,8 +143,8 @@ async function parsePRD(
 ) {
 	const { reportProgress, mcpLog, session, append } = options;
 
-	// Define progressInterval at the top level of the function so the handler can access it
-	let progressInterval = null;
+	// Create a tracker instance for progress reporting
+	const tracker = createPrdParseTracker({ reportProgress, mcpLog });
 
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';
@@ -163,12 +162,26 @@ async function parsePRD(
 	// Create progress emitter for streaming events
 	const progress = createProgressEmitter();
 
+	// Define signal handler for handling interruptions
+	const signalHandler = () => {
+		console.log('\nPRD parsing cancelled by user.');
+		process.stdout.write('\u001B[?25h'); // Restore cursor
+		process.exit(1);
+	};
+
+	// Attach signal handler
+	process.on('SIGINT', signalHandler);
+
 	// Cleanup resources function to ensure consistent state even after errors
-	const cleanupResources = () => {
-		// Clean up progressInterval
-		if (progressInterval) {
-			clearInterval(progressInterval);
-			progressInterval = null;
+	const cleanupResources = (success = false, stats = {}) => {
+		// Clean up tracker if it exists
+		if (tracker) {
+			// Only pass displayPRDParsingSummary if successful
+			if (success) {
+				tracker.finish(true, stats, displayPRDParsingSummary);
+			} else {
+				tracker.finish(false, { error: stats.error || 'Unknown error' });
+			}
 		}
 
 		// Clean up event listeners
@@ -177,12 +190,6 @@ async function parsePRD(
 		// Restore cursor
 		process.stdout.write('\u001B[?25h');
 	};
-
-	// Setup signal handler with the universal utility
-	const removeSignalHandler = setupSignalHandler(
-		cleanupResources,
-		'PRD parsing cancelled by user.'
-	);
 
 	// Variable for task data that will be populated in either path
 	let tasksData;
@@ -328,9 +335,7 @@ async function parsePRD(
 			let microProgress = 0; // Track micro-progress between task detections
 			let lastMicroUpdateTime = Date.now(); // Track time of last micro update
 
-			// Initialize static variables for displayPRDParsingProgress
-			displayPRDParsingProgress.thinkingState = null;
-			displayPRDParsingProgress.latestTaskInfo = null;
+			// Progress tracking state is now handled by the tracker
 
 			// Set up progress event handlers
 			progress.onProgress((data) => {
@@ -373,20 +378,15 @@ async function parsePRD(
 					`Detected task ${taskInfo.taskId}: ${taskInfo.title} (taskCount=${taskInfo.taskCount})`
 				);
 
-				// Store latest task info for use in the progress interval
-				if (!displayPRDParsingProgress.latestTaskInfo) {
-					displayPRDParsingProgress.latestTaskInfo = {};
-				}
-
-				// Always update the latest task info with complete information
-				displayPRDParsingProgress.latestTaskInfo = {
+				// Provide task info to the tracker
+				tracker.trackTask({
 					taskId: taskInfo.taskId,
 					title: taskInfo.title,
 					priority: taskInfo.priority,
 					description: taskInfo.description,
 					taskCount: taskInfo.taskCount,
-					_prioritySource: taskInfo._prioritySource || 'event' // Add source info
-				};
+					_prioritySource: taskInfo._prioritySource || 'event'
+				});
 
 				log(
 					'debug',
@@ -399,28 +399,26 @@ async function parsePRD(
 				if (data.message) {
 					log('debug', `Thinking state: ${data.message}`);
 
-					// Store thinking state for use in the progress interval
-					if (!displayPRDParsingProgress.thinkingState) {
-						displayPRDParsingProgress.thinkingState = {};
-					}
-
-					displayPRDParsingProgress.thinkingState = {
+					// Send thinking state to the tracker
+					tracker.updateThinkingState({
 						message: data.message,
 						state: data.state || 'processing'
-					};
+					});
 				}
 			});
 
-			// Setup progress update interval - this maintains compatibility with current UI
-			progressInterval = setInterval(() => {
+			// Initialize and start our progress tracker
+			tracker.start(prdPath, numTasks);
+			
+			// Setup custom tracking with our tracker for compatibility with existing code
+			tracker.on('progress', (data) => {
 				elapsedSeconds = (Date.now() - startTime) / 1000;
 
-				// Track our current thinking state
-				const currentThinkingState =
-					displayPRDParsingProgress.thinkingState || {};
+				// Get current thinking state from tracker
+				const currentThinkingState = tracker.getThinkingState() || {};
 
-				// Get latest task info if available
-				const latestTaskInfo = displayPRDParsingProgress.latestTaskInfo;
+				// Get latest task info from tracker
+				const latestTaskInfo = tracker.getLatestTaskInfo() || {};
 
 				log(
 					'debug',
@@ -472,13 +470,13 @@ async function parsePRD(
 
 				log(
 					'debug',
-					`Calling displayPRDParsingProgress with tasksGenerated=${tasksGenerated}, totalTasks=${numTasks}`
+					`Updating progress tracker with tasksGenerated=${tasksGenerated}, totalTasks=${numTasks}`
 				);
 				if (latestTaskInfo) {
 					log('debug', `Passing taskInfo with taskId=${latestTaskInfo.taskId}`);
 				}
 
-				displayPRDParsingProgress({
+				tracker.update({
 					percentComplete: Math.min(99, percentComplete),
 					elapsed: elapsedSeconds,
 					contextTokens,
@@ -495,7 +493,7 @@ async function parsePRD(
 				});
 
 				// Reset latest task info after it's displayed
-				displayPRDParsingProgress.latestTaskInfo = null;
+				// Reset task info tracking - now handled by the tracker
 			}, 100); // Update every 100ms
 
 			// Build the system prompt
@@ -1073,7 +1071,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 
 				// For display purposes, we want to always show "Defining task X" for each task including the last one
 				// Only show "Finalizing" after we've actually shown all tasks to the user
-				const lastDisplayedTaskId = displayPRDParsingProgress.lastTaskId || 0;
+				const lastDisplayedTaskId = tracker.getLastTaskId() || 0;
 
 				if (contentPhase === 'finalizing' && lastDisplayedTaskId >= numTasks) {
 					// Only show finalizing after we've displayed all tasks
@@ -1318,7 +1316,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 						// Sync the task message with UI display - use the last displayed task ID from UI
 						// to ensure we're always showing the next task after what the user has seen
 						const lastDisplayedTaskId =
-							displayPRDParsingProgress.lastTaskId || 0;
+							tracker.getLastTaskId() || 0;
 
 						// Make sure we never show more tasks than we actually have
 						const currentTaskNumber = Math.min(
@@ -1601,7 +1599,7 @@ Important: Your response must be valid JSON only, with no additional explanation
 				percentComplete = 100;
 				microProgress = 0; // Reset microProgress on completion
 
-				displayPRDParsingProgress({
+				tracker.update({
 					percentComplete,
 					elapsed: (Date.now() - startTime) / 1000,
 					contextTokens,
@@ -1701,29 +1699,30 @@ Important: Your response must be valid JSON only, with no additional explanation
 			}
 		});
 
-		// Display summary with statistics
-		displayPRDParsingSummary({
-			totalTasks: tasksData.tasks.length,
-			prdFilePath: prdPath,
+		// Prepare stats for tracker finish
+		const finalStats = {
+			taskCount: tasksData.tasks.length,
+			prdPath: prdPath,
 			outputPath: tasksPath,
-			elapsedTime: elapsedSeconds,
 			taskCategories,
 			recoveryMode: tasksData.metadata?.recoveryMode || false,
 			taskFilesGenerated: taskFilesGenerated,
 			actionVerb: actionVerb
-		});
+		};
 
 		// Clean up all resources
-		removeSignalHandler();
-		cleanupResources();
+		// Remove the signal handler
+	process.removeListener('SIGINT', signalHandler);
+		cleanupResources(true, finalStats);
 
 		return tasksPath;
 	} catch (error) {
 		log('error', `Error parsing PRD: ${error.message}`);
 
 		// Clean up all resources
-		removeSignalHandler();
-		cleanupResources();
+		// Remove the signal handler
+	process.removeListener('SIGINT', signalHandler);
+		cleanupResources(false, { error: error.message });
 
 		// Log error for debugging
 		console.error(chalk.red(`Error: ${error.message}`));
