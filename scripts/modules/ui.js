@@ -9,6 +9,7 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
+import cliProgress from 'cli-progress';
 import {
 	CONFIG,
 	log,
@@ -112,110 +113,118 @@ function createProgressBar(percent, length = 30, statusBreakdown = null) {
 			)
 		: percent;
 
-	// Calculate how many characters to fill for "true completion"
-	const trueCompletedFilled = Math.round((percent * length) / 100);
-
-	// Calculate how many characters to fill for "effective completion" (including deferred/cancelled)
-	const effectiveCompletedFilled = Math.round(
-		(effectivePercent * length) / 100
-	);
-
-	// The "deferred/cancelled" section (difference between true and effective)
-	const deferredCancelledFilled =
-		effectiveCompletedFilled - trueCompletedFilled;
-
-	// Set the empty section (remaining after effective completion)
-	const empty = length - effectiveCompletedFilled;
-
-	// Determine color based on percentage for the completed section
-	let completedColor;
-	if (percent < 25) {
-		completedColor = chalk.red;
-	} else if (percent < 50) {
-		completedColor = chalk.hex('#FFA500'); // Orange
-	} else if (percent < 75) {
-		completedColor = chalk.yellow;
-	} else if (percent < 100) {
-		completedColor = chalk.green;
-	} else {
-		completedColor = chalk.hex('#006400'); // Dark green
-	}
-
-	// Create colored sections
-	const completedSection = completedColor('█'.repeat(trueCompletedFilled));
-
-	// Gray section for deferred/cancelled items
-	const deferredCancelledSection = chalk.gray(
-		'█'.repeat(deferredCancelledFilled)
-	);
-
-	// If we have a status breakdown, create a multi-colored remaining section
-	let remainingSection = '';
-
-	if (statusBreakdown && empty > 0) {
-		// Status colors (matching the statusConfig colors in getStatusWithColor)
-		const statusColors = {
-			pending: chalk.yellow,
-			'in-progress': chalk.hex('#FFA500'), // Orange
-			blocked: chalk.red,
-			review: chalk.magenta
-			// Deferred and cancelled are treated as part of the completed section
-		};
-
-		// Calculate proportions for each status
-		const totalRemaining = Object.entries(statusBreakdown)
-			.filter(
-				([status]) =>
-					!['deferred', 'cancelled', 'done', 'completed'].includes(status)
-			)
-			.reduce((sum, [_, val]) => sum + val, 0);
-
-		// If no remaining tasks with tracked statuses, just use gray
-		if (totalRemaining <= 0) {
-			remainingSection = chalk.gray('░'.repeat(empty));
-		} else {
-			// Track how many characters we've added
-			let addedChars = 0;
-
-			// Add each status section proportionally
-			for (const [status, percentage] of Object.entries(statusBreakdown)) {
-				// Skip statuses that are considered complete
-				if (['deferred', 'cancelled', 'done', 'completed'].includes(status))
-					continue;
-
-				// Calculate how many characters this status should fill
-				const statusChars = Math.round((percentage / totalRemaining) * empty);
-
-				// Make sure we don't exceed the total length due to rounding
-				const actualChars = Math.min(statusChars, empty - addedChars);
-
-				// Add colored section for this status
-				const colorFn = statusColors[status] || chalk.gray;
-				remainingSection += colorFn('░'.repeat(actualChars));
-
-				addedChars += actualChars;
+	// Create a single-use progress bar
+	const bar = new cliProgress.SingleBar({
+		format: (options, params, payload) => {
+			// Determine color based on percentage
+			let completedColor;
+			if (percent < 25) {
+				completedColor = chalk.red;
+			} else if (percent < 50) {
+				completedColor = chalk.hex('#FFA500'); // Orange
+			} else if (percent < 75) {
+				completedColor = chalk.yellow;
+			} else if (percent < 100) {
+				completedColor = chalk.green;
+			} else {
+				completedColor = chalk.hex('#006400'); // Dark green
 			}
 
-			// If we have any remaining space due to rounding, fill with gray
-			if (addedChars < empty) {
-				remainingSection += chalk.gray('░'.repeat(empty - addedChars));
+			// Effective percentage text color should reflect the highest category
+			const percentTextColor =
+				percent === 100
+					? chalk.hex('#006400') // Dark green for 100%
+					: effectivePercent === 100
+						? chalk.gray // Gray for 100% with deferred/cancelled
+						: completedColor; // Otherwise match the completed color
+
+			// Get the bar from cli-progress
+			let progressBar = options.barCompleteString.substring(0, Math.round(params.progress * options.barsize)) +
+				options.barIncompleteString.substring(0, options.barsize - Math.round(params.progress * options.barsize));
+
+			// If we have a status breakdown and remaining section, handle it
+			if (statusBreakdown && effectivePercent < 100) {
+				// Status colors (matching the statusConfig colors in getStatusWithColor)
+				const statusColors = {
+					pending: chalk.yellow,
+					'in-progress': chalk.hex('#FFA500'), // Orange
+					blocked: chalk.red,
+					review: chalk.magenta
+					// Deferred and cancelled are treated as part of the completed section
+				};
+
+				// Customize the incomplete section (remaining) with status colors if available
+				const emptySection = options.barsize - Math.round(params.progress * options.barsize);
+				if (emptySection > 0) {
+					// Calculate proportions for each status
+					const totalRemaining = Object.entries(statusBreakdown)
+						.filter(
+							([status]) =>
+								!['deferred', 'cancelled', 'done', 'completed'].includes(status)
+						)
+						.reduce((sum, [_, val]) => sum + val, 0);
+
+					// If we have remaining tasks with tracked statuses
+					if (totalRemaining > 0) {
+						// Create a colored remaining section
+						let remainingSection = '';
+						let addedChars = 0;
+
+						// Add each status section proportionally
+						for (const [status, percentage] of Object.entries(statusBreakdown)) {
+							// Skip statuses that are considered complete
+							if (['deferred', 'cancelled', 'done', 'completed'].includes(status))
+								continue;
+
+							// Calculate how many characters this status should fill
+							const statusChars = Math.round((percentage / totalRemaining) * emptySection);
+
+							// Make sure we don't exceed the total length due to rounding
+							const actualChars = Math.min(statusChars, emptySection - addedChars);
+
+							// Add colored section for this status
+							const colorFn = statusColors[status] || chalk.gray;
+							remainingSection += colorFn('░'.repeat(actualChars));
+
+							addedChars += actualChars;
+						}
+
+						// If we have any remaining space due to rounding, fill with gray
+						if (addedChars < emptySection) {
+							remainingSection += chalk.gray('░'.repeat(emptySection - addedChars));
+						}
+
+						// Replace the incomplete part of the progress bar with our custom colored version
+						progressBar = progressBar.substring(0, Math.round(params.progress * options.barsize)) + remainingSection;
+					}
+				}
 			}
-		}
-	} else {
-		// Default to gray for the empty section if no breakdown provided
-		remainingSection = chalk.gray('░'.repeat(empty));
-	}
 
-	// Effective percentage text color should reflect the highest category
-	const percentTextColor =
-		percent === 100
-			? chalk.hex('#006400') // Dark green for 100%
-			: effectivePercent === 100
-				? chalk.gray // Gray for 100% with deferred/cancelled
-				: completedColor; // Otherwise match the completed color
+			// Return the formatted progress bar with percentage
+			return `${progressBar} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;  
+		},
+		barCompleteChar: '█',
+		barIncompleteChar: '░',
+		barsize: length,
+		hideCursor: true,
+		clearOnComplete: false,
+		forceRedraw: true
+	}, cliProgress.Presets.shades_classic);
 
-	// Build the complete progress bar
-	return `${completedSection}${deferredCancelledSection}${remainingSection} ${percentTextColor(`${effectivePercent.toFixed(0)}%`)}`;
+	// Start and update the bar with the percent value
+	bar.start(100, 0, {
+		speed: "N/A"
+	});
+	bar.update(effectivePercent);
+
+	// Get the rendered output as a string
+	const output = bar.render.call(bar);
+	
+	// Stop and clean up the bar
+	bar.stop();
+
+	// Return the rendered output (string representation of the progress bar)
+	return output;
 }
 
 /**
@@ -1687,12 +1696,57 @@ function displayAnalysisProgress(progressData) {
 		displayAnalysisProgress.initialized = false;
 		displayAnalysisProgress.lastUpdate = Date.now();
 		displayAnalysisProgress.statusLineStarted = false;
+		
+		// Initialize the progress bar once
+		displayAnalysisProgress.progressBar = new cliProgress.SingleBar({
+			format: (options, params) => {
+				// Get percentage number for display
+				const percentText = `${Math.round(params.progress)}%`;
+				
+				// Create a progress bar that can show percentage in the middle
+				const progressBarWidth = options.barsize;
+				const percentTextLength = percentText.length;
+				
+				// Calculate position for centered percentage
+				const halfBarWidth = Math.floor(progressBarWidth / 2);
+				const percentStartPos = Math.max(
+					0,
+					halfBarWidth - Math.floor(percentTextLength / 2)
+				);
+				
+				// Calculate filled chars
+				const filledChars = Math.floor(params.progress * progressBarWidth / 100);
+				
+				// Build the progress bar manually so we can center the percentage
+				let progressBar = '';
+				for (let i = 0; i < progressBarWidth; i++) {
+					// If we're at the start position for the percentage text
+					if (i === percentStartPos) {
+						// Apply bold white for percentage text to stand out
+						progressBar += chalk.bold.white(percentText);
+						// Skip ahead by the length of the percentage text
+						i += percentTextLength - 1;
+					} else if (i < filledChars) {
+						// Use cyan for filled section
+						progressBar += chalk.cyan('█');
+					} else {
+						// Use gray for empty section
+						progressBar += chalk.gray('░');
+					}
+				}
+				
+				return progressBar;
+			},
+			barsize: 20,
+			clearOnComplete: false,
+			hideCursor: true,
+			forceRedraw: true,
+			stopOnComplete: false
+		}, cliProgress.Presets.shades_classic);
+		
+		// Start with 0 progress
+		displayAnalysisProgress.progressBar.start(100, 0);
 	}
-
-	// Create progress bar (20 characters wide)
-	const progressBarWidth = 20;
-	const percentText = `${Math.round(percentComplete)}%`;
-	const percentTextLength = percentText.length;
 
 	// Calculate expected total tokens and current progress
 	const totalTokens = contextTokens; // Use the actual token count as the total
@@ -1709,33 +1763,11 @@ function displayAnalysisProgress(progressData) {
 		.padStart(totalTokenDigits, '0');
 	const tokenDisplay = `${currentTokensFormatted}/${totalTokens}`;
 
-	// Calculate position for centered percentage
-	const halfBarWidth = Math.floor(progressBarWidth / 2);
-	const percentStartPos = Math.max(
-		0,
-		halfBarWidth - Math.floor(percentTextLength / 2)
-	);
-
-	// Calculate how many filled and empty chars to draw
-	const filledChars = Math.floor((percentComplete / 100) * progressBarWidth);
-
-	// Create the progress bar with centered percentage (without gradient)
-	let progressBar = '';
-	for (let i = 0; i < progressBarWidth; i++) {
-		// If we're at the start position for the percentage text
-		if (i === percentStartPos) {
-			// Apply bold white for percentage text to stand out
-			progressBar += chalk.bold.white(percentText);
-			// Skip ahead by the length of the percentage text
-			i += percentTextLength - 1;
-		} else if (i < filledChars) {
-			// Use a single color instead of gradient
-			progressBar += chalk.cyan('█');
-		} else {
-			// Use a subtle character for empty space
-			progressBar += chalk.gray('░');
-		}
-	}
+	// Update the progress bar
+	displayAnalysisProgress.progressBar.update(percentComplete);
+	
+	// Get the progress bar as string
+	const progressBar = displayAnalysisProgress.progressBar.render.call(displayAnalysisProgress.progressBar);
 
 	// Use spinner from ora - these are the actual frames used in the default spinner
 	const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -1772,22 +1804,17 @@ function displayAnalysisProgress(progressData) {
 			`Tokens: ${tokenDisplay} ${chalk.gray('|')} ` +
 			`${progressBar} ${chalk.gray('|')} ` +
 			`${chalk.green('✅')} ${chalk.green('Complete')}`;
-	} else {
-		// For in-progress, show spinner and "Processing" text
-		statusLine =
-			`  ${chalk.cyan('⏱')} ${timeDisplay} ${chalk.gray('|')} ` +
-			`Tasks: ${chalk.bold(tasksAnalyzed)}/${totalTasks} ${chalk.gray('|')} ` +
-			`Tokens: ${tokenDisplay} ${chalk.gray('|')} ` +
-			`${progressBar} ${chalk.gray('|')} ` +
-			`${chalk.cyan('Processing')} ${spinner}`;
-	}
-
-	// Clear the line and update the status
-	process.stdout.write('\r\x1B[K');
-	process.stdout.write(statusLine);
-
-	// Additional handling for completion
-	if (completed) {
+		
+		// When completed, stop the progress bar
+		if (displayAnalysisProgress.progressBar && !displayAnalysisProgress.completed) {
+			displayAnalysisProgress.progressBar.stop();
+			displayAnalysisProgress.completed = true;
+		}
+		
+		// Clear the line and update the status
+		process.stdout.write(`\r${' '.repeat(process.stdout.columns)}\r`);
+		process.stdout.write(statusLine);
+		
 		// Move to next line and print completion message in a box
 		process.stdout.write('\n\n');
 
@@ -1808,7 +1835,24 @@ function displayAnalysisProgress(progressData) {
 		// Reset initialization state for next run
 		displayAnalysisProgress.initialized = undefined;
 		displayAnalysisProgress.statusLineStarted = false;
+	} else {
+		// For in-progress, show spinner and "Processing" text
+		statusLine =
+			`  ${chalk.cyan('⏱')} ${timeDisplay} ${chalk.gray('|')} ` +
+			`Tasks: ${chalk.bold(tasksAnalyzed)}/${totalTasks} ${chalk.gray('|')} ` +
+			`Tokens: ${tokenDisplay} ${chalk.gray('|')} ` +
+			`${progressBar} ${chalk.gray('|')} ` +
+			`${chalk.cyan('Processing')} ${spinner}`;
+			
+		// Clear the line and update the status
+		process.stdout.write(`\r${' '.repeat(process.stdout.columns)}\r`);
+		process.stdout.write(statusLine);
 	}
+
+	// Update initialization state
+	displayAnalysisProgress.initialized = true;
+	displayAnalysisProgress.statusLineStarted = true;
+	displayAnalysisProgress.lastUpdate = Date.now();
 }
 
 /**
@@ -2121,6 +2165,69 @@ function displayPRDParsingProgress(progressData) {
 		microProgress = false // Flag to detect micro-progress updates
 	} = progressData;
 
+	let nonMicroProgressUpdate = false;
+
+	// Check if we received a task detection update
+	if (taskInfo && !completed) {
+		// Store the detected task in our map
+		displayPRDParsingProgress.detectedTasks.set(
+			taskInfo.id || displayPRDParsingProgress.actualTaskCount + 1,
+			taskInfo
+		);
+
+		// Update our actual task count with what we've seen so far
+		displayPRDParsingProgress.actualTaskCount = Math.max(
+			displayPRDParsingProgress.actualTaskCount,
+			taskInfo.id || displayPRDParsingProgress.actualTaskCount + 1
+		);
+
+		// Check if we're in a "state" change (thinking -> task, etc.)
+		if (state !== 'thinking') {
+			nonMicroProgressUpdate = true;
+		}
+	}
+
+	// When we see a task, briefly write about it
+	let taskMessage = '';
+	let taskLine = '';
+
+	// Track task changes and special states like thinking
+	if (taskInfo && taskInfo.title && !microProgress) {
+		// Check if this task ID is higher than the last one we've displayed
+		const currentTaskId = taskInfo.id || displayPRDParsingProgress.actualTaskCount;
+
+		// Only display a task once - prevents duplicate messages
+		if (currentTaskId > displayPRDParsingProgress.lastTaskId) {
+			displayPRDParsingProgress.lastTaskId = currentTaskId;
+
+			// Format task information for the task
+			let taskName = taskInfo.title;
+			// Truncate the task title if it's too long
+			if (taskName.length > 60) {
+				taskName = taskName.substring(0, 57) + '...';
+			}
+
+			// Set the message style for a detected task
+			taskMessage = chalk.cyan(`➕ Task ${currentTaskId} | `) + taskName;
+			taskLine = '\n' + taskMessage; // Will be added after the status line
+		}
+	} else if (state === 'thinking' && message && !microProgress) {
+		// For thinking state, show the AI's thinking process message
+		if (message !== displayPRDParsingProgress.lastThinkingMessage) {
+			displayPRDParsingProgress.lastThinkingMessage = message;
+			// Format the message with an ellipsis to show it's processing
+			taskMessage = chalk.yellow(`⚠️ Thinking | `) + message;
+			taskLine = '\n' + taskMessage; // Will be added after the status line
+			nonMicroProgressUpdate = true;
+		}
+	}
+
+	// Update the progress bar with current percentage
+	displayPRDParsingProgress.progressBar.update(percentComplete);
+
+	// Get the progress bar as string
+	const progressBar = displayPRDParsingProgress.progressBar.render.call(displayPRDParsingProgress.progressBar);
+
 	// Format the elapsed time
 	const timeDisplay = formatElapsedTime(elapsed);
 
@@ -2135,80 +2242,78 @@ function displayPRDParsingProgress(progressData) {
 		displayPRDParsingProgress.lastTokenCount = 0; // Track last token count
 		displayPRDParsingProgress.actualTaskCount = 0; // Track actual number of tasks generated
 		displayPRDParsingProgress.lastThinkingMessage = ''; // Track the last thinking message
+		displayPRDParsingProgress.frameCounter = 0; // Track the spinner frame
+		displayPRDParsingProgress.updateToggle = false; // Track whether to update the spinner
+
+		// Initialize the progress bar once
+		displayPRDParsingProgress.progressBar = new cliProgress.SingleBar({
+			format: (options, params) => {
+				// Get percentage number for display
+				const percentText = `${Math.round(params.progress)}%`;
+
+				// Create a progress bar that can show percentage in the middle
+				const progressBarWidth = options.barsize;
+				const percentTextLength = percentText.length;
+
+				// Calculate position for centered percentage
+				const halfBarWidth = Math.floor(progressBarWidth / 2);
+				const percentStartPos = Math.max(
+					0,
+					halfBarWidth - Math.floor(percentTextLength / 2)
+				);
+
+				// Calculate filled chars
+				const filledChars = Math.floor(params.progress * progressBarWidth / 100);
+
+				// Build the progress bar manually so we can center the percentage
+				let progressBar = '';
+				for (let i = 0; i < progressBarWidth; i++) {
+					// If we're at the start position for the percentage text
+					if (i === percentStartPos) {
+						// Apply bold white for percentage text to stand out
+						progressBar += chalk.bold.white(percentText);
+						// Skip ahead by the length of the percentage text
+						i += percentTextLength - 1;
+					} else if (i < filledChars) {
+						// Use cyan for filled section
+						progressBar += chalk.cyan('█');
+					} else {
+						// Use gray for empty section
+						progressBar += chalk.gray('░');
+					}
+				}
+
+				return progressBar;
+			},
+			barsize: 20,
+			clearOnComplete: false,
+			hideCursor: true,
+			forceRedraw: true,
+			stopOnComplete: false
+		}, cliProgress.Presets.shades_classic);
+		
+		// Start with 0 progress
+		displayPRDParsingProgress.progressBar.start(100, 0);
 	}
 
 	// For micro-progress updates, we only update the percentage without
 	// changing other elements like task counts or thinking state
 	if (microProgress && !completed) {
-		// Create progress bar (20 characters wide)
-		const progressBarWidth = 20;
-
 		// Use the micro-progress adjusted percentage
 		let smoothPercentComplete = percentComplete;
 
 		// Update our percentage tracking but keep other state unchanged
 		displayPRDParsingProgress.lastPercentComplete = smoothPercentComplete;
-
-		// Format percentage for display
-		const percentText = `${Math.round(smoothPercentComplete)}%`;
-		const percentTextLength = percentText.length;
-
+		
+		// Update the progress bar
+		displayPRDParsingProgress.progressBar.update(smoothPercentComplete);
+		
+		// Get the progress bar as string
+		const progressBar = displayPRDParsingProgress.progressBar.render.call(displayPRDParsingProgress.progressBar);
+		
 		// Use the latest token counts
 		const tokenDisplay = `${promptTokens}/${completionTokens}`;
 
-		// Calculate position for centered percentage
-		const halfBarWidth = Math.floor(progressBarWidth / 2);
-		const percentStartPos = Math.max(
-			0,
-			halfBarWidth - Math.floor(percentTextLength / 2)
-		);
-		const percentEndPos = percentStartPos + percentTextLength - 1;
-
-		// Calculate how many filled and empty chars to draw - use actual percentage
-		const rawFilledChars = Math.floor(
-			(smoothPercentComplete / 100) * progressBarWidth
-		);
-
-		// Create the progress bar with centered percentage that accurately represents the percentage
-		let progressBar = '';
-		let filledCount = 0;
-		let emptyCount = 0;
-		let textAdded = false;
-
-		for (let i = 0; i < progressBarWidth; i++) {
-			// Determine if this position should be filled based on percentage
-			const shouldBeFilled = i < rawFilledChars;
-
-			// If we're in the percentage text range
-			if (i >= percentStartPos && i <= percentEndPos) {
-				// Only add the text once at the starting position
-				if (i === percentStartPos) {
-					progressBar += chalk.bold.white(percentText);
-					i = percentEndPos; // Skip ahead
-					textAdded = true;
-
-					// Track how many filled and empty positions were "consumed" by the text
-					const textPositionsCount = percentTextLength;
-					const filledPositionsInText = Math.min(
-						rawFilledChars - percentStartPos,
-						textPositionsCount
-					);
-					const emptyPositionsInText =
-						textPositionsCount - filledPositionsInText;
-
-					filledCount += filledPositionsInText;
-					emptyCount += emptyPositionsInText;
-				}
-			} else if (shouldBeFilled) {
-				// This position should be filled
-				progressBar += chalk.cyan('█');
-				filledCount++;
-			} else {
-				// This position should be empty
-				progressBar += chalk.gray('░');
-				emptyCount++;
-			}
-		}
 
 		// Use spinner from ora
 		const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
