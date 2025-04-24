@@ -27,7 +27,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "task-master-ai"],
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
@@ -54,7 +54,7 @@ Can you please initialize taskmaster-ai into my project?
 4. **Use common commands** directly through your AI assistant:
 
 ```txt
-Can you parse my PRD at scripts/prd.txt?
+Can you parse my PRD at .taskmaster/scripts/prd.txt?
 What's the next task I should work on?
 Can you help me implement task 3?
 Can you help me expand task 4?
@@ -82,7 +82,7 @@ task-master init
 npx task-master-init
 ```
 
-This will prompt you for project details and set up a new project with the necessary files and structure.
+This will prompt you for project details and set up a new project with the necessary files and structure within a `.taskmaster` directory at your project root. See the [Migration Guide](docs/migration-guide.md) for details if you are upgrading.
 
 #### Common Commands
 
@@ -120,7 +120,7 @@ For more detailed information, check out the documentation in the `docs` directo
 Try running it with Node directly:
 
 ```bash
-node node_modules/claude-task-master/scripts/init.js
+node node_modules/claude-task-master/.taskmaster/scripts/init.js
 ```
 
 Or clone the repository and run:
@@ -128,7 +128,7 @@ Or clone the repository and run:
 ```bash
 git clone https://github.com/eyaltoledano/claude-task-master.git
 cd claude-task-master
-node scripts/init.js
+node .taskmaster/scripts/init.js
 ```
 
 ## Contributors

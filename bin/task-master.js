@@ -29,6 +29,8 @@ import { displayHelp, displayBanner } from '../scripts/modules/ui.js';
 import { registerCommands } from '../scripts/modules/commands.js';
 import { detectCamelCaseFlags } from '../scripts/modules/utils.js';
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -319,6 +321,121 @@ tempProgram.commands.forEach((cmd) => {
 	// Set the action to proxy to dev.js
 	newCmd.action(createDevScriptAction(cmd.name()));
 });
+
+/**
+ * Checks for legacy project structure and notifies the user if found.
+ */
+function checkAndNotifyLegacyStructure() {
+	const projectRoot = process.cwd();
+	const legacyTaskJsonPath = path.join(projectRoot, 'tasks.json'); // Old location
+	const legacyTasksDirPath = path.join(projectRoot, 'tasks'); // Old dir
+	const legacyScriptsDirPath = path.join(projectRoot, 'scripts'); // Old dir
+	const newStructurePath = path.join(projectRoot, '.taskmaster');
+	const markerFileName = '.migration_notice_shown';
+	const markerFilePath = path.join(legacyScriptsDirPath, markerFileName); // Place marker in old scripts dir
+
+	const hasLegacyTasksJson = fs.existsSync(legacyTaskJsonPath);
+	const hasLegacyTasksDir = fs.existsSync(legacyTasksDirPath);
+	const hasLegacyScriptsDir = fs.existsSync(legacyScriptsDirPath);
+	const hasNewStructure = fs.existsSync(newStructurePath);
+
+	// Detect legacy structure: old files/dirs exist AND new .taskmaster dir does NOT exist
+	const isLegacyStructure =
+		(hasLegacyTasksJson || hasLegacyTasksDir || hasLegacyScriptsDir) &&
+		!hasNewStructure;
+
+	if (isLegacyStructure) {
+		// Check if the notification has already been shown (marker file exists)
+		// We only check for the marker if the legacy scripts dir exists
+		let noticeShown = false;
+		if (hasLegacyScriptsDir) {
+			try {
+				noticeShown = fs.existsSync(markerFilePath);
+			} catch (err) {
+				// Ignore errors reading marker, proceed as if not shown
+				if (process.env.DEBUG === '1') {
+					console.error(
+						chalk.yellow(
+							`Debug: Error checking for marker file ${markerFilePath}: ${err.message}`
+						)
+					);
+				}
+			}
+		}
+
+		if (!noticeShown) {
+			console.log(chalk.yellow.bold('\n--- Task Master Structure Update ---'));
+			console.log(
+				chalk.yellow(
+					'Task Master now uses a `.taskmaster/` directory to keep project files organized.'
+				)
+			);
+			console.log(
+				chalk.yellow(
+					'We detected that this project is using the older structure.'
+				)
+			);
+			console.log(chalk.yellow('\nRecommendation:'));
+			console.log(
+				chalk.yellow(
+					'1. Create a `.taskmaster` directory in your project root.'
+				)
+			);
+			console.log(
+				chalk.yellow(
+					'2. Manually move your existing `tasks.json`, `tasks/` directory, and `scripts/` directory into `.taskmaster/`.'
+				)
+			);
+			console.log(chalk.yellow('\nExample:'));
+			console.log(chalk.gray('   mv tasks.json .taskmaster/tasks.json'));
+			console.log(chalk.gray('   mv tasks .taskmaster/tasks'));
+			console.log(chalk.gray('   mv scripts .taskmaster/scripts'));
+			console.log(
+				chalk.yellow(
+					'\nA detailed migration guide will be provided soon (Task 2.2).'
+				)
+			);
+			console.log(chalk.yellow.bold('------------------------------------\n'));
+
+			// Create the marker file in the legacy scripts directory if it exists
+			if (hasLegacyScriptsDir) {
+				try {
+					fs.writeFileSync(
+						markerFilePath,
+						`Notified on: ${new Date().toISOString()}\n`
+					);
+					if (process.env.DEBUG === '1') {
+						console.error(
+							chalk.gray(`Debug: Created marker file ${markerFilePath}`)
+						);
+					}
+				} catch (err) {
+					console.error(
+						chalk.red(
+							`Warning: Could not create migration marker file at ${markerFilePath}. You might see this message again. Error: ${err.message}`
+						)
+					);
+				}
+			} else {
+				// If scripts dir doesn't exist, we can't create the marker there.
+				// The user will see the message again, which is acceptable in this edge case.
+				if (process.env.DEBUG === '1') {
+					console.error(
+						chalk.yellow(
+							`Debug: Legacy scripts directory not found at ${legacyScriptsDirPath}. Cannot create marker file.`
+						)
+					);
+				}
+			}
+		}
+	}
+}
+
+// Check for legacy structure before parsing args, unless it's the 'init' command
+const commandName = process.argv[2]; // Get the command name (e.g., 'list', 'init')
+if (commandName !== 'init') {
+	checkAndNotifyLegacyStructure();
+}
 
 // Parse the command line arguments
 program.parse(process.argv);

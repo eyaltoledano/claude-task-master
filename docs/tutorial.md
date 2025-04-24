@@ -17,7 +17,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "task-master-ai"],
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
@@ -47,12 +47,12 @@ The AI will:
 - Set up initial configuration files
 - Guide you through the rest of the process
 
-4. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+4. Place your PRD document in the `.taskmaster/scripts/` directory (e.g., `.taskmaster/scripts/prd.txt`)
 
 5. **Use natural language commands** to interact with Task Master:
 
 ```
-Can you parse my PRD at scripts/prd.txt?
+Can you parse my PRD at .taskmaster/scripts/prd.txt?
 What's the next task I should work on?
 Can you help me implement task 3?
 ```
@@ -79,7 +79,7 @@ task-master init
 npx task-master-init
 ```
 
-This will prompt you for project details and set up a new project with the necessary files and structure.
+This will prompt you for project details and set up a new project with the necessary files and structure within a `.taskmaster` directory at your project root. See the [Migration Guide](migration-guide.md) for details if you are upgrading.
 
 ## Common Commands
 
@@ -119,7 +119,7 @@ If you're not using MCP, you can still set up Cursor integration:
 
 1. After initializing your project, open it in Cursor
 2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+3. Place your PRD document in the `.taskmaster/scripts/` directory (e.g., `.taskmaster/scripts/prd.txt`)
 4. Open Cursor's AI chat and switch to Agent mode
 
 ### Alternative MCP Setup in Cursor
@@ -132,7 +132,7 @@ You can also set up the MCP server in Cursor settings:
 4. Configure with the following details:
    - Name: "Task Master"
    - Type: "Command"
-   - Command: "npx -y task-master-mcp"
+   - Command: "npx -y --package=task-master-ai task-master-ai"
 5. Save the settings
 
 Once configured, you can interact with Task Master's task management commands directly through Cursor's interface, providing a more integrated experience.
@@ -142,19 +142,19 @@ Once configured, you can interact with Task Master's task management commands di
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at .taskmaster/scripts/prd.txt.
 ```
 
 The agent will execute:
 
 ```bash
-task-master parse-prd scripts/prd.txt
+task-master parse-prd .taskmaster/scripts/prd.txt
 ```
 
 This will:
 
 - Parse your PRD document
-- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+- Generate a structured `.taskmaster/tasks.json` file with tasks, dependencies, priorities, and test strategies
 - The agent will understand this process due to the Cursor rules
 
 ### Generate Individual Task Files
@@ -171,7 +171,7 @@ The agent will execute:
 task-master generate
 ```
 
-This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
+This creates individual task files in the `.taskmaster/tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
 ## AI-Driven Development Workflow
 
@@ -307,7 +307,7 @@ task-master expand --id=5 --research
 ### Starting a new project
 
 ```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
+I've just initialized a new project with Claude Task Master. I have a PRD at .taskmaster/scripts/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 

@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   release:
     runs-on: ubuntu-latest

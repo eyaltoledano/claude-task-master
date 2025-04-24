@@ -24,6 +24,7 @@ import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode } from './modules/utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
+import { TASKMASTER_BASE_PATH } from '../mcp-server/src/core/utils/path-utils.js'; // Added import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -485,8 +486,11 @@ function createProjectStructure(addAliases) {
 		ensureDirectoryExists(path.join(targetDir, '.roo', `rules-${mode}`));
 	}
 
-	ensureDirectoryExists(path.join(targetDir, 'scripts'));
-	ensureDirectoryExists(path.join(targetDir, 'tasks'));
+	// Create Taskmaster base directory first
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_BASE_PATH));
+	// Create scripts and tasks directories inside .taskmaster/
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_BASE_PATH, 'scripts'));
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_BASE_PATH, 'tasks'));
 
 	// Setup MCP configuration for integration with Cursor
 	setupMCPConfiguration(targetDir);
@@ -552,13 +556,18 @@ function createProjectStructure(addAliases) {
 	// Copy example_prd.txt
 	copyTemplateFile(
 		'example_prd.txt',
-		path.join(targetDir, 'scripts', 'example_prd.txt')
+		path.join(targetDir, TASKMASTER_BASE_PATH, 'scripts', 'example_prd.txt') // Place inside .taskmaster/scripts
 	);
 
-	// Create main README.md
+	// Create main README.md inside .taskmaster/scripts/
 	copyTemplateFile(
 		'README-task-master.md',
-		path.join(targetDir, 'README-task-master.md'),
+		path.join(
+			targetDir,
+			TASKMASTER_BASE_PATH,
+			'scripts',
+			'README-task-master.md'
+		), // Place inside .taskmaster/scripts
 		replacements
 	);
 

@@ -53,7 +53,7 @@ LOG_LEVEL=info
 Try running it with Node directly:
 
 ```bash
-node node_modules/claude-task-master/scripts/init.js
+node node_modules/claude-task-master/.taskmaster/scripts/init.js
 ```
 
 Or clone the repository and run:
@@ -61,5 +61,5 @@ Or clone the repository and run:
 ```bash
 git clone https://github.com/eyaltoledano/claude-task-master.git
 cd claude-task-master
-node scripts/init.js
+node .taskmaster/scripts/init.js
 ```

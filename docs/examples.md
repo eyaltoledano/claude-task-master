@@ -5,7 +5,7 @@ Here are some common interactions with Cursor AI when using Task Master:
 ## Starting a new project
 
 ```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
+I've just initialized a new project with Claude Task Master. I have a PRD at .taskmaster/scripts/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 

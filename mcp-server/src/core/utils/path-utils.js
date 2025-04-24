@@ -13,6 +13,9 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import os from 'os';
 
+// Base path for Taskmaster specific files within the project
+export const TASKMASTER_BASE_PATH = '.taskmaster/';
+
 // Store last found project root to improve performance on subsequent calls (primarily for CLI)
 export let lastFoundProjectRoot = null;
 
@@ -180,10 +183,10 @@ function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 		possiblePaths.push(path.resolve(dirPath, explicitFilePath));
 	}
 
-	// 2. Check the standard locations relative to dirPath
+	// 2. Check the standard locations relative to dirPath within the .taskmaster directory
 	possiblePaths.push(
-		path.join(dirPath, 'tasks.json'),
-		path.join(dirPath, 'tasks', 'tasks.json')
+		path.join(dirPath, TASKMASTER_BASE_PATH, 'tasks.json'), // .taskmaster/tasks.json
+		path.join(dirPath, TASKMASTER_BASE_PATH, 'tasks', 'tasks.json') // .taskmaster/tasks/tasks.json
 	);
 
 	log.info(`Checking potential task file paths: ${possiblePaths.join(', ')}`);
@@ -318,8 +321,9 @@ export function findPRDDocumentPath(projectRoot, explicitPath, log) {
 
 	// Common locations and file patterns for PRD documents
 	const commonLocations = [
-		'', // Project root
-		'scripts/'
+		'', // Project root (outside .taskmaster)
+		TASKMASTER_BASE_PATH, // Inside .taskmaster root
+		path.join(TASKMASTER_BASE_PATH, 'scripts/') // Inside .taskmaster/scripts/
 	];
 
 	const commonFileNames = ['PRD.md', 'prd.md', 'PRD.txt', 'prd.txt'];
@@ -357,14 +361,19 @@ export function resolveTasksOutputPath(projectRoot, explicitPath, log) {
 		return outputPath;
 	}
 
-	// Default output path: tasks/tasks.json in the project root
-	const defaultPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
+	// Default output path: .taskmaster/tasks/tasks.json in the project root
+	const defaultPath = path.resolve(
+		projectRoot,
+		TASKMASTER_BASE_PATH,
+		'tasks',
+		'tasks.json'
+	);
 	log.info(`Using default tasks output path: ${defaultPath}`);
 
-	// Ensure the directory exists
+	// Ensure the directory exists (.taskmaster/tasks/)
 	const outputDir = path.dirname(defaultPath);
 	if (!fs.existsSync(outputDir)) {
-		log.info(`Creating tasks directory: ${outputDir}`);
+		log.info(`Creating Taskmaster tasks directory: ${outputDir}`);
 		fs.mkdirSync(outputDir, { recursive: true });
 	}
 

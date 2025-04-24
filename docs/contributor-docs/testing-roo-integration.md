@@ -76,8 +76,8 @@ When running the tests or performing manual verification, ensure that:
 
 1. The package includes `.roo/**` and `.roomodes` in the `files` array in package.json
 2. The `prepare-package.js` script verifies the existence of all required Roo files
-3. The `init.js` script creates all necessary .roo directories and copies .roomodes file
-4. All source files for Roo integration exist in `assets/roocode/.roo` and `assets/roocode/.roomodes`
+3. The `.taskmaster/scripts/init.js` script creates all necessary .roo directories and copies .roomodes file
+4. All source files for Roo integration exist in `assets/roocode/.roo` and `assets/roocode/.roomodes` (These are copied into the project's `.taskmaster/assets/` directory during initialization)
 
 ## Compatibility
 

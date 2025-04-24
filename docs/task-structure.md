@@ -4,7 +4,7 @@ Tasks in Task Master follow a specific format designed to provide comprehensive 
 
 ## Task Fields in tasks.json
 
-Tasks in tasks.json have the following structure:
+Tasks in `.taskmaster/tasks.json` have the following structure:
 
 - `id`: Unique identifier for the task (Example: `1`)
 - `title`: Brief, descriptive title of the task (Example: `"Initialize Repo"`)
@@ -46,7 +46,7 @@ The `analyze-complexity` command:
 - Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
 - Generates tailored prompts for expanding each task
 - Creates a comprehensive JSON report with ready-to-use commands
-- Saves the report to scripts/task-complexity-report.json by default
+- Saves the report to `.taskmaster/scripts/task-complexity-report.json` by default
 
 The generated report contains:
 
@@ -132,7 +132,7 @@ The `show` command:
 
 6. **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
 
-7. **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
+7. **Regenerate task files**: After any updates to `.taskmaster/tasks.json`, regenerate the task files to keep them in sync.
 
 8. **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
 

@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.12.1
+
+### Patch Changes
+
+- [#307](https://github.com/eyaltoledano/claude-task-master/pull/307) [`2829194`](https://github.com/eyaltoledano/claude-task-master/commit/2829194d3c1dd5373d3bf40275cf4f63b12d49a7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix add_dependency tool crashing the MCP Server
+
 ## 0.12.0
 
 ### Minor Changes
