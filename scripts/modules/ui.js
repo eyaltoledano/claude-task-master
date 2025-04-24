@@ -393,7 +393,7 @@ function displayHelp() {
 			commands: [
 				{
 					name: 'parse-prd',
-					args: '--input=<file.txt> [--tasks=10]',
+					args: '--input=<file.txt> [--num-tasks=10]',
 					desc: 'Generate tasks from a PRD document'
 				},
 				{
