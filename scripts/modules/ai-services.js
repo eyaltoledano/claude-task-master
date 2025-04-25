@@ -157,7 +157,7 @@ async function callClaude(
 	prdPath,
 	numTasks,
 	retryCount = 0,
-	{ reportProgress, mcpLog, session, tracker } = {},
+	{ reportProgress, mcpLog, session, progressTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -239,7 +239,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 			numTasks,
 			modelConfig?.maxTokens || CONFIG.maxTokens,
 			systemPrompt,
-			{ reportProgress, mcpLog, session, tracker },
+			{ reportProgress, mcpLog, session, progressTracker },
 			aiClient || anthropic,
 			modelConfig
 		);
@@ -267,7 +267,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 				prdPath,
 				numTasks,
 				retryCount + 1,
-				{ reportProgress, mcpLog, session, tracker },
+				{ reportProgress, mcpLog, session, progressTracker },
 				aiClient,
 				modelConfig
 			);
@@ -302,7 +302,7 @@ async function handleStreamingRequest(
 	numTasks,
 	maxTokens,
 	systemPrompt,
-	{ reportProgress, mcpLog, session, tracker } = {},
+	{ reportProgress, mcpLog, session, progressTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -319,9 +319,9 @@ async function handleStreamingRequest(
 		}
 	};
 
-	// Only show loading indicators for text output (CLI)
+	// Only show loading indicators for text output (CLI) & NOT using a real-time progress tracker
 	let loadingIndicator = null;
-	if (outputFormat === 'text' && !isSilentMode()) {
+	if (!progressTracker && outputFormat === 'text' && !isSilentMode()) {
 		loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
 	}
 
@@ -332,9 +332,6 @@ async function handleStreamingRequest(
 	let streamingInterval = null;
 
 	try {
-		// Indicate thinking before the API call
-		if (tracker) tracker.setThinking(true);
-
 		// Use streaming for handling large responses
 		const stream = await (aiClient || anthropic).messages.create({
 			model:
@@ -356,7 +353,7 @@ async function handleStreamingRequest(
 		});
 
 		// Update loading indicator to show streaming progress - only for text output
-		if (outputFormat === 'text' && !isSilentMode()) {
+		if (!progressTracker && outputFormat === 'text' && !isSilentMode()) {
 			let dotCount = 0;
 			const readline = await import('readline');
 			streamingInterval = setInterval(() => {
@@ -388,8 +385,8 @@ async function handleStreamingRequest(
 				responseText += chunk.delta.text;
 
 				// Real-time streamed task detection for progress bar
-				if (tracker && typeof tracker.updateStreamedJson === 'function') {
-					tracker.updateStreamedJson(chunk.delta.text);
+				if (progressTracker && typeof progressTracker.updateStreamedJson === 'function') {
+					progressTracker.updateStreamedJson(chunk.delta.text);
 				}
 			}
 			if (reportProgress) {
@@ -404,16 +401,10 @@ async function handleStreamingRequest(
 
 		if (streamingInterval) clearInterval(streamingInterval);
 
-		// Only call stopLoadingIndicator if we still have one (wasn't already stopped)
+		// Only call stopLoadingIndicator if we started one
 		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
 			stopLoadingIndicator(loadingIndicator);
-			loadingIndicator = null;
-			// We can clear the line but let PrdParseTracker handle further positioning
-			process.stdout.write('\r\u001B[K');
 		}
-
-		// Indicate thinking stopped after the loop
-		if (tracker) tracker.setThinking(false);
 
 		report(
 			`Completed streaming response from ${aiClient ? 'provided' : 'default'} AI client!`,

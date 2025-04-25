@@ -116,9 +116,9 @@ async function parsePRD(
 	const { reportProgress, mcpLog, session, append } = options;
 
 	// Initialize progress tracking
-	const tracker = createPrdParseTracker({ logLevel: CONFIG.debug ? 'debug' : 'info' });
+	const progressTracker = createPrdParseTracker({ logLevel: CONFIG.debug ? 'debug' : 'info' });
 	// Initialize with requested number of tasks
-	tracker.start(numTasks, { prdPath, outputPath: tasksPath });
+	progressTracker.start(numTasks, { prdPath, outputPath: tasksPath });
 
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';
@@ -167,7 +167,7 @@ async function parsePRD(
 			prdPath,
 			numTasks,
 			0,
-			{ reportProgress, mcpLog, session, tracker },
+			{ reportProgress, mcpLog, session, progressTracker },
 			aiClient,
 			modelConfig
 		);
@@ -190,15 +190,12 @@ async function parsePRD(
 
 		// Update tracker once per task
 		// Update total tasks in tracker after appending or merging
-		if (typeof tracker.totalTasks === 'number') {
-		    tracker.totalTasks = tasksData.tasks.length;
-		    if (tracker.progressBar && typeof tracker.progressBar.setTotal === 'function') {
-		        tracker.progressBar.setTotal(tasksData.tasks.length);
-		    }
-		    tracker._updateUI && tracker._updateUI();
-		} // No setTotal() method on tracker; update internal state and progress bar if possible.
+		if (typeof progressTracker.totalTasks === 'number') {
+		    progressTracker.totalTasks = tasksData.tasks.length;
+		}
+
 		tasksData.tasks.forEach((task) =>
-			tracker.tick({ title: task.title, priority: task.priority || 'medium' })
+			progressTracker.tick({ title: task.title, priority: task.priority || 'medium' })
 		);
 
 		// Create the directory if it doesn't exist
@@ -254,17 +251,35 @@ async function parsePRD(
 		}
 
 		// Finish tracker successfully
-		tracker.finish(true, {
+		progressTracker.finish(true, {
 			taskCount: tasksData.tasks.length,
 			prdPath,
 			outputPath: tasksPath,
 			actionVerb
 		});
 
+		// Display PRD parsing summary in CLI mode
+		if (outputFormat === 'text') {
+			// Compute priority distribution (taskCategories)
+			const taskPriorities = tasksData.tasks.reduce((acc, t) => {
+				const prio = (t.priority || 'unspecified').toLowerCase();
+				acc[prio] = (acc[prio] || 0) + 1;
+				return acc;
+			}, {});
+			displayPRDParsingSummary({
+				totalTasks: tasksData.tasks.length,
+				prdFilePath: prdPath,
+				outputPath: tasksPath,
+				elapsedTime: Math.floor((Date.now() - progressTracker.startTime) / 1000),
+				taskPriorities,
+				actionVerb
+			});
+		}
+
 		return tasksData;
 	} catch (error) {
 		// Finish tracker with error
-		tracker.finish(false, { error: error.message });
+		progressTracker.finish(false, { error: error.message });
 
 		report(`Error parsing PRD: ${error.message}`, 'error');
 
