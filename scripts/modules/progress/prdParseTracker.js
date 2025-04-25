@@ -17,6 +17,12 @@ const CHECKMARK = chalk.green('✔️');
 class PrdParseTracker extends EventEmitter {
     constructor(options = {}) {
         super();
+        // ...existing code...
+        this._jsonBuffer = ""; // Buffer for streamed JSON
+        this._tasksDetected = 0; // Number of tasks detected so far
+        this._seenTaskIds = new Set(); // Track all seen task IDs to prevent double-counting
+        this._bufferedLogs = []; // Buffer for logs during active tracking
+        this._isTrackingActive = false; // Flag to enable/disable log buffering
         this.options = { // Default options
             logLevel: options.logLevel || 'info',
             stream: process.stdout,
@@ -53,7 +59,13 @@ class PrdParseTracker extends EventEmitter {
         // Log function specific to this tracker instance
         this.log = (level, message) => {
             if (LOG_LEVELS[level] >= LOG_LEVELS[this.options.logLevel]) {
-                log(level, `[PrdParseTracker] ${message}`);
+                if (this._isTrackingActive && this.useFixedHeader && level !== 'debug') {
+                    // Buffer logs during active tracking with fixed header
+                    this._bufferedLogs.push({ level, message: `[PrdParseTracker] ${message}` });
+                } else {
+                    // Output immediately otherwise
+                    log(level, `[PrdParseTracker] ${message}`);
+                }
             }
         };
 
@@ -61,6 +73,80 @@ class PrdParseTracker extends EventEmitter {
     }
 
     // --- Public Methods ---
+
+    /**
+     * Update the JSON buffer with streamed chunk and detect complete top-level tasks.
+     * Calls tick() for each new complete task found.
+     * @param {string} chunk - The streamed JSON chunk
+     */
+    updateStreamedJson(chunk) {
+        if (!chunk) return;
+        
+        // Log chunk for debugging (uncomment if needed)
+        // this.log('debug', `Received chunk: ${chunk.substring(0, 50)}...`);
+        
+        this._jsonBuffer += chunk;
+        
+        // Try multiple detection strategies
+        
+        // Strategy 1: Look for complete task objects
+        let taskRegex = /\{[^{}]*?"id"\s*:\s*\d+[^{}]*?\}/g;
+        
+        // Strategy 2: Also look for "title": patterns which might indicate a task
+        let titleRegex = /"title"\s*:\s*"([^"]*)"\s*,/g;
+        
+        // First try the full object detection
+        let match;
+        let newTasks = [];
+        while ((match = taskRegex.exec(this._jsonBuffer)) !== null) {
+            // Try to parse the object
+            try {
+                let taskObj = JSON.parse(match[0]);
+                // Only count top-level tasks (must have id, title)
+                if (taskObj && typeof taskObj.id === 'number' && taskObj.title) {
+                    // Prevent double-counting using a Set of IDs
+                    if (!this._seenTaskIds.has(taskObj.id)) {
+                        this._seenTaskIds.add(taskObj.id);
+                        this.tick(taskObj);
+                        newTasks.push(taskObj);
+                        this.log('debug', `Detected streamed task: ${taskObj.id} - ${taskObj.title}`);
+                        // Clamp progress if necessary (handled in tick)
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors for incomplete objects
+            }
+        }
+        // If no complete tasks found yet, try the title-based detection as fallback
+        if (newTasks.length === 0) {
+            let titleMatch;
+            let titleCount = 0;
+            while ((titleMatch = titleRegex.exec(this._jsonBuffer)) !== null) {
+                titleCount++;
+                // Skip titles we've already seen (use length of _seenTaskIds as a proxy for task count)
+                if (titleCount > this._seenTaskIds.size) {
+                    // We found a new title, assume it's a new task
+                    const title = titleMatch[1];
+                    const taskId = this._seenTaskIds.size + 1;
+                    
+                    // Create a minimal task object and tick the progress
+                    if (!this._seenTaskIds.has(taskId)) {
+                        this._seenTaskIds.add(taskId);
+                        const task = { id: taskId, title: title };
+                        this.tick(task);
+                        this.log('debug', `Detected task by title: ${task.title}`);
+                    }
+                }
+            }
+        }
+        
+        // Remove parsed tasks from buffer (leave any partial/incomplete at the end)
+        if (newTasks.length > 0) {
+            // Remove up to the last parsed object
+            let lastMatch = match ? match.index + match[0].length : 0;
+            this._jsonBuffer = this._jsonBuffer.slice(lastMatch);
+        }
+    }
 
     /**
      * Start the tracking process.
@@ -76,6 +162,8 @@ class PrdParseTracker extends EventEmitter {
         this.completedTasks = 0;
         this.tokensIn = initialTokensIn;
         this.tokensOut = initialTokensOut;
+        this._bufferedLogs = []; // Clear buffered logs
+        this._isTrackingActive = true; // Enable log buffering
 
         // Merge initial stats
         this.stats = { ...this.stats, ...initialStats }; // Collect prdPath, outputPath etc.
@@ -119,11 +207,17 @@ class PrdParseTracker extends EventEmitter {
      * @param {number} [deltaTokensOut=0] - Tokens produced for this task.
      */
     tick(task, deltaTokensIn = 0, deltaTokensOut = 0) {
-        if (!this.startTime) {
-            this.log('warn', 'Tracker ticked before start() was called. Ignoring.');
-            return;
-        }
+        // Record a completed task and update progress.
         this.completedTasks++;
+        
+        // If we detect more tasks than expected, increase the total instead of clamping
+        if (this.completedTasks > this.totalTasks) {
+            this.log('info', `Detected more tasks (${this.completedTasks}) than initially expected (${this.totalTasks}). Adjusting.`);
+            this.totalTasks = this.completedTasks;
+            if (this.progressBar) {
+                this.progressBar.setTotal(this.totalTasks);
+            }
+        }
         this.tokensIn += deltaTokensIn;
         this.tokensOut += deltaTokensOut;
 
@@ -188,6 +282,9 @@ class PrdParseTracker extends EventEmitter {
             return;
         }
 
+        // Disable log buffering before finishing
+        this._isTrackingActive = false;
+        
         this.stats.endTime = Date.now();
         // Merge final stats
         this.stats = { ...this.stats, ...finalStats };
@@ -231,6 +328,18 @@ class PrdParseTracker extends EventEmitter {
         }
         this.spinner = null; // Clear spinner instance
 
+        // Print any buffered logs
+        if (this._bufferedLogs.length > 0) {
+            if (this.useFixedHeader) {
+                // Move cursor below the fixed header area to print logs
+                process.stdout.write(`\u001B[${this.taskOutputStartLine + 1};0H`);
+            }
+            this._bufferedLogs.forEach(entry => {
+                log(entry.level, entry.message);
+            });
+            this._bufferedLogs = [];
+        }
+        
         // Call the summary callback AFTER stopping spinner/bar
         if (summaryCallback && typeof summaryCallback === 'function') {
             this.log('debug', 'Calling summary callback.');
@@ -266,19 +375,25 @@ class PrdParseTracker extends EventEmitter {
         if (this.useFixedHeader) {
             // Save cursor position
             process.stdout.write('\u001B[s');
-            
-            // Update status line (line 1)
+
+            // Clear and update status line (line 1)
             process.stdout.write('\u001B[1;0H');
-            process.stdout.write('\u001B[2K'); // Clear line
-            process.stdout.write(statusLineText); // Write the generated text
-            
-            // Update progress bar (line 2)
+            process.stdout.write('\u001B[2K'); // Clear entire line
+            process.stdout.write(statusLineText + '\n'); // Write status and move to next line
+
+            // Clear and update progress bar (line 2)
+            process.stdout.write('\u001B[2;0H');
+            process.stdout.write('\u001B[2K'); // Clear entire line
             if (this.progressBar) {
-                process.stdout.write('\u001B[2;0H');
-                process.stdout.write('\u001B[2K'); // Clear line
                 this.progressBar.update(this.completedTasks);
             }
-            
+
+            // Clear separator (line 3)
+            process.stdout.write('\u001B[3;0H');
+            process.stdout.write('\u001B[2K');
+            const separator = '\u2500'.repeat(process.stdout.columns || 80);
+            process.stdout.write(separator + '\n');
+
             // Restore cursor position
             process.stdout.write('\u001B[u');
         } else {

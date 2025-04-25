@@ -386,6 +386,11 @@ async function handleStreamingRequest(
 				}
 				
 				responseText += chunk.delta.text;
+
+				// Real-time streamed task detection for progress bar
+				if (tracker && typeof tracker.updateStreamedJson === 'function') {
+					tracker.updateStreamedJson(chunk.delta.text);
+				}
 			}
 			if (reportProgress) {
 				await reportProgress({
