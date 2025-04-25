@@ -115,7 +115,9 @@ async function parsePRD(
 	const { reportProgress, mcpLog, session, append } = options;
 
 	// Initialize progress tracking
-	const progressTracker = createPrdParseTracker({ logLevel: CONFIG.debug ? 'debug' : 'info' });
+	const progressTracker = createPrdParseTracker({
+		logLevel: CONFIG.debug ? 'debug' : 'info'
+	});
 	// Initialize with requested number of tasks
 	progressTracker.start(numTasks, { prdPath, outputPath: tasksPath });
 
@@ -198,13 +200,18 @@ async function parsePRD(
 			: newTasksData;
 
 		// Update total tasks in tracker if needed (only adjust the count, don't process tasks again)
-		if (typeof progressTracker.totalTasks === 'number' && progressTracker.totalTasks !== tasksData.tasks.length) {
+		if (
+			typeof progressTracker.totalTasks === 'number' &&
+			progressTracker.totalTasks !== tasksData.tasks.length
+		) {
 			progressTracker.totalTasks = tasksData.tasks.length;
 			// Update the progress bar with new total, but don't create duplicate task bars
 			if (progressTracker.progressBar) {
 				progressTracker.progressBar.update(
 					Math.min(progressTracker.completedTasks, progressTracker.totalTasks),
-					{ tasks: `${progressTracker.completedTasks}/${progressTracker.totalTasks}` }
+					{
+						tasks: `${progressTracker.completedTasks}/${progressTracker.totalTasks}`
+					}
 				);
 			}
 		}
@@ -281,7 +288,9 @@ async function parsePRD(
 				totalTasks: tasksData.tasks.length,
 				prdFilePath: prdPath,
 				outputPath: tasksPath,
-				elapsedTime: Math.floor((Date.now() - progressTracker.startTime) / 1000),
+				elapsedTime: Math.floor(
+					(Date.now() - progressTracker.startTime) / 1000
+				),
 				taskPriorities: taskPriorities, // Use the variable defined above
 				actionVerb
 			});
