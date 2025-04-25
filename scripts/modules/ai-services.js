@@ -162,7 +162,9 @@ async function callClaude(
 	modelConfig = null
 ) {
 	try {
-		log('info', 'Calling Claude...');
+		if (!progressTracker) {
+			log('info', 'Calling Claude...');
+		}
 
 		// Build the system prompt
 		const systemPrompt = `You are an AI assistant tasked with breaking down a Product Requirements Document (PRD) into a set of sequential development tasks. Your goal is to create exactly <num_tasks>${numTasks}</num_tasks> well-structured, actionable development tasks based on the PRD provided.
