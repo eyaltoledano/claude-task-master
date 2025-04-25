@@ -3,7 +3,6 @@ description: Guide for using Task Master to manage task-driven development workf
 globs: **/*
 alwaysApply: true
 ---
-
 # Task Master Development Workflow
 
 This guide outlines the typical process for using Task Master to manage software development projects.
@@ -210,6 +209,19 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
     - Use grep/ripgrep to find exported functions/constants:
       `rg "export (async function|function|const) \w+"` or similar patterns.
     - Can help compare functions between files during migrations or identify potential naming conflicts.
+
+## Agent-in-the-Loop Pattern for LLM-Based Tools
+
+For tools that involve LLM-based generation (such as `add_task`, `add_subtask`, `expand_task`, and `parse_prd`), agents should use the agent-in-the-loop workflow:
+
+1. **Call the tool with `mode: 'get_prompt'`** to receive a prompt or context describing what to generate (task, subtask, etc.).
+2. **Generate the required object(s) using the agent's own LLM** based on the prompt/context.
+3. **Call the tool again with `mode: 'submit_task'`, `mode: 'submit_subtask'`, `mode: 'submit_subtasks'`, or `mode: 'submit_tasks'`** (as appropriate), including the generated object(s) in the correct parameter.
+4. The tool will validate and insert the object(s) if valid, or return errors if not.
+
+This pattern is **only required for LLM-based tools**. Non-LLM tools (such as `remove_task`, `set_task_status`, etc.) do not require or support this workflow and should be called directly as usual.
+
+See the "Agent-in-the-Loop Workflow for LLM-Based Tools" section in [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for detailed instructions and examples.
 
 ---
 *This workflow provides a general guideline. Adapt it based on your specific project needs and team practices.*

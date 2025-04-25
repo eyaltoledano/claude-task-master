@@ -3,7 +3,6 @@ description: Comprehensive reference for Taskmaster MCP tools and CLI commands.
 globs: **/*
 alwaysApply: true
 ---
-
 # Taskmaster Tool & Command Reference
 
 This document provides a detailed reference for interacting with Taskmaster, covering both the recommended MCP tools (for integrations like Cursor) and the corresponding `task-master` CLI commands (for direct user interaction or fallback).
@@ -11,6 +10,75 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 **Note:** For interacting with Taskmaster programmatically or via integrated tools, using the **MCP tools is strongly recommended** due to better performance, structured data, and error handling. The CLI commands serve as a user-friendly alternative and fallback. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for MCP implementation details and [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for CLI implementation guidelines.
 
 **Important:** Several MCP tools involve AI processing and are long-running operations that may take up to a minute to complete. When using these tools, always inform users that the operation is in progress and to wait patiently for results. The AI-powered tools include: `parse_prd`, `analyze_project_complexity`, `update_subtask`, `update_task`, `update`, `expand_all`, `expand_task`, and `add_task`.
+
+# Agent-in-the-Loop Workflow for LLM-Based Tools
+
+Some Taskmaster MCP tools that involve LLM-based generation (such as `add_task`, `add_subtask`, `expand_task`, and `parse_prd`) support an agent-in-the-loop workflow. This allows an agent to generate tasks or subtasks using its own LLM, rather than relying on an external API key or the server's LLM.
+
+**How it works:**
+1. **Step 1: Get a Prompt/Context**
+   - Call the tool with `mode: 'get_prompt'` (and any other required parameters).
+   - The tool will return a prompt or context string describing what should be generated (e.g., a task, subtask, or list of tasks).
+
+2. **Step 2: Agent Generates Content**
+   - The agent uses its own LLM to generate the required object(s) based on the prompt/context.
+
+3. **Step 3: Submit the Generated Object**
+   - Call the tool again with `mode: 'submit_task'`, `mode: 'submit_subtask'`, `mode: 'submit_subtasks'`, or `mode: 'submit_tasks'` (depending on the tool), and include the generated object(s) in the appropriate parameter (`task`, `subtask`, `subtasks`, or `tasks`).
+   - The tool will validate the submission and, if valid, insert it into the project.
+
+**Example: `add_task`**
+- **Step 1:**
+  ```json
+  {
+    "mode": "get_prompt",
+    "prompt": "Implement user authentication using JWT",
+    "projectRoot": "/path/to/project"
+  }
+  ```
+  *Response:*
+  ```json
+  {
+    "success": true,
+    "data": {
+      "prompt": "You are to generate a new high-level software development task..."
+    }
+  }
+  ```
+- **Step 2:**
+  - The agent uses the prompt to generate a task object with the required fields.
+- **Step 3:**
+  ```json
+  {
+    "mode": "submit_task",
+    "task": {
+      "title": "Implement JWT Authentication",
+      "description": "Add JWT-based authentication to the API.",
+      "details": "Use the jsonwebtoken library...",
+      "testStrategy": "Write integration tests for login and token refresh.",
+      "dependencies": [],
+      "priority": "high"
+    },
+    "projectRoot": "/path/to/project"
+  }
+  ```
+  *Response:*
+  ```json
+  {
+    "success": true,
+    "data": {
+      "taskId": 5,
+      "message": "Successfully added new task #5"
+    }
+  }
+  ```
+
+**Validation and Error Handling:**
+- The tool will validate the submitted object(s) for required fields and correct types.
+- If validation fails, the response will include an error with details about what needs to be fixed.
+
+**Note:**
+- This workflow applies **only** to LLM-based tools. Non-LLM tools (such as `remove_task`, `set_task_status`, etc.) do not support or require agent-in-the-loop modes.
 
 ---
 
