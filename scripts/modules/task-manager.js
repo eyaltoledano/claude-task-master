@@ -3650,6 +3650,8 @@ async function analyzeTaskComplexity(
 
 	try {
 		// Read tasks.json
+		reportLog(`Reading tasks from ${tasksPath}...`, 'info');
+
 		// Use either the filtered tasks data provided by the direct function or read from file
 		let tasksData;
 		let originalTaskCount = 0;
