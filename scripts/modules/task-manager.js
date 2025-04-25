@@ -12,7 +12,6 @@ import readline from 'readline';
 import { Anthropic } from '@anthropic-ai/sdk';
 import ora from 'ora';
 import inquirer from 'inquirer';
-import { EventEmitter } from 'events'; // Add EventEmitter import
 
 // Import our enhanced progress tracking system
 import { createPrdParseTracker } from './progress/index.js';
@@ -146,8 +145,6 @@ async function parsePRD(
 	};
 
 	try {
-		report(`Parsing PRD file: ${prdPath}`, 'info');
-
 		// Read the PRD content
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 
