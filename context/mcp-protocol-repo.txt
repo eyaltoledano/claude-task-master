@@ -3784,6 +3784,7 @@ In this tutorial, you'll learn how to build a LLM-powered chatbot client that co
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY is not set");
     }
+    const ANTHROPIC_API_BASE_URL = process.env.ANTHROPIC_API_BASE_URL;
 
     class MCPClient {
       private mcp: Client;
@@ -3794,6 +3795,7 @@ In this tutorial, you'll learn how to build a LLM-powered chatbot client that co
       constructor() {
         this.anthropic = new Anthropic({
           apiKey: ANTHROPIC_API_KEY,
+          baseUrl: ANTHROPIC_API_BASE_URL,
         });
         this.mcp = new Client({ name: "mcp-client-cli", version: "1.0.0" });
       }

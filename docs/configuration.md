@@ -8,6 +8,7 @@ Task Master can be configured through environment variables in a `.env` file at 
 
 ## Optional Configuration
 
+- `ANTHROPIC_API_BASE_URL`: Optional custom base URL for Anthropic API (Example: `ANTHROPIC_API_BASE_URL=https://gcp-vertex.mydomain.com`)
 - `MODEL` (Default: `"claude-3-7-sonnet-20250219"`): Claude model to use (Example: `MODEL=claude-3-opus-20240229`)
 - `MAX_TOKENS` (Default: `"4000"`): Maximum tokens for responses (Example: `MAX_TOKENS=8000`)
 - `TEMPERATURE` (Default: `"0.7"`): Temperature for model responses (Example: `TEMPERATURE=0.5`)
@@ -27,6 +28,7 @@ Task Master can be configured through environment variables in a `.env` file at 
 ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
 
 # Optional - Claude Configuration
+ANTHROPIC_API_BASE_URL=https://gcp-vertex.mydomain.com
 MODEL=claude-3-7-sonnet-20250219
 MAX_TOKENS=4000
 TEMPERATURE=0.7

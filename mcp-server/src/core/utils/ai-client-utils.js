@@ -35,9 +35,13 @@ export function getAnthropicClientForMCP(session, log = console) {
 			);
 		}
 
+		const baseURL =
+			session?.env?.ANTHROPIC_API_BASE_URL || process.env.ANTHROPIC_API_BASE_URL;
+
 		// Initialize and return a new Anthropic client
 		return new Anthropic({
 			apiKey,
+			baseURL: baseURL, // Will be undefined if not set, defaulting to Anthropic's standard URL
 			defaultHeaders: {
 				'anthropic-beta': 'output-128k-2025-02-19' // Include header for increased token limit
 			}

@@ -57,8 +57,32 @@ describe('AI Client Utilities', () => {
 	});
 
 	describe('getAnthropicClientForMCP', () => {
-		it('should initialize client with API key from session', () => {
+		it('should initialize client with API key and base URL from session', () => {
 			// Setup
+			const session = {
+				env: {
+					ANTHROPIC_API_KEY: 'test-key-from-session',
+					ANTHROPIC_API_BASE_URL: 'https://custom-api.example.com'
+				}
+			};
+			const mockLog = { error: jest.fn() };
+
+			// Execute
+			const client = getAnthropicClientForMCP(session, mockLog);
+
+			// Verify
+			expect(client).toBeDefined();
+			expect(client.messages.create).toBeDefined();
+			expect(mockLog.error).not.toHaveBeenCalled();
+			expect(Anthropic).toHaveBeenCalledWith(expect.objectContaining({
+				apiKey: 'test-key-from-session',
+				baseURL: 'https://custom-api.example.com'
+			}));
+		});
+
+		it('should initialize client with base URL from process.env when session URL is missing', () => {
+			// Setup
+			process.env.ANTHROPIC_API_BASE_URL = 'https://env-api.example.com';
 			const session = {
 				env: {
 					ANTHROPIC_API_KEY: 'test-key-from-session'
@@ -71,8 +95,31 @@ describe('AI Client Utilities', () => {
 
 			// Verify
 			expect(client).toBeDefined();
-			expect(client.messages.create).toBeDefined();
-			expect(mockLog.error).not.toHaveBeenCalled();
+			expect(Anthropic).toHaveBeenCalledWith(expect.objectContaining({
+				apiKey: 'test-key-from-session',
+				baseURL: 'https://env-api.example.com'
+			}));
+		});
+
+		it('should initialize client without base URL when not provided', () => {
+			// Setup
+			delete process.env.ANTHROPIC_API_BASE_URL;
+			const session = {
+				env: {
+					ANTHROPIC_API_KEY: 'test-key-from-session'
+				}
+			};
+			const mockLog = { error: jest.fn() };
+
+			// Execute
+			const client = getAnthropicClientForMCP(session, mockLog);
+
+			// Verify
+			expect(client).toBeDefined();
+			expect(Anthropic).toHaveBeenCalledWith(expect.objectContaining({
+				apiKey: 'test-key-from-session',
+				baseURL: undefined
+			}));
 		});
 
 		it('should fall back to process.env when session key is missing', () => {

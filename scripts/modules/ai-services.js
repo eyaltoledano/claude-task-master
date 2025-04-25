@@ -18,6 +18,7 @@ dotenv.config();
 // Configure Anthropic client
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
+	baseURL: process.env.ANTHROPIC_API_BASE_URL,
 	// Add beta header for 128k token output
 	defaultHeaders: {
 		'anthropic-beta': 'output-128k-2025-02-19'
@@ -1297,8 +1298,11 @@ function getAnthropicClient(session) {
 		);
 	}
 
+	const baseUrl = session?.env?.ANTHROPIC_API_BASE_URL || process.env.ANTHROPIC_API_BASE_URL;
+
 	return new Anthropic({
 		apiKey: apiKey,
+		baseURL: baseUrl,
 		// Add beta header for 128k token output
 		defaultHeaders: {
 			'anthropic-beta': 'output-128k-2025-02-19'
@@ -1465,6 +1469,11 @@ function getConfiguredAnthropicClient(session = null, customEnv = null) {
 		process.env.ANTHROPIC_API_KEY ||
 		customEnv?.ANTHROPIC_API_KEY;
 
+	const baseUrl = 
+		session?.ANTHROPIC_API_BASE_URL || 
+		process?.env?.ANTHROPIC_API_BASE_URL || 
+		customEnv.env.ANTHROPIC_API_BASE_URL;
+
 	if (!apiKey) {
 		throw new Error(
 			'ANTHROPIC_API_KEY environment variable is missing. Set it to use AI features.'
@@ -1473,6 +1482,7 @@ function getConfiguredAnthropicClient(session = null, customEnv = null) {
 
 	return new Anthropic({
 		apiKey: apiKey,
+		baseURL: baseUrl,
 		// Add beta header for 128k token output
 		defaultHeaders: {
 			'anthropic-beta': 'output-128k-2025-02-19'

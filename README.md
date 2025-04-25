@@ -30,6 +30,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"ANTHROPIC_API_BASE_URL": "YOUR_CUSTOM_BASE_URL_HERE (optional)",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
 				"MODEL": "claude-3-7-sonnet-20250219",
 				"PERPLEXITY_MODEL": "sonar-pro",
