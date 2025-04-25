@@ -1,444 +1,359 @@
-import { newSingle } from './cliProgressFactory.js';
+import EventEmitter from 'events';
 import ora from 'ora';
+import cliProgress from 'cli-progress';
 import chalk from 'chalk';
-import { EventEmitter } from 'events';
+import path from 'path';
+import { log, LOG_LEVELS } from '../utils.js';
+import { displayPRDParsingSummary } from '../ui.js'; // Keep for potential direct use if needed
 
-/**
- * PrdParseTracker - Handles tracking, reporting and UI for PRD parsing progress
- * Emits events: 'thinking', 'token', 'task', 'progress', 'complete'
- */
-export class PrdParseTracker {
-	constructor(options = {}) {
-		const { reportProgress, mcpLog } = options;
+// --- Constants for UI ---
+const PRIORITY_DOTS = {
+    high: chalk.red('●●●'),
+    medium: chalk.keyword('orange')('●●'),
+    low: chalk.yellow('●'),
+};
+const CHECKMARK = chalk.green('✔️');
 
-		this.emitter = new EventEmitter();
-		this.reportProgress = reportProgress; // MCP progress reporting function
-		this.mcpLog = mcpLog; // MCP logger
+class PrdParseTracker extends EventEmitter {
+    constructor(options = {}) {
+        super();
+        this.options = { // Default options
+            logLevel: options.logLevel || 'info',
+            stream: process.stdout,
+            ...options,
+        };
+        this.spinner = null;
+        this.progressBar = null;
+        this.startTime = null;
+        this.totalTasks = 0;
+        this.completedTasks = 0;
+        this.tokensIn = 0;
+        this.tokensOut = 0;
+        this.lastPrintedTaskLine = ''; // To prevent duplicate prints
 
-		this.spinnerFrames = [
-			'Analyzing PRD structure...',
-			'Identifying key features...',
-			'Generating task breakdown...',
-			'Refining task details...'
-		];
+        this.stats = {
+            taskCount: 0,
+            prdPath: '',
+            outputPath: '',
+            startTime: null,
+            endTime: null,
+            taskCategories: { high: 0, medium: 0, low: 0 },
+            recoveryMode: false,
+            taskFilesGenerated: false,
+            actionVerb: 'created',
+            error: null,
+        };
 
-		this.progressBar = null;
-		this.spinner = null;
-		this.spinnerInterval = null;
-		this.stats = {
-			total: 100,
-			current: 0,
-			tokens: 0,
-			tasks: 0,
-			taskCount: 0,
-			startTime: null,
-			endTime: null,
-			outputPath: null,
-			taskCategories: { high: 0, medium: 0, low: 0 }
-		};
-		this.isActive = false;
+        // Log function specific to this tracker instance
+        this.log = (level, message) => {
+    if (LOG_LEVELS[level] >= LOG_LEVELS[this.options.logLevel]) {
+        log(level, `[PrdParseTracker] ${message}`);
+    }
+};
 
-		// State tracking
-		this.latestTaskInfo = null;
-		this.thinkingState = null;
-		this.lastTaskId = 0;
-	}
+        this.log('debug', 'PrdParseTracker initialized.');
+    }
 
-	/**
-	 * Start tracking progress for PRD parsing
-	 * @param {string} prdPath - Path to the PRD file being parsed
-	 * @param {number} numTasks - Number of tasks to generate
-	 */
-	start(prdPath, numTasks = 0) {
-		this.stats.startTime = Date.now();
-		this.stats.prdPath = prdPath;
-		this.stats.numTasks = numTasks;
-		this.isActive = true;
+    // --- Public Methods ---
 
-		// Only create progress bar for CLI (non-MCP) mode
-		if (!this.mcpLog) {
-			this.progressBar = newSingle({
-				format: 'Parsing PRD |{bar}| {percentage}% || {value}/{total}'
-			});
-			this.progressBar.start(this.stats.total, 0);
+    /**
+     * Start the tracking process.
+     * @param {number} totalTasks - The total number of tasks expected.
+     * @param {object} initialStats - Initial stats like prdPath, outputPath etc.
+     * @param {number} [initialTokensIn=0] - Initial input tokens.
+     * @param {number} [initialTokensOut=0] - Initial output tokens.
+     */
+    start(totalTasks = 0, initialStats = {}, initialTokensIn = 0, initialTokensOut = 0) {
+        this.startTime = Date.now();
+        this.stats.startTime = this.startTime;
+        this.totalTasks = totalTasks;
+        this.completedTasks = 0;
+        this.tokensIn = initialTokensIn;
+        this.tokensOut = initialTokensOut;
 
-			this.spinner = ora({
-				text: this.spinnerFrames[0],
-				spinner: 'dots'
-			}).start();
+        // Merge initial stats
+        this.stats = { ...this.stats, ...initialStats }; // Collect prdPath, outputPath etc.
+        this.stats.taskCount = totalTasks; // Store total task count in stats as well
 
-			let frameIndex = 0;
-			this.spinnerInterval = setInterval(() => {
-				frameIndex = (frameIndex + 1) % this.spinnerFrames.length;
-				this.spinner.text = this.spinnerFrames[frameIndex];
+        // Initialize UI components
+        this.spinner = ora({ text: 'Parsing PRD...', stream: this.options.stream }).start();
+        this.progressBar = new cliProgress.SingleBar({
+            format: ` ${chalk.cyan('{bar}')} | ${chalk.bold('{percentage}%')}`,
+            barCompleteChar: '\u2588',
+            barIncompleteChar: '\u2591',
+            hideCursor: true,
+            clearOnComplete: false, // Keep bar visible
+            stream: this.options.stream,
+            barsize: 40, // Adjust width as needed
+        }, cliProgress.Presets.shades_classic);
 
-				// Emit thinking event for anyone listening
-				this.emitter.emit('thinking', {
-					message: this.spinnerFrames[frameIndex],
-					elapsed: Date.now() - this.stats.startTime
-				});
-			}, 2000);
-		}
+        this.progressBar.start(this.totalTasks, 0); // Start bar
+        this._updateUI(); // Initial UI draw
 
-		return this; // For chaining
-	}
+        this.log('info', `Started tracking PRD parsing. Expected tasks: ${totalTasks}`);
+        this.emit('start', { totalTasks });
+    }
 
-	/**
-	 * Process update from AI streaming - detects tokens, tasks, and progress
-	 * @param {Object} data - Data update from the streaming parser
-	 */
-	update(data) {
-		if (!this.isActive) return;
+    /**
+     * Record a completed task and update progress.
+     * @param {object} task - The task object { taskId, title, priority, description, ... }
+     * @param {number} [deltaTokensIn=0] - Tokens consumed for this task.
+     * @param {number} [deltaTokensOut=0] - Tokens produced for this task.
+     */
+    tick(task, deltaTokensIn = 0, deltaTokensOut = 0) {
+        if (!this.startTime) {
+            this.log('warn', 'Tracker ticked before start() was called. Ignoring.');
+            return;
+        }
+        this.completedTasks++;
+        this.tokensIn += deltaTokensIn;
+        this.tokensOut += deltaTokensOut;
 
-		// Update internal stats
-		if (data.tokens) {
-			this.stats.tokens = data.tokens;
-			this.emitter.emit('token', { count: data.tokens });
-		}
+        // Update stats
+        const priority = task.priority?.toLowerCase() || 'medium';
+        if (this.stats.taskCategories[priority] !== undefined) {
+            this.stats.taskCategories[priority]++;
+        }
 
-		if (data.percent !== undefined) {
-			this.stats.current = Math.min(
-				Math.floor((data.percent / 100) * this.stats.total),
-				this.stats.total
-			);
+        this._updateUI();
+        this._printTask(task);
 
-			// Update progress bar if in CLI mode
-			if (this.progressBar) {
-				this.progressBar.update(this.stats.current);
-			}
+        this.log('debug', `Task ${this.completedTasks}/${this.totalTasks} completed: ${task.title}`);
+        this.emit('taskAdded', task); // For external listeners
+        this.emit('progress', { // More detailed progress event
+            completed: this.completedTasks,
+            total: this.totalTasks,
+            tokensIn: this.tokensIn,
+            tokensOut: this.tokensOut,
+            task
+        });
+    }
 
-			// Report progress to MCP if available
-			if (this.reportProgress) {
-				this.reportProgress({
-					type: 'prd-parsing',
-					percent: data.percent,
-					message: data.message || `Processing PRD (${data.percent}%)`
-				});
-			}
+    /**
+     * Update token counts.
+     * @param {number} [deltaTokensIn=0] - Additional tokens consumed.
+     * @param {number} [deltaTokensOut=0] - Additional tokens produced.
+     */
+    updateTokens(deltaTokensIn = 0, deltaTokensOut = 0) {
+        if (!this.startTime) return; // Ignore if not started
+        this.tokensIn += deltaTokensIn;
+        this.tokensOut += deltaTokensOut;
+        this._updateUI(); // Redraw status line
+        this.emit('tokensUpdated', { tokensIn: this.tokensIn, tokensOut: this.tokensOut });
+    }
 
-			// Emit progress event
-			this.emitter.emit('progress', {
-				percent: data.percent,
-				message: data.message,
-				tokens: this.stats.tokens
-			});
-		}
+    /**
+     * Update the spinner text.
+     * @param {string} text - New text for the spinner.
+     */
+    updateSpinnerText(text) {
+        if (this.spinner) {
+            this.spinner.text = text;
+        }
+    }
 
-		// Handle detected tasks
-		if (data.task) {
-			this.stats.tasks++;
+    /**
+     * Finish the tracking process.
+     * @param {boolean} success - Whether the process was successful.
+     * @param {object} finalStats - Any final stats to merge (e.g., error message).
+     * @param {function} [summaryCallback] - Optional callback to display summary.
+     */
+    finish(success = true, finalStats = {}, summaryCallback = null) {
+        if (!this.startTime) {
+            this.log('warn', 'Tracker finish() called before start().');
+            // Attempt graceful cleanup if possible
+            if (this.spinner) this.spinner.stop();
+            if (this.progressBar) this.progressBar.stop();
+            return;
+        }
 
-			// Update spinner with task info in CLI mode
-			if (this.spinner) {
-				this.spinner.text = `Detected task ${this.stats.tasks}: ${data.task.substr(0, 40)}...`;
-			}
+        this.stats.endTime = Date.now();
+        this.stats = { ...this.stats, ...finalStats }; // Merge final stats
 
-			// Emit task event
-			this.emitter.emit('task', {
-				taskNum: this.stats.tasks,
-				taskPreview: data.task
-			});
-		}
+        if (this.progressBar) {
+            // Ensure bar shows 100% if successful and tasks match
+            if (success && this.completedTasks >= this.totalTasks) {
+                 this.progressBar.update(this.totalTasks);
+            }
+            this.progressBar.stop();
+        }
 
-		// Handle thinking message updates
-		if (data.thinkingMsg && this.spinner) {
-			this.spinner.text = data.thinkingMsg;
-		}
-	}
+        // Persist the last status line before stopping spinner
+        this._updateUI(true); // Force redraw status line one last time
 
-	/**
-	 * Finish parsing and clean up resources
-	 * @param {boolean} success - Whether parsing completed successfully
-	 * @param {Object} stats - Final statistics about the parsing
-	 * @param {Function} summaryCallback - Optional callback to display summary
-	 */
-	finish(success = true, stats = {}, summaryCallback = null) {
-		if (!this.isActive) return;
+        if (this.spinner) {
+            if (success) {
+                this.spinner.succeed(chalk.green('PRD parsing complete!'));
+            } else {
+                this.spinner.fail(chalk.red(`PRD parsing failed: ${this.stats.error || 'Unknown error'}`));
+            }
+        }
 
-		this.isActive = false;
-		this.stats.endTime = Date.now();
+        // Call the summary callback AFTER stopping spinner/bar
+        if (summaryCallback && typeof summaryCallback === 'function') {
+             this.log('debug', 'Calling summary callback.');
+            summaryCallback({
+                totalTasks: this.stats.taskCount || this.completedTasks, // Use actual completed if total wasn't accurate
+                prdFilePath: this.stats.prdPath,
+                outputPath: this.stats.outputPath || path.join('tasks', 'tasks.json'),
+                elapsedTime: (this.stats.endTime - this.stats.startTime) / 1000, // Seconds
+                taskCategories: this.stats.taskCategories,
+                recoveryMode: this.stats.recoveryMode,
+                taskFilesGenerated: this.stats.taskFilesGenerated,
+                actionVerb: this.stats.actionVerb,
+                tokensIn: this.tokensIn,
+                tokensOut: this.tokensOut,
+                error: success ? null : this.stats.error,
+            });
+        }
 
-		// Ensure taskCount is set based on the lastTaskId if not provided
-		if (!stats.taskCount && this.lastTaskId > 0) {
-			stats.taskCount = this.lastTaskId;
-		}
+        this.log('info', `Finished tracking. Success: ${success}. Elapsed: ${((this.stats.endTime - this.stats.startTime) / 1000).toFixed(2)}s`);
+        this.emit('finish', { success, stats: this.stats });
 
-		// Merge stats with existing stats
-		this.stats = { ...this.stats, ...stats };
+        // Cleanup internal state
+        this.startTime = null; // Prevent further updates
+    }
 
-		// Clean up progress bar if in CLI mode
-		if (this.progressBar) {
-			this.progressBar.update(this.stats.total);
-			this.progressBar.stop();
-			this.progressBar = null;
-		}
+    // --- Private Helper Methods ---
 
-		// Clean up spinner if in CLI mode
-		if (this.spinner) {
-			clearInterval(this.spinnerInterval);
+    _updateUI(forceStatusLineRedraw = false) {
+        if (!this.startTime) return;
 
-			if (success) {
-				this.spinner.succeed(
-					chalk.green(
-						`PRD parsing complete! Generated ${this.stats.taskCount || 0} tasks`
-					)
-				);
-			} else {
-				this.spinner.fail(
-					chalk.red(
-						`PRD parsing failed: ${this.stats.error || 'Unknown error'}`
-					)
-				);
-			}
+        this._printStatusLine(forceStatusLineRedraw);
+        if (this.progressBar) {
+            this.progressBar.update(this.completedTasks);
+        }
+    }
 
-			this.spinner = null;
-		}
+    _printStatusLine(forceRedraw = false) {
+        if (!this.options.stream.isTTY) return; // Skip if not a TTY
 
-		// Clean up interval
-		if (this.spinnerInterval) {
-			clearInterval(this.spinnerInterval);
-			this.spinnerInterval = null;
-		}
+        const elapsedTime = this._formatElapsedTime(this.startTime);
+        const taskProgress = `Tasks: ${this.completedTasks}/${this.totalTasks}`;
+        const tokenInfo = `Tokens(I/O): ${this.tokensIn}/${this.tokensOut}`;
+        const statusText = ` ${elapsedTime} | ${taskProgress} | ${tokenInfo} `; // Add padding
 
-		// If a summary callback is provided, call it with the stats
-		if (summaryCallback && typeof summaryCallback === 'function') {
-			summaryCallback({
-				totalTasks: this.stats.taskCount || 0,
-				prdFilePath: this.stats.prdPath,
-				outputPath: this.stats.outputPath || 'tasks/tasks.json',
-				elapsedTime: (this.stats.endTime - this.stats.startTime) / 1000, // Convert to seconds
-				taskCategories: this.stats.taskCategories || {
-					high: 0,
-					medium: 0,
-					low: 0
-				},
-				recoveryMode: this.stats.recoveryMode || false,
-				taskFilesGenerated: this.stats.taskFilesGenerated || false,
-				actionVerb: this.stats.actionVerb || 'created'
-			});
-		}
+        // Avoid unnecessary redraws if spinner/bar handle cursor movement
+        // However, force redraw if requested (e.g., before spinner stop)
+        if (forceRedraw) {
+            this.options.stream.clearLine(0); // Clear current line
+            this.options.stream.cursorTo(0);
+            this.options.stream.write(statusText + '\n'); // Write status and move to next line for bar
+        } else {
+            // Rely on ora/cli-progress to manage cursor, maybe update spinner text
+             if (this.spinner) {
+                 this.spinner.text = statusText; // Update spinner text instead of direct write
+             }
+        }
+    }
 
-		// Emit complete event
-		this.emitter.emit('complete', {
-			success,
-			stats: this.stats,
-			elapsed: this.stats.endTime - this.stats.startTime
-		});
-	}
+     _printTask(task) {
+        if (!this.options.stream.isTTY) return; // Skip if not a TTY
 
-	/**
-	 * Register event listener
-	 * @param {string} event - Event name ('thinking', 'token', 'task', 'progress', 'complete')
-	 * @param {Function} callback - Callback function
-	 */
-	on(event, callback) {
-		this.emitter.on(event, callback);
-		return this;
-	}
+        const priority = task.priority?.toLowerCase() || 'medium';
+        const dots = PRIORITY_DOTS[priority] || PRIORITY_DOTS.medium;
+        const taskLine = ` ${CHECKMARK} ${dots} ${chalk.bold(`Task ${task.taskId || this.completedTasks}:`)} ${task.title}`;
 
-	/**
-	 * Helper to create a tracker function for AI streaming
-	 * @param {number} numTasksHint - Hint for the number of tasks
-	 * @returns {Function} Streaming tracker function
-	 */
-	createStreamingTracker(numTasksHint = 0) {
-		// Maintain internal state for this tracker closure
-		const seenTaskIds = new Set();
-		let buffer = '';
-		let numTasks = numTasksHint || 10; // fallback if the caller doesn't know yet
-		let estimatedTotalTokens = 6000; // heuristic – will be updated as we stream
-		let percentComplete = 0;
+        // Simple check to avoid printing the exact same line consecutively if events fire rapidly
+        if (taskLine === this.lastPrintedTaskLine) return;
+        this.lastPrintedTaskLine = taskLine;
 
-		/**
-		 * Helper function to calculate tokens from text content – heuristic approximation.
-		 * Borrowed from prior implementation.
-		 * @param {string} text
-		 * @returns {number}
-		 */
-		function calculateTokens(text) {
-			if (!text) return 0;
-			const words = text.split(/\s+/).filter((w) => w.length > 0);
-			const wordTokens = words.length * 1.3;
-			const digits = (text.match(/\d/g) || []).length;
-			const digitTokens = digits * 0.25; // ~4 digits per token
-			const specialChars = (text.match(/[^\w\s]/g) || []).length;
-			const jsonBias = Math.min(500, text.length * 0.05);
-			const rawTotal = Math.ceil(
-				wordTokens + digitTokens + specialChars - jsonBias
-			);
-			const minTokens = Math.ceil(text.length / 5);
-			const maxTokens = Math.ceil(text.length / 2);
-			return Math.min(maxTokens, Math.max(minTokens, rawTotal));
-		}
+        // Ensure spinner and progress bar don't interfere
+        if (this.spinner) this.spinner.clear(); // Clear spinner before logging
+        if (this.progressBar) {
+            // No direct 'clear' for cli-progress bar, rely on stream position
+            // A newline before printing ensures it's below the bar
+            this.options.stream.write('\n');
+        }
 
-		/**
-		 * Detect new tasks from the accumulating buffer and emit them via tracker.
-		 * Returns array of newly detected taskInfo objects.
-		 */
-		const detectTasks = (content) => {
-			const titleRegex = /"title"\s*:\s*"([^\"]+)"/g;
-			const idRegex = /"id"\s*:\s*(\d+)/g;
-			const priorityRegex = /"priority"\s*:\s*"?(high|medium|low)"?/i;
-			const descriptionRegex = /"description"\s*:\s*"([^\"]+)"/g;
+        this.options.stream.write(taskLine + '\n');
 
-			let match;
-			const newTasks = [];
-			const matchedTasks = new Map();
+        if (this.spinner) this.spinner.render(); // Redraw spinner
+        // ProgressBar redraw is handled by _updateUI -> progressBar.update()
+    }
 
-			// Pass 1 – find ids we haven't seen
-			while ((match = idRegex.exec(content)) !== null) {
-				const taskId = parseInt(match[1], 10);
-				if (!seenTaskIds.has(taskId)) {
-					matchedTasks.set(taskId, { pos: match.index, id: taskId });
-				}
-			}
+    _formatElapsedTime(startTime) {
+        const elapsedMs = Date.now() - startTime;
+        const seconds = Math.floor(elapsedMs / 1000) % 60;
+        const minutes = Math.floor(elapsedMs / (1000 * 60));
+        return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    }
 
-			// Pass 2 – for each new id try to extract title / priority / description
-			for (const [taskId, info] of matchedTasks.entries()) {
-				const slice = content.slice(info.pos);
-				const titleMatch = titleRegex.exec(slice);
-				if (!titleMatch) continue; // need title at minimum
+    /**
+     * DEPRECATED: Use tick() instead for proper UI updates.
+     * Track a task without necessarily incrementing the main progress bar.
+     * Useful for tasks identified before the main processing loop.
+     */
+    trackTask(taskInfo) {
+        this.log('warn', 'trackTask() is deprecated. Use tick() for UI updates.');
+        const priority = taskInfo.priority?.toLowerCase() || 'medium';
+        if (this.stats.taskCategories[priority] !== undefined) {
+            this.stats.taskCategories[priority]++;
+        }
+        // Maybe update total task count if it wasn't known initially?
+        if (taskInfo.taskCount && taskInfo.taskCount > this.totalTasks) {
+            this.log('debug', `Adjusting total task count from ${this.totalTasks} to ${taskInfo.taskCount}`);
+            this.totalTasks = taskInfo.taskCount;
+            this.stats.taskCount = this.totalTasks;
+            if (this.progressBar) {
+                this.progressBar.setTotal(this.totalTasks);
+            }
+        }
+        // Optionally print pre-identified tasks? Or just collect stats?
+        // For now, just collect stats.
+        this.emit('taskIdentified', taskInfo); // Different event
+    }
 
-				const priorityMatch = priorityRegex.exec(slice);
-				const priority = priorityMatch
-					? priorityMatch[1].toLowerCase()
-					: undefined;
-				if (!priority) continue; // wait until we have priority too
+    // --- Deprecated / Refactored Methods (Keep stubs or remove) ---
+    createStreamingTracker() {
+        this.log('warn', 'createStreamingTracker() is deprecated and internal.');
+        // Return a minimal object or handle internally if needed
+        return {
+            update: (chunk) => { /* Maybe update tokens here? */ },
+            incrementChunkCount: () => { /* No longer relevant for UI */ },
+            setStatus: (status) => { this.updateSpinnerText(status); },
+            setThinking: (isThinking) => { /* Spinner handles this implicitly */ },
+            setError: (error) => { this.stats.error = error; },
+            getStats: () => ({ /* Return relevant stats if needed */ }),
+        };
+    }
 
-				const descMatch = descriptionRegex.exec(slice);
-				const description = descMatch ? descMatch[1] : undefined;
+    // ... [Keep other methods like setStatus, setThinking if they are still used externally,
+    //      otherwise remove or mark as deprecated] ...
 
-				const taskInfo = {
-					taskId,
-					title: titleMatch[1],
-					priority,
-					description,
-					taskCount: seenTaskIds.size + 1 // optimistic
-				};
+    setStatus(status) {
+        this.updateSpinnerText(status);
+        this.emit('statusUpdate', status);
+    }
 
-				newTasks.push(taskInfo);
-				seenTaskIds.add(taskId);
-				// propagate to outer tracker
-				this.trackTask(taskInfo);
-			}
-			return newTasks;
-		};
+    setThinking(isThinking) {
+        // Spinner handles visual state. Emit event if needed.
+        if (isThinking) {
+             this.updateSpinnerText('Thinking...');
+        } else {
+             // Revert to previous or default text - requires storing state
+             // Or maybe just let the next status update handle it.
+        }
+        this.emit('thinking', isThinking);
+    }
 
-		// Streaming callback returned to caller
-		return (content, chunkInfo = {}) => {
-			buffer += content;
-
-			// Detect tasks & update numTasks if we observe higher ids
-			const newTasks = detectTasks(buffer);
-			if (newTasks.length) {
-				const maxId = Math.max(...Array.from(seenTaskIds));
-				if (maxId > numTasks) numTasks = maxId;
-			}
-
-			// Determine current token count – prefer exact counts from chunkInfo if provided
-			const tokenCount = chunkInfo.totalTokens || calculateTokens(buffer);
-
-			// Simple progress estimation – combine token and task signals
-			const tokenBased = Math.min(
-				99,
-				Math.floor((tokenCount / estimatedTotalTokens) * 100)
-			);
-			const taskBased =
-				seenTaskIds.size > 0
-					? Math.min(90, Math.floor((seenTaskIds.size / numTasks) * 100))
-					: 0;
-			const calculated = Math.max(
-				tokenBased * 0.5 + taskBased * 0.5,
-				percentComplete
-			);
-			percentComplete = Math.min(99, Math.round(calculated));
-
-			// Thinking message – basic phase reporting
-			const thinkingMsg =
-				seenTaskIds.size === 0
-					? 'Analyzing PRD...'
-					: percentComplete < 90
-						? `Defining task ${seenTaskIds.size + 1}...`
-						: 'Finalizing...';
-			this.updateThinkingState({
-				message: thinkingMsg,
-				state: percentComplete < 90 ? 'processing' : 'finalizing'
-			});
-
-			// Finally update main stats & emit progress
-			this.update({
-				tokens: tokenCount,
-				percent: percentComplete,
-				message: thinkingMsg
-			});
-
-			return true; // keep streaming
-		};
-	}
-
-	/**
-	 * Track task information
-	 * @param {Object} taskInfo - Task information
-	 */
-	trackTask(taskInfo) {
-		if (!taskInfo) return;
-
-		this.latestTaskInfo = taskInfo;
-
-		// Update last task id
-		if (taskInfo.taskId && taskInfo.taskId > this.lastTaskId) {
-			this.lastTaskId = taskInfo.taskId;
-		}
-
-		// Emit task event
-		this.emitter.emit('task', taskInfo);
-	}
-
-	/**
-	 * Update thinking state
-	 * @param {Object} thinkingState - Thinking state information
-	 */
-	updateThinkingState(thinkingState) {
-		if (!thinkingState) return;
-
-		this.thinkingState = thinkingState;
-
-		// Emit thinking event
-		this.emitter.emit('thinking', thinkingState);
-	}
-
-	/**
-	 * Get current thinking state
-	 * @returns {Object} Current thinking state
-	 */
-	getThinkingState() {
-		return this.thinkingState;
-	}
-
-	/**
-	 * Get latest task info
-	 * @returns {Object} Latest task info
-	 */
-	getLatestTaskInfo() {
-		return this.latestTaskInfo;
-	}
-
-	/**
-	 * Get last task ID
-	 * @returns {number} Last task ID
-	 */
-	getLastTaskId() {
-		return this.lastTaskId;
-	}
+     // Getter for stats if needed externally
+    getStats() {
+        return {
+            ...this.stats,
+            elapsedTime: this.startTime ? (Date.now() - this.startTime) / 1000 : 0,
+            completedTasks: this.completedTasks,
+            totalTasks: this.totalTasks,
+            tokensIn: this.tokensIn,
+            tokensOut: this.tokensOut,
+        };
+    }
 }
 
-/**
- * Create a PRD parsing tracker with the provided options
- * @param {Object} options - Options for the tracker
- * @param {Function} options.reportProgress - Function to report progress to MCP server
- * @param {Object} options.mcpLog - MCP logger object
- * @returns {PrdParseTracker} A configured tracker instance
- */
-export function createPrdParseTracker(options = {}) {
-	return new PrdParseTracker(options);
+// Factory function remains the same
+export function createPrdParseTracker(options) { 
+    return new PrdParseTracker(options);
 }
+
+// Export the class directly as well
+export { PrdParseTracker }; 

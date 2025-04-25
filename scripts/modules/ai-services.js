@@ -10,8 +10,8 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { CONFIG, log, sanitizePrompt, isSilentMode } from './utils.js';
 import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
-import chalk from 'chalk';
 import { createPrdParseTracker } from './progress/prdParseTracker.js';
+import chalk from 'chalk';
 
 // Load environment variables
 dotenv.config();
@@ -302,7 +302,7 @@ async function handleStreamingRequest(
 	numTasks,
 	maxTokens,
 	systemPrompt,
-	{ reportProgress, mcpLog, session } = {},
+	{ reportProgress, mcpLog, session, streamingTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -332,6 +332,9 @@ async function handleStreamingRequest(
 	let streamingInterval = null;
 
 	try {
+		// Indicate thinking before the API call
+		if (streamingTracker) streamingTracker.setThinking(true);
+
 		// Use streaming for handling large responses
 		const stream = await (aiClient || anthropic).messages.create({
 			model:
@@ -370,12 +373,14 @@ async function handleStreamingRequest(
 			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
 				responseText += chunk.delta.text;
 
-				/* realtime tracker hook (CLI-only) */
+				/* realtime tracker hook */
 				if (streamingTracker) {
-					streamingTracker(chunk.delta.text, {
-						percent: (responseText.length / maxTokens) * 100,
-						message: 'Generating tasks…'
-					});
+					// Call tracker methods correctly
+					streamingTracker.incrementChunkCount(); 
+					// Pass chunk text to update - the tracker might use it or ignore it
+					streamingTracker.update(chunk.delta.text); 
+					// Optional: Update status periodically if desired (uncomment if needed)
+					// streamingTracker.setStatus('Receiving data...'); 
 				}
 			}
 			if (reportProgress) {
@@ -394,6 +399,9 @@ async function handleStreamingRequest(
 		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
 			stopLoadingIndicator(loadingIndicator);
 		}
+
+		// Indicate thinking stopped after the loop
+		if (streamingTracker) streamingTracker.setThinking(false);
 
 		report(
 			`Completed streaming response from ${aiClient ? 'provided' : 'default'} AI client!`,
@@ -419,6 +427,8 @@ async function handleStreamingRequest(
 
 		// Get user-friendly error message
 		const userMessage = handleClaudeError(error);
+		// Report error to the tracker
+		if (streamingTracker) streamingTracker.setError(userMessage); 
 		report(`Error: ${userMessage}`, 'error');
 
 		// Only show console error for text output (CLI)
