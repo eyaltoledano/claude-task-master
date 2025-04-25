@@ -271,7 +271,7 @@ async function parsePRD(
 				prdFilePath: prdPath,
 				outputPath: tasksPath,
 				elapsedTime: Math.floor((Date.now() - progressTracker.startTime) / 1000),
-				taskPriorities,
+				taskPriorities: taskPriorities, // Use the variable defined above
 				actionVerb
 			});
 		}

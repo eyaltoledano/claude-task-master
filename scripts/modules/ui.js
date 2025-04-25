@@ -1781,7 +1781,7 @@ function displayPRDParsingStart(
  * @param {string} summary.prdFilePath - Path to the PRD file
  * @param {string} summary.outputPath - Path where the tasks were saved
  * @param {number} summary.elapsedTime - Total elapsed time in seconds
- * @param {Object} summary.taskCategories - Breakdown of tasks by category/priority
+ * @param {Object} summary.taskPriorities - Breakdown of tasks by category/priority
  * @param {boolean} summary.recoveryMode - Whether recovery mode was used to parse the response
  * @param {string} summary.taskFilesGenerated - Information about generated task files
  * @param {string} summary.actionVerb - Whether tasks were 'generated' or 'appended'
@@ -1790,7 +1790,7 @@ function displayPRDParsingSummary(summary) {
 	// Calculate task category percentages
 	const {
 		totalTasks,
-		taskCategories = {},
+		taskPriorities = {},
 		prdFilePath,
 		outputPath,
 		elapsedTime,
@@ -1833,11 +1833,11 @@ function displayPRDParsingSummary(summary) {
 	);
 
 	// Priority distribution if available
-	if (taskCategories && Object.keys(taskCategories).length > 0) {
+	if (taskPriorities && Object.keys(taskPriorities).length > 0) {
 		// Count tasks by priority
-		const highPriority = taskCategories.high || 0;
-		const mediumPriority = taskCategories.medium || 0;
-		const lowPriority = taskCategories.low || 0;
+		const highPriority = taskPriorities.high || 0;
+		const mediumPriority = taskPriorities.medium || 0;
+		const lowPriority = taskPriorities.low || 0;
 
 		// Calculate percentages
 		const percentHigh = Math.round((highPriority / totalTasks) * 100);
