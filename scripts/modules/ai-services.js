@@ -435,6 +435,13 @@ async function handleStreamingRequest(
 			{ reportProgress, mcpLog, session }
 		);
 	} catch (error) {
+		if (streamingInterval) clearInterval(streamingInterval);
+
+		// Only call stopLoadingIndicator if we started one
+		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
+			stopLoadingIndicator(loadingIndicator);
+		}
+
 		// Get user-friendly error message
 		const userMessage = handleClaudeError(error);
 		// Report error to the tracker - REMOVED INCORRECT CALL
