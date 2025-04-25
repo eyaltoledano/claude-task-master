@@ -200,15 +200,17 @@ async function parsePRD(
 				}
 			: newTasksData;
 
-		// Update tracker once per task
-		// Update total tasks in tracker after appending or merging
-		if (typeof progressTracker.totalTasks === 'number') {
-		    progressTracker.totalTasks = tasksData.tasks.length;
+		// Update total tasks in tracker if needed (only adjust the count, don't process tasks again)
+		if (typeof progressTracker.totalTasks === 'number' && progressTracker.totalTasks !== tasksData.tasks.length) {
+			progressTracker.totalTasks = tasksData.tasks.length;
+			// Update the progress bar with new total, but don't create duplicate task bars
+			if (progressTracker.progressBar) {
+				progressTracker.progressBar.update(
+					Math.min(progressTracker.completedTasks, progressTracker.totalTasks),
+					{ tasks: `${progressTracker.completedTasks}/${progressTracker.totalTasks}` }
+				);
+			}
 		}
-
-		tasksData.tasks.forEach((task) =>
-			progressTracker.tick({ title: task.title, priority: task.priority || 'medium' })
-		);
 
 		// Create the directory if it doesn't exist
 		const tasksDir = path.dirname(tasksPath);

@@ -15,6 +15,12 @@ const PRIORITY_DOTS = {
     low: chalk.yellow('.')    // period for 1 dot
 };
 
+const PRIORITY_DOTS_HORIZONTAL = {
+    high: chalk.red('●●●'),
+    medium: chalk.keyword('orange')('●●'),
+    low: chalk.yellow('●')
+};
+
 
 class PrdParseTracker extends EventEmitter {
     constructor(options = {}) {
@@ -41,6 +47,8 @@ class PrdParseTracker extends EventEmitter {
             endTime: null,
             error: null,
         };
+        this.taskBars = [];
+
         // Spinner frames for multibar spinner
         this._spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         this._spinnerIndex = 0;
@@ -184,7 +192,7 @@ class PrdParseTracker extends EventEmitter {
 
         // Combined Time + Tokens line
         this.timeTokensBar = this.multiBar.create(1, 0, {}, {
-            format: `{clock} {elapsed}  ${PRIORITY_DOTS.high} {high}  ${PRIORITY_DOTS.medium} {medium}  ${PRIORITY_DOTS.low} {low}  Tokens (I/O): {in}/{out}`,
+            format: `{clock} {elapsed}  ${PRIORITY_DOTS.high} {high}  ${PRIORITY_DOTS.medium} {medium}  ${PRIORITY_DOTS.low} {low}  Tokens (I/O): {in}/{out} | Est: {remaining}`,
             barsize: 1,
             hideCursor: true,
             clearOnComplete: false,
@@ -195,21 +203,22 @@ class PrdParseTracker extends EventEmitter {
             elapsed: '0m 00s',
             in: this.tokensIn,
             out: this.tokensOut,
+            remaining: '~0m 00s',
         });
 
         
         // Progress bar line - strictly visual, no spinner, no task generation text
         // This is the ONLY progress bar line. No spinner, no duplication.
         this.progressBar = this.multiBar.create(this.totalTasks, 0, {}, {
-    format: 'Tasks {tasks} |{bar}| {percentage}%',
-    barCompleteChar: '\u2588',
-    barIncompleteChar: '\u2591',
-    hideCursor: true,
-    clearOnComplete: false, // Never clear on complete
-    barsize: 40,
-    forceRedraw: true, // Force redraw to ensure visibility
-    noSpinner: true // Prevent any spinner from appearing on this line
-});
+            format: 'Tasks {tasks} |{bar}| {percentage}%',
+            barCompleteChar: '\u2588',
+            barIncompleteChar: '\u2591',
+            hideCursor: true,
+            clearOnComplete: false, // Never clear on complete
+            barsize: 40,
+            forceRedraw: true, // Force redraw to ensure visibility
+            noSpinner: true // Prevent any spinner from appearing on this line
+        });
         // Display initial progress of 0 immediately
         this.progressBar.update(0, { tasks: `0/${this.totalTasks}` });
 
@@ -222,6 +231,20 @@ class PrdParseTracker extends EventEmitter {
                 text: this._spinnerText,
             });
             // Elapsed time and tokens
+            let estRemaining = '';
+            if (this.completedTasks > 0 && this.completedTasks < this.totalTasks) {
+                const elapsedMs = Date.now() - this.startTime;
+                const avgMsPerTask = elapsedMs / this.completedTasks;
+                const remainingTasks = this.totalTasks - this.completedTasks;
+                const msRemaining = avgMsPerTask * remainingTasks;
+                const min = Math.floor(msRemaining / 60000);
+                const sec = Math.floor((msRemaining % 60000) / 1000);
+                estRemaining = `~${min}m ${sec.toString().padStart(2, '0')}s`;
+            } else if (this.completedTasks === this.totalTasks && this.totalTasks > 0) {
+                estRemaining = '~0m 00s';
+            } else {
+                estRemaining = '...';
+            }
             this.timeTokensBar.update(1, {
                 tasks: `${this.completedTasks}/${this.totalTasks}`,
                 clock: '⏱️',
@@ -231,6 +254,7 @@ class PrdParseTracker extends EventEmitter {
                 high: this.priorityCounts.high,
                 medium: this.priorityCounts.medium,
                 low: this.priorityCounts.low,
+                remaining: estRemaining,
             });
             
             // Progress bar update (live)
@@ -242,6 +266,27 @@ class PrdParseTracker extends EventEmitter {
     }
 
     tick(task, deltaTokensIn = 0, deltaTokensOut = 0) {
+        // Show the task with horizontal dots as it comes in
+        if (this.multiBar && task && task.title) {
+            let priorityKey = 'low';
+            if (task.priority) {
+                const p = task.priority.toLowerCase();
+                if (p.includes('high') || p === 'h') priorityKey = 'high';
+                else if (p.includes('medium') || p === 'm') priorityKey = 'medium';
+            }
+            const dots = PRIORITY_DOTS_HORIZONTAL[priorityKey];
+            const taskNum = this.completedTasks + 1; // Show 1-based index
+            const total = this.totalTasks;
+            const bar = this.multiBar.create(1, 1, {}, {
+                format: `${dots} Task ${taskNum}/${total}: {title}`,
+                barsize: 1,
+                hideCursor: true,
+                clearOnComplete: false,
+                forceRedraw: true
+            });
+            bar.update(1, { title: task.title });
+            this.taskBars.push(bar);
+        }
         // Record a completed task (spinner-only mode: do nothing visible)
         this.completedTasks++;
         this.tokensIn += deltaTokensIn;
@@ -257,7 +302,10 @@ class PrdParseTracker extends EventEmitter {
         }
         // Update progress bar if present
         if (this.progressBar) {
-            this.progressBar.update(Math.min(this.completedTasks, this.totalTasks));
+            this.progressBar.update(
+                Math.min(this.completedTasks, this.totalTasks),
+                { tasks: `${this.completedTasks}/${this.totalTasks}` }
+            );
         }
         // Don't change spinner text - keep it static
     }
