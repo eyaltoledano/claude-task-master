@@ -343,3 +343,104 @@ describe('MCP Tool: add-task', () => {
 		});
 	});
 });
+
+describe('Agent-in-the-Loop: add_task', () => {
+	let mockServer;
+	let executeFunction;
+	const mockLogger = {
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn()
+	};
+	const mockContext = {
+		log: mockLogger,
+		reportProgress: jest.fn(),
+		session: { workingDirectory: '/mock/dir' }
+	};
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockServer = {
+			addTool: jest.fn((config) => {
+				executeFunction = config.execute;
+			})
+		};
+		mockAddTaskDirect.mockReturnValue({ success: true, data: { taskId: 1, message: 'ok' } });
+		registerAddTaskTool(mockServer);
+	});
+
+	test('should return a prompt/context when called with mode: get_prompt', () => {
+		const promptResponse = {
+			success: true,
+			data: { prompt: 'Generate a new task...' }
+		};
+		mockAddTaskDirect.mockReturnValueOnce(promptResponse);
+		const args = { mode: 'get_prompt', prompt: 'Do something', projectRoot: '/mock/project/root' };
+		executeFunction(args, mockContext);
+		expect(mockAddTaskDirect).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'get_prompt' }),
+			mockLogger,
+			expect.any(Object)
+		);
+		// Should return the prompt/context
+		expect(mockHandleApiResult).toHaveBeenCalledWith(promptResponse, mockLogger);
+	});
+
+	test('should accept a valid agent-generated task with mode: submit_task', () => {
+		const submitResponse = {
+			success: true,
+			data: { taskId: 42, message: 'Successfully added new task #42' }
+		};
+		mockAddTaskDirect.mockReturnValueOnce(submitResponse);
+		const validTask = {
+			title: 'Agent Task',
+			description: 'Agent-generated',
+			details: 'Details',
+			testStrategy: 'Test it',
+			dependencies: [],
+			priority: 'high'
+		};
+		const args = { mode: 'submit_task', task: validTask, projectRoot: '/mock/project/root' };
+		executeFunction(args, mockContext);
+		expect(mockAddTaskDirect).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'submit_task', task: validTask }),
+			mockLogger,
+			expect.any(Object)
+		);
+		expect(mockHandleApiResult).toHaveBeenCalledWith(submitResponse, mockLogger);
+	});
+
+	test('should return a validation error for invalid agent-generated task', () => {
+		const errorResponse = {
+			success: false,
+			error: { code: 'INVALID_TASK', message: 'Task validation failed.', details: ["'title' is required and must be a string."] }
+		};
+		mockAddTaskDirect.mockReturnValueOnce(errorResponse);
+		const invalidTask = { description: 'Missing title' };
+		const args = { mode: 'submit_task', task: invalidTask, projectRoot: '/mock/project/root' };
+		executeFunction(args, mockContext);
+		expect(mockAddTaskDirect).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'submit_task', task: invalidTask }),
+			mockLogger,
+			expect.any(Object)
+		);
+		expect(mockHandleApiResult).toHaveBeenCalledWith(errorResponse, mockLogger);
+	});
+
+	test('should still work in non-agent mode', () => {
+		const normalResponse = {
+			success: true,
+			data: { taskId: 99, message: 'Successfully added new task #99' }
+		};
+		mockAddTaskDirect.mockReturnValueOnce(normalResponse);
+		const args = { prompt: 'Normal add', projectRoot: '/mock/project/root' };
+		executeFunction(args, mockContext);
+		expect(mockAddTaskDirect).toHaveBeenCalledWith(
+			expect.objectContaining({ prompt: 'Normal add' }),
+			mockLogger,
+			expect.any(Object)
+		);
+		expect(mockHandleApiResult).toHaveBeenCalledWith(normalResponse, mockLogger);
+	});
+});
