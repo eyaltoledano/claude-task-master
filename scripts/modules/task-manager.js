@@ -123,6 +123,18 @@ async function parsePRD(
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';
 
+	// Display PRD parsing start message in CLI mode (not in MCP/JSON mode)
+	if (outputFormat === 'text') {
+		displayPRDParsingStart({
+			prdFilePath: prdPath,
+			outputPath: tasksPath,
+			numTasks,
+			append,
+			model: modelConfig?.model || CONFIG.model,
+			temperature: modelConfig?.temperature || CONFIG.temperature
+		});
+	}
+
 	// Create custom reporter that checks for MCP log and silent mode
 	const report = (message, level = 'info') => {
 		if (mcpLog) {
