@@ -161,9 +161,6 @@ async function parsePRD(
 			}
 		}
 
-		// Create a streaming tracker using the method from the main PrdParseTracker instance
-// Progress streaming handled via encapsulated tracker; deprecated streamingTracker removed
-
 		// Call Claude to generate tasks, passing the provided AI client if available
 		const newTasksData = await callClaude(
 			prdContent,
