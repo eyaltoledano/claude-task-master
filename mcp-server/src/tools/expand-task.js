@@ -21,7 +21,8 @@ import path from 'path';
 export function registerExpandTaskTool(server) {
 	server.addTool({
 		name: 'expand_task',
-		description: 'Expand a task into subtasks for detailed implementation',
+		description:
+			'Expand a task into subtasks for detailed implementation. In MCP mode, agents should first call with mode="get_prompt" to receive a prompt/context, then generate subtasks using their own LLM, and finally call again with mode="submit_subtasks" and the generated subtasks.',
 		parameters: z.object({
 			id: z.string().describe('ID of task to expand'),
 			num: z.string().optional().describe('Number of subtasks to generate'),
@@ -37,7 +38,15 @@ export function registerExpandTaskTool(server) {
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.'),
-			force: z.boolean().optional().describe('Force the expansion')
+			force: z.boolean().optional().describe('Force the expansion'),
+			mode: z
+				.enum(['get_prompt', 'submit_subtasks'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt, submit_subtasks to submit generated subtasks.'),
+			subtasks: z
+				.array(z.any())
+				.optional()
+				.describe('Array of generated subtasks to insert (agent-in-the-loop mode)')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -47,7 +56,6 @@ export function registerExpandTaskTool(server) {
 				const rootFolder =
 					args.projectRoot || getProjectRootFromSession(session, log);
 
-				// Ensure project root was determined
 				if (!rootFolder) {
 					return createErrorResponse(
 						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
@@ -70,24 +78,24 @@ export function registerExpandTaskTool(server) {
 					);
 				}
 
-				// Call direct function with only session in the context, not reportProgress
-				// Use the pattern recommended in the MCP guidelines
+				// Branch logic for agent-in-the-loop
+				const mode = args.mode || (args.subtasks ? 'submit_subtasks' : 'get_prompt');
+
 				const result = await expandTaskDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						id: args.id,
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
-						force: args.force // Need to add force to parameters
+						force: args.force,
+						mode,
+						subtasks: args.subtasks
 					},
 					log,
 					{ session }
-				); // Only pass session, NOT reportProgress
+				);
 
-				// Return the result
 				return handleApiResult(result, log, 'Error expanding task');
 			} catch (error) {
 				log.error(`Error in expand task tool: ${error.message}`);

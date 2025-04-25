@@ -20,7 +20,7 @@ export function registerUpdateTaskTool(server) {
 	server.addTool({
 		name: 'update_task',
 		description:
-			'Updates a single task by ID with new information or context provided in the prompt.',
+			'Updates a single task by ID with new information or context provided in the prompt. In MCP mode, agents should first call with mode="get_prompt" to receive a prompt/context, then generate an updated task using their own LLM, and finally call again with mode="submit_task" and the updated task.',
 		parameters: z.object({
 			id: z
 				.string()
@@ -37,7 +37,15 @@ export function registerUpdateTaskTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			mode: z
+				.enum(['get_prompt', 'submit_task'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt, submit_task to submit a generated task.'),
+			task: z
+				.any()
+				.optional()
+				.describe('Generated task object to update (agent-in-the-loop mode)')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -68,14 +76,17 @@ export function registerUpdateTaskTool(server) {
 					);
 				}
 
+				// Branch logic for agent-in-the-loop
+				const mode = args.mode || (args.task ? 'submit_task' : 'get_prompt');
+
 				const result = await updateTaskByIdDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						id: args.id,
 						prompt: args.prompt,
-						research: args.research
+						research: args.research,
+						mode,
+						task: args.task
 					},
 					log,
 					{ session }

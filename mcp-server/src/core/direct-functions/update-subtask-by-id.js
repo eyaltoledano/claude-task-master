@@ -23,10 +23,104 @@ import {
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
-	const { tasksJsonPath, id, prompt, research } = args;
+	const { tasksJsonPath, id, prompt, research, mode, subtask } = args;
 
 	try {
 		log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
+
+		// --- AGENT-IN-THE-LOOP: PROMPT GENERATION MODE ---
+		if (mode === 'get_prompt' || (!subtask && mode !== 'submit_subtask')) {
+			const fs = await import('fs');
+			const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf8'));
+			let currentSubtask = null;
+			if (typeof id === 'string' && id.includes('.')) {
+				const [parentId, subId] = id.split('.').map(Number);
+				const parent = tasksData.tasks.find((t) => t.id === parentId);
+				if (parent && Array.isArray(parent.subtasks)) {
+					currentSubtask = parent.subtasks.find((st) => st.id === subId);
+				}
+			}
+			const promptText = `You are to update the following subtask based on the new information provided. The updated subtask should be actionable, concise, and follow the Task Master subtask structure.\n\nCurrent subtask:\n${JSON.stringify(currentSubtask, null, 2)}\n\nUpdate prompt: ${prompt}\n\nReturn a single updated subtask object with fields: title (string), description (string), details (string), status (string), dependencies (array of numbers or strings).`;
+			return {
+				success: true,
+				data: {
+					prompt: promptText,
+					currentSubtask,
+					updatePrompt: prompt
+				},
+				fromCache: false
+			};
+		}
+
+		// --- AGENT-IN-THE-LOOP: SUBTASK SUBMISSION MODE ---
+		if ((mode === 'submit_subtask' || subtask) && typeof subtask === 'object' && subtask !== null) {
+			const st = subtask;
+			const errors = [];
+			if (typeof st.title !== 'string' || !st.title.trim()) {
+				errors.push(`'title' is required and must be a string.`);
+			}
+			if (typeof st.description !== 'string') {
+				errors.push(`'description' must be a string.`);
+			}
+			if (typeof st.details !== 'string') {
+				errors.push(`'details' must be a string.`);
+			}
+			if (typeof st.status !== 'string') {
+				errors.push(`'status' must be a string.`);
+			}
+			if (!Array.isArray(st.dependencies)) {
+				errors.push(`'dependencies' must be an array.`);
+			}
+			if (errors.length > 0) {
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_SUBTASK',
+						message: 'Subtask validation failed.',
+						details: errors
+					},
+					fromCache: false
+				};
+			}
+			enableSilentMode();
+			const fs = await import('fs');
+			const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf8'));
+			let updated = false;
+			if (typeof id === 'string' && id.includes('.')) {
+				const [parentId, subId] = id.split('.').map(Number);
+				const parent = tasksData.tasks.find((t) => t.id === parentId);
+				if (parent && Array.isArray(parent.subtasks)) {
+					const idx = parent.subtasks.findIndex((st) => st.id === subId);
+					if (idx !== -1) {
+						parent.subtasks[idx] = { ...parent.subtasks[idx], ...st };
+						updated = true;
+					}
+				}
+			}
+			if (updated) {
+				fs.writeFileSync(tasksJsonPath, JSON.stringify(tasksData, null, 2));
+				disableSilentMode();
+				return {
+					success: true,
+					data: {
+						message: `Successfully updated subtask with ID ${id} (agent-in-the-loop)`,
+						subtaskId: id,
+						tasksPath: tasksJsonPath
+					},
+					fromCache: false
+				};
+			} else {
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'SUBTASK_NOT_FOUND',
+						message: `Subtask with ID ${id} not found.`
+					},
+					fromCache: false
+				};
+			}
+		}
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {

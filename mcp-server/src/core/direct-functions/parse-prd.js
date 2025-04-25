@@ -29,6 +29,149 @@ export async function parsePRDDirect(args, log, context = {}) {
 	try {
 		log.info(`Parsing PRD document with args: ${JSON.stringify(args)}`);
 
+		// --- AGENT-IN-THE-LOOP: PROMPT GENERATION MODE ---
+		if (args.mode === 'get_prompt' || (!args.tasks && args.mode !== 'submit_tasks')) {
+			// Read PRD content
+			const projectRoot = args.projectRoot;
+			const inputPath = path.isAbsolute(args.input)
+				? args.input
+				: path.resolve(projectRoot, args.input);
+			if (!fs.existsSync(inputPath)) {
+				const errorMessage = `Input file not found: ${inputPath}`;
+				log.error(errorMessage);
+				return {
+					success: false,
+					error: {
+						code: 'INPUT_FILE_NOT_FOUND',
+						message: errorMessage
+					},
+					fromCache: false
+				};
+			}
+			const prdContent = fs.readFileSync(inputPath, 'utf8');
+			const numTasks = args.numTasks ? parseInt(args.numTasks, 10) : 10;
+			const prompt = `You are to generate a set of high-level software development tasks from the following Product Requirements Document (PRD). Each task should be actionable, concise, and follow the Task Master task structure. Aim for about ${numTasks} top-level tasks.\n\n--- PRD CONTENT START ---\n${prdContent}\n--- PRD CONTENT END ---\n\nReturn an array of tasks, each with fields: id (number), title (string), description (string), status (string), dependencies (array of numbers), priority (string), details (string), testStrategy (string).`;
+			return {
+				success: true,
+				data: {
+					prompt,
+					prdContent,
+					numTasks
+				},
+				fromCache: false
+			};
+		}
+
+		// --- AGENT-IN-THE-LOOP: TASK SUBMISSION MODE ---
+		if ((args.mode === 'submit_tasks' || args.tasks) && Array.isArray(args.tasks)) {
+			const tasks = args.tasks;
+			// Validate tasks structure
+			if (!Array.isArray(tasks) || tasks.length === 0) {
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_TASKS',
+						message: 'No tasks provided or tasks is not an array.'
+					},
+					fromCache: false
+				};
+			}
+			const errors = [];
+			const idSet = new Set();
+			const validIds = new Set();
+			for (let i = 0; i < tasks.length; i++) {
+				const t = tasks[i];
+				const idx = i + 1;
+				if (typeof t !== 'object' || t === null) {
+					errors.push(`Task at index ${i} is not an object.`);
+					continue;
+				}
+				if (typeof t.id !== 'number') {
+					errors.push(`Task ${idx}: 'id' must be a number.`);
+				} else {
+					if (idSet.has(t.id)) {
+						errors.push(`Duplicate task id: ${t.id}`);
+					} else {
+						idSet.add(t.id);
+						validIds.add(t.id);
+					}
+				}
+				if (typeof t.title !== 'string' || !t.title.trim()) {
+					errors.push(`Task ${t.id}: 'title' is required and must be a string.`);
+				}
+				if (typeof t.description !== 'string') {
+					errors.push(`Task ${t.id}: 'description' must be a string.`);
+				}
+				if (typeof t.status !== 'string') {
+					errors.push(`Task ${t.id}: 'status' must be a string.`);
+				}
+				if (!Array.isArray(t.dependencies)) {
+					errors.push(`Task ${t.id}: 'dependencies' must be an array.`);
+				}
+				if (typeof t.priority !== 'string') {
+					errors.push(`Task ${t.id}: 'priority' must be a string.`);
+				}
+				if (typeof t.details !== 'string') {
+					errors.push(`Task ${t.id}: 'details' must be a string.`);
+				}
+				if (typeof t.testStrategy !== 'string') {
+					errors.push(`Task ${t.id}: 'testStrategy' must be a string.`);
+				}
+			}
+			// Check that dependencies only reference valid task IDs
+			for (const t of tasks) {
+				if (Array.isArray(t.dependencies)) {
+					for (const dep of t.dependencies) {
+						if (typeof dep !== 'number' || !validIds.has(dep)) {
+							errors.push(`Task ${t.id}: dependency '${dep}' is not a valid task id in this batch.`);
+						}
+					}
+				}
+			}
+			if (errors.length > 0) {
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_TASKS',
+						message: 'Task validation failed.',
+						details: errors
+					},
+					fromCache: false
+				};
+			}
+			// Write tasks to output file (overwrite or append)
+			const projectRoot = args.projectRoot;
+			const outputPath = path.isAbsolute(args.output)
+				? args.output
+				: path.resolve(projectRoot, args.output);
+			const append = Boolean(args.append) === true;
+			let allTasks = tasks;
+			if (append && fs.existsSync(outputPath)) {
+				try {
+					const existing = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+					if (Array.isArray(existing.tasks)) {
+						allTasks = [...existing.tasks, ...tasks];
+					}
+				} catch (e) {
+					log.warn(`Failed to read/parse existing tasks.json for append: ${e.message}`);
+				}
+			}
+			const tasksData = { tasks: allTasks };
+			fs.writeFileSync(outputPath, JSON.stringify(tasksData, null, 2));
+			const message = `Successfully wrote ${tasks.length} tasks to ${outputPath}${append ? ' (appended)' : ''}`;
+			log.info(message);
+			return {
+				success: true,
+				data: {
+					message,
+					taskCount: tasks.length,
+					outputPath,
+					appended: append
+				},
+				fromCache: false
+			};
+		}
+
 		// Initialize AI client for PRD parsing
 		let aiClient;
 		try {

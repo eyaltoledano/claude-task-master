@@ -7,6 +7,8 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import { readJSON } from '../../../../scripts/modules/file-utils.js';
+import { findTaskById } from '../../../../scripts/modules/task-utils.js';
 
 /**
  * Remove a subtask from its parent task
@@ -15,22 +17,20 @@ import {
  * @param {string} args.id - Subtask ID in format "parentId.subtaskId" (required)
  * @param {boolean} [args.convert] - Whether to convert the subtask to a standalone task
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
+ * @param {string} [args.mode] - Mode for agent-in-the-loop support
+ * @param {Object} [args.removal] - Removal object for agent-in-the-loop support
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function removeSubtaskDirect(args, log) {
-	// Destructure expected args
+	// Revert to original signature and logic
 	const { tasksJsonPath, id, convert, skipGenerate } = args;
 	try {
-		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
-
 		log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {
 			log.error('removeSubtaskDirect called without tasksJsonPath');
-			disableSilentMode(); // Disable before returning
+			disableSilentMode();
 			return {
 				success: false,
 				error: {
@@ -39,22 +39,18 @@ export async function removeSubtaskDirect(args, log) {
 				}
 			};
 		}
-
 		if (!id) {
-			disableSilentMode(); // Disable before returning
+			disableSilentMode();
 			return {
 				success: false,
 				error: {
 					code: 'INPUT_VALIDATION_ERROR',
-					message:
-						'Subtask ID is required and must be in format "parentId.subtaskId"'
+					message: 'Subtask ID is required and must be in format "parentId.subtaskId"'
 				}
 			};
 		}
-
-		// Validate subtask ID format
 		if (!id.includes('.')) {
-			disableSilentMode(); // Disable before returning
+			disableSilentMode();
 			return {
 				success: false,
 				error: {
@@ -63,33 +59,13 @@ export async function removeSubtaskDirect(args, log) {
 				}
 			};
 		}
-
-		// Use provided path
 		const tasksPath = tasksJsonPath;
-
-		// Convert convertToTask to a boolean
 		const convertToTask = convert === true;
-
-		// Determine if we should generate files
 		const generateFiles = !skipGenerate;
-
-		log.info(
-			`Removing subtask ${id} (convertToTask: ${convertToTask}, generateFiles: ${generateFiles})`
-		);
-
-		// Use the provided tasksPath
-		const result = await removeSubtask(
-			tasksPath,
-			id,
-			convertToTask,
-			generateFiles
-		);
-
-		// Restore normal logging
+		log.info(`Removing subtask ${id} (convertToTask: ${convertToTask}, generateFiles: ${generateFiles})`);
+		const result = await removeSubtask(tasksPath, id, convertToTask, generateFiles);
 		disableSilentMode();
-
 		if (convertToTask && result) {
-			// Return info about the converted task
 			return {
 				success: true,
 				data: {
@@ -98,7 +74,6 @@ export async function removeSubtaskDirect(args, log) {
 				}
 			};
 		} else {
-			// Return simple success message for deletion
 			return {
 				success: true,
 				data: {
@@ -107,9 +82,7 @@ export async function removeSubtaskDirect(args, log) {
 			};
 		}
 	} catch (error) {
-		// Ensure silent mode is disabled even if an outer error occurs
 		disableSilentMode();
-
 		log.error(`Error in removeSubtaskDirect: ${error.message}`);
 		return {
 			success: false,

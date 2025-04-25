@@ -20,6 +20,8 @@ import {
  * @param {string} [args.status] - Status for new subtask (default: 'pending')
  * @param {string} [args.dependencies] - Comma-separated list of dependency IDs
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
+ * @param {string} [args.mode] - Mode for agent-in-the-loop support
+ * @param {Object} [args.subtask] - Subtask object for agent-in-the-loop support
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
@@ -34,10 +36,86 @@ export async function addSubtaskDirect(args, log) {
 		details,
 		status,
 		dependencies: dependenciesStr,
-		skipGenerate
+		skipGenerate,
+		mode,
+		subtask
 	} = args;
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
+
+		// --- AGENT-IN-THE-LOOP: PROMPT GENERATION MODE ---
+		if (mode === 'get_prompt' || (!subtask && mode !== 'submit_subtask')) {
+			const depList = dependenciesStr
+				? dependenciesStr.split(',').map((depId) => depId.trim())
+				: [];
+			const promptText = `You are to generate a new subtask for the following parent task. The subtask should be actionable, concise, and follow the Task Master subtask structure.\n\nParent task ID: ${id}\nTitle: ${title || ''}\nDescription: ${description || ''}\nDependencies: [${depList.join(', ')}]\nStatus: ${status || 'pending'}\n\nReturn a single subtask object with fields: title (string), description (string), details (string), status (string), dependencies (array of numbers or strings).`;
+			return {
+				success: true,
+				data: {
+					prompt: promptText,
+					parentId: id,
+					dependencies: depList,
+					status: status || 'pending'
+				},
+			};
+		}
+
+		// --- AGENT-IN-THE-LOOP: SUBTASK SUBMISSION MODE ---
+		if ((mode === 'submit_subtask' || subtask) && typeof subtask === 'object' && subtask !== null) {
+			const st = subtask;
+			const errors = [];
+			if (typeof st.title !== 'string' || !st.title.trim()) {
+				errors.push(`'title' is required and must be a string.`);
+			}
+			if (typeof st.description !== 'string') {
+				errors.push(`'description' must be a string.`);
+			}
+			if (typeof st.details !== 'string') {
+				errors.push(`'details' must be a string.`);
+			}
+			if (typeof st.status !== 'string') {
+				errors.push(`'status' must be a string.`);
+			}
+			if (!Array.isArray(st.dependencies)) {
+				errors.push(`'dependencies' must be an array.`);
+			}
+			if (errors.length > 0) {
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_SUBTASK',
+						message: 'Subtask validation failed.',
+						details: errors
+					}
+				};
+			}
+			// Insert the subtask using addSubtask
+			enableSilentMode();
+			const parentId = parseInt(id, 10);
+			const generateFiles = !skipGenerate;
+			const newSubtaskData = {
+				title: st.title,
+				description: st.description,
+				details: st.details,
+				status: st.status,
+				dependencies: st.dependencies
+			};
+			const result = await addSubtask(
+				tasksJsonPath,
+				parentId,
+				null,
+				newSubtaskData,
+				generateFiles
+			);
+			disableSilentMode();
+			return {
+				success: true,
+				data: {
+					message: `New subtask ${parentId}.${result.id} successfully created`,
+					subtask: result
+				}
+			};
+		}
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {

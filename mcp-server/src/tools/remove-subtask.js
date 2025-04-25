@@ -54,14 +54,12 @@ export function registerRemoveSubtaskTool(server) {
 				const rootFolder =
 					args.projectRoot || getProjectRootFromSession(session, log);
 
-				// Ensure project root was determined
 				if (!rootFolder) {
 					return createErrorResponse(
 						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
 					);
 				}
 
-				// Resolve the path to tasks.json
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
@@ -77,9 +75,7 @@ export function registerRemoveSubtaskTool(server) {
 
 				const result = await removeSubtaskDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						id: args.id,
 						convert: args.convert,
 						skipGenerate: args.skipGenerate
@@ -88,9 +84,9 @@ export function registerRemoveSubtaskTool(server) {
 				);
 
 				if (result.success) {
-					log.info(`Subtask removed successfully: ${result.data.message}`);
+					log.info(`Subtask removed successfully: ${args.id}`);
 				} else {
-					log.error(`Failed to remove subtask: ${result.error.message}`);
+					log.error(`Failed to remove subtask: ${result.error && result.error.message ? result.error.message : JSON.stringify(result)}`);
 				}
 
 				return handleApiResult(result, log, 'Error removing subtask');

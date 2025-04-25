@@ -33,7 +33,15 @@ export function registerRemoveTaskTool(server) {
 			confirm: z
 				.boolean()
 				.optional()
-				.describe('Whether to skip confirmation prompt (default: false)')
+				.describe('Whether to skip confirmation prompt (default: false)'),
+			mode: z
+				.enum(['get_prompt', 'submit_removal'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt/context, submit_removal to confirm and perform removal.'),
+			removal: z
+				.any()
+				.optional()
+				.describe('Removal confirmation object for agent-in-the-loop mode')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -72,15 +80,25 @@ export function registerRemoveTaskTool(server) {
 				const result = await removeTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id
+						id: args.id,
+						mode: args.mode,
+						removal: args.removal
 					},
 					log
 				);
 
+				// Handle agent-in-the-loop prompt result
+				if (result && result.ok && result.agentPrompt) {
+					return {
+						success: true,
+						content: result.agentPrompt
+					};
+				}
+
 				if (result.success) {
 					log.info(`Successfully removed task: ${args.id}`);
 				} else {
-					log.error(`Failed to remove task: ${result.error.message}`);
+					log.error(`Failed to remove task: ${result.error && result.error.message ? result.error.message : JSON.stringify(result)}`);
 				}
 
 				return handleApiResult(result, log, 'Error removing task');

@@ -19,7 +19,7 @@ import { findTasksJsonPath } from '../core/utils/path-utils.js';
 export function registerAddSubtaskTool(server) {
 	server.addTool({
 		name: 'add_subtask',
-		description: 'Add a subtask to an existing task',
+		description: 'Add a subtask to an existing task. In MCP mode, agents should first call with mode="get_prompt" to receive a prompt/context, then generate a subtask using their own LLM, and finally call again with mode="submit_subtask" and the generated subtask.',
 		parameters: z.object({
 			id: z.string().describe('Parent task ID (required)'),
 			taskId: z
@@ -58,7 +58,15 @@ export function registerAddSubtaskTool(server) {
 				.describe('Skip regenerating task files'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			mode: z
+				.enum(['get_prompt', 'submit_subtask'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt, submit_subtask to submit a generated subtask.'),
+			subtask: z
+				.any()
+				.optional()
+				.describe('Generated subtask object to insert (agent-in-the-loop mode)')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -87,6 +95,9 @@ export function registerAddSubtaskTool(server) {
 					);
 				}
 
+				// Branch logic for agent-in-the-loop
+				const mode = args.mode || (args.subtask ? 'submit_subtask' : 'get_prompt');
+
 				const result = await addSubtaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -97,7 +108,9 @@ export function registerAddSubtaskTool(server) {
 						details: args.details,
 						status: args.status,
 						dependencies: args.dependencies,
-						skipGenerate: args.skipGenerate
+						skipGenerate: args.skipGenerate,
+						mode,
+						subtask: args.subtask
 					},
 					log
 				);

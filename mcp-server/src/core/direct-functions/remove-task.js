@@ -20,15 +20,57 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID(s) of the task(s) or subtask(s) to remove (comma-separated for multiple).
+ * @param {string} args.mode - The mode for agent-in-the-loop support
+ * @param {Object} args.removal - The removal object for agent-in-the-loop support
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: false }
  */
 export async function removeTaskDirect(args, log) {
+	const { tasksJsonPath, id, mode, removal } = args;
+	// Agent-in-the-loop support
+	if (mode === 'get_prompt' || (!removal && mode === 'submit_removal')) {
+		// Load current tasks for context
+		let tasks;
+		try {
+			tasks = await readJSON(tasksJsonPath);
+		} catch (e) {
+			return { ok: false, error: `Could not read tasks file: ${e.message}` };
+		}
+		// Find the tasks to remove
+		const ids = id.split(',').map((s) => s.trim());
+		const found = ids.map((taskId) => {
+			const t = findTaskById(tasks, taskId);
+			return t ? { id: taskId, title: t.title, status: t.status, description: t.description } : { id: taskId, error: 'Not found' };
+		});
+		return {
+			ok: true,
+			agentPrompt: {
+				message: `You are about to remove the following task(s). Please confirm removal and provide a reason if possible.`,
+				tasks: found,
+				required: {
+					confirm: true,
+					reason: 'string (optional)'
+				}
+			}
+		};
+	}
+	if (mode === 'submit_removal' && removal && removal.confirm === true) {
+		// Validate removal object
+		if (!removal.id || removal.id !== id) {
+			return { ok: false, error: 'Removal object id does not match request id.' };
+		}
+		// Optionally log the reason
+		if (removal.reason) {
+			log.info(`Agent provided reason for removal: ${removal.reason}`);
+		}
+		// Proceed with removal
+		args.confirm = true; // skip prompt
+	}
 	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+	const { tasksJsonPath: path, id: taskId } = args;
 	try {
 		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
+		if (!path) {
 			log.error('removeTaskDirect called without tasksJsonPath');
 			return {
 				success: false,
@@ -41,7 +83,7 @@ export async function removeTaskDirect(args, log) {
 		}
 
 		// Validate task ID parameter
-		if (!id) {
+		if (!taskId) {
 			log.error('Task ID is required');
 			return {
 				success: false,
@@ -54,20 +96,20 @@ export async function removeTaskDirect(args, log) {
 		}
 
 		// Split task IDs if comma-separated
-		const taskIdArray = id.split(',').map((taskId) => taskId.trim());
+		const taskIdArray = taskId.split(',').map((taskId) => taskId.trim());
 
 		log.info(
-			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${tasksJsonPath}`
+			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${path}`
 		);
 
 		// Validate all task IDs exist before proceeding
-		const data = readJSON(tasksJsonPath);
+		const data = readJSON(path);
 		if (!data || !data.tasks) {
 			return {
 				success: false,
 				error: {
 					code: 'INVALID_TASKS_FILE',
-					message: `No valid tasks found in ${tasksJsonPath}`
+					message: `No valid tasks found in ${path}`
 				},
 				fromCache: false
 			};
@@ -97,7 +139,7 @@ export async function removeTaskDirect(args, log) {
 		try {
 			for (const taskId of taskIdArray) {
 				try {
-					const result = await removeTask(tasksJsonPath, taskId);
+					const result = await removeTask(path, taskId);
 					results.push({
 						taskId,
 						success: true,
@@ -146,7 +188,7 @@ export async function removeTaskDirect(args, log) {
 				successful: successfulRemovals.length,
 				failed: failedRemovals.length,
 				results: results,
-				tasksPath: tasksJsonPath
+				tasksPath: path
 			},
 			fromCache: false
 		};

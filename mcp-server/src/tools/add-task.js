@@ -21,7 +21,7 @@ import { findTasksJsonPath } from '../core/utils/path-utils.js';
 export function registerAddTaskTool(server) {
 	server.addTool({
 		name: 'add_task',
-		description: 'Add a new task using AI',
+		description: 'Add a new task using AI. In MCP mode, agents should first call with mode="get_prompt" to receive a prompt/context, then generate a task using their own LLM, and finally call again with mode="submit_task" and the generated task.',
 		parameters: z.object({
 			prompt: z
 				.string()
@@ -63,7 +63,15 @@ export function registerAddTaskTool(server) {
 			research: z
 				.boolean()
 				.optional()
-				.describe('Whether to use research capabilities for task creation')
+				.describe('Whether to use research capabilities for task creation'),
+			mode: z
+				.enum(['get_prompt', 'submit_task'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt, submit_task to submit a generated task.'),
+			task: z
+				.any()
+				.optional()
+				.describe('Generated task object to insert (agent-in-the-loop mode)')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -94,16 +102,18 @@ export function registerAddTaskTool(server) {
 					);
 				}
 
-				// Call the direct function
+				// Branch logic for agent-in-the-loop
+				const mode = args.mode || (args.task ? 'submit_task' : 'get_prompt');
+
 				const result = await addTaskDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						prompt: args.prompt,
 						dependencies: args.dependencies,
 						priority: args.priority,
-						research: args.research
+						research: args.research,
+						mode,
+						task: args.task
 					},
 					log,
 					{ session }

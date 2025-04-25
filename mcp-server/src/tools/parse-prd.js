@@ -24,7 +24,7 @@ export function registerParsePRDTool(server) {
 	server.addTool({
 		name: 'parse_prd',
 		description:
-			"Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's scripts/ directory.",
+			"Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. In MCP mode, agents should first call with mode=\"get_prompt\" to receive a prompt/context, then generate tasks using their own LLM, and finally call again with mode=\"submit_tasks\" and the generated tasks.",
 		parameters: z.object({
 			input: z
 				.string()
@@ -55,7 +55,15 @@ export function registerParsePRDTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be absolute path.')
+				.describe('The directory of the project. Must be absolute path.'),
+			mode: z
+				.enum(['get_prompt', 'submit_tasks'])
+				.optional()
+				.describe('MCP agent mode: get_prompt to receive a prompt, submit_tasks to submit generated tasks.'),
+			tasks: z
+				.array(z.any())
+				.optional()
+				.describe('Array of generated tasks to insert (agent-in-the-loop mode)')
 		}),
 		execute: async (args, { log, session }) => {
 			try {
@@ -85,7 +93,9 @@ export function registerParsePRDTool(server) {
 					);
 				}
 
-				// Call the direct function with fully resolved paths
+				// Branch logic for agent-in-the-loop
+				const mode = args.mode || (args.tasks ? 'submit_tasks' : 'get_prompt');
+
 				const result = await parsePRDDirect(
 					{
 						projectRoot: projectRoot,
@@ -93,7 +103,9 @@ export function registerParsePRDTool(server) {
 						output: tasksJsonPath,
 						numTasks: args.numTasks,
 						force: args.force,
-						append: args.append
+						append: args.append,
+						mode,
+						tasks: args.tasks
 					},
 					log,
 					{ session }

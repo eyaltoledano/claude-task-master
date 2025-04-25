@@ -32,16 +32,97 @@ import {
  * @param {string} [args.file='tasks/tasks.json'] - Path to the tasks file
  * @param {string} [args.projectRoot] - Project root directory
  * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
+ * @param {string} [args.mode] - Mode of operation (get_prompt, submit_task, or manual)
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (reportProgress, session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, prompt, dependencies, priority, research } = args;
+	const { tasksJsonPath, prompt, dependencies, priority, research, mode, task } = args;
 	try {
-		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
+
+		// --- AGENT-IN-THE-LOOP: PROMPT GENERATION MODE ---
+		if (mode === 'get_prompt' || (!task && mode !== 'submit_task')) {
+			const depList = Array.isArray(dependencies)
+				? dependencies
+				: dependencies
+					? String(dependencies)
+							.split(',')
+							.map((id) => parseInt(id.trim(), 10))
+					: [];
+			const prio = priority || 'medium';
+			const promptText = `You are to generate a new high-level software development task for the following project. The task should be actionable, concise, and follow the Task Master task structure.\n\nTask description: ${prompt || ''}\nDependencies: [${depList.join(', ')}]\nPriority: ${prio}\n\nReturn a single task object with fields: title (string), description (string), details (string), testStrategy (string), dependencies (array of numbers), priority (string), status (string, optional).`;
+			return {
+				success: true,
+				data: {
+					prompt: promptText,
+					dependencies: depList,
+					priority: prio
+				},
+			};
+		}
+
+		// --- AGENT-IN-THE-LOOP: TASK SUBMISSION MODE ---
+		if ((mode === 'submit_task' || task) && typeof task === 'object' && task !== null) {
+			const t = task;
+			const errors = [];
+			if (typeof t.title !== 'string' || !t.title.trim()) {
+				errors.push(`'title' is required and must be a string.`);
+			}
+			if (typeof t.description !== 'string') {
+				errors.push(`'description' must be a string.`);
+			}
+			if (typeof t.details !== 'string') {
+				errors.push(`'details' must be a string.`);
+			}
+			if (typeof t.testStrategy !== 'string') {
+				errors.push(`'testStrategy' must be a string.`);
+			}
+			if (!Array.isArray(t.dependencies)) {
+				errors.push(`'dependencies' must be an array.`);
+			}
+			if (typeof t.priority !== 'string') {
+				errors.push(`'priority' must be a string.`);
+			}
+			if (t.status && typeof t.status !== 'string') {
+				errors.push(`'status' must be a string if provided.`);
+			}
+			if (errors.length > 0) {
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_TASK',
+						message: 'Task validation failed.',
+						details: errors
+					}
+				};
+			}
+			// Insert the task using addTask (manual mode)
+			const newTaskId = await addTask(
+				tasksJsonPath,
+				null, // No prompt needed
+				t.dependencies,
+				t.priority,
+				{
+					mcpLog: log,
+					session: context.session
+				},
+				'json',
+				null,
+				t // Pass the manual task data
+			);
+			disableSilentMode();
+			return {
+				success: true,
+				data: {
+					taskId: newTaskId,
+					message: `Successfully added new task #${newTaskId}`
+				}
+			};
+		}
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {

@@ -24,10 +24,124 @@ import {
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context; // Only extract session, not reportProgress
 	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, prompt, research } = args;
+	const { tasksJsonPath, id, prompt, research, mode, task } = args;
 
 	try {
 		log.info(`Updating task with args: ${JSON.stringify(args)}`);
+
+		// --- AGENT-IN-THE-LOOP: PROMPT GENERATION MODE ---
+		if (mode === 'get_prompt' || (!task && mode !== 'submit_task')) {
+			// Read the current task from tasks.json
+			const fs = await import('fs');
+			const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf8'));
+			let currentTask = null;
+			if (typeof id === 'string' && id.includes('.')) {
+				// Subtask (not supported here, but for completeness)
+				const [parentId, subId] = id.split('.').map(Number);
+				const parent = tasksData.tasks.find((t) => t.id === parentId);
+				if (parent && Array.isArray(parent.subtasks)) {
+					currentTask = parent.subtasks.find((st) => st.id === subId);
+				}
+			} else {
+				const taskId = typeof id === 'number' ? id : parseInt(id, 10);
+				currentTask = tasksData.tasks.find((t) => t.id === taskId);
+			}
+			const promptText = `You are to update the following task based on the new information provided. The updated task should be actionable, concise, and follow the Task Master task structure.\n\nCurrent task:\n${JSON.stringify(currentTask, null, 2)}\n\nUpdate prompt: ${prompt}\n\nReturn a single updated task object with fields: title (string), description (string), details (string), testStrategy (string), dependencies (array of numbers), priority (string), status (string, optional).`;
+			return {
+				success: true,
+				data: {
+					prompt: promptText,
+					currentTask,
+					updatePrompt: prompt
+				},
+				fromCache: false
+			};
+		}
+
+		// --- AGENT-IN-THE-LOOP: TASK SUBMISSION MODE ---
+		if ((mode === 'submit_task' || task) && typeof task === 'object' && task !== null) {
+			const t = task;
+			const errors = [];
+			if (typeof t.title !== 'string' || !t.title.trim()) {
+				errors.push(`'title' is required and must be a string.`);
+			}
+			if (typeof t.description !== 'string') {
+				errors.push(`'description' must be a string.`);
+			}
+			if (typeof t.details !== 'string') {
+				errors.push(`'details' must be a string.`);
+			}
+			if (typeof t.testStrategy !== 'string') {
+				errors.push(`'testStrategy' must be a string.`);
+			}
+			if (!Array.isArray(t.dependencies)) {
+				errors.push(`'dependencies' must be an array.`);
+			}
+			if (typeof t.priority !== 'string') {
+				errors.push(`'priority' must be a string.`);
+			}
+			if (t.status && typeof t.status !== 'string') {
+				errors.push(`'status' must be a string if provided.`);
+			}
+			if (errors.length > 0) {
+				return {
+					success: false,
+					error: {
+						code: 'INVALID_TASK',
+						message: 'Task validation failed.',
+						details: errors
+					},
+					fromCache: false
+				};
+			}
+			// Update the task in tasks.json
+			enableSilentMode();
+			const fs = await import('fs');
+			const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf8'));
+			let updated = false;
+			if (typeof id === 'string' && id.includes('.')) {
+				// Subtask (not supported here, but for completeness)
+				const [parentId, subId] = id.split('.').map(Number);
+				const parent = tasksData.tasks.find((tk) => tk.id === parentId);
+				if (parent && Array.isArray(parent.subtasks)) {
+					const idx = parent.subtasks.findIndex((st) => st.id === subId);
+					if (idx !== -1) {
+						parent.subtasks[idx] = { ...parent.subtasks[idx], ...t };
+						updated = true;
+					}
+				}
+			} else {
+				const taskId = typeof id === 'number' ? id : parseInt(id, 10);
+				const idx = tasksData.tasks.findIndex((tk) => tk.id === taskId);
+				if (idx !== -1) {
+					tasksData.tasks[idx] = { ...tasksData.tasks[idx], ...t };
+					updated = true;
+				}
+			}
+			if (updated) {
+				fs.writeFileSync(tasksJsonPath, JSON.stringify(tasksData, null, 2));
+				disableSilentMode();
+				return {
+					success: true,
+					data: {
+						message: `Successfully updated task with ID ${id} (agent-in-the-loop)`,
+						taskId: id,
+						tasksPath: tasksJsonPath
+					},
+					fromCache: false
+				};
+			} else {
+				disableSilentMode();
+				return {
+					success: false,
+					error: {
+						code: 'TASK_NOT_FOUND',
+						message: `Task with ID ${id} not found.`
+					},
+					fromCache: false
+				};
+			}
+		}
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {
