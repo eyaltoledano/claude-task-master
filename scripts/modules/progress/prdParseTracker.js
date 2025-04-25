@@ -21,7 +21,7 @@ const PRIORITY_DOTS_HORIZONTAL = {
 		chalk.keyword('orange')('●') +
 		chalk.keyword('orange')('●') +
 		chalk.white('○'), // ●●○ (two filled, one empty)
-	low: chalk.white('○') + chalk.white('○') + chalk.white('○') // ○○○ (all empty)
+	low: chalk.yellow('●') + chalk.white('○') + chalk.white('○') // ●○○ (one filled, two empty)
 };
 
 class PrdParseTracker extends EventEmitter {
@@ -93,29 +93,22 @@ class PrdParseTracker extends EventEmitter {
 		// Strategy 1: Look for complete task objects
 		let taskRegex = /\{[^{}]*?"id"\s*:\s*\d+[^{}]*?\}/g;
 
-		// Strategy 2: Also look for "title": patterns which might indicate a task
-		let titleRegex = /"title"\s*:\s*"([^"]*)"\s*,/g;
 
-		// First try the full object detection
+		// Only process complete JSON objects for tasks. Incomplete objects are buffered until finished, preventing truncated titles.
 		let match;
 		let newTasks = [];
 		while ((match = taskRegex.exec(this._jsonBuffer)) !== null) {
-			// Try to parse the object
 			try {
 				let taskObj = JSON.parse(match[0]);
-				// Only count top-level tasks (must have id, title)
 				if (taskObj && typeof taskObj.id === 'number' && taskObj.title) {
-					// Prevent double-counting using a Set of IDs
 					if (!this._seenTaskIds.has(taskObj.id)) {
 						this._seenTaskIds.add(taskObj.id);
 						this.tick(taskObj);
 						newTasks.push(taskObj);
-						// Tokens are estimated at the chunk level, not per task
 						this.log(
 							'debug',
 							`Detected streamed task: ${taskObj.id} - ${taskObj.title}`
 						);
-						// Clamp progress if necessary (handled in tick)
 					}
 				}
 			} catch (e) {
