@@ -15,6 +15,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 Some Taskmaster MCP tools that involve LLM-based generation (such as `add_task`, `add_subtask`, `expand_task`, and `parse_prd`) support an agent-in-the-loop workflow. This allows an agent to generate tasks or subtasks using its own LLM, rather than relying on an external API key or the server's LLM.
 
+**Note:** When using agent-in-the-loop mode, **API keys such as `ANTHROPIC_API_KEY` and `PERPLEXITY_API_KEY` and model-related arguments (like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`) are optional**. You only need to provide these if you want the MCP server itself to perform LLM-backed generation. If your agent is generating the content and submitting it to the MCP server, the keys and model arguments are not required.
+
 **How it works:**
 1. **Step 1: Get a Prompt/Context**
    - Call the tool with `mode: 'get_prompt'` (and any other required parameters).
@@ -397,20 +399,22 @@ Some Taskmaster MCP tools that involve LLM-based generation (such as `add_task`,
 
 Taskmaster's behavior can be customized via environment variables. These affect both CLI and MCP server operation:
 
-*   **ANTHROPIC_API_KEY** (Required): Your Anthropic API key for Claude.
-*   **MODEL**: Claude model to use (default: `claude-3-opus-20240229`). 
-*   **MAX_TOKENS**: Maximum tokens for AI responses (default: 8192).
-*   **TEMPERATURE**: Temperature for AI model responses (default: 0.7).
+*   **ANTHROPIC_API_KEY** (Optional for agent-in-the-loop): Your Anthropic API key for Claude. **Required only if you want the MCP server to use its own LLM for generation. Not required if your agent is providing LLM output.**
+*   **PERPLEXITY_API_KEY** (Optional for agent-in-the-loop): API key for Perplexity AI (for `--research` flags). **Required only if you want the MCP server to use Perplexity for research-backed generation. Not required if your agent is providing LLM output.**
+*   **MODEL** (Optional for agent-in-the-loop): Claude model to use (default: `claude-3-opus-20240229`). **Only required if the MCP server is generating LLM output.**
+*   **MAX_TOKENS** (Optional for agent-in-the-loop): Maximum tokens for AI responses (default: 8192). **Only required if the MCP server is generating LLM output.**
+*   **TEMPERATURE** (Optional for agent-in-the-loop): Temperature for AI model responses (default: 0.7). **Only required if the MCP server is generating LLM output.**
 *   **DEBUG**: Enable debug logging (`true`/`false`, default: `false`).
 *   **LOG_LEVEL**: Console output level (`debug`, `info`, `warn`, `error`, default: `info`).
 *   **DEFAULT_SUBTASKS**: Default number of subtasks for `expand` (default: 5).
 *   **DEFAULT_PRIORITY**: Default priority for new tasks (default: `medium`).
 *   **PROJECT_NAME**: Project name used in metadata.
 *   **PROJECT_VERSION**: Project version used in metadata.
-*   **PERPLEXITY_API_KEY**: API key for Perplexity AI (for `--research` flags).
 *   **PERPLEXITY_MODEL**: Perplexity model to use (default: `sonar-medium-online`).
 
 Set these in your `.env` file in the project root or in your environment before running Taskmaster.
+
+> **Note:** If you are using agent-in-the-loop mode and your agent is providing all LLM-generated content, you do not need to set `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, or any model-related environment variables in your environment.
 
 ---
 

@@ -22,15 +22,15 @@ The script can be configured through environment variables in a `.env` file at t
 
 ### Required Configuration
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude *(Optional for agent-in-the-loop mode; required only if the MCP server is generating LLM output)*
 
 ### Optional Configuration
 
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
-- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
+- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219") *(Optional for agent-in-the-loop mode)*
+- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000) *(Optional for agent-in-the-loop mode)*
+- `TEMPERATURE`: Temperature for model responses (default: 0.7) *(Optional for agent-in-the-loop mode)*
+- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation *(Optional for agent-in-the-loop mode)*
+- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online") *(Optional for agent-in-the-loop mode)*
 - `DEBUG`: Enable debug logging (default: false)
 - `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
 - `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
@@ -566,3 +566,5 @@ Key features:
 - Optionally convert subtasks to standalone tasks
 - Control whether task files are regenerated
 - Provides detailed success messages and next steps
+
+> **Note:** If you are using agent-in-the-loop mode and your agent is providing all LLM-generated content, you do not need to set `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, or any model-related environment variables. These are only required if you want the MCP server itself to perform LLM-backed generation.

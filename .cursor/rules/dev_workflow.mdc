@@ -214,6 +214,8 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 
 For tools that involve LLM-based generation (such as `add_task`, `add_subtask`, `expand_task`, and `parse_prd`), agents should use the agent-in-the-loop workflow:
 
+> **Note:** When using agent-in-the-loop mode, **API keys such as `ANTHROPIC_API_KEY` and `PERPLEXITY_API_KEY` and model-related arguments (like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`) are optional**. You only need to provide these if you want the MCP server itself to perform LLM-backed generation. If your agent is generating the content and submitting it to the MCP server, the keys and model arguments are not required.
+
 1. **Call the tool with `mode: 'get_prompt'`** to receive a prompt or context describing what to generate (task, subtask, etc.).
 2. **Generate the required object(s) using the agent's own LLM** based on the prompt/context.
 3. **Call the tool again with `mode: 'submit_task'`, `mode: 'submit_subtask'`, `mode: 'submit_subtasks'`, or `mode: 'submit_tasks'`** (as appropriate), including the generated object(s) in the correct parameter.

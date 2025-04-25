@@ -11,7 +11,7 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Requirements
 
-- Anthropic API key (Claude API)
+- Anthropic API key (Claude API) *(Optional for agent-in-the-loop mode; required only if the MCP server is generating LLM output)*
 - OpenAI SDK (for Perplexity API integration, optional)
 
 ## Quick Start
@@ -29,6 +29,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 			"command": "npx",
 			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
 			"env": {
+				// The following are OPTIONAL if you are using agent-in-the-loop mode and your agent is providing LLM output:
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
 				"MODEL": "claude-3-7-sonnet-20250219",
@@ -42,6 +43,8 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 	}
 }
 ```
+
+> **Note:** If you are using agent-in-the-loop mode and your agent is providing all LLM-generated content, you do not need to set `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, or any model-related environment variables. These are only required if you want the MCP server itself to perform LLM-backed generation.
 
 2. **Enable the MCP** in your editor
 

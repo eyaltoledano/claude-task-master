@@ -164,6 +164,10 @@ When implementing a new direct function in `mcp-server/src/core/direct-functions
 
 ### Specific Guidelines for AI-Based Direct Functions
 
+> **Note:** When using agent-in-the-loop mode, **API keys such as `ANTHROPIC_API_KEY` and `PERPLEXITY_API_KEY` and model-related arguments (like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`) are optional**. You only need to provide these if you want the MCP server itself to perform LLM-backed generation. If your agent is generating the content and submitting it to the MCP server, the keys and model arguments are not required.
+
+- LLM-based tools (e.g., `add_task`, `add_subtask`, `expand_task`, `parse_prd`) support the agent-in-the-loop workflow. See the section in `taskmaster.mdc` for details.
+
 Direct functions that interact with AI (e.g., `addTaskDirect`, `expandTaskDirect`) have additional responsibilities:
 
 - **Context Parameter**: These functions receive an additional `context` object as their third parameter. **Critically, this object should only contain `{ session }`**. Do NOT expect or use `reportProgress` from this context.
