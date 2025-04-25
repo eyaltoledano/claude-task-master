@@ -30,6 +30,12 @@ class PrdParseTracker extends EventEmitter {
         this.tokensIn = 0;
         this.tokensOut = 0;
         this.lastPrintedTaskLine = ''; // To prevent duplicate prints
+        this.currentStatusText = ''; // Holds the latest status message
+        
+        // Terminal layout management
+        this.useFixedHeader = this.options.stream.isTTY && !process.env.CI; // Only use fixed header in TTY
+        this.headerHeight = 4; // Status line + progress bar + separator + empty line
+        this.taskOutputStartLine = this.headerHeight + 1; // Line where task output starts
 
         this.stats = {
             taskCount: 0,
@@ -46,10 +52,10 @@ class PrdParseTracker extends EventEmitter {
 
         // Log function specific to this tracker instance
         this.log = (level, message) => {
-    if (LOG_LEVELS[level] >= LOG_LEVELS[this.options.logLevel]) {
-        log(level, `[PrdParseTracker] ${message}`);
-    }
-};
+            if (LOG_LEVELS[level] >= LOG_LEVELS[this.options.logLevel]) {
+                log(level, `[PrdParseTracker] ${message}`);
+            }
+        };
 
         this.log('debug', 'PrdParseTracker initialized.');
     }
@@ -74,21 +80,33 @@ class PrdParseTracker extends EventEmitter {
         // Merge initial stats
         this.stats = { ...this.stats, ...initialStats }; // Collect prdPath, outputPath etc.
         this.stats.taskCount = totalTasks; // Store total task count in stats as well
+        
+        // Initialize terminal layout for fixed header if in TTY mode
+        if (this.useFixedHeader) {
+            this._initTerminalLayout();
+        }
 
         // Initialize UI components
-        this.spinner = ora({ text: 'Parsing PRD...', stream: this.options.stream }).start();
+        this.currentStatusText = 'Initializing...'; // Initialize status text
+        this.spinner = ora({ text: this.currentStatusText, stream: this.options.stream });
+        if (!this.useFixedHeader) {
+            this.spinner.start(); // Only start spinner visually if not using fixed header
+        }
+
         this.progressBar = new cliProgress.SingleBar({
-            format: ` ${chalk.cyan('{bar}')} | ${chalk.bold('{percentage}%')}`,
+            format: ` ${chalk.cyan('{bar}')} | ${chalk.bold('{value}/{total}')} Tasks (${chalk.green('{percentage}%')})`,
             barCompleteChar: '\u2588',
             barIncompleteChar: '\u2591',
             hideCursor: true,
             clearOnComplete: false, // Keep bar visible
             stream: this.options.stream,
-            barsize: 40, // Adjust width as needed
+            barsize: 30, // Slightly smaller to accommodate the task counter
         }, cliProgress.Presets.shades_classic);
 
-        this.progressBar.start(this.totalTasks, 0); // Start bar
-        this._updateUI(); // Initial UI draw
+        this.progressBar.start(this.totalTasks || 10, 0);
+        
+        // Force initial UI draw with header and progress bar
+        this._updateUI(true);
 
         this.log('info', `Started tracking PRD parsing. Expected tasks: ${totalTasks}`);
         this.emit('start', { totalTasks });
@@ -147,8 +165,14 @@ class PrdParseTracker extends EventEmitter {
      * @param {string} text - New text for the spinner.
      */
     updateSpinnerText(text) {
-        if (this.spinner) {
-            this.spinner.text = text;
+        this.log('debug', `Updating status text: ${text}`);
+        if (this.useFixedHeader) {
+            this.currentStatusText = text;
+            this._updateUI(); // Trigger UI update to show new text in the fixed header
+        } else {
+            if (this.spinner) {
+                this.spinner.text = text; // Update ora spinner directly
+            }
         }
     }
 
@@ -160,38 +184,56 @@ class PrdParseTracker extends EventEmitter {
      */
     finish(success = true, finalStats = {}, summaryCallback = null) {
         if (!this.startTime) {
-            this.log('warn', 'Tracker finish() called before start().');
-            // Attempt graceful cleanup if possible
-            if (this.spinner) this.spinner.stop();
-            if (this.progressBar) this.progressBar.stop();
+            this.log('warn', 'finish() called before start(). Ignoring.');
             return;
         }
 
         this.stats.endTime = Date.now();
-        this.stats = { ...this.stats, ...finalStats }; // Merge final stats
+        // Merge final stats
+        this.stats = { ...this.stats, ...finalStats };
 
+        // If tasks completed, assume total matches completed unless specified
+        if (this.completedTasks > 0 && this.totalTasks === 0) {
+            this.totalTasks = this.completedTasks;
+            this.stats.taskCount = this.completedTasks;
+        }
+        
+        // Set final status text before final UI update
+        const finishMessage = success ? 'PRD parsing complete!' : `PRD parsing failed: ${this.stats.error || 'Unknown error'}`;
+        this.currentStatusText = finishMessage;
+        
+        // Reset terminal display to a clean state if needed
+        if (this.useFixedHeader) {
+            // Clear the screen and reposition
+            process.stdout.write('\u001B[2J'); // Clear screen
+            process.stdout.write('\u001B[H'); // Move to home position
+        }
+
+        // Complete progress bar
         if (this.progressBar) {
-            // Ensure bar shows 100% if successful and tasks match
-            if (success && this.completedTasks >= this.totalTasks) {
-                 this.progressBar.update(this.totalTasks);
-            }
             this.progressBar.stop();
+            this.progressBar = null;
         }
 
-        // Persist the last status line before stopping spinner
-        this._updateUI(true); // Force redraw status line one last time
+        // Render the final status line and clear progress bar line
+        this._updateUI(true); // Force final UI draw with finish message
 
-        if (this.spinner) {
+        // Stop spinner ONLY if it was visually running
+        if (this.spinner && this.spinner.isSpinning) { // Check if spinner was actually started
             if (success) {
-                this.spinner.succeed(chalk.green('PRD parsing complete!'));
+                this.spinner.succeed(finishMessage); // Use final message
             } else {
-                this.spinner.fail(chalk.red(`PRD parsing failed: ${this.stats.error || 'Unknown error'}`));
+                this.spinner.fail(finishMessage); // Use final message
             }
+        } else if (this.spinner && !this.useFixedHeader) {
+            // If not fixed header, but spinner wasn't running? Stop it cleanly.
+            this.spinner.stop();
         }
+        this.spinner = null; // Clear spinner instance
 
         // Call the summary callback AFTER stopping spinner/bar
         if (summaryCallback && typeof summaryCallback === 'function') {
-             this.log('debug', 'Calling summary callback.');
+            this.log('debug', 'Calling summary callback.');
             summaryCallback({
                 totalTasks: this.stats.taskCount || this.completedTasks, // Use actual completed if total wasn't accurate
                 prdFilePath: this.stats.prdPath,
@@ -216,60 +258,113 @@ class PrdParseTracker extends EventEmitter {
 
     // --- Private Helper Methods ---
 
-    _updateUI(forceStatusLineRedraw = false) {
+    _updateUI(forceStatusLineRedraw = false) { // Keep force flag for potential future use
         if (!this.startTime) return;
 
-        this._printStatusLine(forceStatusLineRedraw);
-        if (this.progressBar) {
-            this.progressBar.update(this.completedTasks);
+        const statusLineText = this._printStatusLine(); // Get the text to display
+
+        if (this.useFixedHeader) {
+            // Save cursor position
+            process.stdout.write('\u001B[s');
+            
+            // Update status line (line 1)
+            process.stdout.write('\u001B[1;0H');
+            process.stdout.write('\u001B[2K'); // Clear line
+            process.stdout.write(statusLineText); // Write the generated text
+            
+            // Update progress bar (line 2)
+            if (this.progressBar) {
+                process.stdout.write('\u001B[2;0H');
+                process.stdout.write('\u001B[2K'); // Clear line
+                this.progressBar.update(this.completedTasks);
+            }
+            
+            // Restore cursor position
+            process.stdout.write('\u001B[u');
+        } else {
+            // Standard mode - update spinner text
+            if (this.spinner) {
+                this.spinner.text = statusLineText.trim(); // Update spinner text
+                // Spinner handles rendering implicitly or via its timer
+            }
+            // Progress bar update is handled separately below in standard mode
+            if (this.progressBar) {
+                this.progressBar.update(this.completedTasks);
+            }
         }
     }
 
-    _printStatusLine(forceRedraw = false) {
-        if (!this.options.stream.isTTY) return; // Skip if not a TTY
+    _printStatusLine() { // No forceRedraw needed here
+        if (!this.options.stream.isTTY) return ''; // Return empty if not TTY
 
         const elapsedTime = this._formatElapsedTime(this.startTime);
-        const taskProgress = `Tasks: ${this.completedTasks}/${this.totalTasks}`;
+        const taskProgress = `Tasks: ${this.completedTasks}/${this.totalTasks || '?'}`;
         const tokenInfo = `Tokens(I/O): ${this.tokensIn}/${this.tokensOut}`;
-        const statusText = ` ${elapsedTime} | ${taskProgress} | ${tokenInfo} `; // Add padding
 
-        // Avoid unnecessary redraws if spinner/bar handle cursor movement
-        // However, force redraw if requested (e.g., before spinner stop)
-        if (forceRedraw) {
-            this.options.stream.clearLine(0); // Clear current line
-            this.options.stream.cursorTo(0);
-            this.options.stream.write(statusText + '\n'); // Write status and move to next line for bar
+        let statusText = '';
+        if (this.useFixedHeader) {
+            // Fixed header: Prepend status text, then other info
+            const prefix = this.currentStatusText ? `${this.currentStatusText} | ` : '';
+            statusText = `${prefix}${elapsedTime} | ${taskProgress} | ${tokenInfo}`;
+            // Simple truncation if too long
+            const maxWidth = (process.stdout.columns || 80) - 2; // Leave some padding
+            if (statusText.length > maxWidth) {
+                statusText = statusText.substring(0, maxWidth - 3) + '...';
+            }
+            statusText = ` ${statusText} `; // Add padding
         } else {
-            // Rely on ora/cli-progress to manage cursor, maybe update spinner text
-             if (this.spinner) {
-                 this.spinner.text = statusText; // Update spinner text instead of direct write
-             }
+            // Standard mode: core info, spinner adds its own animation
+            statusText = ` ${elapsedTime} | ${taskProgress} | ${tokenInfo} `;
         }
+        return statusText;
     }
 
-     _printTask(task) {
-        if (!this.options.stream.isTTY) return; // Skip if not a TTY
+    _printTask(task) {
+        if (!this.options.stream.isTTY) return; // Skip layout in non-TTY
 
+        // Format the priority indicator
         const priority = task.priority?.toLowerCase() || 'medium';
         const dots = PRIORITY_DOTS[priority] || PRIORITY_DOTS.medium;
-        const taskLine = ` ${CHECKMARK} ${dots} ${chalk.bold(`Task ${task.taskId || this.completedTasks}:`)} ${task.title}`;
 
-        // Simple check to avoid printing the exact same line consecutively if events fire rapidly
-        if (taskLine === this.lastPrintedTaskLine) return;
+        // Format task line
+        const taskPrefix = task.isPlaceholder ? chalk.cyan('\u22ef ') : CHECKMARK + ' ';
+        const taskLine = `${taskPrefix}${dots} ${task.title}`;
+
+        // Skip duplicate output
+        if (taskLine === this.lastPrintedTaskLine) {
+            this.log('debug', 'Skipping duplicate task output');
+            return;
+        }
         this.lastPrintedTaskLine = taskLine;
 
-        // Ensure spinner and progress bar don't interfere
-        if (this.spinner) this.spinner.clear(); // Clear spinner before logging
-        if (this.progressBar) {
-            // No direct 'clear' for cli-progress bar, rely on stream position
-            // A newline before printing ensures it's below the bar
-            this.options.stream.write('\n');
+        // Position cursor for task output
+        if (this.useFixedHeader) {
+            // Save cursor position
+            process.stdout.write('\u001B[s');
+            
+            // Move cursor to task output area (below fixed header)
+            process.stdout.write(`\u001B[${this.taskOutputStartLine};0H`);
+            
+            // Write the task
+            process.stdout.write(taskLine + '\n');
+            
+            // Restore cursor position
+            process.stdout.write('\u001B[u');
+        } else {
+            // Standard mode - handle spinner/progress bar interference
+            if (this.spinner) this.spinner.clear(); // Clear spinner before logging
+            if (this.progressBar) {
+                // Ensure task appears below progress bar
+                this.options.stream.write('\n');
+            }
+            
+            this.options.stream.write(taskLine + '\n');
+            
+            if (this.spinner) this.spinner.render(); // Redraw spinner
         }
-
-        this.options.stream.write(taskLine + '\n');
-
-        if (this.spinner) this.spinner.render(); // Redraw spinner
-        // ProgressBar redraw is handled by _updateUI -> progressBar.update()
+        
+        // Update progress UI after task output
+        this._updateUI();
     }
 
     _formatElapsedTime(startTime) {
@@ -277,6 +372,38 @@ class PrdParseTracker extends EventEmitter {
         const seconds = Math.floor(elapsedMs / 1000) % 60;
         const minutes = Math.floor(elapsedMs / (1000 * 60));
         return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    }
+    
+    /**
+     * Initialize the terminal layout for fixed header mode
+     * Sets up the fixed header area at the top of the terminal
+     */
+    _initTerminalLayout() {
+        if (!this.options.stream.isTTY) return;
+        
+        try {
+            // Reset terminal display completely
+            process.stdout.write('\u001B[2J'); // Clear entire screen 
+            process.stdout.write('\u001B[0;0H'); // Move to absolute top left
+            
+            // Create space for header and progress bar (4 lines)
+            // 1 for status line, 1 for progress bar, 1 for separator, 1 empty
+            process.stdout.write('\n\n\n\n');
+            
+            // Draw separator line after header section
+            const separator = '\u2500'.repeat(process.stdout.columns || 80);
+            process.stdout.write('\u001B[3;0H'); // Go to line 3
+            process.stdout.write(separator);
+            
+            // Move to line 5 (after separator and blank line) and save position
+            // This is where task output will start
+            process.stdout.write(`\u001B[${this.taskOutputStartLine};0H`);
+            process.stdout.write('\u001B[s'); // Save cursor position for task output
+        } catch (error) {
+            this.log('error', `Error initializing terminal layout: ${error.message}`);
+            // Fallback to non-fixed header
+            this.useFixedHeader = false;
+        }
     }
 
     /**
@@ -327,13 +454,20 @@ class PrdParseTracker extends EventEmitter {
     }
 
     setThinking(isThinking) {
-        // Spinner handles visual state. Emit event if needed.
-        if (isThinking) {
-             this.updateSpinnerText('Thinking...');
-        } else {
-             // Revert to previous or default text - requires storing state
-             // Or maybe just let the next status update handle it.
+        // Update the core status text used by the fixed header
+        this.currentStatusText = isThinking ? 'Generating tasks...' : 'Receiving response...';
+
+        // Update spinner text for non-fixed-header mode
+        if (this.spinner) {
+             this.updateSpinnerText(this.currentStatusText);
         }
+
+        // If using fixed header, immediately update the UI
+        if (this.useFixedHeader) {
+            this._updateUI();
+        }
+
+        // Emit event if needed (useful for potential external listeners)
         this.emit('thinking', isThinking);
     }
 

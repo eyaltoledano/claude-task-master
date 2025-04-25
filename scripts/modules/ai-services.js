@@ -157,7 +157,7 @@ async function callClaude(
 	prdPath,
 	numTasks,
 	retryCount = 0,
-	{ reportProgress, mcpLog, session, streamingTracker } = {},
+	{ reportProgress, mcpLog, session, tracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -239,7 +239,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 			numTasks,
 			modelConfig?.maxTokens || CONFIG.maxTokens,
 			systemPrompt,
-			{ reportProgress, mcpLog, session, streamingTracker },
+			{ reportProgress, mcpLog, session, tracker },
 			aiClient || anthropic,
 			modelConfig
 		);
@@ -267,7 +267,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 				prdPath,
 				numTasks,
 				retryCount + 1,
-				{ reportProgress, mcpLog, session, streamingTracker },
+				{ reportProgress, mcpLog, session, tracker },
 				aiClient,
 				modelConfig
 			);
@@ -302,7 +302,7 @@ async function handleStreamingRequest(
 	numTasks,
 	maxTokens,
 	systemPrompt,
-	{ reportProgress, mcpLog, session, streamingTracker } = {},
+	{ reportProgress, mcpLog, session, tracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -333,7 +333,7 @@ async function handleStreamingRequest(
 
 	try {
 		// Indicate thinking before the API call
-		if (streamingTracker) streamingTracker.setThinking(true);
+		if (tracker) tracker.setThinking(true);
 
 		// Use streaming for handling large responses
 		const stream = await (aiClient || anthropic).messages.create({
@@ -369,19 +369,23 @@ async function handleStreamingRequest(
 		}
 
 		// Process the stream
+		let firstContentReceived = false;
 		for await (const chunk of stream) {
 			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-				responseText += chunk.delta.text;
-
-				/* realtime tracker hook */
-				if (streamingTracker) {
-					// Call tracker methods correctly
-					streamingTracker.incrementChunkCount(); 
-					// Pass chunk text to update - the tracker might use it or ignore it
-					streamingTracker.update(chunk.delta.text); 
-					// Optional: Update status periodically if desired (uncomment if needed)
-					// streamingTracker.setStatus('Receiving data...'); 
+				// Stop the loading indicator when we have task-related content
+				// This prevents the spinner from flickering over task output
+				if (!firstContentReceived && loadingIndicator && outputFormat === 'text' && !isSilentMode() &&
+					// Check for task-related content in the chunk
+					(chunk.delta.text.includes('"id"') || chunk.delta.text.includes('"title"'))) {
+					firstContentReceived = true;
+					log('debug', 'First task content detected, stopping loading indicator');
+					// Stop the loading indicator and clean up the line
+					stopLoadingIndicator(loadingIndicator);
+					loadingIndicator = null;
+					// Don't try to position the cursor - let PrdParseTracker handle it
 				}
+				
+				responseText += chunk.delta.text;
 			}
 			if (reportProgress) {
 				await reportProgress({
@@ -395,13 +399,16 @@ async function handleStreamingRequest(
 
 		if (streamingInterval) clearInterval(streamingInterval);
 
-		// Only call stopLoadingIndicator if we started one
+		// Only call stopLoadingIndicator if we still have one (wasn't already stopped)
 		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
 			stopLoadingIndicator(loadingIndicator);
+			loadingIndicator = null;
+			// We can clear the line but let PrdParseTracker handle further positioning
+			process.stdout.write('\r\u001B[K');
 		}
 
 		// Indicate thinking stopped after the loop
-		if (streamingTracker) streamingTracker.setThinking(false);
+		if (tracker) tracker.setThinking(false);
 
 		report(
 			`Completed streaming response from ${aiClient ? 'provided' : 'default'} AI client!`,
@@ -418,29 +425,24 @@ async function handleStreamingRequest(
 			{ reportProgress, mcpLog, session }
 		);
 	} catch (error) {
-		if (streamingInterval) clearInterval(streamingInterval);
-
-		// Only call stopLoadingIndicator if we started one
-		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
-			stopLoadingIndicator(loadingIndicator);
-		}
-
 		// Get user-friendly error message
 		const userMessage = handleClaudeError(error);
-		// Report error to the tracker
-		if (streamingTracker) streamingTracker.setError(userMessage); 
+		// Report error to the tracker - REMOVED INCORRECT CALL
 		report(`Error: ${userMessage}`, 'error');
 
 		// Only show console error for text output (CLI)
 		if (outputFormat === 'text' && !isSilentMode()) {
-			console.error(chalk.red(userMessage));
+			console.error(chalk.red(`Error: ${userMessage}`));
 		}
 
-		if (CONFIG.debug && outputFormat === 'text' && !isSilentMode()) {
-			log('debug', 'Full error:', error);
+		// Clean up progress indicators if they were started
+		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
+			stopLoadingIndicator(loadingIndicator);
 		}
+		if (streamingInterval) clearInterval(streamingInterval);
 
-		throw new Error(userMessage);
+		// Re-throw the error to be handled by the caller
+		throw error; 
 	}
 }
 
