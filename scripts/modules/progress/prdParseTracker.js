@@ -16,9 +16,9 @@ const PRIORITY_DOTS = {
 };
 
 const PRIORITY_DOTS_HORIZONTAL = {
-    high: chalk.red('●●●'),
-    medium: chalk.keyword('orange')('●●'),
-    low: chalk.yellow('●')
+    high: chalk.red('●') + chalk.red('●') + chalk.red('●'), // ●●● (all filled)
+    medium: chalk.keyword('orange')('●') + chalk.keyword('orange')('●') + chalk.white('○'), // ●●○ (two filled, one empty)
+    low: chalk.white('○') + chalk.white('○') + chalk.white('○') // ○○○ (all empty)
 };
 
 
@@ -335,14 +335,6 @@ class PrdParseTracker extends EventEmitter {
             this._spinnerInterval = null;
         }
         
-        // Update spinner with completion status (only if still active)
-        if (this.spinnerBar && this.multiBar) {
-            this.spinnerBar.update(1, {
-                spinner: success ? chalk.green('✓') : chalk.red('✗'),
-                text: success ? 'Task generation complete!' : 'Task generation failed.',
-            });
-        }
-        
         // Update progress bar to 100% if successful
         if (this.progressBar && success) {
             this.progressBar.update(this.totalTasks);
@@ -355,10 +347,6 @@ class PrdParseTracker extends EventEmitter {
         }
         // Print summary
         const elapsedTime = this._formatElapsedTime(this.startTime);
-        console.log(chalk.green.bold(`\nSuccessfully generated ${this.completedTasks} tasks from PRD in ${elapsedTime}.`));
-        if (this.stats.outputPath) {
-            console.log(chalk.white(`Tasks saved to: ${this.stats.outputPath}`));
-        }
     }
 }
 

@@ -1734,21 +1734,22 @@ async function confirmTaskOverwrite(tasksPath) {
 
 /**
  * Display the start of PRD parsing with a boxen announcement
- * @param {string} prdFilePath - Path to the PRD file being parsed
- * @param {string} outputPath - Path where the tasks will be saved
- * @param {number} numTasks - Number of tasks to generate
- * @param {string} model - AI model name
- * @param {number} temperature - AI temperature setting
- * @param {boolean} append - Whether to append to existing tasks
+ * @param {Object} options - Options for PRD parsing start
+ * @param {string} options.prdFilePath - Path to the PRD file being parsed
+ * @param {string} options.outputPath - Path where the tasks will be saved
+ * @param {number} options.numTasks - Number of tasks to generate
+ * @param {string} [options.model=CONFIG.model] - AI model name
+ * @param {number} [options.temperature=CONFIG.temperature] - AI temperature setting
+ * @param {boolean} [options.append=false] - Whether to append to existing tasks
  */
-function displayPRDParsingStart(
+function displayPRDParsingStart({
 	prdFilePath,
 	outputPath,
 	numTasks,
 	model = CONFIG.model,
 	temperature = CONFIG.temperature,
 	append = false
-) {
+}) {
 	// Determine the action verb based on append flag
 	const actionVerb = append ? 'Appending' : 'Generating';
 	// Create the message content with all information
