@@ -225,12 +225,7 @@ async function parsePRD(
 		}
 
 		// Finish tracker successfully
-		progressTracker.finish(true, {
-			taskCount: tasksData.tasks.length,
-			prdPath,
-			outputPath: tasksPath,
-			actionVerb
-		});
+		progressTracker.finish(true);
 
 		// Only show success boxes for text output (CLI) after all async work is done
 		if (outputFormat === 'text') {
