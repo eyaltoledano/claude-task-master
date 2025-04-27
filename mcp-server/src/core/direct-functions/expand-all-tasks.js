@@ -105,6 +105,20 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 				'json' // Use JSON output format to prevent UI elements
 			);
 
+			// After expanding, regenerate individual task files
+			let fileGenResult;
+			try {
+				const { generateTaskFilesDirect } = await import('./generate-task-files.js');
+				const outputDir = path.dirname(tasksPath);
+				fileGenResult = await generateTaskFilesDirect({ tasksJsonPath: tasksPath, outputDir }, log);
+			} catch (fileGenError) {
+				log.error(`Error generating individual task files: ${fileGenError.message}`);
+				fileGenResult = {
+					success: false,
+					error: { code: 'FILE_GENERATION_ERROR', message: fileGenError.message }
+				};
+			}
+
 			// The expandAllTasks function now returns a result object
 			return {
 				success: true,
@@ -116,7 +130,8 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 						prompt: additionalContext,
 						force: forceFlag,
 						tasksExpanded: result.expandedCount,
-						totalEligibleTasks: result.tasksToExpand
+						totalEligibleTasks: result.tasksToExpand,
+						fileGeneration: fileGenResult
 					}
 				}
 			};
