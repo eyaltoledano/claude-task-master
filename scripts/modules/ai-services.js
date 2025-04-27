@@ -269,7 +269,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 				prdPath,
 				numTasks,
 				retryCount + 1,
-				{ reportProgress, mcpLog, session, progressTracker },
+				{ reportProgress, mcpLog, session, append, progressTracker },
 				aiClient,
 				modelConfig
 			);
