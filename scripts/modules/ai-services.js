@@ -286,7 +286,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 /**
  * Handle streaming request to Claude
  * @param {string} prdContent - PRD content
- * @param {string} prdPath - Path to the PRD file
+ * @param {string} pƒrdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} maxTokens - Maximum tokens
  * @param {string} systemPrompt - System prompt
@@ -395,7 +395,7 @@ async function handleStreamingRequest(
 		if (streamingInterval) clearInterval(streamingInterval);
 
 		// Only call stopLoadingIndicator if we started one
-		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
+		if (loadingIndicator && !progressTracker && outputFormat === 'text' && !isSilentMode()) {
 			stopLoadingIndicator(loadingIndicator);
 		}
 
@@ -419,7 +419,7 @@ async function handleStreamingRequest(
 		if (streamingInterval) clearInterval(streamingInterval);
 
 		// Only call stopLoadingIndicator if we started one
-		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
+		if (loadingIndicator && !progressTracker && outputFormat === 'text' && !isSilentMode()) {
 			stopLoadingIndicator(loadingIndicator);
 		}
 
@@ -432,11 +432,9 @@ async function handleStreamingRequest(
 			console.error(chalk.red(userMessage));
 		}
 
-		// Clean up progress indicators if they were started
-		if (loadingIndicator && outputFormat === 'text' && !isSilentMode()) {
-			stopLoadingIndicator(loadingIndicator);
-		}
-		if (streamingInterval) clearInterval(streamingInterval);
+		if (CONFIG.debug && outputFormat === 'text' && !isSilentMode()) {
+			log('debug', 'Full error:', error);
+
 
 		throw new Error(userMessage);
 	}
