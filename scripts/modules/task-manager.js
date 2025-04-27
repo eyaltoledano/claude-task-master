@@ -114,10 +114,15 @@ async function parsePRD(
 ) {
 	const { reportProgress, mcpLog, session, append } = options;
 
+	// Determine actionVerb for progress tracker
+	let actionVerb = append ? 'Appending' : 'Generating';
+
 	// Initialize progress tracking
 	const progressTracker = createPrdParseTracker({
-		logLevel: CONFIG.debug ? 'debug' : 'info'
+		logLevel: CONFIG.debug ? 'debug' : 'info',
+		actionVerb
 	});
+
 	// Initialize with requested number of tasks
 	progressTracker.start(numTasks, { prdPath, outputPath: tasksPath });
 
@@ -224,7 +229,7 @@ async function parsePRD(
 
 		// Write the tasks to the file
 		writeJSON(tasksPath, tasksData);
-		const actionVerb = append ? 'appended' : 'generated';
+		actionVerb = append ? 'appended' : 'generated';
 
 		// Generate individual task files
 		if (reportProgress && mcpLog) {

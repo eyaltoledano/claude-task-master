@@ -179,6 +179,7 @@ class PrdParseTracker extends EventEmitter {
 		this.multiBar = newMultiBar();
 
 		// Spinner line ALWAYS CREATED FIRST to ensure it appears at the top
+		const actionVerb = this.options.actionVerb || 'Generating';
 		this.spinnerBar = this.multiBar.create(
 			1,
 			0,
@@ -191,7 +192,7 @@ class PrdParseTracker extends EventEmitter {
 				forceRedraw: true // Force redraw to ensure visibility
 			}
 		);
-		this._spinnerText = 'Generating tasks from PRD...';
+		this._spinnerText = `${actionVerb} tasks from PRD...`;
 		this.spinnerBar.update(1, {
 			spinner: this._spinnerFrames[this._spinnerIndex],
 			text: this._spinnerText
