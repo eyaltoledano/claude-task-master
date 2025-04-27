@@ -286,7 +286,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 /**
  * Handle streaming request to Claude
  * @param {string} prdContent - PRD content
- * @param {string} pƒrdPath - Path to the PRD file
+ * @param {string} prdPath - Path to the PRD file
  * @param {number} numTasks - Number of tasks to generate
  * @param {number} maxTokens - Maximum tokens
  * @param {string} systemPrompt - System prompt
