@@ -108,14 +108,24 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			// After expanding, regenerate individual task files
 			let fileGenResult;
 			try {
-				const { generateTaskFilesDirect } = await import('./generate-task-files.js');
+				const { generateTaskFilesDirect } = await import(
+					'./generate-task-files.js'
+				);
 				const outputDir = path.dirname(tasksPath);
-				fileGenResult = await generateTaskFilesDirect({ tasksJsonPath: tasksPath, outputDir }, log);
+				fileGenResult = await generateTaskFilesDirect(
+					{ tasksJsonPath: tasksPath, outputDir },
+					log
+				);
 			} catch (fileGenError) {
-				log.error(`Error generating individual task files: ${fileGenError.message}`);
+				log.error(
+					`Error generating individual task files: ${fileGenError.message}`
+				);
 				fileGenResult = {
 					success: false,
-					error: { code: 'FILE_GENERATION_ERROR', message: fileGenError.message }
+					error: {
+						code: 'FILE_GENERATION_ERROR',
+						message: fileGenError.message
+					}
 				};
 			}
 
