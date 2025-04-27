@@ -239,7 +239,7 @@ async function parsePRD(
 					chalk.green(
 						`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`
 					),
-					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+					{ padding: 1, margin: { top: 1 }, borderColor: 'green', borderStyle: 'round' }
 				)
 			);
 

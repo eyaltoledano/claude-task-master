@@ -1778,7 +1778,7 @@ function displayPRDParsingStart({
 	console.log(
 		boxen(message, {
 			padding: { top: 1, bottom: 1, left: 2, right: 2 },
-			margin: { top: 0, bottom: 0 },
+			margin: { top: 0, bottom: 1 },
 			borderColor: 'blue', // Changed from 'green' to 'blue' for consistency
 			borderStyle: 'round'
 		})
