@@ -203,7 +203,7 @@ class PrdParseTracker extends EventEmitter {
 			0,
 			{},
 			{
-				format: `{clock} {elapsed}  ${PRIORITY_DOTS.high} {high}  ${PRIORITY_DOTS.medium} {medium}  ${PRIORITY_DOTS.low} {low}  Tokens (I/O): {in}/{out} | Est: {remaining}`,
+				format: `{clock} {elapsed} | ${PRIORITY_DOTS.high} {high}  ${PRIORITY_DOTS.medium} {medium}  ${PRIORITY_DOTS.low} {low} | Tokens (I/O): {in}/{out} | Est: {remaining}`,
 				barsize: 1,
 				hideCursor: true,
 				clearOnComplete: false
