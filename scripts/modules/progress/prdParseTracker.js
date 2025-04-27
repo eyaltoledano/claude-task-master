@@ -80,17 +80,12 @@ class PrdParseTracker extends EventEmitter {
 		// tokensIn is set once at initialization, not incrementally
 		if (!chunk) return;
 
-		// Log chunk for debugging (uncomment if needed)
-		// this.log('debug', `Received chunk: ${chunk.substring(0, 50)}...`);
-
 		// Estimate tokens out based on the chunk size (char count / 4)
 		this.tokensOut += Math.round(chunk.length / 4);
 
 		this._jsonBuffer += chunk;
 
-		// Try multiple detection strategies
-
-		// Strategy 1: Look for complete task objects
+		// Look for complete task objects
 		let taskRegex = /\{[^{}]*?"id"\s*:\s*\d+[^{}]*?\}/g;
 
 		// Only process complete JSON objects for tasks. Incomplete objects are buffered until finished, preventing truncated titles.
