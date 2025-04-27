@@ -9,7 +9,6 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
-import cliProgress from 'cli-progress';
 import {
 	CONFIG,
 	log,
