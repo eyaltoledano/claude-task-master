@@ -4,9 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import { log, LOG_LEVELS } from '../utils.js';
 import { newMultiBar } from './cliProgressFactory.js';
-// No need for external spinner library - using cli-progress multibar
-
-// Spinner + progress bar mode for PRD parsing
 
 const PRIORITY_DOTS = {
 	high: chalk.red('⋮'), // vertical ellipsis for 3 dots
@@ -50,7 +47,7 @@ class PrdParseTracker extends EventEmitter {
 		};
 		this.taskBars = [];
 
-		// Spinner frames for multibar spinner
+		// Spinner frames for multibar spinner; Ora interferes with cli-progres bar
 		this._spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 		this._spinnerIndex = 0;
 		this.priorityCounts = { high: 0, medium: 0, low: 0 }; // High, Medium, Low
