@@ -225,11 +225,6 @@ async function parsePRD(
 		// Write the tasks to the file
 		writeJSON(tasksPath, tasksData);
 		const actionVerb = append ? 'appended' : 'generated';
-		report(
-			`Successfully ${actionVerb} ${newTasksData.tasks.length} tasks from PRD`,
-			'success'
-		);
-		report(`Tasks saved to: ${tasksPath}`, 'info');
 
 		// Generate individual task files
 		if (reportProgress && mcpLog) {

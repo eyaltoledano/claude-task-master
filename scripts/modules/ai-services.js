@@ -420,10 +420,12 @@ async function handleStreamingRequest(
 			stopLoadingIndicator(loadingIndicator);
 		}
 
-		report(
-			`Completed streaming response from ${aiClient ? 'provided' : 'default'} AI client!`,
-			'info'
-		);
+		if (!progressTracker) {
+			report(
+				`Completed streaming response from ${aiClient ? 'provided' : 'default'} AI client!`,
+				'info'
+			);
+		}
 
 		// Pass options to processClaudeResponse
 		return processClaudeResponse(
