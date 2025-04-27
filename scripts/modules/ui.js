@@ -1998,8 +1998,6 @@ function displayPRDParsingSummary(summary) {
 			}
 		)
 	);
-
-	// We've moved the task file range display to be part of the main table
 }
 
 /**
