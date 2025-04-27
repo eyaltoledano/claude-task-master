@@ -395,7 +395,12 @@ async function handleStreamingRequest(
 		if (streamingInterval) clearInterval(streamingInterval);
 
 		// Only call stopLoadingIndicator if we started one
-		if (loadingIndicator && !progressTracker && outputFormat === 'text' && !isSilentMode()) {
+		if (
+			loadingIndicator &&
+			!progressTracker &&
+			outputFormat === 'text' &&
+			!isSilentMode()
+		) {
 			stopLoadingIndicator(loadingIndicator);
 		}
 
@@ -419,7 +424,12 @@ async function handleStreamingRequest(
 		if (streamingInterval) clearInterval(streamingInterval);
 
 		// Only call stopLoadingIndicator if we started one
-		if (loadingIndicator && !progressTracker && outputFormat === 'text' && !isSilentMode()) {
+		if (
+			loadingIndicator &&
+			!progressTracker &&
+			outputFormat === 'text' &&
+			!isSilentMode()
+		) {
 			stopLoadingIndicator(loadingIndicator);
 		}
 
