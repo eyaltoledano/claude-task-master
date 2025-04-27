@@ -1048,8 +1048,7 @@ async function _handleAnthropicStream(
 	client,
 	params,
 	{ reportProgress, mcpLog, silentMode } = {},
-	cliMode = false,
-	onChunk
+	cliMode = false
 ) {
 	// Only set up loading indicator in CLI mode and not in silent mode
 	let loadingIndicator = null;
@@ -1122,13 +1121,6 @@ async function _handleAnthropicStream(
 				// Process the chunk
 				if (chunk && chunk.type === 'content_block_delta' && chunk.delta.text) {
 					responseText += chunk.delta.text;
-
-					// invoke realtime tracker if supplied
-					if (onChunk) {
-						onChunk(chunk.delta.text, {
-							percent: (responseText.length / maxTokens) * 100
-						});
-					}
 				}
 
 				// Report progress - use only mcpLog in MCP context and avoid direct reportProgress calls
