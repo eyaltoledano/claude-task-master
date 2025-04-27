@@ -183,7 +183,7 @@ async function parsePRD(
 			prdPath,
 			numTasks,
 			0,
-			{ reportProgress, mcpLog, session, progressTracker, actionVerb },
+			{ reportProgress, mcpLog, session, append, progressTracker },
 			aiClient,
 			modelConfig
 		);

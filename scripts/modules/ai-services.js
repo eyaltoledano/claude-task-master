@@ -157,7 +157,7 @@ async function callClaude(
 	prdPath,
 	numTasks,
 	retryCount = 0,
-	{ reportProgress, mcpLog, session, progressTracker, actionVerb } = {},
+	{ reportProgress, mcpLog, session, append, progressTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -241,7 +241,7 @@ Your response should be valid JSON only, with no additional explanation or comme
 			numTasks,
 			modelConfig?.maxTokens || CONFIG.maxTokens,
 			systemPrompt,
-			{ reportProgress, mcpLog, session, progressTracker, actionVerb },
+			{ reportProgress, mcpLog, session, append, progressTracker },
 			aiClient || anthropic,
 			modelConfig
 		);
@@ -304,7 +304,7 @@ async function handleStreamingRequest(
 	numTasks,
 	maxTokens,
 	systemPrompt,
-	{ reportProgress, mcpLog, session, progressTracker, actionVerb } = {},
+	{ reportProgress, mcpLog, session, append, progressTracker } = {},
 	aiClient = null,
 	modelConfig = null
 ) {
@@ -324,7 +324,7 @@ async function handleStreamingRequest(
 	// Only show loading indicators for text output (CLI) & NOT using a real-time progress tracker
 	let loadingIndicator = null;
 	// Use actionVerb if provided in options; default to 'Generating'
-	const actionVerb = (options && options.actionVerb) || (options && options.append ? 'Appending' : 'Generating');
+	const actionVerb = append ? 'Appending' : 'Generating';
 	if (!progressTracker && outputFormat === 'text' && !isSilentMode()) {
 		loadingIndicator = startLoadingIndicator(`${actionVerb} tasks from PRD...`);
 	}
