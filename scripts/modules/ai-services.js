@@ -426,7 +426,6 @@ async function handleStreamingRequest(
 
 		// Get user-friendly error message
 		const userMessage = handleClaudeError(error);
-		// Report error to the tracker - REMOVED INCORRECT CALL
 		report(`Error: ${userMessage}`, 'error');
 
 		// Only show console error for text output (CLI)
@@ -440,8 +439,7 @@ async function handleStreamingRequest(
 		}
 		if (streamingInterval) clearInterval(streamingInterval);
 
-		// Re-throw the error to be handled by the caller
-		throw error;
+		throw new Error(userMessage);
 	}
 }
 
