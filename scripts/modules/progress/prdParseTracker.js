@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
 import { log, LOG_LEVELS } from '../utils.js';
-import { displayPRDParsingSummary } from '../ui.js'; // Keep for potential direct use if needed
 import { newMultiBar } from './cliProgressFactory.js';
 // No need for external spinner library - using cli-progress multibar
 
