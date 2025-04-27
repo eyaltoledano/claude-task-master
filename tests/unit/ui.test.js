@@ -73,6 +73,54 @@ jest.mock('../../scripts/modules/task-manager.js', () => ({
 	analyzeTaskComplexity: jest.fn()
 }));
 
+// Mock cli-progress
+jest.mock('cli-progress', () => {
+	// Create a factory function to return a properly configured mock bar
+	const createMockBar = (options = {}) => {
+		let progressValue = 0;
+		let totalValue = 100;
+		let payloadValue = {};
+		const barOptions = {
+			barCompleteString: '█',
+			barIncompleteString: '░',
+			barsize: 30,
+			format: (opts, params, payload) => `${params.progress * 100}%`,
+			...options
+		};
+
+		return {
+			start: jest.fn((total, startValue, payload) => {
+				totalValue = total || 100;
+				progressValue = startValue || 0;
+				payloadValue = payload || {};
+				return this;
+			}),
+			update: jest.fn((value, payload) => {
+				progressValue = value;
+				if (payload) payloadValue = payload;
+				return this;
+			}),
+			stop: jest.fn(),
+			render: jest.fn(function () {
+				// Use the format function from options to generate the progress bar
+				const params = {
+					progress: progressValue / totalValue
+				};
+				return barOptions.format(barOptions, params, payloadValue);
+			})
+		};
+	};
+
+	return {
+		SingleBar: jest
+			.fn()
+			.mockImplementation((options = {}) => createMockBar(options)),
+		Presets: {
+			shades_classic: {}
+		}
+	};
+});
+
 describe('UI Module', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();

@@ -93,7 +93,6 @@ class PrdParseTracker extends EventEmitter {
 		// Strategy 1: Look for complete task objects
 		let taskRegex = /\{[^{}]*?"id"\s*:\s*\d+[^{}]*?\}/g;
 
-
 		// Only process complete JSON objects for tasks. Incomplete objects are buffered until finished, preventing truncated titles.
 		let match;
 		let newTasks = [];
