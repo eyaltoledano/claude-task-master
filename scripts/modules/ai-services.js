@@ -370,7 +370,6 @@ async function handleStreamingRequest(
 		}
 
 		// Process the stream
-		let firstContentReceived = false;
 		for await (const chunk of stream) {
 			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
 				responseText += chunk.delta.text;
@@ -430,7 +429,7 @@ async function handleStreamingRequest(
 
 		// Only show console error for text output (CLI)
 		if (outputFormat === 'text' && !isSilentMode()) {
-			console.error(chalk.red(`Error: ${userMessage}`));
+			console.error(chalk.red(userMessage));
 		}
 
 		// Clean up progress indicators if they were started
