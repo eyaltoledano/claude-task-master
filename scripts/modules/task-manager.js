@@ -119,12 +119,16 @@ async function parsePRD(
 
 	// Initialize progress tracking
 	const progressTracker = createPrdParseTracker({
-		logLevel: CONFIG.debug ? 'debug' : 'info',
-		actionVerb
+		logLevel: CONFIG.debug ? 'debug' : 'info'
 	});
 
 	// Initialize with requested number of tasks
-	progressTracker.start(numTasks, { prdPath, outputPath: tasksPath });
+	progressTracker.start({
+		totalTasks: numTasks,
+		prdPath,
+		outputPath: tasksPath,
+		actionVerb
+	});
 
 	// Determine output format based on mcpLog presence (simplification)
 	const outputFormat = mcpLog ? 'json' : 'text';

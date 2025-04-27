@@ -132,28 +132,36 @@ class PrdParseTracker extends EventEmitter {
 
 	/**
 	 * Start the tracking process.
-	 * @param {number} totalTasks - The total number of tasks expected.
-	 * @param {object} initialStats - Initial stats like prdPath, outputPath etc.
-	 * @param {number} [initialTokensIn=0] - Initial input tokens.
-	 * @param {number} [initialTokensOut=0] - Initial output tokens.
+	 * @param {object} options - Options for the tracking process
+	 * @param {number} options.totalTasks - The total number of tasks expected.
+	 * @param {string} options.prdPath - The path to the PRD file.
+	 * @param {string} options.outputPath - The path to the output file.
+	 * @param {string} options.actionVerb - The action verb to display in the spinner.
+	 * @param {number} [options.initialTokensIn=0] - Initial input tokens.
+	 * @param {number} [options.initialTokensOut=0] - Initial output tokens.
 	 */
-	start(
+	start({
 		totalTasks = 0,
-		initialStats = {},
+		prdPath = '',
+		outputPath = '',
+		actionVerb = 'Generating',
 		initialTokensIn = 0,
 		initialTokensOut = 0
-	) {
+	} = {}) {
 		this.startTime = Date.now();
 		this.stats.startTime = this.startTime;
 		this.totalTasks = totalTasks;
 		this.completedTasks = 0;
+		this.stats.prdPath = prdPath;
+		this.stats.outputPath = outputPath;
+		this._actionVerb = actionVerb;
 		// If initialTokensIn is provided, use it, otherwise estimate from PRD file
 		if (initialTokensIn > 0) {
 			this.tokensIn = initialTokensIn;
-		} else if (initialStats.prdPath) {
+		} else if (prdPath) {
 			try {
 				// Estimate tokens from PRD file content
-				const prdContent = fs.readFileSync(initialStats.prdPath, 'utf8');
+				const prdContent = fs.readFileSync(prdPath, 'utf8');
 				this.tokensIn = Math.round(prdContent.length / 4); // Approx 4 chars/token
 			} catch (e) {
 				this.tokensIn = 0;
@@ -167,14 +175,13 @@ class PrdParseTracker extends EventEmitter {
 		this._isTrackingActive = true; // Enable log buffering
 
 		// Merge initial stats
-		this.stats = { ...this.stats, ...initialStats }; // Collect prdPath, outputPath etc.
 		this.stats.taskCount = totalTasks; // Store total task count in stats as well
 
 		// Start MultiBar for spinner and progress bar
 		this.multiBar = newMultiBar();
 
 		// Spinner line ALWAYS CREATED FIRST to ensure it appears at the top
-		const actionVerb = this.options.actionVerb || 'Generating';
+		this._actionVerb = actionVerb;
 		this.spinnerBar = this.multiBar.create(
 			1,
 			0,
@@ -187,7 +194,7 @@ class PrdParseTracker extends EventEmitter {
 				forceRedraw: true // Force redraw to ensure visibility
 			}
 		);
-		this._spinnerText = `${actionVerb} tasks from PRD...`;
+		this._spinnerText = `${this._actionVerb} tasks from PRD...`;
 		this.spinnerBar.update(1, {
 			spinner: this._spinnerFrames[this._spinnerIndex],
 			text: this._spinnerText
