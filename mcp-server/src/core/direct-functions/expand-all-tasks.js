@@ -9,6 +9,7 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { getAnthropicClientForMCP } from '../utils/ai-client-utils.js';
+import { generateTaskFilesDirect } from './generate-task-files.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -108,9 +109,6 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			// After expanding, regenerate individual task files
 			let fileGenResult;
 			try {
-				const { generateTaskFilesDirect } = await import(
-					'./generate-task-files.js'
-				);
 				const outputDir = path.dirname(tasksPath);
 				fileGenResult = await generateTaskFilesDirect(
 					{ tasksJsonPath: tasksPath, outputDir },
