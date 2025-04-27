@@ -373,28 +373,6 @@ async function handleStreamingRequest(
 		let firstContentReceived = false;
 		for await (const chunk of stream) {
 			if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-				// Stop the loading indicator when we have task-related content
-				// This prevents the spinner from flickering over task output
-				if (
-					!firstContentReceived &&
-					loadingIndicator &&
-					outputFormat === 'text' &&
-					!isSilentMode() &&
-					// Check for task-related content in the chunk
-					(chunk.delta.text.includes('"id"') ||
-						chunk.delta.text.includes('"title"'))
-				) {
-					firstContentReceived = true;
-					log(
-						'debug',
-						'First task content detected, stopping loading indicator'
-					);
-					// Stop the loading indicator and clean up the line
-					stopLoadingIndicator(loadingIndicator);
-					loadingIndicator = null;
-					// Don't try to position the cursor - let PrdParseTracker handle it
-				}
-
 				responseText += chunk.delta.text;
 
 				// Real-time streamed task detection for progress bar
