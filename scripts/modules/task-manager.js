@@ -224,7 +224,15 @@ async function parsePRD(
 			await generateTaskFiles(tasksPath, tasksDir);
 		}
 
-		// Only show success boxes for text output (CLI)
+		// Finish tracker successfully
+		progressTracker.finish(true, {
+			taskCount: tasksData.tasks.length,
+			prdPath,
+			outputPath: tasksPath,
+			actionVerb
+		});
+
+		// Only show success boxes for text output (CLI) after all async work is done
 		if (outputFormat === 'text') {
 			console.log(
 				boxen(
@@ -235,38 +243,13 @@ async function parsePRD(
 				)
 			);
 
-			console.log(
-				boxen(
-					chalk.white.bold('Next Steps:') +
-						'\n\n' +
-						`${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
-						`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks`,
-					{
-						padding: 1,
-						borderColor: 'cyan',
-						borderStyle: 'round',
-						margin: { top: 1 }
-					}
-				)
-			);
-		}
-
-		// Finish tracker successfully
-		progressTracker.finish(true, {
-			taskCount: tasksData.tasks.length,
-			prdPath,
-			outputPath: tasksPath,
-			actionVerb
-		});
-
-		// Display PRD parsing summary in CLI mode
-		if (outputFormat === 'text') {
 			// Compute priority distribution (taskCategories)
 			const taskPriorities = tasksData.tasks.reduce((acc, t) => {
 				const prio = (t.priority || 'unspecified').toLowerCase();
 				acc[prio] = (acc[prio] || 0) + 1;
 				return acc;
 			}, {});
+			// Display PRD parsing summary in CLI mode
 			displayPRDParsingSummary({
 				totalTasks: tasksData.tasks.length,
 				prdFilePath: prdPath,
@@ -274,7 +257,7 @@ async function parsePRD(
 				elapsedTime: Math.floor(
 					(Date.now() - progressTracker.startTime) / 1000
 				),
-				taskPriorities: taskPriorities, // Use the variable defined above
+				taskPriorities,
 				actionVerb
 			});
 		}
