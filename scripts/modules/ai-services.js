@@ -434,7 +434,7 @@ async function handleStreamingRequest(
 
 		if (CONFIG.debug && outputFormat === 'text' && !isSilentMode()) {
 			log('debug', 'Full error:', error);
-
+		}
 
 		throw new Error(userMessage);
 	}
