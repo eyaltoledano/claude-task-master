@@ -8,7 +8,7 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import { CONFIG, log, sanitizePrompt, isSilentMode } from './utils.js';
+import { CONFIG, log, sanitizePrompt, isSilentMode, getAnthropicApiKey, getPerplexityApiKey } from './utils.js';
 import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 import chalk from 'chalk';
 
@@ -17,7 +17,7 @@ dotenv.config();
 
 // Configure Anthropic client
 const anthropic = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
+	apiKey: getAnthropicApiKey(),
 	// Add beta header for 128k token output
 	defaultHeaders: {
 		'anthropic-beta': 'output-128k-2025-02-19'
@@ -33,13 +33,14 @@ let perplexity = null;
  */
 function getPerplexityClient() {
 	if (!perplexity) {
-		if (!process.env.PERPLEXITY_API_KEY) {
+		const perplexityApiKey = getPerplexityApiKey();
+		if (!perplexityApiKey) {
 			throw new Error(
 				'PERPLEXITY_API_KEY environment variable is missing. Set it to use research-backed features.'
 			);
 		}
 		perplexity = new OpenAI({
-			apiKey: process.env.PERPLEXITY_API_KEY,
+			apiKey: perplexityApiKey,
 			baseURL: 'https://api.perplexity.ai'
 		});
 	}
@@ -57,7 +58,7 @@ function getAvailableAIModel(options = {}) {
 	const { claudeOverloaded = false, requiresResearch = false } = options;
 
 	// First choice: Perplexity if research is required and it's available
-	if (requiresResearch && process.env.PERPLEXITY_API_KEY) {
+	if (requiresResearch && getPerplexityApiKey()) {
 		try {
 			const client = getPerplexityClient();
 			return { type: 'perplexity', client };
@@ -68,12 +69,12 @@ function getAvailableAIModel(options = {}) {
 	}
 
 	// Second choice: Claude if not overloaded
-	if (!claudeOverloaded && process.env.ANTHROPIC_API_KEY) {
+	if (!claudeOverloaded && getAnthropicApiKey()) {
 		return { type: 'claude', client: anthropic };
 	}
 
 	// Third choice: Perplexity as Claude fallback (even if research not required)
-	if (process.env.PERPLEXITY_API_KEY) {
+	if (getPerplexityApiKey()) {
 		try {
 			const client = getPerplexityClient();
 			log('info', 'Claude is overloaded, falling back to Perplexity');
@@ -85,7 +86,7 @@ function getAvailableAIModel(options = {}) {
 	}
 
 	// Last resort: Use Claude even if overloaded (might fail)
-	if (process.env.ANTHROPIC_API_KEY) {
+	if (getAnthropicApiKey()) {
 		if (claudeOverloaded) {
 			log(
 				'warn',
@@ -1459,11 +1460,8 @@ Return a JSON object with the following structure:
  * @returns {Anthropic} - Configured Anthropic client
  */
 function getConfiguredAnthropicClient(session = null, customEnv = null) {
-	// If we have a session with ANTHROPIC_API_KEY in env, use that
-	const apiKey =
-		session?.env?.ANTHROPIC_API_KEY ||
-		process.env.ANTHROPIC_API_KEY ||
-		customEnv?.ANTHROPIC_API_KEY;
+	// Get the API key using the utility function
+	const apiKey = getAnthropicApiKey(session, customEnv);
 
 	if (!apiKey) {
 		throw new Error(
