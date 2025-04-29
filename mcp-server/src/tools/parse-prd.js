@@ -9,10 +9,18 @@ import {
 	handleApiResult,
 	createErrorResponse
 } from './utils.js';
-import { parsePRDDirect } from '../core/task-master-core.js';
+// Import the renamed/simplified direct function for saving/generating files
+import { saveTasksAndGenerateFilesDirect } from '../core/task-master-core.js';
 import {
 	resolveProjectPaths,
 } from '../core/utils/path-utils.js';
+// Import AI utils needed here now
+import {
+    _generateParsePRDPrompt,
+    parseTasksFromCompletion
+} from '../core/utils/ai-client-utils.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Register the parsePRD tool with the MCP server
@@ -56,64 +64,93 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('The directory of the project. Must be absolute path. If not provided, derived from session.')
 		}),
-		execute: async (args, context) => {
-			const { log, session } = context;
+		execute: async (args, context) => { // Use full context
+            const { log, session } = context; // Destructure still okay
 			try {
-				log.info(`Parsing PRD with args: ${JSON.stringify(args)}`);
+				log.info(`Executing parse_prd tool with args: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
+				// 1. Resolve Paths
 				const rootFolder =
 					args.projectRoot || getProjectRootFromSession(session, log);
-
 				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
+					return createErrorResponse('Could not determine project root.');
 				}
-
-				// Resolve input (PRD) and output (tasks.json) paths using the utility
 				const { projectRoot, prdPath, tasksJsonPath } = resolveProjectPaths(
 					rootFolder,
 					args,
 					log
 				);
-
-				// Check if PRD path was found
 				if (!prdPath) {
-					return createErrorResponse(
-						'No PRD document found or provided. Please ensure a PRD file exists (e.g., PRD.md or prd.txt) in the project or "scripts" directory, or provide a valid input file path.'
-					);
+					return createErrorResponse('No PRD document found or provided.');
 				}
 
-				// Call the direct function, passing the *full context* object
-				// parsePRDDirect will now use context.sample internally
-				const result = await parsePRDDirect(
-					{
-						projectRoot: projectRoot,
-						input: prdPath,
-						output: tasksJsonPath,
-						numTasks: args.numTasks,
-						force: args.force,
-						append: args.append
-					},
-					log,
-					context
-				);
+                // 2. Read PRD Content
+                if (!fs.existsSync(prdPath)) {
+                    return createErrorResponse(`Input PRD file not found: ${prdPath}`);
+                }
+                const prdContent = fs.readFileSync(prdPath, 'utf8');
 
-				// Log success/failure from the direct function result
-				if (result.success) {
-					log.info(`Parse PRD Direct Function successful: ${result.data?.message || 'Completed'}`);
-				} else {
-					log.error(
-						`Parse PRD Direct Function failed: ${result.error?.message || 'Unknown error'}`
-					);
-				}
+                // 3. Parse Args
+                let numTasks = parseInt(args.numTasks, 10);
+                if (isNaN(numTasks)) {
+                    log.warn(`Invalid numTasks: ${args.numTasks}. Using 10.`);
+                    numTasks = 10;
+                }
+                const append = args.append === true;
+                const force = args.force === true;
 
-				// Format and return the result
-				return handleApiResult(result, log, 'Error parsing PRD');
+                // 4. Build Prompt
+                const { systemPrompt, userPrompt } = _generateParsePRDPrompt(prdContent, numTasks, path.basename(prdPath));
+                if (!userPrompt) {
+                    return createErrorResponse('Failed to generate prompt for PRD parsing.');
+                }
+
+                // 5. Call context.sample (Core Change)
+                log.info('Initiating client-side LLM sampling via context.sample...');
+                let completion;
+                try {
+                    // Check if context.sample exists *before* calling
+                    if (typeof context.sample !== 'function') {
+                         throw new Error('FastMCP sampling function (context.sample) is not available on the provided context.');
+                    }
+                    completion = await context.sample(userPrompt, { system: systemPrompt });
+                } catch (sampleError) {
+                    log.error(`context.sample failed: ${sampleError.message}`);
+                    return createErrorResponse(`Client-side sampling failed: ${sampleError.message}`);
+                }
+
+                const completionText = completion?.text;
+                if (!completionText) {
+                     log.error('Received empty completion from context.sample.');
+                     return createErrorResponse('Received empty completion from client LLM.');
+                }
+                log.info('Received completion from client LLM via context.sample.');
+
+                // 6. Parse Completion
+                const newTasksData = parseTasksFromCompletion(completionText);
+                if (!newTasksData || !Array.isArray(newTasksData.tasks)) {
+                     log.error('Failed to parse valid tasks JSON from LLM completion.');
+                     return createErrorResponse('Failed to parse valid tasks JSON from LLM completion.');
+                }
+                log.info(`Parsed ${newTasksData.tasks.length} new tasks from completion.`);
+
+                // 7. Call Simplified Direct Function to Save/Generate Files
+                // Pass only necessary arguments for file operations and merging
+                const saveArgs = {
+                    tasksJsonPath, // Resolved path
+                    projectRoot,
+                    newTasksData, // Parsed data from AI
+                    append,
+                    force
+                };
+                const result = await saveTasksAndGenerateFilesDirect(saveArgs, log);
+
+                // 8. Handle Result
+                return handleApiResult(result, log, 'Error processing parsed PRD tasks');
+
 			} catch (error) {
-				log.error(`Unhandled error in parse-prd tool execute: ${error.message}`);
-				log.error(error.stack);
+				log.error(`Unhandled error in parse_prd tool execute: ${error.message}`);
+                log.error(error.stack);
 				return createErrorResponse(`Internal server error during PRD parsing: ${error.message}`);
 			}
 		}
