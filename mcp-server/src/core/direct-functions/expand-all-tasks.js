@@ -11,11 +11,12 @@ import {
 	writeJSON
 } from '../../../../scripts/modules/utils.js';
 // Removed AI client utils: import { getAnthropicClientForMCP } from '../utils/ai-client-utils.js';
-// Import necessary AI prompt/parsing helpers
+// Import necessary AI prompt/parsing helpers from the correct location
 import {
 	generateSubtaskPrompt,
 	parseSubtasksFromText
-} from '../../../../scripts/modules/ai-services.js';
+} from '../utils/ai-client-utils.js'; // Updated path
+// Removed import from ai-services.js
 import path from 'path';
 import fs from 'fs';
 
@@ -134,9 +135,17 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			log.info(`Saved updates to ${tasksPath} after expanding ${tasksExpandedCount} tasks.`);
 
 			// 6. Generate Individual Task Files (in silent mode)
+			// Create logger wrapper
+			const logWrapper = {
+				info: (message, ...args) => log.info(message, ...args),
+				warn: (message, ...args) => log.warn(message, ...args),
+				error: (message, ...args) => log.error(message, ...args),
+				debug: (message, ...args) => log.debug && log.debug(message, ...args),
+				success: (message, ...args) => log.info(message, ...args)
+			};
 			enableSilentMode();
 			try {
-				await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: log });
+				await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: logWrapper }); // Use wrapper
 				log.info('Generated individual task files.');
 			} finally {
 				disableSilentMode();
