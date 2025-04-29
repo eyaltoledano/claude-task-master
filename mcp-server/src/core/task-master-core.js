@@ -7,7 +7,6 @@
 // Import direct function implementations
 import { listTasksDirect } from './direct-functions/list-tasks.js';
 import { getCacheStatsDirect } from './direct-functions/cache-stats.js';
-import { parsePRDDirect } from './direct-functions/parse-prd.js';
 import { updateTasksDirect } from './direct-functions/update-tasks.js';
 import { updateTaskByIdDirect } from './direct-functions/update-task-by-id.js';
 import { updateSubtaskByIdDirect } from './direct-functions/update-subtask-by-id.js';
@@ -47,7 +46,7 @@ export {
 export const directFunctions = new Map([
 	['listTasksDirect', listTasksDirect],
 	['getCacheStatsDirect', getCacheStatsDirect],
-	['parsePRDDirect', parsePRDDirect],
+	['saveTasksAndGenerateFilesDirect', saveTasksAndGenerateFilesDirect],
 	['updateTasksDirect', updateTasksDirect],
 	['updateTaskByIdDirect', updateTaskByIdDirect],
 	['updateSubtaskByIdDirect', updateSubtaskByIdDirect],
@@ -74,7 +73,6 @@ export const directFunctions = new Map([
 export {
 	listTasksDirect,
 	getCacheStatsDirect,
-	parsePRDDirect,
 	updateTasksDirect,
 	updateTaskByIdDirect,
 	updateSubtaskByIdDirect,
