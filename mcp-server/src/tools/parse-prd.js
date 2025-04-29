@@ -81,7 +81,7 @@ export function registerParsePRDTool(server) {
 				// Check if PRD path was found
 				if (!prdPath) {
 					return createErrorResponse(
-						'No PRD document found or provided. Please ensure a PRD file exists (e.g., PRD.md or prd.txt) in the project or 'scripts' directory, or provide a valid input file path.'
+						'No PRD document found or provided. Please ensure a PRD file exists (e.g., PRD.md or prd.txt) in the project or "scripts" directory, or provide a valid input file path.'
 					);
 				}
 
