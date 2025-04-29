@@ -217,15 +217,12 @@ export function handleClaudeError(error) {
  * @param {string} prdContent - The content of the PRD.
  * @param {number} numTasks - The target number of tasks.
  * @param {string} [prdPath=\'N/A\'] - The path to the PRD file (optional).
- * @returns {string} The system prompt string.
+ * @returns {Object} The system prompt object { systemPrompt, userPrompt }
  */
 export function _generateParsePRDPrompt(prdContent, numTasks, prdPath = 'N/A') {
-	return `You are an AI assistant tasked with breaking down a Product Requirements Document (PRD) into a set of sequential development tasks. Your goal is to create exactly <num_tasks>${numTasks}</num_tasks> well-structured, actionable development tasks based on the PRD provided.
+	const systemPrompt = `You are an AI assistant tasked with breaking down a Product Requirements Document (PRD) into a set of sequential development tasks. Your goal is to create exactly <num_tasks>${numTasks}</num_tasks> well-structured, actionable development tasks based on the PRD provided.
 
-First, carefully read and analyze the attached PRD:
-<prd_content>
-${prdContent}
-</prd_content>
+First, carefully read and analyze the attached PRD below in the user message.
 
 Before creating the task list, work through the following steps inside <prd_breakdown> tags in your thinking block:
 
@@ -287,6 +284,12 @@ The final output should be valid JSON only, with no additional explanation or co
 }
 
 Remember to provide comprehensive task details that are LLM-friendly, consider dependencies and maintainability carefully, and keep in mind that you don\'t have the existing codebase as context. Aim for a balance between detailed guidance and high-level planning. Ensure the final output is just the JSON object.`;
+
+	// The userPrompt should contain the actual PRD content
+	const userPrompt = prdContent;
+
+	// Return the object expected by the caller
+	return { systemPrompt, userPrompt };
 }
 
 /**
