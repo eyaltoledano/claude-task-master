@@ -3,14 +3,14 @@ description: Comprehensive reference for Taskmaster MCP tools and CLI commands.
 globs: **/*
 alwaysApply: true
 ---
-
 # Taskmaster Tool & Command Reference
 
 This document provides a detailed reference for interacting with Taskmaster, covering both the recommended MCP tools (for integrations like Cursor) and the corresponding `task-master` CLI commands (for direct user interaction or fallback).
 
 **Note:** For interacting with Taskmaster programmatically or via integrated tools, using the **MCP tools is strongly recommended** due to better performance, structured data, and error handling. The CLI commands serve as a user-friendly alternative and fallback. See [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for MCP implementation details and [`commands.mdc`](mdc:.cursor/rules/commands.mdc) for CLI implementation guidelines.
 
-**Important:** Several MCP tools involve AI processing and are long-running operations that may take up to a minute to complete. When using these tools, always inform users that the operation is in progress and to wait patiently for results. The AI-powered tools include: `parse_prd`, `analyze_project_complexity`, `update_subtask`, `update_task`, `update`, `expand_all`, `expand_task`, and `add_task`.
+**Important: AI-Driven MCP Tools & Client-Side Sampling** 
+Several MCP tools involve AI processing (task generation, expansion, updates, analysis). These tools leverage the **FastMCP LLM Sampling mechanism**, meaning the actual LLM call is delegated to the connected client (e.g., Cursor) rather than being executed server-side. This process can still take time depending on the client's LLM response speed. Always inform users that these operations (`parse_prd`, `analyze_project_complexity`, `update_subtask`, `update_task`, `update`, `expand_all`, `expand_task`, `add_task`) are in progress and require client-side LLM execution.
 
 ---
 
@@ -43,7 +43,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 *   **MCP Tool:** `parse_prd`
 *   **CLI Command:** `task-master parse-prd [file] [options]`
-*   **Description:** `Parse a Product Requirements Document (PRD) or text file with Taskmaster to automatically generate an initial set of tasks in tasks.json.`
+*   **MCP Description:** `Parses a Product Requirements Document (PRD) using the connected client's LLM (via FastMCP sampling) to automatically generate an initial set of tasks.`
+*   **CLI Description:** `Parse a Product Requirements Document (PRD) or text file with Taskmaster to automatically generate an initial set of tasks in tasks.json.`
 *   **Key Parameters/Options:**
     *   `input`: `Path to your PRD or requirements text file that Taskmaster should parse for tasks.` (CLI: `[file]` positional or `-i, --input <file>`)
     *   `output`: `Specify where Taskmaster should save the generated 'tasks.json' file (default: 'tasks/tasks.json').` (CLI: `-o, --output <file>`)
@@ -51,7 +52,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `force`: `Use this to allow Taskmaster to overwrite an existing 'tasks.json' without asking for confirmation.` (CLI: `-f, --force`)
 *   **Usage:** Useful for bootstrapping a project from an existing requirements document.
 *   **Notes:** Task Master will strictly adhere to any specific requirements mentioned in the PRD (libraries, database schemas, frameworks, tech stacks, etc.) while filling in any gaps where the PRD isn't fully specified. Tasks are designed to provide the most direct implementation path while avoiding over-engineering.
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress. If the user does not have a PRD, suggest discussing their idea and then use the example PRD in scripts/example_prd.txt as a template for creating the PRD based on their idea, for use with parse-prd.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ---
 
@@ -95,14 +97,16 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 *   **MCP Tool:** `add_task`
 *   **CLI Command:** `task-master add-task [options]`
-*   **Description:** `Add a new task to Taskmaster by describing it; AI will structure it.`
+*   **MCP Description:** `Adds a new task by generating its structure using the connected client's LLM (via FastMCP sampling) based on the provided prompt.`
+*   **CLI Description:** `Add a new task to Taskmaster by describing it; AI will structure it.`
 *   **Key Parameters/Options:**
     *   `prompt`: `Required. Describe the new task you want Taskmaster to create (e.g., "Implement user authentication using JWT").` (CLI: `-p, --prompt <text>`)
     *   `dependencies`: `Specify the IDs of any Taskmaster tasks that must be completed before this new one can start (e.g., '12,14').` (CLI: `-d, --dependencies <ids>`)
     *   `priority`: `Set the priority for the new task ('high', 'medium', 'low'; default: 'medium').` (CLI: `--priority <priority>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Quickly add newly identified tasks during development.
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 7. Add Subtask (`add_subtask`)
 
@@ -125,40 +129,46 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 *   **MCP Tool:** `update`
 *   **CLI Command:** `task-master update [options]`
-*   **Description:** `Update multiple upcoming tasks in Taskmaster based on new context or changes, starting from a specific task ID.`
+*   **MCP Description:** `Updates multiple upcoming tasks based on new context using the connected client's LLM (via FastMCP sampling).`
+*   **CLI Description:** `Update multiple upcoming tasks in Taskmaster based on new context or changes, starting from a specific task ID.`
 *   **Key Parameters/Options:**
     *   `from`: `Required. The ID of the first task Taskmaster should update. All tasks with this ID or higher (and not 'done') will be considered.` (CLI: `--from <id>`)
     *   `prompt`: `Required. Explain the change or new context for Taskmaster to apply to the tasks (e.g., "We are now using React Query instead of Redux Toolkit for data fetching").` (CLI: `-p, --prompt <text>`)
-    *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates based on external knowledge (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during the update.` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Handle significant implementation changes or pivots that affect multiple future tasks. Example CLI: `task-master update --from='18' --prompt='Switching to React Query.\nNeed to refactor data fetching...'`
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 9. Update Task (`update_task`)
 
 *   **MCP Tool:** `update_task`
 *   **CLI Command:** `task-master update-task [options]`
-*   **Description:** `Modify a specific Taskmaster task (or subtask) by its ID, incorporating new information or changes.`
+*   **MCP Description:** `Modifies a specific task by incorporating new information using the connected client's LLM (via FastMCP sampling).`
+*   **CLI Description:** `Modify a specific Taskmaster task (or subtask) by its ID, incorporating new information or changes.`
 *   **Key Parameters/Options:**
     *   `id`: `Required. The specific ID of the Taskmaster task (e.g., '15') or subtask (e.g., '15.2') you want to update.` (CLI: `-i, --id <id>`)
     *   `prompt`: `Required. Explain the specific changes or provide the new information Taskmaster should incorporate into this task.` (CLI: `-p, --prompt <text>`)
-    *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during the update.` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Refine a specific task based on new understanding or feedback. Example CLI: `task-master update-task --id='15' --prompt='Clarification: Use PostgreSQL instead of MySQL.\nUpdate schema details...'`
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 10. Update Subtask (`update_subtask`)
 
 *   **MCP Tool:** `update_subtask`
 *   **CLI Command:** `task-master update-subtask [options]`
-*   **Description:** `Append timestamped notes or details to a specific Taskmaster subtask without overwriting existing content. Intended for iterative implementation logging.`
+*   **MCP Description:** `Appends timestamped notes/details to a specific subtask, potentially using the connected client's LLM (via FastMCP sampling) to refine or format the update.`
+*   **CLI Description:** `Append timestamped notes or details to a specific Taskmaster subtask without overwriting existing content. Intended for iterative implementation logging.`
 *   **Key Parameters/Options:**
     *   `id`: `Required. The specific ID of the Taskmaster subtask (e.g., '15.2') you want to add information to.` (CLI: `-i, --id <id>`)
     *   `prompt`: `Required. Provide the information or notes Taskmaster should append to the subtask's details. Ensure this adds *new* information not already present.` (CLI: `-p, --prompt <text>`)
-    *   `research`: `Enable Taskmaster to use Perplexity AI for more informed updates (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during the update.` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Add implementation notes, code snippets, or clarifications to a subtask during development. Before calling, review the subtask's current details to append only fresh insights, helping to build a detailed log of the implementation journey and avoid redundancy. Example CLI: `task-master update-subtask --id='15.2' --prompt='Discovered that the API requires header X.\nImplementation needs adjustment...'`
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 11. Set Task Status (`set_task_status`)
 
@@ -191,30 +201,34 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 *   **MCP Tool:** `expand_task`
 *   **CLI Command:** `task-master expand [options]`
-*   **Description:** `Use Taskmaster's AI to break down a complex task (or all tasks) into smaller, manageable subtasks.`
+*   **MCP Description:** `Breaks down a complex task into smaller, manageable subtasks using the connected client's LLM (via FastMCP sampling).`
+*   **CLI Description:** `Use Taskmaster's AI to break down a complex task (or all tasks) into smaller, manageable subtasks.`
 *   **Key Parameters/Options:**
     *   `id`: `The ID of the specific Taskmaster task you want to break down into subtasks.` (CLI: `-i, --id <id>`)
     *   `num`: `Suggests how many subtasks Taskmaster should aim to create (uses complexity analysis by default).` (CLI: `-n, --num <number>`)
-    *   `research`: `Enable Taskmaster to use Perplexity AI for more informed subtask generation (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during subtask generation.` (CLI: `-r, --research`)
     *   `prompt`: `Provide extra context or specific instructions to Taskmaster for generating the subtasks.` (CLI: `-p, --prompt <text>`)
     *   `force`: `Use this to make Taskmaster replace existing subtasks with newly generated ones.` (CLI: `--force`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Generate a detailed implementation plan for a complex task before starting coding.
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 14. Expand All Tasks (`expand_all`)
 
 *   **MCP Tool:** `expand_all`
 *   **CLI Command:** `task-master expand --all [options]` (Note: CLI uses the `expand` command with the `--all` flag)
-*   **Description:** `Tell Taskmaster to automatically expand all 'pending' tasks based on complexity analysis.`
+*   **MCP Description:** `Automatically expands all eligible 'pending' tasks into subtasks using the connected client's LLM (via FastMCP sampling).`
+*   **CLI Description:** `Tell Taskmaster to automatically expand all 'pending' tasks based on complexity analysis.`
 *   **Key Parameters/Options:**
     *   `num`: `Suggests how many subtasks Taskmaster should aim to create per task.` (CLI: `-n, --num <number>`)
-    *   `research`: `Enable Perplexity AI for more informed subtask generation (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during subtask generation.` (CLI: `-r, --research`)
     *   `prompt`: `Provide extra context for Taskmaster to apply generally during expansion.` (CLI: `-p, --prompt <text>`)
     *   `force`: `Make Taskmaster replace existing subtasks.` (CLI: `--force`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Useful after initial task generation or complexity analysis to break down multiple tasks at once.
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 15. Clear Subtasks (`clear_subtasks`)
 
@@ -291,14 +305,16 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 *   **MCP Tool:** `analyze_project_complexity`
 *   **CLI Command:** `task-master analyze-complexity [options]`
-*   **Description:** `Have Taskmaster analyze your tasks to determine their complexity and suggest which ones need to be broken down further.`
+*   **MCP Description:** `Analyzes tasks to determine complexity using the connected client's LLM (via FastMCP sampling) and saves a report.`
+*   **CLI Description:** `Have Taskmaster analyze your tasks to determine their complexity and suggest which ones need to be broken down further.`
 *   **Key Parameters/Options:**
     *   `output`: `Where to save the complexity analysis report (default: 'scripts/task-complexity-report.json').` (CLI: `-o, --output <file>`)
     *   `threshold`: `The minimum complexity score (1-10) that should trigger a recommendation to expand a task.` (CLI: `-t, --threshold <number>`)
-    *   `research`: `Enable Perplexity AI for more accurate complexity analysis (requires PERPLEXITY_API_KEY).` (CLI: `-r, --research`)
+    *   `research`: `Hint for the client's LLM to perform research during complexity analysis.` (CLI: `-r, --research`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file (default relies on auto-detection).` (CLI: `-f, --file <file>`)
 *   **Usage:** Used before breaking down tasks to identify which ones need the most attention.
-*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
+*   **Important (MCP):** This tool uses the client's LLM via sampling. Execution time depends on the client. Inform users to wait.
+*   **Important (CLI):** This command makes direct server-side AI calls and can take time.
 
 ### 22. View Complexity Report (`complexity_report`)
 

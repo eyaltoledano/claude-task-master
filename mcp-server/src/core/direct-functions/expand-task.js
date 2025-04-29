@@ -1,268 +1,224 @@
 /**
  * expand-task.js
- * Direct function implementation for expanding a task into subtasks
+ * Direct function implementation for expanding a task into subtasks using FastMCP sampling.
  */
 
-import { expandTask } from '../../../../scripts/modules/task-manager.js';
+// Removed: import { expandTask } from '../../../../scripts/modules/task-manager.js';
+import { generateTaskFiles } from '../../../../scripts/modules/task-manager.js'; // Keep for generating files
 import {
 	readJSON,
 	writeJSON,
 	enableSilentMode,
-	disableSilentMode,
-	isSilentMode
+	disableSilentMode
+	// Removed: isSilentMode (handled implicitly)
 } from '../../../../scripts/modules/utils.js';
 import {
-	getAnthropicClientForMCP,
-	getModelConfig
+	// Removed: getAnthropicClientForMCP,
+	// Removed: getModelConfig
 } from '../utils/ai-client-utils.js';
+// Import necessary AI prompt/parsing helpers
+import {
+	generateSubtaskPrompt,
+	parseSubtasksFromText
+} from '../../../../scripts/modules/ai-services.js';
+
 import path from 'path';
 import fs from 'fs';
 
 /**
- * Direct function wrapper for expanding a task into subtasks with error handling.
+ * Direct function wrapper for expanding a task into subtasks using FastMCP sampling.
  *
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID of the task to expand.
  * @param {number|string} [args.num] - Number of subtasks to generate.
- * @param {boolean} [args.research] - Enable Perplexity AI for research-backed subtask generation.
+ * @param {boolean} [args.research] - Research hint (handled by client LLM).
  * @param {string} [args.prompt] - Additional context to guide subtask generation.
  * @param {boolean} [args.force] - Force expansion even if subtasks exist.
  * @param {Object} log - Logger object
- * @param {Object} context - Context object containing session and reportProgress
+ * @param {Object} context - Context object containing session for sampling.
  * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context;
-	// Destructure expected args
 	const { tasksJsonPath, id, num, research, prompt, force } = args;
 
-	// Log session root data for debugging
-	log.info(
-		`Session data in expandTaskDirect: ${JSON.stringify({
-			hasSession: !!session,
-			sessionKeys: session ? Object.keys(session) : [],
-			roots: session?.roots,
-			rootsStr: JSON.stringify(session?.roots)
-		})}`
-	);
-
-	// Check if tasksJsonPath was provided
+	// --- Input Validation ---
 	if (!tasksJsonPath) {
 		log.error('expandTaskDirect called without tasksJsonPath');
 		return {
 			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			},
+			error: { code: 'MISSING_ARGUMENT', message: 'tasksJsonPath is required' },
 			fromCache: false
 		};
 	}
-
-	// Use provided path
-	const tasksPath = tasksJsonPath;
-
-	log.info(`[expandTaskDirect] Using tasksPath: ${tasksPath}`);
-
-	// Validate task ID
 	const taskId = id ? parseInt(id, 10) : null;
 	if (!taskId) {
 		log.error('Task ID is required');
 		return {
 			success: false,
-			error: {
-				code: 'INPUT_VALIDATION_ERROR',
-				message: 'Task ID is required'
-			},
+			error: { code: 'INPUT_VALIDATION_ERROR', message: 'Task ID is required' },
 			fromCache: false
 		};
 	}
-
-	// Process other parameters
-	const numSubtasks = num ? parseInt(num, 10) : undefined;
-	const useResearch = research === true;
-	const additionalContext = prompt || '';
-	const forceFlag = force === true;
-
-	// Initialize AI client if needed (for expandTask function)
-	try {
-		// This ensures the AI client is available by checking it
-		if (useResearch) {
-			log.info('Verifying AI client for research-backed expansion');
-			await getAnthropicClientForMCP(session, log);
-		}
-	} catch (error) {
-		log.error(`Failed to initialize AI client: ${error.message}`);
+	if (!session || typeof session.llm?.complete !== 'function') {
+		const errorMessage = 'FastMCP sampling function (session.llm.complete) is not available.';
+		log.error(errorMessage);
 		return {
 			success: false,
-			error: {
-				code: 'AI_CLIENT_ERROR',
-				message: `Cannot initialize AI client: ${error.message}`
-			},
+			error: { code: 'SAMPLING_UNAVAILABLE', message: errorMessage },
 			fromCache: false
 		};
 	}
 
+	const tasksPath = tasksJsonPath;
+	const numSubtasks = num ? parseInt(num, 10) : undefined; // Use undefined for default handling later
+	const additionalContext = prompt || '';
+	const forceFlag = force === true;
+	// Note: 'research' flag is implicitly handled by the client LLM now.
+
+	log.info(
+		`[expandTaskDirect] Expanding task ${taskId} via MCP sampling. NumSubtasks=${numSubtasks || 'default'}, Force=${forceFlag}`
+	);
+
 	try {
-		log.info(
-			`[expandTaskDirect] Expanding task ${taskId} into ${numSubtasks || 'default'} subtasks. Research: ${useResearch}`
-		);
-
-		// Read tasks data
-		log.info(`[expandTaskDirect] Attempting to read JSON from: ${tasksPath}`);
+		// --- Read Task Data ---
+		log.info(`[expandTaskDirect] Reading tasks from: ${tasksPath}`);
 		const data = readJSON(tasksPath);
-		log.info(
-			`[expandTaskDirect] Result of readJSON: ${data ? 'Data read successfully' : 'readJSON returned null or undefined'}`
-		);
-
-		if (!data || !data.tasks) {
-			log.error(
-				`[expandTaskDirect] readJSON failed or returned invalid data for path: ${tasksPath}`
-			);
+		if (!data || !Array.isArray(data.tasks)) {
+			log.error(`[expandTaskDirect] Failed to read valid tasks data from ${tasksPath}`);
 			return {
 				success: false,
-				error: {
-					code: 'INVALID_TASKS_FILE',
-					message: `No valid tasks found in ${tasksPath}. readJSON returned: ${JSON.stringify(data)}`
-				},
+				error: { code: 'INVALID_TASKS_FILE', message: `Invalid or missing tasks data in ${tasksPath}` },
 				fromCache: false
 			};
 		}
 
-		// Find the specific task
-		log.info(`[expandTaskDirect] Searching for task ID ${taskId} in data`);
-		const task = data.tasks.find((t) => t.id === taskId);
-		log.info(`[expandTaskDirect] Task found: ${task ? 'Yes' : 'No'}`);
-
-		if (!task) {
+		// Find the task to expand
+		const taskIndex = data.tasks.findIndex((t) => t.id === taskId);
+		if (taskIndex === -1) {
+			log.error(`[expandTaskDirect] Task ${taskId} not found.`);
 			return {
 				success: false,
-				error: {
-					code: 'TASK_NOT_FOUND',
-					message: `Task with ID ${taskId} not found`
-				},
+				error: { code: 'TASK_NOT_FOUND', message: `Task with ID ${taskId} not found` },
 				fromCache: false
 			};
 		}
+		const task = data.tasks[taskIndex];
 
-		// Check if task is completed
+		// --- Pre-Expansion Checks ---
 		if (task.status === 'done' || task.status === 'completed') {
 			return {
 				success: false,
-				error: {
-					code: 'TASK_COMPLETED',
-					message: `Task ${taskId} is already marked as ${task.status} and cannot be expanded`
-				},
+				error: { code: 'TASK_COMPLETED', message: `Task ${taskId} is already completed` },
 				fromCache: false
 			};
 		}
 
-		// Check for existing subtasks and force flag
 		const hasExistingSubtasks = task.subtasks && task.subtasks.length > 0;
 		if (hasExistingSubtasks && !forceFlag) {
-			log.info(
-				`Task ${taskId} already has ${task.subtasks.length} subtasks. Use --force to overwrite.`
-			);
+			log.info(`Task ${taskId} already has subtasks. Use --force to overwrite.`);
 			return {
 				success: true,
-				data: {
-					message: `Task ${taskId} already has subtasks. Expansion skipped.`,
-					task,
-					subtasksAdded: 0,
-					hasExistingSubtasks
-				},
+				data: { message: `Task ${taskId} already has subtasks. Skipped.`, task, subtasksAdded: 0 },
 				fromCache: false
 			};
 		}
 
-		// If force flag is set, clear existing subtasks
+		// If force flag is set, clear existing subtasks (will be replaced)
 		if (hasExistingSubtasks && forceFlag) {
-			log.info(
-				`Force flag set. Clearing existing subtasks for task ${taskId}.`
-			);
-			task.subtasks = [];
+			log.info(`Force flag set. Existing subtasks for task ${taskId} will be replaced.`);
+			task.subtasks = []; // Clear existing for replacement
 		}
 
-		// Keep a copy of the task before modification
-		const originalTask = JSON.parse(JSON.stringify(task));
+		// --- Start of Refactored Logic ---
 
-		// Tracking subtasks count before expansion
-		const subtasksCountBefore = task.subtasks ? task.subtasks.length : 0;
-
-		// Create a backup of the tasks.json file
-		const backupPath = path.join(path.dirname(tasksPath), 'tasks.json.bak');
-		fs.copyFileSync(tasksPath, backupPath);
-
-		// Directly modify the data instead of calling the CLI function
-		if (!task.subtasks) {
-			task.subtasks = [];
+		// 1. Construct Prompt for Subtask Generation
+		// Use the imported helper function
+		// Note: Assumes generateSubtaskPrompt handles complexity report integration if applicable
+		const subtaskPrompt = generateSubtaskPrompt(task, numSubtasks, additionalContext);
+		if (!subtaskPrompt) {
+			throw new Error('Failed to generate the prompt for subtask expansion.');
 		}
+		log.info('Generated subtask expansion prompt for sampling.');
 
-		// Save tasks.json with potentially empty subtasks array
-		writeJSON(tasksPath, data);
-
-		// Process the request
+		// 2. Call FastMCP Sampling
+		let completionText;
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
-
-			// Call expandTask with session context to ensure AI client is properly initialized
-			const result = await expandTask(
-				tasksPath,
-				taskId,
-				numSubtasks,
-				useResearch,
-				additionalContext,
-				{ mcpLog: log, session } // Only pass mcpLog and session, NOT reportProgress
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			// Read the updated data
-			const updatedData = readJSON(tasksPath);
-			const updatedTask = updatedData.tasks.find((t) => t.id === taskId);
-
-			// Calculate how many subtasks were added
-			const subtasksAdded = updatedTask.subtasks
-				? updatedTask.subtasks.length - subtasksCountBefore
-				: 0;
-
-			// Return the result
-			log.info(
-				`Successfully expanded task ${taskId} with ${subtasksAdded} new subtasks`
-			);
-			return {
-				success: true,
-				data: {
-					task: updatedTask,
-					subtasksAdded,
-					hasExistingSubtasks
-				},
-				fromCache: false
-			};
+			log.info('Initiating FastMCP LLM sampling via client...');
+			const completion = await session.llm.complete(subtaskPrompt); // Pass the generated prompt
+			log.info('Received completion from client LLM.');
+			completionText = completion?.content; // Adjust access as needed
+			if (!completionText) {
+				throw new Error('Received empty completion from client LLM via sampling.');
+			}
 		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
-
-			log.error(`Error expanding task: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'CORE_FUNCTION_ERROR',
-					message: error.message || 'Failed to expand task'
-				},
-				fromCache: false
-			};
+			log.error(`LLM sampling failed: ${error.message}`);
+			throw new Error(`Failed to get completion via sampling: ${error.message}`); // Re-throw to be caught by outer try/catch
 		}
+
+		// 3. Parse Subtasks from Completion
+		let newSubtasks;
+		try {
+			// Use the imported helper function
+			newSubtasks = parseSubtasksFromText(completionText);
+			if (!Array.isArray(newSubtasks)) {
+				throw new Error('Parsing did not return a valid array of subtasks.');
+			}
+			log.info(`Parsed ${newSubtasks.length} new subtasks from completion.`);
+		} catch (error) {
+			log.error(`Failed to parse subtasks from LLM completion: ${error.message}`);
+			throw new Error(`Failed to parse subtasks from LLM completion: ${error.message}`);
+		}
+
+		// --- Post-Generation Processing ---
+
+		// Assign IDs and merge/replace subtasks
+		const nextSubtaskId = (task.subtasks?.length || 0) + 1;
+		newSubtasks.forEach((subtask, index) => {
+			subtask.id = nextSubtaskId + index; // Simple sequential IDs within the parent
+			subtask.status = subtask.status || 'pending'; // Default status
+		});
+
+		// Replace or set the subtasks array
+		task.subtasks = newSubtasks;
+
+		// 4. Save Updated Task Data
+		// Update the task in the main data array
+		data.tasks[taskIndex] = task;
+		writeJSON(tasksPath, data);
+		log.info(`Updated tasks file ${tasksPath} with new subtasks for task ${taskId}.`);
+
+		// 5. Generate Individual Task Files (in silent mode)
+		enableSilentMode();
+		try {
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: log });
+			log.info('Generated individual task files.');
+		} finally {
+			disableSilentMode();
+		}
+
+		// --- End of Refactored Logic ---
+
+		// 6. Return Success
+		log.info(`Successfully expanded task ${taskId} with ${newSubtasks.length} new subtasks via sampling.`);
+		return {
+			success: true,
+			data: {
+				task, // Return the updated task object
+				subtasksAdded: newSubtasks.length
+			},
+			fromCache: false
+		};
+
 	} catch (error) {
-		log.error(`Error expanding task: ${error.message}`);
+		log.error(`Error during MCP expandTaskDirect: ${error.message}`);
+		log.error(error.stack);
 		return {
 			success: false,
 			error: {
-				code: 'CORE_FUNCTION_ERROR',
-				message: error.message || 'Failed to expand task'
+				code: 'EXPAND_TASK_SAMPLING_ERROR',
+				message: error.message || 'Unknown error during task expansion via sampling'
 			},
 			fromCache: false
 		};

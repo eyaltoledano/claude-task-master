@@ -1,185 +1,232 @@
 /**
  * update-tasks.js
- * Direct function implementation for updating tasks based on new context/prompt
+ * Direct function implementation for updating tasks based on new context/prompt using FastMCP sampling.
  */
 
-import { updateTasks } from '../../../../scripts/modules/task-manager.js';
+// Removed: import { updateTasks } from '../../../../scripts/modules/task-manager.js';
+import { generateTaskFiles } from '../../../../scripts/modules/task-manager.js'; // Keep for generating files
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	readJSON,
+	writeJSON,
 } from '../../../../scripts/modules/utils.js';
 import {
-	getAnthropicClientForMCP,
-	getPerplexityClientForMCP
+	// Removed: getAnthropicClientForMCP,
+	// Removed: getPerplexityClientForMCP
 } from '../utils/ai-client-utils.js';
+// Import necessary AI prompt/parsing helpers
+import {
+	_buildUpdateMultipleTasksPrompt, // Assuming exists
+	parseTasksFromCompletion, // Assuming exists and returns { tasks: [...] }
+} from '../../../../scripts/modules/ai-services.js';
+import path from 'path'; // Needed for generateTaskFiles
 
 /**
- * Direct function wrapper for updating tasks based on new context/prompt.
+ * Direct function wrapper for updating tasks based on new context/prompt using FastMCP sampling.
  *
  * @param {Object} args - Command arguments containing fromId, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
- * @param {Object} context - Context object containing session data.
+ * @param {Object} context - Context object containing session data for sampling.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTasksDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
+	const { session } = context; // Session is needed for sampling
 	const { tasksJsonPath, from, prompt, research } = args;
 
+	// --- Input Validation ---
+	if (!tasksJsonPath) {
+		const errorMessage = 'tasksJsonPath is required';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_ARGUMENT', message: errorMessage }, fromCache: false };
+	}
+	if (args.id !== undefined && from === undefined) {
+		const errorMessage = "Use 'from' parameter for updateTasksDirect, not 'id'.";
+		log.error(errorMessage);
+		return { success: false, error: { code: 'PARAMETER_MISMATCH', message: errorMessage }, fromCache: false };
+	}
+	if (!from) {
+		const errorMessage = "'from' ID is required";
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_FROM_ID', message: errorMessage }, fromCache: false };
+	}
+	if (!prompt) {
+		const errorMessage = 'Update prompt is required';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_PROMPT', message: errorMessage }, fromCache: false };
+	}
+	let fromId;
 	try {
-		log.info(`Updating tasks with args: ${JSON.stringify(args)}`);
+		fromId = parseInt(String(from), 10);
+		if (isNaN(fromId)) throw new Error('Not an integer');
+	} catch {
+		const errorMessage = `Invalid from ID: ${from}. Must be an integer.`;
+		log.error(errorMessage);
+		return { success: false, error: { code: 'INVALID_FROM_ID', message: errorMessage }, fromCache: false };
+	}
+	if (!session || typeof session.llm?.complete !== 'function') {
+		const errorMessage = 'FastMCP sampling function (session.llm.complete) is not available.';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'SAMPLING_UNAVAILABLE', message: errorMessage }, fromCache: false };
+	}
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
-			};
+	const tasksPath = tasksJsonPath;
+	const useResearch = research === true; // Note: Research needs to be handled by client LLM
+
+	log.info(`Updating tasks from ID ${fromId} via MCP sampling. Research hint: ${useResearch}`);
+
+	try {
+		// --- Read Task Data ---
+		const data = readJSON(tasksPath);
+		if (!data || !Array.isArray(data.tasks)) {
+			return { success: false, error: { code: 'INVALID_TASKS_FILE', message: `Invalid tasks data in ${tasksPath}` }, fromCache: false };
 		}
 
-		// Check for the common mistake of using 'id' instead of 'from'
-		if (args.id !== undefined && from === undefined) {
-			const errorMessage =
-				"You specified 'id' parameter but 'update' requires 'from' parameter. Use 'from' for this tool or use 'update_task' tool if you want to update a single task.";
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: {
-					code: 'PARAMETER_MISMATCH',
-					message: errorMessage,
-					suggestion:
-						"Use 'from' parameter instead of 'id', or use the 'update_task' tool for single task updates"
-				},
-				fromCache: false
-			};
-		}
-
-		// Check required parameters
-		if (!from) {
-			const errorMessage =
-				'No from ID specified. Please provide a task ID to start updating from.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_FROM_ID', message: errorMessage },
-				fromCache: false
-			};
-		}
-
-		if (!prompt) {
-			const errorMessage =
-				'No prompt specified. Please provide a prompt with new context for task updates.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
-			};
-		}
-
-		// Parse fromId - handle both string and number values
-		let fromId;
-		if (typeof from === 'string') {
-			fromId = parseInt(from, 10);
-			if (isNaN(fromId)) {
-				const errorMessage = `Invalid from ID: ${from}. Task ID must be a positive integer.`;
-				log.error(errorMessage);
-				return {
-					success: false,
-					error: { code: 'INVALID_FROM_ID', message: errorMessage },
-					fromCache: false
-				};
-			}
-		} else {
-			fromId = from;
-		}
-
-		// Get research flag
-		const useResearch = research === true;
-
-		// Initialize appropriate AI client based on research flag
-		let aiClient;
-		try {
-			if (useResearch) {
-				log.info('Using Perplexity AI for research-backed task updates');
-				aiClient = await getPerplexityClientForMCP(session, log);
-			} else {
-				log.info('Using Claude AI for task updates');
-				aiClient = getAnthropicClientForMCP(session, log);
-			}
-		} catch (error) {
-			log.error(`Failed to initialize AI client: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: `Cannot initialize AI client: ${error.message}`
-				},
-				fromCache: false
-			};
-		}
-
-		log.info(
-			`Updating tasks from ID ${fromId} with prompt "${prompt}" and research: ${useResearch}`
+		// --- Filter Tasks to Update ---
+		const originalTasksToUpdate = data.tasks.filter(
+			(task) => parseInt(String(task.id).split('.')[0], 10) >= fromId && task.status !== 'done' && task.status !== 'completed'
 		);
 
-		// Create the logger wrapper to ensure compatibility with core functions
-		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args), // Handle optional debug
-			success: (message, ...args) => log.info(message, ...args) // Map success to info if needed
-		};
+		if (originalTasksToUpdate.length === 0) {
+			log.info(`No pending tasks found with ID >= ${fromId} to update.`);
+			return { success: true, data: { message: `No pending tasks found with ID >= ${fromId}.`, tasksUpdated: 0 }, fromCache: false };
+		}
+		log.info(`Found ${originalTasksToUpdate.length} tasks to update.`);
 
+		// --- Start of Refactored Logic ---
+
+		// 1. Construct Prompt
+		// Assumes _buildUpdateMultipleTasksPrompt exists
+		const { systemPrompt, userPrompt } = _buildUpdateMultipleTasksPrompt(originalTasksToUpdate, prompt);
+		if (!userPrompt) {
+			throw new Error('Failed to generate the prompt for multiple task update.');
+		}
+		log.info('Generated multiple task update prompt for sampling.');
+
+		// 2. Call FastMCP Sampling
+		let completionText;
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
-
-			// Execute core updateTasks function, passing the AI client and session
-			await updateTasks(tasksJsonPath, fromId, prompt, useResearch, {
-				mcpLog: logWrapper, // Pass the wrapper instead of the raw log object
-				session
-			});
-
-			// Since updateTasks doesn't return a value but modifies the tasks file,
-			// we'll return a success message
-			return {
-				success: true,
-				data: {
-					message: `Successfully updated tasks from ID ${fromId} based on the prompt`,
-					fromId,
-					tasksPath: tasksJsonPath,
-					useResearch
-				},
-				fromCache: false // This operation always modifies state and should never be cached
-			};
+			log.info('Initiating FastMCP LLM sampling via client...');
+			const completion = await session.llm.complete(userPrompt, { system: systemPrompt });
+			log.info('Received completion from client LLM.');
+			completionText = completion?.content;
+			if (!completionText) {
+				throw new Error('Received empty completion from client LLM via sampling.');
+			}
 		} catch (error) {
-			log.error(`Error updating tasks: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'UPDATE_TASKS_ERROR',
-					message: error.message || 'Unknown error updating tasks'
-				},
-				fromCache: false
-			};
+			log.error(`LLM sampling failed: ${error.message}`);
+			throw new Error(`Failed to get completion via sampling: ${error.message}`);
+		}
+
+		// 3. Parse Completion
+		let updatedTasksDataFromAI;
+		try {
+			// Assuming parseTasksFromCompletion returns { tasks: [...] }
+			updatedTasksDataFromAI = parseTasksFromCompletion(completionText);
+			if (!updatedTasksDataFromAI || !Array.isArray(updatedTasksDataFromAI.tasks)) {
+				throw new Error('Parsing did not return a valid tasks array.');
+			}
+			log.info(`Parsed ${updatedTasksDataFromAI.tasks.length} updated tasks from completion.`);
+		} catch (error) {
+			log.error(`Failed to parse LLM completion: ${error.message}`);
+			throw new Error(`Failed to parse LLM completion: ${error.message}`);
+		}
+
+		// 4. Validation and Merging (Moved from core function)
+		const validatedUpdatedTasks = [];
+		for (const updatedTaskAI of updatedTasksDataFromAI.tasks) {
+			const originalTask = originalTasksToUpdate.find(t => t.id === updatedTaskAI.id);
+			if (!originalTask) {
+				log.warn(`AI returned task with ID ${updatedTaskAI.id} which was not in the original update list. Skipping.`);
+				continue;
+			}
+
+			// Basic validation
+			if (!updatedTaskAI.title || !updatedTaskAI.description) {
+				log.warn(`Updated task ${updatedTaskAI.id} from AI is missing title or description. Skipping.`);
+				validatedUpdatedTasks.push(originalTask); // Keep original if AI version is invalid
+				continue;
+			}
+			// Ensure ID is preserved
+			if (updatedTaskAI.id !== originalTask.id) {
+				log.warn(`Task ID ${originalTask.id} changed by AI. Restoring.`);
+				updatedTaskAI.id = originalTask.id;
+			}
+			// Ensure status is preserved
+			if (updatedTaskAI.status !== originalTask.status) {
+				log.warn(`Task status for ${originalTask.id} changed by AI. Restoring status '${originalTask.status}'.`);
+				updatedTaskAI.status = originalTask.status;
+			}
+			// Ensure completed subtasks are preserved
+			if (originalTask.subtasks?.length > 0) {
+				const completedOriginalSubtasks = originalTask.subtasks.filter(st => st.status === 'done' || st.status === 'completed');
+				if (!updatedTaskAI.subtasks) updatedTaskAI.subtasks = [];
+				for (const completedSubtask of completedOriginalSubtasks) {
+					const updatedVersion = updatedTaskAI.subtasks.find(st => st.id === completedSubtask.id);
+					if (!updatedVersion) {
+						log.warn(`Completed subtask ${originalTask.id}.${completedSubtask.id} removed by AI. Restoring.`);
+						updatedTaskAI.subtasks.push(completedSubtask);
+					} else if (JSON.stringify(updatedVersion) !== JSON.stringify(completedSubtask)) {
+						log.warn(`Completed subtask ${originalTask.id}.${completedSubtask.id} modified by AI. Restoring.`);
+						const idx = updatedTaskAI.subtasks.findIndex(st => st.id === completedSubtask.id);
+						if (idx !== -1) updatedTaskAI.subtasks[idx] = completedSubtask;
+					}
+				}
+				// Ensure unique subtask IDs
+				const subtaskIds = new Set();
+				updatedTaskAI.subtasks = updatedTaskAI.subtasks.filter(st => {
+					if (!subtaskIds.has(st.id)) { subtaskIds.add(st.id); return true; }
+					log.warn(`Duplicate subtask ID ${originalTask.id}.${st.id} detected. Removing duplicate.`);
+					return false;
+				});
+			}
+			validatedUpdatedTasks.push(updatedTaskAI);
+		}
+
+		// 5. Update Tasks in Main Data
+		let tasksUpdatedCount = 0;
+		validatedUpdatedTasks.forEach(updatedTask => {
+			const index = data.tasks.findIndex(t => t.id === updatedTask.id);
+			if (index !== -1) {
+				data.tasks[index] = updatedTask;
+				tasksUpdatedCount++;
+			}
+		});
+		log.info(`Merged ${tasksUpdatedCount} validated updated tasks back into main data.`);
+
+		// 6. Save Updated Task Data
+		writeJSON(tasksPath, data);
+		log.info(`Updated tasks file ${tasksPath}.`);
+
+		// 7. Generate Individual Task Files (in silent mode)
+		enableSilentMode();
+		try {
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: log });
+			log.info('Generated individual task files.');
 		} finally {
-			// Make sure to restore normal logging even if there's an error
 			disableSilentMode();
 		}
-	} catch (error) {
-		// Ensure silent mode is disabled
-		disableSilentMode();
 
-		log.error(`Error updating tasks: ${error.message}`);
+		// --- End of Refactored Logic ---
+
+		// 8. Return Success
+		return {
+			success: true,
+			data: {
+				message: `Successfully updated ${tasksUpdatedCount} tasks from ID ${fromId} using client LLM sampling.`,
+				tasksUpdated: tasksUpdatedCount
+			},
+			fromCache: false
+		};
+
+	} catch (error) {
+		log.error(`Error during MCP updateTasksDirect: ${error.message}`);
+		log.error(error.stack);
 		return {
 			success: false,
 			error: {
-				code: 'UPDATE_TASKS_ERROR',
-				message: error.message || 'Unknown error updating tasks'
+				code: 'UPDATE_TASKS_SAMPLING_ERROR',
+				message: error.message || 'Unknown error during multiple task update via sampling'
 			},
 			fromCache: false
 		};

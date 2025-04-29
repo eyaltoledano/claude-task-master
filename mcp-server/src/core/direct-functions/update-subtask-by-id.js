@@ -1,192 +1,196 @@
 /**
  * update-subtask-by-id.js
- * Direct function implementation for appending information to a specific subtask
+ * Direct function implementation for appending information to a specific subtask using FastMCP sampling.
  */
 
-import { updateSubtaskById } from '../../../../scripts/modules/task-manager.js';
+// Removed: import { updateSubtaskById } from '../../../../scripts/modules/task-manager.js';
+import { generateTaskFiles } from '../../../../scripts/modules/task-manager.js'; // Keep for generating files
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	readJSON,
+	writeJSON
 } from '../../../../scripts/modules/utils.js';
 import {
-	getAnthropicClientForMCP,
-	getPerplexityClientForMCP
+	// Removed: getAnthropicClientForMCP,
+	// Removed: getPerplexityClientForMCP
 } from '../utils/ai-client-utils.js';
+// Import necessary AI prompt/parsing helpers
+import {
+	_buildUpdateSubtaskPrompt, // Assuming exists
+	parseTaskJsonResponse // Assuming works for single task object
+} from '../../../../scripts/modules/ai-services.js';
+import path from 'path'; // Needed for generateTaskFiles
 
 /**
- * Direct function wrapper for updateSubtaskById with error handling.
+ * Direct function wrapper for updateSubtaskById using FastMCP sampling.
  *
  * @param {Object} args - Command arguments containing id, prompt, useResearch and tasksJsonPath.
  * @param {Object} log - Logger object.
- * @param {Object} context - Context object containing session data.
+ * @param {Object} context - Context object containing session data for sampling.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
+	const { session } = context; // Session is needed for sampling
 	const { tasksJsonPath, id, prompt, research } = args;
 
+	// --- Input Validation ---
+	if (!tasksJsonPath) {
+		const errorMessage = 'tasksJsonPath is required';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_ARGUMENT', message: errorMessage }, fromCache: false };
+	}
+	if (!id) {
+		const errorMessage = 'Subtask ID is required';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_SUBTASK_ID', message: errorMessage }, fromCache: false };
+	}
+	if (!prompt) {
+		const errorMessage = 'Update prompt is required';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'MISSING_PROMPT', message: errorMessage }, fromCache: false };
+	}
+	const subtaskIdStr = String(id);
+	if (!subtaskIdStr.includes('.')) {
+		const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Must be parentId.subtaskId.`;
+		log.error(errorMessage);
+		return { success: false, error: { code: 'INVALID_SUBTASK_ID_FORMAT', message: errorMessage }, fromCache: false };
+	}
+	if (!session || typeof session.llm?.complete !== 'function') {
+		const errorMessage = 'FastMCP sampling function (session.llm.complete) is not available.';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'SAMPLING_UNAVAILABLE', message: errorMessage }, fromCache: false };
+	}
+
+	const tasksPath = tasksJsonPath;
+	const useResearch = research === true; // Note: Research needs to be handled by client LLM
+
+	log.info(`Updating subtask ${subtaskIdStr} via MCP sampling. Research hint: ${useResearch}`);
+
 	try {
-		log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
-			};
+		// --- Read Task Data ---
+		const data = readJSON(tasksPath);
+		if (!data || !Array.isArray(data.tasks)) {
+			return { success: false, error: { code: 'INVALID_TASKS_FILE', message: `Invalid tasks data in ${tasksPath}` }, fromCache: false };
 		}
 
-		// Check required parameters (id and prompt)
-		if (!id) {
-			const errorMessage =
-				'No subtask ID specified. Please provide a subtask ID to update.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_SUBTASK_ID', message: errorMessage },
-				fromCache: false
-			};
+		// Find parent task and subtask
+		const [parentIdStr, subIdStr] = subtaskIdStr.split('.');
+		const parentId = parseInt(parentIdStr, 10);
+		const subId = parseInt(subIdStr, 10);
+
+		const parentTaskIndex = data.tasks.findIndex((t) => t.id === parentId);
+		if (parentTaskIndex === -1) {
+			return { success: false, error: { code: 'PARENT_TASK_NOT_FOUND', message: `Parent task ${parentId} not found for subtask ${subtaskIdStr}` }, fromCache: false };
+		}
+		const parentTask = data.tasks[parentTaskIndex];
+
+		if (!Array.isArray(parentTask.subtasks)) {
+			return { success: false, error: { code: 'SUBTASK_NOT_FOUND', message: `Subtask ${subtaskIdStr} not found (parent has no subtasks)` }, fromCache: false };
 		}
 
-		if (!prompt) {
-			const errorMessage =
-				'No prompt specified. Please provide a prompt with information to add to the subtask.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
-			};
+		const subtaskIndex = parentTask.subtasks.findIndex((st) => st.id === subId);
+		if (subtaskIndex === -1) {
+			return { success: false, error: { code: 'SUBTASK_NOT_FOUND', message: `Subtask ${subtaskIdStr} not found` }, fromCache: false };
+		}
+		const subtaskToUpdate = parentTask.subtasks[subtaskIndex];
+
+		// --- Pre-Update Checks ---
+		if (subtaskToUpdate.status === 'done' || subtaskToUpdate.status === 'completed') {
+			return { success: false, error: { code: 'SUBTASK_COMPLETED', message: `Subtask ${subtaskIdStr} is already completed` }, fromCache: false };
 		}
 
-		// Validate subtask ID format
-		const subtaskId = id;
-		if (typeof subtaskId !== 'string' && typeof subtaskId !== 'number') {
-			const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Subtask ID must be a string or number.`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_TYPE', message: errorMessage },
-				fromCache: false
-			};
+		// --- Start of Refactored Logic ---
+
+		// 1. Construct Prompt
+		// Assumes _buildUpdateSubtaskPrompt exists
+		const { systemPrompt, userPrompt } = _buildUpdateSubtaskPrompt(parentTask, subtaskToUpdate, prompt);
+		if (!userPrompt) {
+			throw new Error('Failed to generate the prompt for subtask update.');
 		}
+		log.info('Generated subtask update prompt for sampling.');
 
-		const subtaskIdStr = String(subtaskId);
-		if (!subtaskIdStr.includes('.')) {
-			const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Subtask ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_FORMAT', message: errorMessage },
-				fromCache: false
-			};
-		}
-
-		// Use the provided path
-		const tasksPath = tasksJsonPath;
-
-		// Get research flag
-		const useResearch = research === true;
-
-		log.info(
-			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt}" and research: ${useResearch}`
-		);
-
-		// Initialize the appropriate AI client based on research flag
+		// 2. Call FastMCP Sampling
+		let completionText;
 		try {
-			if (useResearch) {
-				// Initialize Perplexity client
-				await getPerplexityClientForMCP(session);
-			} else {
-				// Initialize Anthropic client
-				await getAnthropicClientForMCP(session);
+			log.info('Initiating FastMCP LLM sampling via client...');
+			const completion = await session.llm.complete(userPrompt, { system: systemPrompt });
+			log.info('Received completion from client LLM.');
+			completionText = completion?.content;
+			if (!completionText) {
+				throw new Error('Received empty completion from client LLM via sampling.');
 			}
 		} catch (error) {
-			log.error(`AI client initialization error: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: error.message || 'Failed to initialize AI client'
-				},
-				fromCache: false
-			};
+			log.error(`LLM sampling failed: ${error.message}`);
+			throw new Error(`Failed to get completion via sampling: ${error.message}`);
 		}
 
+		// 3. Parse Completion (assuming it returns a single subtask object)
+		let updatedSubtaskDataFromAI;
 		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
-
-			// Create a logger wrapper object to handle logging without breaking the mcpLog[level] calls
-			// This ensures outputFormat is set to 'json' while still supporting proper logging
-			const logWrapper = {
-				info: (message) => log.info(message),
-				warn: (message) => log.warn(message),
-				error: (message) => log.error(message),
-				debug: (message) => log.debug && log.debug(message),
-				success: (message) => log.info(message) // Map success to info if needed
-			};
-
-			// Execute core updateSubtaskById function
-			// Pass both session and logWrapper as mcpLog to ensure outputFormat is 'json'
-			const updatedSubtask = await updateSubtaskById(
-				tasksPath,
-				subtaskIdStr,
-				prompt,
-				useResearch,
-				{
-					session,
-					mcpLog: logWrapper
-				}
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			// Handle the case where the subtask couldn't be updated (e.g., already marked as done)
-			if (!updatedSubtask) {
-				return {
-					success: false,
-					error: {
-						code: 'SUBTASK_UPDATE_FAILED',
-						message:
-							'Failed to update subtask. It may be marked as completed, or another error occurred.'
-					},
-					fromCache: false
-				};
-			}
-
-			// Return the updated subtask information
-			return {
-				success: true,
-				data: {
-					message: `Successfully updated subtask with ID ${subtaskIdStr}`,
-					subtaskId: subtaskIdStr,
-					parentId: subtaskIdStr.split('.')[0],
-					subtask: updatedSubtask,
-					tasksPath,
-					useResearch
-				},
-				fromCache: false // This operation always modifies state and should never be cached
-			};
+			updatedSubtaskDataFromAI = parseTaskJsonResponse(completionText); // Reusing task parser
+			log.info('Parsed updated subtask data from LLM completion.');
 		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
-			throw error; // Rethrow to be caught by outer catch block
+			log.error(`Failed to parse LLM completion: ${error.message}`);
+			throw new Error(`Failed to parse LLM completion: ${error.message}`);
 		}
+
+		// 4. Validation (specific to subtasks)
+		if (!updatedSubtaskDataFromAI || typeof updatedSubtaskDataFromAI !== 'object') {
+			throw new Error('LLM completion did not contain a valid subtask object.');
+		}
+		if (!updatedSubtaskDataFromAI.title || !updatedSubtaskDataFromAI.description) {
+			throw new Error('Updated subtask from LLM is missing required fields (title or description).');
+		}
+		// --> Ensure ID is preserved <--
+		if (updatedSubtaskDataFromAI.id !== subId) {
+			log.warn(`Subtask ID changed by AI. Restoring original ID ${subId}.`);
+			updatedSubtaskDataFromAI.id = subId;
+		}
+		// --> Ensure status is preserved unless explicitly changed <--
+		if (updatedSubtaskDataFromAI.status !== subtaskToUpdate.status && !prompt.toLowerCase().includes('status')) {
+			log.warn(`Subtask status changed by AI without explicit instruction. Restoring original status '${subtaskToUpdate.status}'.`);
+			updatedSubtaskDataFromAI.status = subtaskToUpdate.status;
+		}
+		// Note: Completed subtask validation doesn't apply here as we check status before starting
+
+		// 5. Update Subtask in Data
+		parentTask.subtasks[subtaskIndex] = updatedSubtaskDataFromAI; // Replace with validated data
+		data.tasks[parentTaskIndex] = parentTask; // Update parent task in main array
+
+		// 6. Save Updated Task Data
+		writeJSON(tasksPath, data);
+		log.info(`Updated subtask ${subtaskIdStr} in ${tasksPath}.`);
+
+		// 7. Generate Individual Task Files (in silent mode)
+		enableSilentMode();
+		try {
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: log });
+			log.info('Generated individual task files.');
+		} finally {
+			disableSilentMode();
+		}
+
+		// --- End of Refactored Logic ---
+
+		// 8. Return Success
+		return {
+			success: true,
+			data: {
+				message: `Successfully updated subtask ${subtaskIdStr} using client LLM sampling.`,
+				subtask: updatedSubtaskDataFromAI // Return the updated subtask data
+			},
+			fromCache: false
+		};
+
 	} catch (error) {
-		// Ensure silent mode is disabled
-		disableSilentMode();
-
-		log.error(`Error updating subtask by ID: ${error.message}`);
+		log.error(`Error during MCP updateSubtaskByIdDirect: ${error.message}`);
+		log.error(error.stack);
 		return {
 			success: false,
 			error: {
-				code: 'UPDATE_SUBTASK_ERROR',
-				message: error.message || 'Unknown error updating subtask'
+				code: 'UPDATE_SUBTASK_SAMPLING_ERROR',
+				message: error.message || 'Unknown error during subtask update via sampling'
 			},
 			fromCache: false
 		};

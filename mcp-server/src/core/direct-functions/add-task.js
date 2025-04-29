@@ -1,6 +1,6 @@
 /**
  * add-task.js
- * Direct function implementation for adding a new task
+ * Direct function implementation for adding a new task, using FastMCP sampling for AI generation.
  */
 
 import { addTask } from '../../../../scripts/modules/task-manager.js';
@@ -9,17 +9,18 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import {
-	getAnthropicClientForMCP,
-	getModelConfig
+	// Removed: getAnthropicClientForMCP,
+	getModelConfig // Keep for potential non-sampling use?
 } from '../utils/ai-client-utils.js';
 import {
 	_buildAddTaskPrompt,
-	parseTaskJsonResponse,
-	_handleAnthropicStream
+	parseTaskJsonResponse
+	// Removed: _handleAnthropicStream
 } from '../../../../scripts/modules/ai-services.js';
 
 /**
  * Direct function wrapper for adding a new task with error handling.
+ * Uses FastMCP sampling for AI-driven task creation.
  *
  * @param {Object} args - Command arguments
  * @param {string} [args.prompt] - Description of the task to add (required if not using manual fields)
@@ -31,9 +32,9 @@ import {
  * @param {string} [args.priority='medium'] - Task priority (high, medium, low)
  * @param {string} [args.file='tasks/tasks.json'] - Path to the tasks file
  * @param {string} [args.projectRoot] - Project root directory
- * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
+ * @param {boolean} [args.research=false] - Whether to use research capabilities (Note: Research needs to be handled by the client LLM now)
  * @param {Object} log - Logger object
- * @param {Object} context - Additional context (reportProgress, session)
+ * @param {Object} context - Additional context (session for sampling)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
@@ -79,7 +80,6 @@ export async function addTaskDirect(args, log, context = {}) {
 		}
 
 		// Extract and prepare parameters
-		const taskPrompt = prompt;
 		const taskDependencies = Array.isArray(dependencies)
 			? dependencies
 			: dependencies
@@ -93,6 +93,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		const { session } = context;
 
 		let manualTaskData = null;
+		let taskDataFromAI = null;
 
 		if (isManualCreation) {
 			// Create manual task data object
@@ -107,57 +108,25 @@ export async function addTaskDirect(args, log, context = {}) {
 				`Adding new task manually with title: "${args.title}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
 			);
 
-			// Call the addTask function with manual task data
-			const newTaskId = await addTask(
-				tasksPath,
-				null, // No prompt needed for manual creation
-				taskDependencies,
-				priority,
-				{
-					mcpLog: log,
-					session
-				},
-				'json', // Use JSON output format to prevent console output
-				null, // No custom environment
-				manualTaskData // Pass the manual task data
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			return {
-				success: true,
-				data: {
-					taskId: newTaskId,
-					message: `Successfully added new task #${newTaskId}`
-				}
-			};
 		} else {
-			// AI-driven task creation
+			// --- Start of Refactored AI Path ---
 			log.info(
-				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
+				`Generating new task via MCP sampling with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${priority}`
 			);
 
-			// Initialize AI client with session environment
-			let localAnthropic;
-			try {
-				localAnthropic = getAnthropicClientForMCP(session, log);
-			} catch (error) {
-				log.error(`Failed to initialize Anthropic client: ${error.message}`);
+			// Check if sampling is available via session
+			if (!session || typeof session.llm?.complete !== 'function') {
+				const errorMessage = 'FastMCP sampling function (session.llm.complete) is not available.';
+				log.error(errorMessage);
 				disableSilentMode();
 				return {
 					success: false,
-					error: {
-						code: 'AI_CLIENT_ERROR',
-						message: `Cannot initialize AI client: ${error.message}`
-					}
+					error: { code: 'SAMPLING_UNAVAILABLE', message: errorMessage },
+					fromCache: false
 				};
 			}
 
-			// Get model configuration from session
-			const modelConfig = getModelConfig(session);
-
-			// Read existing tasks to provide context
+			// Read existing tasks to provide context for the prompt
 			let tasksData;
 			try {
 				const fs = await import('fs');
@@ -169,85 +138,85 @@ export async function addTaskDirect(args, log, context = {}) {
 
 			// Build prompts for AI
 			const { systemPrompt, userPrompt } = _buildAddTaskPrompt(
-				prompt,
+				prompt, // Use the original user prompt
 				tasksData.tasks
 			);
 
-			// Make the AI call using the streaming helper
-			let responseText;
+			// Call FastMCP Sampling
+			let completionText;
 			try {
-				responseText = await _handleAnthropicStream(
-					localAnthropic,
-					{
-						model: modelConfig.model,
-						max_tokens: modelConfig.maxTokens,
-						temperature: modelConfig.temperature,
-						messages: [{ role: 'user', content: userPrompt }],
-						system: systemPrompt
-					},
-					{
-						mcpLog: log
-					}
-				);
+				log.info('Initiating FastMCP LLM sampling via client...');
+				// Pass both system and user prompts if the sampling method supports it
+				// Adjust based on actual FastMCP API
+				const completion = await session.llm.complete(userPrompt, { system: systemPrompt });
+				log.info('Received completion from client LLM.');
+				completionText = completion?.content; // Example access
+				if (!completionText) {
+					throw new Error('Received empty completion from client LLM via sampling.');
+				}
 			} catch (error) {
-				log.error(`AI processing failed: ${error.message}`);
+				log.error(`LLM sampling failed: ${error.message}`);
 				disableSilentMode();
 				return {
 					success: false,
 					error: {
-						code: 'AI_PROCESSING_ERROR',
-						message: `Failed to generate task with AI: ${error.message}`
+						code: 'SAMPLING_ERROR',
+						message: `Failed to get completion via sampling: ${error.message}`
 					}
 				};
 			}
 
 			// Parse the AI response
-			let taskDataFromAI;
 			try {
-				taskDataFromAI = parseTaskJsonResponse(responseText);
+				taskDataFromAI = parseTaskJsonResponse(completionText);
+				log.info('Parsed task data from LLM completion.');
 			} catch (error) {
-				log.error(`Failed to parse AI response: ${error.message}`);
+				log.error(`Failed to parse LLM completion: ${error.message}`);
 				disableSilentMode();
 				return {
 					success: false,
 					error: {
 						code: 'RESPONSE_PARSING_ERROR',
-						message: `Failed to parse AI response: ${error.message}`
+						message: `Failed to parse LLM completion: ${error.message}`
 					}
 				};
 			}
-
-			// Call the addTask function with 'json' outputFormat to prevent console output when called via MCP
-			const newTaskId = await addTask(
-				tasksPath,
-				prompt,
-				taskDependencies,
-				priority,
-				{
-					mcpLog: log,
-					session
-				},
-				'json',
-				null,
-				taskDataFromAI // Pass the parsed AI result as the manual task data
-			);
-
-			// Restore normal logging
-			disableSilentMode();
-
-			return {
-				success: true,
-				data: {
-					taskId: newTaskId,
-					message: `Successfully added new task #${newTaskId}`
-				}
-			};
+			// --- End of Refactored AI Path ---
 		}
+
+		// Call the core addTask function with either manual data or AI-generated data
+		const newTaskId = await addTask(
+			tasksPath,
+			prompt, // Pass original prompt for potential logging/context in core function
+			taskDependencies,
+			taskPriority,
+			{
+				mcpLog: log, // Pass logger wrapper
+				session
+			},
+			'json', // Request JSON output format
+			null, // No custom env
+			manualTaskData || taskDataFromAI // Pass the appropriate task data
+		);
+
+		// Restore normal logging
+		disableSilentMode();
+
+		// Return success
+		return {
+			success: true,
+			data: {
+				taskId: newTaskId,
+				message: `Successfully added new task #${newTaskId}`
+			}
+		};
+
 	} catch (error) {
 		// Make sure to restore normal logging even if there's an error
 		disableSilentMode();
 
 		log.error(`Error in addTaskDirect: ${error.message}`);
+		log.error(error.stack); // Log stack for debugging
 		return {
 			success: false,
 			error: {

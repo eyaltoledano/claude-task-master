@@ -3,7 +3,6 @@ description: Guidelines for implementing and interacting with the Task Master MC
 globs: mcp-server/src/**/*, scripts/modules/**/*
 alwaysApply: false
 ---
-
 # Task Master MCP Server Guidelines
 
 This document outlines the architecture and implementation patterns for the Task Master Model Context Protocol (MCP) server, designed for integration with tools like Cursor.
@@ -116,11 +115,11 @@ When implementing a new direct function in `mcp-server/src/core/direct-functions
      );
      ```
    - **Critical For JSON Output Format**: Passing the `logWrapper` as `mcpLog` serves a dual purpose:
-     1. **Prevents Runtime Errors**: It ensures the `mcpLog[level](...)` calls within the core function succeed
+     1. **Prevents Runtime Errors**: It ensures the `mcpLog[level](mdc:...)` calls within the core function succeed
      2. **Controls Output Format**: In functions like `updateTaskById` and `updateSubtaskById`, the presence of `mcpLog` in the options triggers setting `outputFormat = 'json'` (instead of 'text'). This prevents UI elements (spinners, boxes) from being generated, which would break the JSON response.
    - **Proven Solution**: This pattern has successfully fixed multiple issues in our MCP tools (including `update-task` and `update-subtask`), where direct passing of the `log` object or omitting `mcpLog` led to either runtime errors or JSON parsing failures from UI output.
    - **When To Use**: Implement this wrapper in any direct function that calls a core function with an `options` object that might use `mcpLog` for logging or output format control.
-   - **Why it Works**: The `logWrapper` explicitly defines the `.info()`, `.warn()`, `.error()`, etc., methods that the core function's `report` helper needs, ensuring the `mcpLog[level](...)` call succeeds. It simply forwards the logging calls to the actual FastMCP `log` object.
+   - **Why it Works**: The `logWrapper` explicitly defines the `.info()`, `.warn()`, `.error()`, etc., methods that the core function's `report` helper needs, ensuring the `mcpLog[level](mdc:...)` call succeeds. It simply forwards the logging calls to the actual FastMCP `log` object.
    - **Combined with Silent Mode**: Remember that using the `logWrapper` for `mcpLog` is **necessary *in addition* to using `enableSilentMode()` / `disableSilentMode()`** (see next point). The wrapper handles structured logging *within* the core function, while silent mode suppresses direct `console.log` and UI elements (spinners, boxes) that would break the MCP JSON response.
 
 6. **Silent Mode Implementation**:
@@ -174,20 +173,58 @@ Direct functions that interact with AI (e.g., `addTaskDirect`, `expandTaskDirect
     // ...
   }
   ```
-- **AI Client Initialization**:
-  - ✅ **DO**: Use the utilities from [`mcp-server/src/core/utils/ai-client-utils.js`](mdc:mcp-server/src/core/utils/ai-client-utils.js) (e.g., `getAnthropicClientForMCP(session, log)`) to get AI client instances. These correctly use the `session` object to resolve API keys.
-  - ✅ **DO**: Wrap client initialization in a try/catch block and return a specific `AI_CLIENT_ERROR` on failure.
-- **AI Interaction**:
-  - ✅ **DO**: Build prompts using helper functions where appropriate (e.g., from `ai-prompt-helpers.js`).
-  - ✅ **DO**: Make the AI API call using appropriate helpers (e.g., `_handleAnthropicStream`). Pass the `log` object to these helpers for internal logging. **Do NOT pass `reportProgress`**.
-  - ✅ **DO**: Parse the AI response using helpers (e.g., `parseTaskJsonResponse`) and handle parsing errors with a specific code (e.g., `RESPONSE_PARSING_ERROR`).
-- **Calling Core Logic**:
-  - ✅ **DO**: After successful AI interaction, call the relevant core Task Master function (from `scripts/modules/`) if needed (e.g., `addTaskDirect` calls `addTask`).
-  - ✅ **DO**: Pass necessary data, including potentially the parsed AI results, to the core function.
-  - ✅ **DO**: If the core function can produce console output, call it with an `outputFormat: 'json'` argument (or similar, depending on the function) to suppress CLI output. Ensure the core function is updated to respect this. Use `enableSilentMode/disableSilentMode` around the core function call as a fallback if `outputFormat` is not supported or insufficient.
+- **AI Interaction via Sampling**: **DEPRECATED: Server-Side Calls.** The previous pattern involved initializing an AI client (Anthropic, Perplexity) within the direct function using utilities like `getAnthropicClientForMCP` and making direct API calls (e.g., using `_handleAnthropicStream`). **This is no longer the correct approach for MCP interaction.**
+
+  - ✅ **DO**: Use the **FastMCP LLM Sampling mechanism** provided via the `session` object. Construct the necessary prompt(s) (system and user) using helpers from `ai-services.js`.
+  - ✅ **DO**: Call the sampling method (e.g., `await session.llm.complete(userPrompt, { system: systemPrompt })`) to delegate LLM execution to the connected client.
+  - ✅ **DO**: Process the completion result returned by the sampling mechanism.
+  - ✅ **DO**: Use helper functions (e.g., `parseTaskJsonResponse`, `parseTasksFromCompletion`) to parse the structured data (like tasks or subtasks) from the completion text.
+  - ❌ **DON'T**: Initialize `Anthropic` or `Perplexity` clients directly within the direct function for MCP calls.
+  - ❌ **DON'T**: Call external LLM APIs directly (e.g., using `_handleAnthropicStream` or `client.chat.completions.create`) from within the direct function when operating via MCP.
+
+  ```javascript
+  // Example Refactored AI Direct Function using Sampling
+  import { _buildSomePrompt, parseSomeResult } from '../../../../scripts/modules/ai-services.js';
+
+  export async function someAIDirect(args, log, context = {}) {
+    const { session } = context;
+    // ... argument validation ...
+
+    try {
+      // 1. Prepare Data & Build Prompt
+      const taskData = readJSON(args.tasksJsonPath);
+      const { systemPrompt, userPrompt } = _buildSomePrompt(taskData, args.input);
+
+      // 2. Call FastMCP Sampling
+      log.info('Initiating LLM sampling via client...');
+      const completion = await session.llm.complete(userPrompt, { system: systemPrompt });
+      const completionText = completion?.content;
+      if (!completionText) throw new Error('Empty completion from client LLM.');
+
+      // 3. Parse Result
+      const processedData = parseSomeResult(completionText);
+
+      // 4. Perform Actions with Result (e.g., save data)
+      await saveProcessedData(args.tasksJsonPath, processedData);
+
+      // 5. Return Success
+      return { success: true, data: { message: "Operation successful via sampling.", ... } };
+
+    } catch (error) {
+      log.error(`Error in someAIDirect: ${error.message}`);
+      return { success: false, error: { code: 'SAMPLING_ERROR', message: error.message } };
+    }
+  }
+  ```
+
+- **Calling Core Logic**: 
+  - **DEPRECATED Pattern**: Previously, AI direct functions might call core logic functions (e.g., `addTask`) passing the *result* of a server-side AI call.
+  - ✅ **DO**: After getting the result from **FastMCP sampling**, call the relevant core Task Master function (from `scripts/modules/`) if needed *to perform the final action* (e.g., `addTaskDirect` calls the core `addTask` function to save the task data obtained from sampling).
+  - ✅ **DO**: Pass the necessary data obtained from the sampling completion to the core function.
+  - ✅ **DO**: If the core function might produce console output, ensure it's handled correctly (either via `outputFormat: 'json'` or `enableSilentMode/disableSilentMode` around the core call).
+
 - **Progress Indication**:
   - ❌ **DON'T**: Call `reportProgress` within the direct function.
-  - ✅ **DO**: If intermediate progress status is needed *within* the long-running direct function, use standard logging: `log.info('Progress: Processing AI response...')`.
 
 ## Tool Definition and Execution
 
@@ -470,7 +507,7 @@ Resources provide LLMs with static or dynamic data without executing tools.
 
 - **Implementation**: Use `@mcp.resource()` decorator pattern or `server.addResource`/`server.addResourceTemplate` in `mcp-server/src/core/resources/`.
 - **Registration**: Register resources during server initialization in [`mcp-server/src/index.js`](mdc:mcp-server/src/index.js).
-- **Best Practices**: Organize resources, validate parameters, use consistent URIs, handle errors. See [`fastmcp-core.txt`](docs/fastmcp-core.txt) for underlying SDK details.
+- **Best Practices**: Organize resources, validate parameters, use consistent URIs, handle errors. See [`fastmcp-core.txt`](mdc:docs/fastmcp-core.txt) for underlying SDK details.
 
 *(Self-correction: Removed detailed Resource implementation examples as they were less relevant to the current user focus on tool execution flow and project roots. Kept the overview.)*
 
@@ -494,7 +531,6 @@ Follow these steps to add MCP support for an existing Task Master command (see [
             - Handle errors from the core function.
         - Format the return as `{ success: true/false, data/error, fromCache?: boolean }`.
         - ❌ **DON'T**: Call `reportProgress`.
-    - Export the wrapper function.
 
 3.  **Update `task-master-core.js` with Import/Export**: Import and re-export your `*Direct` function and add it to the `directFunctions` map.
 

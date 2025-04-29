@@ -1,182 +1,181 @@
 /**
- * Direct function wrapper for analyzeTaskComplexity
+ * Direct function wrapper for analyzeTaskComplexity using FastMCP sampling.
  */
 
-import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
+// Removed: import { analyzeTaskComplexity } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
 	disableSilentMode,
-	isSilentMode,
-	readJSON
+	readJSON,
+	writeJSON // Needed to write the report
 } from '../../../../scripts/modules/utils.js';
+// Import necessary AI prompt/parsing helpers
+import {
+	generateComplexityAnalysisPrompt, // Assuming exists
+	parseComplexityAnalysis // Assuming exists
+} from '../../../../scripts/modules/ai-services.js';
 import fs from 'fs';
 import path from 'path';
 
 /**
- * Analyze task complexity and generate recommendations
+ * Analyze task complexity using FastMCP sampling and generate recommendations
  * @param {Object} args - Function arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.outputPath - Explicit absolute path to save the report.
- * @param {string} [args.model] - LLM model to use for analysis
- * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
- * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
+ * @param {string} [args.model] - LLM model hint (client decides actual model).
+ * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10).
+ * @param {boolean} [args.research] - Research hint (handled by client LLM).
  * @param {Object} log - Logger object
- * @param {Object} [context={}] - Context object containing session data
+ * @param {Object} [context={}] - Context object containing session data for sampling.
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-	// Destructure expected args
+	const { session } = context; // Session is needed for sampling
 	const { tasksJsonPath, outputPath, model, threshold, research } = args;
 
+	// --- Input Validation ---
+	if (!tasksJsonPath) {
+		log.error('analyzeTaskComplexityDirect called without tasksJsonPath');
+		return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'tasksJsonPath is required' }, fromCache: false };
+	}
+	if (!outputPath) {
+		log.error('analyzeTaskComplexityDirect called without outputPath');
+		return { success: false, error: { code: 'MISSING_ARGUMENT', message: 'outputPath is required' }, fromCache: false };
+	}
+	if (!session || typeof session.llm?.complete !== 'function') {
+		const errorMessage = 'FastMCP sampling function (session.llm.complete) is not available.';
+		log.error(errorMessage);
+		return { success: false, error: { code: 'SAMPLING_UNAVAILABLE', message: errorMessage }, fromCache: false };
+	}
+
+	const tasksPath = tasksJsonPath;
+	const resolvedOutputPath = outputPath;
+	const useResearch = research === true; // Client LLM handles research
+	const thresholdScore = threshold ? parseInt(String(threshold), 10) : 8; // Default threshold
+
+	log.info(`Analyzing task complexity via MCP sampling. Output: ${resolvedOutputPath}, Research hint: ${useResearch}`);
+
 	try {
-		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
-
-		// Check if required paths were provided
-		if (!tasksJsonPath) {
-			log.error('analyzeTaskComplexityDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-		if (!outputPath) {
-			log.error('analyzeTaskComplexityDirect called without outputPath');
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: 'outputPath is required' }
-			};
+		// --- Read Task Data ---
+		const data = readJSON(tasksPath);
+		if (!data || !Array.isArray(data.tasks)) {
+			return { success: false, error: { code: 'INVALID_TASKS_FILE', message: `Invalid tasks data in ${tasksPath}` }, fromCache: false };
 		}
 
-		// Use the provided paths
-		const tasksPath = tasksJsonPath;
-		const resolvedOutputPath = outputPath;
+		// Filter tasks for analysis (e.g., pending tasks)
+		// Logic to filter tasks should ideally be shared/imported if complex,
+		// but for simplicity, let's assume we analyze all non-done tasks here.
+		const tasksToAnalyze = data.tasks.filter(
+			(task) => task.status !== 'done' && task.status !== 'completed'
+		);
 
-		log.info(`Analyzing task complexity from: ${tasksPath}`);
-		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
-
-		if (research) {
-			log.info('Using Perplexity AI for research-backed complexity analysis');
+		if (tasksToAnalyze.length === 0) {
+			log.info('No tasks found for complexity analysis.');
+			// Still create an empty report file
+			const emptyReport = { meta: { generatedAt: new Date().toISOString(), tasksAnalyzed: 0 }, complexityAnalysis: [] };
+			writeJSON(resolvedOutputPath, emptyReport);
+			return { success: true, data: { message: 'No tasks to analyze.', reportPath: resolvedOutputPath, reportSummary: { taskCount: 0 } }, fromCache: false };
 		}
+		log.info(`Found ${tasksToAnalyze.length} tasks for complexity analysis.`);
 
-		// Create options object for analyzeTaskComplexity using provided paths
-		const options = {
-			file: tasksPath,
-			output: resolvedOutputPath,
-			model: model,
-			threshold: threshold,
-			research: research === true
-		};
+		// --- Start of Refactored Logic ---
 
-		// Enable silent mode to prevent console logs from interfering with JSON response
-		const wasSilent = isSilentMode();
-		if (!wasSilent) {
-			enableSilentMode();
+		// 1. Construct Prompt
+		// Assumes generateComplexityAnalysisPrompt exists
+		const analysisPrompt = generateComplexityAnalysisPrompt(tasksToAnalyze, thresholdScore, useResearch);
+		if (!analysisPrompt) {
+			throw new Error('Failed to generate the prompt for complexity analysis.');
 		}
+		log.info('Generated complexity analysis prompt for sampling.');
 
-		// Create a logWrapper that matches the expected mcpLog interface as specified in utilities.mdc
-		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args),
-			success: (message, ...args) => log.info(message, ...args) // Map success to info
-		};
-
+		// 2. Call FastMCP Sampling
+		let completionText;
 		try {
-			// Call the core function with session and logWrapper as mcpLog
-			await analyzeTaskComplexity(options, {
-				session,
-				mcpLog: logWrapper // Use the wrapper instead of passing log directly
-			});
-		} catch (error) {
-			log.error(`Error in analyzeTaskComplexity: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'ANALYZE_ERROR',
-					message: `Error running complexity analysis: ${error.message}`
-				}
-			};
-		} finally {
-			// Always restore normal logging in finally block, but only if we enabled it
-			if (!wasSilent) {
-				disableSilentMode();
+			log.info('Initiating FastMCP LLM sampling via client...');
+			// Note: Complexity analysis might benefit from a system prompt, adjust if needed
+			const completion = await session.llm.complete(analysisPrompt);
+			log.info('Received completion from client LLM.');
+			completionText = completion?.content;
+			if (!completionText) {
+				throw new Error('Received empty completion from client LLM via sampling.');
 			}
+		} catch (error) {
+			log.error(`LLM sampling failed: ${error.message}`);
+			throw new Error(`Failed to get completion via sampling: ${error.message}`);
 		}
 
-		// Verify the report file was created
-		if (!fs.existsSync(resolvedOutputPath)) {
-			return {
-				success: false,
-				error: {
-					code: 'ANALYZE_ERROR',
-					message: 'Analysis completed but no report file was created'
-				}
-			};
-		}
-
-		// Read the report file
-		let report;
+		// 3. Parse Completion
+		let analysisResults;
 		try {
-			report = JSON.parse(fs.readFileSync(resolvedOutputPath, 'utf8'));
-
-			// Important: Handle different report formats
-			// The core function might return an array or an object with a complexityAnalysis property
-			const analysisArray = Array.isArray(report)
-				? report
-				: report.complexityAnalysis || [];
-
-			// Count tasks by complexity
-			const highComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 8
-			).length;
-			const mediumComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 5 && t.complexityScore < 8
-			).length;
-			const lowComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore < 5
-			).length;
-
-			return {
-				success: true,
-				data: {
-					message: `Task complexity analysis complete. Report saved to ${resolvedOutputPath}`,
-					reportPath: resolvedOutputPath,
-					reportSummary: {
-						taskCount: analysisArray.length,
-						highComplexityTasks,
-						mediumComplexityTasks,
-						lowComplexityTasks
-					}
-				}
-			};
-		} catch (parseError) {
-			log.error(`Error parsing report file: ${parseError.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'REPORT_PARSE_ERROR',
-					message: `Error parsing complexity report: ${parseError.message}`
-				}
-			};
+			// Assumes parseComplexityAnalysis exists and returns the array of analysis objects
+			analysisResults = parseComplexityAnalysis(completionText);
+			if (!Array.isArray(analysisResults)) {
+				throw new Error('Parsing did not return a valid array of complexity analysis results.');
+			}
+			log.info(`Parsed ${analysisResults.length} complexity analysis results from completion.`);
+		} catch (error) {
+			log.error(`Failed to parse LLM completion: ${error.message}`);
+			throw new Error(`Failed to parse LLM completion: ${error.message}`);
 		}
+
+		// 4. Construct and Save Report
+		const report = {
+			meta: {
+				generatedAt: new Date().toISOString(),
+				tasksAnalyzed: tasksToAnalyze.length,
+				thresholdScore,
+				projectName: data.meta?.projectName || 'Unknown Project', // Get from tasks.json meta if possible
+				usedResearch // Include research hint used for prompt generation
+			},
+			complexityAnalysis: analysisResults
+		};
+
+		// Ensure output directory exists
+		const outputDir = path.dirname(resolvedOutputPath);
+		if (!fs.existsSync(outputDir)) {
+			fs.mkdirSync(outputDir, { recursive: true });
+		}
+		writeJSON(resolvedOutputPath, report);
+		log.info(`Complexity analysis report saved to: ${resolvedOutputPath}`);
+
+		// --- End of Refactored Logic ---
+
+		// 5. Calculate Summary and Return Result
+		const highComplexityTasks = analysisResults.filter(
+			(t) => t.complexityScore >= 8
+		).length;
+		const mediumComplexityTasks = analysisResults.filter(
+			(t) => t.complexityScore >= 5 && t.complexityScore < 8
+		).length;
+		const lowComplexityTasks = analysisResults.filter(
+			(t) => t.complexityScore < 5
+		).length;
+
+		return {
+			success: true,
+			data: {
+				message: `Task complexity analysis complete via sampling. Report saved to ${resolvedOutputPath}`,
+				reportPath: resolvedOutputPath,
+				reportSummary: {
+					taskCount: analysisResults.length,
+					highComplexityTasks,
+					mediumComplexityTasks,
+					lowComplexityTasks
+				}
+			},
+			fromCache: false // Analysis should generally not be cached this way
+		};
+
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		if (isSilentMode()) {
-			disableSilentMode();
-		}
-
-		log.error(`Error in analyzeTaskComplexityDirect: ${error.message}`);
+		log.error(`Error during MCP analyzeTaskComplexityDirect: ${error.message}`);
+		log.error(error.stack);
 		return {
 			success: false,
 			error: {
-				code: 'CORE_FUNCTION_ERROR',
-				message: error.message
-			}
+				code: 'ANALYZE_SAMPLING_ERROR',
+				message: error.message || 'Unknown error during complexity analysis via sampling'
+			},
+			fromCache: false
 		};
 	}
 }
