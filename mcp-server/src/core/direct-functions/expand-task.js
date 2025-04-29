@@ -16,11 +16,12 @@ import {
 	// Removed: getAnthropicClientForMCP,
 	// Removed: getModelConfig
 } from '../utils/ai-client-utils.js';
-// Import necessary AI prompt/parsing helpers
+// Import necessary AI prompt/parsing helpers from the correct location
 import {
 	generateSubtaskPrompt,
 	parseSubtasksFromText
-} from '../../../../scripts/modules/ai-services.js';
+} from '../utils/ai-client-utils.js'; // Updated path
+// Removed import from ai-services.js
 
 import path from 'path';
 import fs from 'fs';
@@ -136,7 +137,18 @@ export async function expandTaskDirect(args, log, context = {}) {
 		// 1. Construct Prompt for Subtask Generation
 		// Use the imported helper function
 		// Note: Assumes generateSubtaskPrompt handles complexity report integration if applicable
-		const subtaskPrompt = generateSubtaskPrompt(task, numSubtasks, additionalContext);
+		// Read complexity report if available (adjust path as needed)
+		let complexityReport = null;
+		const reportPath = path.join(path.dirname(tasksPath), '../scripts/task-complexity-report.json'); // Default path
+		try {
+		    if (fs.existsSync(reportPath)) {
+		        complexityReport = readJSON(reportPath);
+		    }
+		} catch (err) {
+		    log.warn(`Could not read complexity report at ${reportPath}: ${err.message}`);
+		}
+
+		const subtaskPrompt = generateSubtaskPrompt(task, numSubtasks, additionalContext, complexityReport);
 		if (!subtaskPrompt) {
 			throw new Error('Failed to generate the prompt for subtask expansion.');
 		}
@@ -161,7 +173,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 		let newSubtasks;
 		try {
 			// Use the imported helper function
-			newSubtasks = parseSubtasksFromText(completionText);
+			newSubtasks = parseSubtasksFromText(completionText, numSubtasks, taskId); // Pass expected count and parent ID
 			if (!Array.isArray(newSubtasks)) {
 				throw new Error('Parsing did not return a valid array of subtasks.');
 			}
@@ -189,10 +201,19 @@ export async function expandTaskDirect(args, log, context = {}) {
 		writeJSON(tasksPath, data);
 		log.info(`Updated tasks file ${tasksPath} with new subtasks for task ${taskId}.`);
 
+		// Create logger wrapper
+		const logWrapper = {
+			info: (message, ...args) => log.info(message, ...args),
+			warn: (message, ...args) => log.warn(message, ...args),
+			error: (message, ...args) => log.error(message, ...args),
+			debug: (message, ...args) => log.debug && log.debug(message, ...args),
+			success: (message, ...args) => log.info(message, ...args)
+		};
+
 		// 5. Generate Individual Task Files (in silent mode)
 		enableSilentMode();
 		try {
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: log });
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog: logWrapper }); // Use wrapper
 			log.info('Generated individual task files.');
 		} finally {
 			disableSilentMode();

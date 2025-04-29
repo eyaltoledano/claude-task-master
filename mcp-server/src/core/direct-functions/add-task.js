@@ -16,7 +16,7 @@ import {
 	_buildAddTaskPrompt,
 	parseTaskJsonResponse
 	// Removed: _handleAnthropicStream
-} from '../../../../scripts/modules/ai-services.js';
+} from '../utils/ai-client-utils.js';
 
 /**
  * Direct function wrapper for adding a new task with error handling.
@@ -184,6 +184,15 @@ export async function addTaskDirect(args, log, context = {}) {
 			// --- End of Refactored AI Path ---
 		}
 
+		// Create logger wrapper before calling core function
+		const logWrapper = {
+			info: (message, ...args) => log.info(message, ...args),
+			warn: (message, ...args) => log.warn(message, ...args),
+			error: (message, ...args) => log.error(message, ...args),
+			debug: (message, ...args) => log.debug && log.debug(message, ...args),
+			success: (message, ...args) => log.info(message, ...args) // Map success to info
+		};
+
 		// Call the core addTask function with either manual data or AI-generated data
 		const newTaskId = await addTask(
 			tasksPath,
@@ -191,7 +200,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			taskDependencies,
 			taskPriority,
 			{
-				mcpLog: log, // Pass logger wrapper
+				mcpLog: logWrapper, // Use the wrapper
 				session
 			},
 			'json', // Request JSON output format

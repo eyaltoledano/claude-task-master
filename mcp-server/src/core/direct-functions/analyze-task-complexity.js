@@ -9,11 +9,11 @@ import {
 	readJSON,
 	writeJSON // Needed to write the report
 } from '../../../../scripts/modules/utils.js';
-// Import necessary AI prompt/parsing helpers
+// Import necessary AI prompt/parsing helpers from the correct location
 import {
-	generateComplexityAnalysisPrompt, // Assuming exists
-	parseComplexityAnalysis // Assuming exists
-} from '../../../../scripts/modules/ai-services.js';
+	generateComplexityAnalysisPrompt,
+	parseComplexityAnalysis
+} from '../utils/ai-client-utils.js'; // Updated path
 import fs from 'fs';
 import path from 'path';
 
