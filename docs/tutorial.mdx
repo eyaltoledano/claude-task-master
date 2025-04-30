@@ -1,0 +1,295 @@
+# <Icon icon="file-text" iconType="solid" /> Task Master Tutorial
+
+This tutorial will guide you through setting up and using Task Master for AI-driven development.
+
+## <Icon icon="cog" iconType="solid" /> Initial Setup
+
+Choose your preferred setup method:
+
+<Tabs>
+  <Tab title="Using MCP (Recommended)">
+    MCP (Model Control Protocol) provides the easiest way to get started directly in your editor (Cursor recommended).
+
+    <Steps>
+        <Step>
+            **Add MCP Config:** Add the following JSON configuration to your editor's MCP settings.
+            ```json
+		{
+		"mcpServers": {
+			"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+				"MODEL": "claude-3-opus-20240229", // Or your preferred model
+				"PERPLEXITY_MODEL": "sonar-medium-online", // Or your preferred model
+				"MAX_TOKENS": 8192,
+				"TEMPERATURE": 0.2,
+				"DEFAULT_SUBTASKS": 5,
+				"DEFAULT_PRIORITY": "medium"
+			}
+			}
+		}
+		```
+        </Step>
+        <Step>
+            **Enable MCP:** Ensure the MCP server is enabled in your editor's settings.
+        </Step>
+        <Step>
+            **<Icon icon="robot" iconType="solid" /> Initialize via AI:** Prompt the AI agent in your editor:
+            <CodeBlock title="AI Prompt">{`
+Can you please initialize taskmaster-ai into my project?
+`}</CodeBlock>
+            The AI will set up the project structure and guide you further.
+        </Step>
+        <Step>
+            **<Icon icon="file-text" iconType="solid" /> Place PRD:** Put your Product Requirements Document (PRD) in the `scripts/` directory (e.g., `scripts/prd.txt`).
+        </Step>
+        <Step>
+            **<Icon icon="message-square" iconType="solid" /> Interact:** Use natural language commands:
+            <CodeBlock title="Example AI Prompts">{`
+Can you parse my PRD at scripts/prd.txt?
+What's the next task I should work on?
+Can you help me implement task 3?
+`}</CodeBlock>
+        </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Manual Installation">
+    Use the command line interface directly.
+
+    <Steps>
+        <Step>
+            **<Icon icon="terminal" iconType="solid" /> Install:** Install Task Master globally or locally.
+            <CodeBlock language="bash" title="Installation">{`
+# Install globally
+npm install -g task-master-ai
+
+# OR install locally within your project
+npm install task-master-ai
+`}</CodeBlock>
+        </Step>
+        <Step>
+            **<Icon icon="terminal" iconType="solid" /> Initialize:** Set up a new project.
+            <CodeBlock language="bash" title="Initialization">{`
+# If installed globally
+task-master init
+
+# If installed locally
+npx task-master init
+`}</CodeBlock>
+            Follow the prompts to configure your project.
+        </Step>
+        <Step>
+            **<Icon icon="file-text" iconType="solid" /> Place PRD:** Put your Product Requirements Document (PRD) in the `scripts/` directory (e.g., `scripts/prd.txt`).
+        </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## <Icon icon="terminal" iconType="solid" /> Common Commands
+
+Here are some fundamental Task Master CLI commands:
+
+<CodeBlock language="bash" title="Common CLI Commands">{`
+# Parse a PRD and generate tasks
+task-master parse-prd scripts/prd.txt
+
+# List all tasks
+task-master list
+
+# Show the next task to work on
+task-master next
+
+# Generate individual task files (Markdown)
+task-master generate
+`}</CodeBlock>
+*You can usually achieve the same results by prompting the AI agent if using Cursor/MCP.*
+
+## <Icon icon="mouse-pointer-click" iconType="solid" /> Setting up Cursor AI Integration
+
+Task Master integrates seamlessly with [Cursor AI](https://www.cursor.so/) for a structured AI development workflow.
+
+<Tabs>
+  <Tab title="Using Cursor with MCP (Recommended)">
+    If you followed the MCP setup within Cursor, integration is automatic. Just use natural language prompts:
+
+    <CodeBlock title="Example AI Prompts">{`
+What tasks are available to work on next?
+Can you analyze the complexity of our tasks?
+I'd like to implement task 4. What does it involve?
+`}</CodeBlock>
+  </Tab>
+  <Tab title="Manual Cursor Setup">
+    If not using MCP initially:
+    <Steps>
+        <Step>**Open Project:** After initializing (`task-master init`), open your project folder in Cursor.</Step>
+        <Step>**Rules Loaded:** Cursor automatically loads `.cursor/rules/dev_workflow.mdc`, providing the AI context.</Step>
+        <Step>**Place PRD:** Ensure your PRD is in `scripts/` (e.g., `scripts/prd.txt`).</Step>
+        <Step>**Agent Mode:** Open Cursor's AI chat and switch to Agent mode for interaction.</Step>
+    </Steps>
+  </Tab>
+  <Tab title="Alternative MCP Setup in Cursor">
+    You can manually configure the MCP server in Cursor settings:
+    <Steps>
+        <Step>Go to Cursor Settings > MCP.</Step>
+        <Step>Click "Add New MCP Server".</Step>
+        <Step>Configure:</Step>
+          - **Name:** `Task Master`
+          - **Type:** `Command`
+          - **Command:** `npx -y --package=task-master-ai task-master-ai`
+        <Step>Save the settings.</Step>
+    </Steps>
+    This allows direct interaction with Task Master commands via Cursor's AI.
+  </Tab>
+</Tabs>
+
+
+## <Icon icon="folder-git" iconType="solid" /> Initial Task Generation
+
+Instruct the agent (in Cursor) to generate tasks from your PRD.
+
+<Steps>
+    <Step>
+        **<Icon icon="file-text" iconType="solid" /> Parse PRD:**
+        <CodeBlock title="AI Prompt">{`
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
+`}</CodeBlock>
+        The agent runs `task-master parse-prd scripts/prd.txt`, creating `tasks.json`.
+    </Step>
+    <Step>
+        **<Icon icon="folder-git" iconType="solid" /> Generate Task Files:**
+        <CodeBlock title="AI Prompt">{`
+Please generate individual task files from tasks.json
+`}</CodeBlock>
+        The agent runs `task-master generate`, creating Markdown files in the `tasks/` directory (e.g., `task_001.md`).
+    </Step>
+</Steps>
+
+## <Icon icon="robot" iconType="solid" /> AI-Driven Development Workflow
+
+The Cursor agent, guided by the rules file, follows this structured workflow:
+
+<Steps>
+    <Step title="Task Discovery and Selection">
+        <Icon icon="search" iconType="solid" className="inline mr-1 h-5 w-5"/> Ask the agent:
+        <CodeBlock title="AI Prompt">{`
+What tasks are available to work on next?
+`}</CodeBlock>
+        The agent uses `task-master list` and `task-master next` to identify and prioritize the next available task based on dependencies and priority.
+    </Step>
+    <Step title="Task Implementation">
+        <Icon icon="code" iconType="solid" className="inline mr-1 h-5 w-5"/> Engage the agent:
+        <CodeBlock title="AI Prompt">{`
+Let's implement task 3. What does it involve?
+`}</CodeBlock>
+        The agent references the task details (`task-master show 3`), considers dependencies, coding standards, and the `testStrategy`.
+    </Step>
+    <Step title="Task Verification">
+        <Icon icon="check-circle" iconType="solid" className="inline mr-1 h-5 w-5"/> Before completing, ensure the task meets requirements based on:
+        * The task's specified `testStrategy`.
+        * Automated tests.
+        * Manual verification if needed.
+    </Step>
+    <Step title="Task Completion">
+        <Icon icon="check-circle" iconType="solid" className="inline mr-1 h-5 w-5"/> Inform the agent:
+        <CodeBlock title="AI Prompt">{`
+Task 3 is now complete. Please update its status.
+`}</CodeBlock>
+        The agent runs `task-master set-status --id=3 --status=done`.
+    </Step>
+    <Step title="Handling Implementation Drift">
+        <Icon icon="git-branch" iconType="solid" className="inline mr-1 h-5 w-5"/> If the plan changes significantly:
+        <CodeBlock title="AI Prompt">{`
+We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks (starting from task 4) to reflect this change.
+`}</CodeBlock>
+        The agent runs `task-master update --from=4 --prompt="Now using Express instead of Fastify."` to adjust subsequent tasks.
+    </Step>
+    <Step title="Breaking Down Complex Tasks">
+        <Icon icon="git-fork" iconType="solid" className="inline mr-1 h-5 w-5"/> For complex tasks needing more detail:
+        <Card title="Expand a Single Task" icon={<Icon icon="git-fork" iconType="solid" />}>
+            <CodeBlock title="AI Prompt">{`
+Task 5 seems complex. Can you break it down into 3 subtasks?
+`}</CodeBlock>
+            Agent runs: `task-master expand --id=5 --num=3`
+        </Card>
+        <Card title="Add Context" icon={<Icon icon="file-text" iconType="solid" />}>
+            <CodeBlock title="AI Prompt">{`
+Please break down task 5 with a focus on security considerations.
+`}</CodeBlock>
+            Agent runs: `task-master expand --id=5 --prompt="Focus on security aspects"`
+        </Card>
+        <Card title="Expand All Pending" icon={<Icon icon="list-checks" iconType="solid" />}>
+            <CodeBlock title="AI Prompt">{`
+Please break down all pending tasks into subtasks.
+`}</CodeBlock>
+            Agent runs: `task-master expand --all`
+        </Card>
+         <Card title="Use Research (Perplexity AI)" icon={<Icon icon="brain-circuit" iconType="solid" />}>
+            <CodeBlock title="AI Prompt">{`
+Please break down task 5 using research-backed generation.
+`}</CodeBlock>
+            Agent runs: `task-master expand --id=5 --research`
+        </Card>
+    </Step>
+</Steps>
+
+## <Icon icon="message-square" iconType="solid" /> Example Cursor AI Interactions
+
+Here are common scenarios for interacting with the Task Master agent:
+
+<Card title="Starting a New Project" icon={<Icon icon="file-text" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+I've just initialized a new project with Task Master. I have a PRD at scripts/prd.txt.
+Can you help me parse it and set up the initial tasks?
+`}</CodeBlock>
+</Card>
+
+<Card title="Working on Tasks" icon={<Icon icon="search" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+What's the next task I should work on? Please consider dependencies and priorities.
+`}</CodeBlock>
+</Card>
+
+<Card title="Implementing a Specific Task" icon={<Icon icon="code" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+`}</CodeBlock>
+</Card>
+
+<Card title="Managing Subtasks" icon={<Icon icon="git-fork" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
+`}</CodeBlock>
+  *Agent will use `clear-subtasks` then `expand`.*
+</Card>
+
+<Card title="Handling Changes" icon={<Icon icon="git-branch" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks (starting from task 5) to reflect this change?
+`}</CodeBlock>
+  *Agent will use `update --from=5 ...`*
+</Card>
+
+<Card title="Completing Work" icon={<Icon icon="check-circle" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+I've finished implementing the authentication system described in task 2. All tests are passing.
+Please mark it as complete and tell me what I should work on next.
+`}</CodeBlock>
+  *Agent will use `set-status` then `next`.*
+</Card>
+
+<Card title="Analyzing Complexity" icon={<Icon icon="brain-circuit" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
+`}</CodeBlock>
+  *Agent will use `analyze-complexity --research`.*
+</Card>
+
+<Card title="Viewing Complexity Report" icon={<Icon icon="file-search" iconType="solid" />}>
+  <CodeBlock title="AI Prompt">{`
+Can you show me the complexity report in a more readable format?
+`}</CodeBlock>
+  *Agent will use `complexity-report`.*
+</Card>

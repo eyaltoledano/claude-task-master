@@ -1,0 +1,85 @@
+Task Master offers flexible configuration options managed through environment variables.
+
+<Info>
+  Place a `.env` file at the root of your project directory to define these variables.
+</Info>
+
+## Required Configuration
+
+<Warning title="Anthropic API Key Required">
+  You must provide your Anthropic API key for Task Master to function correctly.
+</Warning>
+
+| Variable            | Description                    | Example            |
+| :------------------ | :----------------------------- | :----------------- |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key for Claude | `sk-ant-api03-...` |
+
+## Optional Configuration
+
+Customize Task Master's behavior with these optional settings:
+
+| Variable             | Default                   | Description                         | Example                  |
+| :------------------- | :------------------------ | :---------------------------------- | :----------------------- |
+| `MODEL`              | `"claude-3-opus-20240229"`  | Claude model to use                 | `claude-3-5-sonnet-20240620` |
+| `MAX_TOKENS`         | `"8192"`                  | Maximum tokens for AI responses     | `4000`                   |
+| `TEMPERATURE`        | `"0.7"`                   | Temperature for model responses     | `0.5`                    |
+| `DEBUG`              | `"false"`                 | Enable debug logging                | `true`                   |
+| `LOG_LEVEL`          | `"info"`                  | Console output level                | `debug`                  |
+| `DEFAULT_SUBTASKS`   | `"5"`                     | Default subtask count for `expand`  | `3`                      |
+| `DEFAULT_PRIORITY`   | `"medium"`                | Default priority for new tasks      | `high`                   |
+| `PROJECT_NAME`       | `""`                      | Project name in metadata            | `My Awesome Project`     |
+| `PROJECT_VERSION`    | `""`                      | Version in metadata                 | `2.1.0`                  |
+| `PERPLEXITY_API_KEY` | -                         | API key for research-backed features | `pplx-...`               |
+| `PERPLEXITY_MODEL`   | `"sonar-medium-online"`   | Perplexity model to use             | `sonar-large-online`     |
+
+## Example `.env` File
+
+Here's an example structure for your `.env` file:
+
+```bash title=".env"
+# Required
+ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
+
+# Optional - Claude Configuration
+MODEL=claude-3-opus-20240229
+MAX_TOKENS=8192
+TEMPERATURE=0.7
+
+# Optional - Perplexity API for Research
+PERPLEXITY_API_KEY=pplx-your-api-key
+PERPLEXITY_MODEL=sonar-medium-online
+
+# Optional - Project Info
+# PROJECT_NAME=My Project
+# PROJECT_VERSION=1.0.0
+
+# Optional - Application Configuration
+DEFAULT_SUBTASKS=5
+DEFAULT_PRIORITY=medium
+DEBUG=false
+LOG_LEVEL=info
+```
+
+## Troubleshooting
+
+<Steps>
+
+### Check `init` Command Execution
+
+If `task-master init` command doesn't respond or fails, try running the initialization script directly using Node.js:
+
+```bash
+node node_modules/claude-task-master/scripts/init.js
+```
+
+### Run from Cloned Repository
+
+Alternatively, clone the Task Master repository and run the initialization script from the local clone:
+
+```bash
+git clone https://github.com/eyaltoledano/claude-task-master.git
+cd claude-task-master
+node scripts/init.js
+```
+
+</Steps>

@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string",
+          "description": "Name of the project"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the tasks file format or project"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source file from which tasks were generated (e.g., PRD path)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the task set"
+        },
+        "totalTasksGenerated": {
+          "type": "number",
+          "description": "Total number of top-level tasks generated"
+        },
+        "tasksIncluded": {
+          "type": "number",
+          "description": "Number of tasks included in this file"
+        }
+      },
+      "required": [
+        "projectName",
+        "version",
+        "source",
+        "description",
+        "totalTasksGenerated",
+        "tasksIncluded"
+      ]
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/task"
+      }
+    }
+  },
+  "definitions": {
+    "subtask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Unique identifier for the subtask (e.g., '1.1')"
+        },
+        "title": {
+          "type": "string",
+          "description": "Brief title for the subtask"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the subtask"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in-progress", "done", "deferred", "cancelled"],
+          "description": "Current status of the subtask"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "List of task/subtask IDs this subtask depends on"
+        },
+        "acceptanceCriteria": {
+          "type": "string",
+          "description": "Criteria for considering the subtask complete"
+        },
+        "parentTaskId": {
+          "type": "number",
+          "description": "ID of the parent task"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "status"
+      ]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Unique identifier for the task (e.g., '1')"
+        },
+        "title": {
+          "type": "string",
+          "description": "Brief title for the task"
+        },
+        "description": {
+          "type": "string",
+          "description": "Concise summary of what the task involves"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in-progress", "done", "deferred", "cancelled"],
+          "description": "Current state of the task"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "List of task/subtask IDs this task depends on"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Importance level of the task"
+        },
+        "details": {
+          "type": "string",
+          "description": "In-depth implementation instructions or context"
+        },
+        "testStrategy": {
+          "type": "string",
+          "description": "Approach for verifying task completion"
+        },
+        "subtasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/subtask"
+          },
+          "description": "List of subtasks for this task"
+        },
+        "previousStatus": {
+          "type": "string",
+          "description": "Previous status before the current one (optional)"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "status",
+        "priority",
+        "details",
+        "testStrategy"
+      ]
+    }
+  }
+} 

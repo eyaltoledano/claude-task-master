@@ -1,0 +1,69 @@
+{
+    "$schema": "https://mintlify.com/docs.json",
+    "theme": "mint",
+    "name": "TaskMaster",
+    "colors": {
+        "primary": "#3B82F6",
+        "light": "#60A5FA",
+        "dark": "#2563EB"
+    },
+    "navbar": {
+        "links": [
+            {
+                "label": "GitHub",
+                "href": "https://github.com/yourusername/claude-task-master"
+            }
+        ]
+    },
+    "navigation": {
+        "groups": [
+            {
+                "group": "Getting Started",
+                "pages": [
+                    "introduction"
+                ]
+            },
+            {
+                "group": "Basics",
+                "pages": [
+                    "docs/tutorial",
+                    "docs/configuration",
+                    "docs/examples"
+                ]
+            },
+            {
+                "group": "Documentation",
+                "pages": [
+                    "docs/command-reference",
+                    "docs/task-structure",
+                    "docs/ai-client-utils-example"
+                ]
+            },
+            {
+                "group": "Project Information",
+                "pages": [
+                    "CHANGELOG",
+                    "docs/licensing"
+                ]
+            },
+            {
+                "group": "Examples & Resources",
+                "pages": [
+                    "README-task-master"
+                ]
+            }, 
+            {
+                "group": "PR Examples",
+                "pages": [
+                    "scripts/prd",
+                    "tasks/task_060"
+                ]
+            }
+        ]
+    },
+    "footer": {
+        "socials": {
+            "github": "https://github.com/yourusername/claude-task-master"
+        }
+    }
+}

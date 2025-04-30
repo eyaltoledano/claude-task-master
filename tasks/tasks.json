@@ -1,4 +1,5 @@
 {
+  "$schema": "tasks.schema.json",
   "meta": {
     "projectName": "Your Project Name",
     "version": "1.0.0",
@@ -1397,7 +1398,7 @@
           "title": "Implement Direct Function Imports and Replace CLI-based Execution",
           "description": "Refactor the MCP server implementation to use direct Task Master function imports instead of the current CLI-based execution using child_process.spawnSync. This will improve performance, reliability, and enable better error handling.",
           "dependencies": [
-            "23.13"
+            23,13
           ],
           "details": "\n\n<info added on 2025-03-30T00:14:10.040Z>\n```\n# Refactoring Strategy for Direct Function Imports\n\n## Core Approach\n1. Create a clear separation between data retrieval/processing and presentation logic\n2. Modify function signatures to accept `outputFormat` parameter ('cli'|'json', default: 'cli')\n3. Implement early returns for JSON format to bypass CLI-specific code\n\n## Implementation Details for `listTasks`\n```javascript\nfunction listTasks(tasksPath, statusFilter, withSubtasks = false, outputFormat = 'cli') {\n  try {\n    // Existing data retrieval logic\n    const filteredTasks = /* ... */;\n    \n    // Early return for JSON format\n    if (outputFormat === 'json') return filteredTasks;\n    \n    // Existing CLI output logic\n  } catch (error) {\n    if (outputFormat === 'json') {\n      throw {\n        code: 'TASK_LIST_ERROR',\n        message: error.message,\n        details: error.stack\n      };\n    } else {\n      console.error(error);\n      process.exit(1);\n    }\n  }\n}\n```\n\n## Testing Strategy\n- Create integration tests in `tests/integration/mcp-server/`\n- Use FastMCP InMemoryTransport for direct client-server testing\n- Test both JSON and CLI output formats\n- Verify structure consistency with schema validation\n\n## Additional Considerations\n- Update JSDoc comments to document new parameters and return types\n- Ensure backward compatibility with default CLI behavior\n- Add JSON schema validation for consistent output structure\n- Apply similar pattern to other core functions (expandTask, updateTaskById, etc.)\n\n## Error Handling Improvements\n- Standardize error format for JSON returns:\n```javascript\n{\n  code: 'ERROR_CODE',\n  message: 'Human-readable message',\n  details: {}, // Additional context when available\n  stack: process.env.NODE_ENV === 'development' ? error.stack : undefined\n}\n```\n- Enrich JSON errors with error codes and debug info\n- Ensure validation failures return proper objects in JSON mode\n```\n</info added on 2025-03-30T00:14:10.040Z>",
           "status": "done",
