@@ -52,11 +52,13 @@
 		"fuse.js": "^7.0.0",
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",
+		"https-proxy-agent": "^7.0.6",
 		"inquirer": "^12.5.0",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
+		"socks-proxy-agent": "^8.0.5",
 		"uuid": "^11.1.0"
 	},
 	"engines": {

@@ -8,6 +8,8 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { CONFIG, log, sanitizePrompt, isSilentMode } from './utils.js';
 import { startLoadingIndicator, stopLoadingIndicator } from './ui.js';
 import chalk from 'chalk';
@@ -15,9 +17,16 @@ import chalk from 'chalk';
 // Load environment variables
 dotenv.config();
 
+const socksProxy = process.env.SOCKS_PROXY || process.env.socks_proxy;
+const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+const agent = socksProxy
+	? new SocksProxyAgent(socksProxy)
+	: httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined;
+
 // Configure Anthropic client
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
+	httpAgent: agent,
 	// Add beta header for 128k token output
 	defaultHeaders: {
 		'anthropic-beta': 'output-128k-2025-02-19'
@@ -558,7 +567,7 @@ async function generateSubtasks(
 		let streamingInterval = null;
 		let responseText = '';
 
-		const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
+		const systemPrompt = `You are an AI assistant helping with task breakdown for software development.
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
 
 Subtasks should:
@@ -595,7 +604,7 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
     "id": ${nextSubtaskId},
     "title": "First subtask title",
     "description": "Detailed description",
-    "dependencies": [], 
+    "dependencies": [],
     "details": "Implementation details"
   },
   ...more subtasks...
@@ -719,8 +728,8 @@ async function generateSubtasksWithPerplexity(
 		}
 
 		// Formulate research query based on task
-		const researchQuery = `I need to implement "${task.title}" which involves: "${task.description}". 
-What are current best practices, libraries, design patterns, and implementation approaches? 
+		const researchQuery = `I need to implement "${task.title}" which involves: "${task.description}".
+What are current best practices, libraries, design patterns, and implementation approaches?
 Include concrete code examples and technical considerations where relevant.`;
 
 		// Query Perplexity for research
@@ -804,7 +813,7 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
     "id": ${nextSubtaskId},
     "title": "First subtask title",
     "description": "Detailed description incorporating research",
-    "dependencies": [], 
+    "dependencies": [],
     "details": "Implementation details with best practices"
   },
   ...more subtasks...
@@ -1262,15 +1271,15 @@ function _buildAddTaskPrompt(prompt, contextTasks, { newTaskId } = {}) {
 
 	const taskIdInfo = newTaskId ? `(Task #${newTaskId})` : '';
 	const userPrompt = `Create a comprehensive new task ${taskIdInfo} for a software development project based on this description: "${prompt}"
-  
+
   ${contextTasks}
-  
+
   Return your answer as a single JSON object with the following structure:
   ${taskStructure}
-  
+
   Don't include the task ID, status, dependencies, or priority as those will be added automatically.
   Make sure the details and test strategy are thorough and specific.
-  
+
   IMPORTANT: Return ONLY the JSON object, nothing else.`;
 
 	return { systemPrompt, userPrompt };
@@ -1333,8 +1342,8 @@ async function generateTaskDescriptionWithPerplexity(
 		);
 
 		// Formulate research query based on task prompt
-		const researchQuery = `I need to implement: "${prompt}". 
-What are current best practices, libraries, design patterns, and implementation approaches? 
+		const researchQuery = `I need to implement: "${prompt}".
+What are current best practices, libraries, design patterns, and implementation approaches?
 Include concrete code examples and technical considerations where relevant.`;
 
 		// Query Perplexity for research
