@@ -112,27 +112,19 @@ Taskmaster configuration (excluding API keys) is primarily managed through the `
   - ❌ DON'T: Add direct console.log calls outside the logging utility
   - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
 
-- **Logger Wrapper Pattern**: 
-  - ✅ DO: Use the logger wrapper pattern when passing loggers to prevent `mcpLog[level] is not a function` errors:
+- **Logger Wrapper Pattern**:
+  - ✅ DO: Use the canonical `createLogWrapper` utility from [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js) when passing loggers to core functions. This prevents `mcpLog[level] is not a function` errors and ensures consistent logging behavior across the MCP server and core modules.
   ```javascript
-  // Standard logWrapper pattern to wrap FastMCP's log object
-  const logWrapper = {
-    info: (message, ...args) => log.info(message, ...args),
-    warn: (message, ...args) => log.warn(message, ...args),
-    error: (message, ...args) => log.error(message, ...args),
-    debug: (message, ...args) => log.debug && log.debug(message, ...args),
-    success: (message, ...args) => log.info(message, ...args) // Map success to info
-  };
-  
-  // Pass this wrapper as mcpLog to ensure consistent method availability
-  // This also ensures output format is set to 'json' in many core functions
-  const options = { mcpLog: logWrapper, session };
+  import { createLogWrapper } from '../../tools/utils.js';
+  // ...
+  const mcpLog = createLogWrapper(log); // log is provided by FastMCP
+  // Pass mcpLog as part of the options object to core functions
+  const options = { mcpLog, session };
   ```
-  - ✅ DO: Implement this pattern in any direct function that calls core functions expecting `mcpLog`
-  - ✅ DO: Use this solution in conjunction with silent mode for complete output control
-  - ❌ DON'T: Pass the FastMCP `log` object directly as `mcpLog` to core functions
-  - **Important**: This pattern has successfully fixed multiple issues in MCP tools (e.g., `update-task`, `update-subtask`) where using or omitting `mcpLog` incorrectly led to runtime errors or JSON parsing failures.
-  - For complete implementation details, see the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc).
+  - ✅ DO: Implement this pattern in any direct function that calls core functions expecting `mcpLog`.
+  - ✅ DO: Use this solution in conjunction with silent mode for complete output control.
+  - ❌ DON'T: Pass the FastMCP `log` object directly as `mcpLog` to core functions.
+  - **Reference**: See [`createLogWrapper`](mdc:mcp-server/src/tools/utils.js) for the canonical implementation. For full context and rationale, see the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc).
 
   ```javascript
   // ✅ DO: Implement a proper logging utility

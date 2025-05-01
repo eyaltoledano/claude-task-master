@@ -90,27 +90,23 @@ When implementing a new direct function in `mcp-server/src/core/direct-functions
 
 5. **Handling Logging Context (`mcpLog`)**:
    - **Requirement**: Core functions (like those in `task-manager.js`) may accept an `options` object containing an optional `mcpLog` property. If provided, the core function expects this object to have methods like `mcpLog.info(...)`, `mcpLog.error(...)`.
-   - **Solution: The Logger Wrapper Pattern**: When calling a core function from a direct function, pass the `log` object provided by FastMCP *wrapped* in the standard `logWrapper` object. This ensures the core function receives a logger with the expected method structure.
+   - **Solution: The Logger Wrapper Pattern**: When calling a core function from a direct function, use the canonical `createLogWrapper` utility from [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js). This ensures the core function receives a logger with the expected method structure and avoids subtle bugs from manual wrapper implementations.
      ```javascript
-     // Standard logWrapper pattern within a Direct Function
-     const logWrapper = {
-       info: (message, ...args) => log.info(message, ...args),
-       warn: (message, ...args) => log.warn(message, ...args),
-       error: (message, ...args) => log.error(message, ...args),
-       debug: (message, ...args) => log.debug && log.debug(message, ...args),
-       success: (message, ...args) => log.info(message, ...args)
-     };
+     import { createLogWrapper } from '../../tools/utils.js';
+     // ...
+     const mcpLog = createLogWrapper(log); // log is provided by FastMCP
 
      // ... later when calling the core function ...
      await coreFunction(
        // ... other arguments ...
        { 
-         mcpLog: logWrapper, // Pass the wrapper object
+         mcpLog, // Pass the canonical wrapper object
          session // Also pass session if needed by core logic or AI service
        },
        'json' // Pass 'json' output format if supported by core function
      );
      ```
+   - **Reference**: See [`createLogWrapper`](mdc:mcp-server/src/tools/utils.js) for the canonical implementation. Do not reimplement this pattern manually.
    - **JSON Output**: Passing `mcpLog` (via the wrapper) often triggers the core function to use a JSON-friendly output format, suppressing spinners/boxes.
    - ✅ **DO**: Implement this pattern in direct functions calling core functions that might use `mcpLog`.
 
