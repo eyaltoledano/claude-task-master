@@ -22,15 +22,6 @@ export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
 	const { tasksJsonPath, from, prompt, research } = args;
 
-	// Create the standard logger wrapper
-	const logWrapper = {
-		info: (message, ...args) => log.info(message, ...args),
-		warn: (message, ...args) => log.warn(message, ...args),
-		error: (message, ...args) => log.error(message, ...args),
-		debug: (message, ...args) => log.debug && log.debug(message, ...args),
-		success: (message, ...args) => log.info(message, ...args)
-	};
-
 	// --- Input Validation (Keep existing checks) ---
 	if (!tasksJsonPath) {
 		log.error('updateTasksDirect called without tasksJsonPath');
