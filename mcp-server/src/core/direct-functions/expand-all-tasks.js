@@ -3,8 +3,6 @@
  */
 
 import { expandAllTasks } from '../../../../scripts/modules/task-manager.js';
-import { generateTaskFilesDirect } from './generate-task-files.js';
-import path from 'path';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -64,35 +62,12 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			{ session, mcpLog }
 		);
 
-		// After expanding, regenerate individual task files
-		let fileGenResult;
-		try {
-			const outputDir = path.dirname(tasksJsonPath);
-			fileGenResult = await generateTaskFilesDirect(
-				{ tasksJsonPath, outputDir },
-				log
-			);
-		} catch (fileGenError) {
-			log.error(
-				`Error generating individual task files: ${fileGenError.message}`
-			);
-			fileGenResult = {
-				success: false,
-				error: {
-					code: 'FILE_GENERATION_ERROR',
-					message: fileGenError.message
-				}
-			};
-		}
-
+		// Core function now returns a summary object
 		return {
 			success: true,
 			data: {
 				message: `Expand all operation completed. Expanded: ${result.expandedCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}`,
-				details: {
-					...result,
-					fileGeneration: fileGenResult
-				}
+				details: result // Include the full result details
 			}
 		};
 	} catch (error) {
