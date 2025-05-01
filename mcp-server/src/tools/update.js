@@ -4,13 +4,10 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	getProjectRootFromSession
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import path from 'path';
 
 /**
  * Register the update tool with the MCP server
@@ -41,26 +38,25 @@ export function registerUpdateTool(server) {
 		}),
 		execute: async (args, { log, session }) => {
 			try {
-				log.info(`Updating tasks with args: ${JSON.stringify(args)}`);
+				log.info(`Executing update tool with args: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
+				// 1. Get Project Root
+				const rootFolder = args.projectRoot;
+				if (!rootFolder || !path.isAbsolute(rootFolder)) {
 					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+						'projectRoot is required and must be absolute.'
 					);
 				}
+				log.info(`Project root: ${rootFolder}`);
 
-				// Resolve the path to tasks.json
+				// 2. Resolve Path
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
 						{ projectRoot: rootFolder, file: args.file },
 						log
 					);
+					log.info(`Resolved tasks path: ${tasksJsonPath}`);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -68,6 +64,7 @@ export function registerUpdateTool(server) {
 					);
 				}
 
+				// 3. Call Direct Function
 				const result = await updateTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -79,20 +76,12 @@ export function registerUpdateTool(server) {
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(
-						`Successfully updated tasks from ID ${args.from}: ${result.data.message}`
-					);
-				} else {
-					log.error(
-						`Failed to update tasks: ${result.error?.message || 'Unknown error'}`
-					);
-				}
-
+				// 4. Handle Result
+				log.info(`updateTasksDirect result: success=${result.success}`);
 				return handleApiResult(result, log, 'Error updating tasks');
 			} catch (error) {
-				log.error(`Error in update tool: ${error.message}`);
-				return createErrorResponse(error.message);
+				log.error(`Critical error in update tool execute: ${error.message}`);
+				return createErrorResponse(`Internal tool error: ${error.message}`);
 			}
 		}
 	});

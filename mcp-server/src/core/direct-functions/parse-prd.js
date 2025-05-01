@@ -10,40 +10,21 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import {
-	getAnthropicClientForMCP,
-	getModelConfig
-} from '../utils/ai-client-utils.js';
+import { createLogWrapper } from '../../tools/utils.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
  *
- * @param {Object} args - Command arguments containing input, numTasks or tasks, and output options.
+ * @param {Object} args - Command arguments containing projectRoot, input, output, numTasks options.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function parsePRDDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
+	const { session } = context; // Only extract session
 
 	try {
 		log.info(`Parsing PRD document with args: ${JSON.stringify(args)}`);
-
-		// Initialize AI client for PRD parsing
-		let aiClient;
-		try {
-			aiClient = getAnthropicClientForMCP(session, log);
-		} catch (error) {
-			log.error(`Failed to initialize AI client: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: `Cannot initialize AI client: ${error.message}`
-				},
-				fromCache: false
-			};
-		}
 
 		// Validate required parameters
 		if (!args.projectRoot) {
@@ -55,7 +36,6 @@ export async function parsePRDDirect(args, log, context = {}) {
 				fromCache: false
 			};
 		}
-
 		if (!args.input) {
 			const errorMessage = 'Input file path is required for parsePRDDirect';
 			log.error(errorMessage);
@@ -65,7 +45,6 @@ export async function parsePRDDirect(args, log, context = {}) {
 				fromCache: false
 			};
 		}
-
 		if (!args.output) {
 			const errorMessage = 'Output file path is required for parsePRDDirect';
 			log.error(errorMessage);
@@ -130,17 +109,14 @@ export async function parsePRDDirect(args, log, context = {}) {
 			`Preparing to parse PRD from ${inputPath} and output to ${outputPath} with ${numTasks} tasks, append mode: ${append}`
 		);
 
-		// Create the logger wrapper for proper logging in the core function
-		const logWrapper = {
-			info: (message, ...args) => log.info(message, ...args),
-			warn: (message, ...args) => log.warn(message, ...args),
-			error: (message, ...args) => log.error(message, ...args),
-			debug: (message, ...args) => log.debug && log.debug(message, ...args),
-			success: (message, ...args) => log.info(message, ...args) // Map success to info
-		};
+		// --- Logger Wrapper ---
+		const mcpLog = createLogWrapper(log);
 
-		// Get model config from session
-		const modelConfig = getModelConfig(session);
+		// Prepare options for the core function
+		const options = {
+			mcpLog,
+			session
+		};
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
@@ -153,7 +129,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 			}
 
 			// Execute core parsePRD function with AI client
-			await parsePRD(
+			const tasksDataResult = await parsePRD(
 				inputPath,
 				outputPath,
 				numTasks,
@@ -173,13 +149,19 @@ export async function parsePRDDirect(args, log, context = {}) {
 				const actionVerb = append ? 'appended' : 'generated';
 				const message = `Successfully ${actionVerb} ${tasksData.tasks?.length || 0} tasks from PRD`;
 
+				if (!tasksDataResult || !tasksDataResult.tasks || !tasksData) {
+					throw new Error(
+						'Core parsePRD function did not return valid task data.'
+					);
+				}
+
 				log.info(message);
 
 				return {
 					success: true,
 					data: {
 						message,
-						taskCount: tasksData.tasks?.length || 0,
+						taskCount: tasksDataResult.tasks?.length || 0,
 						outputPath,
 						appended: append
 					},
@@ -206,7 +188,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		return {
 			success: false,
 			error: {
-				code: 'PARSE_PRD_ERROR',
+				code: error.code || 'PARSE_PRD_ERROR', // Use error code if available
 				message: error.message || 'Unknown error parsing PRD'
 			},
 			fromCache: false

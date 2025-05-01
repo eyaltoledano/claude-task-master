@@ -1,52 +1,88 @@
 # Configuration
 
-Task Master can be configured through environment variables in a `.env` file at the root of your project.
+Taskmaster uses two primary methods for configuration:
 
-## Required Configuration
+1.  **`.taskmasterconfig` File (Project Root - Recommended for most settings)**
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude (Example: `ANTHROPIC_API_KEY=sk-ant-api03-...`)
+    - This JSON file stores most configuration settings, including AI model selections, parameters, logging levels, and project defaults.
+    - **Location:** This file is created in the root directory of your project when you run the `task-master models --setup` interactive setup. You typically do this during the initialization sequence. Do not manually edit this file beyond adjusting Temperature and Max Tokens depending on your model.
+    - **Management:** Use the `task-master models --setup` command (or `models` MCP tool) to interactively create and manage this file. You can also set specific models directly using `task-master models --set-<role>=<model_id>`, adding `--ollama` or `--openrouter` flags for custom models. Manual editing is possible but not recommended unless you understand the structure.
+    - **Example Structure:**
+      ```json
+      {
+      	"models": {
+      		"main": {
+      			"provider": "anthropic",
+      			"modelId": "claude-3-7-sonnet-20250219",
+      			"maxTokens": 64000,
+      			"temperature": 0.2
+      		},
+      		"research": {
+      			"provider": "perplexity",
+      			"modelId": "sonar-pro",
+      			"maxTokens": 8700,
+      			"temperature": 0.1
+      		},
+      		"fallback": {
+      			"provider": "anthropic",
+      			"modelId": "claude-3-5-sonnet",
+      			"maxTokens": 64000,
+      			"temperature": 0.2
+      		}
+      	},
+      	"global": {
+      		"logLevel": "info",
+      		"debug": false,
+      		"defaultSubtasks": 5,
+      		"defaultPriority": "medium",
+      		"projectName": "Your Project Name",
+      		"ollamaBaseUrl": "http://localhost:11434/api",
+      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+      	}
+      }
+      ```
 
-## Optional Configuration
+2.  **Environment Variables (`.env` file or MCP `env` block - For API Keys Only)**
+    - Used **exclusively** for sensitive API keys and specific endpoint URLs.
+    - **Location:**
+      - For CLI usage: Create a `.env` file in your project root.
+      - For MCP/Cursor usage: Configure keys in the `env` section of your `.cursor/mcp.json` file.
+    - **Required API Keys (Depending on configured providers):**
+      - `ANTHROPIC_API_KEY`: Your Anthropic API key.
+      - `PERPLEXITY_API_KEY`: Your Perplexity API key.
+      - `OPENAI_API_KEY`: Your OpenAI API key.
+      - `GOOGLE_API_KEY`: Your Google API key.
+      - `MISTRAL_API_KEY`: Your Mistral API key.
+      - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
+      - `OPENROUTER_API_KEY`: Your OpenRouter API key.
+      - `XAI_API_KEY`: Your X-AI API key.
+    - **Optional Endpoint Overrides (in .taskmasterconfig):**
+      - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key.
+      - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
 
-- `MODEL` (Default: `"claude-3-7-sonnet-20250219"`): Claude model to use (Example: `MODEL=claude-3-opus-20240229`)
-- `MAX_TOKENS` (Default: `"4000"`): Maximum tokens for responses (Example: `MAX_TOKENS=8000`)
-- `TEMPERATURE` (Default: `"0.7"`): Temperature for model responses (Example: `TEMPERATURE=0.5`)
-- `DEBUG` (Default: `"false"`): Enable debug logging (Example: `DEBUG=true`)
-- `LOG_LEVEL` (Default: `"info"`): Console output level (Example: `LOG_LEVEL=debug`)
-- `DEFAULT_SUBTASKS` (Default: `"3"`): Default subtask count (Example: `DEFAULT_SUBTASKS=5`)
-- `DEFAULT_PRIORITY` (Default: `"medium"`): Default priority (Example: `DEFAULT_PRIORITY=high`)
-- `PROJECT_NAME` (Default: `"MCP SaaS MVP"`): Project name in metadata (Example: `PROJECT_NAME=My Awesome Project`)
-- `PROJECT_VERSION` (Default: `"1.0.0"`): Version in metadata (Example: `PROJECT_VERSION=2.1.0`)
-- `PERPLEXITY_API_KEY`: For research-backed features (Example: `PERPLEXITY_API_KEY=pplx-...`)
-- `PERPLEXITY_MODEL` (Default: `"sonar-medium-online"`): Perplexity model (Example: `PERPLEXITY_MODEL=sonar-large-online`)
+**Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmasterconfig`**, not environment variables.
 
-## Example .env File
+## Example `.env` File (for API Keys)
 
 ```
-# Required
-ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
+# Required API keys for providers configured in .taskmasterconfig
+ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+PERPLEXITY_API_KEY=pplx-your-key-here
+# OPENAI_API_KEY=sk-your-key-here
+# GOOGLE_API_KEY=AIzaSy...
+# etc.
 
-# Optional - Claude Configuration
-MODEL=claude-3-7-sonnet-20250219
-MAX_TOKENS=4000
-TEMPERATURE=0.7
-
-# Optional - Perplexity API for Research
-PERPLEXITY_API_KEY=pplx-your-api-key
-PERPLEXITY_MODEL=sonar-medium-online
-
-# Optional - Project Info
-PROJECT_NAME=My Project
-PROJECT_VERSION=1.0.0
-
-# Optional - Application Configuration
-DEFAULT_SUBTASKS=3
-DEFAULT_PRIORITY=medium
-DEBUG=false
-LOG_LEVEL=info
+# Optional Endpoint Overrides
+# AZURE_OPENAI_ENDPOINT=https://your-azure-endpoint.openai.azure.com/
+# OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
 ```
 
 ## Troubleshooting
+
+### Configuration Errors
+
+- If Task Master reports errors about missing configuration or cannot find `.taskmasterconfig`, run `task-master models --setup` in your project root to create or repair the file.
+- Ensure API keys are correctly placed in your `.env` file (for CLI) or `.cursor/mcp.json` (for MCP) and are valid for the providers selected in `.taskmasterconfig`.
 
 ### If `task-master init` doesn't respond:
 

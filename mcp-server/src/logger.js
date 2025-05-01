@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { isSilentMode } from '../../scripts/modules/utils.js';
+import { getLogLevel } from '../../scripts/modules/config-manager.js';
 
 // Define log levels
 const LOG_LEVELS = {
@@ -10,10 +11,8 @@ const LOG_LEVELS = {
 	success: 4
 };
 
-// Get log level from environment or default to info
-const LOG_LEVEL = process.env.LOG_LEVEL
-	? (LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()] ?? LOG_LEVELS.info)
-	: LOG_LEVELS.info;
+// Get log level from config manager or default to info
+const LOG_LEVEL = LOG_LEVELS[getLogLevel().toLowerCase()] ?? LOG_LEVELS.info;
 
 /**
  * Logs a message with the specified level

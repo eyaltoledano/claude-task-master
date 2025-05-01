@@ -10,11 +10,7 @@ import {
 	createErrorResponse
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
-import {
-	resolveProjectPaths,
-	findPRDDocumentPath,
-	resolveTasksOutputPath
-} from '../core/utils/path-utils.js';
+import { resolveProjectPaths } from '../core/utils/path-utils.js';
 
 /**
  * Register the parsePRD tool with the MCP server

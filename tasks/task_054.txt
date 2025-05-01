@@ -1,6 +1,6 @@
 # Task ID: 54
 # Title: Add Research Flag to Add-Task Command
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Enhance the add-task command with a --research flag that allows users to perform quick research on the task topic before finalizing task creation.

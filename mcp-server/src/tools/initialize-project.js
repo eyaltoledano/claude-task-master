@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-	createContentResponse,
-	createErrorResponse,
-	handleApiResult
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
 
 export function registerInitializeProjectTool(server) {

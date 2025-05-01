@@ -1,0 +1,44 @@
+# Task ID: 73
+# Title: Implement Custom Model ID Support for Ollama/OpenRouter
+# Status: in-progress
+# Dependencies: None
+# Priority: medium
+# Description: Allow users to specify custom model IDs for Ollama and OpenRouter providers via CLI flag and interactive setup, with appropriate validation and warnings.
+# Details:
+**CLI (`task-master models --set-<role> <id> --custom`):**
+- Modify `scripts/modules/task-manager/models.js`: `setModel` function.
+- Check internal `available_models.json` first.
+- If not found and `--custom` is provided:
+    - Fetch `https://openrouter.ai/api/v1/models`. (Need to add `https` import).
+    - If ID found in OpenRouter list: Set `provider: 'openrouter'`, `modelId: <id>`. Warn user about lack of official validation.
+    - If ID not found in OpenRouter: Assume Ollama. Set `provider: 'ollama'`, `modelId: <id>`. Warn user strongly (model must be pulled, compatibility not guaranteed).
+- If not found and `--custom` is *not* provided: Fail with error message guiding user to use `--custom`.
+
+**Interactive Setup (`task-master models --setup`):**
+- Modify `scripts/modules/commands.js`: `runInteractiveSetup` function.
+- Add options to `inquirer` choices for each role: `OpenRouter (Enter Custom ID)` and `Ollama (Enter Custom ID)`.
+- If `__CUSTOM_OPENROUTER__` selected:
+    - Prompt for custom ID.
+    - Fetch OpenRouter list and validate ID exists. Fail setup for that role if not found.
+    - Update config and show warning if found.
+- If `__CUSTOM_OLLAMA__` selected:
+    - Prompt for custom ID.
+    - Update config directly (no live validation).
+    - Show strong Ollama warning.
+
+# Test Strategy:
+**Unit Tests:**
+- Test `setModel` logic for internal models, custom OpenRouter (valid/invalid), custom Ollama, missing `--custom` flag.
+- Test `runInteractiveSetup` for new custom options flow, including OpenRouter validation success/failure.
+
+**Integration Tests:**
+- Test the `task-master models` command with `--custom` flag variations.
+- Test the `task-master models --setup` interactive flow for custom options.
+
+**Manual Testing:**
+- Run `task-master models --setup` and select custom options.
+- Run `task-master models --set-main <valid_openrouter_id> --custom`. Verify config and warning.
+- Run `task-master models --set-main <invalid_openrouter_id> --custom`. Verify error.
+- Run `task-master models --set-main <ollama_model_id> --custom`. Verify config and warning.
+- Run `task-master models --set-main <custom_id>` (without `--custom`). Verify error.
+- Check `getModelConfiguration` output reflects custom models correctly.

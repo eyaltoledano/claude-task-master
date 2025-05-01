@@ -1,0 +1,11 @@
+# Task ID: 65
+# Title: Add Bun Support for Taskmaster Installation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Implement full support for installing and managing Taskmaster using the Bun package manager, ensuring the installation process and user experience are identical to npm, pnpm, and Yarn.
+# Details:
+Update the Taskmaster installation scripts and documentation to support Bun as a first-class package manager. Ensure that users can install Taskmaster and run all CLI commands (including 'init' via scripts/init.js) using Bun, with the same directory structure, template copying, package.json merging, and MCP config setup as with npm, pnpm, and Yarn. Verify that all dependencies are compatible with Bun and that any Bun-specific configuration (such as lockfile handling or binary linking) is handled correctly. If the installation process includes a website or account setup, document and test these flows for parity; if not, explicitly confirm and document that no such steps are required. Update all relevant documentation and installation guides to include Bun instructions for macOS, Linux, and Windows (including WSL and PowerShell). Address any known Bun-specific issues (e.g., sporadic install hangs) with clear troubleshooting guidance.
+
+# Test Strategy:
+1. Install Taskmaster using Bun on macOS, Linux, and Windows (including WSL and PowerShell), following the updated documentation. 2. Run the full installation and initialization process, verifying that the directory structure, templates, and MCP config are set up identically to npm, pnpm, and Yarn. 3. Execute all CLI commands (including 'init') and confirm functional parity. 4. If a website or account setup is required, test these flows for consistency; if not, confirm and document this. 5. Check for Bun-specific issues (e.g., install hangs) and verify that troubleshooting steps are effective. 6. Ensure the documentation is clear, accurate, and up to date for all supported platforms.

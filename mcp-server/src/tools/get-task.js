@@ -40,6 +40,10 @@ export function registerShowTaskTool(server) {
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
 			id: z.string().describe('Task ID to get'),
+			status: z
+				.string()
+				.optional()
+				.describe("Filter subtasks by status (e.g., 'pending', 'done')"),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
@@ -52,11 +56,9 @@ export function registerShowTaskTool(server) {
 			); // Use JSON.stringify for better visibility
 
 			try {
-				log.info(`Getting task details for ID: ${args.id}`);
-
 				log.info(
-					`Session object received in execute: ${JSON.stringify(session)}`
-				); // Use JSON.stringify for better visibility
+					`Getting task details for ID: ${args.id}${args.status ? ` (filtering subtasks by status: ${args.status})` : ''}`
+				);
 
 				// Get project root from args or session
 				const rootFolder =
@@ -91,10 +93,9 @@ export function registerShowTaskTool(server) {
 
 				const result = await showTaskDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
-						id: args.id
+						id: args.id,
+						status: args.status
 					},
 					log
 				);

@@ -8,6 +8,9 @@
  * It imports functionality from the modules directory and provides a CLI.
  */
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 // Add at the very beginning of the file
 if (process.env.DEBUG === '1') {
 	console.error('DEBUG - dev.js received args:', process.argv.slice(2));

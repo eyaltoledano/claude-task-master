@@ -6,9 +6,7 @@
 import { z } from 'zod';
 import {
 	createErrorResponse,
-	createContentResponse,
 	getProjectRootFromSession,
-	executeTaskMasterCommand,
 	handleApiResult
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
@@ -101,6 +99,10 @@ export function registerAddTaskTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						// Pass other relevant args
 						prompt: args.prompt,
+						title: args.title,
+						description: args.description,
+						details: args.details,
+						testStrategy: args.testStrategy,
 						dependencies: args.dependencies,
 						priority: args.priority,
 						research: args.research

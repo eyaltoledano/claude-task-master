@@ -11,8 +11,6 @@ import {
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
-import fs from 'fs';
-import path from 'path';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -28,16 +26,26 @@ export function registerExpandTaskTool(server) {
 			research: z
 				.boolean()
 				.optional()
-				.describe('Use Perplexity AI for research-backed generation'),
+				.default(false)
+				.describe('Use research role for generation'),
 			prompt: z
 				.string()
 				.optional()
 				.describe('Additional context for subtask generation'),
-			file: z.string().optional().describe('Absolute path to the tasks file'),
+			file: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the tasks file relative to project root (e.g., tasks/tasks.json)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.'),
-			force: z.boolean().optional().describe('Force the expansion')
+			force: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe('Force expansion even if subtasks exist')
 		}),
 		execute: async (args, { log, session }) => {
 			try {

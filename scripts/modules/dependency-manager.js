@@ -6,7 +6,6 @@
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { Anthropic } from '@anthropic-ai/sdk';
 
 import {
 	log,
@@ -21,11 +20,6 @@ import {
 import { displayBanner } from './ui.js';
 
 import { generateTaskFiles } from './task-manager.js';
-
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-});
 
 /**
  * Add a dependency to a task
@@ -361,11 +355,13 @@ function isCircularDependency(tasks, taskId, chain = []) {
 
 	// Find the task or subtask
 	let task = null;
+	let parentIdForSubtask = null;
 
 	// Check if this is a subtask reference (e.g., "1.2")
 	if (taskIdStr.includes('.')) {
 		const [parentId, subtaskId] = taskIdStr.split('.').map(Number);
 		const parentTask = tasks.find((t) => t.id === parentId);
+		parentIdForSubtask = parentId; // Store parent ID if it's a subtask
 
 		if (parentTask && parentTask.subtasks) {
 			task = parentTask.subtasks.find((st) => st.id === subtaskId);
@@ -385,10 +381,18 @@ function isCircularDependency(tasks, taskId, chain = []) {
 	}
 
 	// Check each dependency recursively
-	const newChain = [...chain, taskId];
-	return task.dependencies.some((depId) =>
-		isCircularDependency(tasks, depId, newChain)
-	);
+	const newChain = [...chain, taskIdStr]; // Use taskIdStr for consistency
+	return task.dependencies.some((depId) => {
+		let normalizedDepId = String(depId);
+		// Normalize relative subtask dependencies
+		if (typeof depId === 'number' && parentIdForSubtask !== null) {
+			// If the current task is a subtask AND the dependency is a number,
+			// assume it refers to a sibling subtask.
+			normalizedDepId = `${parentIdForSubtask}.${depId}`;
+		}
+		// Pass the normalized ID to the recursive call
+		return isCircularDependency(tasks, normalizedDepId, newChain);
+	});
 }
 
 /**
@@ -587,118 +591,43 @@ async function validateDependenciesCommand(tasksPath, options = {}) {
 		`Analyzing dependencies for ${taskCount} tasks and ${subtaskCount} subtasks...`
 	);
 
-	// Track validation statistics
-	const stats = {
-		nonExistentDependenciesRemoved: 0,
-		selfDependenciesRemoved: 0,
-		tasksFixed: 0,
-		subtasksFixed: 0
-	};
-
-	// Create a custom logger instead of reassigning the imported log function
-	const warnings = [];
-	const customLogger = function (level, ...args) {
-		if (level === 'warn') {
-			warnings.push(args.join(' '));
-
-			// Count the type of fix based on the warning message
-			const msg = args.join(' ');
-			if (msg.includes('self-dependency')) {
-				stats.selfDependenciesRemoved++;
-			} else if (msg.includes('invalid')) {
-				stats.nonExistentDependenciesRemoved++;
-			}
-
-			// Count if it's a task or subtask being fixed
-			if (msg.includes('from subtask')) {
-				stats.subtasksFixed++;
-			} else if (msg.includes('from task')) {
-				stats.tasksFixed++;
-			}
-		}
-		// Call the original log function
-		return log(level, ...args);
-	};
-
-	// Run validation with custom logger
 	try {
-		// Temporarily save validateTaskDependencies function with normal log
-		const originalValidateTaskDependencies = validateTaskDependencies;
+		// Directly call the validation function
+		const validationResult = validateTaskDependencies(data.tasks);
 
-		// Create patched version that uses customLogger
-		const patchedValidateTaskDependencies = (tasks, tasksPath) => {
-			// Temporarily redirect log calls in this scope
-			const originalLog = log;
-			const logProxy = function (...args) {
-				return customLogger(...args);
-			};
+		if (!validationResult.valid) {
+			log(
+				'error',
+				`Dependency validation failed. Found ${validationResult.issues.length} issue(s):`
+			);
+			validationResult.issues.forEach((issue) => {
+				let errorMsg = `  [${issue.type.toUpperCase()}] Task ${issue.taskId}: ${issue.message}`;
+				if (issue.dependencyId) {
+					errorMsg += ` (Dependency: ${issue.dependencyId})`;
+				}
+				log('error', errorMsg); // Log each issue as an error
+			});
 
-			// Call the original function in a context where log calls are intercepted
-			const result = (() => {
-				// Use Function.prototype.bind to create a new function that has logProxy available
-				// Pass isCircularDependency explicitly to make it available
-				return Function(
-					'tasks',
-					'tasksPath',
-					'log',
-					'customLogger',
-					'isCircularDependency',
-					'taskExists',
-					`return (${originalValidateTaskDependencies.toString()})(tasks, tasksPath);`
-				)(
-					tasks,
-					tasksPath,
-					logProxy,
-					customLogger,
-					isCircularDependency,
-					taskExists
-				);
-			})();
+			// Optionally exit if validation fails, depending on desired behavior
+			// process.exit(1); // Uncomment if validation failure should stop the process
 
-			return result;
-		};
-
-		const changesDetected = patchedValidateTaskDependencies(
-			data.tasks,
-			tasksPath
-		);
-
-		// Create a detailed report
-		if (changesDetected) {
-			log('success', 'Invalid dependencies were removed from tasks.json');
-
-			// Show detailed stats in a nice box - only if not in silent mode
+			// Display summary box even on failure, showing issues found
 			if (!isSilentMode()) {
 				console.log(
 					boxen(
-						chalk.green(`Dependency Validation Results:\n\n`) +
+						chalk.red(`Dependency Validation FAILED\n\n`) +
 							`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
 							`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
-							`${chalk.cyan('Non-existent dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
-							`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
-							`${chalk.cyan('Tasks fixed:')} ${stats.tasksFixed}\n` +
-							`${chalk.cyan('Subtasks fixed:')} ${stats.subtasksFixed}`,
+							`${chalk.red('Issues found:')} ${validationResult.issues.length}`, // Display count from result
 						{
 							padding: 1,
-							borderColor: 'green',
+							borderColor: 'red',
 							borderStyle: 'round',
 							margin: { top: 1, bottom: 1 }
 						}
 					)
 				);
-
-				// Show all warnings in a collapsible list if there are many
-				if (warnings.length > 0) {
-					console.log(chalk.yellow('\nDetailed fixes:'));
-					warnings.forEach((warning) => {
-						console.log(`  ${warning}`);
-					});
-				}
 			}
-
-			// Regenerate task files to reflect the changes
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-			log('info', 'Task files regenerated to reflect dependency changes');
 		} else {
 			log(
 				'success',

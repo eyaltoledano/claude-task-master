@@ -1,6 +1,6 @@
 # Task ID: 35
 # Title: Integrate Grok3 API for Research Capabilities
-# Status: pending
+# Status: cancelled
 # Dependencies: None
 # Priority: medium
 # Description: Replace the current Perplexity API integration with Grok3 API for all research-related functionalities while maintaining existing feature parity.

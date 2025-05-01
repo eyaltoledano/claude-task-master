@@ -1,0 +1,16 @@
+{
+  "models": {
+    "main": {
+      "provider": "openai",
+      "modelId": "gpt-4o"
+    },
+    "research": {
+      "provider": "perplexity",
+      "modelId": "sonar-pro"
+    },
+    "fallback": {
+      "provider": "anthropic",
+      "modelId": "claude-3-haiku-20240307"
+    }
+  }
+}

@@ -25,11 +25,17 @@ alwaysApply: false
 The standard pattern for adding a feature follows this workflow:
 
 1. **Core Logic**: Implement the business logic in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
-2. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
-3. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
-4. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
-5. **Configuration**: Update any configuration in [`utils.js`](mdc:scripts/modules/utils.js) if needed, following [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc).
-6. **Documentation**: Update help text and documentation in [dev_workflow.mdc](mdc:scripts/modules/dev_workflow.mdc)
+2. **AI Integration (If Applicable)**: 
+   - Import necessary service functions (e.g., `generateTextService`, `streamTextService`) from [`ai-services-unified.js`](mdc:scripts/modules/ai-services-unified.js).
+   - Prepare parameters (`role`, `session`, `systemPrompt`, `prompt`).
+   - Call the service function.
+   - Handle the response (direct text or stream object).
+   - **Important**: Prefer `generateTextService` for calls sending large context (like stringified JSON) where incremental display is not needed. See [`ai_services.mdc`](mdc:.cursor/rules/ai_services.mdc) for detailed usage patterns and cautions.
+3. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
+4. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
+5. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
+6. **Configuration**: Update configuration settings or add new ones in [`config-manager.js`](mdc:scripts/modules/config-manager.js) and ensure getters/setters are appropriate. Update documentation in [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc). Update the `.taskmasterconfig` structure if needed.
+7. **Documentation**: Update help text and documentation in [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
 
 ## Critical Checklist for New Features
 
@@ -211,7 +217,29 @@ export {
 ```
 
 ```javascript
-// 2. UI COMPONENTS: Add display function to ui.js
+// 2. AI Integration: Add import and use necessary service functions
+import { generateTextService } from './ai-services-unified.js';
+
+// Example usage:
+async function handleAIInteraction() {
+  const role = 'user';
+  const session = 'exampleSession';
+  const systemPrompt = 'You are a helpful assistant.';
+  const prompt = 'What is the capital of France?';
+
+  const result = await generateTextService(role, session, systemPrompt, prompt);
+  console.log(result);
+}
+
+// Export from the module
+export {
+  // ... existing exports ...
+  handleAIInteraction,
+};
+```
+
+```javascript
+// 3. UI COMPONENTS: Add display function to ui.js
 /**
  * Display archive operation results
  * @param {string} archivePath - Path to the archive file
@@ -232,7 +260,7 @@ export {
 ```
 
 ```javascript
-// 3. COMMAND INTEGRATION: Add to commands.js
+// 4. COMMAND INTEGRATION: Add to commands.js
 import { archiveTasks } from './task-manager.js';
 import { displayArchiveResults } from './ui.js';
 
@@ -452,7 +480,7 @@ npm test
 For each new feature:
 
 1. Add help text to the command definition
-2. Update [`dev_workflow.mdc`](mdc:scripts/modules/dev_workflow.mdc) with command reference
+2. Update [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) with command reference
 3. Consider updating [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) if the feature significantly changes module responsibilities.
 
 Follow the existing command reference format:
@@ -586,6 +614,11 @@ When implementing project initialization commands:
            log.error(`Error in initialize_project: ${error.message}`);
            return createErrorResponse(`Failed to initialize project: ${error.message}`);
          }
+       }
+     });
+   }
+   ```
+
        }
      });
    }

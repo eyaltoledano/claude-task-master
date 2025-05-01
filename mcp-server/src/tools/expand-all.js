@@ -19,22 +19,27 @@ import { findTasksJsonPath } from '../core/utils/path-utils.js';
 export function registerExpandAllTool(server) {
 	server.addTool({
 		name: 'expand_all',
-		description: 'Expand all pending tasks into subtasks',
+		description:
+			'Expand all pending tasks into subtasks based on complexity or defaults',
 		parameters: z.object({
 			num: z
 				.string()
 				.optional()
-				.describe('Number of subtasks to generate for each task'),
+				.describe(
+					'Target number of subtasks per task (uses complexity/defaults otherwise)'
+				),
 			research: z
 				.boolean()
 				.optional()
 				.describe(
-					'Enable Perplexity AI for research-backed subtask generation'
+					'Enable research-backed subtask generation (e.g., using Perplexity)'
 				),
 			prompt: z
 				.string()
 				.optional()
-				.describe('Additional context to guide subtask generation'),
+				.describe(
+					'Additional context to guide subtask generation for all tasks'
+				),
 			force: z
 				.boolean()
 				.optional()
@@ -45,34 +50,37 @@ export function registerExpandAllTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
+					'Absolute path to the tasks file in the /tasks folder inside the project root (default: tasks/tasks.json)'
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.optional()
+				.describe(
+					'Absolute path to the project root directory (derived from session if possible)'
+				)
 		}),
 		execute: async (args, { log, session }) => {
 			try {
-				log.info(`Expanding all tasks with args: ${JSON.stringify(args)}`);
+				log.info(
+					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
+				);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
+				const rootFolder = getProjectRootFromSession(session, log);
 				if (!rootFolder) {
+					log.error('Could not determine project root from session.');
 					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
+						'Could not determine project root from session.'
 					);
 				}
+				log.info(`Project root determined: ${rootFolder}`);
 
-				// Resolve the path to tasks.json
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
 						{ projectRoot: rootFolder, file: args.file },
 						log
 					);
+					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -82,9 +90,7 @@ export function registerExpandAllTool(server) {
 
 				const result = await expandAllTasksDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
@@ -94,18 +100,17 @@ export function registerExpandAllTool(server) {
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(`Successfully expanded all tasks: ${result.data.message}`);
-				} else {
-					log.error(
-						`Failed to expand all tasks: ${result.error?.message || 'Unknown error'}`
-					);
-				}
-
 				return handleApiResult(result, log, 'Error expanding all tasks');
 			} catch (error) {
-				log.error(`Error in expand-all tool: ${error.message}`);
-				return createErrorResponse(error.message);
+				log.error(
+					`Unexpected error in expand_all tool execute: ${error.message}`
+				);
+				if (error.stack) {
+					log.error(error.stack);
+				}
+				return createErrorResponse(
+					`An unexpected error occurred: ${error.message}`
+				);
 			}
 		}
 	});

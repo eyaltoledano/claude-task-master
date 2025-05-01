@@ -17,12 +17,13 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID of the task or subtask to show.
+ * @param {string} [args.status] - Optional status to filter subtasks by.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
  */
 export async function showTaskDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+	const { tasksJsonPath, id, status } = args;
 
 	if (!tasksJsonPath) {
 		log.error('showTaskDirect called without tasksJsonPath');
@@ -50,8 +51,8 @@ export async function showTaskDirect(args, log) {
 		};
 	}
 
-	// Generate cache key using the provided task path and ID
-	const cacheKey = `showTask:${tasksJsonPath}:${taskId}`;
+	// Generate cache key using the provided task path, ID, and status filter
+	const cacheKey = `showTask:${tasksJsonPath}:${taskId}:${status || 'all'}`;
 
 	// Define the action function to be executed on cache miss
 	const coreShowTaskAction = async () => {
@@ -60,7 +61,7 @@ export async function showTaskDirect(args, log) {
 			enableSilentMode();
 
 			log.info(
-				`Retrieving task details for ID: ${taskId} from ${tasksJsonPath}`
+				`Retrieving task details for ID: ${taskId} from ${tasksJsonPath}${status ? ` (filtering by status: ${status})` : ''}`
 			);
 
 			// Read tasks data using the provided path
@@ -76,8 +77,12 @@ export async function showTaskDirect(args, log) {
 				};
 			}
 
-			// Find the specific task
-			const task = findTaskById(data.tasks, taskId);
+			// Find the specific task, passing the status filter
+			const { task, originalSubtaskCount } = findTaskById(
+				data.tasks,
+				taskId,
+				status
+			);
 
 			if (!task) {
 				disableSilentMode(); // Disable before returning
@@ -85,7 +90,7 @@ export async function showTaskDirect(args, log) {
 					success: false,
 					error: {
 						code: 'TASK_NOT_FOUND',
-						message: `Task with ID ${taskId} not found`
+						message: `Task with ID ${taskId} not found${status ? ` or no subtasks match status '${status}'` : ''}`
 					}
 				};
 			}
@@ -93,13 +98,16 @@ export async function showTaskDirect(args, log) {
 			// Restore normal logging
 			disableSilentMode();
 
-			// Return the task data with the full tasks array for reference
-			// (needed for formatDependenciesWithStatus function in UI)
-			log.info(`Successfully found task ${taskId}`);
+			// Return the task data, the original subtask count (if applicable),
+			// and the full tasks array for reference (needed for formatDependenciesWithStatus function in UI)
+			log.info(
+				`Successfully found task ${taskId}${status ? ` (with status filter: ${status})` : ''}`
+			);
 			return {
 				success: true,
 				data: {
 					task,
+					originalSubtaskCount,
 					allTasks: data.tasks
 				}
 			};

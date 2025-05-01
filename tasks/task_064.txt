@@ -1,0 +1,202 @@
+# Task ID: 64
+# Title: Add Yarn Support for Taskmaster Installation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Implement full support for installing and managing Taskmaster using Yarn package manager, ensuring users have the exact same experience as with npm or pnpm. The installation process, including any CLI prompts or web interfaces, must serve the exact same content and user experience regardless of whether npm, pnpm, or Yarn is used. The project uses 'module' as the package type, defines binaries 'task-master' and 'task-master-mcp', and its core logic resides in 'scripts/modules/'. The 'init' command (via scripts/init.js) creates the directory structure (.cursor/rules, scripts, tasks), copies templates (.env.example, .gitignore, rule files, dev.js), manages package.json merging, and sets up MCP config (.cursor/mcp.json). All dependencies are standard npm dependencies listed in package.json, and manual modifications are being removed. 
+
+If the installation process includes a website component (such as for account setup or registration), ensure that any required website actions (e.g., creating an account, logging in, or configuring user settings) are clearly documented and tested for parity between Yarn and other package managers. If no website or account setup is required, confirm and document this explicitly.
+# Details:
+This task involves adding comprehensive Yarn support to the Taskmaster package to ensure it can be properly installed and managed using Yarn. Implementation should include:
+
+1. Update package.json to ensure compatibility with Yarn installation methods, considering the 'module' package type and binary definitions
+2. Verify all scripts and dependencies work correctly with Yarn
+3. Add Yarn-specific configuration files (e.g., .yarnrc.yml if needed)
+4. Update installation documentation to include Yarn installation instructions
+5. Ensure all post-install scripts work correctly with Yarn
+6. Verify that all CLI commands function properly when installed via Yarn
+7. Ensure binaries `task-master` and `task-master-mcp` are properly linked
+8. Test the `scripts/init.js` file with Yarn to verify it correctly:
+   - Creates directory structure (`.cursor/rules`, `scripts`, `tasks`)
+   - Copies templates (`.env.example`, `.gitignore`, rule files, `dev.js`)
+   - Manages `package.json` merging
+   - Sets up MCP config (`.cursor/mcp.json`)
+9. Handle any Yarn-specific package resolution or hoisting issues
+10. Test compatibility with different Yarn versions (classic and berry/v2+)
+11. Ensure proper lockfile generation and management
+12. Update any package manager detection logic in the codebase to recognize Yarn installations
+13. Verify that core logic in `scripts/modules/` works correctly when installed via Yarn
+14. If the installation process includes a website component, verify that any account setup or user registration flows work identically with Yarn as they do with npm or pnpm. If website actions are required, document the steps and ensure they are tested for parity. If not, confirm and document that no website or account setup is needed.
+
+The implementation should maintain feature parity and identical user experience regardless of which package manager (npm, pnpm, or Yarn) is used to install Taskmaster.
+
+# Test Strategy:
+Testing should verify complete Yarn support through the following steps:
+
+1. Fresh installation tests:
+   - Install Taskmaster using `yarn add taskmaster` (global and local installations)
+   - Verify installation completes without errors
+   - Check that binaries `task-master` and `task-master-mcp` are properly linked
+   - Test the `init` command to ensure it correctly sets up the directory structure and files as defined in scripts/init.js
+
+2. Functionality tests:
+   - Run all Taskmaster commands on a Yarn-installed version
+   - Verify all features work identically to npm installations
+   - Test with both Yarn v1 (classic) and Yarn v2+ (berry)
+   - Verify proper handling of 'module' package type
+
+3. Update/uninstall tests:
+   - Test updating the package using Yarn commands
+   - Verify clean uninstallation using Yarn
+
+4. CI integration:
+   - Add Yarn installation tests to CI pipeline
+   - Test on different operating systems (Windows, macOS, Linux)
+
+5. Documentation verification:
+   - Ensure all documentation accurately reflects Yarn installation methods
+   - Verify any Yarn-specific commands or configurations are properly documented
+
+6. Edge cases:
+   - Test installation in monorepo setups using Yarn workspaces
+   - Verify compatibility with other Yarn-specific features (plug'n'play, zero-installs)
+
+7. Structure Testing:
+   - Verify that the core logic in `scripts/modules/` is accessible and functions correctly
+   - Confirm that the `init` command properly creates all required directories and files as per scripts/init.js
+   - Test package.json merging functionality
+   - Verify MCP config setup
+
+8. Website/Account Setup Testing:
+   - If the installation process includes a website component, test the complete user flow including account setup, registration, or configuration steps. Ensure these work identically with Yarn as with npm. If no website or account setup is required, confirm and document this in the test results.
+   - Document any website-specific steps that users need to complete during installation.
+
+All tests should pass with the same results as when using npm, with identical user experience throughout the installation and usage process.
+
+# Subtasks:
+## 1. Update package.json for Yarn Compatibility [pending]
+### Dependencies: None
+### Description: Modify the package.json file to ensure all dependencies, scripts, and configurations are compatible with Yarn's installation and resolution methods. Confirm that any scripts responsible for showing a website or prompt during install behave identically with Yarn and npm. Ensure compatibility with 'module' package type and correct binary definitions.
+### Details:
+Review and update dependency declarations, script syntax, and any package manager-specific fields to avoid conflicts or unsupported features when using Yarn. Pay special attention to any scripts that trigger a website or prompt during installation, ensuring they serve the same content as npm. Validate that scripts/init.js and binaries are referenced correctly for ESM ('module') projects.
+
+## 2. Add Yarn-Specific Configuration Files [pending]
+### Dependencies: 64.1
+### Description: Introduce Yarn-specific configuration files such as .yarnrc.yml if needed to optimize Yarn behavior and ensure consistent installs for 'module' package type and binary definitions.
+### Details:
+Determine if Yarn v2+ (Berry) or classic requires additional configuration for the project, and add or update .yarnrc.yml or .yarnrc files accordingly. Ensure configuration supports ESM and binary linking.
+
+## 3. Test and Fix Yarn Compatibility for Scripts and CLI [pending]
+### Dependencies: 64.2
+### Description: Ensure all scripts, post-install hooks, and CLI commands function correctly when Taskmaster is installed and managed via Yarn. Confirm that any website or UI shown during installation is identical to npm. Validate that binaries and the init process (scripts/init.js) work as expected.
+### Details:
+Test all lifecycle scripts, post-install actions, and CLI commands using Yarn. Address any issues related to environment variables, script execution, or dependency hoisting. Ensure any website or prompt shown during install is the same as with npm. Validate that binaries 'task-master' and 'task-master-mcp' are linked and that scripts/init.js creates the correct structure and templates.
+
+## 4. Update Documentation for Yarn Installation and Usage [pending]
+### Dependencies: 64.3
+### Description: Revise installation and usage documentation to include clear instructions for installing and managing Taskmaster with Yarn. Clearly state that the installation process, including any website or UI shown, is identical to npm. Ensure documentation reflects the use of 'module' package type, binaries, and the init process as defined in scripts/init.js. If the installation process includes a website component or requires account setup, document the steps users must follow. If not, explicitly state that no website or account setup is required.
+### Details:
+Add Yarn-specific installation commands, troubleshooting tips, and notes on version compatibility to the README and any relevant docs. Document that any installation website or prompt is the same as with npm. Include notes on the 'module' package type, binaries, and the directory/template setup performed by scripts/init.js. If website or account setup is required during installation, provide clear instructions; otherwise, confirm and document that no such steps are needed.
+
+## 5. Implement and Test Package Manager Detection Logic [pending]
+### Dependencies: 64.4
+### Description: Update or add logic in the codebase to detect Yarn installations and handle Yarn-specific behaviors, ensuring feature parity across package managers. Ensure detection logic works for 'module' package type and binary definitions.
+### Details:
+Modify detection logic to recognize Yarn (classic and berry), handle lockfile generation, and resolve any Yarn-specific package resolution or hoisting issues. Ensure detection logic supports ESM and binary linking.
+
+## 6. Verify Installation UI/Website Consistency [pending]
+### Dependencies: 64.3
+### Description: Ensure any installation UIs, websites, or interactive prompts—including any website or prompt shown during install—appear and function identically when installing with Yarn compared to npm. Confirm that the experience is consistent for the 'module' package type and the init process. If the installation process includes a website or account setup, verify that all required website actions (e.g., account creation, login) are consistent and documented. If not, confirm and document that no website or account setup is needed.
+### Details:
+Identify all user-facing elements during the installation process, including any website or prompt shown during install, and verify they are consistent across package managers. If a website is shown during installation or account setup is required, ensure it appears and functions the same regardless of package manager used, and document the steps. If not, confirm and document that no website or account setup is needed. Validate that any prompts or UIs triggered by scripts/init.js are identical.
+
+## 7. Test init.js Script with Yarn [pending]
+### Dependencies: 64.3
+### Description: Verify that the scripts/init.js file works correctly when Taskmaster is installed via Yarn, creating the proper directory structure and copying all required templates as defined in the project structure.
+### Details:
+Test the init command to ensure it properly creates .cursor/rules, scripts, and tasks directories, copies templates (.env.example, .gitignore, rule files, dev.js), handles package.json merging, and sets up MCP config (.cursor/mcp.json) as per scripts/init.js.
+
+## 8. Verify Binary Links with Yarn [pending]
+### Dependencies: 64.3
+### Description: Ensure that the task-master and task-master-mcp binaries are properly defined in package.json, linked, and executable when installed via Yarn, in both global and local installations.
+### Details:
+Check that the binaries defined in package.json are correctly linked in node_modules/.bin when installed with Yarn, and that they can be executed without errors. Validate that binaries work for ESM ('module') projects and are accessible after both global and local installs.
+
+## 9. Test Website Account Setup with Yarn [pending]
+### Dependencies: 64.6
+### Description: If the installation process includes a website component, verify that account setup, registration, or any other user-specific configurations work correctly when Taskmaster is installed via Yarn. If no website or account setup is required, confirm and document this explicitly.
+### Details:
+Test the complete user flow for any website component that appears during installation, including account creation, login, and configuration steps. Ensure that all website interactions work identically with Yarn as they do with npm or pnpm. Document any website-specific steps that users need to complete during the installation process. If no website or account setup is required, confirm and document this.
+
+<info added on 2025-04-25T08:45:48.709Z>
+Since the request is vague, I'll provide helpful implementation details for testing website account setup with Yarn:
+
+For thorough testing, create a test matrix covering different browsers (Chrome, Firefox, Safari) and operating systems (Windows, macOS, Linux). Document specific Yarn-related environment variables that might affect website connectivity. Use tools like Playwright or Cypress to automate the account setup flow testing, capturing screenshots at each step for documentation. Implement network throttling tests to verify behavior under poor connectivity. Create a checklist of all UI elements that should be verified during the account setup process, including form validation, error messages, and success states. If no website component exists, explicitly document this in the project README and installation guides to prevent user confusion.
+</info added on 2025-04-25T08:45:48.709Z>
+
+<info added on 2025-04-25T08:46:08.651Z>
+- For environments where the website component requires integration with external authentication providers (such as OAuth, SSO, or LDAP), ensure that these flows are tested specifically when Taskmaster is installed via Yarn. Validate that redirect URIs, token exchanges, and session persistence behave as expected across all supported browsers.
+
+- If the website setup involves configuring application pools or web server settings (e.g., with IIS), document any Yarn-specific considerations, such as environment variable propagation or file permission differences, that could affect the web service's availability or configuration[2].
+
+- When automating tests, include validation for accessibility compliance (e.g., using axe-core or Lighthouse) during the account setup process to ensure the UI is usable for all users.
+
+- Capture and log all HTTP requests and responses during the account setup flow to help diagnose any discrepancies between Yarn and other package managers. This can be achieved by enabling network logging in Playwright or Cypress test runs.
+
+- If the website component supports batch operations or automated uploads (such as uploading user data or configuration files), verify that these automation features function identically after installation with Yarn[3].
+
+- For documentation, provide annotated screenshots or screen recordings of the account setup process, highlighting any Yarn-specific prompts, warnings, or differences encountered.
+
+- If the website component is not required, add a badge or prominent note in the README and installation guides stating "No website or account setup required," and reference the test results confirming this.
+</info added on 2025-04-25T08:46:08.651Z>
+
+<info added on 2025-04-25T17:04:12.550Z>
+For clarity, this task does not involve setting up a Yarn account. Yarn itself is just a package manager that doesn't require any account creation. The task is about testing whether any website component that is part of Taskmaster (if one exists) works correctly when Taskmaster is installed using Yarn as the package manager.
+
+To be specific:
+- You don't need to create a Yarn account
+- Yarn is simply the tool used to install Taskmaster (`yarn add taskmaster` instead of `npm install taskmaster`)
+- The testing focuses on whether any web interfaces or account setup processes that are part of Taskmaster itself function correctly when the installation was done via Yarn
+- If Taskmaster includes a web dashboard or requires users to create accounts within the Taskmaster system, those features should be tested
+
+If you're uncertain whether Taskmaster includes a website component at all, the first step would be to check the project documentation or perform an initial installation to determine if any web interface exists.
+</info added on 2025-04-25T17:04:12.550Z>
+
+<info added on 2025-04-25T17:19:03.256Z>
+When testing website account setup with Yarn after the codebase refactor, pay special attention to:
+
+- Verify that any environment-specific configuration files (like `.env` or config JSON files) are properly loaded when the application is installed via Yarn
+- Test the session management implementation to ensure user sessions persist correctly across page refreshes and browser restarts
+- Check that any database migrations or schema updates required for account setup execute properly when installed via Yarn
+- Validate that client-side form validation logic works consistently with server-side validation
+- Ensure that any WebSocket connections for real-time features initialize correctly after the refactor
+- Test account deletion and data export functionality to verify GDPR compliance remains intact
+- Document any changes to the authentication flow that resulted from the refactor and confirm they work identically with Yarn installation
+</info added on 2025-04-25T17:19:03.256Z>
+
+<info added on 2025-04-25T17:22:05.951Z>
+When testing website account setup with Yarn after the logging fix, implement these additional verification steps:
+
+1. Verify that all account-related actions are properly logged with the correct log levels (debug, info, warn, error) according to the updated logging framework
+2. Test the error handling paths specifically - force authentication failures and verify the logs contain sufficient diagnostic information
+3. Check that sensitive user information is properly redacted in logs according to privacy requirements
+4. Confirm that log rotation and persistence work correctly when high volumes of authentication attempts occur
+5. Validate that any custom logging middleware correctly captures HTTP request/response data for account operations
+6. Test that log aggregation tools (if used) can properly parse and display the account setup logs in their expected format
+7. Verify that performance metrics for account setup flows are correctly captured in logs for monitoring purposes
+8. Document any Yarn-specific environment variables that affect the logging configuration for the website component
+</info added on 2025-04-25T17:22:05.951Z>
+
+<info added on 2025-04-25T17:22:46.293Z>
+When testing website account setup with Yarn, consider implementing a positive user experience validation:
+
+1. Measure and document time-to-completion for the account setup process to ensure it meets usability standards
+2. Create a satisfaction survey for test users to rate the account setup experience on a 1-5 scale
+3. Implement A/B testing for different account setup flows to identify the most user-friendly approach
+4. Add delightful micro-interactions or success animations that make the setup process feel rewarding
+5. Test the "welcome" or "onboarding" experience that follows successful account creation
+6. Ensure helpful tooltips and contextual help are displayed at appropriate moments during setup
+7. Verify that error messages are friendly, clear, and provide actionable guidance rather than technical jargon
+8. Test the account recovery flow to ensure users have a smooth experience if they forget credentials
+</info added on 2025-04-25T17:22:46.293Z>
+

@@ -19,6 +19,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+tests/e2e/_runs/
+tests/e2e/log/
 
 # Coverage directory used by tools like istanbul
 coverage

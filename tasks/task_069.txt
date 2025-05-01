@@ -1,0 +1,59 @@
+# Task ID: 69
+# Title: Enhance Analyze Complexity for Specific Task IDs
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Modify the analyze-complexity feature (CLI and MCP) to allow analyzing only specified task IDs and append/update results in the report.
+# Details:
+
+Implementation Plan:
+
+1.  **Core Logic (`scripts/modules/task-manager/analyze-task-complexity.js`):**
+    *   Modify the function signature to accept an optional `options.ids` parameter (string, comma-separated IDs).
+    *   If `options.ids` is present:
+        *   Parse the `ids` string into an array of target IDs.
+        *   Filter `tasksData.tasks` to *only* include tasks matching the target IDs. Use this filtered list for analysis.
+        *   Handle cases where provided IDs don't exist in `tasks.json`.
+    *   If `options.ids` is *not* present: Continue with existing logic (filtering by active status).
+    *   **Report Handling:**
+        *   Before generating the analysis, check if the `outputPath` report file exists.
+        *   If it exists, read the existing `complexityAnalysis` array.
+        *   Generate the new analysis *only* for the target tasks (filtered by ID or status).
+        *   Merge the results: Remove any entries from the *existing* array that match the IDs analyzed in the *current run*. Then, append the *new* analysis results to the array.
+        *   Update the `meta` section (`generatedAt`, `tasksAnalyzed` should reflect *this run*).
+        *   Write the *merged* `complexityAnalysis` array and updated `meta` back to the report file.
+        *   If the report file doesn't exist, create it as usual.
+    *   **Prompt Generation:** Ensure `generateInternalComplexityAnalysisPrompt` receives the correctly filtered list of tasks.
+
+2.  **CLI (`scripts/modules/commands.js`):**
+    *   Add a new option `--id <ids>` to the `analyze-complexity` command definition. Description: "Comma-separated list of specific task IDs to analyze".
+    *   In the `.action` handler:
+        *   Check if `options.id` is provided.
+        *   If yes, pass `options.id` (as the comma-separated string) to the `analyzeTaskComplexity` core function via the `options` object.
+        *   Update user feedback messages to indicate specific task analysis.
+
+3.  **MCP Tool (`mcp-server/src/tools/analyze.js`):**
+    *   Add a new optional parameter `ids: z.string().optional().describe("Comma-separated list of task IDs to analyze specifically")` to the Zod schema for the `analyze_project_complexity` tool.
+    *   In the `execute` method, pass `args.ids` to the `analyzeTaskComplexityDirect` function within its `args` object.
+
+4.  **Direct Function (`mcp-server/src/core/direct-functions/analyze-task-complexity.js`):**
+    *   Update the function to receive the `ids` string within the `args` object.
+    *   Pass the `ids` string along to the core `analyzeTaskComplexity` function within its `options` object.
+
+5.  **Documentation:** Update relevant rule files (`commands.mdc`, `taskmaster.mdc`) to reflect the new `--id` option/parameter.
+
+
+# Test Strategy:
+
+1.  **CLI:**
+    *   Run `task-master analyze-complexity --id=<id1>` (where report doesn't exist). Verify report created with only task id1.
+    *   Run `task-master analyze-complexity --id=<id2>` (where report exists). Verify report updated, containing analysis for both id1 and id2 (id2 replaces any previous id2 analysis).
+    *   Run `task-master analyze-complexity --id=<id1>,<id3>`. Verify report updated, containing id1, id2, id3.
+    *   Run `task-master analyze-complexity` (no id). Verify it analyzes *all* active tasks and updates the report accordingly, merging with previous specific analyses.
+    *   Test with invalid/non-existent IDs.
+2.  **MCP:**
+    *   Call `analyze_project_complexity` tool with `ids: "<id1>"`. Verify report creation/update.
+    *   Call `analyze_project_complexity` tool with `ids: "<id1>,<id2>"`. Verify report merging.
+    *   Call `analyze_project_complexity` tool without `ids`. Verify full analysis and merging.
+3.  Verify report `meta` section is updated correctly on each run.
+

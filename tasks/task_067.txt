@@ -1,0 +1,43 @@
+# Task ID: 67
+# Title: Add CLI JSON output and Cursor keybindings integration
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Enhance Taskmaster CLI with JSON output option and add a new command to install pre-configured Cursor keybindings
+# Details:
+This task has two main components:\n\n1. Add `--json` flag to all relevant CLI commands:\n   - Modify the CLI command handlers to check for a `--json` flag\n   - When the flag is present, output the raw data from the MCP tools in JSON format instead of formatting for human readability\n   - Ensure consistent JSON schema across all commands\n   - Add documentation for this feature in the help text for each command\n   - Test with common scenarios like `task-master next --json` and `task-master show <id> --json`\n\n2. Create a new `install-keybindings` command:\n   - Create a new CLI command that installs pre-configured Taskmaster keybindings to Cursor\n   - Detect the user's OS to determine the correct path to Cursor's keybindings.json\n   - Check if the file exists; create it if it doesn't\n   - Add useful Taskmaster keybindings like:\n     - Quick access to next task with output to clipboard\n     - Task status updates\n     - Opening new agent chat with context from the current task\n   - Implement safeguards to prevent duplicate keybindings\n   - Add undo functionality or backup of previous keybindings\n   - Support custom key combinations via command flags
+
+# Test Strategy:
+1. JSON output testing:\n   - Unit tests for each command with the --json flag\n   - Verify JSON schema consistency across commands\n   - Validate that all necessary task data is included in the JSON output\n   - Test piping output to other commands like jq\n\n2. Keybindings command testing:\n   - Test on different OSes (macOS, Windows, Linux)\n   - Verify correct path detection for Cursor's keybindings.json\n   - Test behavior when file doesn't exist\n   - Test behavior when existing keybindings conflict\n   - Validate the installed keybindings work as expected\n   - Test uninstall/restore functionality
+
+# Subtasks:
+## 1. Implement Core JSON Output Logic for `next` and `show` Commands [pending]
+### Dependencies: None
+### Description: Modify the command handlers for `task-master next` and `task-master show <id>` to recognize and handle a `--json` flag. When the flag is present, output the raw data received from MCP tools directly as JSON.
+### Details:
+Use a CLI argument parsing library (e.g., argparse, click, commander) to add the `--json` boolean flag. In the command execution logic, check if the flag is set. If true, serialize the data object (before any human-readable formatting) into a JSON string and print it to stdout. If false, proceed with the existing formatting logic. Focus on these two commands first to establish the pattern.
+
+## 2. Extend JSON Output to All Relevant Commands and Ensure Schema Consistency [pending]
+### Dependencies: 67.1
+### Description: Apply the JSON output pattern established in subtask 1 to all other relevant Taskmaster CLI commands that display data (e.g., `list`, `status`, etc.). Ensure the JSON structure is consistent where applicable (e.g., task objects should have the same fields). Add help text mentioning the `--json` flag for each modified command.
+### Details:
+Identify all commands that output structured data. Refactor the JSON output logic into a reusable utility function if possible. Define a standard schema for common data types like tasks. Update the help documentation for each command to include the `--json` flag description. Ensure error outputs are also handled appropriately (e.g., potentially outputting JSON error objects).
+
+## 3. Create `install-keybindings` Command Structure and OS Detection [pending]
+### Dependencies: None
+### Description: Set up the basic structure for the new `task-master install-keybindings` command. Implement logic to detect the user's operating system (Linux, macOS, Windows) and determine the default path to Cursor's `keybindings.json` file.
+### Details:
+Add a new command entry point using the CLI framework. Use standard library functions (e.g., `os.platform()` in Node, `platform.system()` in Python) to detect the OS. Define constants or a configuration map for the default `keybindings.json` paths for each supported OS. Handle cases where the path might vary (e.g., different installation methods for Cursor). Add basic help text for the new command.
+
+## 4. Implement Keybinding File Handling and Backup Logic [pending]
+### Dependencies: 67.3
+### Description: Implement the core logic within the `install-keybindings` command to read the target `keybindings.json` file. If it exists, create a backup. If it doesn't exist, create a new file with an empty JSON array `[]`. Prepare the structure to add new keybindings.
+### Details:
+Use file system modules to check for file existence, read, write, and copy files. Implement a backup mechanism (e.g., copy `keybindings.json` to `keybindings.json.bak`). Handle potential file I/O errors gracefully (e.g., permissions issues). Parse the existing JSON content; if parsing fails, report an error and potentially abort. Ensure the file is created with `[]` if it's missing.
+
+## 5. Add Taskmaster Keybindings, Prevent Duplicates, and Support Customization [pending]
+### Dependencies: 67.4
+### Description: Define the specific Taskmaster keybindings (e.g., next task to clipboard, status update, open agent chat) and implement the logic to merge them into the user's `keybindings.json` data. Prevent adding duplicate keybindings (based on command ID or key combination). Add support for custom key combinations via command flags.
+### Details:
+Define the desired keybindings as a list of JSON objects following Cursor's format. Before adding, iterate through the existing keybindings (parsed in subtask 4) to check if a Taskmaster keybinding with the same command or key combination already exists. If not, append the new keybinding to the list. Add command-line flags (e.g., `--next-key='ctrl+alt+n'`) to allow users to override default key combinations. Serialize the updated list back to JSON and write it to the `keybindings.json` file.
+

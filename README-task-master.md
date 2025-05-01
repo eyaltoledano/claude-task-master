@@ -13,25 +13,22 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Configuration
 
-The script can be configured through environment variables in a `.env` file at the root of the project:
+Taskmaster uses two primary configuration methods:
 
-### Required Configuration
+1.  **`.taskmasterconfig` File (Project Root)**
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+    - Stores most settings: AI model selections (main, research, fallback), parameters (max tokens, temperature), logging level, default priority/subtasks, project name.
+    - **Created and managed using `task-master models --setup` CLI command or the `models` MCP tool.**
+    - Do not edit manually unless you know what you are doing.
 
-### Optional Configuration
+2.  **Environment Variables (`.env` file or MCP `env` block)**
+    - Used **only** for sensitive **API Keys** (e.g., `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, etc.) and specific endpoints (like `OLLAMA_BASE_URL`).
+    - **For CLI:** Place keys in a `.env` file in your project root.
+    - **For MCP/Cursor:** Place keys in the `env` section of your `.cursor/mcp.json` (or other MCP config according to the AI IDE or client you use) file under the `taskmaster-ai` server definition.
 
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
-- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
-- `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
-- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
-- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
-- `PROJECT_NAME`: Override default project name in tasks.json
-- `PROJECT_VERSION`: Override default version in tasks.json
+**Important:** Settings like model choices, max tokens, temperature, and log level are **no longer configured via environment variables.** Use the `task-master models` command or tool.
+
+See the [Configuration Guide](docs/configuration.md) for full details.
 
 ## Installation
 

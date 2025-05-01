@@ -1,0 +1,11 @@
+# Task ID: 68
+# Title: Ability to create tasks without parsing PRD
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Which just means that when we create a task, if there's no tasks.json, we should create it calling the same function that is done by parse-prd. this lets taskmaster be used without a prd as a starding point.
+# Details:
+
+
+# Test Strategy:
+

@@ -10,9 +10,8 @@ import boxen from 'boxen';
 import fs from 'fs';
 import https from 'https';
 import inquirer from 'inquirer';
-import ora from 'ora';
 
-import { CONFIG, log, readJSON, writeJSON } from './utils.js';
+import { log, readJSON } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -41,6 +40,16 @@ import {
 } from './dependency-manager.js';
 
 import {
+	isApiKeySet,
+	getDebugFlag,
+	getConfig,
+	writeConfig,
+	ConfigurationError,
+	isConfigFilePresent,
+	getAvailableModels
+} from './config-manager.js';
+
+import {
 	displayBanner,
 	displayHelp,
 	displayNextTask,
@@ -49,10 +58,415 @@ import {
 	getStatusWithColor,
 	confirmTaskOverwrite,
 	startLoadingIndicator,
-	stopLoadingIndicator
+	stopLoadingIndicator,
+	displayModelConfiguration,
+	displayAvailableModels,
+	displayApiKeyStatus
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
+import {
+	getModelConfiguration,
+	getAvailableModelsList,
+	setModel,
+	getApiKeyStatusReport
+} from './task-manager/models.js';
+import { findProjectRoot } from './utils.js';
+
+/**
+ * Runs the interactive setup process for model configuration.
+ * @param {string|null} projectRoot - The resolved project root directory.
+ */
+async function runInteractiveSetup(projectRoot) {
+	if (!projectRoot) {
+		console.error(
+			chalk.red(
+				'Error: Could not determine project root for interactive setup.'
+			)
+		);
+		process.exit(1);
+	}
+
+	const currentConfigResult = await getModelConfiguration({ projectRoot });
+	const currentModels = currentConfigResult.success
+		? currentConfigResult.data.activeModels
+		: { main: null, research: null, fallback: null };
+	// Handle potential config load failure gracefully for the setup flow
+	if (
+		!currentConfigResult.success &&
+		currentConfigResult.error?.code !== 'CONFIG_MISSING'
+	) {
+		console.warn(
+			chalk.yellow(
+				`Warning: Could not load current model configuration: ${currentConfigResult.error?.message || 'Unknown error'}. Proceeding with defaults.`
+			)
+		);
+	}
+
+	// Helper function to fetch OpenRouter models (duplicated for CLI context)
+	function fetchOpenRouterModelsCLI() {
+		return new Promise((resolve) => {
+			const options = {
+				hostname: 'openrouter.ai',
+				path: '/api/v1/models',
+				method: 'GET',
+				headers: {
+					Accept: 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				res.on('end', () => {
+					if (res.statusCode === 200) {
+						try {
+							const parsedData = JSON.parse(data);
+							resolve(parsedData.data || []); // Return the array of models
+						} catch (e) {
+							console.error('Error parsing OpenRouter response:', e);
+							resolve(null); // Indicate failure
+						}
+					} else {
+						console.error(
+							`OpenRouter API request failed with status code: ${res.statusCode}`
+						);
+						resolve(null); // Indicate failure
+					}
+				});
+			});
+
+			req.on('error', (e) => {
+				console.error('Error fetching OpenRouter models:', e);
+				resolve(null); // Indicate failure
+			});
+			req.end();
+		});
+	}
+
+	// Helper to get choices and default index for a role
+	const getPromptData = (role, allowNone = false) => {
+		const currentModel = currentModels[role]; // Use the fetched data
+		const allModelsRaw = getAvailableModels(); // Get all available models
+
+		// Manually group models by provider
+		const modelsByProvider = allModelsRaw.reduce((acc, model) => {
+			if (!acc[model.provider]) {
+				acc[model.provider] = [];
+			}
+			acc[model.provider].push(model);
+			return acc;
+		}, {});
+
+		const cancelOption = { name: '⏹ Cancel Model Setup', value: '__CANCEL__' }; // Symbol updated
+		const noChangeOption = currentModel?.modelId
+			? {
+					name: `✔ No change to current ${role} model (${currentModel.modelId})`, // Symbol updated
+					value: '__NO_CHANGE__'
+				}
+			: null;
+
+		const customOpenRouterOption = {
+			name: '* Custom OpenRouter model', // Symbol updated
+			value: '__CUSTOM_OPENROUTER__'
+		};
+
+		let choices = [];
+		let defaultIndex = 0; // Default to 'Cancel'
+
+		// Filter and format models allowed for this role using the manually grouped data
+		const roleChoices = Object.entries(modelsByProvider)
+			.map(([provider, models]) => {
+				const providerModels = models
+					.filter((m) => m.allowed_roles.includes(role))
+					.map((m) => ({
+						name: `${provider} / ${m.id} ${
+							m.cost_per_1m_tokens
+								? chalk.gray(
+										`($${m.cost_per_1m_tokens.input.toFixed(2)} input | $${m.cost_per_1m_tokens.output.toFixed(2)} output)`
+									)
+								: ''
+						}`,
+						value: { id: m.id, provider },
+						short: `${provider}/${m.id}`
+					}));
+				if (providerModels.length > 0) {
+					return [...providerModels];
+				}
+				return null;
+			})
+			.filter(Boolean)
+			.flat();
+
+		// Find the index of the currently selected model for setting the default
+		let currentChoiceIndex = -1;
+		if (currentModel?.modelId && currentModel?.provider) {
+			currentChoiceIndex = roleChoices.findIndex(
+				(choice) =>
+					typeof choice.value === 'object' &&
+					choice.value.id === currentModel.modelId &&
+					choice.value.provider === currentModel.provider
+			);
+		}
+
+		// Construct final choices list based on whether 'None' is allowed
+		const commonPrefix = [];
+		if (noChangeOption) {
+			commonPrefix.push(noChangeOption);
+		}
+		commonPrefix.push(cancelOption);
+		commonPrefix.push(customOpenRouterOption);
+
+		let prefixLength = commonPrefix.length; // Initial prefix length
+
+		if (allowNone) {
+			choices = [
+				...commonPrefix,
+				new inquirer.Separator(),
+				{ name: '⚪ None (disable)', value: null }, // Symbol updated
+				new inquirer.Separator(),
+				...roleChoices
+			];
+			// Adjust default index: Prefix + Sep1 + None + Sep2 (+3)
+			const noneOptionIndex = prefixLength + 1;
+			defaultIndex =
+				currentChoiceIndex !== -1
+					? currentChoiceIndex + prefixLength + 3 // Offset by prefix and separators
+					: noneOptionIndex; // Default to 'None' if no current model matched
+		} else {
+			choices = [
+				...commonPrefix,
+				new inquirer.Separator(),
+				...roleChoices,
+				new inquirer.Separator()
+			];
+			// Adjust default index: Prefix + Sep (+1)
+			defaultIndex =
+				currentChoiceIndex !== -1
+					? currentChoiceIndex + prefixLength + 1 // Offset by prefix and separator
+					: noChangeOption
+						? 1
+						: 0; // Default to 'No Change' if present, else 'Cancel'
+		}
+
+		// Ensure defaultIndex is valid within the final choices array length
+		if (defaultIndex < 0 || defaultIndex >= choices.length) {
+			// If default calculation failed or pointed outside bounds, reset intelligently
+			defaultIndex = 0; // Default to 'Cancel'
+			console.warn(
+				`Warning: Could not determine default model for role '${role}'. Defaulting to 'Cancel'.`
+			); // Add warning
+		}
+
+		return { choices, default: defaultIndex };
+	};
+
+	// --- Generate choices using the helper ---
+	const mainPromptData = getPromptData('main');
+	const researchPromptData = getPromptData('research');
+	const fallbackPromptData = getPromptData('fallback', true); // Allow 'None' for fallback
+
+	const answers = await inquirer.prompt([
+		{
+			type: 'list',
+			name: 'mainModel',
+			message: 'Select the main model for generation/updates:',
+			choices: mainPromptData.choices,
+			default: mainPromptData.default
+		},
+		{
+			type: 'list',
+			name: 'researchModel',
+			message: 'Select the research model:',
+			choices: researchPromptData.choices,
+			default: researchPromptData.default,
+			when: (ans) => ans.mainModel !== '__CANCEL__'
+		},
+		{
+			type: 'list',
+			name: 'fallbackModel',
+			message: 'Select the fallback model (optional):',
+			choices: fallbackPromptData.choices,
+			default: fallbackPromptData.default,
+			when: (ans) =>
+				ans.mainModel !== '__CANCEL__' && ans.researchModel !== '__CANCEL__'
+		}
+	]);
+
+	let setupSuccess = true;
+	let setupConfigModified = false;
+	const coreOptionsSetup = { projectRoot }; // Pass root for setup actions
+
+	// Helper to handle setting a model (including custom)
+	async function handleSetModel(role, selectedValue, currentModelId) {
+		if (selectedValue === '__CANCEL__') {
+			console.log(
+				chalk.yellow(`\nSetup canceled during ${role} model selection.`)
+			);
+			setupSuccess = false; // Also mark success as false on cancel
+			return false; // Indicate cancellation
+		}
+
+		// Handle the new 'No Change' option
+		if (selectedValue === '__NO_CHANGE__') {
+			console.log(chalk.gray(`No change selected for ${role} model.`));
+			return true; // Indicate success, continue setup
+		}
+
+		let modelIdToSet = null;
+		let providerHint = null;
+		let isCustomSelection = false;
+
+		if (selectedValue === '__CUSTOM_OPENROUTER__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom OpenRouter Model ID for the ${role} role:`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'openrouter';
+			// Validate against live OpenRouter list
+			const openRouterModels = await fetchOpenRouterModelsCLI();
+			if (
+				!openRouterModels ||
+				!openRouterModels.some((m) => m.id === modelIdToSet)
+			) {
+				console.error(
+					chalk.red(
+						`Error: Model ID "${modelIdToSet}" not found in the live OpenRouter model list. Please check the ID.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+		} else if (
+			selectedValue &&
+			typeof selectedValue === 'object' &&
+			selectedValue.id
+		) {
+			// Standard model selected from list
+			modelIdToSet = selectedValue.id;
+			providerHint = selectedValue.provider; // Provider is known
+		} else if (selectedValue === null && role === 'fallback') {
+			// Handle disabling fallback
+			modelIdToSet = null;
+			providerHint = null;
+		} else if (selectedValue) {
+			console.error(
+				chalk.red(
+					`Internal Error: Unexpected selection value for ${role}: ${JSON.stringify(selectedValue)}`
+				)
+			);
+			setupSuccess = false;
+			return true;
+		}
+
+		// Only proceed if there's a change to be made
+		if (modelIdToSet !== currentModelId) {
+			if (modelIdToSet) {
+				// Set a specific model (standard or custom)
+				const result = await setModel(role, modelIdToSet, {
+					...coreOptionsSetup,
+					providerHint // Pass the hint
+				});
+				if (result.success) {
+					console.log(
+						chalk.blue(
+							`Set ${role} model: ${result.data.provider} / ${result.data.modelId}`
+						)
+					);
+					if (result.data.warning) {
+						// Display warning if returned by setModel
+						console.log(chalk.yellow(result.data.warning));
+					}
+					setupConfigModified = true;
+				} else {
+					console.error(
+						chalk.red(
+							`Error setting ${role} model: ${result.error?.message || 'Unknown'}`
+						)
+					);
+					setupSuccess = false;
+				}
+			} else if (role === 'fallback') {
+				// Disable fallback model
+				const currentCfg = getConfig(projectRoot);
+				if (currentCfg?.models?.fallback?.modelId) {
+					// Check if it was actually set before clearing
+					currentCfg.models.fallback = {
+						...currentCfg.models.fallback,
+						provider: undefined,
+						modelId: undefined
+					};
+					if (writeConfig(currentCfg, projectRoot)) {
+						console.log(chalk.blue('Fallback model disabled.'));
+						setupConfigModified = true;
+					} else {
+						console.error(
+							chalk.red('Failed to disable fallback model in config file.')
+						);
+						setupSuccess = false;
+					}
+				} else {
+					console.log(chalk.blue('Fallback model was already disabled.'));
+				}
+			}
+		}
+		return true; // Indicate setup should continue
+	}
+
+	// Process answers using the handler
+	if (
+		!(await handleSetModel(
+			'main',
+			answers.mainModel,
+			currentModels.main?.modelId // <--- Now 'currentModels' is defined
+		))
+	) {
+		return false; // Explicitly return false if cancelled
+	}
+	if (
+		!(await handleSetModel(
+			'research',
+			answers.researchModel,
+			currentModels.research?.modelId // <--- Now 'currentModels' is defined
+		))
+	) {
+		return false; // Explicitly return false if cancelled
+	}
+	if (
+		!(await handleSetModel(
+			'fallback',
+			answers.fallbackModel,
+			currentModels.fallback?.modelId // <--- Now 'currentModels' is defined
+		))
+	) {
+		return false; // Explicitly return false if cancelled
+	}
+
+	if (setupSuccess && setupConfigModified) {
+		console.log(chalk.green.bold('\nModel setup complete!'));
+	} else if (setupSuccess && !setupConfigModified) {
+		console.log(chalk.yellow('\nNo changes made to model configuration.'));
+	} else if (!setupSuccess) {
+		console.error(
+			chalk.red(
+				'\nErrors occurred during model selection. Please review and try again.'
+			)
+		);
+	}
+	return true; // Indicate setup flow completed (not cancelled)
+	// Let the main command flow continue to display results
+}
 
 /**
  * Configure and register CLI commands
@@ -198,7 +612,7 @@ function registerCommands(programInstance) {
 		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			const fromId = parseInt(options.from, 10);
+			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
@@ -247,7 +661,14 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			await updateTasks(tasksPath, fromId, prompt, useResearch);
+			// Call core updateTasks, passing empty context for CLI
+			await updateTasks(
+				tasksPath,
+				fromId,
+				prompt,
+				useResearch,
+				{} // Pass empty context
+			);
 		});
 
 	// update-task command
@@ -342,7 +763,7 @@ function registerCommands(programInstance) {
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
-					if (!process.env.PERPLEXITY_API_KEY) {
+					if (!isApiKeySet('perplexity')) {
 						console.log(
 							chalk.yellow(
 								'Warning: PERPLEXITY_API_KEY environment variable is missing. Research-backed updates will not be available.'
@@ -394,7 +815,8 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				if (CONFIG.debug) {
+				// Use getDebugFlag getter instead of CONFIG.debug
+				if (getDebugFlag()) {
 					console.error(error);
 				}
 
@@ -494,7 +916,7 @@ function registerCommands(programInstance) {
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
-					if (!process.env.PERPLEXITY_API_KEY) {
+					if (!isApiKeySet('perplexity')) {
 						console.log(
 							chalk.yellow(
 								'Warning: PERPLEXITY_API_KEY environment variable is missing. Research-backed updates will not be available.'
@@ -549,7 +971,8 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				if (CONFIG.debug) {
+				// Use getDebugFlag getter instead of CONFIG.debug
+				if (getDebugFlag()) {
 					console.error(error);
 				}
 
@@ -629,91 +1052,95 @@ function registerCommands(programInstance) {
 	// expand command
 	programInstance
 		.command('expand')
-		.description('Break down tasks into detailed subtasks')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('-i, --id <id>', 'Task ID to expand')
-		.option('-a, --all', 'Expand all tasks')
+		.description('Expand a task into subtasks using AI')
+		.option('-i, --id <id>', 'ID of the task to expand')
+		.option(
+			'-a, --all',
+			'Expand all pending tasks based on complexity analysis'
+		)
 		.option(
 			'-n, --num <number>',
-			'Number of subtasks to generate',
-			CONFIG.defaultSubtasks.toString()
+			'Number of subtasks to generate (uses complexity analysis by default if available)'
 		)
 		.option(
-			'--research',
-			'Enable Perplexity AI for research-backed subtask generation'
+			'-r, --research',
+			'Enable research-backed generation (e.g., using Perplexity)',
+			false
 		)
+		.option('-p, --prompt <text>', 'Additional context for subtask generation')
+		.option('-f, --force', 'Force expansion even if subtasks exist', false) // Ensure force option exists
 		.option(
-			'-p, --prompt <text>',
-			'Additional context to guide subtask generation'
-		)
-		.option(
-			'--force',
-			'Force regeneration of subtasks for tasks that already have them'
-		)
+			'--file <file>',
+			'Path to the tasks file (relative to project root)',
+			'tasks/tasks.json'
+		) // Allow file override
 		.action(async (options) => {
-			const idArg = options.id;
-			const numSubtasks = options.num || CONFIG.defaultSubtasks;
-			const useResearch = options.research || false;
-			const additionalContext = options.prompt || '';
-			const forceFlag = options.force || false;
-			const tasksPath = options.file || 'tasks/tasks.json';
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+			const tasksPath = path.resolve(projectRoot, options.file); // Resolve tasks path
 
 			if (options.all) {
-				console.log(
-					chalk.blue(`Expanding all tasks with ${numSubtasks} subtasks each...`)
-				);
-				if (useResearch) {
-					console.log(
-						chalk.blue(
-							'Using Perplexity AI for research-backed subtask generation'
-						)
+				// --- Handle expand --all ---
+				console.log(chalk.blue('Expanding all pending tasks...'));
+				// Updated call to the refactored expandAllTasks
+				try {
+					const result = await expandAllTasks(
+						tasksPath,
+						options.num, // Pass num
+						options.research, // Pass research flag
+						options.prompt, // Pass additional context
+						options.force, // Pass force flag
+						{} // Pass empty context for CLI calls
+						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
-				} else {
-					console.log(
-						chalk.yellow('Research-backed subtask generation disabled')
+					// Optional: Display summary from result
+					console.log(chalk.green(`Expansion Summary:`));
+					console.log(chalk.green(` - Attempted: ${result.tasksToExpand}`));
+					console.log(chalk.green(` - Expanded:  ${result.expandedCount}`));
+					console.log(chalk.yellow(` - Skipped:   ${result.skippedCount}`));
+					console.log(chalk.red(` - Failed:    ${result.failedCount}`));
+				} catch (error) {
+					console.error(
+						chalk.red(`Error expanding all tasks: ${error.message}`)
 					);
+					process.exit(1);
 				}
-				if (additionalContext) {
-					console.log(chalk.blue(`Additional context: "${additionalContext}"`));
-				}
-				await expandAllTasks(
-					tasksPath,
-					numSubtasks,
-					useResearch,
-					additionalContext,
-					forceFlag
-				);
-			} else if (idArg) {
-				console.log(
-					chalk.blue(`Expanding task ${idArg} with ${numSubtasks} subtasks...`)
-				);
-				if (useResearch) {
-					console.log(
-						chalk.blue(
-							'Using Perplexity AI for research-backed subtask generation'
-						)
+			} else if (options.id) {
+				// --- Handle expand --id <id> (Should be correct from previous refactor) ---
+				if (!options.id) {
+					console.error(
+						chalk.red('Error: Task ID is required unless using --all.')
 					);
-				} else {
-					console.log(
-						chalk.yellow('Research-backed subtask generation disabled')
+					process.exit(1);
+				}
+
+				console.log(chalk.blue(`Expanding task ${options.id}...`));
+				try {
+					// Call the refactored expandTask function
+					await expandTask(
+						tasksPath,
+						options.id,
+						options.num,
+						options.research,
+						options.prompt,
+						{}, // Pass empty context for CLI calls
+						options.force // Pass the force flag down
 					);
+					// expandTask logs its own success/failure for single task
+				} catch (error) {
+					console.error(
+						chalk.red(`Error expanding task ${options.id}: ${error.message}`)
+					);
+					process.exit(1);
 				}
-				if (additionalContext) {
-					console.log(chalk.blue(`Additional context: "${additionalContext}"`));
-				}
-				await expandTask(
-					tasksPath,
-					idArg,
-					numSubtasks,
-					useResearch,
-					additionalContext
-				);
 			} else {
 				console.error(
-					chalk.red(
-						'Error: Please specify a task ID with --id=<id> or use --all to expand all tasks.'
-					)
+					chalk.red('Error: You must specify either a task ID (--id) or --all.')
 				);
+				programInstance.help(); // Show help
 			}
 		});
 
@@ -895,24 +1322,27 @@ function registerCommands(programInstance) {
 					}
 				}
 
+				// Pass mcpLog and session for MCP mode
 				const newTaskId = await addTask(
 					options.file,
-					options.prompt,
+					options.prompt, // Pass prompt (will be null/undefined if not provided)
 					dependencies,
 					options.priority,
 					{
-						session: process.env
+						// For CLI, session context isn't directly available like MCP
+						// We don't need to pass session here for CLI API key resolution
+						// as dotenv loads .env, and utils.resolveEnvVariable checks process.env
 					},
-					options.research || false,
-					null,
-					manualTaskData
+					'text', // outputFormat
+					manualTaskData, // Pass the potentially created manualTaskData object
+					options.research || false // Pass the research flag value
 				);
 
 				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
 				console.log(chalk.gray('Next: Complete this task or add more tasks'));
 			} catch (error) {
 				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && CONFIG.debug) {
+				if (error.stack && getDebugFlag()) {
 					console.error(error.stack);
 				}
 				process.exit(1);
@@ -939,9 +1369,11 @@ function registerCommands(programInstance) {
 		)
 		.argument('[id]', 'Task ID to show')
 		.option('-i, --id <id>', 'Task ID to show')
+		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
+			const statusFilter = options.status; // ADDED: Capture status filter
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -949,7 +1381,8 @@ function registerCommands(programInstance) {
 			}
 
 			const tasksPath = options.file;
-			await displayTaskById(tasksPath, idArg);
+			// PASS statusFilter to the display function
+			await displayTaskById(tasksPath, idArg, statusFilter);
 		});
 
 	// add-dependency command
@@ -1387,26 +1820,39 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('remove-task')
 		.description('Remove one or more tasks or subtasks permanently')
+		.description('Remove one or more tasks or subtasks permanently')
 		.option(
-			'-i, --id <id>',
-			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5" or "5.2" or "5,6,7")'
+			'-i, --id <ids>',
+			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5", "5.2", or "5,6.1,7")'
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			const taskIds = options.id;
+			const taskIdsString = options.id;
 
-			if (!taskIds) {
-				console.error(chalk.red('Error: Task ID is required'));
+			if (!taskIdsString) {
+				console.error(chalk.red('Error: Task ID(s) are required'));
 				console.error(
-					chalk.yellow('Usage: task-master remove-task --id=<taskId>')
+					chalk.yellow(
+						'Usage: task-master remove-task --id=<taskId1,taskId2...>'
+					)
 				);
 				process.exit(1);
 			}
 
+			const taskIdsToRemove = taskIdsString
+				.split(',')
+				.map((id) => id.trim())
+				.filter(Boolean);
+
+			if (taskIdsToRemove.length === 0) {
+				console.error(chalk.red('Error: No valid task IDs provided.'));
+				process.exit(1);
+			}
+
 			try {
-				// Check if the tasks file exists and is valid
+				// Read data once for checks and confirmation
 				const data = readJSON(tasksPath);
 				if (!data || !data.tasks) {
 					console.error(
@@ -1415,89 +1861,119 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				// Split task IDs if comma-separated
-				const taskIdArray = taskIds.split(',').map((id) => id.trim());
+				const existingTasksToRemove = [];
+				const nonExistentIds = [];
+				let totalSubtasksToDelete = 0;
+				const dependentTaskMessages = [];
 
-				// Validate all task IDs exist before proceeding
-				const invalidTasks = taskIdArray.filter(
-					(id) => !taskExists(data.tasks, id)
-				);
-				if (invalidTasks.length > 0) {
-					console.error(
-						chalk.red(
-							`Error: The following tasks were not found: ${invalidTasks.join(', ')}`
+				for (const taskId of taskIdsToRemove) {
+					if (!taskExists(data.tasks, taskId)) {
+						nonExistentIds.push(taskId);
+					} else {
+						// Correctly extract the task object from the result of findTaskById
+						const findResult = findTaskById(data.tasks, taskId);
+						const taskObject = findResult.task; // Get the actual task/subtask object
+
+						if (taskObject) {
+							existingTasksToRemove.push({ id: taskId, task: taskObject }); // Push the actual task object
+
+							// If it's a main task, count its subtasks and check dependents
+							if (!taskObject.isSubtask) {
+								// Check the actual task object
+								if (taskObject.subtasks && taskObject.subtasks.length > 0) {
+									totalSubtasksToDelete += taskObject.subtasks.length;
+								}
+								const dependentTasks = data.tasks.filter(
+									(t) =>
+										t.dependencies &&
+										t.dependencies.includes(parseInt(taskId, 10))
+								);
+								if (dependentTasks.length > 0) {
+									dependentTaskMessages.push(
+										`  - Task ${taskId}: ${dependentTasks.length} dependent tasks (${dependentTasks.map((t) => t.id).join(', ')})`
+									);
+								}
+							}
+						} else {
+							// Handle case where findTaskById returned null for the task property (should be rare)
+							nonExistentIds.push(`${taskId} (error finding details)`);
+						}
+					}
+				}
+
+				if (nonExistentIds.length > 0) {
+					console.warn(
+						chalk.yellow(
+							`Warning: The following task IDs were not found: ${nonExistentIds.join(', ')}`
 						)
 					);
-					process.exit(1);
+				}
+
+				if (existingTasksToRemove.length === 0) {
+					console.log(chalk.blue('No existing tasks found to remove.'));
+					process.exit(0);
 				}
 
 				// Skip confirmation if --yes flag is provided
 				if (!options.yes) {
-					// Display tasks to be removed
 					console.log();
 					console.log(
 						chalk.red.bold(
-							'⚠️ WARNING: This will permanently delete the following tasks:'
+							`⚠️ WARNING: This will permanently delete the following ${existingTasksToRemove.length} item(s):`
 						)
 					);
 					console.log();
 
-					for (const taskId of taskIdArray) {
-						const task = findTaskById(data.tasks, taskId);
-
-						if (typeof taskId === 'string' && taskId.includes('.')) {
-							// It's a subtask
-							const [parentId, subtaskId] = taskId.split('.');
-							console.log(chalk.white.bold(`Subtask ${taskId}: ${task.title}`));
+					existingTasksToRemove.forEach(({ id, task }) => {
+						if (!task) return; // Should not happen due to taskExists check, but safeguard
+						if (task.isSubtask) {
+							// Subtask - title is directly on the task object
 							console.log(
-								chalk.gray(
-									`Parent Task: ${task.parentTask.id} - ${task.parentTask.title}`
-								)
+								chalk.white(`  Subtask ${id}: ${task.title || '(no title)'}`)
 							);
+							// Optionally show parent context if available
+							if (task.parentTask) {
+								console.log(
+									chalk.gray(
+										`    (Parent: ${task.parentTask.id} - ${task.parentTask.title || '(no title)'})`
+									)
+								);
+							}
 						} else {
-							// It's a main task
-							console.log(chalk.white.bold(`Task ${taskId}: ${task.title}`));
-
-							// Show if it has subtasks
-							if (task.subtasks && task.subtasks.length > 0) {
-								console.log(
-									chalk.yellow(
-										`⚠️ This task has ${task.subtasks.length} subtasks that will also be deleted!`
-									)
-								);
-							}
-
-							// Show if other tasks depend on it
-							const dependentTasks = data.tasks.filter(
-								(t) =>
-									t.dependencies &&
-									t.dependencies.includes(parseInt(taskId, 10))
+							// Main task - title is directly on the task object
+							console.log(
+								chalk.white.bold(`  Task ${id}: ${task.title || '(no title)'}`)
 							);
-
-							if (dependentTasks.length > 0) {
-								console.log(
-									chalk.yellow(
-										`⚠️ Warning: ${dependentTasks.length} other tasks depend on this task!`
-									)
-								);
-								console.log(
-									chalk.yellow('These dependencies will be removed:')
-								);
-								dependentTasks.forEach((t) => {
-									console.log(chalk.yellow(`  - Task ${t.id}: ${t.title}`));
-								});
-							}
 						}
-						console.log();
+					});
+
+					if (totalSubtasksToDelete > 0) {
+						console.log(
+							chalk.yellow(
+								`⚠️ This will also delete ${totalSubtasksToDelete} subtasks associated with the selected main tasks!`
+							)
+						);
 					}
 
-					// Prompt for confirmation
+					if (dependentTaskMessages.length > 0) {
+						console.log(
+							chalk.yellow(
+								'⚠️ Warning: Dependencies on the following tasks will be removed:'
+							)
+						);
+						dependentTaskMessages.forEach((msg) =>
+							console.log(chalk.yellow(msg))
+						);
+					}
+
+					console.log();
+
 					const { confirm } = await inquirer.prompt([
 						{
 							type: 'confirm',
 							name: 'confirm',
 							message: chalk.red.bold(
-								`Are you sure you want to permanently delete ${taskIdArray.length > 1 ? 'these tasks' : 'this task'}?`
+								`Are you sure you want to permanently delete these ${existingTasksToRemove.length} item(s)?`
 							),
 							default: false
 						}
@@ -1509,65 +1985,54 @@ function registerCommands(programInstance) {
 					}
 				}
 
-				const indicator = startLoadingIndicator('Removing tasks...');
+				const indicator = startLoadingIndicator(
+					`Removing ${existingTasksToRemove.length} task(s)/subtask(s)...`
+				);
 
-				// Remove each task
-				const results = [];
-				for (const taskId of taskIdArray) {
-					try {
-						const result = await removeTask(tasksPath, taskId);
-						results.push({ taskId, success: true, ...result });
-					} catch (error) {
-						results.push({ taskId, success: false, error: error.message });
-					}
-				}
+				// Use the string of existing IDs for the core function
+				const existingIdsString = existingTasksToRemove
+					.map(({ id }) => id)
+					.join(',');
+				const result = await removeTask(tasksPath, existingIdsString);
 
 				stopLoadingIndicator(indicator);
 
-				// Display results
-				const successfulRemovals = results.filter((r) => r.success);
-				const failedRemovals = results.filter((r) => !r.success);
-
-				if (successfulRemovals.length > 0) {
+				if (result.success) {
 					console.log(
 						boxen(
 							chalk.green(
-								`Successfully removed ${successfulRemovals.length} task${successfulRemovals.length > 1 ? 's' : ''}`
+								`Successfully removed ${result.removedTasks.length} task(s)/subtask(s).`
 							) +
-								'\n\n' +
-								successfulRemovals
-									.map((r) =>
-										chalk.white(
-											`✓ ${r.taskId.includes('.') ? 'Subtask' : 'Task'} ${r.taskId}`
-										)
-									)
-									.join('\n'),
-							{
-								padding: 1,
-								borderColor: 'green',
-								borderStyle: 'round',
-								margin: { top: 1 }
-							}
+								(result.message ? `\n\nDetails:\n${result.message}` : '') +
+								(result.error
+									? `\n\nWarnings:\n${chalk.yellow(result.error)}`
+									: ''),
+							{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 						)
 					);
-				}
-
-				if (failedRemovals.length > 0) {
-					console.log(
+				} else {
+					console.error(
 						boxen(
 							chalk.red(
-								`Failed to remove ${failedRemovals.length} task${failedRemovals.length > 1 ? 's' : ''}`
+								`Operation completed with errors. Removed ${result.removedTasks.length} task(s)/subtask(s).`
 							) +
-								'\n\n' +
-								failedRemovals
-									.map((r) => chalk.white(`✗ ${r.taskId}: ${r.error}`))
-									.join('\n'),
+								(result.message ? `\n\nDetails:\n${result.message}` : '') +
+								(result.error ? `\n\nErrors:\n${chalk.red(result.error)}` : ''),
 							{
 								padding: 1,
 								borderColor: 'red',
-								borderStyle: 'round',
-								margin: { top: 1 }
+								borderStyle: 'round'
 							}
+						)
+					);
+					process.exit(1); // Exit with error code if any part failed
+				}
+
+				// Log any initially non-existent IDs again for clarity
+				if (nonExistentIds.length > 0) {
+					console.warn(
+						chalk.yellow(
+							`Note: The following IDs were not found initially and were skipped: ${nonExistentIds.join(', ')}`
 						)
 					);
 
@@ -1615,7 +2080,227 @@ function registerCommands(programInstance) {
 			}
 		});
 
-	// Add more commands as needed...
+	// models command
+	programInstance
+		.command('models')
+		.description('Manage AI model configurations')
+		.option(
+			'--set-main <model_id>',
+			'Set the primary model for task generation/updates'
+		)
+		.option(
+			'--set-research <model_id>',
+			'Set the model for research-backed operations'
+		)
+		.option(
+			'--set-fallback <model_id>',
+			'Set the model to use if the primary fails'
+		)
+		.option('--setup', 'Run interactive setup to configure models')
+		.option(
+			'--openrouter',
+			'Allow setting a custom OpenRouter model ID (use with --set-*) '
+		)
+		.option(
+			'--ollama',
+			'Allow setting a custom Ollama model ID (use with --set-*) '
+		)
+		.addHelpText(
+			'after',
+			`
+Examples:
+  $ task-master models                              # View current configuration
+  $ task-master models --set-main gpt-4o             # Set main model (provider inferred)
+  $ task-master models --set-research sonar-pro       # Set research model
+  $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
+  $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
+  $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --setup                            # Run interactive setup`
+		)
+		.action(async (options) => {
+			const projectRoot = findProjectRoot(); // Find project root for context
+
+			// Validate flags: cannot use both --openrouter and --ollama simultaneously
+			if (options.openrouter && options.ollama) {
+				console.error(
+					chalk.red(
+						'Error: Cannot use both --openrouter and --ollama flags simultaneously.'
+					)
+				);
+				process.exit(1);
+			}
+
+			// Determine the primary action based on flags
+			const isSetup = options.setup;
+			const isSetOperation =
+				options.setMain || options.setResearch || options.setFallback;
+
+			// --- Execute Action ---
+
+			if (isSetup) {
+				// Action 1: Run Interactive Setup
+				console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
+				try {
+					await runInteractiveSetup(projectRoot);
+					// runInteractiveSetup logs its own completion/error messages
+				} catch (setupError) {
+					console.error(
+						chalk.red('\\nInteractive setup failed unexpectedly:'),
+						setupError.message
+					);
+				}
+				// --- IMPORTANT: Exit after setup ---
+				return; // Stop execution here
+			}
+
+			if (isSetOperation) {
+				// Action 2: Perform Direct Set Operations
+				let updateOccurred = false; // Track if any update actually happened
+
+				if (options.setMain) {
+					const result = await setModel('main', options.setMain, {
+						projectRoot,
+						providerHint: options.openrouter
+							? 'openrouter'
+							: options.ollama
+								? 'ollama'
+								: undefined
+					});
+					if (result.success) {
+						console.log(chalk.green(`✅ ${result.data.message}`));
+						if (result.data.warning)
+							console.log(chalk.yellow(result.data.warning));
+						updateOccurred = true;
+					} else {
+						console.error(
+							chalk.red(`❌ Error setting main model: ${result.error.message}`)
+						);
+					}
+				}
+				if (options.setResearch) {
+					const result = await setModel('research', options.setResearch, {
+						projectRoot,
+						providerHint: options.openrouter
+							? 'openrouter'
+							: options.ollama
+								? 'ollama'
+								: undefined
+					});
+					if (result.success) {
+						console.log(chalk.green(`✅ ${result.data.message}`));
+						if (result.data.warning)
+							console.log(chalk.yellow(result.data.warning));
+						updateOccurred = true;
+					} else {
+						console.error(
+							chalk.red(
+								`❌ Error setting research model: ${result.error.message}`
+							)
+						);
+					}
+				}
+				if (options.setFallback) {
+					const result = await setModel('fallback', options.setFallback, {
+						projectRoot,
+						providerHint: options.openrouter
+							? 'openrouter'
+							: options.ollama
+								? 'ollama'
+								: undefined
+					});
+					if (result.success) {
+						console.log(chalk.green(`✅ ${result.data.message}`));
+						if (result.data.warning)
+							console.log(chalk.yellow(result.data.warning));
+						updateOccurred = true;
+					} else {
+						console.error(
+							chalk.red(
+								`❌ Error setting fallback model: ${result.error.message}`
+							)
+						);
+					}
+				}
+
+				// Optional: Add a final confirmation if any update occurred
+				if (updateOccurred) {
+					console.log(chalk.blue('\nModel configuration updated.'));
+				} else {
+					console.log(
+						chalk.yellow(
+							'\nNo model configuration changes were made (or errors occurred).'
+						)
+					);
+				}
+
+				// --- IMPORTANT: Exit after set operations ---
+				return; // Stop execution here
+			}
+
+			// Action 3: Display Full Status (Only runs if no setup and no set flags)
+			console.log(chalk.blue('Fetching current model configuration...')); // Added feedback
+			const configResult = await getModelConfiguration({ projectRoot });
+			const availableResult = await getAvailableModelsList({ projectRoot });
+			const apiKeyStatusResult = await getApiKeyStatusReport({ projectRoot });
+
+			// 1. Display Active Models
+			if (!configResult.success) {
+				console.error(
+					chalk.red(
+						`❌ Error fetching configuration: ${configResult.error.message}`
+					)
+				);
+			} else {
+				displayModelConfiguration(
+					configResult.data,
+					availableResult.data?.models || []
+				);
+			}
+
+			// 2. Display API Key Status
+			if (apiKeyStatusResult.success) {
+				displayApiKeyStatus(apiKeyStatusResult.data.report);
+			} else {
+				console.error(
+					chalk.yellow(
+						`⚠️ Warning: Could not display API Key status: ${apiKeyStatusResult.error.message}`
+					)
+				);
+			}
+
+			// 3. Display Other Available Models (Filtered)
+			if (availableResult.success) {
+				const activeIds = configResult.success
+					? [
+							configResult.data.activeModels.main.modelId,
+							configResult.data.activeModels.research.modelId,
+							configResult.data.activeModels.fallback?.modelId
+						].filter(Boolean)
+					: [];
+				const displayableAvailable = availableResult.data.models.filter(
+					(m) => !activeIds.includes(m.modelId) && !m.modelId.startsWith('[')
+				);
+				displayAvailableModels(displayableAvailable);
+			} else {
+				console.error(
+					chalk.yellow(
+						`⚠️ Warning: Could not display available models: ${availableResult.error.message}`
+					)
+				);
+			}
+
+			// 4. Conditional Hint if Config File is Missing
+			const configExists = isConfigFilePresent(projectRoot);
+			if (!configExists) {
+				console.log(
+					chalk.yellow(
+						"\\nHint: Run 'task-master models --setup' to create or update your configuration."
+					)
+				);
+			}
+			// --- IMPORTANT: Exit after displaying status ---
+			return; // Stop execution here
+		});
 
 	return programInstance;
 }
@@ -1630,7 +2315,7 @@ function setupCLI() {
 		.name('dev')
 		.description('AI-driven development task management')
 		.version(() => {
-			// Read version directly from package.json
+			// Read version directly from package.json ONLY
 			try {
 				const packageJsonPath = path.join(process.cwd(), 'package.json');
 				if (fs.existsSync(packageJsonPath)) {
@@ -1640,9 +2325,13 @@ function setupCLI() {
 					return packageJson.version;
 				}
 			} catch (error) {
-				// Silently fall back to default version
+				// Silently fall back to 'unknown'
+				log(
+					'warn',
+					'Could not read package.json for version info in .version()'
+				);
 			}
-			return CONFIG.projectVersion; // Default fallback
+			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false) // Disable default help command
@@ -1671,16 +2360,21 @@ function setupCLI() {
  * @returns {Promise<{currentVersion: string, latestVersion: string, needsUpdate: boolean}>}
  */
 async function checkForUpdate() {
-	// Get current version from package.json
-	let currentVersion = CONFIG.projectVersion;
+	// Get current version from package.json ONLY
+	let currentVersion = 'unknown'; // Initialize with a default
 	try {
-		// Try to get the version from the installed package
-		const packageJsonPath = path.join(
+		// Try to get the version from the installed package (if applicable) or current dir
+		let packageJsonPath = path.join(
 			process.cwd(),
 			'node_modules',
 			'task-master-ai',
 			'package.json'
 		);
+		// Fallback to current directory package.json if not found in node_modules
+		if (!fs.existsSync(packageJsonPath)) {
+			packageJsonPath = path.join(process.cwd(), 'package.json');
+		}
+
 		if (fs.existsSync(packageJsonPath)) {
 			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 			currentVersion = packageJson.version;
@@ -1819,6 +2513,8 @@ async function runCLI(argv = process.argv) {
 		const updateCheckPromise = checkForUpdate();
 
 		// Setup and parse
+		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
+		// This means the ConfigurationError might be thrown here if .taskmasterconfig is missing.
 		const programInstance = setupCLI();
 		await programInstance.parseAsync(argv);
 
@@ -1831,10 +2527,56 @@ async function runCLI(argv = process.argv) {
 			);
 		}
 	} catch (error) {
-		console.error(chalk.red(`Error: ${error.message}`));
-
-		if (CONFIG.debug) {
-			console.error(error);
+		// ** Specific catch block for missing configuration file **
+		if (error instanceof ConfigurationError) {
+			console.error(
+				boxen(
+					chalk.red.bold('Configuration Update Required!') +
+						'\n\n' +
+						chalk.white('Taskmaster now uses the ') +
+						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.white(
+							' file in your project root for AI model choices and settings.\n\n' +
+								'This file appears to be '
+						) +
+						chalk.red.bold('missing') +
+						chalk.white('. No worries though.\n\n') +
+						chalk.cyan.bold('To create this file, run the interactive setup:') +
+						'\n' +
+						chalk.green('   task-master models --setup') +
+						'\n\n' +
+						chalk.white.bold('Key Points:') +
+						'\n' +
+						chalk.white('*   ') +
+						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.white(
+							': Stores your AI model settings (do not manually edit)\n'
+						) +
+						chalk.white('*   ') +
+						chalk.yellow.bold('.env & .mcp.json') +
+						chalk.white(': Still used ') +
+						chalk.red.bold('only') +
+						chalk.white(' for your AI provider API keys.\n\n') +
+						chalk.cyan(
+							'`task-master models` to check your config & available models\n'
+						) +
+						chalk.cyan(
+							'`task-master models --setup` to adjust the AI models used by Taskmaster'
+						),
+					{
+						padding: 1,
+						margin: { top: 1 },
+						borderColor: 'red',
+						borderStyle: 'round'
+					}
+				)
+			);
+		} else {
+			// Generic error handling for other errors
+			console.error(chalk.red(`Error: ${error.message}`));
+			if (getDebugFlag()) {
+				console.error(error);
+			}
 		}
 
 		process.exit(1);

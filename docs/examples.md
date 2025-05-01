@@ -51,3 +51,33 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+### Breaking Down Complex Tasks
+
+```
+Task 5 seems complex. Can you break it down into subtasks?
+```
+
+(Agent runs: `task-master expand --id=5`)
+
+```
+Please break down task 5 using research-backed generation.
+```
+
+(Agent runs: `task-master expand --id=5 --research`)
+
+### Updating Tasks with Research
+
+```
+We need to update task 15 based on the latest React Query v5 changes. Can you research this and update the task?
+```
+
+(Agent runs: `task-master update-task --id=15 --prompt="Update based on React Query v5 changes" --research`)
+
+### Adding Tasks with Research
+
+```
+Please add a new task to implement user profile image uploads using Cloudinary, research the best approach.
+```
+
+(Agent runs: `task-master add-task --prompt="Implement user profile image uploads using Cloudinary" --research`)

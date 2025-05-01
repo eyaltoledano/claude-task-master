@@ -1,0 +1,19 @@
+# Task ID: 74
+# Title: PR Review: better-model-management
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: will add subtasks
+# Details:
+
+
+# Test Strategy:
+
+
+# Subtasks:
+## 1. pull out logWrapper into utils [done]
+### Dependencies: None
+### Description: its being used a lot across direct functions and repeated right now
+### Details:
+
+

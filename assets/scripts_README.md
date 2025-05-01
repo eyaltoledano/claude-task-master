@@ -16,27 +16,22 @@ In an AI-driven development process—particularly with tools like [Cursor](http
 8. **Clear subtasks**—remove subtasks from specified tasks to allow regeneration or restructuring.
 9. **Show task details**—display detailed information about a specific task and its subtasks.
 
-## Configuration
+## Configuration (Updated)
 
-The script can be configured through environment variables in a `.env` file at the root of the project:
+Task Master configuration is now managed through two primary methods:
 
-### Required Configuration
+1.  **`.taskmasterconfig` File (Project Root - Primary)**
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+    - Stores AI model selections (`main`, `research`, `fallback`), model parameters (`maxTokens`, `temperature`), `logLevel`, `defaultSubtasks`, `defaultPriority`, `projectName`, etc.
+    - Managed using the `task-master models --setup` command or the `models` MCP tool.
+    - This is the main configuration file for most settings.
 
-### Optional Configuration
+2.  **Environment Variables (`.env` File - API Keys Only)**
+    - Used **only** for sensitive **API Keys** (e.g., `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`).
+    - Create a `.env` file in your project root for CLI usage.
+    - See `assets/env.example` for required key names.
 
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
-- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
-- `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
-- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
-- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
-- `PROJECT_NAME`: Override default project name in tasks.json
-- `PROJECT_VERSION`: Override default version in tasks.json
+**Important:** Settings like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`, `LOG_LEVEL`, etc., are **no longer set via `.env`**. Use `task-master models --setup` instead.
 
 ## How It Works
 
@@ -194,21 +189,14 @@ Notes:
 - Can be combined with the `expand` command to immediately generate new subtasks
 - Works with both parent tasks and individual subtasks
 
-## AI Integration
+## AI Integration (Updated)
 
-The script integrates with two AI services:
-
-1. **Anthropic Claude**: Used for parsing PRDs, generating tasks, and creating subtasks.
-2. **Perplexity AI**: Used for research-backed subtask generation when the `--research` flag is specified.
-
-The Perplexity integration uses the OpenAI client to connect to Perplexity's API, which provides enhanced research capabilities for generating more informed subtasks. If the Perplexity API is unavailable or encounters an error, the script will automatically fall back to using Anthropic's Claude.
-
-To use the Perplexity integration:
-
-1. Obtain a Perplexity API key
-2. Add `PERPLEXITY_API_KEY` to your `.env` file
-3. Optionally specify `PERPLEXITY_MODEL` in your `.env` file (default: "sonar-medium-online")
-4. Use the `--research` flag with the `expand` command
+- The script now uses a unified AI service layer (`ai-services-unified.js`).
+- Model selection (e.g., Claude vs. Perplexity for `--research`) is determined by the configuration in `.taskmasterconfig` based on the requested `role` (`main` or `research`).
+- API keys are automatically resolved from your `.env` file (for CLI) or MCP session environment.
+- To use the research capabilities (e.g., `expand --research`), ensure you have:
+  1.  Configured a model for the `research` role using `task-master models --setup` (Perplexity models are recommended).
+  2.  Added the corresponding API key (e.g., `PERPLEXITY_API_KEY`) to your `.env` file.
 
 ## Logging
 

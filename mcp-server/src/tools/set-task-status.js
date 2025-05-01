@@ -24,7 +24,7 @@ export function registerSetTaskStatusTool(server) {
 			id: z
 				.string()
 				.describe(
-					"Task ID or subtask ID (e.g., '15', '15.2'). Can be comma-separated for multiple updates."
+					"Task ID or subtask ID (e.g., '15', '15.2'). Can be comma-separated to update multiple tasks/subtasks at once."
 				),
 			status: z
 				.string()

@@ -1,6 +1,6 @@
 # Task ID: 36
 # Title: Add Ollama Support for AI Services as Claude Alternative
-# Status: pending
+# Status: deferred
 # Dependencies: None
 # Priority: medium
 # Description: Implement Ollama integration as an alternative to Claude for all main AI services, allowing users to run local language models instead of relying on cloud-based Claude API.

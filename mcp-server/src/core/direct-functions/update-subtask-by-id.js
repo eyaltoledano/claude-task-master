@@ -8,10 +8,7 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import {
-	getAnthropicClientForMCP,
-	getPerplexityClientForMCP
-} from '../utils/ai-client-utils.js';
+import { createLogWrapper } from '../../tools/utils.js';
 
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
@@ -95,40 +92,12 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
-		// Initialize the appropriate AI client based on research flag
-		try {
-			if (useResearch) {
-				// Initialize Perplexity client
-				await getPerplexityClientForMCP(session);
-			} else {
-				// Initialize Anthropic client
-				await getAnthropicClientForMCP(session);
-			}
-		} catch (error) {
-			log.error(`AI client initialization error: ${error.message}`);
-			return {
-				success: false,
-				error: {
-					code: 'AI_CLIENT_ERROR',
-					message: error.message || 'Failed to initialize AI client'
-				},
-				fromCache: false
-			};
-		}
-
 		try {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
-			// Create a logger wrapper object to handle logging without breaking the mcpLog[level] calls
-			// This ensures outputFormat is set to 'json' while still supporting proper logging
-			const logWrapper = {
-				info: (message) => log.info(message),
-				warn: (message) => log.warn(message),
-				error: (message) => log.error(message),
-				debug: (message) => log.debug && log.debug(message),
-				success: (message) => log.info(message) // Map success to info if needed
-			};
+			// Create the logger wrapper using the utility function
+			const mcpLog = createLogWrapper(log);
 
 			// Execute core updateSubtaskById function
 			// Pass both session and logWrapper as mcpLog to ensure outputFormat is 'json'
@@ -139,7 +108,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				useResearch,
 				{
 					session,
-					mcpLog: logWrapper
+					mcpLog
 				}
 			);
 

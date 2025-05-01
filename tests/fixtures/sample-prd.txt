@@ -1,42 +1,82 @@
-# Sample PRD for Testing
+<context>
+# Overview
+This document outlines the requirements for a minimal web-based URL Shortener application. The application allows users to input a long URL and receive a shorter, alias URL that redirects to the original destination. This serves as a basic example of a micro-SaaS product. It's intended for anyone needing to create shorter links for sharing. The value is in providing a simple, functional utility accessible via a web browser.
 
+# Core Features
+1.  **URL Input & Shortening:** A user interface with an input field for pasting a long URL and a button to trigger the shortening process.
+    -   *Why:* The primary function for the user interaction.
+    -   *How:* A React component with a text input and a submit button. Clicking the button sends the long URL to a backend API.
+2.  **Short URL Display:** After successful shortening, the application displays the newly generated short URL to the user.
+    -   *Why:* Provides the result of the core function to the user.
+    -   *How:* The React frontend updates to show the short URL returned by the API (e.g., `http://your-domain.com/aB3cD`). Include a "copy to clipboard" button for convenience.
+3.  **URL Redirection:** Accessing a generated short URL in a browser redirects the user to the original long URL.
+    -   *Why:* The fundamental purpose of the shortened link.
+    *   *How:* A backend API endpoint handles requests to `/:shortCode`. It looks up the code in a data store and issues an HTTP redirect (301 or 302) to the corresponding long URL.
+4.  **Basic Persistence:** Short URL mappings (short code -> long URL) persist across requests.
+    -   *Why:* Short URLs need to remain functional after creation.
+    *   *How:* A simple backend data store (e.g., initially an in-memory object for testing, then potentially a JSON file or simple database) holds the mappings.
+
+# User Experience
+-   **User Persona:** Anyone wanting to shorten a long web link.
+-   **Key User Flow:** User visits the web app -> Pastes a long URL into the input field -> Clicks "Shorten" -> Sees the generated short URL -> Copies the short URL -> (Later) Uses the short URL in a browser and gets redirected.
+-   **UI/UX Considerations:** Clean, minimal single-page interface. Clear input field, prominent button, easy-to-read display of the short URL, copy button. Basic validation feedback (e.g., "Invalid URL", "Success!").
+</context>
 <PRD>
 # Technical Architecture
-
-## System Components
-1. **Task Management Core**
-   - Tasks.json file structure
-   - Task model with dependencies
-   - Task state management
-
-2. **Command Line Interface**
-   - Command parsing and execution
-   - Display utilities
-
-## Data Models
-
-### Task Model
-```json
-{
-  "id": 1,
-  "title": "Task Title",
-  "description": "Brief task description",
-  "status": "pending|done|deferred",
-  "dependencies": [0],
-  "priority": "high|medium|low",
-  "details": "Implementation instructions",
-  "testStrategy": "Verification approach"
-}
-```
+-   **System Components:**
+    -   Frontend: Single Page Application (SPA) built with Vite + React.
+    -   Backend: Simple API server (e.g., Node.js with Express).
+-   **Data Model:** A key-value store mapping `shortCode` (string) to `longUrl` (string).
+-   **APIs & Integrations:**
+    -   Backend API:
+        -   `POST /api/shorten`: Accepts `{ longUrl: string }` in the request body. Generates a unique `shortCode`, stores the mapping, returns `{ shortUrl: string }`.
+        -   `GET /:shortCode`: Looks up `shortCode`. If found, performs HTTP redirect to `longUrl`. If not found, returns 404.
+-   **Infrastructure:** Frontend can be hosted on static hosting. Backend needs a simple server environment (Node.js).
+-   **Libraries:**
+    -   Frontend: `react`, `react-dom`, `axios` (or `fetch` API) for API calls. Consider a simple state management solution if needed (e.g., `useState`, `useContext`).
+    -   Backend: `express`, `nanoid` (or similar for short code generation).
 
 # Development Roadmap
+-   **MVP Requirements:**
+    1.  Setup Vite + React project.
+    2.  Create basic React UI components (InputForm, ResultDisplay).
+    3.  Setup basic Node.js/Express backend server.
+    4.  Implement backend data storage module (start with in-memory object).
+    5.  Implement unique short code generation logic (e.g., using `nanoid`).
+    6.  Implement backend `POST /api/shorten` endpoint logic.
+    7.  Implement backend `GET /:shortCode` redirect logic.
+    8.  Implement frontend logic to take input, call `POST /api/shorten`, and display the result.
+    9.  Basic frontend input validation (check if likely a URL).
+-   **Future Enhancements:** User accounts, custom short codes, analytics (click tracking), using a persistent database, error handling improvements, UI styling. (Out of scope for MVP).
 
-## Phase 1: Core Task Management System
-1. **Task Data Structure**
-   - Implement the tasks.json structure
-   - Create file system interactions
+# Logical Dependency Chain
+1.  Vite + React Project Setup.
+2.  Basic Backend Server Setup (Express).
+3.  Backend Storage Module (in-memory first).
+4.  Short Code Generation Logic.
+5.  Implement `POST /api/shorten` endpoint (depends on 3 & 4).
+6.  Implement `GET /:shortCode` endpoint (depends on 3).
+7.  Frontend UI Components.
+8.  Frontend logic to call `POST /api/shorten` (depends on 5 & 7).
+9.  Frontend display logic (depends on 7 & 8).
+    *Goal is to get the backend API working first, then build the frontend to consume it.*
 
-2. **Command Line Interface Foundation**
-   - Implement command parsing
-   - Create help documentation
-</PRD> 
+# Risks and Mitigations
+-   **Risk:** Short code collisions (generating the same code twice).
+    -   **Mitigation (MVP):** Use a library like `nanoid` with sufficient length to make collisions highly improbable for a simple service. Add a retry loop in generation if a collision *is* detected (check if code exists before storing).
+-   **Risk:** Storing invalid or malicious URLs.
+    -   **Mitigation (MVP):** Basic URL validation on the frontend (simple regex) and potentially on the backend. Sanitize input. Advanced checks are out of scope.
+-   **Risk:** Scalability of in-memory store.
+    -   **Mitigation (MVP):** Acceptable for MVP. Acknowledge need for persistent database (JSON file, Redis, SQL/NoSQL DB) for future enhancement.
+
+# Appendix
+-   Example Data Store (in-memory object):
+    ```javascript
+    // backend/storage.js
+    const urlMap = {
+      'aB3cD': 'https://very-long-url-example.com/with/path/and/query?params=true',
+      'xY7zW': 'https://another-example.org/'
+    };
+    // ... functions to get/set URLs ...
+    ```
+</PRD>

@@ -10,7 +10,13 @@ There are two ways to set up Task Master: using MCP (recommended) or via npm ins
 
 MCP (Model Control Protocol) provides the easiest way to get started with Task Master directly in your editor.
 
-1. **Add the MCP config to your editor** (Cursor recommended, but it works with other text editors):
+1. **Install the package**
+
+```bash
+npm i -g task-master-ai
+```
+
+2. **Add the MCP config to your IDE/MCP Client** (Cursor is recommended, but it works with other clients):
 
 ```json
 {
@@ -21,21 +27,28 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 			"env": {
 				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-				"MODEL": "claude-3-7-sonnet-20250219",
-				"PERPLEXITY_MODEL": "sonar-pro",
-				"MAX_TOKENS": 64000,
-				"TEMPERATURE": 0.2,
-				"DEFAULT_SUBTASKS": 5,
-				"DEFAULT_PRIORITY": "medium"
+				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
 			}
 		}
 	}
 }
 ```
 
-2. **Enable the MCP** in your editor settings
+**IMPORTANT:** An API key is _required_ for each AI provider you plan on using. Run the `task-master models` command to see your selected models and the status of your API keys across .env and mcp.json
 
-3. **Prompt the AI** to initialize Task Master:
+**To use AI commands in CLI** you MUST have API keys in the .env file
+**To use AI commands in MCP** you MUST have API keys in the .mcp.json file (or MCP config equivalent)
+
+We recommend having keys in both places and adding mcp.json to your gitignore so your API keys aren't checked into git.
+
+3. **Enable the MCP** in your editor settings
+
+4. **Prompt the AI** to initialize Task Master:
 
 ```
 Can you please initialize taskmaster-ai into my project?
@@ -47,9 +60,9 @@ The AI will:
 - Set up initial configuration files
 - Guide you through the rest of the process
 
-4. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+5. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
 
-5. **Use natural language commands** to interact with Task Master:
+6. **Use natural language commands** to interact with Task Master:
 
 ```
 Can you parse my PRD at scripts/prd.txt?
@@ -241,13 +254,16 @@ If during implementation, you discover that:
 Tell the agent:
 
 ```
-We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
+We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks (from ID 4) to reflect this change?
 ```
 
 The agent will execute:
 
 ```bash
-task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
+task-master update --from=4 --prompt="Now we are using MongoDB instead of PostgreSQL."
+
+# OR, if research is needed to find best practices for MongoDB:
+task-master update --from=4 --prompt="Update to use MongoDB, researching best practices" --research
 ```
 
 This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
@@ -290,7 +306,7 @@ The agent will execute:
 task-master expand --all
 ```
 
-For research-backed subtask generation using Perplexity AI:
+For research-backed subtask generation using the configured research model:
 
 ```
 Please break down task 5 using research-backed generation.
