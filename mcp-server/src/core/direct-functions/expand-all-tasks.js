@@ -85,12 +85,13 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			};
 		}
 
+		// Core function now returns a summary object
 		return {
 			success: true,
 			data: {
 				message: `Expand all operation completed. Expanded: ${result.expandedCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}`,
 				details: {
-					...result,
+					...result, // Include the full result details
 					fileGeneration: fileGenResult
 				}
 			}
