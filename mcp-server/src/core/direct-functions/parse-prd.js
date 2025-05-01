@@ -134,7 +134,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				outputPath,
 				numTasks,
 				{
-					mcpLog: logWrapper,
+					mcpLog: mcpLog,
 					session,
 					append
 				},
