@@ -121,12 +121,16 @@ function ensureDirectoryExists(dirPath) {
 function addShellAliases() {
 	const homeDir = process.env.HOME || process.env.USERPROFILE;
 	let shellConfigFile;
+	let isfish = false;
 
 	// Determine which shell config file to use
 	if (process.env.SHELL?.includes('zsh')) {
 		shellConfigFile = path.join(homeDir, '.zshrc');
 	} else if (process.env.SHELL?.includes('bash')) {
 		shellConfigFile = path.join(homeDir, '.bashrc');
+	} else if (process.env.SHELL?.includes('fish')) {
+		shellConfigFile = path.join(homeDir, '.config', 'fish', 'config.fish');
+		isfish = true;
 	} else {
 		log('warn', 'Could not determine shell type. Aliases not added.');
 		return false;
@@ -135,34 +139,69 @@ function addShellAliases() {
 	try {
 		// Check if file exists
 		if (!fs.existsSync(shellConfigFile)) {
-			log(
-				'warn',
-				`Shell config file ${shellConfigFile} not found. Aliases not added.`
-			);
-			return false;
+			// For fish shell, try to create the directory if it doesn't exist
+			if (isfish) {
+				const fishConfigDir = path.join(homeDir, '.config', 'fish');
+				ensureDirectoryExists(fishConfigDir);
+				fs.writeFileSync(shellConfigFile, '');
+				log('info', `Created fish config file: ${shellConfigFile}`);
+			} else {
+				log(
+					'warn',
+					`Shell config file ${shellConfigFile} not found. Aliases not added.`
+				);
+				return false;
+			}
 		}
 
 		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
-		if (configContent.includes("alias tm='task-master'")) {
-			log('info', 'Task Master aliases already exist in shell config.');
-			return true;
+		if (isfish) {
+			if (configContent.includes("alias tm='task-master'") || 
+				configContent.includes("alias tm 'task-master'")) {
+				log('info', 'Task Master aliases already exist in fish config.');
+				return true;
+			}
+		} else {
+			if (configContent.includes("alias tm='task-master'")) {
+				log('info', 'Task Master aliases already exist in shell config.');
+				return true;
+			}
 		}
 
 		// Add aliases to the shell config file
-		const aliasBlock = `
+		let aliasBlock;
+		if (isfish) {
+			aliasBlock = `
+# Task Master aliases added on ${new Date().toLocaleDateString()}
+alias tm 'task-master'
+alias taskmaster 'task-master'
+`;
+		} else {
+			aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
 alias tm='task-master'
 alias taskmaster='task-master'
 `;
+		}
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
 		log('success', `Added Task Master aliases to ${shellConfigFile}`);
-		log(
-			'info',
-			'To use the aliases in your current terminal, run: source ' +
-				shellConfigFile
-		);
+		
+		// Fish uses 'source' command differently
+		if (isfish) {
+			log(
+				'info',
+				'To use the aliases in your current terminal, run: source ' +
+					shellConfigFile
+			);
+		} else {
+			log(
+				'info',
+				'To use the aliases in your current terminal, run: source ' +
+					shellConfigFile
+			);
+		}
 
 		return true;
 	} catch (error) {
