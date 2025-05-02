@@ -105,7 +105,8 @@ export function registerAddTaskTool(server) {
 						testStrategy: args.testStrategy,
 						dependencies: args.dependencies,
 						priority: args.priority,
-						research: args.research
+						research: args.research,
+						projectRoot: rootFolder
 					},
 					log,
 					{ session }

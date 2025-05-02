@@ -19,14 +19,15 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.research] - Enable research-backed subtask generation
  * @param {string} [args.prompt] - Additional context to guide subtask generation
  * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
+ * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object from FastMCP
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function expandAllTasksDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
-	// Destructure expected args
-	const { tasksJsonPath, num, research, prompt, force } = args;
+	// Destructure expected args, including projectRoot
+	const { tasksJsonPath, num, research, prompt, force, projectRoot } = args;
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
@@ -45,7 +46,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 	enableSilentMode(); // Enable silent mode for the core function call
 	try {
 		log.info(
-			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force })}`
+			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, projectRoot })}`
 		);
 
 		// Parse parameters (ensure correct types)
@@ -54,14 +55,14 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
 
-		// Call the core function, passing options and the context object { session, mcpLog }
+		// Call the core function, passing options and the context object { session, mcpLog, projectRoot }
 		const result = await expandAllTasks(
 			tasksJsonPath,
 			numSubtasks,
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog }
+			{ session, mcpLog, projectRoot }
 		);
 
 		// After expanding, regenerate individual task files

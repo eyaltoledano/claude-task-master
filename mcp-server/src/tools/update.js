@@ -70,7 +70,8 @@ export function registerUpdateTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						from: args.from,
 						prompt: args.prompt,
-						research: args.research
+						research: args.research,
+						projectRoot: rootFolder
 					},
 					log,
 					{ session }

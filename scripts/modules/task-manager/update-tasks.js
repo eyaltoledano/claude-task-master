@@ -21,6 +21,7 @@ import {
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
+import { getModelConfiguration } from './models.js';
 
 // Zod schema for validating the structure of tasks AFTER parsing
 const updatedTaskSchema = z
@@ -42,13 +43,12 @@ const updatedTaskArraySchema = z.array(updatedTaskSchema);
  * Parses an array of task objects from AI's text response.
  * @param {string} text - Response text from AI.
  * @param {number} expectedCount - Expected number of tasks.
- * @param {Function | Object} logFn - The logging function (consoleLog) or MCP log object.
+ * @param {Function | Object} logFn - The logging function or MCP log object.
  * @param {boolean} isMCP - Flag indicating if logFn is MCP logger.
  * @returns {Array} Parsed and validated tasks array.
  * @throws {Error} If parsing or validation fails.
  */
 function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
-	// Helper for consistent logging inside parser
 	const report = (level, ...args) => {
 		if (isMCP) {
 			if (typeof logFn[level] === 'function') logFn[level](...args);
@@ -68,38 +68,98 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 
 	let cleanedResponse = text.trim();
 	const originalResponseForDebug = cleanedResponse;
+	let parseMethodUsed = 'raw'; // Track which method worked
 
-	// Extract from Markdown code block first
-	const codeBlockMatch = cleanedResponse.match(
-		/```(?:json)?\s*([\s\S]*?)\s*```/
-	);
-	if (codeBlockMatch) {
-		cleanedResponse = codeBlockMatch[1].trim();
-		report('info', 'Extracted JSON content from Markdown code block.');
-	} else {
-		// If no code block, find first '[' and last ']' for the array
-		const firstBracket = cleanedResponse.indexOf('[');
-		const lastBracket = cleanedResponse.lastIndexOf(']');
-		if (firstBracket !== -1 && lastBracket > firstBracket) {
-			cleanedResponse = cleanedResponse.substring(
-				firstBracket,
-				lastBracket + 1
-			);
-			report('info', 'Extracted content between first [ and last ].');
-		} else {
-			report(
-				'warn',
-				'Response does not appear to contain a JSON array structure. Parsing raw response.'
-			);
+	// --- NEW Step 1: Try extracting between [] first ---
+	const firstBracketIndex = cleanedResponse.indexOf('[');
+	const lastBracketIndex = cleanedResponse.lastIndexOf(']');
+	let potentialJsonFromArray = null;
+
+	if (firstBracketIndex !== -1 && lastBracketIndex > firstBracketIndex) {
+		potentialJsonFromArray = cleanedResponse.substring(
+			firstBracketIndex,
+			lastBracketIndex + 1
+		);
+		// Basic check to ensure it's not just "[]" or malformed
+		if (potentialJsonFromArray.length <= 2) {
+			potentialJsonFromArray = null; // Ignore empty array
 		}
 	}
 
-	// Attempt to parse the array
+	// If [] extraction yielded something, try parsing it immediately
+	if (potentialJsonFromArray) {
+		try {
+			const testParse = JSON.parse(potentialJsonFromArray);
+			// It worked! Use this as the primary cleaned response.
+			cleanedResponse = potentialJsonFromArray;
+			parseMethodUsed = 'brackets';
+			report(
+				'info',
+				'Successfully parsed JSON content extracted between first [ and last ].'
+			);
+		} catch (e) {
+			report(
+				'info',
+				'Content between [] looked promising but failed initial parse. Proceeding to other methods.'
+			);
+			// Reset cleanedResponse to original if bracket parsing failed
+			cleanedResponse = originalResponseForDebug;
+		}
+	}
+
+	// --- Step 2: If bracket parsing didn't work or wasn't applicable, try code block extraction ---
+	if (parseMethodUsed === 'raw') {
+		// Only look for ```json blocks now
+		const codeBlockMatch = cleanedResponse.match(
+			/```json\s*([\s\S]*?)\s*```/i // Only match ```json
+		);
+		if (codeBlockMatch) {
+			cleanedResponse = codeBlockMatch[1].trim();
+			parseMethodUsed = 'codeblock';
+			report('info', 'Extracted JSON content from JSON Markdown code block.');
+		} else {
+			report('info', 'No JSON code block found.');
+			// --- Step 3: If code block failed, try stripping prefixes ---
+			const commonPrefixes = [
+				'json\n',
+				'javascript\n', // Keep checking common prefixes just in case
+				'python\n',
+				'here are the updated tasks:',
+				'here is the updated json:',
+				'updated tasks:',
+				'updated json:',
+				'response:',
+				'output:'
+			];
+			let prefixFound = false;
+			for (const prefix of commonPrefixes) {
+				if (cleanedResponse.toLowerCase().startsWith(prefix)) {
+					cleanedResponse = cleanedResponse.substring(prefix.length).trim();
+					parseMethodUsed = 'prefix';
+					report('info', `Stripped prefix: "${prefix.trim()}"`);
+					prefixFound = true;
+					break;
+				}
+			}
+			if (!prefixFound) {
+				report(
+					'warn',
+					'Response does not appear to contain [], JSON code block, or known prefix. Attempting raw parse.'
+				);
+			}
+		}
+	}
+
+	// --- Step 4: Attempt final parse ---
 	let parsedTasks;
 	try {
 		parsedTasks = JSON.parse(cleanedResponse);
 	} catch (parseError) {
 		report('error', `Failed to parse JSON array: ${parseError.message}`);
+		report(
+			'error',
+			`Extraction method used: ${parseMethodUsed}` // Log which method failed
+		);
 		report(
 			'error',
 			`Problematic JSON string (first 500 chars): ${cleanedResponse.substring(0, 500)}`
@@ -113,7 +173,7 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 		);
 	}
 
-	// Validate Array structure
+	// --- Step 5 & 6: Validate Array structure and Zod schema ---
 	if (!Array.isArray(parsedTasks)) {
 		report(
 			'error',
@@ -134,7 +194,6 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 		);
 	}
 
-	// Validate each task object using Zod
 	const validationResult = updatedTaskArraySchema.safeParse(parsedTasks);
 	if (!validationResult.success) {
 		report('error', 'Parsed task array failed Zod validation.');
@@ -147,7 +206,6 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 	}
 
 	report('info', 'Successfully validated task structure.');
-	// Return the validated data, potentially filtering/adjusting length if needed
 	return validationResult.data.slice(
 		0,
 		expectedCount || validationResult.data.length
@@ -173,7 +231,7 @@ async function updateTasks(
 	context = {},
 	outputFormat = 'text' // Default to text for CLI
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot } = context;
 	// Use mcpLog if available, otherwise use the imported consoleLog function
 	const logFn = mcpLog || consoleLog;
 	// Flag to easily check which logger type we have
@@ -294,9 +352,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator(
-				'Calling AI service to update tasks...'
-			);
+			loadingIndicator = startLoadingIndicator('Updating tasks...\n');
 		}
 
 		let responseText = '';
@@ -312,7 +368,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
 				role,
-				session
+				session,
+				projectRoot
 			});
 			if (isMCP) logFn.info('Successfully received text response');
 			else

@@ -20,7 +20,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  */
 export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
-	const { tasksJsonPath, from, prompt, research } = args;
+	const { tasksJsonPath, from, prompt, research, projectRoot } = args;
 
 	// Create the standard logger wrapper
 	const logWrapper = {
@@ -85,21 +85,23 @@ export async function updateTasksDirect(args, log, context = {}) {
 	const useResearch = research === true;
 	// --- End Input Validation ---
 
-	log.info(`Updating tasks from ID ${fromId}. Research: ${useResearch}`);
+	log.info(
+		`Updating tasks from ID ${fromId}. Research: ${useResearch}. Project Root: ${projectRoot}`
+	);
 
 	enableSilentMode(); // Enable silent mode
 	try {
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
 
-		// Execute core updateTasks function, passing session context
+		// Execute core updateTasks function, passing session context AND projectRoot
 		await updateTasks(
 			tasksJsonPath,
 			fromId,
 			prompt,
 			useResearch,
-			// Pass context with logger wrapper and session
-			{ mcpLog, session },
+			// Pass context with logger wrapper, session, AND projectRoot
+			{ mcpLog, session, projectRoot },
 			'json' // Explicitly request JSON format for MCP
 		);
 

@@ -29,6 +29,7 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path (needed for AI service key resolution).
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). Automatically 'json' if mcpLog is present.
  * @returns {Promise<Object|null>} - The updated subtask or null if update failed.
  */
@@ -40,7 +41,7 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -130,37 +131,6 @@ async function updateSubtaskById(
 
 		const subtask = parentTask.subtasks[subtaskIndex];
 
-		// Check if subtask is already completed
-		if (subtask.status === 'done' || subtask.status === 'completed') {
-			report(
-				'warn',
-				`Subtask ${subtaskId} is already marked as done and cannot be updated`
-			);
-
-			// Only show UI elements for text output (CLI)
-			if (outputFormat === 'text') {
-				console.log(
-					boxen(
-						chalk.yellow(
-							`Subtask ${subtaskId} is already marked as ${subtask.status} and cannot be updated.`
-						) +
-							'\n\n' +
-							chalk.white(
-								'Completed subtasks are locked to maintain consistency. To modify a completed subtask, you must first:'
-							) +
-							'\n' +
-							chalk.white(
-								'1. Change its status to "pending" or "in-progress"'
-							) +
-							'\n' +
-							chalk.white('2. Then run the update-subtask command'),
-						{ padding: 1, borderColor: 'yellow', borderStyle: 'round' }
-					)
-				);
-			}
-			return null;
-		}
-
 		// Only show UI elements for text output (CLI)
 		if (outputFormat === 'text') {
 			// Show the subtask that will be updated
@@ -192,32 +162,38 @@ async function updateSubtaskById(
 
 			// Start the loading indicator - only for text output
 			loadingIndicator = startLoadingIndicator(
-				'Generating additional information with AI...'
+				useResearch
+					? 'Updating subtask with research...'
+					: 'Updating subtask...'
 			);
 		}
 
 		let additionalInformation = '';
 		try {
-			// Reverted: Keep the original system prompt
-			const systemPrompt = `You are an AI assistant helping to update software development subtasks with additional information.
-Given a subtask, you will provide additional details, implementation notes, or technical insights based on user request.
-Focus only on adding content that enhances the subtask - don't repeat existing information.
-Be technical, specific, and implementation-focused rather than general.
-Provide concrete examples, code snippets, or implementation details when relevant.`;
+			// Build Prompts
+			const systemPrompt = `You are an AI assistant helping to update a software development subtask. Your goal is to APPEND new information to the existing details, not replace them. Add a timestamp.
 
-			// Reverted: Use the full JSON stringification for the user message
-			const subtaskData = JSON.stringify(subtask, null, 2);
-			const userMessageContent = `Here is the subtask to enhance:\n${subtaskData}\n\nPlease provide additional information addressing this request:\n${prompt}\n\nReturn ONLY the new information to add - do not repeat existing content.`;
+Guidelines:
+1. Identify the existing 'details' field in the subtask JSON.
+2. Create a new timestamp string in the format: '[YYYY-MM-DD HH:MM:SS]'.
+3. Append the new timestamp and the information from the user prompt to the *end* of the existing 'details' field.
+4. Ensure the final 'details' field is a single, coherent string with the new information added.
+5. Return the *entire* subtask object as a valid JSON, including the updated 'details' field and all other original fields (id, title, status, dependencies, etc.).`;
+			const subtaskDataString = JSON.stringify(subtask, null, 2);
+			const userPrompt = `Here is the subtask to update:\n${subtaskDataString}\n\nPlease APPEND the following information to the 'details' field, preceded by a timestamp:\n${prompt}\n\nReturn only the updated subtask as a single, valid JSON object.`;
 
-			const serviceRole = useResearch ? 'research' : 'main';
-			report('info', `Calling AI text service with role: ${serviceRole}`);
+			// Call Unified AI Service
+			const role = useResearch ? 'research' : 'main';
+			report('info', `Using AI service with role: ${role}`);
 
-			const streamResult = await generateTextService({
-				role: serviceRole,
-				session: session,
+			const responseText = await generateTextService({
+				prompt: userPrompt,
 				systemPrompt: systemPrompt,
-				prompt: userMessageContent
+				role,
+				session,
+				projectRoot
 			});
+			report('success', 'Successfully received text response from AI service');
 
 			if (outputFormat === 'text' && loadingIndicator) {
 				// Stop indicator immediately since generateText is blocking
@@ -226,7 +202,7 @@ Provide concrete examples, code snippets, or implementation details when relevan
 			}
 
 			// Assign the result directly (generateTextService returns the text string)
-			additionalInformation = streamResult ? streamResult.trim() : '';
+			additionalInformation = responseText ? responseText.trim() : '';
 
 			if (!additionalInformation) {
 				throw new Error('AI returned empty response.'); // Changed error message slightly
@@ -234,7 +210,7 @@ Provide concrete examples, code snippets, or implementation details when relevan
 			report(
 				// Corrected log message to reflect generateText
 				'success',
-				`Successfully generated text using AI role: ${serviceRole}.`
+				`Successfully generated text using AI role: ${role}.`
 			);
 		} catch (aiError) {
 			report('error', `AI service call failed: ${aiError.message}`);

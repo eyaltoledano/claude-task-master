@@ -77,7 +77,7 @@ function fetchOpenRouterModels() {
  * @returns {Object} RESTful response with current model configuration
  */
 async function getModelConfiguration(options = {}) {
-	const { mcpLog, projectRoot } = options;
+	const { mcpLog, projectRoot, session } = options;
 
 	const report = (level, ...args) => {
 		if (mcpLog && typeof mcpLog[level] === 'function') {
@@ -125,12 +125,16 @@ async function getModelConfiguration(options = {}) {
 		const fallbackModelId = getFallbackModelId(projectRoot);
 
 		// Check API keys
-		const mainCliKeyOk = isApiKeySet(mainProvider);
+		const mainCliKeyOk = isApiKeySet(mainProvider, session, projectRoot);
 		const mainMcpKeyOk = getMcpApiKeyStatus(mainProvider, projectRoot);
-		const researchCliKeyOk = isApiKeySet(researchProvider);
+		const researchCliKeyOk = isApiKeySet(
+			researchProvider,
+			session,
+			projectRoot
+		);
 		const researchMcpKeyOk = getMcpApiKeyStatus(researchProvider, projectRoot);
 		const fallbackCliKeyOk = fallbackProvider
-			? isApiKeySet(fallbackProvider)
+			? isApiKeySet(fallbackProvider, session, projectRoot)
 			: true;
 		const fallbackMcpKeyOk = fallbackProvider
 			? getMcpApiKeyStatus(fallbackProvider, projectRoot)
@@ -523,7 +527,7 @@ async function getApiKeyStatusReport(options = {}) {
 		); // Ollama is not a provider, it's a service, doesn't need an api key usually
 		const statusReport = providersToCheck.map((provider) => {
 			// Use provided projectRoot for MCP status check
-			const cliOk = isApiKeySet(provider, session); // Pass session for CLI check too
+			const cliOk = isApiKeySet(provider, session, projectRoot); // Pass session and projectRoot for CLI check
 			const mcpOk = getMcpApiKeyStatus(provider, projectRoot);
 			return {
 				provider,

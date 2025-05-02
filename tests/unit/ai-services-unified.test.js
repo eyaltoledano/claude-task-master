@@ -40,12 +40,14 @@ jest.unstable_mockModule('../../src/ai-providers/perplexity.js', () => ({
 
 // ... Mock other providers (google, openai, etc.) similarly ...
 
-// Mock utils logger and API key resolver
+// Mock utils logger, API key resolver, AND findProjectRoot
 const mockLog = jest.fn();
 const mockResolveEnvVariable = jest.fn();
+const mockFindProjectRoot = jest.fn();
 jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	log: mockLog,
-	resolveEnvVariable: mockResolveEnvVariable
+	resolveEnvVariable: mockResolveEnvVariable,
+	findProjectRoot: mockFindProjectRoot
 }));
 
 // Import the module to test (AFTER mocks)
@@ -54,6 +56,8 @@ const { generateTextService } = await import(
 );
 
 describe('Unified AI Services', () => {
+	const fakeProjectRoot = '/fake/project/root'; // Define for reuse
+
 	beforeEach(() => {
 		// Clear mocks before each test
 		jest.clearAllMocks(); // Clears all mocks
@@ -76,6 +80,9 @@ describe('Unified AI Services', () => {
 			if (key === 'PERPLEXITY_API_KEY') return 'mock-perplexity-key';
 			return null;
 		});
+
+		// Set a default behavior for the new mock
+		mockFindProjectRoot.mockReturnValue(fakeProjectRoot);
 	});
 
 	describe('generateTextService', () => {
@@ -91,12 +98,16 @@ describe('Unified AI Services', () => {
 			const result = await generateTextService(params);
 
 			expect(result).toBe('Main provider response');
-			expect(mockGetMainProvider).toHaveBeenCalled();
-			expect(mockGetMainModelId).toHaveBeenCalled();
-			expect(mockGetParametersForRole).toHaveBeenCalledWith('main');
+			expect(mockGetMainProvider).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockGetMainModelId).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'main',
+				fakeProjectRoot
+			);
 			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
 				'ANTHROPIC_API_KEY',
-				params.session
+				params.session,
+				fakeProjectRoot
 			);
 			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(1);
 			expect(mockGenerateAnthropicText).toHaveBeenCalledWith({
@@ -109,26 +120,43 @@ describe('Unified AI Services', () => {
 					{ role: 'user', content: 'Test' }
 				]
 			});
-			// Verify other providers NOT called
 			expect(mockGeneratePerplexityText).not.toHaveBeenCalled();
 		});
 
 		test('should fall back to fallback provider if main fails', async () => {
 			const mainError = new Error('Main provider failed');
 			mockGenerateAnthropicText
-				.mockRejectedValueOnce(mainError) // Main fails first
-				.mockResolvedValueOnce('Fallback provider response'); // Fallback succeeds
+				.mockRejectedValueOnce(mainError)
+				.mockResolvedValueOnce('Fallback provider response');
 
-			const params = { role: 'main', prompt: 'Fallback test' };
+			const explicitRoot = '/explicit/test/root';
+			const params = {
+				role: 'main',
+				prompt: 'Fallback test',
+				projectRoot: explicitRoot
+			};
 			const result = await generateTextService(params);
 
 			expect(result).toBe('Fallback provider response');
-			expect(mockGetMainProvider).toHaveBeenCalled();
-			expect(mockGetFallbackProvider).toHaveBeenCalled(); // Fallback was tried
-			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(2); // Called for main (fail) and fallback (success)
-			expect(mockGeneratePerplexityText).not.toHaveBeenCalled(); // Research not called
+			expect(mockGetMainProvider).toHaveBeenCalledWith(explicitRoot);
+			expect(mockGetFallbackProvider).toHaveBeenCalledWith(explicitRoot);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'main',
+				explicitRoot
+			);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'fallback',
+				explicitRoot
+			);
 
-			// Check log messages for fallback attempt
+			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
+				'ANTHROPIC_API_KEY',
+				undefined,
+				explicitRoot
+			);
+
+			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(2);
+			expect(mockGeneratePerplexityText).not.toHaveBeenCalled();
 			expect(mockLog).toHaveBeenCalledWith(
 				'error',
 				expect.stringContaining('Service call failed for role main')
@@ -153,12 +181,40 @@ describe('Unified AI Services', () => {
 			const result = await generateTextService(params);
 
 			expect(result).toBe('Research provider response');
-			expect(mockGetMainProvider).toHaveBeenCalled();
-			expect(mockGetFallbackProvider).toHaveBeenCalled();
-			expect(mockGetResearchProvider).toHaveBeenCalled(); // Research was tried
-			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(2); // main, fallback
-			expect(mockGeneratePerplexityText).toHaveBeenCalledTimes(1); // research
+			expect(mockGetMainProvider).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockGetFallbackProvider).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockGetResearchProvider).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'main',
+				fakeProjectRoot
+			);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'fallback',
+				fakeProjectRoot
+			);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith(
+				'research',
+				fakeProjectRoot
+			);
 
+			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
+				'ANTHROPIC_API_KEY',
+				undefined,
+				fakeProjectRoot
+			);
+			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
+				'ANTHROPIC_API_KEY',
+				undefined,
+				fakeProjectRoot
+			);
+			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
+				'PERPLEXITY_API_KEY',
+				undefined,
+				fakeProjectRoot
+			);
+
+			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(2);
+			expect(mockGeneratePerplexityText).toHaveBeenCalledTimes(1);
 			expect(mockLog).toHaveBeenCalledWith(
 				'error',
 				expect.stringContaining('Service call failed for role fallback')
@@ -202,6 +258,23 @@ describe('Unified AI Services', () => {
 				'info',
 				expect.stringContaining('Retryable error detected. Retrying')
 			);
+		});
+
+		test('should use default project root or handle null if findProjectRoot returns null', async () => {
+			mockFindProjectRoot.mockReturnValue(null); // Simulate not finding root
+			mockGenerateAnthropicText.mockResolvedValue('Response with no root');
+
+			const params = { role: 'main', prompt: 'No root test' }; // No explicit root passed
+			await generateTextService(params);
+
+			expect(mockGetMainProvider).toHaveBeenCalledWith(null);
+			expect(mockGetParametersForRole).toHaveBeenCalledWith('main', null);
+			expect(mockResolveEnvVariable).toHaveBeenCalledWith(
+				'ANTHROPIC_API_KEY',
+				undefined,
+				null
+			);
+			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(1);
 		});
 
 		// Add more tests for edge cases:

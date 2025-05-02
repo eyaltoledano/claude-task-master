@@ -6,30 +6,40 @@
 import { updateTaskById } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
 /**
  * Direct function wrapper for updateTaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch and tasksJsonPath.
+ * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
+ * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.id - Task ID (or subtask ID like "1.2").
+ * @param {string} args.prompt - New information/context prompt.
+ * @param {boolean} [args.research] - Whether to use research role.
+ * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTaskByIdDirect(args, log, context = {}) {
-	const { session } = context; // Only extract session, not reportProgress
-	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, prompt, research } = args;
+	const { session } = context;
+	// Destructure expected args, including projectRoot
+	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+
+	const logWrapper = createLogWrapper(log);
 
 	try {
-		log.info(`Updating task with args: ${JSON.stringify(args)}`);
+		logWrapper.info(
+			`Updating task by ID via direct function. ID: ${id}, ProjectRoot: ${projectRoot}`
+		);
 
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {
 			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
+			logWrapper.error(errorMessage);
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
@@ -41,7 +51,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		if (!id) {
 			const errorMessage =
 				'No task ID specified. Please provide a task ID to update.';
-			log.error(errorMessage);
+			logWrapper.error(errorMessage);
 			return {
 				success: false,
 				error: { code: 'MISSING_TASK_ID', message: errorMessage },
@@ -52,7 +62,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		if (!prompt) {
 			const errorMessage =
 				'No prompt specified. Please provide a prompt with new information for the task update.';
-			log.error(errorMessage);
+			logWrapper.error(errorMessage);
 			return {
 				success: false,
 				error: { code: 'MISSING_PROMPT', message: errorMessage },
@@ -71,7 +81,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				taskId = parseInt(id, 10);
 				if (isNaN(taskId)) {
 					const errorMessage = `Invalid task ID: ${id}. Task ID must be a positive integer or subtask ID (e.g., "5.2").`;
-					log.error(errorMessage);
+					logWrapper.error(errorMessage);
 					return {
 						success: false,
 						error: { code: 'INVALID_TASK_ID', message: errorMessage },
@@ -89,66 +99,80 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		// Get research flag
 		const useResearch = research === true;
 
-		log.info(
+		logWrapper.info(
 			`Updating task with ID ${taskId} with prompt "${prompt}" and research: ${useResearch}`
 		);
 
-		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
+		const wasSilent = isSilentMode();
+		if (!wasSilent) {
 			enableSilentMode();
+		}
 
-			// Create the logger wrapper using the utility function
-			const mcpLog = createLogWrapper(log);
-
+		try {
 			// Execute core updateTaskById function with proper parameters
-			await updateTaskById(
+			const updatedTask = await updateTaskById(
 				tasksPath,
 				taskId,
 				prompt,
 				useResearch,
 				{
-					mcpLog, // Pass the wrapped logger
-					session
+					mcpLog: logWrapper,
+					session,
+					projectRoot
 				},
 				'json'
 			);
 
-			// Since updateTaskById doesn't return a value but modifies the tasks file,
-			// we'll return a success message
+			// Check if the core function indicated the task wasn't updated (e.g., status was 'done')
+			if (updatedTask === null) {
+				// Core function logs the reason, just return success with info
+				const message = `Task ${taskId} was not updated (likely already completed).`;
+				logWrapper.info(message);
+				return {
+					success: true,
+					data: { message: message, taskId: taskId, updated: false },
+					fromCache: false
+				};
+			}
+
+			// Task was updated successfully
+			const successMessage = `Successfully updated task with ID ${taskId} based on the prompt`;
+			logWrapper.success(successMessage);
 			return {
 				success: true,
 				data: {
-					message: `Successfully updated task with ID ${taskId} based on the prompt`,
-					taskId,
-					tasksPath: tasksPath, // Return the used path
-					useResearch
+					message: successMessage,
+					taskId: taskId,
+					tasksPath: tasksPath,
+					useResearch: useResearch,
+					updated: true,
+					updatedTask: updatedTask
 				},
-				fromCache: false // This operation always modifies state and should never be cached
+				fromCache: false
 			};
 		} catch (error) {
-			log.error(`Error updating task by ID: ${error.message}`);
+			logWrapper.error(`Error updating task by ID: ${error.message}`);
 			return {
 				success: false,
 				error: {
-					code: 'UPDATE_TASK_ERROR',
+					code: 'UPDATE_TASK_CORE_ERROR',
 					message: error.message || 'Unknown error updating task'
 				},
 				fromCache: false
 			};
 		} finally {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
+			if (!wasSilent && isSilentMode()) {
+				disableSilentMode();
+			}
 		}
 	} catch (error) {
-		// Ensure silent mode is disabled
-		disableSilentMode();
-
-		log.error(`Error updating task by ID: ${error.message}`);
+		logWrapper.error(`Setup error in updateTaskByIdDirect: ${error.message}`);
+		if (isSilentMode()) disableSilentMode();
 		return {
 			success: false,
 			error: {
-				code: 'UPDATE_TASK_ERROR',
-				message: error.message || 'Unknown error updating task'
+				code: 'DIRECT_FUNCTION_SETUP_ERROR',
+				message: error.message || 'Unknown setup error'
 			},
 			fromCache: false
 		};

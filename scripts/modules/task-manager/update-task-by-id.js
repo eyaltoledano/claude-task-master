@@ -70,29 +70,80 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
 
 	let cleanedResponse = text.trim();
 	const originalResponseForDebug = cleanedResponse;
+	let parseMethodUsed = 'raw'; // Keep track of which method worked
 
-	// Extract from Markdown code block first
-	const codeBlockMatch = cleanedResponse.match(
-		/```(?:json)?\s*([\s\S]*?)\s*```/
-	);
-	if (codeBlockMatch) {
-		cleanedResponse = codeBlockMatch[1].trim();
-		report('info', 'Extracted JSON content from Markdown code block.');
-	} else {
-		// If no code block, find first '{' and last '}' for the object
-		const firstBrace = cleanedResponse.indexOf('{');
-		const lastBrace = cleanedResponse.lastIndexOf('}');
-		if (firstBrace !== -1 && lastBrace > firstBrace) {
-			cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
-			report('info', 'Extracted content between first { and last }.');
-		} else {
-			report(
-				'warn',
-				'Response does not appear to contain a JSON object structure. Parsing raw response.'
-			);
+	// --- NEW Step 1: Try extracting between {} first ---
+	const firstBraceIndex = cleanedResponse.indexOf('{');
+	const lastBraceIndex = cleanedResponse.lastIndexOf('}');
+	let potentialJsonFromBraces = null;
+
+	if (firstBraceIndex !== -1 && lastBraceIndex > firstBraceIndex) {
+		potentialJsonFromBraces = cleanedResponse.substring(
+			firstBraceIndex,
+			lastBraceIndex + 1
+		);
+		if (potentialJsonFromBraces.length <= 2) {
+			potentialJsonFromBraces = null; // Ignore empty braces {}
 		}
 	}
 
+	// If {} extraction yielded something, try parsing it immediately
+	if (potentialJsonFromBraces) {
+		try {
+			const testParse = JSON.parse(potentialJsonFromBraces);
+			// It worked! Use this as the primary cleaned response.
+			cleanedResponse = potentialJsonFromBraces;
+			parseMethodUsed = 'braces';
+			report(
+				'info',
+				'Successfully parsed JSON content extracted between first { and last }.'
+			);
+		} catch (e) {
+			report(
+				'info',
+				'Content between {} looked promising but failed initial parse. Proceeding to other methods.'
+			);
+			// Reset cleanedResponse to original if brace parsing failed
+			cleanedResponse = originalResponseForDebug;
+		}
+	}
+
+	// --- Step 2: If brace parsing didn't work or wasn't applicable, try code block extraction ---
+	if (parseMethodUsed === 'raw') {
+		const codeBlockMatch = cleanedResponse.match(
+			/```(?:json|javascript)?\s*([\s\S]*?)\s*```/i
+		);
+		if (codeBlockMatch) {
+			cleanedResponse = codeBlockMatch[1].trim();
+			parseMethodUsed = 'codeblock';
+			report('info', 'Extracted JSON content from Markdown code block.');
+		} else {
+			// --- Step 3: If code block failed, try stripping prefixes ---
+			const commonPrefixes = [
+				'json\n',
+				'javascript\n'
+				// ... other prefixes ...
+			];
+			let prefixFound = false;
+			for (const prefix of commonPrefixes) {
+				if (cleanedResponse.toLowerCase().startsWith(prefix)) {
+					cleanedResponse = cleanedResponse.substring(prefix.length).trim();
+					parseMethodUsed = 'prefix';
+					report('info', `Stripped prefix: "${prefix.trim()}"`);
+					prefixFound = true;
+					break;
+				}
+			}
+			if (!prefixFound) {
+				report(
+					'warn',
+					'Response does not appear to contain {}, code block, or known prefix. Attempting raw parse.'
+				);
+			}
+		}
+	}
+
+	// --- Step 4: Attempt final parse ---
 	let parsedTask;
 	try {
 		parsedTask = JSON.parse(cleanedResponse);
@@ -168,7 +219,7 @@ async function updateTaskById(
 	context = {},
 	outputFormat = 'text'
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -329,7 +380,7 @@ The changes described in the prompt should be thoughtfully applied to make the t
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
-				useResearch ? 'Updating task with research...' : 'Updating task...'
+				useResearch ? 'Updating task with research...\n' : 'Updating task...\n'
 			);
 		}
 
@@ -343,7 +394,8 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
 				role,
-				session
+				session,
+				projectRoot
 			});
 			report('success', 'Successfully received text response from AI service');
 			// --- End AI Service Call ---

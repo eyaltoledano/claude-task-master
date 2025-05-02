@@ -25,6 +25,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.research] - Enable research role for subtask generation.
  * @param {string} [args.prompt] - Additional context to guide subtask generation.
  * @param {boolean} [args.force] - Force expansion even if subtasks exist.
+ * @param {string} [args.projectRoot] - Project root directory.
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @param {Object} [context.session] - MCP Session object
@@ -32,8 +33,8 @@ import { createLogWrapper } from '../../tools/utils.js';
  */
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
-	// Destructure expected args
-	const { tasksJsonPath, id, num, research, prompt, force } = args;
+	// Destructure expected args, including projectRoot
+	const { tasksJsonPath, id, num, research, prompt, force, projectRoot } = args;
 
 	// Log session root data for debugging
 	log.info(
@@ -184,20 +185,22 @@ export async function expandTaskDirect(args, log, context = {}) {
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
 
+		let wasSilent; // Declare wasSilent outside the try block
 		// Process the request
 		try {
 			// Enable silent mode to prevent console logs from interfering with JSON response
-			const wasSilent = isSilentMode();
+			wasSilent = isSilentMode(); // Assign inside the try block
 			if (!wasSilent) enableSilentMode();
 
-			// Call the core expandTask function with the wrapped logger
-			const result = await expandTask(
+			// Call the core expandTask function with the wrapped logger and projectRoot
+			const updatedTaskResult = await expandTask(
 				tasksPath,
 				taskId,
 				numSubtasks,
 				useResearch,
 				additionalContext,
-				{ mcpLog, session }
+				{ mcpLog, session, projectRoot },
+				forceFlag
 			);
 
 			// Restore normal logging

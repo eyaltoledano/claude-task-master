@@ -17,7 +17,7 @@ import { registerExpandTaskTool } from './expand-task.js';
 import { registerAddTaskTool } from './add-task.js';
 import { registerAddSubtaskTool } from './add-subtask.js';
 import { registerRemoveSubtaskTool } from './remove-subtask.js';
-import { registerAnalyzeTool } from './analyze.js';
+import { registerAnalyzeProjectComplexityTool } from './analyze.js';
 import { registerClearSubtasksTool } from './clear-subtasks.js';
 import { registerExpandAllTool } from './expand-all.js';
 import { registerRemoveDependencyTool } from './remove-dependency.js';
@@ -63,7 +63,7 @@ export function registerTaskMasterTools(server) {
 		registerClearSubtasksTool(server);
 
 		// Group 5: Task Analysis & Expansion
-		registerAnalyzeTool(server);
+		registerAnalyzeProjectComplexityTool(server);
 		registerExpandTaskTool(server);
 		registerExpandAllTool(server);
 

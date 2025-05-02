@@ -23,13 +23,21 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.priority='medium'] - Task priority (high, medium, low)
  * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
  * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
+ * @param {string} [args.projectRoot] - Project root path
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
-	// Destructure expected args (including research)
-	const { tasksJsonPath, prompt, dependencies, priority, research } = args;
+	// Destructure expected args (including research and projectRoot)
+	const {
+		tasksJsonPath,
+		prompt,
+		dependencies,
+		priority,
+		research,
+		projectRoot
+	} = args;
 	const { session } = context; // Destructure session from context
 
 	// Enable silent mode to prevent console logs from interfering with JSON response
@@ -108,11 +116,13 @@ export async function addTaskDirect(args, log, context = {}) {
 				taskPriority,
 				{
 					session,
-					mcpLog
+					mcpLog,
+					projectRoot
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
-				false // research flag is false for manual creation
+				false, // research flag is false for manual creation
+				projectRoot // Pass projectRoot
 			);
 		} else {
 			// AI-driven task creation
@@ -128,7 +138,8 @@ export async function addTaskDirect(args, log, context = {}) {
 				taskPriority,
 				{
 					session,
-					mcpLog
+					mcpLog,
+					projectRoot
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation

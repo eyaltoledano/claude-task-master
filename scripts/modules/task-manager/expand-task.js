@@ -503,7 +503,8 @@ async function expandTask(
 				prompt: promptContent,
 				systemPrompt: systemPrompt, // Use the determined system prompt
 				role,
-				session
+				session,
+				projectRoot
 			});
 			logger.info(
 				'Successfully received text response from AI service',

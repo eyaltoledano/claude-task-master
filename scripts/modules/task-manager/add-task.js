@@ -10,7 +10,7 @@ import {
 	startLoadingIndicator,
 	stopLoadingIndicator
 } from '../ui.js';
-import { log, readJSON, writeJSON, truncate } from '../utils.js';
+import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
@@ -42,19 +42,41 @@ const AiTaskDataSchema = z.object({
  * @param {Object} customEnv - Custom environment variables (optional) - Note: AI params override deprecated
  * @param {Object} manualTaskData - Manual task data (optional, for direct task creation without AI)
  * @param {boolean} useResearch - Whether to use the research model (passed to unified service)
+ * @param {Object} context - Context object containing session and potentially projectRoot
+ * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
  * @returns {number} The new task ID
  */
 async function addTask(
 	tasksPath,
 	prompt,
 	dependencies = [],
-	priority = getDefaultPriority(), // Keep getter for default priority
-	{ reportProgress, mcpLog, session } = {},
-	outputFormat = 'text',
-	// customEnv = null, // Removed as AI param overrides are deprecated
+	priority = null,
+	context = {},
+	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
-	useResearch = false // <-- Add useResearch parameter
+	useResearch = false
 ) {
+	const { session, mcpLog, projectRoot } = context;
+	const isMCP = !!mcpLog;
+
+	// Create a consistent logFn object regardless of context
+	const logFn = isMCP
+		? mcpLog // Use MCP logger if provided
+		: {
+				// Create a wrapper around consoleLog for CLI
+				info: (...args) => consoleLog('info', ...args),
+				warn: (...args) => consoleLog('warn', ...args),
+				error: (...args) => consoleLog('error', ...args),
+				debug: (...args) => consoleLog('debug', ...args),
+				success: (...args) => consoleLog('success', ...args)
+			};
+
+	const effectivePriority = priority || getDefaultPriority(projectRoot);
+
+	logFn.info(
+		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
+	);
+
 	let loadingIndicator = null;
 
 	// Create custom reporter that checks for MCP log
@@ -62,7 +84,7 @@ async function addTask(
 		if (mcpLog) {
 			mcpLog[level](message);
 		} else if (outputFormat === 'text') {
-			log(level, message);
+			consoleLog(level, message);
 		}
 	};
 
@@ -220,11 +242,11 @@ async function addTask(
 				const aiGeneratedTaskData = await generateObjectService({
 					role: serviceRole, // <-- Use the determined role
 					session: session, // Pass session for API key resolution
+					projectRoot: projectRoot, // <<< Pass projectRoot here
 					schema: AiTaskDataSchema, // Pass the Zod schema
 					objectName: 'newTaskData', // Name for the object
 					systemPrompt: systemPrompt,
-					prompt: userPrompt,
-					reportProgress // Pass progress reporter if available
+					prompt: userPrompt
 				});
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
 
@@ -254,7 +276,7 @@ async function addTask(
 			testStrategy: taskData.testStrategy || '',
 			status: 'pending',
 			dependencies: numericDependencies, // Use validated numeric dependencies
-			priority: priority,
+			priority: effectivePriority,
 			subtasks: [] // Initialize with empty subtasks array
 		};
 

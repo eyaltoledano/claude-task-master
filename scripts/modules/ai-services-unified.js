@@ -16,7 +16,7 @@ import {
 	getFallbackModelId,
 	getParametersForRole
 } from './config-manager.js';
-import { log, resolveEnvVariable } from './utils.js';
+import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
 import * as anthropic from '../../src/ai-providers/anthropic.js';
 import * as perplexity from '../../src/ai-providers/perplexity.js';
@@ -136,10 +136,11 @@ function _extractErrorMessage(error) {
  * Internal helper to resolve the API key for a given provider.
  * @param {string} providerName - The name of the provider (lowercase).
  * @param {object|null} session - Optional MCP session object.
+ * @param {string|null} projectRoot - Optional project root path for .env fallback.
  * @returns {string|null} The API key or null if not found/needed.
  * @throws {Error} If a required API key is missing.
  */
-function _resolveApiKey(providerName, session) {
+function _resolveApiKey(providerName, session, projectRoot = null) {
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -163,10 +164,10 @@ function _resolveApiKey(providerName, session) {
 		);
 	}
 
-	const apiKey = resolveEnvVariable(envVarName, session);
+	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 	if (!apiKey) {
 		throw new Error(
-			`Required API key ${envVarName} for provider '${providerName}' is not set in environment or session.`
+			`Required API key ${envVarName} for provider '${providerName}' is not set in environment, session, or .env file.`
 		);
 	}
 	return apiKey;
@@ -241,27 +242,35 @@ async function _attemptProviderCallWithRetries(
  * Base logic for unified service functions.
  * @param {string} serviceType - Type of service ('generateText', 'streamText', 'generateObject').
  * @param {object} params - Original parameters passed to the service function.
+ * @param {string} [params.projectRoot] - Optional project root path.
  * @returns {Promise<any>} Result from the underlying provider call.
  */
 async function _unifiedServiceRunner(serviceType, params) {
 	const {
 		role: initialRole,
 		session,
+		projectRoot,
 		systemPrompt,
 		prompt,
 		schema,
 		objectName,
 		...restApiParams
 	} = params;
-	log('info', `${serviceType}Service called`, { role: initialRole });
+	log('info', `${serviceType}Service called`, {
+		role: initialRole,
+		projectRoot
+	});
+
+	// Determine the effective project root (passed in or detected)
+	const effectiveProjectRoot = projectRoot || findProjectRoot();
 
 	let sequence;
 	if (initialRole === 'main') {
 		sequence = ['main', 'fallback', 'research'];
-	} else if (initialRole === 'fallback') {
-		sequence = ['fallback', 'research'];
 	} else if (initialRole === 'research') {
-		sequence = ['research', 'fallback'];
+		sequence = ['research', 'fallback', 'main'];
+	} else if (initialRole === 'fallback') {
+		sequence = ['fallback', 'main', 'research'];
 	} else {
 		log(
 			'warn',
@@ -281,16 +290,16 @@ async function _unifiedServiceRunner(serviceType, params) {
 			log('info', `New AI service call with role: ${currentRole}`);
 
 			// 1. Get Config: Provider, Model, Parameters for the current role
-			// Call individual getters based on the current role
+			// Pass effectiveProjectRoot to config getters
 			if (currentRole === 'main') {
-				providerName = getMainProvider();
-				modelId = getMainModelId();
+				providerName = getMainProvider(effectiveProjectRoot);
+				modelId = getMainModelId(effectiveProjectRoot);
 			} else if (currentRole === 'research') {
-				providerName = getResearchProvider();
-				modelId = getResearchModelId();
+				providerName = getResearchProvider(effectiveProjectRoot);
+				modelId = getResearchModelId(effectiveProjectRoot);
 			} else if (currentRole === 'fallback') {
-				providerName = getFallbackProvider();
-				modelId = getFallbackModelId();
+				providerName = getFallbackProvider(effectiveProjectRoot);
+				modelId = getFallbackModelId(effectiveProjectRoot);
 			} else {
 				log(
 					'error',
@@ -314,7 +323,8 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			roleParams = getParametersForRole(currentRole);
+			// Pass effectiveProjectRoot to getParametersForRole
+			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
 
 			// 2. Get Provider Function Set
 			providerFnSet = PROVIDER_FUNCTIONS[providerName?.toLowerCase()];
@@ -345,7 +355,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// 3. Resolve API Key (will throw if required and missing)
-			apiKey = _resolveApiKey(providerName?.toLowerCase(), session);
+			// Pass effectiveProjectRoot to _resolveApiKey
+			apiKey = _resolveApiKey(
+				providerName?.toLowerCase(),
+				session,
+				effectiveProjectRoot
+			);
 
 			// 4. Construct Messages Array
 			const messages = [];
@@ -443,6 +458,7 @@ async function _unifiedServiceRunner(serviceType, params) {
  * @param {object} params - Parameters for the service call.
  * @param {string} params.role - The initial client role ('main', 'research', 'fallback').
  * @param {object} [params.session=null] - Optional MCP session object.
+ * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
  * @param {string} params.prompt - The prompt for the AI.
  * @param {string} [params.systemPrompt] - Optional system prompt.
  * // Other specific generateText params can be included here.
@@ -459,6 +475,7 @@ async function generateTextService(params) {
  * @param {object} params - Parameters for the service call.
  * @param {string} params.role - The initial client role ('main', 'research', 'fallback').
  * @param {object} [params.session=null] - Optional MCP session object.
+ * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
  * @param {string} params.prompt - The prompt for the AI.
  * @param {string} [params.systemPrompt] - Optional system prompt.
  * // Other specific streamText params can be included here.
@@ -475,6 +492,7 @@ async function streamTextService(params) {
  * @param {object} params - Parameters for the service call.
  * @param {string} params.role - The initial client role ('main', 'research', 'fallback').
  * @param {object} [params.session=null] - Optional MCP session object.
+ * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
  * @param {import('zod').ZodSchema} params.schema - The Zod schema for the expected object.
  * @param {string} params.prompt - The prompt for the AI.
  * @param {string} [params.systemPrompt] - Optional system prompt.

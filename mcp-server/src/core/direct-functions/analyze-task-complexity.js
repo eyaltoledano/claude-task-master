@@ -18,15 +18,17 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
+ * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
  * @param {Object} [context.session] - MCP session object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context; // Extract session
-	// Destructure expected args
-	const { tasksJsonPath, outputPath, model, threshold, research } = args; // Model is ignored by core function now
+	const { session } = context;
+	const { tasksJsonPath, outputPath, threshold, research, projectRoot } = args;
+
+	const logWrapper = createLogWrapper(log);
 
 	// --- Initial Checks (remain the same) ---
 	try {
@@ -60,35 +62,34 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			log.info('Using research role for complexity analysis');
 		}
 
-		// Prepare options for the core function
-		const options = {
-			file: tasksPath,
-			output: resolvedOutputPath,
-			// model: model, // No longer needed
+		// Prepare options for the core function - REMOVED mcpLog and session here
+		const coreOptions = {
+			file: tasksJsonPath,
+			output: outputPath,
 			threshold: threshold,
-			research: research === true // Ensure boolean
+			research: research === true, // Ensure boolean
+			projectRoot: projectRoot // Pass projectRoot here
 		};
 		// --- End Initial Checks ---
 
-		// --- Silent Mode and Logger Wrapper (remain the same) ---
+		// --- Silent Mode and Logger Wrapper ---
 		const wasSilent = isSilentMode();
 		if (!wasSilent) {
-			enableSilentMode();
+			enableSilentMode(); // Still enable silent mode as a backup
 		}
 
-		// Create logger wrapper using the utility
-		const mcpLog = createLogWrapper(log);
-
-		let report; // To store the result from the core function
+		let report;
 
 		try {
-			// --- Call Core Function (Updated Context Passing) ---
-			// Call the core function, passing options and the context object { session, mcpLog }
-			report = await analyzeTaskComplexity(options, {
-				session, // Pass the session object
-				mcpLog // Pass the logger wrapper
-			});
-			// --- End Core Function Call ---
+			// --- Call Core Function (Pass context separately) ---
+			// Pass coreOptions as the first argument
+			// Pass context object { session, mcpLog } as the second argument
+			report = await analyzeTaskComplexity(
+				coreOptions, // Pass options object
+				{ session, mcpLog: logWrapper } // Pass context object
+				// Removed the explicit 'json' format argument, assuming context handling is sufficient
+				// If issues persist, we might need to add an explicit format param to analyzeTaskComplexity
+			);
 		} catch (error) {
 			log.error(
 				`Error in analyzeTaskComplexity core function: ${error.message}`
@@ -100,7 +101,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: false,
 				error: {
-					code: 'ANALYZE_CORE_ERROR', // More specific error code
+					code: 'ANALYZE_CORE_ERROR',
 					message: `Error running core complexity analysis: ${error.message}`
 				}
 			};
@@ -124,10 +125,10 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			};
 		}
 
-		// The core function now returns the report object directly
-		if (!report || !report.complexityAnalysis) {
+		// Added a check to ensure report is defined before accessing its properties
+		if (!report || typeof report !== 'object') {
 			log.error(
-				'Core analyzeTaskComplexity function did not return a valid report object.'
+				'Core analysis function returned an invalid or undefined response.'
 			);
 			return {
 				success: false,
@@ -139,7 +140,10 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		}
 
 		try {
-			const analysisArray = report.complexityAnalysis; // Already an array
+			// Ensure complexityAnalysis exists and is an array
+			const analysisArray = Array.isArray(report.complexityAnalysis)
+				? report.complexityAnalysis
+				: [];
 
 			// Count tasks by complexity (remains the same)
 			const highComplexityTasks = analysisArray.filter(
@@ -155,16 +159,15 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${resolvedOutputPath}`,
-					reportPath: resolvedOutputPath,
+					message: `Task complexity analysis complete. Report saved to ${outputPath}`, // Use outputPath from args
+					reportPath: outputPath, // Use outputPath from args
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,
 						mediumComplexityTasks,
 						lowComplexityTasks
-					}
-					// Include the full report data if needed by the client
-					// fullReport: report
+					},
+					fullReport: report // Now includes the full report
 				}
 			};
 		} catch (parseError) {

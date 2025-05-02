@@ -7,8 +7,8 @@
       "temperature": 0.2
     },
     "research": {
-      "provider": "xai",
-      "modelId": "grok-3",
+      "provider": "perplexity",
+      "modelId": "sonar-pro",
       "maxTokens": 8700,
       "temperature": 0.1
     },

@@ -46,6 +46,7 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {string} options.output - Path to report output file
  * @param {string|number} [options.threshold] - Complexity threshold
  * @param {boolean} [options.research] - Use research role
+ * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
  * @param {Object} [options._filteredTasksData] - Pre-filtered task data (internal use)
  * @param {number} [options._originalTaskCount] - Original task count (internal use)
  * @param {Object} context - Context object, potentially containing session and mcpLog
@@ -59,6 +60,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 	const outputPath = options.output || 'scripts/task-complexity-report.json';
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
+	const projectRoot = options.projectRoot;
 
 	const outputFormat = mcpLog ? 'json' : 'text';
 
@@ -209,15 +211,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 			const role = useResearch ? 'research' : 'main';
 			reportLog(`Using AI service with role: ${role}`, 'info');
 
-			// *** CHANGED: Use generateTextService ***
 			fullResponse = await generateTextService({
 				prompt,
 				systemPrompt,
 				role,
-				session
-				// No schema or objectName needed
+				session,
+				projectRoot
 			});
-			// *** End Service Call Change ***
 
 			reportLog(
 				'Successfully received text response via AI service',

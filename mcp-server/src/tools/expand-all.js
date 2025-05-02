@@ -94,7 +94,8 @@ export function registerExpandAllTool(server) {
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
-						force: args.force
+						force: args.force,
+						projectRoot: rootFolder
 					},
 					log,
 					{ session }
