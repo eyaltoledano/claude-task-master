@@ -180,9 +180,9 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 	// Map template names to their actual source paths
 	switch (templateName) {
-		case 'scripts_README.md':
-			sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
-			break;
+		// case 'scripts_README.md':
+		// 	sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
+		// 	break;
 		case 'dev_workflow.mdc':
 			sourcePath = path.join(
 				__dirname,
@@ -219,8 +219,8 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 				'self_improve.mdc'
 			);
 			break;
-		case 'README-task-master.md':
-			sourcePath = path.join(__dirname, '..', 'README-task-master.md');
+			// case 'README-task-master.md':
+			// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
 			break;
 		case 'windsurfrules':
 			sourcePath = path.join(__dirname, '..', 'assets', '.windsurfrules');
@@ -351,18 +351,18 @@ async function initializeProject(options = {}) {
 	}
 
 	// Debug logging only if not in silent mode
-	if (!isSilentMode()) {
-		console.log('===== DEBUG: INITIALIZE PROJECT OPTIONS RECEIVED =====');
-		console.log('Full options object:', JSON.stringify(options));
-		console.log('options.yes:', options.yes);
-		console.log('==================================================');
-	}
+	// if (!isSilentMode()) {
+	// 	console.log('===== DEBUG: INITIALIZE PROJECT OPTIONS RECEIVED =====');
+	// 	console.log('Full options object:', JSON.stringify(options));
+	// 	console.log('options.yes:', options.yes);
+	// 	console.log('==================================================');
+	// }
 
 	const skipPrompts = options.yes || (options.name && options.description);
 
-	if (!isSilentMode()) {
-		console.log('Skip prompts determined:', skipPrompts);
-	}
+	// if (!isSilentMode()) {
+	// 	console.log('Skip prompts determined:', skipPrompts);
+	// }
 
 	if (skipPrompts) {
 		if (!isSilentMode()) {
@@ -565,12 +565,12 @@ function createProjectStructure(addAliases, dryRun) {
 		path.join(targetDir, 'scripts', 'example_prd.txt')
 	);
 
-	// Create main README.md
-	copyTemplateFile(
-		'README-task-master.md',
-		path.join(targetDir, 'README-task-master.md'),
-		replacements
-	);
+	// // Create main README.md
+	// copyTemplateFile(
+	// 	'README-task-master.md',
+	// 	path.join(targetDir, 'README-task-master.md'),
+	// 	replacements
+	// );
 
 	// Initialize git repository if git is available
 	try {
@@ -761,21 +761,22 @@ function setupMCPConfiguration(targetDir) {
 	const newMCPServer = {
 		'task-master-ai': {
 			command: 'npx',
-			args: ['-y', 'task-master-mcp'],
+			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
 			env: {
-				ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY',
-				PERPLEXITY_API_KEY: 'YOUR_PERPLEXITY_API_KEY',
-				MODEL: 'claude-3-7-sonnet-20250219',
-				PERPLEXITY_MODEL: 'sonar-pro',
-				MAX_TOKENS: '64000',
-				TEMPERATURE: '0.2',
-				DEFAULT_SUBTASKS: '5',
-				DEFAULT_PRIORITY: 'medium'
+				ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY_HERE',
+				PERPLEXITY_API_KEY: 'PERPLEXITY_API_KEY_HERE',
+				OPENAI_API_KEY: 'OPENAI_API_KEY_HERE',
+				GOOGLE_API_KEY: 'GOOGLE_API_KEY_HERE',
+				XAI_API_KEY: 'XAI_API_KEY_HERE',
+				OPENROUTER_API_KEY: 'OPENROUTER_API_KEY_HERE',
+				MISTRAL_API_KEY: 'MISTRAL_API_KEY_HERE',
+				AZURE_OPENAI_API_KEY: 'AZURE_OPENAI_API_KEY_HERE',
+				OLLAMA_API_KEY: 'OLLAMA_API_KEY_HERE'
 			}
 		}
 	};
 
-	// Check if mcp.json already exists
+	// Check if mcp.json already existsimage.png
 	if (fs.existsSync(mcpJsonPath)) {
 		log(
 			'info',
@@ -795,14 +796,14 @@ function setupMCPConfiguration(targetDir) {
 				(server) =>
 					server.args &&
 					server.args.some(
-						(arg) => typeof arg === 'string' && arg.includes('task-master-mcp')
+						(arg) => typeof arg === 'string' && arg.includes('task-master-ai')
 					)
 			);
 
 			if (hasMCPString) {
 				log(
 					'info',
-					'Found existing task-master-mcp configuration in mcp.json, leaving untouched'
+					'Found existing task-master-ai MCP configuration in mcp.json, leaving untouched'
 				);
 				return; // Exit early, don't modify the existing configuration
 			}

@@ -5,6 +5,47 @@ set -u
 # Prevent errors in pipelines from being masked.
 set -o pipefail
 
+# --- Default Settings ---
+run_verification_test=true
+
+# --- Argument Parsing ---
+# Simple loop to check for the skip flag
+# Note: This needs to happen *before* the main block piped to tee
+# if we want the decision logged early. Or handle args inside.
+# Let's handle it before for clarity.
+processed_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-verification)
+      run_verification_test=false
+      echo "[INFO] Argument '--skip-verification' detected. Fallback verification will be skipped."
+      shift # Consume the flag
+      ;;
+    --analyze-log)
+      # Keep the analyze-log flag handling separate for now
+      # It exits early, so doesn't conflict with the main run flags
+      processed_args+=("$1")
+      if [[ $# -gt 1 ]]; then
+        processed_args+=("$2")
+        shift 2
+      else
+        shift 1
+      fi
+      ;;
+    *)
+      # Unknown argument, pass it along or handle error
+      # For now, just pass it along in case --analyze-log needs it later
+      processed_args+=("$1")
+      shift
+      ;;
+  esac
+done
+# Restore processed arguments ONLY if the array is not empty
+if [ ${#processed_args[@]} -gt 0 ]; then
+  set -- "${processed_args[@]}"
+fi
+
+
 # --- Configuration ---
 # Assumes script is run from the project root (claude-task-master)
 TASKMASTER_SOURCE_DIR="." # Current directory is the source
@@ -20,9 +61,11 @@ MAIN_ENV_FILE="$TASKMASTER_SOURCE_DIR/.env"
 
 # <<< Source the helper script >>>
 source "$TASKMASTER_SOURCE_DIR/tests/e2e/e2e_helpers.sh"
+# <<< Export helper functions for subshells >>>
+export -f log_info log_success log_error log_step _format_duration _get_elapsed_time_for_log
 
 # --- Argument Parsing for Analysis-Only Mode ---
-# Check if the first argument is --analyze-log
+# This remains the same, as it exits early if matched
 if [ "$#" -ge 1 ] && [ "$1" == "--analyze-log" ]; then
   LOG_TO_ANALYZE=""
   # Check if a log file path was provided as the second argument
@@ -50,7 +93,7 @@ if [ "$#" -ge 1 ] && [ "$1" == "--analyze-log" ]; then
   fi
   echo "[INFO] Running in analysis-only mode for log: $LOG_TO_ANALYZE"
 
-  # --- Derive TEST_RUN_DIR from log file path --- 
+  # --- Derive TEST_RUN_DIR from log file path ---
   # Extract timestamp like YYYYMMDD_HHMMSS from e2e_run_YYYYMMDD_HHMMSS.log
   log_basename=$(basename "$LOG_TO_ANALYZE")
   # Ensure the sed command matches the .log suffix correctly
@@ -74,7 +117,7 @@ if [ "$#" -ge 1 ] && [ "$1" == "--analyze-log" ]; then
 
   # Save original dir before changing
   ORIGINAL_DIR=$(pwd)
-  
+
   echo "[INFO] Changing directory to $EXPECTED_RUN_DIR_ABS for analysis context..."
   cd "$EXPECTED_RUN_DIR_ABS"
 
@@ -169,6 +212,21 @@ log_step() {
   # called *inside* this block depend on it. If not, it can be removed.
   start_time_for_helpers=$(date +%s) # Keep if needed by helpers called inside this block
 
+  # Log the verification decision
+  if [ "$run_verification_test" = true ]; then
+      log_info "Fallback verification test will be run as part of this E2E test."
+  else
+      log_info "Fallback verification test will be SKIPPED (--skip-verification flag detected)."
+  fi
+
+  # --- Dependency Checks ---
+  log_step "Checking for dependencies (jq)"
+  if ! command -v jq &> /dev/null; then
+      log_error "Dependency 'jq' is not installed or not found in PATH. Please install jq (e.g., 'brew install jq' or 'sudo apt-get install jq')."
+      exit 1
+  fi
+  log_success "Dependency 'jq' found."
+
   # --- Test Setup (Output to tee) ---
   log_step "Setting up test environment"
 
@@ -241,11 +299,7 @@ log_step() {
   fi
   log_success "PRD parsed successfully."
 
-  log_step "Listing tasks"
-  task-master list > task_list_output.log
-  log_success "Task list saved to task_list_output.log"
-
-  log_step "Analyzing complexity"
+  log_step "Expanding Task 1 (to ensure subtask 1.1 exists)"
   # Add --research flag if needed and API keys support it
   task-master analyze-complexity --research --output complexity_results.json
   if [ ! -f "complexity_results.json" ]; then
@@ -298,7 +352,39 @@ log_step() {
 
   # === End Model Commands Test ===
 
-  # === Multi-Provider Add-Task Test ===
+  # === Fallback Model generateObjectService Verification ===
+  if [ "$run_verification_test" = true ]; then
+    log_step "Starting Fallback Model (generateObjectService) Verification (Calls separate script)"
+    verification_script_path="$ORIGINAL_DIR/tests/e2e/run_fallback_verification.sh"
+
+    if [ -x "$verification_script_path" ]; then
+        log_info "--- Executing Fallback Verification Script: $verification_script_path ---"
+        # Execute the script directly, allowing output to flow to tee
+        # Pass the current directory (the test run dir) as the argument
+        "$verification_script_path" "$(pwd)"
+        verification_exit_code=$? # Capture exit code immediately
+        log_info "--- Finished Fallback Verification Script Execution (Exit Code: $verification_exit_code) ---"
+
+        # Log success/failure based on captured exit code
+        if [ $verification_exit_code -eq 0 ]; then
+            log_success "Fallback verification script reported success."
+        else
+            log_error "Fallback verification script reported FAILURE (Exit Code: $verification_exit_code)."
+            # Decide whether to exit the main script or just log the error
+            # exit 1 # Uncomment to make verification failure fatal
+        fi
+    else
+        log_error "Fallback verification script not found or not executable at $verification_script_path. Skipping verification."
+        # Decide whether to exit or continue
+        # exit 1
+    fi
+  else
+      log_info "Skipping Fallback Verification test as requested by flag."
+  fi
+  # === END Verification Section ===
+
+
+  # === Multi-Provider Add-Task Test (Keep as is) ===
   log_step "Starting Multi-Provider Add-Task Test Sequence"
 
   # Define providers, models, and flags
@@ -308,9 +394,9 @@ log_step() {
     "claude-3-7-sonnet-20250219"
     "gpt-4o"
     "gemini-2.5-pro-exp-03-25"
-    "sonar-pro"
+    "sonar-pro" # Note: This is research-only, add-task might fail if not using research model
     "grok-3"
-    "anthropic/claude-3.7-sonnet" # OpenRouter uses Claude 3.7 
+    "anthropic/claude-3.7-sonnet" # OpenRouter uses Claude 3.7
   )
   # Flags: Add provider-specific flags here, e.g., --openrouter. Use empty string if none.
   declare -a flags=("" "" "" "" "" "--openrouter")
@@ -318,6 +404,7 @@ log_step() {
   # Consistent prompt for all providers
   add_task_prompt="Create a task to implement user authentication using OAuth 2.0 with Google as the provider. Include steps for registering the app, handling the callback, and storing user sessions."
   log_info "Using consistent prompt for add-task tests: \"$add_task_prompt\""
+  echo "--- Multi-Provider Add Task Summary ---" > provider_add_task_summary.log # Initialize summary log
 
   for i in "${!providers[@]}"; do
     provider="${providers[$i]}"
@@ -341,7 +428,7 @@ log_step() {
 
     # 2. Run add-task
     log_info "Running add-task with prompt..."
-    add_task_output_file="add_task_raw_output_${provider}.log"
+    add_task_output_file="add_task_raw_output_${provider}_${model//\//_}.log" # Sanitize ID
     # Run add-task and capture ALL output (stdout & stderr) to a file AND a variable
     add_task_cmd_output=$(task-master add-task --prompt "$add_task_prompt" 2>&1 | tee "$add_task_output_file")
     add_task_exit_code=${PIPESTATUS[0]}
@@ -388,29 +475,30 @@ log_step() {
   echo "Provider add-task summary log available at: provider_add_task_summary.log"
   # === End Multi-Provider Add-Task Test ===
 
-  log_step "Listing tasks again (final)"
-  task-master list --with-subtasks > task_list_final.log
-  log_success "Final task list saved to task_list_final.log"
+  log_step "Listing tasks again (after multi-add)"
+  task-master list --with-subtasks > task_list_after_multi_add.log
+  log_success "Task list after multi-add saved to task_list_after_multi_add.log"
 
-  # === Test Core Task Commands ===
-  log_step "Listing tasks (initial)"
-  task-master list > task_list_initial.log
-  log_success "Initial task list saved to task_list_initial.log"
+
+  # === Resume Core Task Commands Test ===
+  log_step "Listing tasks (for core tests)"
+  task-master list > task_list_core_test_start.log
+  log_success "Core test initial task list saved."
 
   log_step "Getting next task"
-  task-master next > next_task_initial.log
-  log_success "Initial next task saved to next_task_initial.log"
+  task-master next > next_task_core_test.log
+  log_success "Core test next task saved."
 
   log_step "Showing Task 1 details"
-  task-master show 1 > task_1_details.log
-  log_success "Task 1 details saved to task_1_details.log"
+  task-master show 1 > task_1_details_core_test.log
+  log_success "Task 1 details saved."
 
   log_step "Adding dependency (Task 2 depends on Task 1)"
   task-master add-dependency --id=2 --depends-on=1
   log_success "Added dependency 2->1."
 
   log_step "Validating dependencies (after add)"
-  task-master validate-dependencies > validate_dependencies_after_add.log
+  task-master validate-dependencies > validate_dependencies_after_add_core.log
   log_success "Dependency validation after add saved."
 
   log_step "Removing dependency (Task 2 depends on Task 1)"
@@ -418,7 +506,7 @@ log_step() {
   log_success "Removed dependency 2->1."
 
   log_step "Fixing dependencies (should be no-op now)"
-  task-master fix-dependencies > fix_dependencies_output.log
+  task-master fix-dependencies > fix_dependencies_output_core.log
   log_success "Fix dependencies attempted."
 
   # === Start New Test Section: Validate/Fix Bad Dependencies ===
@@ -483,15 +571,20 @@ log_step() {
 
   # === End New Test Section ===
 
-  log_step "Adding Task 11 (Manual)"
-  task-master add-task --title="Manual E2E Task" --description="Add basic health check endpoint" --priority=low --dependencies=3 # Depends on backend setup
-  # Assuming the new task gets ID 11 (adjust if PRD parsing changes)
-  log_success "Added Task 11 manually."
+  # Find the next available task ID dynamically instead of hardcoding 11, 12
+  # Assuming tasks are added sequentially and we didn't remove any core tasks yet
+  last_task_id=$(jq '[.tasks[].id] | max' tasks/tasks.json)
+  manual_task_id=$((last_task_id + 1))
+  ai_task_id=$((manual_task_id + 1))
 
-  log_step "Adding Task 12 (AI)"
+  log_step "Adding Task $manual_task_id (Manual)"
+  task-master add-task --title="Manual E2E Task" --description="Add basic health check endpoint" --priority=low --dependencies=3 # Depends on backend setup
+  log_success "Added Task $manual_task_id manually."
+
+  log_step "Adding Task $ai_task_id (AI)"
   task-master add-task --prompt="Implement basic UI styling using CSS variables for colors and spacing" --priority=medium --dependencies=1 # Depends on frontend setup
-  # Assuming the new task gets ID 12
-  log_success "Added Task 12 via AI prompt."
+  log_success "Added Task $ai_task_id via AI prompt."
+
 
   log_step "Updating Task 3 (update-task AI)"
   task-master update-task --id=3 --prompt="Update backend server setup: Ensure CORS is configured to allow requests from the frontend origin."
@@ -524,8 +617,8 @@ log_step() {
   log_success "Set status for Task 1 to done."
 
   log_step "Getting next task (after status change)"
-  task-master next > next_task_after_change.log
-  log_success "Next task after change saved to next_task_after_change.log"
+  task-master next > next_task_after_change_core.log
+  log_success "Next task after change saved."
 
   # === Start New Test Section: List Filtering ===
   log_step "Listing tasks filtered by status 'done'"
@@ -543,10 +636,10 @@ log_step() {
   task-master clear-subtasks --id=8
   log_success "Attempted to clear subtasks from Task 8."
 
-  log_step "Removing Tasks 11 and 12 (multi-ID)"
+  log_step "Removing Tasks $manual_task_id and $ai_task_id (multi-ID)"
   # Remove the tasks we added earlier
-  task-master remove-task --id=11,12 -y
-  log_success "Removed tasks 11 and 12."
+  task-master remove-task --id="$manual_task_id,$ai_task_id" -y
+  log_success "Removed tasks $manual_task_id and $ai_task_id."
 
   # === Start New Test Section: Subtasks & Dependencies ===
 
@@ -569,6 +662,11 @@ log_step() {
   log_step "Expanding Task 1 again (to have subtasks for next test)"
   task-master expand --id=1
   log_success "Attempted to expand Task 1 again."
+  # Verify 1.1 exists again
+  if ! jq -e '.tasks[] | select(.id == 1) | .subtasks[] | select(.id == 1)' tasks/tasks.json > /dev/null; then
+      log_error "Subtask 1.1 not found in tasks.json after re-expanding Task 1."
+      exit 1
+  fi
 
   log_step "Adding dependency: Task 3 depends on Subtask 1.1"
   task-master add-dependency --id=3 --depends-on=1.1
@@ -593,25 +691,17 @@ log_step() {
   log_success "Generated task files."
   # === End Core Task Commands Test ===
 
-  # === AI Commands (Tested earlier implicitly with add/update/expand) ===
-  log_step "Analyzing complexity (AI with Research)"
-  task-master analyze-complexity --research --output complexity_results.json
-  if [ ! -f "complexity_results.json" ]; then log_error "Complexity analysis failed."; exit 1; fi
-  log_success "Complexity analysis saved to complexity_results.json"
+  # === AI Commands (Re-test some after changes) ===
+  log_step "Analyzing complexity (AI with Research - Final Check)"
+  task-master analyze-complexity --research --output complexity_results_final.json
+  if [ ! -f "complexity_results_final.json" ]; then log_error "Final Complexity analysis failed."; exit 1; fi
+  log_success "Final Complexity analysis saved."
 
-  log_step "Generating complexity report (Non-AI)"
-  task-master complexity-report --file complexity_results.json > complexity_report_formatted.log
-  log_success "Formatted complexity report saved to complexity_report_formatted.log"
+  log_step "Generating complexity report (Non-AI - Final Check)"
+  task-master complexity-report --file complexity_results_final.json > complexity_report_formatted_final.log
+  log_success "Final Formatted complexity report saved."
 
-  # Expand All (Commented Out)
-  # log_step "Expanding All Tasks (AI - Heavy Operation, Commented Out)"
-  # task-master expand --all --research
-  # log_success "Attempted to expand all tasks."
-
-  log_step "Expanding Task 1 (AI - Note: Subtasks were removed/cleared)"
-  task-master expand --id=1
-  log_success "Attempted to expand Task 1 again."
-  # === End AI Commands ===
+  # === End AI Commands Re-test ===
 
   log_step "Listing tasks again (final)"
   task-master list --with-subtasks > task_list_final.log
@@ -623,17 +713,7 @@ log_step() {
   ABS_TEST_RUN_DIR="$(pwd)"
   echo "Test artifacts and logs are located in: $ABS_TEST_RUN_DIR"
   echo "Key artifact files (within above dir):"
-  echo "  - .env (Copied from source)"
-  echo "  - tasks/tasks.json"
-  echo "  - task_list_output.log"
-  echo "  - complexity_results.json"
-  echo "  - complexity_report_formatted.log"
-  echo "  - task_list_after_changes.log"
-  echo "  - models_initial_config.log, models_final_config.log"
-  echo "  - task_list_final.log"
-  echo "  - task_list_initial.log, next_task_initial.log, task_1_details.log"
-  echo "  - validate_dependencies_after_add.log, fix_dependencies_output.log"
-  echo "  - complexity_*.log"
+  ls -1 # List files in the current directory
   echo ""
   echo "Full script log also available at: $LOG_FILE (relative to project root)"
 

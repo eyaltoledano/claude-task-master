@@ -523,14 +523,24 @@ Integrating Task Master commands with the MCP server (for use by tools like Curs
 
 4.  **Create MCP Tool (`mcp-server/src/tools/`)**:
     - Create a new file (e.g., `your-command.js`) using **kebab-case**.
-    - Import `zod`, `handleApiResult`, `createErrorResponse`, **`getProjectRootFromSession`**, and your `yourCommandDirect` function.
+    - Import `zod`, `handleApiResult`, **`withNormalizedProjectRoot` HOF**, and your `yourCommandDirect` function.
     - Implement `registerYourCommandTool(server)`.
-    - Define the tool `name` using **snake_case** (e.g., `your_command`).
-    - Define the `parameters` using `zod`. **Crucially, define `projectRoot` as optional**: `projectRoot: z.string().optional().describe(...)`. Include `file` if applicable.
-    - Implement the standard `async execute(args, { log, reportProgress, session })` method:
-      - Get `rootFolder` using `getProjectRootFromSession` (with fallback to `args.projectRoot`).
-      - Call `yourCommandDirect({ ...args, projectRoot: rootFolder }, log)`. 
-      - Pass the result to `handleApiResult(result, log, 'Error Message')`.
+    - **Define parameters**: Make `projectRoot` optional (`z.string().optional().describe(...)`) as the HOF handles fallback.
+    - Consider if this operation should run in the background using `AsyncOperationManager`.
+    - Implement the standard `execute` method **wrapped with `withNormalizedProjectRoot`**:
+      ```javascript
+      execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+          // args.projectRoot is now normalized
+          const { projectRoot /*, other args */ } = args;
+          // ... resolve tasks path if needed using normalized projectRoot ...
+          const result = await yourCommandDirect(
+              { /* other args */, projectRoot /* if needed by direct func */ }, 
+              log, 
+              { session }
+          );
+          return handleApiResult(result, log);
+      })
+      ```
 
 5.  **Register Tool**: Import and call `registerYourCommandTool` in `mcp-server/src/tools/index.js`.
 
@@ -614,11 +624,6 @@ When implementing project initialization commands:
            log.error(`Error in initialize_project: ${error.message}`);
            return createErrorResponse(`Failed to initialize project: ${error.message}`);
          }
-       }
-     });
-   }
-   ```
-
        }
      });
    }

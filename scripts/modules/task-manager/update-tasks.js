@@ -275,7 +275,7 @@ async function updateTasks(
 					chalk.cyan.bold('Title'),
 					chalk.cyan.bold('Status')
 				],
-				colWidths: [5, 60, 10]
+				colWidths: [5, 70, 20]
 			});
 
 			tasksToUpdate.forEach((task) => {

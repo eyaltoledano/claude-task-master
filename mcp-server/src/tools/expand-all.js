@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -59,25 +59,16 @@ export function registerExpandAllTool(server) {
 					'Absolute path to the project root directory (derived from session if possible)'
 				)
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(
 					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 				);
 
-				const rootFolder = getProjectRootFromSession(session, log);
-				if (!rootFolder) {
-					log.error('Could not determine project root from session.');
-					return createErrorResponse(
-						'Could not determine project root from session.'
-					);
-				}
-				log.info(`Project root determined: ${rootFolder}`);
-
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
@@ -95,7 +86,7 @@ export function registerExpandAllTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: rootFolder
+						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
@@ -113,6 +104,6 @@ export function registerExpandAllTool(server) {
 					`An unexpected error occurred: ${error.message}`
 				);
 			}
-		}
+		})
 	});
 }

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -41,26 +41,15 @@ export function registerClearSubtasksTool(server) {
 				message: "Either 'id' or 'all' parameter must be provided",
 				path: ['id', 'all']
 			}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
-
-				// Resolve the path to tasks.json
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 				} catch (error) {
@@ -72,14 +61,11 @@ export function registerClearSubtasksTool(server) {
 
 				const result = await clearSubtasksDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						id: args.id,
 						all: args.all
 					},
 					log
-					// Remove context object as clearSubtasksDirect likely doesn't need session/reportProgress
 				);
 
 				if (result.success) {
@@ -93,6 +79,6 @@ export function registerClearSubtasksTool(server) {
 				log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
-		}
+		})
 	});
 }

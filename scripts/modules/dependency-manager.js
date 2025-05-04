@@ -195,7 +195,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 		}
 
 		// Generate updated task files
-		await generateTaskFiles(tasksPath, 'tasks');
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		log('info', 'Task files regenerated with updated dependencies.');
 	} else {
@@ -334,7 +334,7 @@ async function removeDependency(tasksPath, taskId, dependencyId) {
 	}
 
 	// Regenerate task files
-	await generateTaskFiles(tasksPath, 'tasks');
+	await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 }
 
 /**

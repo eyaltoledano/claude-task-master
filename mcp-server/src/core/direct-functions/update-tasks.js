@@ -1,130 +1,122 @@
 /**
  * update-tasks.js
- * Direct function implementation for updating tasks based on new context/prompt
+ * Direct function implementation for updating tasks based on new context
  */
 
+import path from 'path';
 import { updateTasks } from '../../../../scripts/modules/task-manager.js';
-import {
-	enableSilentMode,
-	disableSilentMode
-} from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
 /**
- * Direct function wrapper for updating tasks based on new context/prompt.
+ * Direct function wrapper for updating tasks based on new context.
  *
- * @param {Object} args - Command arguments containing from, prompt, research and tasksJsonPath.
+ * @param {Object} args - Command arguments containing projectRoot, from, prompt, research options.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTasksDirect(args, log, context = {}) {
-	const { session } = context; // Extract session
-	const { tasksJsonPath, from, prompt, research, projectRoot } = args;
+	const { session } = context;
+	const { from, prompt, research, file: fileArg, projectRoot } = args;
 
 	// Create the standard logger wrapper
-	const logWrapper = {
-		info: (message, ...args) => log.info(message, ...args),
-		warn: (message, ...args) => log.warn(message, ...args),
-		error: (message, ...args) => log.error(message, ...args),
-		debug: (message, ...args) => log.debug && log.debug(message, ...args),
-		success: (message, ...args) => log.info(message, ...args)
-	};
+	const logWrapper = createLogWrapper(log);
 
-	// --- Input Validation (Keep existing checks) ---
-	if (!tasksJsonPath) {
-		log.error('updateTasksDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: { code: 'MISSING_ARGUMENT', message: 'tasksJsonPath is required' },
-			fromCache: false
-		};
-	}
-	if (args.id !== undefined && from === undefined) {
-		// Keep 'from' vs 'id' check
-		const errorMessage =
-			"Use 'from' parameter, not 'id', or use 'update_task' tool.";
-		log.error(errorMessage);
-		return {
-			success: false,
-			error: { code: 'PARAMETER_MISMATCH', message: errorMessage },
-			fromCache: false
-		};
-	}
-	if (!from) {
-		log.error('Missing from ID.');
-		return {
-			success: false,
-			error: { code: 'MISSING_FROM_ID', message: 'No from ID specified.' },
-			fromCache: false
-		};
-	}
-	if (!prompt) {
-		log.error('Missing prompt.');
-		return {
-			success: false,
-			error: { code: 'MISSING_PROMPT', message: 'No prompt specified.' },
-			fromCache: false
-		};
-	}
-	let fromId;
-	try {
-		fromId = parseInt(from, 10);
-		if (isNaN(fromId) || fromId <= 0) throw new Error();
-	} catch {
-		log.error(`Invalid from ID: ${from}`);
+	// --- Input Validation ---
+	if (!projectRoot) {
+		logWrapper.error('updateTasksDirect requires a projectRoot argument.');
 		return {
 			success: false,
 			error: {
-				code: 'INVALID_FROM_ID',
-				message: `Invalid from ID: ${from}. Must be a positive integer.`
-			},
-			fromCache: false
+				code: 'MISSING_ARGUMENT',
+				message: 'projectRoot is required.'
+			}
 		};
 	}
-	const useResearch = research === true;
-	// --- End Input Validation ---
 
-	log.info(
-		`Updating tasks from ID ${fromId}. Research: ${useResearch}. Project Root: ${projectRoot}`
+	if (!from) {
+		logWrapper.error('updateTasksDirect called without from ID');
+		return {
+			success: false,
+			error: {
+				code: 'MISSING_ARGUMENT',
+				message: 'Starting task ID (from) is required'
+			}
+		};
+	}
+
+	if (!prompt) {
+		logWrapper.error('updateTasksDirect called without prompt');
+		return {
+			success: false,
+			error: {
+				code: 'MISSING_ARGUMENT',
+				message: 'Update prompt is required'
+			}
+		};
+	}
+
+	// Resolve tasks file path
+	const tasksFile = fileArg
+		? path.resolve(projectRoot, fileArg)
+		: path.resolve(projectRoot, 'tasks', 'tasks.json');
+
+	logWrapper.info(
+		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksFile}, ProjectRoot: ${projectRoot}`
 	);
 
 	enableSilentMode(); // Enable silent mode
 	try {
-		// Create logger wrapper using the utility
-		const mcpLog = createLogWrapper(log);
-
-		// Execute core updateTasks function, passing session context AND projectRoot
-		await updateTasks(
-			tasksJsonPath,
-			fromId,
+		// Call the core updateTasks function
+		const result = await updateTasks(
+			tasksFile,
+			from,
 			prompt,
-			useResearch,
-			// Pass context with logger wrapper, session, AND projectRoot
-			{ mcpLog, session, projectRoot },
-			'json' // Explicitly request JSON format for MCP
+			research,
+			{
+				session,
+				mcpLog: logWrapper,
+				projectRoot
+			},
+			'json'
 		);
 
-		// Since updateTasks modifies file and doesn't return data, create success message
-		return {
-			success: true,
-			data: {
-				message: `Successfully initiated update for tasks from ID ${fromId} based on the prompt.`,
-				fromId,
-				tasksPath: tasksJsonPath,
-				useResearch
-			},
-			fromCache: false // Modifies state
-		};
+		// updateTasks returns { success: true, updatedTasks: [...] } on success
+		if (result && result.success && Array.isArray(result.updatedTasks)) {
+			logWrapper.success(
+				`Successfully updated ${result.updatedTasks.length} tasks.`
+			);
+			return {
+				success: true,
+				data: {
+					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
+					tasksFile,
+					updatedCount: result.updatedTasks.length
+				}
+			};
+		} else {
+			// Handle case where core function didn't return expected success structure
+			logWrapper.error(
+				'Core updateTasks function did not return a successful structure.'
+			);
+			return {
+				success: false,
+				error: {
+					code: 'CORE_FUNCTION_ERROR',
+					message:
+						result?.message ||
+						'Core function failed to update tasks or returned unexpected result.'
+				}
+			};
+		}
 	} catch (error) {
-		log.error(`Error executing core updateTasks: ${error.message}`);
+		logWrapper.error(`Error executing core updateTasks: ${error.message}`);
 		return {
 			success: false,
 			error: {
 				code: 'UPDATE_TASKS_CORE_ERROR',
 				message: error.message || 'Unknown error updating tasks'
-			},
-			fromCache: false
+			}
 		};
 	} finally {
 		disableSilentMode(); // Ensure silent mode is disabled

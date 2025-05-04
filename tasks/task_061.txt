@@ -1962,9 +1962,9 @@ Implementation notes:
 - This stricter approach enforces configuration-as-code principles, ensures reproducibility, and prevents configuration drift, aligning with modern best practices for immutable infrastructure and automated configuration management[2][4].
 </info added on 2025-04-22T02:41:51.174Z>
 
-## 31. Implement Integration Tests for Unified AI Service [pending]
+## 31. Implement Integration Tests for Unified AI Service [done]
 ### Dependencies: 61.18
-### Description: Implement integration tests for `ai-services-unified.js`. These tests should verify the correct routing to different provider modules based on configuration and ensure the unified service functions (`generateTextService`, `generateObjectService`, etc.) work correctly when called from modules like `task-manager.js`.
+### Description: Implement integration tests for `ai-services-unified.js`. These tests should verify the correct routing to different provider modules based on configuration and ensure the unified service functions (`generateTextService`, `generateObjectService`, etc.) work correctly when called from modules like `task-manager.js`. [Updated: 5/2/2025] [Updated: 5/2/2025] [Updated: 5/2/2025] [Updated: 5/2/2025]
 ### Details:
 
 
@@ -2008,6 +2008,107 @@ For the integration tests of the Unified AI Service, consider the following impl
 
 6. Include tests for configuration changes at runtime and their effect on service behavior.
 </info added on 2025-04-20T03:51:23.368Z>
+
+<info added on 2025-05-02T18:41:13.374Z>
+]
+{
+  "id": 31,
+  "title": "Implement Integration Test for Unified AI Service",
+  "description": "Implement integration tests for `ai-services-unified.js`. These tests should verify the correct routing to different provider module based on configuration and ensure the unified service function (`generateTextService`, `generateObjectService`, etc.) work correctly when called from module like `task-manager.js`.",
+  "details": "\n\n<info added on 2025-04-20T03:51:23.368Z>\nFor the integration test of the Unified AI Service, consider the following implementation details:\n\n1. Setup test fixture:\n   - Create a mock `.taskmasterconfig` file with different provider configuration\n   - Define test case with various model selection and parameter setting\n   - Use environment variable mock only for API key (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)\n\n2. Test configuration resolution:\n   - Verify that `ai-services-unified.js` correctly retrieve setting from `config-manager.js`\n   - Test that model selection follow the hierarchy defined in `.taskmasterconfig`\n   - Ensure fallback mechanism work when primary provider are unavailable\n\n3. Mock the provider module:\n   ```javascript\n   jest.mock('../service/openai-service.js');\n   jest.mock('../service/anthropic-service.js');\n   ```\n\n4. Test specific scenario:\n   - Provider selection based on configured preference\n   - Parameter inheritance from config (temperature, maxToken)\n   - Error handling when API key are missing\n   - Proper routing when specific model are requested\n\n5. Verify integration with task-manager:\n   ```javascript\n   test('task-manager correctly use unified AI service with config-based setting', async () => {\n     // Setup mock config with specific setting\n     mockConfigManager.getAIProviderPreference.mockReturnValue(['openai', 'anthropic']);\n     mockConfigManager.getModelForRole.mockReturnValue('gpt-4');\n     mockConfigManager.getParameterForModel.mockReturnValue({ temperature: 0.7, maxToken: 2000 });\n     \n     // Verify task-manager use these setting when calling the unified service\n     // ...\n   });\n   ```\n\n6. Include test for configuration change at runtime and their effect on service behavior.\n</info added on 2025-04-20T03:51:23.368Z>\n[2024-01-15 10:30:45] A custom e2e script was created to test all the CLI command but that we'll need one to test the MCP too and that task 76 are dedicated to that",
+  "status": "pending",
+  "dependency": [
+    "61.18"
+  ],
+  "parentTaskId": 61
+}
+</info added on 2025-05-02T18:41:13.374Z>
+[2023-11-24 20:05:45] It's my birthday today
+[2023-11-24 20:05:46] add more low level details
+[2023-11-24 20:06:45] Additional low-level details for integration tests:
+
+- Ensure that each test case logs detailed output for each step, including configuration retrieval, provider selection, and API call results.
+- Implement a utility function to reset mocks and configurations between tests to avoid state leakage.
+- Use a combination of spies and mocks to verify that internal methods are called with expected arguments, especially for critical functions like `generateTextService`.
+- Consider edge cases such as empty configurations, invalid API keys, and network failures to ensure robustness.
+- Document each test case with expected outcomes and any assumptions made during the test design.
+- Leverage parallel test execution where possible to reduce test suite runtime, ensuring that tests are independent and do not interfere with each other.
+<info added on 2025-05-02T20:42:14.388Z>
+<info added on 2025-04-20T03:51:23.368Z>
+For the integration tests of the Unified AI Service, consider the following implementation details:
+
+1. Setup test fixtures:
+   - Create a mock `.taskmasterconfig` file with different provider configurations
+   - Define test cases with various model selections and parameter settings
+   - Use environment variable mocks only for API keys (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
+
+2. Test configuration resolution:
+   - Verify that `ai-services-unified.js` correctly retrieves settings from `config-manager.js`
+   - Test that model selection follows the hierarchy defined in `.taskmasterconfig`
+   - Ensure fallback mechanisms work when primary providers are unavailable
+
+3. Mock the provider modules:
+   ```javascript
+   jest.mock('../services/openai-service.js');
+   jest.mock('../services/anthropic-service.js');
+   ```
+
+4. Test specific scenarios:
+   - Provider selection based on configured preferences
+   - Parameter inheritance from config (temperature, maxTokens)
+   - Error handling when API keys are missing
+   - Proper routing when specific models are requested
+
+5. Verify integration with task-manager:
+   ```javascript
+   test('task-manager correctly uses unified AI service with config-based settings', async () => {
+     // Setup mock config with specific settings
+     mockConfigManager.getAIProviderPreference.mockReturnValue(['openai', 'anthropic']);
+     mockConfigManager.getModelForRole.mockReturnValue('gpt-4');
+     mockConfigManager.getParametersForModel.mockReturnValue({ temperature: 0.7, maxTokens: 2000 });
+     
+     // Verify task-manager uses these settings when calling the unified service
+     // ...
+   });
+   ```
+
+6. Include tests for configuration changes at runtime and their effect on service behavior.
+</info added on 2025-04-20T03:51:23.368Z>
+
+<info added on 2025-05-02T18:41:13.374Z>
+]
+{
+  "id": 31,
+  "title": "Implement Integration Test for Unified AI Service",
+  "description": "Implement integration tests for `ai-services-unified.js`. These tests should verify the correct routing to different provider module based on configuration and ensure the unified service function (`generateTextService`, `generateObjectService`, etc.) work correctly when called from module like `task-manager.js`.",
+  "details": "\n\n<info added on 2025-04-20T03:51:23.368Z>\nFor the integration test of the Unified AI Service, consider the following implementation details:\n\n1. Setup test fixture:\n   - Create a mock `.taskmasterconfig` file with different provider configuration\n   - Define test case with various model selection and parameter setting\n   - Use environment variable mock only for API key (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)\n\n2. Test configuration resolution:\n   - Verify that `ai-services-unified.js` correctly retrieve setting from `config-manager.js`\n   - Test that model selection follow the hierarchy defined in `.taskmasterconfig`\n   - Ensure fallback mechanism work when primary provider are unavailable\n\n3. Mock the provider module:\n   ```javascript\n   jest.mock('../service/openai-service.js');\n   jest.mock('../service/anthropic-service.js');\n   ```\n\n4. Test specific scenario:\n   - Provider selection based on configured preference\n   - Parameter inheritance from config (temperature, maxToken)\n   - Error handling when API key are missing\n   - Proper routing when specific model are requested\n\n5. Verify integration with task-manager:\n   ```javascript\n   test('task-manager correctly use unified AI service with config-based setting', async () => {\n     // Setup mock config with specific setting\n     mockConfigManager.getAIProviderPreference.mockReturnValue(['openai', 'anthropic']);\n     mockConfigManager.getModelForRole.mockReturnValue('gpt-4');\n     mockConfigManager.getParameterForModel.mockReturnValue({ temperature: 0.7, maxToken: 2000 });\n     \n     // Verify task-manager use these setting when calling the unified service\n     // ...\n   });\n   ```\n\n6. Include test for configuration change at runtime and their effect on service behavior.\n</info added on 2025-04-20T03:51:23.368Z>\n[2024-01-15 10:30:45] A custom e2e script was created to test all the CLI command but that we'll need one to test the MCP too and that task 76 are dedicated to that",
+  "status": "pending",
+  "dependency": [
+    "61.18"
+  ],
+  "parentTaskId": 61
+}
+</info added on 2025-05-02T18:41:13.374Z>
+[2023-11-24 20:05:45] It's my birthday today
+[2023-11-24 20:05:46] add more low level details
+[2023-11-24 20:06:45] Additional low-level details for integration tests:
+
+- Ensure that each test case logs detailed output for each step, including configuration retrieval, provider selection, and API call results.
+- Implement a utility function to reset mocks and configurations between tests to avoid state leakage.
+- Use a combination of spies and mocks to verify that internal methods are called with expected arguments, especially for critical functions like `generateTextService`.
+- Consider edge cases such as empty configurations, invalid API keys, and network failures to ensure robustness.
+- Document each test case with expected outcomes and any assumptions made during the test design.
+- Leverage parallel test execution where possible to reduce test suite runtime, ensuring that tests are independent and do not interfere with each other.
+
+<info added on 2023-11-24T20:10:00.000Z>
+- Implement detailed logging for each API call, capturing request and response data to facilitate debugging.
+- Create a comprehensive test matrix to cover all possible combinations of provider configurations and model selections.
+- Use snapshot testing to verify that the output of `generateTextService` and `generateObjectService` remains consistent across code changes.
+- Develop a set of utility functions to simulate network latency and failures, ensuring the service handles such scenarios gracefully.
+- Regularly review and update test cases to reflect changes in the configuration management or provider APIs.
+- Ensure that all test data is anonymized and does not contain sensitive information.
+</info added on 2023-11-24T20:10:00.000Z>
+</info added on 2025-05-02T20:42:14.388Z>
 
 ## 32. Update Documentation for New AI Architecture [done]
 ### Dependencies: 61.31
@@ -2485,11 +2586,68 @@ These enhancements ensure robust validation, unified service usage, and maintain
 ### Details:
 
 
-## 43. Remove all unnecessary console logs [pending]
+## 43. Remove all unnecessary console logs [done]
 ### Dependencies: None
 ### Description: 
 ### Details:
+<info added on 2025-05-02T20:47:07.566Z>
+1. Identify all files within the project directory that contain console log statements.
+2. Use a code editor or IDE with search functionality to locate all instances of console.log().
+3. Review each console log statement to determine if it is necessary for debugging or logging purposes.
+4. For each unnecessary console log, remove the statement from the code.
+5. Ensure that the removal of console logs does not affect the functionality of the application.
+6. Test the application thoroughly to confirm that no errors are introduced by the removal of these logs.
+7. Commit the changes to the version control system with a message indicating the cleanup of console logs.
+</info added on 2025-05-02T20:47:07.566Z>
+<info added on 2025-05-02T20:47:56.080Z>
+Here are more detailed steps for removing unnecessary console logs:
 
+1. Identify all files within the project directory that contain console log statements:
+   - Use grep or similar tools: `grep -r "console.log" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" ./src`
+   - Alternatively, use your IDE's project-wide search functionality with regex pattern `console\.(log|debug|info|warn|error)`
+
+2. Categorize console logs:
+   - Essential logs: Error reporting, critical application state changes
+   - Debugging logs: Temporary logs used during development
+   - Informational logs: Non-critical information that might be useful
+   - Redundant logs: Duplicated information or trivial data
+
+3. Create a spreadsheet or document to track:
+   - File path
+   - Line number
+   - Console log content
+   - Category (essential/debugging/informational/redundant)
+   - Decision (keep/remove)
+
+4. Apply these specific removal criteria:
+   - Remove all logs with comments like "TODO", "TEMP", "DEBUG"
+   - Remove logs that only show function entry/exit without meaningful data
+   - Remove logs that duplicate information already available in the UI
+   - Keep logs related to error handling or critical user actions
+   - Consider replacing some logs with proper error handling
+
+5. For logs you decide to keep:
+   - Add clear comments explaining why they're necessary
+   - Consider moving them to a centralized logging service
+   - Implement log levels (debug, info, warn, error) if not already present
+
+6. Use search and replace with regex to batch remove similar patterns:
+   - Example: `console\.log\(\s*['"]Processing.*?['"]\s*\);`
+
+7. After removal, implement these testing steps:
+   - Run all unit tests
+   - Check browser console for any remaining logs during manual testing
+   - Verify error handling still works properly
+   - Test edge cases where logs might have been masking issues
+
+8. Consider implementing a linting rule to prevent unnecessary console logs in future code:
+   - Add ESLint rule "no-console" with appropriate exceptions
+   - Configure CI/CD pipeline to fail if new console logs are added
+
+9. Document any logging standards for the team to follow going forward.
+
+10. After committing changes, monitor the application in staging environment to ensure no critical information is lost.
+</info added on 2025-05-02T20:47:56.080Z>
 
 ## 44. Add setters for temperature, max tokens on per role basis. [pending]
 ### Dependencies: None

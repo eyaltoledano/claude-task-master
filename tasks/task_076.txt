@@ -1,0 +1,59 @@
+# Task ID: 76
+# Title: Develop E2E Test Framework for Taskmaster MCP Server (FastMCP over stdio)
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Design and implement an end-to-end (E2E) test framework for the Taskmaster MCP server, enabling programmatic interaction with the FastMCP server over stdio by sending and receiving JSON tool request/response messages.
+# Details:
+Research existing E2E testing approaches for MCP servers, referencing examples such as the MCP Server E2E Testing Example. Architect a test harness (preferably in Python or Node.js) that can launch the FastMCP server as a subprocess, establish stdio communication, and send well-formed JSON tool request messages. 
+
+Implementation details:
+1. Use `subprocess.Popen` (Python) or `child_process.spawn` (Node.js) to launch the FastMCP server with appropriate stdin/stdout pipes
+2. Implement a message protocol handler that formats JSON requests with proper line endings and message boundaries
+3. Create a buffered reader for stdout that correctly handles chunked responses and reconstructs complete JSON objects
+4. Develop a request/response correlation mechanism using unique IDs for each request
+5. Implement timeout handling for requests that don't receive responses
+
+Implement robust parsing of JSON responses, including error handling for malformed or unexpected output. The framework should support defining test cases as scripts or data files, allowing for easy addition of new scenarios. 
+
+Test case structure should include:
+- Setup phase for environment preparation
+- Sequence of tool requests with expected responses
+- Validation functions for response verification
+- Teardown phase for cleanup
+
+Ensure the framework can assert on both the structure and content of responses, and provide clear logging for debugging. Document setup, usage, and extension instructions. Consider cross-platform compatibility and CI integration.
+
+**Clarification:** The E2E test framework should focus on testing the FastMCP server's ability to correctly process tool requests and return appropriate responses. This includes verifying that the server properly handles different types of tool calls (e.g., file operations, web requests, task management), validates input parameters, and returns well-structured responses. The framework should be designed to be extensible, allowing new test cases to be added as the server's capabilities evolve. Tests should cover both happy paths and error conditions to ensure robust server behavior under various scenarios.
+
+# Test Strategy:
+Verify the framework by implementing a suite of representative E2E tests that cover typical tool requests and edge cases. Specific test cases should include:
+
+1. Basic tool request/response validation
+   - Send a simple file_read request and verify response structure
+   - Test with valid and invalid file paths
+   - Verify error handling for non-existent files
+
+2. Concurrent request handling
+   - Send multiple requests in rapid succession
+   - Verify all responses are received and correlated correctly
+
+3. Large payload testing
+   - Test with large file contents (>1MB)
+   - Verify correct handling of chunked responses
+
+4. Error condition testing
+   - Malformed JSON requests
+   - Invalid tool names
+   - Missing required parameters
+   - Server crash recovery
+
+Confirm that tests can start and stop the FastMCP server, send requests, and accurately parse and validate responses. Implement specific assertions for response timing, structure validation using JSON schema, and content verification. Intentionally introduce malformed requests and simulate server errors to ensure robust error handling. 
+
+Implement detailed logging with different verbosity levels:
+- ERROR: Failed tests and critical issues
+- WARNING: Unexpected but non-fatal conditions
+- INFO: Test progress and results
+- DEBUG: Raw request/response data
+
+Run the test suite in a clean environment and confirm all expected assertions and logs are produced. Validate that new test cases can be added with minimal effort and that the framework integrates with CI pipelines. Create a CI configuration that runs tests on each commit.

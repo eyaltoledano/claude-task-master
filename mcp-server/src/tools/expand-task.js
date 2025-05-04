@@ -4,10 +4,13 @@
  */
 
 import { z } from 'zod';
-import { handleApiResult, createErrorResponse } from './utils.js';
+import {
+	handleApiResult,
+	createErrorResponse,
+	withNormalizedProjectRoot
+} from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
-import path from 'path';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -44,32 +47,21 @@ export function registerExpandTaskTool(server) {
 				.default(false)
 				.describe('Force expansion even if subtasks exist')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
 
-				const rootFolder = args.projectRoot;
-				if (!rootFolder || !path.isAbsolute(rootFolder)) {
-					log.error(
-						`expand-task: projectRoot is required and must be absolute.`
-					);
-					return createErrorResponse(
-						'projectRoot is required and must be absolute.'
-					);
-				}
-
-				// Resolve the path to tasks.json using the utility
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
-					log.info(`expand-task: Resolved tasks path: ${tasksJsonPath}`);
 				} catch (error) {
-					log.error(`expand-task: Error finding tasks.json: ${error.message}`);
+					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
-						`Failed to find tasks.json within project root '${rootFolder}': ${error.message}`
+						`Failed to find tasks.json: ${error.message}`
 					);
 				}
 
@@ -81,24 +73,17 @@ export function registerExpandTaskTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: rootFolder
+						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				log.info(
-					`expand-task: Direct function result: success=${result.success}`
-				);
 				return handleApiResult(result, log, 'Error expanding task');
 			} catch (error) {
-				log.error(
-					`Critical error in ${toolName} tool execute: ${error.message}`
-				);
-				return createErrorResponse(
-					`Internal tool error (${toolName}): ${error.message}`
-				);
+				log.error(`Error in expand-task tool: ${error.message}`);
+				return createErrorResponse(error.message);
 			}
-		}
+		})
 	});
 }

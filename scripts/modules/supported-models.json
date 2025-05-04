@@ -13,20 +13,6 @@
 			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 64000
-		},
-		{
-			"id": "claude-3-5-haiku-20241022",
-			"swe_score": 0.406,
-			"cost_per_1m_tokens": { "input": 0.8, "output": 4.0 },
-			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 64000
-		},
-		{
-			"id": "claude-3-opus-20240229",
-			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 15, "output": 75 },
-			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 64000
 		}
 	],
 	"openai": [
@@ -41,7 +27,7 @@
 			"id": "o1",
 			"swe_score": 0.489,
 			"cost_per_1m_tokens": { "input": 15.0, "output": 60.0 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "o3",
@@ -53,7 +39,7 @@
 			"id": "o3-mini",
 			"swe_score": 0.493,
 			"cost_per_1m_tokens": { "input": 1.1, "output": 4.4 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main"],
 			"max_tokens": 100000
 		},
 		{
@@ -66,49 +52,49 @@
 			"id": "o1-mini",
 			"swe_score": 0.4,
 			"cost_per_1m_tokens": { "input": 1.1, "output": 4.4 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "o1-pro",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 150.0, "output": 600.0 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "gpt-4-5-preview",
 			"swe_score": 0.38,
 			"cost_per_1m_tokens": { "input": 75.0, "output": 150.0 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "gpt-4-1-mini",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0.4, "output": 1.6 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "gpt-4-1-nano",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0.1, "output": 0.4 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "gpt-4o-mini",
 			"swe_score": 0.3,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main"]
 		},
 		{
 			"id": "gpt-4o-search-preview",
 			"swe_score": 0.33,
 			"cost_per_1m_tokens": { "input": 2.5, "output": 10.0 },
-			"allowed_roles": ["main", "fallback", "research"]
+			"allowed_roles": ["research"]
 		},
 		{
 			"id": "gpt-4o-mini-search-preview",
 			"swe_score": 0.3,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
-			"allowed_roles": ["main", "fallback", "research"]
+			"allowed_roles": ["research"]
 		}
 	],
 	"google": [
@@ -190,25 +176,10 @@
 			"max_tokens": 131072
 		},
 		{
-			"id": "grok-3-mini",
-			"name": "Grok 3 Mini",
-			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.3, "output": 0.5 },
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 131072
-		},
-		{
 			"id": "grok-3-fast",
 			"name": "Grok 3 Fast",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 5, "output": 25 },
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 131072
-		},
-		{
-			"id": "grok-3-mini-fast",
-			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.6, "output": 4 },
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 131072
 		}
@@ -283,7 +254,7 @@
 			"id": "deepseek/deepseek-chat-v3-0324",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0.27, "output": 1.1 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main"],
 			"max_tokens": 64000
 		},
 		{
@@ -312,14 +283,14 @@
 			"id": "google/gemini-2.5-flash-preview",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main"],
 			"max_tokens": 65535
 		},
 		{
 			"id": "google/gemini-2.5-flash-preview:thinking",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 3.5 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main"],
 			"max_tokens": 65535
 		},
 		{

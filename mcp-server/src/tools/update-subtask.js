@@ -4,10 +4,13 @@
  */
 
 import { z } from 'zod';
-import { handleApiResult, createErrorResponse } from './utils.js';
+import {
+	handleApiResult,
+	createErrorResponse,
+	withNormalizedProjectRoot
+} from './utils.js';
 import { updateSubtaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
-import path from 'path';
 
 /**
  * Register the update-subtask tool with the MCP server
@@ -34,45 +37,31 @@ export function registerUpdateSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_subtask';
 			try {
 				log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
-				// 1. Get Project Root
-				const rootFolder = args.projectRoot;
-				if (!rootFolder || !path.isAbsolute(rootFolder)) {
-					log.error(
-						`${toolName}: projectRoot is required and must be absolute.`
-					);
-					return createErrorResponse(
-						'projectRoot is required and must be absolute.'
-					);
-				}
-				log.info(`${toolName}: Project root: ${rootFolder}`);
-
-				// 2. Resolve Tasks Path
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 				} catch (error) {
 					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
-						`Failed to find tasks.json within project root '${rootFolder}': ${error.message}`
+						`Failed to find tasks.json: ${error.message}`
 					);
 				}
 
-				// 3. Call Direct Function - Include projectRoot
 				const result = await updateSubtaskByIdDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						projectRoot: rootFolder
+						projectRoot: args.projectRoot
 					},
 					log,
 					{ session }
@@ -95,6 +84,6 @@ export function registerUpdateSubtaskTool(server) {
 					`Internal tool error (${toolName}): ${error.message}`
 				);
 			}
-		}
+		})
 	});
 }

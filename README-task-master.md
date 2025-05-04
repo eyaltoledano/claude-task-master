@@ -47,7 +47,7 @@ npm install task-master-ai
 task-master init
 
 # If installed locally
-npx task-master-init
+npx task-master init
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.

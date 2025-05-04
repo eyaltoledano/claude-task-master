@@ -10,6 +10,7 @@ import boxen from 'boxen';
 import fs from 'fs';
 import https from 'https';
 import inquirer from 'inquirer';
+import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
 import {
@@ -514,80 +515,111 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
+			let useForce = false;
+			let useAppend = false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
-				if (fs.existsSync(outputPath) && !force && !append) {
-					const shouldContinue = await confirmTaskOverwrite(outputPath);
-					if (!shouldContinue) {
-						console.log(chalk.yellow('Operation cancelled by user.'));
+				if (fs.existsSync(outputPath) && !useForce && !useAppend) {
+					const overwrite = await confirmTaskOverwrite(outputPath);
+					if (!overwrite) {
+						log('info', 'Operation cancelled.');
 						return false;
 					}
+					// If user confirms 'y', we should set useForce = true for the parsePRD call
+					// Only overwrite if not appending
+					useForce = true;
 				}
 				return true;
 			}
 
-			// If no input file specified, check for default PRD location
-			if (!inputFile) {
-				if (fs.existsSync(defaultPrdPath)) {
-					console.log(chalk.blue(`Using default PRD file: ${defaultPrdPath}`));
+			let spinner;
 
-					// Check for existing tasks.json before proceeding
-					if (!(await confirmOverwriteIfNeeded())) return;
+			try {
+				if (!inputFile) {
+					if (fs.existsSync(defaultPrdPath)) {
+						console.log(
+							chalk.blue(`Using default PRD file path: ${defaultPrdPath}`)
+						);
+						if (!(await confirmOverwriteIfNeeded())) return;
 
-					console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-					await parsePRD(defaultPrdPath, outputPath, numTasks, { append });
+						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
+						spinner = ora('Parsing PRD and generating tasks...').start();
+						await parsePRD(defaultPrdPath, outputPath, numTasks, {
+							useAppend,
+							useForce
+						});
+						spinner.succeed('Tasks generated successfully!');
+						return;
+					}
+
+					console.log(
+						chalk.yellow(
+							'No PRD file specified and default PRD file not found at scripts/prd.txt.'
+						)
+					);
+					console.log(
+						boxen(
+							chalk.white.bold('Parse PRD Help') +
+								'\n\n' +
+								chalk.cyan('Usage:') +
+								'\n' +
+								`  task-master parse-prd <prd-file.txt> [options]\n\n` +
+								chalk.cyan('Options:') +
+								'\n' +
+								'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
+								'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
+								'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
+								'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
+								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n\n' +
+								chalk.cyan('Example:') +
+								'\n' +
+								'  task-master parse-prd requirements.txt --num-tasks 15\n' +
+								'  task-master parse-prd --input=requirements.txt\n' +
+								'  task-master parse-prd --force\n' +
+								'  task-master parse-prd requirements_v2.txt --append\n\n' +
+								chalk.yellow('Note: This command will:') +
+								'\n' +
+								'  1. Look for a PRD file at scripts/prd.txt by default\n' +
+								'  2. Use the file specified by --input or positional argument if provided\n' +
+								'  3. Generate tasks from the PRD and either:\n' +
+								'     - Overwrite any existing tasks.json file (default)\n' +
+								'     - Append to existing tasks.json if --append is used',
+							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+						)
+					);
 					return;
 				}
 
-				console.log(
-					chalk.yellow(
-						'No PRD file specified and default PRD file not found at scripts/prd.txt.'
-					)
-				);
-				console.log(
-					boxen(
-						chalk.white.bold('Parse PRD Help') +
-							'\n\n' +
-							chalk.cyan('Usage:') +
-							'\n' +
-							`  task-master parse-prd <prd-file.txt> [options]\n\n` +
-							chalk.cyan('Options:') +
-							'\n' +
-							'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
-							'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
-							'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
-							'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
-							'  --append                 Append new tasks to existing tasks.json instead of overwriting\n\n' +
-							chalk.cyan('Example:') +
-							'\n' +
-							'  task-master parse-prd requirements.txt --num-tasks 15\n' +
-							'  task-master parse-prd --input=requirements.txt\n' +
-							'  task-master parse-prd --force\n' +
-							'  task-master parse-prd requirements_v2.txt --append\n\n' +
-							chalk.yellow('Note: This command will:') +
-							'\n' +
-							'  1. Look for a PRD file at scripts/prd.txt by default\n' +
-							'  2. Use the file specified by --input or positional argument if provided\n' +
-							'  3. Generate tasks from the PRD and either:\n' +
-							'     - Overwrite any existing tasks.json file (default)\n' +
-							'     - Append to existing tasks.json if --append is used',
-						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-					)
-				);
-				return;
+				if (!fs.existsSync(inputFile)) {
+					console.error(
+						chalk.red(`Error: Input PRD file not found: ${inputFile}`)
+					);
+					process.exit(1);
+				}
+
+				if (!(await confirmOverwriteIfNeeded())) return;
+
+				console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
+				console.log(chalk.blue(`Generating ${numTasks} tasks...`));
+				if (append) {
+					console.log(chalk.blue('Appending to existing tasks...'));
+				}
+
+				spinner = ora('Parsing PRD and generating tasks...').start();
+				await parsePRD(inputFile, outputPath, numTasks, {
+					append: useAppend,
+					force: useForce
+				});
+				spinner.succeed('Tasks generated successfully!');
+			} catch (error) {
+				if (spinner) {
+					spinner.fail(`Error parsing PRD: ${error.message}`);
+				} else {
+					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
+				}
+				process.exit(1);
 			}
-
-			// Check for existing tasks.json before proceeding with specified input file
-			if (!(await confirmOverwriteIfNeeded())) return;
-
-			console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
-			console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-			if (append) {
-				console.log(chalk.blue('Appending to existing tasks...'));
-			}
-
-			await parsePRD(inputFile, outputPath, numTasks, { append });
 		});
 
 	// update command

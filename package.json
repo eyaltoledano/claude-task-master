@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.12.1",
+	"version": "0.13.2-rc.1",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -64,7 +64,11 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
-		"uuid": "^11.1.0"
+		"uuid": "^11.1.0",
+		"boxen": "^8.0.1",
+		"chalk": "^5.4.1",
+		"cli-table3": "^0.6.5",
+		"zod": "^3.23.8"
 	},
 	"engines": {
 		"node": ">=14.0.0"
@@ -78,15 +82,14 @@
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
 	"files": [
-		"scripts/init.js",
-		"scripts/dev.js",
-		"scripts/modules/**",
+		"scripts/**",
 		"assets/**",
 		".cursor/**",
 		"README-task-master.md",
 		"index.js",
 		"bin/**",
-		"mcp-server/**"
+		"mcp-server/**",
+		"src/**"
 	],
 	"overrides": {
 		"node-fetch": "^3.3.2",
@@ -96,9 +99,6 @@
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
 		"@types/jest": "^29.5.14",
-		"boxen": "^8.0.1",
-		"chalk": "^5.4.1",
-		"cli-table3": "^0.6.5",
 		"execa": "^8.0.1",
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
@@ -108,7 +108,6 @@
 		"prettier": "^3.5.3",
 		"react": "^18.3.1",
 		"supertest": "^7.1.0",
-		"tsx": "^4.16.2",
-		"zod": "^3.23.8"
+		"tsx": "^4.16.2"
 	}
 }

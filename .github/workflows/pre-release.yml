@@ -1,13 +1,15 @@
-name: Release
+name: Pre-Release (RC)
+
 on:
+  workflow_dispatch: # Allows manual triggering from GitHub UI/API
   push:
     branches:
-      - main
+      - 'next'
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency: pre-release-${{ github.ref }}
 
 jobs:
-  release:
+  rc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,14 +31,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
         timeout-minutes: 2
 
-      - name: Exit pre-release mode (safety check)
-        run: npx changeset pre exit || true
+      - name: Enter RC mode
+        run: |
+          npx changeset pre exit || true
+          npx changeset pre enter rc
 
-      - name: Create Release Pull Request or Publish to npm
+      - name: Version RC packages
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@example.com"
+          npx changeset version
+          git add .
+          git commit -m "chore: rc version bump" || echo "No changes to commit"
+
+      - name: Create Release Candidate Pull Request or Publish Release Candidate to npm
         uses: changesets/action@v1
         with:
           publish: npm run release

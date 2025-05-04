@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
 
-import { log, readJSON, writeJSON, truncate } from '../utils.js';
+import { log, readJSON, writeJSON, truncate, isSilentMode } from '../utils.js';
 import { displayBanner } from '../ui.js';
 import generateTaskFiles from './generate-task-files.js';
 
@@ -22,14 +22,16 @@ function clearSubtasks(tasksPath, taskIds) {
 		process.exit(1);
 	}
 
-	console.log(
-		boxen(chalk.white.bold('Clearing Subtasks'), {
-			padding: 1,
-			borderColor: 'blue',
-			borderStyle: 'round',
-			margin: { top: 1, bottom: 1 }
-		})
-	);
+	if (!isSilentMode()) {
+		console.log(
+			boxen(chalk.white.bold('Clearing Subtasks'), {
+				padding: 1,
+				borderColor: 'blue',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			})
+		);
+	}
 
 	// Handle multiple task IDs (comma-separated)
 	const taskIdArray = taskIds.split(',').map((id) => id.trim());
@@ -85,59 +87,65 @@ function clearSubtasks(tasksPath, taskIds) {
 		writeJSON(tasksPath, data);
 
 		// Show summary table
-		console.log(
-			boxen(chalk.white.bold('Subtask Clearing Summary:'), {
-				padding: { left: 2, right: 2, top: 0, bottom: 0 },
-				margin: { top: 1, bottom: 0 },
-				borderColor: 'blue',
-				borderStyle: 'round'
-			})
-		);
-		console.log(summaryTable.toString());
+		if (!isSilentMode()) {
+			console.log(
+				boxen(chalk.white.bold('Subtask Clearing Summary:'), {
+					padding: { left: 2, right: 2, top: 0, bottom: 0 },
+					margin: { top: 1, bottom: 0 },
+					borderColor: 'blue',
+					borderStyle: 'round'
+				})
+			);
+			console.log(summaryTable.toString());
+		}
 
 		// Regenerate task files to reflect changes
 		log('info', 'Regenerating task files...');
 		generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		// Success message
-		console.log(
-			boxen(
-				chalk.green(
-					`Successfully cleared subtasks from ${chalk.bold(clearedCount)} task(s)`
-				),
-				{
-					padding: 1,
-					borderColor: 'green',
-					borderStyle: 'round',
-					margin: { top: 1 }
-				}
-			)
-		);
+		if (!isSilentMode()) {
+			console.log(
+				boxen(
+					chalk.green(
+						`Successfully cleared subtasks from ${chalk.bold(clearedCount)} task(s)`
+					),
+					{
+						padding: 1,
+						borderColor: 'green',
+						borderStyle: 'round',
+						margin: { top: 1 }
+					}
+				)
+			);
 
-		// Next steps suggestion
-		console.log(
-			boxen(
-				chalk.white.bold('Next Steps:') +
-					'\n\n' +
-					`${chalk.cyan('1.')} Run ${chalk.yellow('task-master expand --id=<id>')} to generate new subtasks\n` +
-					`${chalk.cyan('2.')} Run ${chalk.yellow('task-master list --with-subtasks')} to verify changes`,
-				{
+			// Next steps suggestion
+			console.log(
+				boxen(
+					chalk.white.bold('Next Steps:') +
+						'\n\n' +
+						`${chalk.cyan('1.')} Run ${chalk.yellow('task-master expand --id=<id>')} to generate new subtasks\n` +
+						`${chalk.cyan('2.')} Run ${chalk.yellow('task-master list --with-subtasks')} to verify changes`,
+					{
+						padding: 1,
+						borderColor: 'cyan',
+						borderStyle: 'round',
+						margin: { top: 1 }
+					}
+				)
+			);
+		}
+	} else {
+		if (!isSilentMode()) {
+			console.log(
+				boxen(chalk.yellow('No subtasks were cleared'), {
 					padding: 1,
-					borderColor: 'cyan',
+					borderColor: 'yellow',
 					borderStyle: 'round',
 					margin: { top: 1 }
-				}
-			)
-		);
-	} else {
-		console.log(
-			boxen(chalk.yellow('No subtasks were cleared'), {
-				padding: 1,
-				borderColor: 'yellow',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			})
-		);
+				})
+			);
+		}
 	}
 }
 

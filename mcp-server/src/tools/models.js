@@ -5,9 +5,9 @@
 
 import { z } from 'zod';
 import {
-	getProjectRootFromSession,
 	handleApiResult,
-	createErrorResponse
+	createErrorResponse,
+	withNormalizedProjectRoot
 } from './utils.js';
 import { modelsDirect } from '../core/task-master-core.js';
 
@@ -42,7 +42,9 @@ export function registerModelsTool(server) {
 			listAvailableModels: z
 				.boolean()
 				.optional()
-				.describe('List all available models not currently in use.'),
+				.describe(
+					'List all available models not currently in use. Input/output costs values are in dollars (3 is $3.00).'
+				),
 			projectRoot: z
 				.string()
 				.optional()
@@ -56,34 +58,22 @@ export function registerModelsTool(server) {
 				.optional()
 				.describe('Indicates the set model ID is a custom Ollama model.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting models tool with args: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
-
-				// Call the direct function
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				const result = await modelsDirect(
-					{ ...args, projectRoot: rootFolder },
+					{ ...args, projectRoot: args.projectRoot },
 					log,
 					{ session }
 				);
 
-				// Handle and return the result
 				return handleApiResult(result, log);
 			} catch (error) {
 				log.error(`Error in models tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
-		}
+		})
 	});
 }

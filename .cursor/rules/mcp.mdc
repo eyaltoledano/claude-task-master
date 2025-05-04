@@ -188,57 +188,69 @@ execute: async (args, { log, session }) => {
 - **args**: Validated parameters.
 - **context**: Contains `{ log, session }` from FastMCP. (Removed `reportProgress`).
 
-### Standard Tool Execution Pattern
+### Standard Tool Execution Pattern with Path Normalization (Updated)
 
-The `execute` method within each MCP tool (in `mcp-server/src/tools/*.js`) should follow this standard pattern:
+To ensure consistent handling of project paths across different client environments (Windows, macOS, Linux, WSL) and input formats (e.g., `file:///...`, URI encoded paths), all MCP tool `execute` methods that require access to the project root **MUST** be wrapped with the `withNormalizedProjectRoot` Higher-Order Function (HOF).
 
-1.  **Log Entry**: Log the start of the tool execution with relevant arguments.
-2.  **Get Project Root**: Use the `getProjectRootFromSession(session, log)` utility (from [`tools/utils.js`](mdc:mcp-server/src/tools/utils.js)) to extract the project root path from the client session. Fall back to `args.projectRoot` if the session doesn't provide a root.
-3.  **Call Direct Function**: Invoke the corresponding `*Direct` function wrapper (e.g., `listTasksDirect` from [`task-master-core.js`](mdc:mcp-server/src/core/task-master-core.js)), passing an updated `args` object that includes the resolved `projectRoot`. Crucially, the third argument (context) passed to the direct function should **only include `{ log, session }`**. **Do NOT pass `reportProgress`**.
-    ```javascript
-    // Example call (applies to both AI and non-AI direct functions now)
-    const result = await someDirectFunction(
-        { ...args, projectRoot }, // Args including resolved root
-        log,                   // MCP logger
-        { session }            // Context containing session
-    ); 
-    ```
-4.  **Handle Result**: Receive the result object (`{ success, data/error, fromCache }`) from the `*Direct` function.
-5.  **Format Response**: Pass this result object to the `handleApiResult` utility (from [`tools/utils.js`](mdc:mcp-server/src/tools/utils.js)) for standardized MCP response formatting and error handling.
-6.  **Return**: Return the formatted response object provided by `handleApiResult`.
+This HOF, defined in [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js), performs the following before calling the tool's core logic:
+
+1.  **Determines the Raw Root:** It prioritizes `args.projectRoot` if provided by the client, otherwise it calls `getRawProjectRootFromSession` to extract the path from the session.
+2.  **Normalizes the Path:** It uses the `normalizeProjectRoot` helper to decode URIs, strip `file://` prefixes, fix potential Windows drive letter prefixes (e.g., `/C:/`), convert backslashes (`\`) to forward slashes (`/`), and resolve the path to an absolute path suitable for the server's OS.
+3.  **Injects Normalized Path:** It updates the `args` object by replacing the original `projectRoot` (or adding it) with the normalized, absolute path.
+4.  **Executes Original Logic:** It calls the original `execute` function body, passing the updated `args` object.
+
+**Implementation Example:**
 
 ```javascript
-// Example execute method structure for a tool calling an AI-based direct function
-import { getProjectRootFromSession, handleApiResult, createErrorResponse } from './utils.js';
-import { someAIDirectFunction } from '../core/task-master-core.js';
+// In mcp-server/src/tools/your-tool.js
+import {
+    handleApiResult,
+    createErrorResponse,
+    withNormalizedProjectRoot // <<< Import HOF
+} from './utils.js';
+import { yourDirectFunction } from '../core/task-master-core.js';
+import { findTasksJsonPath } from '../core/utils/path-utils.js'; // If needed
 
-// ... inside server.addTool({...})
-execute: async (args, { log, session }) => { // Note: reportProgress is omitted here
-  try {
-    log.info(`Starting AI tool execution with args: ${JSON.stringify(args)}`);
+export function registerYourTool(server) {
+    server.addTool({
+        name: "your_tool",
+        description: "...".
+        parameters: z.object({
+            // ... other parameters ...
+            projectRoot: z.string().optional().describe('...') // projectRoot is optional here, HOF handles fallback
+        }),
+        // Wrap the entire execute function
+        execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+            // args.projectRoot is now guaranteed to be normalized and absolute
+            const { /* other args */, projectRoot } = args;
 
-    // 1. Get Project Root
-    let rootFolder = getProjectRootFromSession(session, log);
-    if (!rootFolder && args.projectRoot) { // Fallback if needed
-      rootFolder = args.projectRoot;
-      log.info(`Using project root from args as fallback: ${rootFolder}`);
-    }
+            try {
+                log.info(`Executing your_tool with normalized root: ${projectRoot}`);
 
-    // 2. Call AI-Based Direct Function (passing only log and session in context)
-    const result = await someAIDirectFunction({
-      ...args,
-      projectRoot: rootFolder // Ensure projectRoot is explicitly passed
-    }, log, { session }); // Pass session here, NO reportProgress
+                // Resolve paths using the normalized projectRoot
+                let tasksPath = findTasksJsonPath({ projectRoot, file: args.file }, log);
 
-    // 3. Handle and Format Response
-    return handleApiResult(result, log);
+                // Call direct function, passing normalized projectRoot if needed by direct func
+                const result = await yourDirectFunction(
+                    {
+                        /* other args */,
+                        projectRoot // Pass it if direct function needs it
+                    },
+                    log,
+                    { session }
+                );
 
-  } catch (error) {
-    log.error(`Error during AI tool execution: ${error.message}`);
-    return createErrorResponse(error.message);
-  }
+                return handleApiResult(result, log);
+            } catch (error) {
+                log.error(`Error in your_tool: ${error.message}`);
+                return createErrorResponse(error.message);
+            }
+        }) // End HOF wrap
+    });
 }
 ```
+
+By using this HOF, the core logic within the `execute` method and any downstream functions (like `findTasksJsonPath` or direct functions) can reliably expect `args.projectRoot` to be a clean, absolute path suitable for the server environment.
 
 ### Project Initialization Tool
 

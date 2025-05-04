@@ -9,7 +9,13 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
-import { log, findTaskById, readJSON, truncate } from './utils.js';
+import {
+	log,
+	findTaskById,
+	readJSON,
+	truncate,
+	isSilentMode
+} from './utils.js';
 import path from 'path';
 import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
@@ -23,6 +29,8 @@ const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
  * Display a fancy banner for the CLI
  */
 function displayBanner() {
+	if (isSilentMode()) return;
+
 	console.clear();
 	const bannerText = figlet.textSync('Task Master', {
 		font: 'Standard',

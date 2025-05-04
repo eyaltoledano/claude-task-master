@@ -65,8 +65,9 @@ alwaysApply: false
   - **[`mcp-server/`](mdc:mcp-server/): MCP Server Integration**
     - **Purpose**: Provides MCP interface using FastMCP.
     - **Responsibilities** (See also: [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)):
-      - Registers tools (`mcp-server/src/tools/*.js`).
-      - Tool `execute` methods call **direct function wrappers** (`mcp-server/src/core/direct-functions/*.js`).
+      - Registers tools (`mcp-server/src/tools/*.js`). Tool `execute` methods **should be wrapped** with the `withNormalizedProjectRoot` HOF (from `tools/utils.js`) to ensure consistent path handling.
+      - The HOF provides a normalized `args.projectRoot` to the `execute` method.
+      - Tool `execute` methods call **direct function wrappers** (`mcp-server/src/core/direct-functions/*.js`), passing the normalized `projectRoot` and other args.
       - Direct functions use path utilities (`mcp-server/src/core/utils/`) to resolve paths based on `projectRoot` from session.
       - Direct functions implement silent mode, logger wrappers, and call core logic functions from `scripts/modules/`.
       - Manages MCP caching and response formatting.

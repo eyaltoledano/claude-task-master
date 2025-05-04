@@ -3,151 +3,100 @@
  * Direct function implementation for showing task details
  */
 
-import { findTaskById } from '../../../../scripts/modules/utils.js';
-import { readJSON } from '../../../../scripts/modules/utils.js';
+import { findTaskById, readJSON } from '../../../../scripts/modules/utils.js';
 import { getCachedOrExecute } from '../../tools/utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import { findTasksJsonPath } from '../utils/path-utils.js';
 
 /**
- * Direct function wrapper for showing task details with error handling and caching.
+ * Direct function wrapper for getting task details.
  *
- * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - The ID of the task or subtask to show.
+ * @param {Object} args - Command arguments.
+ * @param {string} args.id - Task ID to show.
+ * @param {string} [args.file] - Optional path to the tasks file (passed to findTasksJsonPath).
  * @param {string} [args.status] - Optional status to filter subtasks by.
- * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Task details result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
+ * @param {Object} log - Logger object.
+ * @param {Object} context - Context object containing session data.
+ * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function showTaskDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id, status } = args;
+	// Destructure session from context if needed later, otherwise ignore
+	// const { session } = context;
+	// Destructure projectRoot and other args. projectRoot is assumed normalized.
+	const { id, file, status, projectRoot } = args;
 
-	if (!tasksJsonPath) {
-		log.error('showTaskDirect called without tasksJsonPath');
+	log.info(
+		`Showing task direct function. ID: ${id}, File: ${file}, Status Filter: ${status}, ProjectRoot: ${projectRoot}`
+	);
+
+	// --- Path Resolution using the passed (already normalized) projectRoot ---
+	let tasksJsonPath;
+	try {
+		// Use the projectRoot passed directly from args
+		tasksJsonPath = findTasksJsonPath(
+			{ projectRoot: projectRoot, file: file },
+			log
+		);
+		log.info(`Resolved tasks path: ${tasksJsonPath}`);
+	} catch (error) {
+		log.error(`Error finding tasks.json: ${error.message}`);
 		return {
 			success: false,
 			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
+				code: 'TASKS_FILE_NOT_FOUND',
+				message: `Failed to find tasks.json: ${error.message}`
+			}
 		};
 	}
+	// --- End Path Resolution ---
 
-	// Validate task ID
-	const taskId = id;
-	if (!taskId) {
-		log.error('Task ID is required');
-		return {
-			success: false,
-			error: {
-				code: 'INPUT_VALIDATION_ERROR',
-				message: 'Task ID is required'
-			},
-			fromCache: false
-		};
-	}
-
-	// Generate cache key using the provided task path, ID, and status filter
-	const cacheKey = `showTask:${tasksJsonPath}:${taskId}:${status || 'all'}`;
-
-	// Define the action function to be executed on cache miss
-	const coreShowTaskAction = async () => {
-		try {
-			// Enable silent mode to prevent console logs from interfering with JSON response
-			enableSilentMode();
-
-			log.info(
-				`Retrieving task details for ID: ${taskId} from ${tasksJsonPath}${status ? ` (filtering by status: ${status})` : ''}`
-			);
-
-			// Read tasks data using the provided path
-			const data = readJSON(tasksJsonPath);
-			if (!data || !data.tasks) {
-				disableSilentMode(); // Disable before returning
-				return {
-					success: false,
-					error: {
-						code: 'INVALID_TASKS_FILE',
-						message: `No valid tasks found in ${tasksJsonPath}`
-					}
-				};
-			}
-
-			// Find the specific task, passing the status filter
-			const { task, originalSubtaskCount } = findTaskById(
-				data.tasks,
-				taskId,
-				status
-			);
-
-			if (!task) {
-				disableSilentMode(); // Disable before returning
-				return {
-					success: false,
-					error: {
-						code: 'TASK_NOT_FOUND',
-						message: `Task with ID ${taskId} not found${status ? ` or no subtasks match status '${status}'` : ''}`
-					}
-				};
-			}
-
-			// Restore normal logging
-			disableSilentMode();
-
-			// Return the task data, the original subtask count (if applicable),
-			// and the full tasks array for reference (needed for formatDependenciesWithStatus function in UI)
-			log.info(
-				`Successfully found task ${taskId}${status ? ` (with status filter: ${status})` : ''}`
-			);
+	// --- Rest of the function remains the same, using tasksJsonPath ---
+	try {
+		const tasksData = readJSON(tasksJsonPath);
+		if (!tasksData || !tasksData.tasks) {
 			return {
-				success: true,
-				data: {
-					task,
-					originalSubtaskCount,
-					allTasks: data.tasks
-				}
+				success: false,
+				error: { code: 'INVALID_TASKS_DATA', message: 'Invalid tasks data' }
 			};
-		} catch (error) {
-			// Make sure to restore normal logging even if there's an error
-			disableSilentMode();
+		}
 
-			log.error(`Error showing task: ${error.message}`);
+		const { task, originalSubtaskCount } = findTaskById(
+			tasksData.tasks,
+			id,
+			status
+		);
+
+		if (!task) {
 			return {
 				success: false,
 				error: {
-					code: 'CORE_FUNCTION_ERROR',
-					message: error.message || 'Failed to show task details'
+					code: 'TASK_NOT_FOUND',
+					message: `Task or subtask with ID ${id} not found`
 				}
 			};
 		}
-	};
 
-	// Use the caching utility
-	try {
-		const result = await getCachedOrExecute({
-			cacheKey,
-			actionFn: coreShowTaskAction,
-			log
-		});
-		log.info(`showTaskDirect completed. From cache: ${result.fromCache}`);
-		return result; // Returns { success, data/error, fromCache }
+		log.info(`Successfully retrieved task ${id}.`);
+
+		const returnData = { ...task };
+		if (originalSubtaskCount !== null) {
+			returnData._originalSubtaskCount = originalSubtaskCount;
+			returnData._subtaskFilter = status;
+		}
+
+		return { success: true, data: returnData };
 	} catch (error) {
-		// Catch unexpected errors from getCachedOrExecute itself
-		disableSilentMode();
-		log.error(
-			`Unexpected error during getCachedOrExecute for showTask: ${error.message}`
-		);
+		log.error(`Error showing task ${id}: ${error.message}`);
 		return {
 			success: false,
 			error: {
-				code: 'UNEXPECTED_ERROR',
+				code: 'TASK_OPERATION_ERROR',
 				message: error.message
-			},
-			fromCache: false
+			}
 		};
 	}
 }

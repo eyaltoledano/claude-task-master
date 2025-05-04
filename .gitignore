@@ -61,3 +61,6 @@ dist
 *.debug
 init-debug.log
 dev-debug.log
+
+# NPMRC
+.npmrc

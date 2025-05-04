@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { setTaskStatusDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -36,26 +36,15 @@ export function registerSetTaskStatusTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
-
-				// Resolve the path to tasks.json
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 				} catch (error) {
@@ -65,19 +54,15 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				// Call the direct function with the resolved path
 				const result = await setTaskStatusDirect(
 					{
-						// Pass the explicitly resolved path
 						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
 						id: args.id,
 						status: args.status
 					},
 					log
 				);
 
-				// Log the result
 				if (result.success) {
 					log.info(
 						`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`
@@ -88,7 +73,6 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				// Format and return the result
 				return handleApiResult(result, log, 'Error setting task status');
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);
@@ -96,6 +80,6 @@ export function registerSetTaskStatusTool(server) {
 					`Error setting task status: ${error.message}`
 				);
 			}
-		}
+		})
 	});
 }

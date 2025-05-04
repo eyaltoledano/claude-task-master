@@ -4,10 +4,13 @@
  */
 
 import { z } from 'zod';
-import { handleApiResult, createErrorResponse } from './utils.js';
+import {
+	handleApiResult,
+	createErrorResponse,
+	withNormalizedProjectRoot
+} from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
-import path from 'path';
 
 /**
  * Register the update tool with the MCP server
@@ -31,59 +34,61 @@ export function registerUpdateTool(server) {
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
-			file: z.string().optional().describe('Absolute path to the tasks file'),
+			file: z
+				.string()
+				.optional()
+				.describe('Path to the tasks file relative to project root'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.optional()
+				.describe(
+					'The directory of the project. (Optional, usually from session)'
+				)
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+			const toolName = 'update';
+			const { from, prompt, research, file, projectRoot } = args;
+
 			try {
-				log.info(`Executing update tool with args: ${JSON.stringify(args)}`);
+				log.info(
+					`Executing ${toolName} tool with normalized root: ${projectRoot}`
+				);
 
-				// 1. Get Project Root
-				const rootFolder = args.projectRoot;
-				if (!rootFolder || !path.isAbsolute(rootFolder)) {
-					return createErrorResponse(
-						'projectRoot is required and must be absolute.'
-					);
-				}
-				log.info(`Project root: ${rootFolder}`);
-
-				// 2. Resolve Path
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
-						log
-					);
-					log.info(`Resolved tasks path: ${tasksJsonPath}`);
+					tasksJsonPath = findTasksJsonPath({ projectRoot, file }, log);
+					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
+						`Failed to find tasks.json within project root '${projectRoot}': ${error.message}`
 					);
 				}
 
-				// 3. Call Direct Function
 				const result = await updateTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						from: args.from,
-						prompt: args.prompt,
-						research: args.research,
-						projectRoot: rootFolder
+						from: from,
+						prompt: prompt,
+						research: research,
+						projectRoot: projectRoot
 					},
 					log,
 					{ session }
 				);
 
-				// 4. Handle Result
-				log.info(`updateTasksDirect result: success=${result.success}`);
+				log.info(
+					`${toolName}: Direct function result: success=${result.success}`
+				);
 				return handleApiResult(result, log, 'Error updating tasks');
 			} catch (error) {
-				log.error(`Critical error in update tool execute: ${error.message}`);
-				return createErrorResponse(`Internal tool error: ${error.message}`);
+				log.error(
+					`Critical error in ${toolName} tool execute: ${error.message}`
+				);
+				return createErrorResponse(
+					`Internal tool error (${toolName}): ${error.message}`
+				);
 			}
-		}
+		})
 	});
 }

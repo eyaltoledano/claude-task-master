@@ -428,36 +428,69 @@ Taskmaster configuration (excluding API keys) is primarily managed through the `
 
 ## MCP Server Tool Utilities (`mcp-server/src/tools/utils.js`)
 
-- **Purpose**: These utilities specifically support the MCP server tools ([`mcp-server/src/tools/*.js`](mdc:mcp-server/src/tools/*.js)), handling MCP communication patterns, response formatting, caching integration, and the CLI fallback mechanism.
-- **Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc)** for detailed usage patterns within the MCP tool `execute` methods and direct function wrappers.
+These utilities specifically support the implementation and execution of MCP tools.
 
-- **`getProjectRootFromSession(session, log)`**: 
-    - ✅ **DO**: Call this utility **within the MCP tool's `execute` method** to extract the project root path from the `session` object.
-    - Decodes the `file://` URI and handles potential errors.
-    - Returns the project path string or `null`.
-    - The returned path should then be passed in the `args` object when calling the corresponding `*Direct` function (e.g., `yourDirectFunction({ ...args, projectRoot: rootFolder }, log)`).
+- **`normalizeProjectRoot(rawPath, log)`**:
+    - **Purpose**: Takes a raw project root path (potentially URI encoded, with `file://` prefix, Windows slashes) and returns a normalized, absolute path suitable for the server's OS.
+    - **Logic**: Decodes URI, strips `file://`, handles Windows drive prefix (`/C:/`), replaces `\` with `/`, uses `path.resolve()`.
+    - **Usage**: Used internally by `withNormalizedProjectRoot` HOF.
+
+- **`getRawProjectRootFromSession(session, log)`**:
+    - **Purpose**: Extracts the *raw* project root URI string from the session object (`session.roots[0].uri` or `session.roots.roots[0].uri`) without performing normalization.
+    - **Usage**: Used internally by `withNormalizedProjectRoot` HOF as a fallback if `args.projectRoot` isn't provided.
+
+- **`withNormalizedProjectRoot(executeFn)`**:
+    - **Purpose**: A Higher-Order Function (HOF) designed to wrap a tool's `execute` method.
+    - **Logic**: 
+        1. Determines the raw project root (from `args.projectRoot` or `getRawProjectRootFromSession`).
+        2. Normalizes the raw path using `normalizeProjectRoot`.
+        3. Injects the normalized, absolute path back into the `args` object as `args.projectRoot`.
+        4. Calls the original `executeFn` with the updated `args`.
+    - **Usage**: Should wrap the `execute` function of *every* MCP tool that needs a reliable, normalized project root path.
+    - **Example**:
+      ```javascript
+      // In mcp-server/src/tools/your-tool.js
+      import { withNormalizedProjectRoot } from './utils.js';
+      
+      export function registerYourTool(server) {
+          server.addTool({
+              // ... name, description, parameters ...
+              execute: withNormalizedProjectRoot(async (args, context) => {
+                  // args.projectRoot is now normalized here
+                  const { projectRoot /*, other args */ } = args;
+                  // ... rest of tool logic using normalized projectRoot ...
+              })
+          });
+      }
+      ```
 
 - **`handleApiResult(result, log, errorPrefix, processFunction)`**:
-    - ✅ **DO**: Call this from the MCP tool's `execute` method after receiving the result from the `*Direct` function wrapper.
-    - Takes the standard `{ success, data/error, fromCache }` object.
-    - Formats the standard MCP success or error response, including the `fromCache` flag.
-    - Uses `processMCPResponseData` by default to filter response data.
-
-- **`executeTaskMasterCommand(command, log, args, projectRootRaw)`**:
-    - Executes a Task Master CLI command as a child process.
-    - Handles fallback between global `task-master` and local `node scripts/dev.js`.
-    - ❌ **DON'T**: Use this as the primary method for MCP tools. Prefer direct function calls via `*Direct` wrappers.
-
-- **`processMCPResponseData(taskOrData, fieldsToRemove)`**:
-    - Filters task data (e.g., removing `details`, `testStrategy`) before sending to the MCP client. Called by `handleApiResult`.
+    - **Purpose**: Standardizes the formatting of responses returned by direct functions (`{ success, data/error, fromCache }`) into the MCP response format.
+    - **Usage**: Call this at the end of the tool's `execute` method, passing the result from the direct function call.
 
 - **`createContentResponse(content)` / `createErrorResponse(errorMessage)`**:
-    - Formatters for standard MCP success/error responses.
+    - **Purpose**: Helper functions to create the basic MCP response structure for success or error messages.
+    - **Usage**: Used internally by `handleApiResult` and potentially directly for simple responses.
+
+- **`createLogWrapper(log)`**:
+    - **Purpose**: Creates a logger object wrapper with standard methods (`info`, `warn`, `error`, `debug`, `success`) mapping to the passed MCP `log` object's methods. Ensures compatibility when passing loggers to core functions.
+    - **Usage**: Used within direct functions before passing the `log` object down to core logic that expects the standard method names.
 
 - **`getCachedOrExecute({ cacheKey, actionFn, log })`**:
-    - ✅ **DO**: Use this utility *inside direct function wrappers* to implement caching.
-    - Checks cache, executes `actionFn` on miss, stores result.
-    - Returns standard `{ success, data/error, fromCache: boolean }`.
+    - **Purpose**: Utility for implementing caching within direct functions. Checks cache for `cacheKey`; if miss, executes `actionFn`, caches successful result, and returns.
+    - **Usage**: Wrap the core logic execution within a direct function call.
+
+- **`processMCPResponseData(taskOrData, fieldsToRemove)`**:
+    - **Purpose**: Utility to filter potentially sensitive or large fields (like `details`, `testStrategy`) from task objects before sending the response back via MCP.
+    - **Usage**: Passed as the default `processFunction` to `handleApiResult`.
+
+- **`getProjectRootFromSession(session, log)`**:
+    - **Purpose**: Legacy function to extract *and normalize* the project root from the session. Replaced by the HOF pattern but potentially still used.
+    - **Recommendation**: Prefer using the `withNormalizedProjectRoot` HOF in tools instead of calling this directly.
+
+- **`executeTaskMasterCommand(...)`**: 
+    - **Purpose**: Executes `task-master` CLI command as a fallback. 
+    - **Recommendation**: Deprecated for most uses; prefer direct function calls.
 
 ## Export Organization
 

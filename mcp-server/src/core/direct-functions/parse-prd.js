@@ -34,18 +34,17 @@ export async function parsePRDDirect(args, log, context = {}) {
 		projectRoot
 	} = args;
 
+	// Create the standard logger wrapper
 	const logWrapper = createLogWrapper(log);
 
 	// --- Input Validation and Path Resolution ---
-	if (!projectRoot || !path.isAbsolute(projectRoot)) {
-		logWrapper.error(
-			'parsePRDDirect requires an absolute projectRoot argument.'
-		);
+	if (!projectRoot) {
+		logWrapper.error('parsePRDDirect requires a projectRoot argument.');
 		return {
 			success: false,
 			error: {
 				code: 'MISSING_ARGUMENT',
-				message: 'projectRoot is required and must be absolute.'
+				message: 'projectRoot is required.'
 			}
 		};
 	}
@@ -57,7 +56,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		};
 	}
 
-	// Resolve input and output paths relative to projectRoot if they aren't absolute
+	// Resolve input and output paths relative to projectRoot
 	const inputPath = path.resolve(projectRoot, inputArg);
 	const outputPath = outputArg
 		? path.resolve(projectRoot, outputArg)
@@ -101,7 +100,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 			// Ensure positive number
 			numTasks = getDefaultNumTasks(projectRoot); // Fallback to default if parsing fails or invalid
 			logWrapper.warn(
-				`Invalid numTasks value: ${numTasksArg}. Using default: 10`
+				`Invalid numTasks value: ${numTasksArg}. Using default: ${numTasks}`
 			);
 		}
 	}
@@ -147,7 +146,6 @@ export async function parsePRDDirect(args, log, context = {}) {
 					message: `Successfully parsed PRD and generated ${result.tasks.length} tasks.`,
 					outputPath: outputPath,
 					taskCount: result.tasks.length
-					// Optionally include tasks if needed by client: tasks: result.tasks
 				}
 			};
 		} else {

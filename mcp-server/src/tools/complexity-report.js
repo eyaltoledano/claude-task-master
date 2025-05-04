@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { complexityReportDirect } from '../core/task-master-core.js';
 import path from 'path';
@@ -31,34 +31,24 @@ export function registerComplexityReportTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(
 					`Getting complexity report with args: ${JSON.stringify(args)}`
 				);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
-
-				// Resolve the path to the complexity report file
-				// Default to scripts/task-complexity-report.json relative to root
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				const reportPath = args.file
-					? path.resolve(rootFolder, args.file)
-					: path.resolve(rootFolder, 'scripts', 'task-complexity-report.json');
+					? path.resolve(args.projectRoot, args.file)
+					: path.resolve(
+							args.projectRoot,
+							'scripts',
+							'task-complexity-report.json'
+						);
 
 				const result = await complexityReportDirect(
 					{
-						// Pass the explicitly resolved path
 						reportPath: reportPath
-						// No other args specific to this tool
 					},
 					log
 				);
@@ -84,6 +74,6 @@ export function registerComplexityReportTool(server) {
 					`Failed to retrieve complexity report: ${error.message}`
 				);
 			}
-		}
+		})
 	});
 }

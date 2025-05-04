@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -42,31 +42,19 @@ export function registerListTasksTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
-				// Get project root from args or session
-				const rootFolder =
-					args.projectRoot || getProjectRootFromSession(session, log);
-
-				// Ensure project root was determined
-				if (!rootFolder) {
-					return createErrorResponse(
-						'Could not determine project root. Please provide it explicitly or ensure your session contains valid root information.'
-					);
-				}
-
-				// Resolve the path to tasks.json
+				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file },
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
-					// Use the error message from findTasksJsonPath for better context
 					return createErrorResponse(
 						`Failed to find tasks.json: ${error.message}`
 					);
@@ -89,7 +77,7 @@ export function registerListTasksTool(server) {
 				log.error(`Error getting tasks: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
-		}
+		})
 	});
 }
 

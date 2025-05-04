@@ -4,11 +4,10 @@
  */
 
 import { z } from 'zod';
-import path from 'path'; // Import path
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession
+	withNormalizedProjectRoot
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
@@ -40,58 +39,44 @@ export function registerUpdateTaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_task';
 			try {
 				log.info(
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
 
-				// 1. Get Project Root
-				const rootFolder = args.projectRoot;
-				if (!rootFolder || !path.isAbsolute(rootFolder)) {
-					log.error(
-						`${toolName}: projectRoot is required and must be absolute.`
-					);
-					return createErrorResponse(
-						'projectRoot is required and must be absolute.'
-					);
-				}
-				log.info(`${toolName}: Project root: ${rootFolder}`);
-
-				// 2. Resolve Tasks Path
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: rootFolder, file: args.file }, // Pass root and optional relative file
+						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
 					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
 				} catch (error) {
 					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
-						`Failed to find tasks.json within project root '${rootFolder}': ${error.message}`
+						`Failed to find tasks.json: ${error.message}`
 					);
 				}
 
 				// 3. Call Direct Function - Include projectRoot
 				const result = await updateTaskByIdDirect(
 					{
-						tasksJsonPath: tasksJsonPath, // Pass resolved path
+						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						projectRoot: rootFolder // <<< Pass projectRoot HERE
+						projectRoot: args.projectRoot
 					},
 					log,
-					{ session } // Pass context with session
+					{ session }
 				);
 
 				// 4. Handle Result
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				// Pass the actual data from the result (contains updated task or message)
 				return handleApiResult(result, log, 'Error updating task');
 			} catch (error) {
 				log.error(
@@ -101,6 +86,6 @@ export function registerUpdateTaskTool(server) {
 					`Internal tool error (${toolName}): ${error.message}`
 				);
 			}
-		}
+		})
 	});
 }

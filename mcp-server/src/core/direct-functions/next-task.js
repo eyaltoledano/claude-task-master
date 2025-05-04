@@ -71,24 +71,34 @@ export async function nextTaskDirect(args, log) {
 					data: {
 						message:
 							'No eligible next task found. All tasks are either completed or have unsatisfied dependencies',
-						nextTask: null,
-						allTasks: data.tasks
+						nextTask: null
 					}
 				};
 			}
+
+			// Check if it's a subtask
+			const isSubtask =
+				typeof nextTask.id === 'string' && nextTask.id.includes('.');
+
+			const taskOrSubtask = isSubtask ? 'subtask' : 'task';
+
+			const additionalAdvice = isSubtask
+				? 'Subtasks can be updated with timestamped details as you implement them. This is useful for tracking progress, marking milestones and insights (of successful or successive falures in attempting to implement the subtask). Research can be used when updating the subtask to collect up-to-date information, and can be helpful to solve a repeating problem the agent is unable to solve. It is a good idea to get-task the parent task to collect the overall context of the task, and to get-task the subtask to collect the specific details of the subtask.'
+				: 'Tasks can be updated to reflect a change in the direction of the task, or to reformulate the task per your prompt. Research can be used when updating the task to collect up-to-date information. It is best to update subtasks as you work on them, and to update the task for more high-level changes that may affect pending subtasks or the general direction of the task.';
 
 			// Restore normal logging
 			disableSilentMode();
 
 			// Return the next task data with the full tasks array for reference
 			log.info(
-				`Successfully found next task ${nextTask.id}: ${nextTask.title}`
+				`Successfully found next task ${nextTask.id}: ${nextTask.title}. Is subtask: ${isSubtask}`
 			);
 			return {
 				success: true,
 				data: {
 					nextTask,
-					allTasks: data.tasks
+					isSubtask,
+					nextSteps: `When ready to work on the ${taskOrSubtask}, use set-status to set the status to "in progress" ${additionalAdvice}`
 				}
 			};
 		} catch (error) {
