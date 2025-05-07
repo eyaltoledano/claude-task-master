@@ -14,7 +14,7 @@
 		},
 		"fallback": {
 			"provider": "anthropic",
-			"modelId": "claude-3.5-sonnet-20240620",
+			"modelId": "claude-3-5-sonnet-20240620",
 			"maxTokens": 120000,
 			"temperature": 0.1
 		}
