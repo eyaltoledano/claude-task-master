@@ -24,7 +24,7 @@
 
 
 # Subtasks:
-## 1. Implement telemetry utility and data collection [in-progress]
+## 1. Implement telemetry utility and data collection [done]
 ### Dependencies: None
 ### Description: Create the logAiUsage utility in ai-services.js that captures all required telemetry data fields
 ### Details:
@@ -96,7 +96,7 @@ Implement HTTPS POST request functionality to securely send the telemetry payloa
 ### Details:
 Design and implement a clear privacy notice explaining what data is collected and how it's used. Create a user consent prompt during initial installation/setup that requires explicit opt-in. Store the consent status in the .taskmasterconfig file and respect this setting throughout the application.
 
-## 4. Integrate telemetry into Taskmaster commands [in-progress]
+## 4. Integrate telemetry into Taskmaster commands [done]
 ### Dependencies: 77.1, 77.3
 ### Description: Integrate the telemetry utility across all relevant Taskmaster commands
 ### Details:
@@ -107,13 +107,13 @@ Modify each Taskmaster command (expand, parse-prd, research, etc.) to call the l
 Successfully integrated telemetry calls into `addTask` (core) and `addTaskDirect` (MCP) functions by passing `commandName` and `outputType` parameters to the telemetry system. The `ai-services-unified.js` module now logs basic telemetry data, including calculated cost information, whenever the `add-task` command or tool is invoked. This integration respects user consent settings and maintains performance standards.
 </info added on 2025-05-06T17:57:13.980Z>
 
-## 5. Implement usage summary display [pending]
+## 5. Implement usage summary display [done]
 ### Dependencies: 77.1, 77.4
 ### Description: Create an optional feature to display AI usage summary in the CLI output
 ### Details:
 Develop functionality to display a concise summary of AI usage (tokens used, estimated cost) directly in the CLI output after command execution. Make this feature configurable through Taskmaster settings. Ensure the display is formatted clearly and doesn't clutter the main command output.
 
-## 6. Telemetry Integration for parse-prd [pending]
+## 6. Telemetry Integration for parse-prd [done]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the parse-prd functionality.
 ### Details:
@@ -136,7 +136,7 @@ Apply telemetry pattern from telemetry.mdc:
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through.
 
 
-## 7. Telemetry Integration for expand-task [pending]
+## 7. Telemetry Integration for expand-task [in-progress]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the expand-task functionality.
 ### Details:

@@ -4017,7 +4017,7 @@
           "description": "Create the logAiUsage utility in ai-services.js that captures all required telemetry data fields",
           "dependencies": [],
           "details": "Develop the logAiUsage function that collects timestamp, userId, commandName, modelUsed, inputTokens, outputTokens, totalTokens, and totalCost. Implement token counting logic and cost calculation using pricing from supported_models.json. Ensure proper error handling and data validation.\n<info added on 2025-05-05T21:08:51.413Z>\nDevelop the logAiUsage function that collects timestamp, userId, commandName, modelUsed, inputTokens, outputTokens, totalTokens, and totalCost. Implement token counting logic and cost calculation using pricing from supported_models.json. Ensure proper error handling and data validation.\n\nImplementation Plan:\n1. Define `logAiUsage` function in `ai-services-unified.js` that accepts parameters: userId, commandName, providerName, modelId, inputTokens, and outputTokens.\n\n2. Implement data collection and calculation logic:\n   - Generate timestamp using `new Date().toISOString()`\n   - Calculate totalTokens by adding inputTokens and outputTokens\n   - Create a helper function `_getCostForModel(providerName, modelId)` that:\n     - Loads pricing data from supported-models.json\n     - Finds the appropriate provider/model entry\n     - Returns inputCost and outputCost rates or defaults if not found\n   - Calculate totalCost using the formula: ((inputTokens/1,000,000) * inputCost) + ((outputTokens/1,000,000) * outputCost)\n   - Assemble complete telemetryData object with all required fields\n\n3. Add initial logging functionality:\n   - Use existing log utility to record telemetry data at 'info' level\n   - Implement proper error handling with try/catch blocks\n\n4. Integrate with `_unifiedServiceRunner`:\n   - Modify to accept commandName and userId parameters\n   - After successful API calls, extract usage data from results\n   - Call logAiUsage with the appropriate parameters\n\n5. Update provider functions in src/ai-providers/*.js:\n   - Ensure all provider functions return both the primary result and usage statistics\n   - Standardize the return format to include a usage object with inputTokens and outputTokens\n</info added on 2025-05-05T21:08:51.413Z>\n<info added on 2025-05-07T17:28:57.361Z>\nTo implement the AI usage telemetry effectively, we need to update each command across our different stacks. Let's create a structured approach for this implementation:\n\nCommand Integration Plan:\n1. Core Function Commands:\n   - Identify all AI-utilizing commands in the core function library\n   - For each command, modify to pass commandName and userId to _unifiedServiceRunner\n   - Update return handling to process and forward usage statistics\n\n2. Direct Function Commands:\n   - Map all direct function commands that leverage AI capabilities\n   - Implement telemetry collection at the appropriate execution points\n   - Ensure consistent error handling and telemetry reporting\n\n3. MCP Tool Stack Commands:\n   - Inventory all MCP commands with AI dependencies\n   - Standardize the telemetry collection approach across the tool stack\n   - Add telemetry hooks that maintain backward compatibility\n\nFor each command category, we'll need to:\n- Document current implementation details\n- Define specific code changes required\n- Create tests to verify telemetry is being properly collected\n- Establish validation procedures to ensure data accuracy\n</info added on 2025-05-07T17:28:57.361Z>",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Unit test the utility with mock AI usage data to verify all fields are correctly captured and calculated"
         },
         {
@@ -4049,7 +4049,7 @@
             3
           ],
           "details": "Modify each Taskmaster command (expand, parse-prd, research, etc.) to call the logAiUsage utility after AI interactions. Ensure telemetry is only sent if user has provided consent. Implement the integration in a way that doesn't impact command performance or user experience.\n<info added on 2025-05-06T17:57:13.980Z>\nModify each Taskmaster command (expand, parse-prd, research, etc.) to call the logAiUsage utility after AI interactions. Ensure telemetry is only sent if user has provided consent. Implement the integration in a way that doesn't impact command performance or user experience.\n\nSuccessfully integrated telemetry calls into `addTask` (core) and `addTaskDirect` (MCP) functions by passing `commandName` and `outputType` parameters to the telemetry system. The `ai-services-unified.js` module now logs basic telemetry data, including calculated cost information, whenever the `add-task` command or tool is invoked. This integration respects user consent settings and maintains performance standards.\n</info added on 2025-05-06T17:57:13.980Z>",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Integration tests to verify telemetry is correctly triggered across different commands with proper data"
         },
         {
@@ -4061,7 +4061,7 @@
             4
           ],
           "details": "Develop functionality to display a concise summary of AI usage (tokens used, estimated cost) directly in the CLI output after command execution. Make this feature configurable through Taskmaster settings. Ensure the display is formatted clearly and doesn't clutter the main command output.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "User acceptance testing to verify the summary display is clear, accurate, and properly configurable"
         },
         {
@@ -4069,7 +4069,7 @@
           "title": "Telemetry Integration for parse-prd",
           "description": "Integrate AI usage telemetry capture and propagation for the parse-prd functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/parse-prd.js`):**\n    *   Modify AI service call to include `commandName: \\'parse-prd\\'` and `outputType`.\n    *   Receive `{ mainResult, telemetryData }`.\n    *   Return object including `telemetryData`.\n    *   Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/parse-prd.js`):**\n    *   Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   Pass `outputFormat: \\'json\\'` if applicable.\n    *   Receive `{ ..., telemetryData }` from core.\n    *   Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/parse-prd.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through.\n",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -4078,7 +4078,7 @@
           "title": "Telemetry Integration for expand-task",
           "description": "Integrate AI usage telemetry capture and propagation for the expand-task functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/expand-task.js`):**\n    *   Modify AI service call to include `commandName: \\'expand-task\\'` and `outputType`.\n    *   Receive `{ mainResult, telemetryData }`.\n    *   Return object including `telemetryData`.\n    *   Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/expand-task.js`):**\n    *   Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   Pass `outputFormat: \\'json\\'` if applicable.\n    *   Receive `{ ..., telemetryData }` from core.\n    *   Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/expand-task.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through.\n",
-          "status": "pending",
+          "status": "in-progress",
           "dependencies": [],
           "parentTaskId": 77
         },
