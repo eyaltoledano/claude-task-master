@@ -56,6 +56,10 @@ Taskmaster uses two primary methods for configuration:
       - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
       - `OPENROUTER_API_KEY`: Your OpenRouter API key.
       - `XAI_API_KEY`: Your X-AI API key.
+      - `CUSTOM_AI_API_KEY`: Your custom OpenAI-compatible provider API key.
+      - `CUSTOM_AI_API_BASE_URL`: Base URL for your custom OpenAI-compatible provider.
+      - `CUSTOM_AI_MODEL`: (Optional) Model ID for your custom provider.
+      - `CUSTOM_AI_HEADERS`: (Optional) JSON string of custom headers for API requests.
     - **Optional Endpoint Overrides (in .taskmasterconfig):**
       - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key.
       - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
@@ -72,10 +76,26 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # GOOGLE_API_KEY=AIzaSy...
 # etc.
 
+# Custom OpenAI-compatible provider settings
+# CUSTOM_AI_API_KEY=your-custom-api-key
+# CUSTOM_AI_API_BASE_URL=https://api.example.com/v1
+# CUSTOM_AI_MODEL=gpt-3.5-turbo
+# CUSTOM_AI_HEADERS={"X-Custom-Header":"value"}
+
 # Optional Endpoint Overrides
 # AZURE_OPENAI_ENDPOINT=https://your-azure-endpoint.openai.azure.com/
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
 ```
+
+## Custom OpenAI-Compatible Provider
+
+Task Master supports using custom OpenAI-compatible providers, allowing you to connect to any API service that implements the OpenAI API format. This is useful for:
+
+- Self-hosted LLM servers like LMStudio, LocalAI, or Ollama with OpenAI compatibility
+- Alternative commercial providers that implement the OpenAI API format
+- Private or enterprise LLM deployments
+
+For detailed information about using custom providers, see the [Custom Provider documentation](custom-provider.md).
 
 ## Troubleshooting
 

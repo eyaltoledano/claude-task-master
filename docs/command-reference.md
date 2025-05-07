@@ -231,6 +231,9 @@ task-master models --set-main=my-local-llama --ollama
 # Set a custom OpenRouter model for the research role
 task-master models --set-research=google/gemini-pro --openrouter
 
+# Set a custom OpenAI-compatible provider model
+task-master models --set-main=default-model --custom
+
 # Run interactive setup to configure models, including custom ones
 task-master models --setup
 ```

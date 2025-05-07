@@ -264,21 +264,20 @@ export async function generateCustomObject({
     log('debug', `Custom provider generateObject completed successfully for model: ${modelId}`);
     return result.object;
   } catch (error) {
-    // Log the full error for debugging
-    log('error', `Error in generateCustomObject (Model: ${modelId}): ${error.message}`, { error });
-
     // Check if the error is related to the model not using the tool
     const errorMessage = error.message.toLowerCase();
-    if (
+    const isToolCallingError =
       errorMessage.includes('no object generated') ||
       errorMessage.includes('tool was not called') ||
       errorMessage.includes('finish_reason') && errorMessage.includes('stop') ||
-      errorMessage.includes('function') && errorMessage.includes('not called')
-    ) {
+      errorMessage.includes('function') && errorMessage.includes('not called');
+
+    if (isToolCallingError) {
       // Register this model as having limited function calling support
       registerLimitedFunctionCalling(modelId);
 
-      log('warn', `Model ${modelId} did not use function calling. Attempting fallback to direct JSON generation...`);
+      // Log as INFO instead of ERROR or WARN since this is an expected fallback path
+      log('info', `Model ${modelId} did not use function calling. This is normal for some models. Using JSON fallback...`);
 
       // Use the JSON fallback method
       return await generateWithJSONFallback({
@@ -293,6 +292,9 @@ export async function generateCustomObject({
         customHeaders
       });
     }
+
+    // For non-tool-calling errors, log as error
+    log('error', `Error in generateCustomObject (Model: ${modelId}): ${error.message}`, { error });
 
     // If it's not a tool-related error or fallback failed, throw the original error
     throw new Error(`Custom provider API error during object generation: ${error.message}`);
@@ -320,7 +322,12 @@ async function generateWithJSONFallback({
   retryCount = 0,
   maxRetries = 2 // Allow up to 2 retries (3 total attempts)
 }) {
-  log('debug', `Using JSON fallback for model ${modelId} that doesn't support function calling (attempt ${retryCount + 1}/${maxRetries + 1})`);
+  // Use debug level for technical details, but keep the main flow as info
+  if (retryCount === 0) {
+    log('info', `Using direct JSON generation for model ${modelId} (this is a normal fallback strategy)`);
+  } else {
+    log('debug', `Retrying JSON generation for model ${modelId} (attempt ${retryCount + 1}/${maxRetries + 1})`);
+  }
 
   try {
     // Create a custom OpenAI client
@@ -531,12 +538,12 @@ async function generateWithJSONFallback({
         log('info', 'Fixed object with default values:', fixedObject);
 
         // Return the fixed object
-        log('info', `Successfully generated and fixed object via JSON fallback for model: ${modelId}`);
+        log('info', `Successfully generated and fixed object via direct JSON generation for model: ${modelId}`);
         return fixedObject;
       }
 
       // If all required fields are present and not empty, return the parsed object
-      log('info', `Successfully generated object via JSON fallback for model: ${modelId}`);
+      log('info', `Successfully generated object via direct JSON generation for model: ${modelId}`);
       return parsedObject;
     } catch (parseError) {
       log('error', `Failed to parse JSON from fallback response: ${parseError.message}`, {

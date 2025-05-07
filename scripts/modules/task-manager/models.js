@@ -383,9 +383,63 @@ async function setModel(role, modelId, options = {}) {
 		// Find the model data in internal list initially to see if it exists at all
 		let modelData = availableModels.find((m) => m.id === modelId);
 
-		// --- Revised Logic: Prioritize providerHint --- //
+		// --- New Logic: Check for explicit provider overrides via environment variables --- //
 
+		// 1. First check for role-specific provider override
+		const roleSpecificProviderEnv = `AI_PROVIDER_${role.toUpperCase()}`;
+		const roleSpecificProvider = process.env[roleSpecificProviderEnv];
+
+		// 2. Then check for global provider override
+		const globalProvider = process.env.AI_PROVIDER;
+
+		// 3. Use the provider hint from CLI flags if provided
+
+		// Log the provider resolution process for debugging
+		report('info', `Provider resolution for ${role} role with model ${modelId}:`);
+		if (roleSpecificProvider) {
+			report('info', `- Found role-specific provider override: ${roleSpecificProviderEnv}=${roleSpecificProvider}`);
+		}
+		if (globalProvider) {
+			report('info', `- Found global provider override: AI_PROVIDER=${globalProvider}`);
+		}
 		if (providerHint) {
+			report('info', `- Found provider hint from CLI flag: ${providerHint}`);
+		}
+
+		// Determine the provider based on the priority order
+		const explicitProvider = roleSpecificProvider || globalProvider;
+
+		if (explicitProvider) {
+			// Use the explicitly configured provider
+			determinedProvider = explicitProvider.toLowerCase();
+			report('info', `Using explicitly configured provider: ${determinedProvider} for model: ${modelId}`);
+
+			// Add a warning if the model name looks like it belongs to a different provider
+			if (modelData && modelData.provider !== determinedProvider) {
+				warningMessage = `Note: Model '${modelId}' is typically associated with provider '${modelData.provider}', but you've explicitly configured it to use '${determinedProvider}'.`;
+				report('warn', warningMessage);
+			}
+
+			// For custom provider, verify required environment variables
+			if (determinedProvider === 'custom') {
+				// Check if required environment variables are set
+				const baseUrl = process.env.CUSTOM_AI_API_BASE_URL;
+				const apiKey = process.env.CUSTOM_AI_API_KEY;
+
+				if (!baseUrl) {
+					throw new Error(
+						`Required environment variable CUSTOM_AI_API_BASE_URL is not set. Please set it in your .env file or environment.`
+					);
+				}
+
+				if (!apiKey) {
+					throw new Error(
+						`Required environment variable CUSTOM_AI_API_KEY is not set. Please set it in your .env file or environment.`
+					);
+				}
+			}
+		} else if (providerHint) {
+			// No explicit provider set, but we have a hint from CLI flags
 			// Hint provided (--ollama, --openrouter, or --custom flag used)
 			if (modelData && modelData.provider === providerHint) {
 				// Found internally AND provider matches the hint
@@ -447,7 +501,7 @@ async function setModel(role, modelId, options = {}) {
 				}
 			}
 		} else {
-			// No hint provided (flags not used)
+			// No explicit provider or hint - fall back to model name matching
 			if (modelData) {
 				// Found internally, use the provider from the internal list
 				determinedProvider = modelData.provider;
@@ -461,7 +515,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter or --ollama.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, or --custom flags, or set AI_PROVIDER or AI_PROVIDER_${role.toUpperCase()} environment variables.`
 					}
 				};
 			}

@@ -443,10 +443,49 @@ async function _unifiedServiceRunner(serviceType, params) {
 					callParams.customHeaders = customHeaders;
 				}
 
-				// Override model ID if CUSTOM_AI_MODEL is set
-				const customModel = resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				// Resolve the appropriate model based on the current role
+				// First try role-specific model, then fall back to generic CUSTOM_AI_MODEL
+				let customModel;
+
+				if (currentRole === 'main') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_MAIN', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				} else if (currentRole === 'research') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_RESEARCH', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				} else if (currentRole === 'fallback') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_FALLBACK', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				}
+
 				if (customModel) {
 					callParams.modelId = customModel;
+
+					// Log a debug message if we're using a role-specific model
+					const roleSpecificModel = resolveEnvVariable(`CUSTOM_AI_MODEL_${currentRole.toUpperCase()}`, session, effectiveProjectRoot);
+					if (roleSpecificModel) {
+						log('debug', `Using role-specific model for ${currentRole}: ${roleSpecificModel}`);
+					} else {
+						log('debug', `Using generic CUSTOM_AI_MODEL for ${currentRole}: ${customModel}`);
+					}
+				}
+
+				// Optional: Add warning for inconsistent model usage
+				if (providerName === 'custom') {
+					const mainModel = resolveEnvVariable('CUSTOM_AI_MODEL_MAIN', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+					const researchModel = resolveEnvVariable('CUSTOM_AI_MODEL_RESEARCH', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+					const fallbackModel = resolveEnvVariable('CUSTOM_AI_MODEL_FALLBACK', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+
+					// Check if all three roles share the same base URL/API key but different models
+					if (mainModel && researchModel && fallbackModel) {
+						const modelsAreDifferent = new Set([mainModel, researchModel, fallbackModel]).size > 1;
+						if (modelsAreDifferent) {
+							log('debug', `Custom provider is using different models for different roles: main=${mainModel}, research=${researchModel}, fallback=${fallbackModel}`);
+						}
+					}
 				}
 			}
 
