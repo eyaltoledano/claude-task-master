@@ -71,7 +71,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: ${{ matrix.pm }}
+          cache: ${{ matrix.pm == 'bun' && 'npm' || matrix.pm }}
 
       - name: Setup Bun
         if: matrix.pm == 'bun'
