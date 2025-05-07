@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pm: [npm, pnpm, bun]
+        pm: [npm, pnpm, bun, yarn]
     steps:
       - uses: actions/checkout@v4
 
@@ -86,6 +86,8 @@ jobs:
             pnpm install --frozen-lockfile
           elif [ "${{ matrix.pm }}" = "bun" ]; then
             bun install --frozen-lockfile
+          elif [ "${{ matrix.pm }}" = "yarn" ]; then
+            yarn install --frozen-lockfile
           fi
 
       - name: Run Tests
