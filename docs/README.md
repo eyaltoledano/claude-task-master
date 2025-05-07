@@ -11,6 +11,7 @@ Welcome to the Task Master documentation. Use the links below to navigate to the
 
 - [Command Reference](command-reference.md) - Complete list of all available commands
 - [Task Structure](task-structure.md) - Understanding the task format and features
+- [Custom Provider](custom-provider.md) - Using custom OpenAI-compatible providers
 
 ## Examples & Licensing
 

@@ -386,7 +386,7 @@ async function setModel(role, modelId, options = {}) {
 		// --- Revised Logic: Prioritize providerHint --- //
 
 		if (providerHint) {
-			// Hint provided (--ollama or --openrouter flag used)
+			// Hint provided (--ollama, --openrouter, or --custom flag used)
 			if (modelData && modelData.provider === providerHint) {
 				// Found internally AND provider matches the hint
 				determinedProvider = providerHint;
@@ -420,6 +420,27 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = 'ollama';
 					warningMessage = `Warning: Custom Ollama model '${modelId}' set. Ensure your Ollama server is running and has pulled this model. Taskmaster cannot guarantee compatibility.`;
 					report('warn', warningMessage);
+				} else if (providerHint === 'custom') {
+					// Hinted as custom OpenAI-compatible provider
+					determinedProvider = 'custom';
+					warningMessage = `Warning: Using custom OpenAI-compatible provider with model '${modelId}'. Ensure your provider is compatible with the OpenAI API format.`;
+					report('warn', warningMessage);
+
+					// Check if required environment variables are set
+					const baseUrl = process.env.CUSTOM_AI_API_BASE_URL;
+					const apiKey = process.env.CUSTOM_AI_API_KEY;
+
+					if (!baseUrl) {
+						throw new Error(
+							`Required environment variable CUSTOM_AI_API_BASE_URL is not set. Please set it in your .env file or environment.`
+						);
+					}
+
+					if (!apiKey) {
+						throw new Error(
+							`Required environment variable CUSTOM_AI_API_KEY is not set. Please set it in your .env file or environment.`
+						);
+					}
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);

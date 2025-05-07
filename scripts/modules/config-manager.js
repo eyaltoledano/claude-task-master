@@ -438,8 +438,25 @@ function getParametersForRole(role, explicitRoot = null) {
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Define the expected environment variable name for each provider
+	// Special handling for providers that have different requirements
 	if (providerName?.toLowerCase() === 'ollama') {
-		return true; // Indicate key status is effectively "OK"
+		return true; // Ollama typically doesn't require an API key
+	}
+
+	// For custom provider, we need both API key and base URL
+	if (providerName?.toLowerCase() === 'custom') {
+		const apiKey = resolveEnvVariable('CUSTOM_AI_API_KEY', session, projectRoot);
+		const baseUrl = resolveEnvVariable('CUSTOM_AI_API_BASE_URL', session, projectRoot);
+
+		return (
+			apiKey &&
+			apiKey.trim() !== '' &&
+			!/YOUR_.*_API_KEY_HERE/.test(apiKey) &&
+			!apiKey.includes('KEY_HERE') &&
+			baseUrl &&
+			baseUrl.trim() !== '' &&
+			!baseUrl.includes('URL_HERE')
+		);
 	}
 
 	const keyMap = {
@@ -450,7 +467,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		custom: 'CUSTOM_AI_API_KEY'
 		// Add other providers as needed
 	};
 
@@ -542,6 +560,17 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
 				break;
+			case 'custom':
+				// For custom provider, we need both API key and base URL
+				const customApiKey = mcpEnv.CUSTOM_AI_API_KEY;
+				const customBaseUrl = mcpEnv.CUSTOM_AI_API_BASE_URL;
+
+				return (
+					customApiKey &&
+					!/KEY_HERE$/.test(customApiKey) &&
+					customBaseUrl &&
+					!/URL_HERE$/.test(customBaseUrl)
+				);
 			default:
 				return false; // Unknown provider
 		}
