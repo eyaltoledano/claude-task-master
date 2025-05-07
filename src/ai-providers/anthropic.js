@@ -7,6 +7,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText, streamText, generateObject, streamObject } from 'ai';
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils is accessible
+import { getConfig } from '../../scripts/modules/config-manager.js';
 
 // TODO: Implement standardized functions for generateText, streamText, generateObject
 
@@ -17,7 +18,7 @@ import { log } from '../../scripts/modules/utils.js'; // Assuming utils is acces
 // Remove the global variable and caching logic
 // let anthropicClient;
 
-function getClient(apiKey) {
+function getClient(apiKey, baseURL) {
 	if (!apiKey) {
 		// In a real scenario, this would use the config resolver.
 		// Throwing error here if key isn't passed for simplicity.
@@ -27,10 +28,13 @@ function getClient(apiKey) {
 	// Remove the check for anthropicClient
 	// if (!anthropicClient) {
 	// TODO: Explore passing options like default headers if needed
+	// Use the provided baseURL or fall back to the default
+	const actualBaseURL = baseURL || 'https://api.anthropic.com/v1';
+	
 	// Create and return a new instance directly with standard version header
 	return createAnthropic({
 		apiKey: apiKey,
-		baseURL: 'https://api.anthropic.com/v1',
+		baseURL: actualBaseURL,
 		// Use standard version header instead of beta
 		headers: {
 			'anthropic-beta': 'output-128k-2025-02-19'
@@ -59,11 +63,16 @@ export async function generateAnthropicText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseURL
 }) {
 	log('debug', `Generating Anthropic text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		// Use provided baseURL or try to get from config
+		const config = getConfig();
+		const anthropicBaseUrl = baseURL || (config?.global?.anthropicBaseUrl);
+		
+		const client = getClient(apiKey, anthropicBaseUrl);
 		const result = await generateText({
 			model: client(modelId),
 			messages: messages,
@@ -101,11 +110,16 @@ export async function streamAnthropicText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseURL
 }) {
 	log('debug', `Streaming Anthropic text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		// Use provided baseURL or try to get from config
+		const config = getConfig();
+		const anthropicBaseUrl = baseURL || (config?.global?.anthropicBaseUrl);
+		
+		const client = getClient(apiKey, anthropicBaseUrl);
 
 		// --- DEBUG LOGGING --- >>
 		log(
@@ -116,7 +130,8 @@ export async function streamAnthropicText({
 					modelId: modelId, // Log modelId being used
 					messages: messages, // Log the messages array
 					maxTokens: maxTokens,
-					temperature: temperature
+					temperature: temperature,
+					baseURL: anthropicBaseUrl // Log the baseURL being used
 				},
 				null,
 				2
@@ -171,19 +186,24 @@ export async function generateAnthropicObject({
 	objectName = 'generated_object',
 	maxTokens,
 	temperature,
-	maxRetries = 3
+	maxRetries = 3,
+	baseURL
 }) {
 	log(
 		'debug',
 		`Generating Anthropic object ('${objectName}') with model: ${modelId}`
 	);
 	try {
-		const client = getClient(apiKey);
+		// Use provided baseURL or try to get from config
+		const config = getConfig();
+		const anthropicBaseUrl = baseURL || (config?.global?.anthropicBaseUrl);
+		
+		const client = getClient(apiKey, anthropicBaseUrl);
 
 		// Log basic debug info
 		log(
 			'debug',
-			`Using maxTokens: ${maxTokens}, temperature: ${temperature}, model: ${modelId}`
+			`Using maxTokens: ${maxTokens}, temperature: ${temperature}, model: ${modelId}, baseURL: ${anthropicBaseUrl || 'default'}`
 		);
 
 		const result = await generateObject({
