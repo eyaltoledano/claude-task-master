@@ -19,7 +19,7 @@ import {
  */
 export async function listTasksDirect(args, log) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, status, withSubtasks } = args;
+	const { tasksJsonPath, reportPath, status, withSubtasks } = args;
 
 	if (!tasksJsonPath) {
 		log.error('listTasksDirect called without tasksJsonPath');
@@ -36,7 +36,7 @@ export async function listTasksDirect(args, log) {
 	// Use the explicit tasksJsonPath for cache key
 	const statusFilter = status || 'all';
 	const withSubtasksFilter = withSubtasks || false;
-	const cacheKey = `listTasks:${tasksJsonPath}:${statusFilter}:${withSubtasksFilter}`;
+	const cacheKey = `listTasks:${tasksJsonPath}:${reportPath}:${statusFilter}:${withSubtasksFilter}`;
 
 	// Define the action function to be executed on cache miss
 	const coreListTasksAction = async () => {
@@ -51,6 +51,7 @@ export async function listTasksDirect(args, log) {
 			const resultData = listTasks(
 				tasksJsonPath,
 				statusFilter,
+				reportPath,
 				withSubtasksFilter,
 				'json'
 			);
@@ -65,6 +66,7 @@ export async function listTasksDirect(args, log) {
 					}
 				};
 			}
+
 			log.info(
 				`Core listTasks function retrieved ${resultData.tasks.length} tasks`
 			);

@@ -275,6 +275,22 @@ function findTaskInComplexityReport(report, taskId) {
 	return report.complexityAnalysis.find((task) => task.taskId === taskId);
 }
 
+function addComplexityToTask(task, complexityReport) {
+	let taskId;
+	if (task.isSubtask) {
+		taskId = task.parentTask.id;
+	} else if (task.parentId) {
+		taskId = task.parentId;
+	} else {
+		taskId = task.id;
+	}
+
+	const taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
+	if (taskAnalysis) {
+		task.complexityScore = taskAnalysis.complexityScore;
+	}
+}
+
 /**
  * Checks if a task exists in the tasks array
  * @param {Array} tasks - The tasks array
@@ -325,10 +341,17 @@ function formatTaskId(id) {
  * Finds a task by ID in the tasks array. Optionally filters subtasks by status.
  * @param {Array} tasks - The tasks array
  * @param {string|number} taskId - The task ID to find
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
+ * @returns {Object|null} The task object or null if not found
  * @param {string} [statusFilter] - Optional status to filter subtasks by
  * @returns {{task: Object|null, originalSubtaskCount: number|null}} The task object (potentially with filtered subtasks) and the original subtask count if filtered, or nulls if not found.
  */
-function findTaskById(tasks, taskId, statusFilter = null) {
+function findTaskById(
+	tasks,
+	taskId,
+	complexityReport = null,
+	statusFilter = null
+) {
 	if (!taskId || !tasks || !Array.isArray(tasks)) {
 		return { task: null, originalSubtaskCount: null };
 	}
@@ -356,9 +379,16 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 			subtask.isSubtask = true;
 		}
 
-		// Return the found subtask (or null) and null for originalSubtaskCount
+		// If we found a task, check for complexity data
+		if (subtask && complexityReport) {
+			addComplexityToTask(subtask, complexityReport);
+		}
+
 		return { task: subtask || null, originalSubtaskCount: null };
 	}
+
+	let taskResult = null;
+	let originalSubtaskCount = null;
 
 	// Find the main task
 	const id = parseInt(taskId, 10);
@@ -368,6 +398,8 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 	if (!task) {
 		return { task: null, originalSubtaskCount: null };
 	}
+
+	taskResult = task;
 
 	// If task found and statusFilter provided, filter its subtasks
 	if (statusFilter && task.subtasks && Array.isArray(task.subtasks)) {
@@ -379,12 +411,18 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 				subtask.status &&
 				subtask.status.toLowerCase() === statusFilter.toLowerCase()
 		);
-		// Return the filtered task and the original count
-		return { task: filteredTask, originalSubtaskCount: originalSubtaskCount };
+
+		taskResult = filteredTask;
+		originalSubtaskCount = originalSubtaskCount;
 	}
 
-	// Return original task and null count if no filter or no subtasks
-	return { task: task, originalSubtaskCount: null };
+	// If task found and complexityReport provided, add complexity data
+	if (taskResult && complexityReport) {
+		addComplexityToTask(taskResult, complexityReport);
+	}
+
+	// Return the found task and original subtask count
+	return { task: taskResult, originalSubtaskCount };
 }
 
 /**
@@ -524,10 +562,11 @@ export {
 	findCycles,
 	toKebabCase,
 	detectCamelCaseFlags,
-	enableSilentMode,
 	disableSilentMode,
-	isSilentMode,
-	resolveEnvVariable,
+	enableSilentMode,
 	getTaskManager,
+	isSilentMode,
+	addComplexityToTask,
+	resolveEnvVariable,
 	findProjectRoot
 };
