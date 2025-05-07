@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "taskmaster-ai"
+version = "0.0.1"
+description = "Python shim that runs the Node‑based Task Master AI CLI"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []               # no real deps
+
+[project.scripts]
+taskmaster-ai = "taskmaster_ai.__main__:main"
