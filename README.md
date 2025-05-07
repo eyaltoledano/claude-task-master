@@ -64,12 +64,12 @@ Can you help me expand task 4?
 
 #### Installation
 
-| Package manager | Global install                   | Project install               | One‑shot (npx‑style)         |
-|-----------------|----------------------------------|-------------------------------|------------------------------|
-| **npm**         | `npm i -g task-master-ai`        | `npm i task-master-ai`        | `npx -y task-master-ai`      |
-| **pnpm**        | `pnpm add -g task-master-ai`     | `pnpm add task-master-ai`     | `pnpm dlx -y task-master-ai` |
-| **Bun**         | `bun add -g task-master-ai`      | `bun add task-master-ai`      | `bunx -y task-master-ai`     |
-| **pip / pipx**  | `pip install task-master-ai`     | *(not applicable)*            | `pipx run task-master-ai`    |
+| Package manager | Global install               | Project install           | One‑shot (npx‑style)         |
+| --------------- | ---------------------------- | ------------------------- | ---------------------------- |
+| **npm**         | `npm i -g task-master-ai`    | `npm i task-master-ai`    | `npx -y task-master-ai`      |
+| **pnpm**        | `pnpm add -g task-master-ai` | `pnpm add task-master-ai` | `pnpm dlx -y task-master-ai` |
+| **Bun**         | `bun add -g task-master-ai`  | `bun add task-master-ai`  | `bunx -y task-master-ai`     |
+| **pip / pipx**  | `pip install task-master-ai` | _(not applicable)_        | `pipx run task-master-ai`    |
 
 #### Initialize a new project
 

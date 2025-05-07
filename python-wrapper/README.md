@@ -15,4 +15,4 @@ pip install taskmaster-ai
 task-master-ai --help
 
 pipx run taskmaster-ai init
-``` 
+```
