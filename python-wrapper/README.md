@@ -12,7 +12,7 @@ pip install taskmaster-ai
 ## Usage
 
 ```bash
-taskmaster-ai --help
+task-master-ai --help
 
 pipx run taskmaster-ai init
 ``` 

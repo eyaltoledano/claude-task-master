@@ -11,4 +11,4 @@ requires-python = ">=3.10"
 dependencies = []               # no real deps
 
 [project.scripts]
-taskmaster-ai = "taskmaster_ai.__main__:main"
+task-master-ai = "taskmaster_ai.__main__:main"
