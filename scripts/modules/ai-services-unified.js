@@ -24,6 +24,7 @@ import * as google from '../../src/ai-providers/google.js';
 import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
+import * as custom from '../../src/ai-providers/custom.js';
 // TODO: Import other provider modules when implemented (ollama, etc.)
 
 // --- Provider Function Map ---
@@ -62,6 +63,12 @@ const PROVIDER_FUNCTIONS = {
 		generateText: openrouter.generateOpenRouterText,
 		streamText: openrouter.streamOpenRouterText,
 		generateObject: openrouter.generateOpenRouterObject
+	},
+	custom: {
+		// ADD: Custom OpenAI-compatible provider entry
+		generateText: custom.generateCustomText,
+		streamText: custom.streamCustomText,
+		generateObject: custom.generateCustomObject
 	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
@@ -149,13 +156,33 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		custom: 'CUSTOM_AI_API_KEY'
 	};
 
 	// Double check this -- I have had to use an api key for ollama in the past
 	// if (providerName === 'ollama') {
 	// 	return null; // Ollama typically doesn't require an API key for basic setup
 	// }
+
+	// Special handling for custom provider which needs both API key and base URL
+	if (providerName === 'custom') {
+		const apiKey = resolveEnvVariable('CUSTOM_AI_API_KEY', session, projectRoot);
+		if (!apiKey) {
+			throw new Error(
+				`Required API key CUSTOM_AI_API_KEY for provider 'custom' is not set in environment, session, or .env file.`
+			);
+		}
+
+		const baseUrl = resolveEnvVariable('CUSTOM_AI_API_BASE_URL', session, projectRoot);
+		if (!baseUrl) {
+			throw new Error(
+				`Required base URL CUSTOM_AI_API_BASE_URL for provider 'custom' is not set in environment, session, or .env file.`
+			);
+		}
+
+		return apiKey; // Return the API key, baseUrl will be handled separately
+	}
 
 	const envVarName = keyMap[providerName];
 	if (!envVarName) {
@@ -405,6 +432,63 @@ async function _unifiedServiceRunner(serviceType, params) {
 				...restApiParams
 			};
 
+			// Special handling for custom provider to add base URL
+			if (providerName === 'custom') {
+				const baseUrl = resolveEnvVariable('CUSTOM_AI_API_BASE_URL', session, effectiveProjectRoot);
+				callParams.baseUrl = baseUrl;
+
+				// Add custom headers if specified
+				const customHeaders = resolveEnvVariable('CUSTOM_AI_HEADERS', session, effectiveProjectRoot);
+				if (customHeaders) {
+					callParams.customHeaders = customHeaders;
+				}
+
+				// Resolve the appropriate model based on the current role
+				// First try role-specific model, then fall back to generic CUSTOM_AI_MODEL
+				let customModel;
+
+				if (currentRole === 'main') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_MAIN', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				} else if (currentRole === 'research') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_RESEARCH', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				} else if (currentRole === 'fallback') {
+					customModel = resolveEnvVariable('CUSTOM_AI_MODEL_FALLBACK', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+				}
+
+				if (customModel) {
+					callParams.modelId = customModel;
+
+					// Log a debug message if we're using a role-specific model
+					const roleSpecificModel = resolveEnvVariable(`CUSTOM_AI_MODEL_${currentRole.toUpperCase()}`, session, effectiveProjectRoot);
+					if (roleSpecificModel) {
+						log('debug', `Using role-specific model for ${currentRole}: ${roleSpecificModel}`);
+					} else {
+						log('debug', `Using generic CUSTOM_AI_MODEL for ${currentRole}: ${customModel}`);
+					}
+				}
+
+				// Optional: Add warning for inconsistent model usage
+				if (providerName === 'custom') {
+					const mainModel = resolveEnvVariable('CUSTOM_AI_MODEL_MAIN', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+					const researchModel = resolveEnvVariable('CUSTOM_AI_MODEL_RESEARCH', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+					const fallbackModel = resolveEnvVariable('CUSTOM_AI_MODEL_FALLBACK', session, effectiveProjectRoot) ||
+						resolveEnvVariable('CUSTOM_AI_MODEL', session, effectiveProjectRoot);
+
+					// Check if all three roles share the same base URL/API key but different models
+					if (mainModel && researchModel && fallbackModel) {
+						const modelsAreDifferent = new Set([mainModel, researchModel, fallbackModel]).size > 1;
+						if (modelsAreDifferent) {
+							log('debug', `Custom provider is using different models for different roles: main=${mainModel}, research=${researchModel}, fallback=${fallbackModel}`);
+						}
+					}
+				}
+			}
+
 			// 6. Attempt the call with retries
 			const result = await _attemptProviderCallWithRetries(
 				providerApiFn,
@@ -435,11 +519,20 @@ async function _unifiedServiceRunner(serviceType, params) {
 					lowerCaseMessage.includes('does not support tool_use') ||
 					lowerCaseMessage.includes('tool use is not supported') ||
 					lowerCaseMessage.includes('tools are not supported') ||
-					lowerCaseMessage.includes('function calling is not supported')
+					lowerCaseMessage.includes('function calling is not supported') ||
+					lowerCaseMessage.includes('no object generated') ||
+					lowerCaseMessage.includes('tool was not called') ||
+					(lowerCaseMessage.includes('finish_reason') && lowerCaseMessage.includes('stop'))
 				) {
-					const specificErrorMsg = `Model '${modelId || 'unknown'}' via provider '${providerName || 'unknown'}' does not support the 'tool use' required by generateObjectService. Please configure a model that supports tool/function calling for the '${currentRole}' role, or use generateTextService if structured output is not strictly required.`;
-					log('error', `[Tool Support Error] ${specificErrorMsg}`);
-					throw new Error(specificErrorMsg);
+					// For custom provider, this might be handled with fallback
+					if (providerName === 'custom') {
+						log('warn', `Function calling issue detected with custom provider model '${modelId}'. The provider may handle this with fallback.`);
+						// Continue to next role if the custom provider's fallback also failed
+					} else {
+						const specificErrorMsg = `Model '${modelId || 'unknown'}' via provider '${providerName || 'unknown'}' does not support the 'tool use' required by generateObjectService. Please configure a model that supports tool/function calling for the '${currentRole}' role, or use generateTextService if structured output is not strictly required.`;
+						log('error', `[Tool Support Error] ${specificErrorMsg}`);
+						throw new Error(specificErrorMsg);
+					}
 				}
 			}
 		}

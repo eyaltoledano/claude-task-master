@@ -88,18 +88,23 @@ async function runInteractiveSetup(projectRoot) {
 		process.exit(1);
 	}
 
-	const currentConfigResult = await getModelConfiguration({ projectRoot });
-	const currentModels = currentConfigResult.success
-		? currentConfigResult.data.activeModels
-		: { main: null, research: null, fallback: null };
-	// Handle potential config load failure gracefully for the setup flow
-	if (
-		!currentConfigResult.success &&
-		currentConfigResult.error?.code !== 'CONFIG_MISSING'
-	) {
+	let currentModels = { main: null, research: null, fallback: null };
+
+	try {
+		const currentConfigResult = await getModelConfiguration({ projectRoot });
+		if (currentConfigResult.success) {
+			currentModels = currentConfigResult.data.activeModels;
+		} else if (currentConfigResult.error?.code !== 'CONFIG_MISSING') {
+			console.warn(
+				chalk.yellow(
+					`Warning: Could not load current model configuration: ${currentConfigResult.error?.message || 'Unknown error'}. Proceeding with defaults.`
+				)
+			);
+		}
+	} catch (error) {
 		console.warn(
 			chalk.yellow(
-				`Warning: Could not load current model configuration: ${currentConfigResult.error?.message || 'Unknown error'}. Proceeding with defaults.`
+				`Warning: Error loading model configuration: ${error.message}. Proceeding with defaults.`
 			)
 		);
 	}
@@ -168,11 +173,8 @@ async function runInteractiveSetup(projectRoot) {
 					value: '__NO_CHANGE__'
 				}
 			: null;
-
-		const customOpenRouterOption = {
-			name: '* Custom OpenRouter model', // Symbol updated
-			value: '__CUSTOM_OPENROUTER__'
-		};
+		const customOpenRouterOption = { name: '🔄 Use custom OpenRouter model...', value: '__CUSTOM_OPENROUTER__' };
+		const customOpenAIOption = { name: '🔄 Use custom OpenAI-compatible provider...', value: '__CUSTOM_PROVIDER__' };
 
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
@@ -180,8 +182,13 @@ async function runInteractiveSetup(projectRoot) {
 		// Filter and format models allowed for this role using the manually grouped data
 		const roleChoices = Object.entries(modelsByProvider)
 			.map(([provider, models]) => {
+				// Ensure models is an array and has allowed_roles property
+				if (!Array.isArray(models)) {
+					return null;
+				}
+
 				const providerModels = models
-					.filter((m) => m.allowed_roles.includes(role))
+					.filter((m) => m.allowed_roles && Array.isArray(m.allowed_roles) && m.allowed_roles.includes(role))
 					.map((m) => ({
 						name: `${provider} / ${m.id} ${
 							m.cost_per_1m_tokens
@@ -219,6 +226,7 @@ async function runInteractiveSetup(projectRoot) {
 		}
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
+		commonPrefix.push(customOpenAIOption);
 
 		let prefixLength = commonPrefix.length; // Initial prefix length
 
@@ -320,7 +328,176 @@ async function runInteractiveSetup(projectRoot) {
 		let providerHint = null;
 		let isCustomSelection = false;
 
-		if (selectedValue === '__CUSTOM_OPENROUTER__') {
+		if (selectedValue === '__CUSTOM_PROVIDER__') {
+			isCustomSelection = true;
+
+			// Check if we already have custom provider settings from a previous role
+			const existingBaseUrl = process.env.CUSTOM_AI_API_BASE_URL;
+			const existingApiKey = process.env.CUSTOM_AI_API_KEY;
+			const existingHeaders = process.env.CUSTOM_AI_HEADERS;
+
+			// Prepare prompts with defaults if available
+			const baseUrlPrompt = existingBaseUrl
+				? `Enter the base URL for the custom OpenAI-compatible provider (press Enter to use ${existingBaseUrl}):`
+				: `Enter the base URL for the custom OpenAI-compatible provider:`;
+
+			const apiKeyPrompt = existingApiKey
+				? `Enter the API key for the custom provider (press Enter to use existing key):`
+				: `Enter the API key for the custom provider:`;
+
+			const headersPrompt = existingHeaders
+				? `Enter any custom headers as JSON (press Enter to use existing headers, or leave blank for none):`
+				: `Enter any custom headers as JSON (optional, leave blank for none):`;
+
+			// First prompt for base URL and API key
+			const customProviderBaseAnswers = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'baseUrl',
+					message: baseUrlPrompt,
+					default: existingBaseUrl || undefined,
+					validate: (input) => {
+						if (!input) return 'Base URL is required';
+						if (!input.startsWith('http')) return 'Base URL must start with http:// or https://';
+						return true;
+					}
+				},
+				{
+					type: 'input',
+					name: 'apiKey',
+					message: apiKeyPrompt,
+					default: existingApiKey ? '(use existing)' : undefined,
+					validate: (input) => {
+						if (input === '(use existing)' && existingApiKey) return true;
+						if (!input) return 'API key is required';
+						return true;
+					}
+				},
+				{
+					type: 'input',
+					name: 'customHeaders',
+					message: headersPrompt,
+					default: existingHeaders ? '(use existing)' : undefined,
+					validate: (input) => {
+						if (input === '(use existing)' && existingHeaders) return true;
+						if (!input) return true;
+						try {
+							JSON.parse(input);
+							return true;
+						} catch (e) {
+							return 'Invalid JSON format';
+						}
+					}
+				}
+			]);
+
+			// Then prompt for the role-specific model
+			const modelPrompt = `Enter the model ID for the ${role} role (optional, leave blank to use default):`;
+
+			const customProviderModelAnswers = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'modelId',
+					message: modelPrompt,
+				}
+			]);
+
+			// Combine the answers
+			const customProviderAnswers = {
+				...customProviderBaseAnswers,
+				modelId: customProviderModelAnswers.modelId
+			};
+
+			// Process the API key (use existing if selected)
+			const apiKey = customProviderAnswers.apiKey === '(use existing)'
+				? existingApiKey
+				: customProviderAnswers.apiKey;
+
+			// Process the headers (use existing if selected)
+			const customHeaders = customProviderAnswers.customHeaders === '(use existing)'
+				? existingHeaders
+				: customProviderAnswers.customHeaders;
+
+			// Set environment variables
+			process.env.CUSTOM_AI_API_BASE_URL = customProviderAnswers.baseUrl;
+			process.env.CUSTOM_AI_API_KEY = apiKey;
+
+			// Set the role-specific model environment variable
+			if (customProviderAnswers.modelId) {
+				const roleEnvVar = `CUSTOM_AI_MODEL_${role.toUpperCase()}`;
+				process.env[roleEnvVar] = customProviderAnswers.modelId;
+
+				// Also set the generic CUSTOM_AI_MODEL if this is the main role or if it's not set yet
+				if (role === 'main' || !process.env.CUSTOM_AI_MODEL) {
+					process.env.CUSTOM_AI_MODEL = customProviderAnswers.modelId;
+				}
+			}
+
+			if (customHeaders) {
+				process.env.CUSTOM_AI_HEADERS = customHeaders;
+			}
+
+			// Update .env file
+			try {
+				const envPath = path.join(projectRoot, '.env');
+				let envContent = '';
+				if (fs.existsSync(envPath)) {
+					envContent = fs.readFileSync(envPath, 'utf8');
+				}
+
+				// Replace or add environment variables
+				const envVars = {
+					CUSTOM_AI_API_BASE_URL: customProviderAnswers.baseUrl,
+					CUSTOM_AI_API_KEY: apiKey
+				};
+
+				// Add the role-specific model environment variable
+				if (customProviderAnswers.modelId) {
+					const roleEnvVar = `CUSTOM_AI_MODEL_${role.toUpperCase()}`;
+					envVars[roleEnvVar] = customProviderAnswers.modelId;
+
+					// Also set the generic CUSTOM_AI_MODEL if this is the main role or if it's not set yet
+					if (role === 'main' || !envContent.includes('CUSTOM_AI_MODEL=')) {
+						envVars.CUSTOM_AI_MODEL = customProviderAnswers.modelId;
+					}
+				}
+
+				if (customHeaders && customHeaders !== '(use existing)') {
+					envVars.CUSTOM_AI_HEADERS = customHeaders;
+				}
+
+				// Update each variable in the .env file
+				Object.entries(envVars).forEach(([key, value]) => {
+					const regex = new RegExp(`^${key}=.*$`, 'm');
+					if (envContent.match(regex)) {
+						envContent = envContent.replace(regex, `${key}=${value}`);
+					} else {
+						envContent += `\n${key}=${value}`;
+					}
+				});
+
+				fs.writeFileSync(envPath, envContent);
+				console.log(chalk.green('Updated .env file with custom provider settings'));
+			} catch (error) {
+				console.error(chalk.red(`Error updating .env file: ${error.message}`));
+			}
+
+			// Set the model ID and provider
+			modelIdToSet = customProviderAnswers.modelId || 'default-model';
+			providerHint = 'custom';
+
+			// Display a message about the role-specific model configuration
+			if (customProviderAnswers.modelId) {
+				console.log(chalk.green(`Custom OpenAI-compatible provider configured for ${role} role with model: ${customProviderAnswers.modelId}`));
+
+				// If this is not the main role, explain the fallback behavior
+				if (role !== 'main') {
+					console.log(chalk.gray(`Note: If CUSTOM_AI_MODEL_${role.toUpperCase()} is not defined, the system will fall back to CUSTOM_AI_MODEL.`));
+				}
+			} else {
+				console.log(chalk.green(`Custom OpenAI-compatible provider configured for ${role} role (using default model)`));
+			}
+		} else if (selectedValue === '__CUSTOM_OPENROUTER__') {
 			isCustomSelection = true;
 			const { customId } = await inquirer.prompt([
 				{
@@ -430,7 +607,7 @@ async function runInteractiveSetup(projectRoot) {
 		!(await handleSetModel(
 			'main',
 			answers.mainModel,
-			currentModels.main?.modelId // <--- Now 'currentModels' is defined
+			currentModels?.main?.modelId // <--- Add null check for currentModels
 		))
 	) {
 		return false; // Explicitly return false if cancelled
@@ -439,7 +616,7 @@ async function runInteractiveSetup(projectRoot) {
 		!(await handleSetModel(
 			'research',
 			answers.researchModel,
-			currentModels.research?.modelId // <--- Now 'currentModels' is defined
+			currentModels?.research?.modelId // <--- Add null check for currentModels
 		))
 	) {
 		return false; // Explicitly return false if cancelled
@@ -448,7 +625,7 @@ async function runInteractiveSetup(projectRoot) {
 		!(await handleSetModel(
 			'fallback',
 			answers.fallbackModel,
-			currentModels.fallback?.modelId // <--- Now 'currentModels' is defined
+			currentModels?.fallback?.modelId // <--- Add null check for currentModels
 		))
 	) {
 		return false; // Explicitly return false if cancelled
@@ -2137,6 +2314,10 @@ function registerCommands(programInstance) {
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
+		.option(
+			'--custom',
+			'Allow setting a custom OpenAI-compatible provider (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2147,6 +2328,7 @@ Examples:
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main default-model --custom # Set custom OpenAI-compatible provider for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -2196,7 +2378,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.custom
+									? 'custom'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2216,7 +2400,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.custom
+									? 'custom'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2238,7 +2424,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.custom
+									? 'custom'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
