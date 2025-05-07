@@ -30,13 +30,18 @@ export async function generateOllamaText({
   log('debug', `Generating Ollama text with model: ${modelId}`);
   try {
     const url = getClient(baseURL) + '/generate';
+    // Combine messages into a single prompt if present
+    let finalPrompt = prompt;
+    if (rest.messages && Array.isArray(rest.messages)) {
+      finalPrompt = rest.messages.map(m => m.content).join('\n');
+      delete rest.messages;
+    }
     const payload = {
       model: modelId,
-      prompt,
+      prompt: finalPrompt,
       stream: false,
       temperature,
-      num_predict: maxTokens,
-      ...rest
+      num_predict: maxTokens
     };
     // Remove undefined values
     Object.keys(payload).forEach(
