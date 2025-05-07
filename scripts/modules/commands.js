@@ -62,7 +62,8 @@ import {
 	stopLoadingIndicator,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayApiKeyStatus
+	displayApiKeyStatus,
+	displayAiUsageSummary
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -1272,7 +1273,7 @@ function registerCommands(programInstance) {
 	// add-task command
 	programInstance
 		.command('add-task')
-		.description('Add a new task using AI or manual input')
+		.description('Add a new task using AI, optionally providing manual details')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-p, --prompt <prompt>',
@@ -1313,74 +1314,70 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
+			const tasksPath =
+				options.file ||
+				path.join(findProjectRoot() || '.', 'tasks', 'tasks.json') || // Ensure tasksPath is also relative to a found root or current dir
+				'tasks/tasks.json';
+
+			// Correctly determine projectRoot
+			const projectRoot = findProjectRoot();
+
+			let manualTaskData = null;
+			if (isManualCreation) {
+				manualTaskData = {
+					title: options.title,
+					description: options.description,
+					details: options.details || '',
+					testStrategy: options.testStrategy || ''
+				};
+				// Restore specific logging for manual creation
+				console.log(
+					chalk.blue(`Creating task manually with title: "${options.title}"`)
+				);
+			} else {
+				// Restore specific logging for AI creation
+				console.log(
+					chalk.blue(`Creating task with AI using prompt: "${options.prompt}"`)
+				);
+			}
+
+			// Log dependencies and priority if provided (restored)
+			const dependenciesArray = options.dependencies
+				? options.dependencies.split(',').map((id) => id.trim())
+				: [];
+			if (dependenciesArray.length > 0) {
+				console.log(
+					chalk.blue(`Dependencies: [${dependenciesArray.join(', ')}]`)
+				);
+			}
+			if (options.priority) {
+				console.log(chalk.blue(`Priority: ${options.priority}`));
+			}
+
+			const context = {
+				projectRoot,
+				commandName: 'add-task',
+				outputType: 'cli'
+			};
+
 			try {
-				// Prepare dependencies if provided
-				let dependencies = [];
-				if (options.dependencies) {
-					dependencies = options.dependencies
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10));
-				}
-
-				// Create manual task data if title and description are provided
-				let manualTaskData = null;
-				if (isManualCreation) {
-					manualTaskData = {
-						title: options.title,
-						description: options.description,
-						details: options.details || '',
-						testStrategy: options.testStrategy || ''
-					};
-
-					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
-					console.log(
-						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
-						)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				}
-
-				// Pass mcpLog and session for MCP mode
-				const newTaskId = await addTask(
-					options.file,
-					options.prompt, // Pass prompt (will be null/undefined if not provided)
-					dependencies,
+				const { newTaskId, telemetryData } = await addTask(
+					tasksPath,
+					options.prompt,
+					dependenciesArray,
 					options.priority,
-					{
-						// For CLI, session context isn't directly available like MCP
-						// We don't need to pass session here for CLI API key resolution
-						// as dotenv loads .env, and utils.resolveEnvVariable checks process.env
-					},
-					'text', // outputFormat
-					manualTaskData, // Pass the potentially created manualTaskData object
-					options.research || false // Pass the research flag value
+					context,
+					'text',
+					manualTaskData,
+					options.research
 				);
 
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
-				console.log(chalk.gray('Next: Complete this task or add more tasks'));
+				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
+				// No need to call displayAiUsageSummary here anymore.
 			} catch (error) {
 				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && getDebugFlag()) {
-					console.error(error.stack);
+				if (error.details) {
+					console.error(chalk.red(error.details));
 				}
 				process.exit(1);
 			}

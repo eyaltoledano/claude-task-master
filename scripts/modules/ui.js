@@ -1955,6 +1955,51 @@ function displayAvailableModels(availableModels) {
 	);
 }
 
+/**
+ * Displays AI usage telemetry summary in the CLI.
+ * @param {object} telemetryData - The telemetry data object.
+ * @param {string} outputType - 'cli' or 'mcp' (though typically only called for 'cli').
+ */
+function displayAiUsageSummary(telemetryData, outputType = 'cli') {
+	if (
+		(outputType !== 'cli' && outputType !== 'text') ||
+		!telemetryData ||
+		isSilentMode()
+	) {
+		return; // Only display for CLI and if data exists and not in silent mode
+	}
+
+	const {
+		modelUsed,
+		providerName,
+		inputTokens,
+		outputTokens,
+		totalTokens,
+		totalCost,
+		commandName
+	} = telemetryData;
+
+	let summary = chalk.bold.blue('AI Usage Summary:') + '\n';
+	summary += chalk.gray(`  Command: ${commandName}\n`);
+	summary += chalk.gray(`  Provider: ${providerName}\n`);
+	summary += chalk.gray(`  Model: ${modelUsed}\n`);
+	summary += chalk.gray(
+		`  Tokens: ${totalTokens} (Input: ${inputTokens}, Output: ${outputTokens})\n`
+	);
+	summary += chalk.gray(`  Est. Cost: $${totalCost.toFixed(6)}`);
+
+	console.log(
+		boxen(summary, {
+			padding: 1,
+			margin: { top: 1 },
+			borderColor: 'blue',
+			borderStyle: 'round',
+			title: '💡 Telemetry',
+			titleAlignment: 'center'
+		})
+	);
+}
+
 // Export UI functions
 export {
 	displayBanner,
@@ -1972,5 +2017,6 @@ export {
 	confirmTaskOverwrite,
 	displayApiKeyStatus,
 	displayModelConfiguration,
-	displayAvailableModels
+	displayAvailableModels,
+	displayAiUsageSummary
 };

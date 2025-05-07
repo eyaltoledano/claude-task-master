@@ -1,0 +1,60 @@
+# Task ID: 80
+# Title: Implement Unique User ID Generation and Storage During Installation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Generate a unique user identifier during npm installation and store it in the .taskmasterconfig globals to enable anonymous usage tracking and telemetry without requiring user registration.
+# Details:
+This task involves implementing a mechanism to generate and store a unique user identifier during the npm installation process of Taskmaster. The implementation should:
+
+1. Create a post-install script that runs automatically after npm install completes
+2. Generate a cryptographically secure random UUID v4 as the unique user identifier
+3. Check if a user ID already exists in the .taskmasterconfig file before generating a new one
+4. Add the generated user ID to the globals section of the .taskmasterconfig file
+5. Ensure the user ID persists across updates but is regenerated on fresh installations
+6. Handle edge cases such as failed installations, manual deletions of the config file, or permission issues
+7. Add appropriate logging to notify users that an anonymous ID is being generated (with clear privacy messaging)
+8. Document the purpose of this ID in the codebase and user documentation
+9. Ensure the ID generation is compatible with all supported operating systems
+10. Make the ID accessible to the telemetry system implemented in Task #77
+
+The implementation should respect user privacy by:
+- Not collecting any personally identifiable information
+- Making it clear in documentation how users can opt out of telemetry
+- Ensuring the ID cannot be traced back to specific users or installations
+
+This user ID will serve as the foundation for anonymous usage tracking, helping to understand how Taskmaster is used without compromising user privacy.
+
+# Test Strategy:
+Testing for this feature should include:
+
+1. **Unit Tests**:
+   - Verify the UUID generation produces valid UUIDs
+   - Test the config file reading and writing functionality
+   - Ensure proper error handling for file system operations
+   - Verify the ID remains consistent across multiple reads
+
+2. **Integration Tests**:
+   - Run a complete npm installation in a clean environment and verify a new ID is generated
+   - Simulate an update installation and verify the existing ID is preserved
+   - Test the interaction between the ID generation and the telemetry system
+   - Verify the ID is correctly stored in the expected location in .taskmasterconfig
+
+3. **Manual Testing**:
+   - Perform fresh installations on different operating systems (Windows, macOS, Linux)
+   - Verify the installation process completes without errors
+   - Check that the .taskmasterconfig file contains the generated ID
+   - Test scenarios where the config file is manually deleted or corrupted
+
+4. **Edge Case Testing**:
+   - Test behavior when the installation is run without sufficient permissions
+   - Verify handling of network disconnections during installation
+   - Test with various npm versions to ensure compatibility
+   - Verify behavior when .taskmasterconfig already exists but doesn't contain a user ID section
+
+5. **Validation**:
+   - Create a simple script to extract and analyze generated IDs to ensure uniqueness
+   - Verify the ID format meets UUID v4 specifications
+   - Confirm the ID is accessible to the telemetry system from Task #77
+
+The test plan should include documentation of all test cases, expected results, and actual outcomes. A successful implementation will generate unique IDs for each installation while maintaining that ID across updates.

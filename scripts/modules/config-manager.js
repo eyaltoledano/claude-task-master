@@ -670,6 +670,16 @@ function isConfigFilePresent(explicitRoot = null) {
 }
 
 /**
+ * Gets the user ID from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string|null} The user ID or null if not found.
+ */
+function getUserId(explicitRoot = null) {
+	const config = getConfig(explicitRoot);
+	return config?.global?.userId || null;
+}
+
+/**
  * Gets a list of all provider names defined in the MODEL_MAP.
  * @returns {string[]} An array of provider names.
  */
@@ -722,7 +732,7 @@ export {
 	getProjectName,
 	getOllamaBaseUrl,
 	getParametersForRole,
-
+	getUserId,
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
