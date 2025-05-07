@@ -226,6 +226,14 @@
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 0, "output": 0 },
 			"allowed_roles": ["main", "fallback"]
+		},
+		{
+			"id": "qwen2.5-coder:latest",
+			"name": "Qwen2.5 Coder (latest)",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 0, "output": 0 },
+			"allowed_roles": ["main", "research", "fallback"],
+			"max_tokens": 32000
 		}
 	],
 	"openrouter": [
