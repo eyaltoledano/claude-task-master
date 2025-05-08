@@ -4,7 +4,11 @@ import readline from 'readline';
 
 import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
 
-import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
+import {
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	displayAiUsageSummary
+} from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
 
@@ -196,35 +200,32 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		const prompt = generateInternalComplexityAnalysisPrompt(tasksData);
-		// System prompt remains simple for text generation
 		const systemPrompt =
 			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator('Calling AI service...');
+			loadingIndicator = startLoadingIndicator(
+				`${useResearch ? 'Researching' : 'Analyzing'} the complexity of your tasks with AI...\n`
+			);
 		}
 
-		let fullResponse = ''; // To store the raw text response
+		let aiServiceResponse = null;
+		let complexityAnalysis = null;
 
 		try {
 			const role = useResearch ? 'research' : 'main';
-			reportLog(`Using AI service with role: ${role}`, 'info');
 
-			fullResponse = await generateTextService({
+			aiServiceResponse = await generateTextService({
 				prompt,
 				systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot,
+				commandName: 'analyze-complexity',
+				outputType: mcpLog ? 'mcp' : 'cli'
 			});
 
-			reportLog(
-				'Successfully received text response via AI service',
-				'success'
-			);
-
-			// --- Stop Loading Indicator (Unchanged) ---
 			if (loadingIndicator) {
 				stopLoadingIndicator(loadingIndicator);
 				loadingIndicator = null;
@@ -236,26 +237,18 @@ async function analyzeTaskComplexity(options, context = {}) {
 					chalk.green('AI service call complete. Parsing response...')
 				);
 			}
-			// --- End Stop Loading Indicator ---
 
-			// --- Re-introduce Manual JSON Parsing & Cleanup ---
 			reportLog(`Parsing complexity analysis from text response...`, 'info');
-			let complexityAnalysis;
 			try {
-				let cleanedResponse = fullResponse;
-				// Basic trim first
+				let cleanedResponse = aiServiceResponse.mainResult;
 				cleanedResponse = cleanedResponse.trim();
 
-				// Remove potential markdown code block fences
 				const codeBlockMatch = cleanedResponse.match(
 					/```(?:json)?\s*([\s\S]*?)\s*```/
 				);
 				if (codeBlockMatch) {
-					cleanedResponse = codeBlockMatch[1].trim(); // Trim content inside block
-					reportLog('Extracted JSON from code block', 'info');
+					cleanedResponse = codeBlockMatch[1].trim();
 				} else {
-					// If no code block, ensure it starts with '[' and ends with ']'
-					// This is less robust but a common fallback
 					const firstBracket = cleanedResponse.indexOf('[');
 					const lastBracket = cleanedResponse.lastIndexOf(']');
 					if (firstBracket !== -1 && lastBracket > firstBracket) {
@@ -263,13 +256,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 							firstBracket,
 							lastBracket + 1
 						);
-						reportLog('Extracted content between first [ and last ]', 'info');
 					} else {
 						reportLog(
 							'Warning: Response does not appear to be a JSON array.',
 							'warn'
 						);
-						// Keep going, maybe JSON.parse can handle it or will fail informatively
 					}
 				}
 
@@ -283,48 +274,23 @@ async function analyzeTaskComplexity(options, context = {}) {
 					);
 				}
 
-				try {
-					complexityAnalysis = JSON.parse(cleanedResponse);
-				} catch (jsonError) {
-					reportLog(
-						'Initial JSON parsing failed. Raw response might be malformed.',
-						'error'
-					);
-					reportLog(`Original JSON Error: ${jsonError.message}`, 'error');
-					if (outputFormat === 'text' && getDebugFlag(session)) {
-						console.log(chalk.red('--- Start Raw Malformed Response ---'));
-						console.log(chalk.gray(fullResponse));
-						console.log(chalk.red('--- End Raw Malformed Response ---'));
-					}
-					// Re-throw the specific JSON parsing error
-					throw new Error(
-						`Failed to parse JSON response: ${jsonError.message}`
-					);
-				}
-
-				// Ensure it's an array after parsing
-				if (!Array.isArray(complexityAnalysis)) {
-					throw new Error('Parsed response is not a valid JSON array.');
-				}
-			} catch (error) {
-				// Catch errors specifically from the parsing/cleanup block
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator); // Ensure indicator stops
+				complexityAnalysis = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 				reportLog(
-					`Error parsing complexity analysis JSON: ${error.message}`,
+					`Error parsing complexity analysis JSON: ${parseError.message}`,
 					'error'
 				);
 				if (outputFormat === 'text') {
 					console.error(
 						chalk.red(
-							`Error parsing complexity analysis JSON: ${error.message}`
+							`Error parsing complexity analysis JSON: ${parseError.message}`
 						)
 					);
 				}
-				throw error; // Re-throw parsing error
+				throw parseError;
 			}
-			// --- End Manual JSON Parsing & Cleanup ---
 
-			// --- Post-processing (Missing Task Check) - (Unchanged) ---
 			const taskIds = tasksData.tasks.map((t) => t.id);
 			const analysisTaskIds = complexityAnalysis.map((a) => a.taskId);
 			const missingTaskIds = taskIds.filter(
@@ -359,10 +325,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 					}
 				}
 			}
-			// --- End Post-processing ---
 
-			// --- Report Creation & Writing (Unchanged) ---
-			const finalReport = {
+			const report = {
 				meta: {
 					generatedAt: new Date().toISOString(),
 					tasksAnalyzed: tasksData.tasks.length,
@@ -373,15 +337,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: complexityAnalysis
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
-			writeJSON(outputPath, finalReport);
+			writeJSON(outputPath, report);
 
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
 				'success'
 			);
-			// --- End Report Creation & Writing ---
 
-			// --- Display CLI Summary (Unchanged) ---
 			if (outputFormat === 'text') {
 				console.log(
 					chalk.green(
@@ -435,23 +397,28 @@ async function analyzeTaskComplexity(options, context = {}) {
 				if (getDebugFlag(session)) {
 					console.debug(
 						chalk.gray(
-							`Final analysis object: ${JSON.stringify(finalReport, null, 2)}`
+							`Final analysis object: ${JSON.stringify(report, null, 2)}`
 						)
 					);
 				}
-			}
-			// --- End Display CLI Summary ---
 
-			return finalReport;
-		} catch (error) {
-			// Catches errors from generateTextService call
+				if (aiServiceResponse.telemetryData) {
+					displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+				}
+			}
+
+			return {
+				report: report,
+				telemetryData: aiServiceResponse?.telemetryData
+			};
+		} catch (aiError) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-			reportLog(`Error during AI service call: ${error.message}`, 'error');
+			reportLog(`Error during AI service call: ${aiError.message}`, 'error');
 			if (outputFormat === 'text') {
 				console.error(
-					chalk.red(`Error during AI service call: ${error.message}`)
+					chalk.red(`Error during AI service call: ${aiError.message}`)
 				);
-				if (error.message.includes('API key')) {
+				if (aiError.message.includes('API key')) {
 					console.log(
 						chalk.yellow(
 							'\nPlease ensure your API keys are correctly configured in .env or ~/.taskmaster/.env'
@@ -462,10 +429,9 @@ async function analyzeTaskComplexity(options, context = {}) {
 					);
 				}
 			}
-			throw error; // Re-throw AI service error
+			throw aiError;
 		}
 	} catch (error) {
-		// Catches general errors (file read, etc.)
 		reportLog(`Error analyzing task complexity: ${error.message}`, 'error');
 		if (outputFormat === 'text') {
 			console.error(

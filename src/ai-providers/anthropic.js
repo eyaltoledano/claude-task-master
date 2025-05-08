@@ -51,7 +51,7 @@ function getClient(apiKey) {
  * @param {Array<object>} params.messages - The messages array (e.g., [{ role: 'user', content: '...' }]).
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
- * @returns {Promise<string>} The generated text content.
+ * @returns {Promise<object>} The generated text content and usage.
  * @throws {Error} If the API call fails.
  */
 export async function generateAnthropicText({
@@ -76,7 +76,14 @@ export async function generateAnthropicText({
 			'debug',
 			`Anthropic generateText result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.text;
+		// Return both text and usage
+		return {
+			text: result.text,
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
 		log('error', `Anthropic generateText failed: ${error.message}`);
 		// Consider more specific error handling or re-throwing a standardized error
@@ -160,7 +167,7 @@ export async function streamAnthropicText({
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
  * @param {number} [params.maxRetries] - Max retries for validation/generation.
- * @returns {Promise<object>} The generated object matching the schema.
+ * @returns {Promise<object>} The generated object matching the schema and usage.
  * @throws {Error} If generation or validation fails.
  */
 export async function generateAnthropicObject({
@@ -204,7 +211,14 @@ export async function generateAnthropicObject({
 			'debug',
 			`Anthropic generateObject result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.object;
+		// Return both object and usage
+		return {
+			object: result.object,
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
 		// Simple error logging
 		log(

@@ -508,6 +508,61 @@ function detectCamelCaseFlags(args) {
 	return camelCaseFlags;
 }
 
+/**
+ * Aggregates an array of telemetry objects into a single summary object.
+ * @param {Array<Object>} telemetryArray - Array of telemetryData objects.
+ * @param {string} overallCommandName - The name for the aggregated command.
+ * @returns {Object|null} Aggregated telemetry object or null if input is empty.
+ */
+function _aggregateTelemetry(telemetryArray, overallCommandName) {
+	if (!telemetryArray || telemetryArray.length === 0) {
+		return null;
+	}
+
+	const aggregated = {
+		timestamp: new Date().toISOString(), // Use current time for aggregation time
+		userId: telemetryArray[0].userId, // Assume userId is consistent
+		commandName: overallCommandName,
+		modelUsed: 'Multiple', // Default if models vary
+		providerName: 'Multiple', // Default if providers vary
+		inputTokens: 0,
+		outputTokens: 0,
+		totalTokens: 0,
+		totalCost: 0,
+		currency: telemetryArray[0].currency || 'USD' // Assume consistent currency or default
+	};
+
+	const uniqueModels = new Set();
+	const uniqueProviders = new Set();
+	const uniqueCurrencies = new Set();
+
+	telemetryArray.forEach((item) => {
+		aggregated.inputTokens += item.inputTokens || 0;
+		aggregated.outputTokens += item.outputTokens || 0;
+		aggregated.totalCost += item.totalCost || 0;
+		uniqueModels.add(item.modelUsed);
+		uniqueProviders.add(item.providerName);
+		uniqueCurrencies.add(item.currency || 'USD');
+	});
+
+	aggregated.totalTokens = aggregated.inputTokens + aggregated.outputTokens;
+	aggregated.totalCost = parseFloat(aggregated.totalCost.toFixed(6)); // Fix precision
+
+	if (uniqueModels.size === 1) {
+		aggregated.modelUsed = [...uniqueModels][0];
+	}
+	if (uniqueProviders.size === 1) {
+		aggregated.providerName = [...uniqueProviders][0];
+	}
+	if (uniqueCurrencies.size > 1) {
+		aggregated.currency = 'Multiple'; // Mark if currencies actually differ
+	} else if (uniqueCurrencies.size === 1) {
+		aggregated.currency = [...uniqueCurrencies][0];
+	}
+
+	return aggregated;
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -529,5 +584,6 @@ export {
 	isSilentMode,
 	resolveEnvVariable,
 	getTaskManager,
-	findProjectRoot
+	findProjectRoot,
+	_aggregateTelemetry
 };

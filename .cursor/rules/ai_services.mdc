@@ -25,6 +25,7 @@ This document outlines the architecture and usage patterns for interacting with 
     *   Implements **retry logic** for specific API errors (`_attemptProviderCallWithRetries`).
     *   Resolves API keys automatically via `_resolveApiKey` (using `resolveEnvVariable`).
     *   Maps requests to the correct provider implementation (in `src/ai-providers/`) via `PROVIDER_FUNCTIONS`.
+    *   Returns a structured object containing the primary AI result (`mainResult`) and telemetry data (`telemetryData`). See [`telemetry.mdc`](mdc:.cursor/rules/telemetry.mdc) for details on how this telemetry data is propagated and handled.
 
 *   **Provider Implementations (`src/ai-providers/*.js`):**
     *   Contain provider-specific wrappers around Vercel AI SDK functions (`generateText`, `generateObject`).

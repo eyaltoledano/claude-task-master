@@ -3,7 +3,6 @@ description: Guidelines for integrating new features into the Task Master CLI
 globs: scripts/modules/*.js
 alwaysApply: false
 ---
-
 # Task Master Feature Integration Guidelines
 
 ## Feature Placement Decision Process
@@ -195,6 +194,8 @@ The standard pattern for adding a feature follows this workflow:
 - **Debugging Strategy**:
   - ✅ **DO**: If an MCP tool fails with vague errors (e.g., JSON parsing issues like `Unexpected token ... is not valid JSON`), **try running the equivalent CLI command directly in the terminal** (e.g., `task-master expand --all`). CLI output often provides much more specific error messages (like missing function definitions or stack traces from the core logic) that pinpoint the root cause.
   - ❌ **DON'T**: Rely solely on MCP logs if the error is unclear; use the CLI as a complementary debugging tool for core logic issues.
+
+- **Telemetry Integration**: Ensure AI calls correctly handle and propagate `telemetryData` as described in [`telemetry.mdc`](mdc:.cursor/rules/telemetry.mdc).
 
 ```javascript
 // 1. CORE LOGIC: Add function to appropriate module (example in task-manager.js)

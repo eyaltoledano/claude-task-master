@@ -71,3 +71,47 @@ Ensure all commands have proper help text and error handling for cases like no m
    - Verify the personality simulation is consistent and believable
    - Test the round-table output file readability and usefulness
    - Verify that using round-table output to update tasks produces meaningful improvements
+
+# Subtasks:
+## 1. Design Mentor System Architecture [pending]
+### Dependencies: None
+### Description: Create a comprehensive architecture for the mentor system, defining data models, relationships, and interaction patterns.
+### Details:
+Define mentor profiles structure, expertise categorization, availability tracking, and relationship to user accounts. Design the database schema for storing mentor information and interactions. Create flowcharts for mentor-mentee matching algorithms and interaction workflows.
+
+## 2. Implement Mentor Profile Management [pending]
+### Dependencies: 60.1
+### Description: Develop the functionality for creating, editing, and managing mentor profiles in the system.
+### Details:
+Build UI components for mentor profile creation and editing. Implement backend APIs for profile CRUD operations. Create expertise tagging system and availability calendar. Add profile verification and approval workflows for quality control.
+
+## 3. Develop Round-Table Discussion Framework [pending]
+### Dependencies: 60.1
+### Description: Create the core framework for hosting and managing round-table discussions between mentors and users.
+### Details:
+Design the discussion room data model and state management. Implement discussion scheduling and participant management. Create discussion topic and agenda setting functionality. Develop discussion moderation tools and rules enforcement mechanisms.
+
+## 4. Implement LLM Integration for AI Mentors [pending]
+### Dependencies: 60.3
+### Description: Integrate LLM capabilities to simulate AI mentors that can participate in round-table discussions.
+### Details:
+Select appropriate LLM models for mentor simulation. Develop prompt engineering templates for different mentor personas and expertise areas. Implement context management to maintain conversation coherence. Create fallback mechanisms for handling edge cases in discussions.
+
+## 5. Build Discussion Output Formatter [pending]
+### Dependencies: 60.3, 60.4
+### Description: Create a system to format and present round-table discussion outputs in a structured, readable format.
+### Details:
+Design templates for discussion summaries and transcripts. Implement real-time formatting of ongoing discussions. Create exportable formats for discussion outcomes (PDF, markdown, etc.). Develop highlighting and annotation features for key insights.
+
+## 6. Integrate Mentor System with Task Management [pending]
+### Dependencies: 60.2, 60.3
+### Description: Connect the mentor system with the existing task management functionality to enable task-specific mentoring.
+### Details:
+Create APIs to link tasks with relevant mentors based on expertise. Implement functionality to initiate discussions around specific tasks. Develop mechanisms for mentors to provide feedback and guidance on tasks. Build notification system for task-related mentor interactions.
+
+## 7. Test and Optimize Round-Table Discussions [pending]
+### Dependencies: 60.4, 60.5, 60.6
+### Description: Conduct comprehensive testing of the round-table discussion feature and optimize for performance and user experience.
+### Details:
+Perform load testing with multiple concurrent discussions. Test AI mentor responses for quality and relevance. Optimize LLM usage for cost efficiency. Conduct user testing sessions and gather feedback. Implement performance monitoring and analytics for ongoing optimization.
+

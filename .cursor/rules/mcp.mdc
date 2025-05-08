@@ -522,3 +522,8 @@ Follow these steps to add MCP support for an existing Task Master command (see [
       // Add more functions as implemented
     };
     ```
+
+## Telemetry Integration
+
+- Direct functions calling core logic that involves AI should receive and pass through `telemetryData` within their successful `data` payload. See [`telemetry.mdc`](mdc:.cursor/rules/telemetry.mdc) for the standard pattern.
+- MCP tools use `handleApiResult`, which ensures the `data` object (potentially including `telemetryData`) from the direct function is correctly included in the final response.

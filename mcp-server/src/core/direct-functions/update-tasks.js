@@ -81,7 +81,6 @@ export async function updateTasksDirect(args, log, context = {}) {
 			'json'
 		);
 
-		// updateTasks returns { success: true, updatedTasks: [...] } on success
 		if (result && result.success && Array.isArray(result.updatedTasks)) {
 			logWrapper.success(
 				`Successfully updated ${result.updatedTasks.length} tasks.`
@@ -91,7 +90,8 @@ export async function updateTasksDirect(args, log, context = {}) {
 				data: {
 					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
 					tasksFile,
-					updatedCount: result.updatedTasks.length
+					updatedCount: result.updatedTasks.length,
+					telemetryData: result.telemetryData
 				}
 			};
 		} else {

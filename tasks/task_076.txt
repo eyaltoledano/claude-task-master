@@ -57,3 +57,47 @@ Implement detailed logging with different verbosity levels:
 - DEBUG: Raw request/response data
 
 Run the test suite in a clean environment and confirm all expected assertions and logs are produced. Validate that new test cases can be added with minimal effort and that the framework integrates with CI pipelines. Create a CI configuration that runs tests on each commit.
+
+# Subtasks:
+## 1. Design E2E Test Framework Architecture [pending]
+### Dependencies: None
+### Description: Create a high-level design document for the E2E test framework that outlines components, interactions, and test flow
+### Details:
+Define the overall architecture of the test framework, including test runner, FastMCP server launcher, message protocol handler, and assertion components. Document how these components will interact and the data flow between them. Include error handling strategies and logging requirements.
+
+## 2. Implement FastMCP Server Launcher [pending]
+### Dependencies: 76.1
+### Description: Create a component that can programmatically launch and manage the FastMCP server process over stdio
+### Details:
+Develop a module that can spawn the FastMCP server as a child process, establish stdio communication channels, handle process lifecycle events, and implement proper cleanup procedures. Include error handling for process failures and timeout mechanisms.
+
+## 3. Develop Message Protocol Handler [pending]
+### Dependencies: 76.1
+### Description: Implement a handler that can serialize/deserialize messages according to the FastMCP protocol specification
+### Details:
+Create a protocol handler that formats outgoing messages and parses incoming messages according to the FastMCP protocol. Implement validation for message format compliance and error handling for malformed messages. Support all required message types defined in the protocol.
+
+## 4. Create Request/Response Correlation Mechanism [pending]
+### Dependencies: 76.3
+### Description: Implement a system to track and correlate requests with their corresponding responses
+### Details:
+Develop a correlation mechanism using unique identifiers to match requests with their responses. Implement timeout handling for unresponded requests and proper error propagation. Design the API to support both synchronous and asynchronous request patterns.
+
+## 5. Build Test Assertion Framework [pending]
+### Dependencies: 76.3, 76.4
+### Description: Create a set of assertion utilities specific to FastMCP server testing
+### Details:
+Develop assertion utilities that can validate server responses against expected values, verify timing constraints, and check for proper error handling. Include support for complex response validation patterns and detailed failure reporting.
+
+## 6. Implement Test Cases [pending]
+### Dependencies: 76.2, 76.4, 76.5
+### Description: Develop a comprehensive set of test cases covering all FastMCP server functionality
+### Details:
+Create test cases for basic server operations, error conditions, edge cases, and performance scenarios. Organize tests into logical groups and ensure proper isolation between test cases. Include documentation for each test explaining its purpose and expected outcomes.
+
+## 7. Create CI Integration and Documentation [pending]
+### Dependencies: 76.6
+### Description: Set up continuous integration for the test framework and create comprehensive documentation
+### Details:
+Configure the test framework to run in CI environments, generate reports, and fail builds appropriately. Create documentation covering framework architecture, usage instructions, test case development guidelines, and troubleshooting procedures. Include examples of extending the framework for new test scenarios.
+
