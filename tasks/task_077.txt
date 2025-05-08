@@ -230,7 +230,7 @@ Apply telemetry pattern from telemetry.mdc:
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through.
 
 
-## 11. Telemetry Integration for update-subtask-by-id [in-progress]
+## 11. Telemetry Integration for update-subtask-by-id [done]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the update-subtask-by-id functionality.
 ### Details:
@@ -254,7 +254,7 @@ Apply telemetry pattern from telemetry.mdc:
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through (if present).
 
 
-## 12. Telemetry Integration for analyze-task-complexity [pending]
+## 12. Telemetry Integration for analyze-task-complexity [done]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the analyze-task-complexity functionality.
 ### Details:

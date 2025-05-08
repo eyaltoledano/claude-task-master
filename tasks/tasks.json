@@ -5015,16 +5015,22 @@
           "title": "Telemetry Integration for update-subtask-by-id",
           "description": "Integrate AI usage telemetry capture and propagation for the update-subtask-by-id functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/update-subtask-by-id.js`):**\n    *   Verify if this function *actually* calls an AI service. If it only appends text, telemetry integration might not apply directly here, but ensure its callers handle telemetry if they use AI.\n    *   *If it calls AI:* Modify AI service call to include `commandName: \\'update-subtask\\'` and `outputType`.\n    *   *If it calls AI:* Receive `{ mainResult, telemetryData }`.\n    *   *If it calls AI:* Return object including `telemetryData`.\n    *   *If it calls AI:* Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/update-subtask-by-id.js`):**\n    *   *If core calls AI:* Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   *If core calls AI:* Pass `outputFormat: \\'json\\'` if applicable.\n    *   *If core calls AI:* Receive `{ ..., telemetryData }` from core.\n    *   *If core calls AI:* Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/update-subtask.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through (if present).\n",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [],
-          "parentTaskId": 77
+          "parentTaskId": 77,
+          "parentTask": {
+            "id": 77,
+            "title": "Implement AI Usage Telemetry for Taskmaster (with external analytics endpoint)",
+            "status": "in-progress"
+          },
+          "isSubtask": true
         },
         {
           "id": 12,
           "title": "Telemetry Integration for analyze-task-complexity",
           "description": "Integrate AI usage telemetry capture and propagation for the analyze-task-complexity functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/analyze-task-complexity.js`):**\n    *   Modify AI service call to include `commandName: \\'analyze-complexity\\'` and `outputType`.\n    *   Receive `{ mainResult, telemetryData }`.\n    *   Return object including `telemetryData` (perhaps alongside the complexity report data).\n    *   Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/analyze-task-complexity.js`):**\n    *   Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   Pass `outputFormat: \\'json\\'` if applicable.\n    *   Receive `{ ..., telemetryData }` from core.\n    *   Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/analyze.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through.\n",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
