@@ -136,7 +136,7 @@ Apply telemetry pattern from telemetry.mdc:
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through.
 
 
-## 7. Telemetry Integration for expand-task [in-progress]
+## 7. Telemetry Integration for expand-task [done]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the expand-task functionality.
 ### Details:
@@ -159,7 +159,7 @@ Apply telemetry pattern from telemetry.mdc:
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through.
 
 
-## 8. Telemetry Integration for expand-all-tasks [pending]
+## 8. Telemetry Integration for expand-all-tasks [done]
 ### Dependencies: None
 ### Description: Integrate AI usage telemetry capture and propagation for the expand-all-tasks functionality.
 ### Details:

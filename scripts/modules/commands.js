@@ -1138,12 +1138,6 @@ function registerCommands(programInstance) {
 						{} // Pass empty context for CLI calls
 						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
-					// Optional: Display summary from result
-					console.log(chalk.green(`Expansion Summary:`));
-					console.log(chalk.green(` - Attempted: ${result.tasksToExpand}`));
-					console.log(chalk.green(` - Expanded:  ${result.expandedCount}`));
-					console.log(chalk.yellow(` - Skipped:   ${result.skippedCount}`));
-					console.log(chalk.red(` - Failed:    ${result.failedCount}`));
 				} catch (error) {
 					console.error(
 						chalk.red(`Error expanding all tasks: ${error.message}`)

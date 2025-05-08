@@ -2621,7 +2621,79 @@
       "dependencies": [],
       "priority": "medium",
       "details": "This feature will enable users to create automated workflows based on task events and external triggers. Implementation should include:\n\n1. A webhook registration system that allows users to specify URLs to be called when specific task events occur (creation, status change, completion, etc.)\n2. An event system that captures and processes all task-related events\n3. A trigger definition interface where users can define conditions for automation (e.g., 'When task X is completed, create task Y')\n4. Support for both incoming webhooks (external services triggering actions in Taskmaster) and outgoing webhooks (Taskmaster notifying external services)\n5. A secure authentication mechanism for webhook calls\n6. Rate limiting and retry logic for failed webhook deliveries\n7. Integration with the existing task management system\n8. Command-line interface for managing webhooks and triggers\n9. Payload templating system allowing users to customize the data sent in webhooks\n10. Logging system for webhook activities and failures\n\nThe implementation should be compatible with both the solo/local mode and the multiplayer/remote mode, with appropriate adaptations for each context. When operating in MCP mode, the system should leverage the MCP communication protocol implemented in Task #42.",
-      "testStrategy": "Testing should verify both the functionality and security of the webhook system:\n\n1. Unit tests:\n   - Test webhook registration, modification, and deletion\n   - Verify event capturing for all task operations\n   - Test payload generation and templating\n   - Validate authentication logic\n\n2. Integration tests:\n   - Set up a mock server to receive webhooks and verify payload contents\n   - Test the complete flow from task event to webhook delivery\n   - Verify rate limiting and retry behavior with intentionally failing endpoints\n   - Test webhook triggers creating new tasks and modifying existing ones\n\n3. Security tests:\n   - Verify that authentication tokens are properly validated\n   - Test for potential injection vulnerabilities in webhook payloads\n   - Verify that sensitive information is not leaked in webhook payloads\n   - Test rate limiting to prevent DoS attacks\n\n4. Mode-specific tests:\n   - Verify correct operation in both solo/local and multiplayer/remote modes\n   - Test the interaction with MCP protocol when in multiplayer mode\n\n5. Manual verification:\n   - Set up integrations with common services (GitHub, Slack, etc.) to verify real-world functionality\n   - Verify that the CLI interface for managing webhooks works as expected"
+      "testStrategy": "Testing should verify both the functionality and security of the webhook system:\n\n1. Unit tests:\n   - Test webhook registration, modification, and deletion\n   - Verify event capturing for all task operations\n   - Test payload generation and templating\n   - Validate authentication logic\n\n2. Integration tests:\n   - Set up a mock server to receive webhooks and verify payload contents\n   - Test the complete flow from task event to webhook delivery\n   - Verify rate limiting and retry behavior with intentionally failing endpoints\n   - Test webhook triggers creating new tasks and modifying existing ones\n\n3. Security tests:\n   - Verify that authentication tokens are properly validated\n   - Test for potential injection vulnerabilities in webhook payloads\n   - Verify that sensitive information is not leaked in webhook payloads\n   - Test rate limiting to prevent DoS attacks\n\n4. Mode-specific tests:\n   - Verify correct operation in both solo/local and multiplayer/remote modes\n   - Test the interaction with MCP protocol when in multiplayer mode\n\n5. Manual verification:\n   - Set up integrations with common services (GitHub, Slack, etc.) to verify real-world functionality\n   - Verify that the CLI interface for managing webhooks works as expected",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design webhook registration API endpoints",
+          "description": "Create API endpoints for registering, updating, and deleting webhook subscriptions",
+          "dependencies": [],
+          "details": "Implement RESTful API endpoints that allow clients to register webhook URLs, specify event types they want to subscribe to, and manage their subscriptions. Include validation for URL format, required parameters, and authentication requirements.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement webhook authentication and security measures",
+          "description": "Develop security mechanisms for webhook verification and payload signing",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement signature verification using HMAC, rate limiting to prevent abuse, IP whitelisting options, and webhook secret management. Create a secure token system for webhook verification and implement TLS for all webhook communications.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Create event trigger definition interface",
+          "description": "Design and implement the interface for defining event triggers and conditions",
+          "dependencies": [],
+          "details": "Develop a user interface or API that allows defining what events should trigger webhooks. Include support for conditional triggers based on event properties, filtering options, and the ability to specify payload formats.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Build event processing and queuing system",
+          "description": "Implement a robust system for processing and queuing events before webhook delivery",
+          "dependencies": [
+            1,
+            3
+          ],
+          "details": "Create an event queue using a message broker (like RabbitMQ or Kafka) to handle high volumes of events. Implement event deduplication, prioritization, and persistence to ensure reliable delivery even during system failures.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Develop webhook delivery and retry mechanism",
+          "description": "Create a reliable system for webhook delivery with retry logic and failure handling",
+          "dependencies": [
+            2,
+            4
+          ],
+          "details": "Implement exponential backoff retry logic, configurable retry attempts, and dead letter queues for failed deliveries. Add monitoring for webhook delivery success rates and performance metrics. Include timeout handling for unresponsive webhook endpoints.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Implement comprehensive error handling and logging",
+          "description": "Create robust error handling, logging, and monitoring for the webhook system",
+          "dependencies": [
+            5
+          ],
+          "details": "Develop detailed error logging for webhook failures, including response codes, error messages, and timing information. Implement alerting for critical failures and create a dashboard for monitoring system health. Add debugging tools for webhook delivery issues.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Create webhook testing and simulation tools",
+          "description": "Develop tools for testing webhook integrations and simulating event triggers",
+          "dependencies": [
+            3,
+            5,
+            6
+          ],
+          "details": "Build a webhook testing console that allows manual triggering of events, viewing delivery history, and replaying failed webhooks. Create a webhook simulator for developers to test their endpoint implementations without generating real system events.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 45,
@@ -2631,7 +2703,58 @@
       "dependencies": [],
       "priority": "medium",
       "details": "Implement a new flag '--from-github' for the add-task command that allows users to create tasks directly from GitHub issues. The implementation should:\n\n1. Accept a GitHub issue URL as an argument (e.g., 'taskmaster add-task --from-github https://github.com/owner/repo/issues/123')\n2. Parse the URL to extract the repository owner, name, and issue number\n3. Use the GitHub API to fetch the issue details including:\n   - Issue title (to be used as task title)\n   - Issue description (to be used as task description)\n   - Issue labels (to be potentially used as tags)\n   - Issue assignees (for reference)\n   - Issue status (open/closed)\n4. Generate a well-formatted task with this information\n5. Include a reference link back to the original GitHub issue\n6. Handle authentication for private repositories using GitHub tokens from environment variables or config file\n7. Implement proper error handling for:\n   - Invalid URLs\n   - Non-existent issues\n   - API rate limiting\n   - Authentication failures\n   - Network issues\n8. Allow users to override or supplement the imported details with additional command-line arguments\n9. Add appropriate documentation in help text and user guide",
-      "testStrategy": "Testing should cover the following scenarios:\n\n1. Unit tests:\n   - Test URL parsing functionality with valid and invalid GitHub issue URLs\n   - Test GitHub API response parsing with mocked API responses\n   - Test error handling for various failure cases\n\n2. Integration tests:\n   - Test with real GitHub public issues (use well-known repositories)\n   - Test with both open and closed issues\n   - Test with issues containing various elements (labels, assignees, comments)\n\n3. Error case tests:\n   - Invalid URL format\n   - Non-existent repository\n   - Non-existent issue number\n   - API rate limit exceeded\n   - Authentication failures for private repos\n\n4. End-to-end tests:\n   - Verify that a task created from a GitHub issue contains all expected information\n   - Verify that the task can be properly managed after creation\n   - Test the interaction with other flags and commands\n\nCreate mock GitHub API responses for testing to avoid hitting rate limits during development and testing. Use environment variables to configure test credentials if needed."
+      "testStrategy": "Testing should cover the following scenarios:\n\n1. Unit tests:\n   - Test URL parsing functionality with valid and invalid GitHub issue URLs\n   - Test GitHub API response parsing with mocked API responses\n   - Test error handling for various failure cases\n\n2. Integration tests:\n   - Test with real GitHub public issues (use well-known repositories)\n   - Test with both open and closed issues\n   - Test with issues containing various elements (labels, assignees, comments)\n\n3. Error case tests:\n   - Invalid URL format\n   - Non-existent repository\n   - Non-existent issue number\n   - API rate limit exceeded\n   - Authentication failures for private repos\n\n4. End-to-end tests:\n   - Verify that a task created from a GitHub issue contains all expected information\n   - Verify that the task can be properly managed after creation\n   - Test the interaction with other flags and commands\n\nCreate mock GitHub API responses for testing to avoid hitting rate limits during development and testing. Use environment variables to configure test credentials if needed.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design GitHub API integration architecture",
+          "description": "Create a technical design document outlining the architecture for GitHub API integration, including authentication flow, rate limiting considerations, and error handling strategies.",
+          "dependencies": [],
+          "details": "Document should include: API endpoints to be used, authentication method (OAuth vs Personal Access Token), data flow diagrams, and security considerations. Research GitHub API rate limits and implement appropriate throttling mechanisms.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement GitHub URL parsing and validation",
+          "description": "Create a module to parse and validate GitHub issue URLs, extracting repository owner, repository name, and issue number.",
+          "dependencies": [
+            1
+          ],
+          "details": "Handle various GitHub URL formats (e.g., github.com/owner/repo/issues/123, github.com/owner/repo/pull/123). Implement validation to ensure the URL points to a valid issue or pull request. Return structured data with owner, repo, and issue number for valid URLs.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Develop GitHub API client for issue fetching",
+          "description": "Create a service to authenticate with GitHub and fetch issue details using the GitHub REST API.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement authentication using GitHub Personal Access Tokens or OAuth. Handle API responses, including error cases (rate limiting, authentication failures, not found). Extract relevant issue data: title, description, labels, assignees, and comments.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create task formatter for GitHub issues",
+          "description": "Develop a formatter to convert GitHub issue data into the application's task format.",
+          "dependencies": [
+            3
+          ],
+          "details": "Map GitHub issue fields to task fields (title, description, etc.). Convert GitHub markdown to the application's supported format. Handle special GitHub features like issue references and user mentions. Generate appropriate tags based on GitHub labels.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Implement end-to-end import flow with UI",
+          "description": "Create the user interface and workflow for importing GitHub issues, including progress indicators and error handling.",
+          "dependencies": [
+            4
+          ],
+          "details": "Design and implement UI for URL input and import confirmation. Show loading states during API calls. Display meaningful error messages for various failure scenarios. Allow users to review and modify imported task details before saving. Add automated tests for the entire import flow.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 46,
@@ -2641,7 +2764,58 @@
       "dependencies": [],
       "priority": "medium",
       "details": "Develop a new command called `analyze-ice` that evaluates non-completed tasks (excluding those marked as done, cancelled, or deferred) and ranks them according to the ICE methodology:\n\n1. Core functionality:\n   - Calculate an Impact score (how much value the task will deliver)\n   - Calculate a Confidence score (how certain we are about the impact)\n   - Calculate an Ease score (how easy it is to implement)\n   - Compute a total ICE score (sum or product of the three components)\n\n2. Implementation details:\n   - Reuse the filtering logic from `analyze-complexity` to select relevant tasks\n   - Leverage the LLM to generate scores for each dimension on a scale of 1-10\n   - For each task, prompt the LLM to evaluate and justify each score based on task description and details\n   - Create an `ice_report.md` file similar to the complexity report\n   - Sort tasks by total ICE score in descending order\n\n3. CLI rendering:\n   - Implement a sister command `show-ice-report` that displays the report in the terminal\n   - Format the output with colorized scores and rankings\n   - Include options to sort by individual components (impact, confidence, or ease)\n\n4. Integration:\n   - If a complexity report exists, reference it in the ICE report for additional context\n   - Consider adding a combined view that shows both complexity and ICE scores\n\nThe command should follow the same design patterns as `analyze-complexity` for consistency and code reuse.",
-      "testStrategy": "1. Unit tests:\n   - Test the ICE scoring algorithm with various mock task inputs\n   - Verify correct filtering of tasks based on status\n   - Test the sorting functionality with different ranking criteria\n\n2. Integration tests:\n   - Create a test project with diverse tasks and verify the generated ICE report\n   - Test the integration with existing complexity reports\n   - Verify that changes to task statuses correctly update the ICE analysis\n\n3. CLI tests:\n   - Verify the `analyze-ice` command generates the expected report file\n   - Test the `show-ice-report` command renders correctly in the terminal\n   - Test with various flag combinations and sorting options\n\n4. Validation criteria:\n   - The ICE scores should be reasonable and consistent\n   - The report should clearly explain the rationale behind each score\n   - The ranking should prioritize high-impact, high-confidence, easy-to-implement tasks\n   - Performance should be acceptable even with a large number of tasks\n   - The command should handle edge cases gracefully (empty projects, missing data)"
+      "testStrategy": "1. Unit tests:\n   - Test the ICE scoring algorithm with various mock task inputs\n   - Verify correct filtering of tasks based on status\n   - Test the sorting functionality with different ranking criteria\n\n2. Integration tests:\n   - Create a test project with diverse tasks and verify the generated ICE report\n   - Test the integration with existing complexity reports\n   - Verify that changes to task statuses correctly update the ICE analysis\n\n3. CLI tests:\n   - Verify the `analyze-ice` command generates the expected report file\n   - Test the `show-ice-report` command renders correctly in the terminal\n   - Test with various flag combinations and sorting options\n\n4. Validation criteria:\n   - The ICE scores should be reasonable and consistent\n   - The report should clearly explain the rationale behind each score\n   - The ranking should prioritize high-impact, high-confidence, easy-to-implement tasks\n   - Performance should be acceptable even with a large number of tasks\n   - The command should handle edge cases gracefully (empty projects, missing data)",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design ICE scoring algorithm",
+          "description": "Create the algorithm for calculating Impact, Confidence, and Ease scores for tasks",
+          "dependencies": [],
+          "details": "Define the mathematical formula for ICE scoring (Impact × Confidence × Ease). Determine the scale for each component (e.g., 1-10). Create rules for how AI will evaluate each component based on task attributes like complexity, dependencies, and descriptions. Document the scoring methodology for future reference.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement AI integration for ICE scoring",
+          "description": "Develop the AI component that will analyze tasks and generate ICE scores",
+          "dependencies": [
+            1
+          ],
+          "details": "Create prompts for the AI to evaluate Impact, Confidence, and Ease. Implement error handling for AI responses. Add caching to prevent redundant AI calls. Ensure the AI provides justification for each score component. Test with various task types to ensure consistent scoring.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Create report file generator",
+          "description": "Build functionality to generate a structured report file with ICE analysis results",
+          "dependencies": [
+            2
+          ],
+          "details": "Design the report file format (JSON, CSV, or Markdown). Implement sorting of tasks by ICE score. Include task details, individual I/C/E scores, and final ICE score in the report. Add timestamp and project metadata. Create a function to save the report to the specified location.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Implement CLI rendering for ICE analysis",
+          "description": "Develop the command-line interface for displaying ICE analysis results",
+          "dependencies": [
+            3
+          ],
+          "details": "Design a tabular format for displaying ICE scores in the terminal. Use color coding to highlight high/medium/low priority tasks. Implement filtering options (by score range, task type, etc.). Add sorting capabilities. Create a summary view that shows top N tasks by ICE score.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Integrate with existing complexity reports",
+          "description": "Connect the ICE analysis functionality with the existing complexity reporting system",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Modify the existing complexity report to include ICE scores. Ensure consistent formatting between complexity and ICE reports. Add cross-referencing between reports. Update the command-line help documentation. Test the integrated system with various project sizes and configurations.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 47,
@@ -2651,7 +2825,68 @@
       "dependencies": [],
       "priority": "medium",
       "details": "Implement a new workflow for the suggestion actions card that guides users through a logical sequence when working with tasks and subtasks:\n\n1. Task Expansion Phase:\n   - Add a prominent 'Expand Task' button at the top of the suggestion card\n   - Implement an 'Add Subtask' button that becomes active after task expansion\n   - Allow users to add multiple subtasks sequentially\n   - Provide visual indication of the current phase (expansion phase)\n\n2. Context Addition Phase:\n   - After subtasks are created, transition to the context phase\n   - Implement an 'Update Subtask' action that allows appending context to each subtask\n   - Create a UI element showing which subtask is currently being updated\n   - Provide a progress indicator showing which subtasks have received context\n   - Include a mechanism to navigate between subtasks for context addition\n\n3. Task Management Phase:\n   - Once all subtasks have context, enable the 'Set as In Progress' button\n   - Add a 'Start Working' button that directs the agent to begin with the first subtask\n   - Implement an 'Update Task' action that consolidates all notes and reorganizes them into improved subtask details\n   - Provide a confirmation dialog when restructuring task content\n\n4. UI/UX Considerations:\n   - Use visual cues (colors, icons) to indicate the current phase\n   - Implement tooltips explaining each action's purpose\n   - Add a progress tracker showing completion status across all phases\n   - Ensure the UI adapts responsively to different screen sizes\n\nThe implementation should maintain all existing functionality while guiding users through this more structured approach to task management.",
-      "testStrategy": "Testing should verify the complete workflow functions correctly:\n\n1. Unit Tests:\n   - Test each button/action individually to ensure it performs its specific function\n   - Verify state transitions between phases work correctly\n   - Test edge cases (e.g., attempting to set a task in progress before adding context)\n\n2. Integration Tests:\n   - Verify the complete workflow from task expansion to starting work\n   - Test that context added to subtasks is properly saved and displayed\n   - Ensure the 'Update Task' functionality correctly consolidates and restructures content\n\n3. UI/UX Testing:\n   - Verify visual indicators correctly show the current phase\n   - Test responsive design on various screen sizes\n   - Ensure tooltips and help text are displayed correctly\n\n4. User Acceptance Testing:\n   - Create test scenarios covering the complete workflow:\n     a. Expand a task and add 3 subtasks\n     b. Add context to each subtask\n     c. Set the task as in progress\n     d. Use update-task to restructure the content\n     e. Verify the agent correctly begins work on the first subtask\n   - Test with both simple and complex tasks to ensure scalability\n\n5. Regression Testing:\n   - Verify that existing functionality continues to work\n   - Ensure compatibility with keyboard shortcuts and accessibility features"
+      "testStrategy": "Testing should verify the complete workflow functions correctly:\n\n1. Unit Tests:\n   - Test each button/action individually to ensure it performs its specific function\n   - Verify state transitions between phases work correctly\n   - Test edge cases (e.g., attempting to set a task in progress before adding context)\n\n2. Integration Tests:\n   - Verify the complete workflow from task expansion to starting work\n   - Test that context added to subtasks is properly saved and displayed\n   - Ensure the 'Update Task' functionality correctly consolidates and restructures content\n\n3. UI/UX Testing:\n   - Verify visual indicators correctly show the current phase\n   - Test responsive design on various screen sizes\n   - Ensure tooltips and help text are displayed correctly\n\n4. User Acceptance Testing:\n   - Create test scenarios covering the complete workflow:\n     a. Expand a task and add 3 subtasks\n     b. Add context to each subtask\n     c. Set the task as in progress\n     d. Use update-task to restructure the content\n     e. Verify the agent correctly begins work on the first subtask\n   - Test with both simple and complex tasks to ensure scalability\n\n5. Regression Testing:\n   - Verify that existing functionality continues to work\n   - Ensure compatibility with keyboard shortcuts and accessibility features",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design Task Expansion UI Components",
+          "description": "Create UI components for the expanded task suggestion actions card that allow for task breakdown and additional context input.",
+          "dependencies": [],
+          "details": "Design mockups for expanded card view, including subtask creation interface, context input fields, and task management controls. Ensure the design is consistent with existing UI patterns and responsive across different screen sizes. Include animations for card expansion/collapse.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement State Management for Task Expansion",
+          "description": "Develop the state management logic to handle expanded task states, subtask creation, and context additions.",
+          "dependencies": [
+            1
+          ],
+          "details": "Create state handlers for expanded/collapsed states, subtask array management, and context data. Implement proper validation for user inputs and error handling. Ensure state persistence across user sessions and synchronization with backend services.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Build Context Addition Functionality",
+          "description": "Create the functionality that allows users to add additional context to tasks and subtasks.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implement context input fields with support for rich text, attachments, links, and references to other tasks. Add auto-save functionality for context changes and version history if applicable. Include context suggestion features based on task content.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Develop Task Management Controls",
+          "description": "Implement controls for managing tasks within the expanded card view, including prioritization, scheduling, and assignment.",
+          "dependencies": [
+            2
+          ],
+          "details": "Create UI controls for task prioritization (drag-and-drop ranking), deadline setting with calendar integration, assignee selection with user search, and status updates. Implement notification triggers for task changes and deadline reminders.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Integrate with Existing Task Systems",
+          "description": "Ensure the enhanced actions card workflow integrates seamlessly with existing task management functionality.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Connect the new UI components to existing backend APIs. Update data models if necessary to support new features. Ensure compatibility with existing task filters, search, and reporting features. Implement data migration plan for existing tasks if needed.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Test and Optimize User Experience",
+          "description": "Conduct thorough testing of the enhanced workflow and optimize based on user feedback and performance metrics.",
+          "dependencies": [
+            5
+          ],
+          "details": "Perform usability testing with representative users. Collect metrics on task completion time, error rates, and user satisfaction. Optimize performance for large task lists and complex subtask hierarchies. Implement A/B testing for alternative UI approaches if needed.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 48,
@@ -2661,7 +2896,38 @@
       "dependencies": [],
       "priority": "medium",
       "details": "This task involves restructuring how prompts are managed in the codebase:\n\n1. Create a new 'prompts' directory at the appropriate level in the project structure\n2. For each existing prompt currently embedded in functions:\n   - Create a dedicated file with a descriptive name (e.g., 'task_suggestion_prompt.js')\n   - Extract the prompt text/object into this file\n   - Export the prompt using the appropriate module pattern\n3. Modify all functions that currently contain inline prompts to import them from the new centralized location\n4. Establish a consistent naming convention for prompt files (e.g., feature_action_prompt.js)\n5. Consider creating an index.js file in the prompts directory to provide a clean import interface\n6. Document the new prompt structure in the project documentation\n7. Ensure that any prompt that requires dynamic content insertion maintains this capability after refactoring\n\nThis refactoring will improve maintainability by making prompts easier to find, update, and reuse across the application.",
-      "testStrategy": "Testing should verify that the refactoring maintains identical functionality while improving code organization:\n\n1. Automated Tests:\n   - Run existing test suite to ensure no functionality is broken\n   - Create unit tests for the new prompt import mechanism\n   - Verify that dynamically constructed prompts still receive their parameters correctly\n\n2. Manual Testing:\n   - Execute each feature that uses prompts and compare outputs before and after refactoring\n   - Verify that all prompts are properly loaded from their new locations\n   - Check that no prompt text is accidentally modified during the migration\n\n3. Code Review:\n   - Confirm all prompts have been moved to the new structure\n   - Verify consistent naming conventions are followed\n   - Check that no duplicate prompts exist\n   - Ensure imports are correctly implemented in all files that previously contained inline prompts\n\n4. Documentation:\n   - Verify documentation is updated to reflect the new prompt organization\n   - Confirm the index.js export pattern works as expected for importing prompts"
+      "testStrategy": "Testing should verify that the refactoring maintains identical functionality while improving code organization:\n\n1. Automated Tests:\n   - Run existing test suite to ensure no functionality is broken\n   - Create unit tests for the new prompt import mechanism\n   - Verify that dynamically constructed prompts still receive their parameters correctly\n\n2. Manual Testing:\n   - Execute each feature that uses prompts and compare outputs before and after refactoring\n   - Verify that all prompts are properly loaded from their new locations\n   - Check that no prompt text is accidentally modified during the migration\n\n3. Code Review:\n   - Confirm all prompts have been moved to the new structure\n   - Verify consistent naming conventions are followed\n   - Check that no duplicate prompts exist\n   - Ensure imports are correctly implemented in all files that previously contained inline prompts\n\n4. Documentation:\n   - Verify documentation is updated to reflect the new prompt organization\n   - Confirm the index.js export pattern works as expected for importing prompts",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create prompts directory structure",
+          "description": "Create a centralized 'prompts' directory with appropriate subdirectories for different prompt categories",
+          "dependencies": [],
+          "details": "Create a 'prompts' directory at the project root. Within this directory, create subdirectories based on functional categories (e.g., 'core', 'agents', 'utils'). Add an index.js file in each subdirectory to facilitate imports. Create a root index.js file that re-exports all prompts for easy access.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Extract prompts into individual files",
+          "description": "Identify all hardcoded prompts in the codebase and extract them into individual files in the prompts directory",
+          "dependencies": [
+            1
+          ],
+          "details": "Search through the codebase for all hardcoded prompt strings. For each prompt, create a new file in the appropriate subdirectory with a descriptive name (e.g., 'taskBreakdownPrompt.js'). Format each file to export the prompt string as a constant. Add JSDoc comments to document the purpose and expected usage of each prompt.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Update functions to import prompts",
+          "description": "Modify all functions that use hardcoded prompts to import them from the centralized structure",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "For each function that previously used a hardcoded prompt, add an import statement to pull in the prompt from the centralized structure. Test each function after modification to ensure it still works correctly. Update any tests that might be affected by the refactoring. Create a pull request with the changes and document the new prompt structure in the project documentation.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 49,
@@ -2671,7 +2937,70 @@
       "dependencies": [],
       "priority": "medium",
       "details": "Develop a new command called `analyze-code-quality` that performs the following functions:\n\n1. **Pattern Recognition**:\n   - Scan the codebase to identify recurring patterns in code structure, function design, and architecture\n   - Categorize patterns by frequency and impact on maintainability\n   - Generate a report of common patterns with examples from the codebase\n\n2. **Best Practice Verification**:\n   - For each function in specified files, extract its purpose, parameters, and implementation details\n   - Create a verification checklist for each function that includes:\n     - Function naming conventions\n     - Parameter handling\n     - Error handling\n     - Return value consistency\n     - Documentation quality\n     - Complexity metrics\n   - Use an API integration with Perplexity or similar AI service to evaluate each function against current best practices\n\n3. **Improvement Recommendations**:\n   - Generate specific refactoring suggestions for functions that don't align with best practices\n   - Include code examples of the recommended improvements\n   - Estimate the effort required for each refactoring suggestion\n\n4. **Task Integration**:\n   - Create a mechanism to convert high-value improvement recommendations into Taskmaster tasks\n   - Allow users to select which recommendations to convert to tasks\n   - Generate properly formatted task descriptions that include the current implementation, recommended changes, and justification\n\nThe command should accept parameters for targeting specific directories or files, setting the depth of analysis, and filtering by improvement impact level.",
-      "testStrategy": "Testing should verify all aspects of the code analysis command:\n\n1. **Functionality Testing**:\n   - Create a test codebase with known patterns and anti-patterns\n   - Verify the command correctly identifies all patterns in the test codebase\n   - Check that function verification correctly flags issues in deliberately non-compliant functions\n   - Confirm recommendations are relevant and implementable\n\n2. **Integration Testing**:\n   - Test the AI service integration with mock responses to ensure proper handling of API calls\n   - Verify the task creation workflow correctly generates well-formed tasks\n   - Test integration with existing Taskmaster commands and workflows\n\n3. **Performance Testing**:\n   - Measure execution time on codebases of various sizes\n   - Ensure memory usage remains reasonable even on large codebases\n   - Test with rate limiting on API calls to ensure graceful handling\n\n4. **User Experience Testing**:\n   - Have developers use the command on real projects and provide feedback\n   - Verify the output is actionable and clear\n   - Test the command with different parameter combinations\n\n5. **Validation Criteria**:\n   - Command successfully analyzes at least 95% of functions in the codebase\n   - Generated recommendations are specific and actionable\n   - Created tasks follow the project's task format standards\n   - Analysis results are consistent across multiple runs on the same codebase"
+      "testStrategy": "Testing should verify all aspects of the code analysis command:\n\n1. **Functionality Testing**:\n   - Create a test codebase with known patterns and anti-patterns\n   - Verify the command correctly identifies all patterns in the test codebase\n   - Check that function verification correctly flags issues in deliberately non-compliant functions\n   - Confirm recommendations are relevant and implementable\n\n2. **Integration Testing**:\n   - Test the AI service integration with mock responses to ensure proper handling of API calls\n   - Verify the task creation workflow correctly generates well-formed tasks\n   - Test integration with existing Taskmaster commands and workflows\n\n3. **Performance Testing**:\n   - Measure execution time on codebases of various sizes\n   - Ensure memory usage remains reasonable even on large codebases\n   - Test with rate limiting on API calls to ensure graceful handling\n\n4. **User Experience Testing**:\n   - Have developers use the command on real projects and provide feedback\n   - Verify the output is actionable and clear\n   - Test the command with different parameter combinations\n\n5. **Validation Criteria**:\n   - Command successfully analyzes at least 95% of functions in the codebase\n   - Generated recommendations are specific and actionable\n   - Created tasks follow the project's task format standards\n   - Analysis results are consistent across multiple runs on the same codebase",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design pattern recognition algorithm",
+          "description": "Create an algorithm to identify common code patterns and anti-patterns in the codebase",
+          "dependencies": [],
+          "details": "Develop a system that can scan code files and identify common design patterns (Factory, Singleton, etc.) and anti-patterns (God objects, excessive coupling, etc.). Include detection for language-specific patterns and create a classification system for identified patterns.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement best practice verification",
+          "description": "Build verification checks against established coding standards and best practices",
+          "dependencies": [
+            1
+          ],
+          "details": "Create a framework to compare code against established best practices for the specific language/framework. Include checks for naming conventions, function length, complexity metrics, comment coverage, and other industry-standard quality indicators.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Develop AI integration for code analysis",
+          "description": "Integrate AI capabilities to enhance code analysis and provide intelligent recommendations",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Connect to AI services (like OpenAI) to analyze code beyond rule-based checks. Configure the AI to understand context, project-specific patterns, and provide nuanced analysis that rule-based systems might miss.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create recommendation generation system",
+          "description": "Build a system to generate actionable improvement recommendations based on analysis results",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Develop algorithms to transform analysis results into specific, actionable recommendations. Include priority levels, effort estimates, and potential impact assessments for each recommendation.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Implement task creation functionality",
+          "description": "Add capability to automatically create tasks from code quality recommendations",
+          "dependencies": [
+            4
+          ],
+          "details": "Build functionality to convert recommendations into tasks in the project management system. Include appropriate metadata, assignee suggestions based on code ownership, and integration with existing workflow systems.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Create comprehensive reporting interface",
+          "description": "Develop a user interface to display analysis results and recommendations",
+          "dependencies": [
+            4,
+            5
+          ],
+          "details": "Build a dashboard showing code quality metrics, identified patterns, recommendations, and created tasks. Include filtering options, trend analysis over time, and the ability to drill down into specific issues with code snippets and explanations.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 50,
@@ -2818,7 +3147,58 @@
       "dependencies": [],
       "priority": "medium",
       "details": "Implement a new command 'suggest-task' that can be invoked from the CLI to generate intelligent task suggestions. The command should:\n\n1. Collect a snapshot of all existing tasks including their titles, descriptions, statuses, and dependencies\n2. Extract parent task subtask titles (not full objects) to provide context\n3. Use this information to generate a contextually appropriate new task suggestion\n4. Present the suggestion to the user in a clear format\n5. Provide an interactive interface with options to:\n   - Accept the suggestion (creating a new task with the suggested details)\n   - Decline the suggestion (exiting without creating a task)\n   - Regenerate a new suggestion (requesting an alternative)\n\nThe implementation should follow a similar pattern to the 'generate-subtask' command but operate at the task level rather than subtask level. The command should use the project's existing AI integration to analyze the current task structure and generate relevant suggestions. Ensure proper error handling for API failures and implement a timeout mechanism for suggestion generation.\n\nThe command should accept optional flags to customize the suggestion process, such as:\n- `--parent=<task-id>` to suggest a task related to a specific parent task\n- `--type=<task-type>` to suggest a specific type of task (feature, bugfix, refactor, etc.)\n- `--context=<additional-context>` to provide additional information for the suggestion",
-      "testStrategy": "Testing should verify both the functionality and user experience of the suggest-task command:\n\n1. Unit tests:\n   - Test the task collection mechanism to ensure it correctly gathers existing task data\n   - Test the context extraction logic to verify it properly isolates relevant subtask titles\n   - Test the suggestion generation with mocked AI responses\n   - Test the command's parsing of various flag combinations\n\n2. Integration tests:\n   - Test the end-to-end flow with a mock project structure\n   - Verify the command correctly interacts with the AI service\n   - Test the task creation process when a suggestion is accepted\n\n3. User interaction tests:\n   - Test the accept/decline/regenerate interface works correctly\n   - Verify appropriate feedback is displayed to the user\n   - Test handling of unexpected user inputs\n\n4. Edge cases:\n   - Test behavior when run in an empty project with no existing tasks\n   - Test with malformed task data\n   - Test with API timeouts or failures\n   - Test with extremely large numbers of existing tasks\n\nManually verify the command produces contextually appropriate suggestions that align with the project's current state and needs."
+      "testStrategy": "Testing should verify both the functionality and user experience of the suggest-task command:\n\n1. Unit tests:\n   - Test the task collection mechanism to ensure it correctly gathers existing task data\n   - Test the context extraction logic to verify it properly isolates relevant subtask titles\n   - Test the suggestion generation with mocked AI responses\n   - Test the command's parsing of various flag combinations\n\n2. Integration tests:\n   - Test the end-to-end flow with a mock project structure\n   - Verify the command correctly interacts with the AI service\n   - Test the task creation process when a suggestion is accepted\n\n3. User interaction tests:\n   - Test the accept/decline/regenerate interface works correctly\n   - Verify appropriate feedback is displayed to the user\n   - Test handling of unexpected user inputs\n\n4. Edge cases:\n   - Test behavior when run in an empty project with no existing tasks\n   - Test with malformed task data\n   - Test with API timeouts or failures\n   - Test with extremely large numbers of existing tasks\n\nManually verify the command produces contextually appropriate suggestions that align with the project's current state and needs.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design data collection mechanism for existing tasks",
+          "description": "Create a module to collect and format existing task data from the system for AI processing",
+          "dependencies": [],
+          "details": "Implement a function that retrieves all existing tasks from storage, formats them appropriately for AI context, and handles edge cases like empty task lists or corrupted data. Include metadata like task status, dependencies, and creation dates to provide rich context for suggestions.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement AI integration for task suggestions",
+          "description": "Develop the core functionality to generate task suggestions using AI based on existing tasks",
+          "dependencies": [
+            1
+          ],
+          "details": "Create an AI prompt template that effectively communicates the existing task context and request for suggestions. Implement error handling for API failures, rate limiting, and malformed responses. Include parameters for controlling suggestion quantity and specificity.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Build interactive CLI interface for suggestions",
+          "description": "Create the command-line interface for requesting and displaying task suggestions",
+          "dependencies": [
+            2
+          ],
+          "details": "Design a user-friendly CLI command structure with appropriate flags for customization. Implement progress indicators during AI processing and format the output of suggestions in a clear, readable format. Include help text and examples in the command documentation.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Implement suggestion selection and task creation",
+          "description": "Allow users to interactively select suggestions to convert into actual tasks",
+          "dependencies": [
+            3
+          ],
+          "details": "Create an interactive selection interface where users can review suggestions, select which ones to create as tasks, and optionally modify them before creation. Implement batch creation capabilities and validation to ensure new tasks meet system requirements.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Add configuration options and flag handling",
+          "description": "Implement various configuration options and command flags for customizing suggestion behavior",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Create a comprehensive set of command flags for controlling suggestion quantity, specificity, format, and other parameters. Implement persistent configuration options that users can set as defaults. Document all available options and provide examples of common usage patterns.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 53,
@@ -2908,7 +3288,60 @@
       "dependencies": [],
       "priority": "medium",
       "details": "This task involves modifying the command parsing logic in commands.js to support positional arguments as an alternative to the current flag-based approach. The implementation should:\n\n1. Update the argument parsing logic to detect when arguments are provided without flag prefixes (--)\n2. Map positional arguments to their corresponding parameters based on their order\n3. For each command in commands.js, define a consistent positional argument order (e.g., for set-status: first arg = id, second arg = status)\n4. Maintain backward compatibility with the existing flag-based syntax\n5. Handle edge cases such as:\n   - Commands with optional parameters\n   - Commands with multiple parameters\n   - Commands that accept arrays or complex data types\n6. Update the help text for each command to show both usage patterns\n7. Modify the cursor rules to work with both input styles\n8. Ensure error messages are clear when positional arguments are provided incorrectly\n\nExample implementations:\n- `task-master set-status 25 done` should be equivalent to `task-master set-status --id=25 --status=done`\n- `task-master add-task \"New task name\" \"Task description\"` should be equivalent to `task-master add-task --name=\"New task name\" --description=\"Task description\"`\n\nThe code should prioritize maintaining the existing functionality while adding this new capability.",
-      "testStrategy": "Testing should verify both the new positional argument functionality and continued support for flag-based syntax:\n\n1. Unit tests:\n   - Create tests for each command that verify it works with both positional and flag-based arguments\n   - Test edge cases like missing arguments, extra arguments, and mixed usage (some positional, some flags)\n   - Verify help text correctly displays both usage patterns\n\n2. Integration tests:\n   - Test the full CLI with various commands using both syntax styles\n   - Verify that output is identical regardless of which syntax is used\n   - Test commands with different numbers of arguments\n\n3. Manual testing:\n   - Run through a comprehensive set of real-world usage scenarios with both syntax styles\n   - Verify cursor behavior works correctly with both input methods\n   - Check that error messages are helpful when incorrect positional arguments are provided\n\n4. Documentation verification:\n   - Ensure README and help text accurately reflect the new dual syntax support\n   - Verify examples in documentation show both styles where appropriate\n\nAll tests should pass with 100% of commands supporting both argument styles without any regression in existing functionality."
+      "testStrategy": "Testing should verify both the new positional argument functionality and continued support for flag-based syntax:\n\n1. Unit tests:\n   - Create tests for each command that verify it works with both positional and flag-based arguments\n   - Test edge cases like missing arguments, extra arguments, and mixed usage (some positional, some flags)\n   - Verify help text correctly displays both usage patterns\n\n2. Integration tests:\n   - Test the full CLI with various commands using both syntax styles\n   - Verify that output is identical regardless of which syntax is used\n   - Test commands with different numbers of arguments\n\n3. Manual testing:\n   - Run through a comprehensive set of real-world usage scenarios with both syntax styles\n   - Verify cursor behavior works correctly with both input methods\n   - Check that error messages are helpful when incorrect positional arguments are provided\n\n4. Documentation verification:\n   - Ensure README and help text accurately reflect the new dual syntax support\n   - Verify examples in documentation show both styles where appropriate\n\nAll tests should pass with 100% of commands supporting both argument styles without any regression in existing functionality.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Analyze current CLI argument parsing structure",
+          "description": "Review the existing CLI argument parsing code to understand how arguments are currently processed and identify integration points for positional arguments.",
+          "dependencies": [],
+          "details": "Document the current argument parsing flow, identify key classes and methods responsible for argument handling, and determine how named arguments are currently processed. Create a technical design document outlining the current architecture and proposed changes.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Design positional argument specification format",
+          "description": "Create a specification for how positional arguments will be defined in command definitions, including their order, required/optional status, and type validation.",
+          "dependencies": [
+            1
+          ],
+          "details": "Define a clear syntax for specifying positional arguments in command definitions. Consider how to handle mixed positional and named arguments, default values, and type constraints. Document the specification with examples for different command types.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Implement core positional argument parsing logic",
+          "description": "Modify the argument parser to recognize and process positional arguments according to the specification, while maintaining compatibility with existing named arguments.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Update the parser to identify arguments without flags as positional, map them to the correct parameter based on order, and apply appropriate validation. Ensure the implementation handles missing required positional arguments and provides helpful error messages.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Handle edge cases and error conditions",
+          "description": "Implement robust handling for edge cases such as too many/few arguments, type mismatches, and ambiguous situations between positional and named arguments.",
+          "dependencies": [
+            3
+          ],
+          "details": "Create comprehensive error handling for scenarios like: providing both positional and named version of the same argument, incorrect argument types, missing required positional arguments, and excess positional arguments. Ensure error messages are clear and actionable for users.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Update documentation and create usage examples",
+          "description": "Update CLI documentation to explain positional argument support and provide clear examples showing how to use positional arguments with different commands.",
+          "dependencies": [
+            2,
+            3,
+            4
+          ],
+          "details": "Revise user documentation to include positional argument syntax, update command reference with positional argument information, and create example command snippets showing both positional and named argument usage. Include a migration guide for users transitioning from named-only to positional arguments.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 56,
@@ -2928,7 +3361,67 @@
       "dependencies": [],
       "priority": "medium",
       "details": "The current Task-Master CLI interface is functional but lacks polish and produces excessive log output. This task involves several key improvements:\n\n1. Log Management:\n   - Implement log levels (ERROR, WARN, INFO, DEBUG, TRACE)\n   - Only show INFO and above by default\n   - Add a --verbose flag to show all logs\n   - Create a dedicated log file for detailed logs\n\n2. Visual Enhancements:\n   - Add a clean, branded header when the tool starts\n   - Implement color-coding for different types of messages (success in green, errors in red, etc.)\n   - Use spinners or progress indicators for operations that take time\n   - Add clear visual separation between command input and output\n\n3. Interactive Elements:\n   - Add loading animations for longer operations\n   - Implement interactive prompts for complex inputs instead of requiring all parameters upfront\n   - Add confirmation dialogs for destructive operations\n\n4. Output Formatting:\n   - Format task listings in tables with consistent spacing\n   - Implement a compact mode and a detailed mode for viewing tasks\n   - Add visual indicators for task status (icons or colors)\n\n5. Help and Documentation:\n   - Enhance help text with examples and clearer descriptions\n   - Add contextual hints for common next steps after commands\n\nUse libraries like chalk, ora, inquirer, and boxen to implement these improvements. Ensure the interface remains functional in CI/CD environments where interactive elements might not be supported.",
-      "testStrategy": "Testing should verify both functionality and user experience improvements:\n\n1. Automated Tests:\n   - Create unit tests for log level filtering functionality\n   - Test that all commands still function correctly with the new UI\n   - Verify that non-interactive mode works in CI environments\n   - Test that verbose and quiet modes function as expected\n\n2. User Experience Testing:\n   - Create a test script that runs through common user flows\n   - Capture before/after screenshots for visual comparison\n   - Measure and compare the number of lines output for common operations\n\n3. Usability Testing:\n   - Have 3-5 team members perform specific tasks using the new interface\n   - Collect feedback on clarity, ease of use, and visual appeal\n   - Identify any confusion points or areas for improvement\n\n4. Edge Case Testing:\n   - Test in terminals with different color schemes and sizes\n   - Verify functionality in environments without color support\n   - Test with very large task lists to ensure formatting remains clean\n\nAcceptance Criteria:\n- Log output is reduced by at least 50% in normal operation\n- All commands provide clear visual feedback about their progress and completion\n- Help text is comprehensive and includes examples\n- Interface is visually consistent across all commands\n- Tool remains fully functional in non-interactive environments"
+      "testStrategy": "Testing should verify both functionality and user experience improvements:\n\n1. Automated Tests:\n   - Create unit tests for log level filtering functionality\n   - Test that all commands still function correctly with the new UI\n   - Verify that non-interactive mode works in CI environments\n   - Test that verbose and quiet modes function as expected\n\n2. User Experience Testing:\n   - Create a test script that runs through common user flows\n   - Capture before/after screenshots for visual comparison\n   - Measure and compare the number of lines output for common operations\n\n3. Usability Testing:\n   - Have 3-5 team members perform specific tasks using the new interface\n   - Collect feedback on clarity, ease of use, and visual appeal\n   - Identify any confusion points or areas for improvement\n\n4. Edge Case Testing:\n   - Test in terminals with different color schemes and sizes\n   - Verify functionality in environments without color support\n   - Test with very large task lists to ensure formatting remains clean\n\nAcceptance Criteria:\n- Log output is reduced by at least 50% in normal operation\n- All commands provide clear visual feedback about their progress and completion\n- Help text is comprehensive and includes examples\n- Interface is visually consistent across all commands\n- Tool remains fully functional in non-interactive environments",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Configurable Log Levels",
+          "description": "Create a logging system with different verbosity levels that users can configure",
+          "dependencies": [],
+          "details": "Design and implement a logging system with at least 4 levels (ERROR, WARNING, INFO, DEBUG). Add command-line options to set the verbosity level. Ensure logs are color-coded by severity and can be redirected to files. Include timestamp formatting options.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Design Terminal Color Scheme and Visual Elements",
+          "description": "Create a consistent and accessible color scheme for the CLI interface",
+          "dependencies": [],
+          "details": "Define a color palette that works across different terminal environments. Implement color-coding for different task states, priorities, and command categories. Add support for terminals without color capabilities. Design visual separators, headers, and footers for different output sections.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Implement Progress Indicators and Loading Animations",
+          "description": "Add visual feedback for long-running operations",
+          "dependencies": [
+            2
+          ],
+          "details": "Create spinner animations for operations that take time to complete. Implement progress bars for operations with known completion percentages. Ensure animations degrade gracefully in terminals with limited capabilities. Add estimated time remaining calculations where possible.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Develop Interactive Selection Menus",
+          "description": "Create interactive menus for task selection and configuration",
+          "dependencies": [
+            2
+          ],
+          "details": "Implement arrow-key navigation for selecting tasks from a list. Add checkbox and radio button interfaces for multi-select and single-select options. Include search/filter functionality for large task lists. Ensure keyboard shortcuts are consistent and documented.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Design Tabular and Structured Output Formats",
+          "description": "Improve the formatting of task lists and detailed information",
+          "dependencies": [
+            2
+          ],
+          "details": "Create table layouts with proper column alignment for task lists. Implement tree views for displaying task hierarchies and dependencies. Add support for different output formats (plain text, JSON, CSV). Ensure outputs are properly paginated for large datasets.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Create Help System and Interactive Documentation",
+          "description": "Develop an in-CLI help system with examples and contextual assistance",
+          "dependencies": [
+            2,
+            4,
+            5
+          ],
+          "details": "Implement a comprehensive help command with examples for each feature. Add contextual help that suggests relevant commands based on user actions. Create interactive tutorials for new users. Include command auto-completion suggestions and syntax highlighting for command examples.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 58,
@@ -3018,7 +3511,81 @@
       "testStrategy": "1. **Unit Tests**:\n   - Test mentor data structure creation and validation\n   - Test mentor addition with various input formats\n   - Test mentor removal functionality\n   - Test listing of mentors with different configurations\n   - Test round-table parameter parsing and validation\n\n2. **Integration Tests**:\n   - Test the complete flow of adding mentors and running a round-table\n   - Test round-table with different numbers of turns\n   - Test round-table with task context vs. custom prompt\n   - Test output file generation and format\n   - Test using round-table output to update tasks and subtasks\n\n3. **Edge Cases**:\n   - Test behavior when no mentors are configured but round-table is called\n   - Test with invalid task IDs in the --id parameter\n   - Test with extremely long discussions (many turns)\n   - Test with mentors that have similar personalities\n   - Test removing a mentor that doesn't exist\n   - Test adding more than the recommended 5 mentors\n\n4. **Manual Testing Scenarios**:\n   - Create mentors with distinct personalities (e.g., Vitalik Buterin, Steve Jobs, etc.)\n   - Run a round-table on a complex task and verify the insights are helpful\n   - Verify the personality simulation is consistent and believable\n   - Test the round-table output file readability and usefulness\n   - Verify that using round-table output to update tasks produces meaningful improvements",
       "status": "pending",
       "dependencies": [],
-      "priority": "medium"
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design Mentor System Architecture",
+          "description": "Create a comprehensive architecture for the mentor system, defining data models, relationships, and interaction patterns.",
+          "dependencies": [],
+          "details": "Define mentor profiles structure, expertise categorization, availability tracking, and relationship to user accounts. Design the database schema for storing mentor information and interactions. Create flowcharts for mentor-mentee matching algorithms and interaction workflows.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement Mentor Profile Management",
+          "description": "Develop the functionality for creating, editing, and managing mentor profiles in the system.",
+          "dependencies": [
+            1
+          ],
+          "details": "Build UI components for mentor profile creation and editing. Implement backend APIs for profile CRUD operations. Create expertise tagging system and availability calendar. Add profile verification and approval workflows for quality control.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Develop Round-Table Discussion Framework",
+          "description": "Create the core framework for hosting and managing round-table discussions between mentors and users.",
+          "dependencies": [
+            1
+          ],
+          "details": "Design the discussion room data model and state management. Implement discussion scheduling and participant management. Create discussion topic and agenda setting functionality. Develop discussion moderation tools and rules enforcement mechanisms.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Implement LLM Integration for AI Mentors",
+          "description": "Integrate LLM capabilities to simulate AI mentors that can participate in round-table discussions.",
+          "dependencies": [
+            3
+          ],
+          "details": "Select appropriate LLM models for mentor simulation. Develop prompt engineering templates for different mentor personas and expertise areas. Implement context management to maintain conversation coherence. Create fallback mechanisms for handling edge cases in discussions.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Build Discussion Output Formatter",
+          "description": "Create a system to format and present round-table discussion outputs in a structured, readable format.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Design templates for discussion summaries and transcripts. Implement real-time formatting of ongoing discussions. Create exportable formats for discussion outcomes (PDF, markdown, etc.). Develop highlighting and annotation features for key insights.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Integrate Mentor System with Task Management",
+          "description": "Connect the mentor system with the existing task management functionality to enable task-specific mentoring.",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Create APIs to link tasks with relevant mentors based on expertise. Implement functionality to initiate discussions around specific tasks. Develop mechanisms for mentors to provide feedback and guidance on tasks. Build notification system for task-related mentor interactions.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Test and Optimize Round-Table Discussions",
+          "description": "Conduct comprehensive testing of the round-table discussion feature and optimize for performance and user experience.",
+          "dependencies": [
+            4,
+            5,
+            6
+          ],
+          "details": "Perform load testing with multiple concurrent discussions. Test AI mentor responses for quality and relevance. Optimize LLM usage for cost efficiency. Conduct user testing sessions and gather feedback. Implement performance monitoring and analytics for ongoing optimization.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 61,
@@ -3816,7 +4383,67 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Research Bun compatibility requirements",
+          "description": "Investigate Bun's JavaScript runtime environment and identify key differences from Node.js that may affect Taskmaster's installation and operation.",
+          "dependencies": [],
+          "details": "Research Bun's package management, module resolution, and API compatibility with Node.js. Document any potential issues or limitations that might affect Taskmaster. Identify required changes to make Taskmaster compatible with Bun's execution model.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Update installation scripts for Bun compatibility",
+          "description": "Modify the existing installation scripts to detect and support Bun as a runtime environment.",
+          "dependencies": [
+            1
+          ],
+          "details": "Add Bun detection logic to installation scripts. Update package management commands to use Bun equivalents where needed. Ensure all dependencies are compatible with Bun. Modify any Node.js-specific code to work with Bun's runtime.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Create Bun-specific installation path",
+          "description": "Implement a dedicated installation flow for Bun users that optimizes for Bun's capabilities.",
+          "dependencies": [
+            2
+          ],
+          "details": "Create a Bun-specific installation script that leverages Bun's performance advantages. Update any environment detection logic to properly identify Bun environments. Ensure proper path resolution and environment variable handling for Bun.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Test Taskmaster installation with Bun",
+          "description": "Perform comprehensive testing of the installation process using Bun across different operating systems.",
+          "dependencies": [
+            3
+          ],
+          "details": "Test installation on Windows, macOS, and Linux using Bun. Verify that all Taskmaster features work correctly when installed via Bun. Document any issues encountered and implement fixes as needed.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Test Taskmaster operation with Bun",
+          "description": "Ensure all Taskmaster functionality works correctly when running under Bun.",
+          "dependencies": [
+            4
+          ],
+          "details": "Test all Taskmaster commands and features when running with Bun. Compare performance metrics between Node.js and Bun. Identify and fix any runtime issues specific to Bun. Ensure all plugins and extensions are compatible.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Update documentation for Bun support",
+          "description": "Update all relevant documentation to include information about installing and running Taskmaster with Bun.",
+          "dependencies": [
+            4,
+            5
+          ],
+          "details": "Add Bun installation instructions to README and documentation. Document any Bun-specific considerations or limitations. Update troubleshooting guides to include Bun-specific issues. Create examples showing Bun usage with Taskmaster.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 66,
@@ -3901,7 +4528,26 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design task creation form without PRD",
+          "description": "Create a user interface form that allows users to manually input task details without requiring a PRD document",
+          "dependencies": [],
+          "details": "Design a form with fields for task title, description, priority, assignee, due date, and other relevant task attributes. Include validation to ensure required fields are completed. The form should be intuitive and provide clear guidance on how to create a task manually.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement task saving functionality",
+          "description": "Develop the backend functionality to save manually created tasks to the database",
+          "dependencies": [
+            1
+          ],
+          "details": "Create API endpoints to handle task creation requests from the frontend. Implement data validation, error handling, and confirmation messages. Ensure the saved tasks appear in the task list view and can be edited or deleted like PRD-parsed tasks.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 69,
@@ -3912,7 +4558,48 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Modify core complexity analysis logic",
+          "description": "Update the core complexity analysis function to accept specific task IDs as input parameters",
+          "dependencies": [],
+          "details": "Refactor the existing complexity analysis module to allow filtering by task IDs. This involves modifying the data processing pipeline to filter tasks before analysis, ensuring the complexity metrics are calculated only for the specified tasks while maintaining context awareness.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Update CLI interface for task-specific complexity analysis",
+          "description": "Extend the CLI to accept task IDs as parameters for the complexity analysis command",
+          "dependencies": [
+            1
+          ],
+          "details": "Add a new flag or parameter to the CLI that allows users to specify task IDs for targeted complexity analysis. Update the command parser, help documentation, and ensure proper validation of the provided task IDs.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Integrate task-specific analysis with MCP tool",
+          "description": "Update the MCP tool interface to support analyzing complexity for specific tasks",
+          "dependencies": [
+            1
+          ],
+          "details": "Modify the MCP tool's API endpoints and UI components to allow users to select specific tasks for complexity analysis. Ensure the UI provides clear feedback about which tasks are being analyzed and update the visualization components to properly display partial analysis results.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create comprehensive tests for task-specific complexity analysis",
+          "description": "Develop test cases to verify the correct functioning of task-specific complexity analysis",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Create unit and integration tests that verify the task-specific complexity analysis works correctly across both CLI and MCP interfaces. Include tests for edge cases such as invalid task IDs, tasks with dependencies outside the selected set, and performance tests for large task sets.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 70,
@@ -3923,7 +4610,46 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design the 'diagram' command interface",
+          "description": "Define the command structure, arguments, and options for the Mermaid diagram generation feature",
+          "dependencies": [],
+          "details": "Create a command specification that includes: input parameters for diagram source (file, stdin, or string), output options (file, stdout, clipboard), format options (SVG, PNG, PDF), styling parameters, and help documentation. Consider compatibility with existing command patterns in the application.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement Mermaid diagram generation core functionality",
+          "description": "Create the core logic to parse Mermaid syntax and generate diagram output",
+          "dependencies": [
+            1
+          ],
+          "details": "Integrate with the Mermaid library to parse diagram syntax. Implement error handling for invalid syntax. Create the rendering pipeline to generate the diagram in memory before output. Support all standard Mermaid diagram types (flowchart, sequence, class, etc.). Include proper logging for the generation process.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Develop output handling mechanisms",
+          "description": "Implement different output options for the generated diagrams",
+          "dependencies": [
+            2
+          ],
+          "details": "Create handlers for different output formats (SVG, PNG, PDF). Implement file output with appropriate naming conventions and directory handling. Add clipboard support for direct pasting. Implement stdout output for piping to other commands. Include progress indicators for longer rendering operations.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create documentation and examples",
+          "description": "Provide comprehensive documentation and examples for the 'diagram' command",
+          "dependencies": [
+            3
+          ],
+          "details": "Write detailed command documentation with all options explained. Create example diagrams covering different diagram types. Include troubleshooting section for common errors. Add documentation on extending the command with custom themes or templates. Create integration examples showing how to use the command in workflows with other tools.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 71,
@@ -3945,7 +4671,69 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Research and select PDF generation library",
+          "description": "Evaluate available PDF generation libraries for Node.js that can handle diagrams and formatted text",
+          "dependencies": [],
+          "details": "Compare libraries like PDFKit, jsPDF, and Puppeteer based on features, performance, and ease of integration. Consider compatibility with diagram visualization tools. Document findings and make a recommendation with justification.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Design PDF template and layout",
+          "description": "Create a template design for the project progress PDF including sections for summary, metrics, and dependency visualization",
+          "dependencies": [
+            1
+          ],
+          "details": "Design should include header/footer, progress summary section, key metrics visualization, dependency diagram placement, and styling guidelines. Create a mockup of the final PDF output for approval.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Implement project progress data collection module",
+          "description": "Develop functionality to gather and process project data for the PDF report",
+          "dependencies": [
+            1
+          ],
+          "details": "Create functions to extract task completion percentages, milestone status, timeline adherence, and other relevant metrics from the project database. Include data transformation logic to prepare for PDF rendering.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Integrate with dependency visualization system",
+          "description": "Connect to the existing diagram command to generate visual representation of task dependencies",
+          "dependencies": [
+            1,
+            3
+          ],
+          "details": "Implement adapter for the diagram command output to be compatible with the PDF generation library. Handle different scales of dependency chains and ensure proper rendering of complex relationships.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Build PDF generation core functionality",
+          "description": "Develop the main module that combines data and visualizations into a formatted PDF document",
+          "dependencies": [
+            2,
+            3,
+            4
+          ],
+          "details": "Implement the core PDF generation logic using the selected library. Include functions for adding text sections, embedding visualizations, formatting tables, and applying the template design. Add pagination and document metadata.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Create export options and command interface",
+          "description": "Implement user-facing commands and options for generating and saving PDF reports",
+          "dependencies": [
+            5
+          ],
+          "details": "Develop CLI commands for PDF generation with parameters for customization (time period, detail level, etc.). Include options for automatic saving to specified locations, email distribution, and integration with existing project workflows.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 73,
@@ -3988,7 +4776,48 @@
       "priority": "medium",
       "details": "**Goal:** Conditionally enable Google Search Grounding based on the AI role.\\n\\n**Implementation Plan:**\\n\\n1.  **Modify `ai-services-unified.js`:** Update `generateTextService`, `streamTextService`, and `generateObjectService`.\\n2.  **Conditional Logic:** Inside these functions, check if `providerName === 'google'` AND `role === 'research'`.\\n3.  **Construct `providerOptions`:** If the condition is met, create an options object:\\n    ```javascript\\n    let providerSpecificOptions = {};\\n    if (providerName === 'google' && role === 'research') {\\n        log('info', 'Enabling Google Search Grounding for research role.');\\n        providerSpecificOptions = {\\n            google: {\\n                useSearchGrounding: true,\\n                // Optional: Add dynamic retrieval for compatible models\\n                // dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC' } \\n            }\\n        };\\n    }\\n    ```\\n4.  **Pass Options to SDK:** Pass `providerSpecificOptions` to the Vercel AI SDK functions (`generateText`, `streamText`, `generateObject`) via the `providerOptions` parameter:\\n    ```javascript\\n    const { text, ... } = await generateText({\\n        // ... other params\\n        providerOptions: providerSpecificOptions \\n    });\\n    ```\\n5.  **Update `supported-models.json`:** Ensure Google models intended for research (e.g., `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`) include `'research'` in their `allowed_roles` array.\\n\\n**Rationale:** This approach maintains the clear separation between 'main' and 'research' roles, ensuring grounding is only activated when explicitly requested via the `--research` flag or when the research model is invoked.\\n\\n**Clarification:** The Search Grounding feature is specifically designed to provide up-to-date information from the web when using Google models. This implementation ensures that grounding is only activated in research contexts where current information is needed, while preserving normal operation for standard tasks. The `useSearchGrounding: true` flag instructs the Google API to augment the model's knowledge with recent web search results relevant to the query.",
       "testStrategy": "1. Configure a Google model (e.g., gemini-1.5-flash-latest) as the 'research' model in `.taskmasterconfig`.\\n2. Run a command with the `--research` flag (e.g., `task-master add-task --prompt='Latest news on AI SDK 4.2' --research`).\\n3. Verify logs show 'Enabling Google Search Grounding'.\\n4. Check if the task output incorporates recent information.\\n5. Configure the same Google model as the 'main' model.\\n6. Run a command *without* the `--research` flag.\\n7. Verify logs *do not* show grounding being enabled.\\n8. Add unit tests to `ai-services-unified.test.js` to verify the conditional logic for adding `providerOptions`. Ensure mocks correctly simulate different roles and providers.",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Modify AI service layer to support Google Search Grounding",
+          "description": "Update the AI service layer to include the capability to integrate with Google Search Grounding API for research-related queries.",
+          "dependencies": [],
+          "details": "Extend the existing AI service layer by adding new methods and interfaces to handle Google Search Grounding API calls. This includes creating authentication mechanisms, request formatters, and response parsers specific to the Google Search API. Ensure proper error handling and retry logic for API failures.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement conditional logic for research role detection",
+          "description": "Create logic to detect when a conversation is in 'research mode' and should trigger the Google Search Grounding functionality.",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop heuristics or machine learning-based detection to identify when a user's query requires research capabilities. Implement a decision tree that determines when to activate Google Search Grounding based on conversation context, explicit user requests for research, or specific keywords. Include configuration options to adjust sensitivity of the detection mechanism.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Update supported models configuration",
+          "description": "Modify the model configuration to specify which AI models can utilize the Google Search Grounding capability.",
+          "dependencies": [
+            1
+          ],
+          "details": "Update the model configuration files to include flags for Google Search Grounding compatibility. Create a registry of supported models with their specific parameters for optimal integration with the search API. Implement version checking to ensure compatibility between model versions and the Google Search Grounding API version.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create end-to-end testing suite for research functionality",
+          "description": "Develop comprehensive tests to verify the correct operation of the Google Search Grounding integration in research contexts.",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Build automated test cases that cover various research scenarios, including edge cases. Create mock responses for the Google Search API to enable testing without actual API calls. Implement integration tests that verify the entire flow from user query to research-enhanced response. Include performance benchmarks to ensure the integration doesn't significantly impact response times.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 76,
@@ -3999,7 +4828,79 @@
       "priority": "high",
       "details": "Research existing E2E testing approaches for MCP servers, referencing examples such as the MCP Server E2E Testing Example. Architect a test harness (preferably in Python or Node.js) that can launch the FastMCP server as a subprocess, establish stdio communication, and send well-formed JSON tool request messages. \n\nImplementation details:\n1. Use `subprocess.Popen` (Python) or `child_process.spawn` (Node.js) to launch the FastMCP server with appropriate stdin/stdout pipes\n2. Implement a message protocol handler that formats JSON requests with proper line endings and message boundaries\n3. Create a buffered reader for stdout that correctly handles chunked responses and reconstructs complete JSON objects\n4. Develop a request/response correlation mechanism using unique IDs for each request\n5. Implement timeout handling for requests that don't receive responses\n\nImplement robust parsing of JSON responses, including error handling for malformed or unexpected output. The framework should support defining test cases as scripts or data files, allowing for easy addition of new scenarios. \n\nTest case structure should include:\n- Setup phase for environment preparation\n- Sequence of tool requests with expected responses\n- Validation functions for response verification\n- Teardown phase for cleanup\n\nEnsure the framework can assert on both the structure and content of responses, and provide clear logging for debugging. Document setup, usage, and extension instructions. Consider cross-platform compatibility and CI integration.\n\n**Clarification:** The E2E test framework should focus on testing the FastMCP server's ability to correctly process tool requests and return appropriate responses. This includes verifying that the server properly handles different types of tool calls (e.g., file operations, web requests, task management), validates input parameters, and returns well-structured responses. The framework should be designed to be extensible, allowing new test cases to be added as the server's capabilities evolve. Tests should cover both happy paths and error conditions to ensure robust server behavior under various scenarios.",
       "testStrategy": "Verify the framework by implementing a suite of representative E2E tests that cover typical tool requests and edge cases. Specific test cases should include:\n\n1. Basic tool request/response validation\n   - Send a simple file_read request and verify response structure\n   - Test with valid and invalid file paths\n   - Verify error handling for non-existent files\n\n2. Concurrent request handling\n   - Send multiple requests in rapid succession\n   - Verify all responses are received and correlated correctly\n\n3. Large payload testing\n   - Test with large file contents (>1MB)\n   - Verify correct handling of chunked responses\n\n4. Error condition testing\n   - Malformed JSON requests\n   - Invalid tool names\n   - Missing required parameters\n   - Server crash recovery\n\nConfirm that tests can start and stop the FastMCP server, send requests, and accurately parse and validate responses. Implement specific assertions for response timing, structure validation using JSON schema, and content verification. Intentionally introduce malformed requests and simulate server errors to ensure robust error handling. \n\nImplement detailed logging with different verbosity levels:\n- ERROR: Failed tests and critical issues\n- WARNING: Unexpected but non-fatal conditions\n- INFO: Test progress and results\n- DEBUG: Raw request/response data\n\nRun the test suite in a clean environment and confirm all expected assertions and logs are produced. Validate that new test cases can be added with minimal effort and that the framework integrates with CI pipelines. Create a CI configuration that runs tests on each commit.",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design E2E Test Framework Architecture",
+          "description": "Create a high-level design document for the E2E test framework that outlines components, interactions, and test flow",
+          "dependencies": [],
+          "details": "Define the overall architecture of the test framework, including test runner, FastMCP server launcher, message protocol handler, and assertion components. Document how these components will interact and the data flow between them. Include error handling strategies and logging requirements.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Implement FastMCP Server Launcher",
+          "description": "Create a component that can programmatically launch and manage the FastMCP server process over stdio",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop a module that can spawn the FastMCP server as a child process, establish stdio communication channels, handle process lifecycle events, and implement proper cleanup procedures. Include error handling for process failures and timeout mechanisms.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Develop Message Protocol Handler",
+          "description": "Implement a handler that can serialize/deserialize messages according to the FastMCP protocol specification",
+          "dependencies": [
+            1
+          ],
+          "details": "Create a protocol handler that formats outgoing messages and parses incoming messages according to the FastMCP protocol. Implement validation for message format compliance and error handling for malformed messages. Support all required message types defined in the protocol.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Create Request/Response Correlation Mechanism",
+          "description": "Implement a system to track and correlate requests with their corresponding responses",
+          "dependencies": [
+            3
+          ],
+          "details": "Develop a correlation mechanism using unique identifiers to match requests with their responses. Implement timeout handling for unresponded requests and proper error propagation. Design the API to support both synchronous and asynchronous request patterns.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Build Test Assertion Framework",
+          "description": "Create a set of assertion utilities specific to FastMCP server testing",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Develop assertion utilities that can validate server responses against expected values, verify timing constraints, and check for proper error handling. Include support for complex response validation patterns and detailed failure reporting.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Implement Test Cases",
+          "description": "Develop a comprehensive set of test cases covering all FastMCP server functionality",
+          "dependencies": [
+            2,
+            4,
+            5
+          ],
+          "details": "Create test cases for basic server operations, error conditions, edge cases, and performance scenarios. Organize tests into logical groups and ensure proper isolation between test cases. Include documentation for each test explaining its purpose and expected outcomes.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Create CI Integration and Documentation",
+          "description": "Set up continuous integration for the test framework and create comprehensive documentation",
+          "dependencies": [
+            6
+          ],
+          "details": "Configure the test framework to run in CI environments, generate reports, and fail builds appropriately. Create documentation covering framework architecture, usage instructions, test case development guidelines, and troubleshooting procedures. Include examples of extending the framework for new test scenarios.",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": 77,
@@ -4078,7 +4979,7 @@
           "title": "Telemetry Integration for expand-task",
           "description": "Integrate AI usage telemetry capture and propagation for the expand-task functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/expand-task.js`):**\n    *   Modify AI service call to include `commandName: \\'expand-task\\'` and `outputType`.\n    *   Receive `{ mainResult, telemetryData }`.\n    *   Return object including `telemetryData`.\n    *   Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/expand-task.js`):**\n    *   Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   Pass `outputFormat: \\'json\\'` if applicable.\n    *   Receive `{ ..., telemetryData }` from core.\n    *   Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/expand-task.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through.\n",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -4087,7 +4988,7 @@
           "title": "Telemetry Integration for expand-all-tasks",
           "description": "Integrate AI usage telemetry capture and propagation for the expand-all-tasks functionality.",
           "details": "\\\nApply telemetry pattern from telemetry.mdc:\n\n1.  **Core (`scripts/modules/task-manager/expand-all-tasks.js`):**\n    *   Modify AI service call (likely within a loop or called by a helper) to include `commandName: \\'expand-all-tasks\\'` and `outputType`.\n    *   Receive `{ mainResult, telemetryData }`.\n    *   Aggregate or handle `telemetryData` appropriately if multiple AI calls are made.\n    *   Return object including aggregated/relevant `telemetryData`.\n    *   Handle CLI display via `displayAiUsageSummary` if applicable.\n\n2.  **Direct (`mcp-server/src/core/direct-functions/expand-all-tasks.js`):**\n    *   Pass `commandName`, `outputType: \\'mcp\\'` to core.\n    *   Pass `outputFormat: \\'json\\'` if applicable.\n    *   Receive `{ ..., telemetryData }` from core.\n    *   Return `{ success: true, data: { ..., telemetryData } }`.\n\n3.  **Tool (`mcp-server/src/tools/expand-all.js`):**\n    *   Verify `handleApiResult` correctly passes `data.telemetryData` through.\n",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -4138,7 +5039,62 @@
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create post-install script structure",
+          "description": "Set up the post-install script that will run automatically after npm installation to handle user ID generation.",
+          "dependencies": [],
+          "details": "Create a new file called 'postinstall.js' in the project root. Configure package.json to run this script after installation by adding it to the 'scripts' section with the key 'postinstall'. The script should import necessary dependencies (fs, path, crypto) and set up the basic structure to access and modify the .taskmasterconfig file. Include proper error handling and logging to capture any issues during execution.",
+          "status": "pending",
+          "testStrategy": "Create a mock installation environment to verify the script executes properly after npm install. Test with various permission scenarios to ensure robust error handling."
+        },
+        {
+          "id": 2,
+          "title": "Implement UUID generation functionality",
+          "description": "Create a function to generate cryptographically secure UUIDs v4 for unique user identification.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement a function called 'generateUniqueUserId()' that uses the crypto module to create a UUID v4. The function should follow RFC 4122 for UUID generation to ensure uniqueness and security. Include validation to verify the generated ID matches the expected UUID v4 format. Document the function with JSDoc comments explaining its purpose for anonymous telemetry.",
+          "status": "pending",
+          "testStrategy": "Write unit tests to verify UUID format compliance, uniqueness across multiple generations, and cryptographic randomness properties."
+        },
+        {
+          "id": 3,
+          "title": "Develop config file handling logic",
+          "description": "Create functions to read, parse, modify, and write to the .taskmasterconfig file for storing the user ID.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement functions to: 1) Check if .taskmasterconfig exists and create it if not, 2) Read and parse the existing config file, 3) Check if a user ID already exists in the globals section, 4) Add or update the user ID in the globals section, and 5) Write the updated config back to disk. Handle edge cases like malformed config files, permission issues, and concurrent access. Use atomic write operations to prevent config corruption.",
+          "status": "pending",
+          "testStrategy": "Test with various initial config states: non-existent config, config without globals section, config with existing user ID. Verify file integrity after operations and proper error handling."
+        },
+        {
+          "id": 4,
+          "title": "Integrate user ID generation with config storage",
+          "description": "Connect the UUID generation with the config file handling to create and store user IDs during installation.",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Combine the UUID generation and config handling functions to: 1) Check if a user ID already exists in config, 2) Generate a new ID only if needed, 3) Store the ID in the config file, and 4) Handle installation scenarios (fresh install vs. update). Add appropriate logging to inform users about the anonymous ID generation with privacy-focused messaging. Ensure the process is idempotent so running it multiple times won't create multiple IDs.",
+          "status": "pending",
+          "testStrategy": "Create integration tests simulating fresh installations and updates. Verify ID persistence across simulated updates and regeneration on fresh installs."
+        },
+        {
+          "id": 5,
+          "title": "Add documentation and telemetry system access",
+          "description": "Document the user ID system and create an API for the telemetry system to access the user ID.",
+          "dependencies": [
+            4
+          ],
+          "details": "Create comprehensive documentation explaining: 1) The purpose of the anonymous ID, 2) How user privacy is protected, 3) How to opt out of telemetry, and 4) Technical details of the implementation. Implement a simple API function 'getUserId()' that reads the ID from config for use by the telemetry system. Update the README and user documentation to include information about anonymous usage tracking. Ensure cross-platform compatibility by testing on all supported operating systems.",
+          "status": "pending",
+          "testStrategy": "Verify documentation accuracy and completeness. Test the getUserId() function across platforms to ensure consistent behavior. Create a mock telemetry system to verify proper ID access."
+        }
+      ]
     },
     {
       "id": 81,

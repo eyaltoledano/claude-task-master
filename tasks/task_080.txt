@@ -58,3 +58,35 @@ Testing for this feature should include:
    - Confirm the ID is accessible to the telemetry system from Task #77
 
 The test plan should include documentation of all test cases, expected results, and actual outcomes. A successful implementation will generate unique IDs for each installation while maintaining that ID across updates.
+
+# Subtasks:
+## 1. Create post-install script structure [pending]
+### Dependencies: None
+### Description: Set up the post-install script that will run automatically after npm installation to handle user ID generation.
+### Details:
+Create a new file called 'postinstall.js' in the project root. Configure package.json to run this script after installation by adding it to the 'scripts' section with the key 'postinstall'. The script should import necessary dependencies (fs, path, crypto) and set up the basic structure to access and modify the .taskmasterconfig file. Include proper error handling and logging to capture any issues during execution.
+
+## 2. Implement UUID generation functionality [pending]
+### Dependencies: 80.1
+### Description: Create a function to generate cryptographically secure UUIDs v4 for unique user identification.
+### Details:
+Implement a function called 'generateUniqueUserId()' that uses the crypto module to create a UUID v4. The function should follow RFC 4122 for UUID generation to ensure uniqueness and security. Include validation to verify the generated ID matches the expected UUID v4 format. Document the function with JSDoc comments explaining its purpose for anonymous telemetry.
+
+## 3. Develop config file handling logic [pending]
+### Dependencies: 80.1
+### Description: Create functions to read, parse, modify, and write to the .taskmasterconfig file for storing the user ID.
+### Details:
+Implement functions to: 1) Check if .taskmasterconfig exists and create it if not, 2) Read and parse the existing config file, 3) Check if a user ID already exists in the globals section, 4) Add or update the user ID in the globals section, and 5) Write the updated config back to disk. Handle edge cases like malformed config files, permission issues, and concurrent access. Use atomic write operations to prevent config corruption.
+
+## 4. Integrate user ID generation with config storage [pending]
+### Dependencies: 80.2, 80.3
+### Description: Connect the UUID generation with the config file handling to create and store user IDs during installation.
+### Details:
+Combine the UUID generation and config handling functions to: 1) Check if a user ID already exists in config, 2) Generate a new ID only if needed, 3) Store the ID in the config file, and 4) Handle installation scenarios (fresh install vs. update). Add appropriate logging to inform users about the anonymous ID generation with privacy-focused messaging. Ensure the process is idempotent so running it multiple times won't create multiple IDs.
+
+## 5. Add documentation and telemetry system access [pending]
+### Dependencies: 80.4
+### Description: Document the user ID system and create an API for the telemetry system to access the user ID.
+### Details:
+Create comprehensive documentation explaining: 1) The purpose of the anonymous ID, 2) How user privacy is protected, 3) How to opt out of telemetry, and 4) Technical details of the implementation. Implement a simple API function 'getUserId()' that reads the ID from config for use by the telemetry system. Update the README and user documentation to include information about anonymous usage tracking. Ensure cross-platform compatibility by testing on all supported operating systems.
+
