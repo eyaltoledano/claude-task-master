@@ -1,11 +1,11 @@
 # Task ID: 81
-# Title: Task #81: Implement Comprehensive Expansion Telemetry System with Aggregated Metrics
+# Title: Task #81: Implement Comprehensive Local Telemetry System with Future Server Integration Capability
 # Status: pending
 # Dependencies: None
 # Priority: medium
-# Description: Expand the existing telemetry system to capture additional metrics about feature usage, performance, and user behavior patterns, then implement aggregation and batching of telemetry data to minimize network overhead.
+# Description: Expand the existing telemetry system to capture additional metrics about feature usage, performance, and user behavior patterns, implementing local storage and aggregation of telemetry data with the capability for future server integration.
 # Details:
-This task builds upon the existing telemetry infrastructure (Tasks #77 and #80) to provide more comprehensive insights into how users interact with the application.
+This task builds upon the existing telemetry infrastructure (Tasks #77 and #80) to provide more comprehensive insights into how users interact with the application, while storing data locally until a server endpoint becomes available.
 
 Key implementation details:
 1. Identify and implement additional telemetry data points:
@@ -16,11 +16,12 @@ Key implementation details:
    - Session duration and activity patterns
    - System environment information (OS, Node version, etc.)
 
-2. Implement a local telemetry aggregation system:
-   - Create a local storage mechanism to temporarily hold telemetry data
-   - Implement data aggregation to combine similar events and reduce payload size
-   - Add batching logic to send multiple telemetry events in a single network request
-   - Implement configurable batch sizes and transmission intervals
+2. Implement a local telemetry storage system:
+   - Create a robust local storage mechanism to hold telemetry data indefinitely
+   - Implement data aggregation to combine similar events and reduce storage size
+   - Add data retention policies to prevent excessive local storage usage
+   - Implement configurable storage limits and cleanup procedures
+   - Design the storage format to be compatible with future server transmission
 
 3. Add privacy-preserving mechanisms:
    - Ensure all personally identifiable information is properly anonymized
@@ -28,15 +29,17 @@ Key implementation details:
    - Add user-configurable telemetry levels (basic, enhanced, full)
    - Provide clear documentation on what data is collected and how it's used
 
-4. Enhance the analytics backend integration:
-   - Update the API endpoints to handle the new telemetry data types
-   - Implement proper error handling and retry logic for failed transmissions
-   - Add compression for telemetry payloads to reduce bandwidth usage
+4. Design for future server integration:
+   - Create a pluggable transmission architecture that can be connected to a server later
+   - Define API contracts and data formats for future server endpoints
+   - Add configuration options for server URLs and authentication that will be used later
+   - Implement feature flags to easily enable server transmission when available
 
 5. Add telemetry debugging capabilities:
    - Create a developer mode to view telemetry data being collected
    - Implement logging of telemetry events (when in debug mode)
-   - Add command to manually trigger telemetry transmission
+   - Add commands to export telemetry data for manual analysis
+   - Create visualization tools for local telemetry data
 
 # Test Strategy:
 The testing strategy for the expanded telemetry system should be comprehensive and cover all aspects of the implementation:
@@ -45,40 +48,41 @@ The testing strategy for the expanded telemetry system should be comprehensive a
    - Test each telemetry collection function in isolation
    - Verify proper anonymization of sensitive data
    - Test aggregation logic with various input scenarios
-   - Validate batching mechanisms with different batch sizes
-   - Test retry logic and error handling
+   - Validate local storage mechanisms with different data volumes
+   - Test data retention and cleanup policies
 
 2. Integration Tests:
-   - Verify telemetry data is properly stored locally before transmission
-   - Test the complete flow from data collection to transmission
-   - Validate that the analytics backend correctly processes the new data types
-   - Test different network conditions (slow, intermittent, offline)
-   - Verify proper handling of transmission failures
+   - Verify telemetry data is properly stored locally
+   - Test the complete flow from data collection to local storage
+   - Validate that the storage format is suitable for future server transmission
+   - Test different application states (startup, shutdown, crash recovery)
+   - Verify proper handling of storage failures
 
 3. End-to-End Tests:
    - Create automated E2E tests that perform various user actions and verify telemetry is captured
-   - Test with the actual analytics backend to ensure compatibility
+   - Test with simulated long-term usage to verify storage efficiency
    - Verify that aggregated data accurately represents the performed actions
 
 4. Performance Tests:
    - Measure the performance impact of the expanded telemetry system
    - Test with large volumes of telemetry data to ensure efficient handling
    - Verify memory usage remains within acceptable limits
-   - Test CPU utilization during telemetry collection and transmission
+   - Test CPU utilization during telemetry collection and storage operations
 
 5. Manual Testing:
    - Verify telemetry debug mode correctly displays collected data
    - Test different telemetry level configurations
    - Manually verify the accuracy of collected metrics
+   - Test the export functionality and analyze the exported data
 
 6. Privacy Compliance Testing:
-   - Verify no PII is transmitted without proper anonymization
+   - Verify no PII is stored without proper anonymization
    - Test opt-out functionality works correctly
    - Ensure telemetry levels properly restrict data collection as configured
 
 7. Regression Testing:
    - Verify existing functionality continues to work with the expanded telemetry
-   - Ensure backward compatibility with the existing analytics backend
+   - Ensure the system is designed to be compatible with future server integration
 
 # Subtasks:
 ## 1. Implement Additional Telemetry Data Collection Points [pending]
@@ -87,17 +91,17 @@ The testing strategy for the expanded telemetry system should be comprehensive a
 ### Details:
 Create new telemetry event types and collection points throughout the codebase. Implement hooks in the command execution pipeline to track timing and frequency. Add performance monitoring for key operations using high-resolution timers. Capture system environment data at startup. Implement error tracking that records error types and frequencies. Add session tracking with start/end events and periodic heartbeats.
 
-## 2. Build Local Telemetry Storage and Aggregation System [pending]
+## 2. Build Robust Local Telemetry Storage System [pending]
 ### Dependencies: None
-### Description: Create a local storage mechanism to temporarily hold telemetry data with aggregation capabilities to combine similar events and reduce payload size.
+### Description: Create a persistent local storage mechanism to hold telemetry data indefinitely with aggregation capabilities to combine similar events and reduce storage requirements.
 ### Details:
-Implement a persistent local store using SQLite or similar lightweight database. Create data schemas for different telemetry types. Develop aggregation functions that can combine similar events (e.g., multiple instances of the same command) into summary statistics. Implement data retention policies to prevent excessive storage usage. Add serialization/deserialization for telemetry objects.
+Implement a persistent local store using SQLite or similar lightweight database. Create data schemas for different telemetry types. Develop aggregation functions that can combine similar events (e.g., multiple instances of the same command) into summary statistics. Implement data retention policies to prevent excessive storage usage. Add serialization/deserialization for telemetry objects. Design the storage format to be compatible with future server transmission needs.
 
-## 3. Implement Batching and Transmission Logic [pending]
+## 3. Design Server Transmission Architecture for Future Implementation [pending]
 ### Dependencies: None
-### Description: Add batching capabilities to group multiple telemetry events into single network requests with configurable batch sizes and transmission intervals.
+### Description: Create a pluggable architecture for future server transmission capabilities while maintaining local-only functionality for now.
 ### Details:
-Create a background service that periodically checks for pending telemetry data. Implement configurable settings for batch size, transmission frequency, and retry behavior. Add compression for telemetry payloads using gzip or similar. Implement network-aware transmission that detects connectivity and adjusts accordingly. Add retry logic with exponential backoff for failed transmissions. Create hooks for manual transmission triggering.
+Design a modular transmission system with clear interfaces that can be implemented later when a server becomes available. Define data formats and API contracts for future server endpoints. Add configuration options for server URLs and authentication that will be used in the future. Implement feature flags to easily enable server transmission when available. Create a transmission queue design that can be activated later. Document the architecture for future implementation.
 
 ## 4. Implement Privacy Controls and User Configuration [pending]
 ### Dependencies: None
@@ -105,9 +109,9 @@ Create a background service that periodically checks for pending telemetry data.
 ### Details:
 Create a telemetry sanitization layer that removes or hashes PII before storage. Implement three telemetry levels (basic, enhanced, full) with clear documentation of what each includes. Add user settings UI for controlling telemetry levels. Create a first-run experience that explains telemetry and requests user consent. Implement runtime filtering of telemetry events based on user settings.
 
-## 5. Add Telemetry Debugging and Monitoring Capabilities [pending]
+## 5. Add Telemetry Debugging and Local Analysis Tools [pending]
 ### Dependencies: None
-### Description: Create developer tools for debugging telemetry including a developer mode to view collected data, logging capabilities, and manual transmission controls.
+### Description: Create developer tools for debugging telemetry including a developer mode to view collected data, logging capabilities, and local data analysis features.
 ### Details:
-Implement a developer console command to toggle telemetry debug mode. Create a UI panel that displays pending and recently sent telemetry data when in debug mode. Add detailed logging of telemetry events to the application log when debugging is enabled. Create commands to manually trigger transmission or clear pending telemetry. Add telemetry health metrics to monitor system performance impact.
+Implement a developer console command to toggle telemetry debug mode. Create a UI panel that displays collected telemetry data when in debug mode. Add detailed logging of telemetry events to the application log when debugging is enabled. Create commands to export telemetry data in various formats (JSON, CSV) for manual analysis. Implement basic visualization tools for local telemetry data to help users understand their own usage patterns.
 

@@ -23,7 +23,7 @@ The implementation should respect user privacy by:
 - Making it clear in documentation how users can opt out of telemetry
 - Ensuring the ID cannot be traced back to specific users or installations
 
-This user ID will serve as the foundation for anonymous usage tracking, helping to understand how Taskmaster is used without compromising user privacy.
+This user ID will serve as the foundation for anonymous usage tracking, helping to understand how Taskmaster is used without compromising user privacy. Note that while we're implementing the ID generation now, the actual server-side collection is not yet available, so this data will initially only be stored locally.
 
 # Test Strategy:
 Testing for this feature should include:
@@ -88,5 +88,5 @@ Combine the UUID generation and config handling functions to: 1) Check if a user
 ### Dependencies: 80.4
 ### Description: Document the user ID system and create an API for the telemetry system to access the user ID.
 ### Details:
-Create comprehensive documentation explaining: 1) The purpose of the anonymous ID, 2) How user privacy is protected, 3) How to opt out of telemetry, and 4) Technical details of the implementation. Implement a simple API function 'getUserId()' that reads the ID from config for use by the telemetry system. Update the README and user documentation to include information about anonymous usage tracking. Ensure cross-platform compatibility by testing on all supported operating systems.
+Create comprehensive documentation explaining: 1) The purpose of the anonymous ID, 2) How user privacy is protected, 3) How to opt out of telemetry, and 4) Technical details of the implementation. Implement a simple API function 'getUserId()' that reads the ID from config for use by the telemetry system. Update the README and user documentation to include information about anonymous usage tracking. Ensure cross-platform compatibility by testing on all supported operating systems. Make it clear in the documentation that while we're collecting this ID, the server-side collection is not yet implemented, so data remains local for now.
 
