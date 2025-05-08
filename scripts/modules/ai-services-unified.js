@@ -197,18 +197,22 @@ async function _attemptProviderCallWithRetries(
 
 	while (retries <= MAX_RETRIES) {
 		try {
-			log(
-				'info',
-				`Attempt ${retries + 1}/${MAX_RETRIES + 1} calling ${fnName} (Provider: ${providerName}, Model: ${modelId}, Role: ${attemptRole})`
-			);
+			if (getDebugFlag()) {
+				log(
+					'info',
+					`Attempt ${retries + 1}/${MAX_RETRIES + 1} calling ${fnName} (Provider: ${providerName}, Model: ${modelId}, Role: ${attemptRole})`
+				);
+			}
 
 			// Call the specific provider function directly
 			const result = await providerApiFn(callParams);
 
-			log(
-				'info',
-				`${fnName} succeeded for role ${attemptRole} (Provider: ${providerName}) on attempt ${retries + 1}`
-			);
+			if (getDebugFlag()) {
+				log(
+					'info',
+					`${fnName} succeeded for role ${attemptRole} (Provider: ${providerName}) on attempt ${retries + 1}`
+				);
+			}
 			return result;
 		} catch (error) {
 			log(
@@ -221,13 +225,13 @@ async function _attemptProviderCallWithRetries(
 				const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retries - 1);
 				log(
 					'info',
-					`Retryable error detected. Retrying in ${delay / 1000}s...`
+					`Something went wrong on the provider side. Retrying in ${delay / 1000}s...`
 				);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			} else {
 				log(
 					'error',
-					`Non-retryable error or max retries reached for role ${attemptRole} (${fnName} / ${providerName}).`
+					`Something went wrong on the provider side. Max retries reached for role ${attemptRole} (${fnName} / ${providerName}).`
 				);
 				throw error;
 			}

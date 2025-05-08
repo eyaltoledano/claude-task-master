@@ -7,7 +7,8 @@ import Table from 'cli-table3';
 import {
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator
+	stopLoadingIndicator,
+	displayAiUsageSummary
 } from '../ui.js';
 import {
 	log as consoleLog,
@@ -154,8 +155,10 @@ async function updateSubtaskById(
 			);
 		}
 
-		let generatedContentString = ''; // Initialize to empty string
-		let newlyAddedSnippet = ''; // <--- ADD THIS LINE: Variable to store the snippet for CLI display
+		let generatedContentString = '';
+		let newlyAddedSnippet = '';
+		let aiServiceResponse = null;
+
 		try {
 			const parentContext = {
 				id: parentTask.id,
@@ -202,73 +205,44 @@ Output Requirements:
 			const role = useResearch ? 'research' : 'main';
 			report('info', `Using AI text service with role: ${role}`);
 
-			// Store the entire response object from the AI service
-			const aiServiceResponse = await generateTextService({
+			aiServiceResponse = await generateTextService({
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
 				role,
 				session,
 				projectRoot,
-				maxRetries: 2
+				maxRetries: 2,
+				commandName: 'update-subtask',
+				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
-			report(
-				'info',
-				`>>> DEBUG: AI Service Response Object: ${JSON.stringify(aiServiceResponse, null, 2)}`
-			);
-			report(
-				'info',
-				`>>> DEBUG: Extracted generatedContentString: "${generatedContentString}"`
-			);
-
-			// Extract the actual text content from the mainResult property
-			// and ensure it's a string, defaulting to empty if not.
 			if (
 				aiServiceResponse &&
 				aiServiceResponse.mainResult &&
-				typeof aiServiceResponse.mainResult.text === 'string'
+				typeof aiServiceResponse.mainResult === 'string'
 			) {
-				generatedContentString = aiServiceResponse.mainResult.text;
+				generatedContentString = aiServiceResponse.mainResult;
 			} else {
-				generatedContentString = ''; // Default to empty if mainResult.text is not a string or the path is invalid
+				generatedContentString = '';
+				report(
+					'warn',
+					'AI service response did not contain expected text string.'
+				);
 			}
-			// The telemetryData would be in aiServiceResponse.telemetryData if needed elsewhere
-
-			report(
-				'success',
-				'Successfully received response object from AI service' // Log message updated for clarity
-			);
 
 			if (outputFormat === 'text' && loadingIndicator) {
 				stopLoadingIndicator(loadingIndicator);
 				loadingIndicator = null;
 			}
-
-			// This check now correctly validates the extracted string
-			if (typeof generatedContentString !== 'string') {
-				report(
-					'warn',
-					'AI mainResult was not a valid text string. Treating as empty.'
-				);
-				generatedContentString = ''; // Ensure it's a string for trim() later
-			} else if (generatedContentString.trim() !== '') {
-				report(
-					'success',
-					`Successfully extracted text from AI response using role: ${role}.`
-				);
-			}
-			// No need for an else here, as an empty string from mainResult is a valid scenario
-			// that will be handled by the `if (generatedContentString && generatedContentString.trim())` later.
 		} catch (aiError) {
 			report('error', `AI service call failed: ${aiError.message}`);
 			if (outputFormat === 'text' && loadingIndicator) {
-				stopLoadingIndicator(loadingIndicator); // Ensure stop on error
+				stopLoadingIndicator(loadingIndicator);
 				loadingIndicator = null;
 			}
 			throw aiError;
 		}
 
-		// --- TIMESTAMP & FORMATTING LOGIC (Handled Locally) ---
 		if (generatedContentString && generatedContentString.trim()) {
 			// Check if the string is not empty
 			const timestamp = new Date().toISOString();
@@ -277,21 +251,15 @@ Output Requirements:
 
 			subtask.details =
 				(subtask.details ? subtask.details + '\n' : '') + formattedBlock;
-			report(
-				'info',
-				'Appended timestamped, formatted block with AI-generated content to subtask.details.'
-			);
 		} else {
 			report(
 				'warn',
 				'AI response was empty or whitespace after trimming. Original details remain unchanged.'
 			);
-			newlyAddedSnippet = 'No new details were added by the AI.'; // <--- ADD THIS LINE: Set message for CLI
+			newlyAddedSnippet = 'No new details were added by the AI.';
 		}
-		// --- END TIMESTAMP & FORMATTING LOGIC ---
 
 		const updatedSubtask = parentTask.subtasks[subtaskIndex];
-		report('info', 'Updated subtask details locally after AI generation.');
 
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log(
@@ -349,7 +317,15 @@ Output Requirements:
 				)
 			);
 		}
-		return updatedSubtask;
+
+		if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
+			displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+		}
+
+		return {
+			updatedSubtask: updatedSubtask,
+			telemetryData: aiServiceResponse.telemetryData
+		};
 	} catch (error) {
 		if (outputFormat === 'text' && loadingIndicator) {
 			stopLoadingIndicator(loadingIndicator);

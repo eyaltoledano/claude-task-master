@@ -99,9 +99,18 @@ The testing strategy for the expanded telemetry system should be comprehensive a
 # Subtasks:
 ## 1. Implement Additional Telemetry Data Collection Points [pending]
 ### Dependencies: None
-### Description: Extend the telemetry system to capture new metrics including command execution frequency, feature usage patterns, performance metrics, error rates, session data, and system environment information.
+### Description: Extend the telemetry system to capture new metrics including command execution frequency, feature usage patterns, performance metrics, error rates, session data, and system environment information. [Updated: 5/8/2025] [Updated: 5/8/2025] [Updated: 5/8/2025]
 ### Details:
 Create new telemetry event types and collection points throughout the codebase. Implement hooks in the command execution pipeline to track timing and frequency. Add performance monitoring for key operations using high-resolution timers. Capture system environment data at startup. Implement error tracking that records error types and frequencies. Add session tracking with start/end events and periodic heartbeats.
+<info added on 2025-05-08T22:57:23.259Z>
+This is a test note added via the MCP tool. The telemetry collection system should be thoroughly tested before implementation.
+</info added on 2025-05-08T22:57:23.259Z>
+<info added on 2025-05-08T22:59:29.818Z>
+For future server integration, Prometheus time-series database with its companion storage solutions (like Cortex or Thanos) would be an excellent choice for handling our telemetry data. The local telemetry collection system should be designed with compatible data structures and metrics formatting that will allow seamless export to Prometheus once server-side infrastructure is in place. This approach would provide powerful querying capabilities, visualization options through Grafana, and scalable long-term storage. Consider implementing the OpenMetrics format locally to ensure compatibility with the Prometheus ecosystem.
+</info added on 2025-05-08T22:59:29.818Z>
+<info added on 2025-05-08T23:02:59.692Z>
+Prometheus would be an excellent choice for server-side telemetry storage and analysis. When designing the local telemetry collection system, we should structure our metrics and events to be compatible with Prometheus' data model (time series with key-value pairs). This would allow for straightforward export to Prometheus once server infrastructure is established. For long-term storage, companion solutions like Cortex or Thanos could extend Prometheus' capabilities, enabling historical analysis and scalable retention. Additionally, adopting the OpenMetrics format locally would ensure seamless integration with the broader Prometheus ecosystem, including visualization through Grafana dashboards.
+</info added on 2025-05-08T23:02:59.692Z>
 
 ## 2. Build Robust Local Telemetry Storage System [pending]
 ### Dependencies: None
