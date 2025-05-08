@@ -94,10 +94,6 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 			// It worked! Use this as the primary cleaned response.
 			cleanedResponse = potentialJsonFromArray;
 			parseMethodUsed = 'brackets';
-			report(
-				'info',
-				'Successfully parsed JSON content extracted between first [ and last ].'
-			);
 		} catch (e) {
 			report(
 				'info',

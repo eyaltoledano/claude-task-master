@@ -373,7 +373,9 @@ async function expandTask(
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
 		const task = data.tasks[taskIndex];
-		logger.info(`Expanding task ${taskId}: ${task.title}`);
+		logger.info(
+			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
+		);
 		// --- End Task Loading/Filtering ---
 
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
