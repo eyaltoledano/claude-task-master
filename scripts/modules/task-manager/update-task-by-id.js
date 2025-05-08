@@ -388,7 +388,6 @@ The changes described in the prompt should be thoughtfully applied to make the t
 		try {
 			// --- Call Unified AI Service (generateTextService) ---
 			const role = useResearch ? 'research' : 'main';
-			report('info', `Using AI service with role: ${role}`);
 
 			responseText = await generateTextService({
 				prompt: userPrompt,
@@ -397,7 +396,6 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				session,
 				projectRoot
 			});
-			report('success', 'Successfully received text response from AI service');
 			// --- End AI Service Call ---
 		} catch (error) {
 			// Catch errors from generateTextService

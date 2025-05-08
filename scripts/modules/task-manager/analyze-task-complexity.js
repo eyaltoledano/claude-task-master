@@ -209,7 +209,6 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 		try {
 			const role = useResearch ? 'research' : 'main';
-			reportLog(`Using AI service with role: ${role}`, 'info');
 
 			fullResponse = await generateTextService({
 				prompt,
@@ -218,11 +217,6 @@ async function analyzeTaskComplexity(options, context = {}) {
 				session,
 				projectRoot
 			});
-
-			reportLog(
-				'Successfully received text response via AI service',
-				'success'
-			);
 
 			// --- Stop Loading Indicator (Unchanged) ---
 			if (loadingIndicator) {

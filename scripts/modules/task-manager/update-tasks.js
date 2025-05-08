@@ -361,8 +361,6 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 		try {
 			// --- Call Unified AI Service ---
 			const role = useResearch ? 'research' : 'main';
-			if (isMCP) logFn.info(`Using AI service with role: ${role}`);
-			else logFn('info', `Using AI service with role: ${role}`);
 
 			responseText = await generateTextService({
 				prompt: userPrompt,
@@ -371,9 +369,6 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 				session,
 				projectRoot
 			});
-			if (isMCP) logFn.info('Successfully received text response');
-			else
-				logFn('success', 'Successfully received text response via AI service');
 			// --- End AI Service Call ---
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

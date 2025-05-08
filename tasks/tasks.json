@@ -4028,7 +4028,7 @@
             1
           ],
           "details": "Implement HTTPS POST request functionality to securely send the telemetry payload to the closed-source analytics API. Include proper encryption in transit using TLS. Implement retry logic and graceful fallback mechanisms for handling transmission failures due to connectivity issues.",
-          "status": "pending",
+          "status": "deferred",
           "testStrategy": "Test with mock endpoints to verify secure transmission and proper handling of various response scenarios"
         },
         {
@@ -4037,7 +4037,7 @@
           "description": "Create a privacy notice and explicit consent mechanism during Taskmaster setup",
           "dependencies": [],
           "details": "Design and implement a clear privacy notice explaining what data is collected and how it's used. Create a user consent prompt during initial installation/setup that requires explicit opt-in. Store the consent status in the .taskmasterconfig file and respect this setting throughout the application.",
-          "status": "pending",
+          "status": "deferred",
           "testStrategy": "Test the consent flow to ensure users can opt in/out and that their preference is properly stored and respected"
         },
         {
@@ -4139,6 +4139,63 @@
       "dependencies": [],
       "priority": "medium",
       "subtasks": []
+    },
+    {
+      "id": 81,
+      "title": "Task #81: Implement Comprehensive Expansion Telemetry System with Aggregated Metrics",
+      "description": "Expand the existing telemetry system to capture additional metrics about feature usage, performance, and user behavior patterns, then implement aggregation and batching of telemetry data to minimize network overhead.",
+      "details": "This task builds upon the existing telemetry infrastructure (Tasks #77 and #80) to provide more comprehensive insights into how users interact with the application.\n\nKey implementation details:\n1. Identify and implement additional telemetry data points:\n   - Command execution frequency and timing metrics\n   - Feature usage patterns (which commands/features are most/least used)\n   - Performance metrics (execution time, memory usage, etc.)\n   - Error rates and types\n   - Session duration and activity patterns\n   - System environment information (OS, Node version, etc.)\n\n2. Implement a local telemetry aggregation system:\n   - Create a local storage mechanism to temporarily hold telemetry data\n   - Implement data aggregation to combine similar events and reduce payload size\n   - Add batching logic to send multiple telemetry events in a single network request\n   - Implement configurable batch sizes and transmission intervals\n\n3. Add privacy-preserving mechanisms:\n   - Ensure all personally identifiable information is properly anonymized\n   - Implement data minimization principles (only collect what's necessary)\n   - Add user-configurable telemetry levels (basic, enhanced, full)\n   - Provide clear documentation on what data is collected and how it's used\n\n4. Enhance the analytics backend integration:\n   - Update the API endpoints to handle the new telemetry data types\n   - Implement proper error handling and retry logic for failed transmissions\n   - Add compression for telemetry payloads to reduce bandwidth usage\n\n5. Add telemetry debugging capabilities:\n   - Create a developer mode to view telemetry data being collected\n   - Implement logging of telemetry events (when in debug mode)\n   - Add command to manually trigger telemetry transmission",
+      "testStrategy": "The testing strategy for the expanded telemetry system should be comprehensive and cover all aspects of the implementation:\n\n1. Unit Tests:\n   - Test each telemetry collection function in isolation\n   - Verify proper anonymization of sensitive data\n   - Test aggregation logic with various input scenarios\n   - Validate batching mechanisms with different batch sizes\n   - Test retry logic and error handling\n\n2. Integration Tests:\n   - Verify telemetry data is properly stored locally before transmission\n   - Test the complete flow from data collection to transmission\n   - Validate that the analytics backend correctly processes the new data types\n   - Test different network conditions (slow, intermittent, offline)\n   - Verify proper handling of transmission failures\n\n3. End-to-End Tests:\n   - Create automated E2E tests that perform various user actions and verify telemetry is captured\n   - Test with the actual analytics backend to ensure compatibility\n   - Verify that aggregated data accurately represents the performed actions\n\n4. Performance Tests:\n   - Measure the performance impact of the expanded telemetry system\n   - Test with large volumes of telemetry data to ensure efficient handling\n   - Verify memory usage remains within acceptable limits\n   - Test CPU utilization during telemetry collection and transmission\n\n5. Manual Testing:\n   - Verify telemetry debug mode correctly displays collected data\n   - Test different telemetry level configurations\n   - Manually verify the accuracy of collected metrics\n\n6. Privacy Compliance Testing:\n   - Verify no PII is transmitted without proper anonymization\n   - Test opt-out functionality works correctly\n   - Ensure telemetry levels properly restrict data collection as configured\n\n7. Regression Testing:\n   - Verify existing functionality continues to work with the expanded telemetry\n   - Ensure backward compatibility with the existing analytics backend",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Additional Telemetry Data Collection Points",
+          "description": "Extend the telemetry system to capture new metrics including command execution frequency, feature usage patterns, performance metrics, error rates, session data, and system environment information.",
+          "dependencies": [],
+          "details": "Create new telemetry event types and collection points throughout the codebase. Implement hooks in the command execution pipeline to track timing and frequency. Add performance monitoring for key operations using high-resolution timers. Capture system environment data at startup. Implement error tracking that records error types and frequencies. Add session tracking with start/end events and periodic heartbeats.",
+          "status": "pending",
+          "testStrategy": "Create unit tests for each new telemetry point. Implement integration tests that verify telemetry is captured during normal application usage. Add mock services to verify data format correctness."
+        },
+        {
+          "id": 2,
+          "title": "Build Local Telemetry Storage and Aggregation System",
+          "description": "Create a local storage mechanism to temporarily hold telemetry data with aggregation capabilities to combine similar events and reduce payload size.",
+          "dependencies": [],
+          "details": "Implement a persistent local store using SQLite or similar lightweight database. Create data schemas for different telemetry types. Develop aggregation functions that can combine similar events (e.g., multiple instances of the same command) into summary statistics. Implement data retention policies to prevent excessive storage usage. Add serialization/deserialization for telemetry objects.",
+          "status": "pending",
+          "testStrategy": "Test storage persistence across application restarts. Verify aggregation logic correctly combines similar events. Benchmark storage performance with large volumes of telemetry data."
+        },
+        {
+          "id": 3,
+          "title": "Implement Batching and Transmission Logic",
+          "description": "Add batching capabilities to group multiple telemetry events into single network requests with configurable batch sizes and transmission intervals.",
+          "dependencies": [],
+          "details": "Create a background service that periodically checks for pending telemetry data. Implement configurable settings for batch size, transmission frequency, and retry behavior. Add compression for telemetry payloads using gzip or similar. Implement network-aware transmission that detects connectivity and adjusts accordingly. Add retry logic with exponential backoff for failed transmissions. Create hooks for manual transmission triggering.",
+          "status": "pending",
+          "testStrategy": "Test batching with various configurations. Verify compression reduces payload size. Simulate network failures to test retry logic. Measure transmission efficiency with different batch sizes."
+        },
+        {
+          "id": 4,
+          "title": "Implement Privacy Controls and User Configuration",
+          "description": "Add privacy-preserving mechanisms including data anonymization, minimization principles, and user-configurable telemetry levels.",
+          "dependencies": [],
+          "details": "Create a telemetry sanitization layer that removes or hashes PII before storage. Implement three telemetry levels (basic, enhanced, full) with clear documentation of what each includes. Add user settings UI for controlling telemetry levels. Create a first-run experience that explains telemetry and requests user consent. Implement runtime filtering of telemetry events based on user settings.",
+          "status": "pending",
+          "testStrategy": "Verify PII is properly anonymized in all telemetry events. Test that changing telemetry levels correctly adjusts what data is collected. Ensure user preferences persist across application updates."
+        },
+        {
+          "id": 5,
+          "title": "Add Telemetry Debugging and Monitoring Capabilities",
+          "description": "Create developer tools for debugging telemetry including a developer mode to view collected data, logging capabilities, and manual transmission controls.",
+          "dependencies": [],
+          "details": "Implement a developer console command to toggle telemetry debug mode. Create a UI panel that displays pending and recently sent telemetry data when in debug mode. Add detailed logging of telemetry events to the application log when debugging is enabled. Create commands to manually trigger transmission or clear pending telemetry. Add telemetry health metrics to monitor system performance impact.",
+          "status": "pending",
+          "testStrategy": "Verify debug mode correctly displays all telemetry events. Test manual transmission triggers. Ensure logging provides sufficient detail for debugging without excessive verbosity."
+        }
+      ]
     }
   ]
 }

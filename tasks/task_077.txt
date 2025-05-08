@@ -84,13 +84,13 @@ For each command category, we'll need to:
 - Establish validation procedures to ensure data accuracy
 </info added on 2025-05-07T17:28:57.361Z>
 
-## 2. Implement secure telemetry transmission [pending]
+## 2. Implement secure telemetry transmission [deferred]
 ### Dependencies: 77.1
 ### Description: Create a secure mechanism to transmit telemetry data to the external analytics endpoint
 ### Details:
 Implement HTTPS POST request functionality to securely send the telemetry payload to the closed-source analytics API. Include proper encryption in transit using TLS. Implement retry logic and graceful fallback mechanisms for handling transmission failures due to connectivity issues.
 
-## 3. Develop user consent and privacy notice system [pending]
+## 3. Develop user consent and privacy notice system [deferred]
 ### Dependencies: None
 ### Description: Create a privacy notice and explicit consent mechanism during Taskmaster setup
 ### Details:

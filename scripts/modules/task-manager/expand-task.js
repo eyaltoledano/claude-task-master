@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
 
-import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
+import {
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	displayAiUsageSummary
+} from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
 
@@ -182,9 +186,16 @@ function parseSubtasksFromText(
 	parentTaskId,
 	logger
 ) {
-	logger.info('Attempting to parse subtasks object from text response...');
+	// Add a type check for 'text' before attempting to call .trim()
+	if (typeof text !== 'string') {
+		logger.error(
+			`AI response text is not a string. Received type: ${typeof text}, Value: ${text}`
+		);
+		throw new Error('AI response text is not a string.');
+	}
+
 	if (!text || text.trim() === '') {
-		throw new Error('AI response text is empty.');
+		throw new Error('AI response text is empty after trimming.'); // Clarified error message
 	}
 
 	let cleanedResponse = text.trim();
@@ -196,14 +207,12 @@ function parseSubtasksFromText(
 	);
 	if (codeBlockMatch) {
 		cleanedResponse = codeBlockMatch[1].trim();
-		logger.info('Extracted JSON content from Markdown code block.');
 	} else {
 		// 2. If no code block, find first '{' and last '}' for the object
 		const firstBrace = cleanedResponse.indexOf('{');
 		const lastBrace = cleanedResponse.lastIndexOf('}');
 		if (firstBrace !== -1 && lastBrace > firstBrace) {
 			cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
-			logger.info('Extracted content between first { and last }.');
 		} else {
 			logger.warn(
 				'Response does not appear to contain a JSON object structure. Parsing raw response.'
@@ -243,9 +252,6 @@ function parseSubtasksFromText(
 	}
 	const parsedSubtasks = parsedObject.subtasks; // Extract the array
 
-	logger.info(
-		`Successfully parsed ${parsedSubtasks.length} potential subtasks from the object.`
-	);
 	if (expectedCount && parsedSubtasks.length !== expectedCount) {
 		logger.warn(
 			`Expected ${expectedCount} subtasks, but parsed ${parsedSubtasks.length}.`
@@ -336,8 +342,12 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot: contextProjectRoot } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
+	const projectRoot =
+		contextProjectRoot || path.dirname(path.dirname(tasksPath));
 
 	// Use mcpLog if available, otherwise use the default console log wrapper
 	const logger = mcpLog || {
@@ -381,7 +391,6 @@ async function expandTask(
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const projectRoot = path.dirname(path.dirname(tasksPath));
 		const complexityReportPath = path.join(
 			projectRoot,
 			'scripts/task-complexity-report.json'
@@ -488,28 +497,27 @@ async function expandTask(
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
-				`Generating ${finalSubtaskCount} subtasks...`
+				`Generating ${finalSubtaskCount} subtasks...\n`
 			);
 		}
 
 		let responseText = '';
+		let aiServiceResponse = null;
 
 		try {
 			const role = useResearch ? 'research' : 'main';
-			logger.info(`Using AI service with role: ${role}`);
 
-			// Call generateTextService with the determined prompts
-			responseText = await generateTextService({
+			// Call generateTextService with the determined prompts and telemetry params
+			aiServiceResponse = await generateTextService({
 				prompt: promptContent,
-				systemPrompt: systemPrompt, // Use the determined system prompt
+				systemPrompt: systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot,
+				commandName: 'expand-task',
+				outputType: outputFormat
 			});
-			logger.info(
-				'Successfully received text response from AI service',
-				'success'
-			);
+			responseText = aiServiceResponse.mainResult;
 
 			// Parse Subtasks
 			generatedSubtasks = parseSubtasksFromText(
@@ -550,14 +558,23 @@ async function expandTask(
 		// --- End Change: Append instead of replace ---
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
-		logger.info(`Writing updated tasks to ${tasksPath}`);
 		writeJSON(tasksPath, data);
-		logger.info(`Generating individual task files...`);
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-		logger.info(`Task files generated.`);
-		// --- End Task Update & File Writing ---
 
-		return task; // Return the updated task object
+		// Display AI Usage Summary for CLI
+		if (
+			outputFormat === 'text' &&
+			aiServiceResponse &&
+			aiServiceResponse.telemetryData
+		) {
+			displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+		}
+
+		// Return the updated task object AND telemetry data
+		return {
+			task,
+			telemetryData: aiServiceResponse?.telemetryData
+		};
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');

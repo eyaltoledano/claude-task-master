@@ -19,8 +19,6 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 
-		log('info', `Preparing to regenerate task files in ${tasksPath}`);
-
 		const data = readJSON(tasksPath);
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
@@ -31,7 +29,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		log('info', `Found ${data.tasks.length} tasks to regenerate`);
+		log('info', `Preparing to regenerate ${data.tasks.length} task files`);
 
 		// Validate and fix dependencies before generating files
 		log('info', `Validating and fixing dependencies`);
