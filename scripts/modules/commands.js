@@ -2152,11 +2152,22 @@ function registerCommands(programInstance) {
 		.option('-d, --description <description>', 'Project description')
 		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
 		.option('-a, --author <author>', 'Author name')
+		.option('-r, --rules <rules...>', 'List of rules to add (roo, windsurf, cursor, ...). Accepts comma or space separated values.')
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.action(async (cmdOptions) => {
+			// Parse rules: accept space or comma separated, default to ['cursor']
+			let rules = ['cursor'];
+			if (cmdOptions.rules && Array.isArray(cmdOptions.rules)) {
+				rules = cmdOptions.rules
+					.flatMap(r => r.split(','))
+					.map(r => r.trim())
+					.filter(Boolean);
+				if (rules.length === 0) rules = ['cursor'];
+			}
 			// cmdOptions contains parsed arguments
+			cmdOptions.rules = rules;
 			try {
 				console.log('DEBUG: Running init command action in commands.js');
 				console.log(
