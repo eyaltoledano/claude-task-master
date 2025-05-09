@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import inquirer from 'inquirer';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import chalk from 'chalk';
@@ -318,12 +319,17 @@ async function initializeProject(options = {}) {
 	// }
 
 	const skipPrompts = options.yes || (options.name && options.description);
+let selectedBrandRules = options.rules && Array.isArray(options.rules) && options.rules.length > 0
+	? options.rules
+	: ['cursor'];
 
 	// if (!isSilentMode()) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
 	// }
 
 	if (skipPrompts) {
+		// Use selectedBrandRules from options or default
+
 		if (!isSilentMode()) {
 			console.log('SKIPPING PROMPTS - Using defaults or provided values');
 		}
@@ -349,37 +355,21 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun);
-
-		// Generate brand rules from Cursor rules
-		const targetDir = process.cwd();
-		log('info', 'Generating brand rules from Cursor rules...');
-		if (Array.isArray(options.rules)) {
-			for (const rule of options.rules) {
-				const profile = ruleProfiles[rule];
-				if (profile) {
-					convertAllRulesToBrandRules(targetDir, profile);
-					// Ensure MCP config is set up under the correct brand folder for any non-cursor rule
-					if (rule !== 'cursor') {
-						setupMCPConfiguration(path.join(targetDir, `.${rule}`));
-					}
-				} else {
-					log('warn', `Unknown rules profile: ${rule}`);
-				}
-			}
-		} else {
-			// fallback for safety
-			convertAllRulesToBrandRules(targetDir, cursorProfile);
+		try {
+			createProjectStructure(addAliases, dryRun, selectedBrandRules);
+		} catch (error) {
+			log('error', `Error during initialization process: ${error.message}`);
+			process.exit(1);
 		}
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout
-		});
 
 		try {
+			const rl = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
 			// Only prompt for shell aliases
 			const addAliasesInput = await promptQuestion(
 				rl,
@@ -393,8 +383,8 @@ async function initializeProject(options = {}) {
 			console.log('\nTask Master Project settings:');
 			console.log(
 				chalk.blue(
-					'Add shell aliases (so you can use "tm" instead of "task-master"):'
-				),
+					'Add shell aliases (so you can use "tm" instead of "task-master"):')
+				,
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
 			);
 
@@ -411,6 +401,23 @@ async function initializeProject(options = {}) {
 				return;
 			}
 
+
+			// === Brand Rules Selection (Inquirer) ===
+			console.log(
+				chalk.cyan('\nRules help enforce best practices and conventions for Task Master.')
+			);
+			const brandRulesQuestion = {
+				type: 'checkbox',
+				name: 'brandRules',
+				message: 'Which IDEs would you like rules included for?',
+				choices: availableBrandRules,
+				default: ['cursor'],
+				validate: (input) => input.length > 0 || 'You must select at least one.'
+			};
+			const { brandRules } = await inquirer.prompt([brandRulesQuestion]);
+			selectedBrandRules = brandRules;
+
+
 			const dryRun = options.dryRun || false;
 
 			if (dryRun) {
@@ -426,26 +433,21 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(addAliasesPrompted, dryRun);
+			createProjectStructure(addAliasesPrompted, dryRun, selectedBrandRules);
 
-			// Generate brand rules from Cursor rules (fix for interactive branch)
-			const targetDir = process.cwd();
-			log('info', 'Generating brand rules from Cursor rules...');
-			if (Array.isArray(options.rules)) {
-				for (const rule of options.rules) {
+				for (const rule of selectedBrandRules) {
 					const profile = ruleProfiles[rule];
 					if (profile) {
 						convertAllRulesToBrandRules(targetDir, profile);
 						// Ensure MCP config is set up under the correct brand folder
 						if (rule === 'windsurf' || rule === 'roo') {
-							setupMCPConfiguration(path.join(targetDir, `.${rule}`));
-						}
-					} else {
-						log('warn', `Unknown rules profile: ${rule}`);
 					}
+				} else {
+					log('warn', `Unknown rules profile: ${rule}`);
 				}
-			} else {
-				// fallback for safety
+			}
+			// fallback for safety if selectedBrandRules is not an array
+			if (!Array.isArray(selectedBrandRules)) {
 				convertAllRulesToBrandRules(targetDir, cursorProfile);
 			}
 		} catch (error) {
@@ -466,7 +468,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun) {
+function createProjectStructure(addAliases, dryRun, selectedBrandRules = ['cursor']) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
@@ -545,6 +547,26 @@ function createProjectStructure(addAliases, dryRun) {
 		}
 	} catch (error) {
 		log('warn', 'Git not available, skipping repository initialization');
+	}
+
+	// === Generate Brand Rules from assets/rules ===
+	log('info', 'Generating brand rules from assets/rules...');
+	if (Array.isArray(selectedBrandRules)) {
+		for (const rule of selectedBrandRules) {
+			const profile = ruleProfiles[rule];
+			if (profile) {
+				convertAllRulesToBrandRules(targetDir, profile);
+				// Ensure MCP config is set up under the correct brand folder for any non-cursor rule
+				if (rule !== 'cursor') {
+					setupMCPConfiguration(path.join(targetDir, `.${rule}`));
+				}
+			} else {
+				log('warn', `Unknown rules profile: ${rule}`);
+			}
+		}
+	} else {
+		// fallback for safety
+		convertAllRulesToBrandRules(targetDir, cursorProfile);
 	}
 
 	// Run npm install automatically
@@ -717,6 +739,12 @@ import { setupMCPConfiguration } from './modules/mcp-utils.js';
 import * as rooProfile from './profiles/roo.js';
 import * as windsurfProfile from './profiles/windsurf.js';
 import * as cursorProfile from './profiles/cursor.js';
+
+const availableBrandRules = [
+	{ name: 'Cursor (default)', value: 'cursor' },
+	{ name: 'Roo', value: 'roo' },
+	{ name: 'Windsurf', value: 'windsurf' }
+];
 
 const ruleProfiles = {
 	roo: rooProfile,
