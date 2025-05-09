@@ -545,18 +545,31 @@ function createProjectStructure(addAliases, dryRun) {
 		path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc')
 	);
 
-
-	// Copy .roomodes for Roo Code integration
-	copyTemplateFile('.roomodes', path.join(targetDir, '.roomodes'));
-
-	// Copy Roo rule files for each mode
+	const rooSourceDir = path.join(__dirname, '..', 'assets', 'roocode');
+	const rooModesDir = path.join(rooSourceDir, '.roo');
 	const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
-	for (const mode of rooModes) {
-		copyTemplateFile(
-			`${mode}-rules`,
-			path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`)
-		);
+
+// Copy .roomodes to project root
+const roomodesSrc = path.join(rooSourceDir, '.roomodes');
+const roomodesDest = path.join(targetDir, '.roomodes');
+if (fs.existsSync(roomodesSrc)) {
+	fs.copyFileSync(roomodesSrc, roomodesDest);
+	log('info', `Copied .roomodes to ${roomodesDest}`);
+} else {
+	log('warn', `.roomodes not found at ${roomodesSrc}`);
+}
+
+// Copy each <mode>-rules file into the corresponding .roo/rules-<mode>/ folder
+for (const mode of rooModes) {
+	const src = path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`);
+	const dest = path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`);
+	if (fs.existsSync(src)) {
+		fs.copyFileSync(src, dest);
+		log('info', `Copied ${src} to ${dest}`);
+	} else {
+		log('warn', `Roo rule file not found for mode '${mode}': ${src}`);
 	}
+}
 
 	// Copy example_prd.txt
 	copyTemplateFile(
