@@ -206,4 +206,39 @@ function convertAllCursorRulesToBrandRules(projectDir, profile) {
 	return { success, failed };
 }
 
-export { convertAllCursorRulesToBrandRules, convertCursorRuleToBrandRule };
+/**
+ * Remove a brand's rules directory and, if empty, the parent brand folder (except .cursor)
+ * @param {string} projectDir - The root directory of the project
+ * @param {object} profile - The brand profile object
+ * @returns {boolean} - True if removal succeeded, false otherwise
+ */
+function removeBrandRules(projectDir, profile) {
+    const { brandName, rulesDir } = profile;
+    // Do not allow removal of the default Cursor rules directory
+    if (brandName.toLowerCase() === 'cursor') {
+        log('warn', 'Cannot remove default Cursor rules directory. Skipping.');
+        return false;
+    }
+    const brandRulesDir = path.join(projectDir, rulesDir);
+    if (fs.existsSync(brandRulesDir)) {
+        fs.rmSync(brandRulesDir, { recursive: true, force: true });
+        log('info', `Removed rules directory: ${brandRulesDir}`);
+        // Check if parent brand folder is empty
+        const brandDir = path.dirname(brandRulesDir);
+        if (
+            fs.existsSync(brandDir) &&
+            path.basename(brandDir) !== '.cursor' &&
+            fs.readdirSync(brandDir).length === 0
+        ) {
+            fs.rmdirSync(brandDir);
+            log('info', `Removed empty brand folder: ${brandDir}`);
+        }
+        return true;
+    } else {
+        log('warn', `Rules directory not found: ${brandRulesDir}`);
+        return false;
+    }
+}
+
+export { convertAllCursorRulesToBrandRules, convertCursorRuleToBrandRule, removeBrandRules };
+
