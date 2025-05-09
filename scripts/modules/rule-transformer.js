@@ -126,7 +126,7 @@ function transformCursorToBrandRules(
 /**
  * Convert a single Cursor rule file to brand rule format
  */
-function convertCursorRuleToBrandRule(sourcePath, targetPath, profile) {
+function convertRuleToBrandRule(sourcePath, targetPath, profile) {
 	const { conversionConfig, brandName, globalReplacements } = profile;
 	try {
 		log(
@@ -170,7 +170,7 @@ function convertCursorRuleToBrandRule(sourcePath, targetPath, profile) {
 /**
  * Process all Cursor rules and convert to brand rules
  */
-function convertAllCursorRulesToBrandRules(projectDir, profile) {
+function convertAllRulesToBrandRules(projectDir, profile) {
 	const { fileMap, brandName, rulesDir } = profile;
 	// Use assets/rules as the source of rules instead of .cursor/rules
 	const cursorRulesDir = path.join(projectDir, 'assets', 'rules');
@@ -204,7 +204,7 @@ function convertAllCursorRulesToBrandRules(projectDir, profile) {
 			const targetPath = path.join(brandRulesDir, targetFilename);
 
 			// Convert the file
-			if (convertCursorRuleToBrandRule(sourcePath, targetPath, profile)) {
+			if (convertRuleToBrandRule(sourcePath, targetPath, profile)) {
 				success++;
 			} else {
 				failed++;
@@ -272,7 +272,7 @@ function removeBrandRules(projectDir, profile) {
 }
 
 export {
-	convertAllCursorRulesToBrandRules,
-	convertCursorRuleToBrandRule,
+	convertAllRulesToBrandRules,
+	convertRuleToBrandRule,
 	removeBrandRules
 };
