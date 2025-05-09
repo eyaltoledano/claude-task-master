@@ -55,7 +55,16 @@ const conversionConfig = {
 			to: (match) => match
 		},
 		{ from: /https:\/\/docs\.cursor\.com\//g, to: 'https://docs.cursor.com/' }
-	]
+	],
+
+	// Required for transformer compatibility
+	toolNames: {},
+	toolContexts: [],
+	toolGroups: [],
+	fileReferences: {
+		pathPattern: /$^/, // matches nothing
+		replacement: ''
+	}
 };
 
 export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir };
