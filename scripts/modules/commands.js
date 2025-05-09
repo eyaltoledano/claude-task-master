@@ -491,6 +491,45 @@ function registerCommands(programInstance) {
 		displayHelp();
 	});
 
+	// Add/remove brand rules command
+	programInstance
+		.command('rules <action> [brands...]')
+		.description('Add or remove rules for one or more brands (e.g., task-master rules add windsurf roo)')
+		.action(async (action, brands) => {
+			const projectDir = process.cwd();
+
+			if (!brands || brands.length === 0) {
+				console.error('Please specify at least one brand (e.g., windsurf, roo).');
+				process.exit(1);
+			}
+
+			for (const brand of brands) {
+				let profile;
+				try {
+					// Use pathToFileURL for correct ESM dynamic import
+					const { pathToFileURL } = await import('url');
+					const profilePath = path.resolve(process.cwd(), 'scripts', 'profiles', `${brand}.js`);
+					const profileModule = await import(pathToFileURL(profilePath).href);
+					profile = profileModule.default || profileModule;
+				} catch (e) {
+					console.warn(`Rules profile for brand "${brand}" not found. Skipping.`);
+					console.warn(`Import error: ${e && e.message ? e.message : e}`);
+					continue;
+				}
+
+				if (action === 'add') {
+					const { convertAllCursorRulesToBrandRules } = await import('./rule-transformer.js');
+					convertAllCursorRulesToBrandRules(projectDir, profile);
+				} else if (action === 'remove') {
+					const { removeBrandRules } = await import('./rule-transformer.js');
+					removeBrandRules(projectDir, profile);
+				} else {
+					console.error('Unknown action. Use "add" or "remove".');
+					process.exit(1);
+				}
+			}
+		});
+
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
