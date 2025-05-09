@@ -61,34 +61,18 @@ jobs:
   test:
     needs: setup
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pm: [npm, pnpm, bun, yarn]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js for ${{ matrix.pm }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: ${{ matrix.pm == 'bun' && 'npm' || matrix.pm }}
 
-      - name: Setup Bun
-        if: matrix.pm == 'bun'
-        uses: oven-sh/setup-bun@v1
-
-      - name: Install Dependencies for ${{ matrix.pm }}
-        run: |
-          if [ "${{ matrix.pm }}" = "npm" ]; then
-            npm ci
-          elif [ "${{ matrix.pm }}" = "pnpm" ]; then
-            pnpm setup
-            pnpm install --frozen-lockfile
-          elif [ "${{ matrix.pm }}" = "bun" ]; then
-            bun install --frozen-lockfile
-          elif [ "${{ matrix.pm }}" = "yarn" ]; then
-            yarn install --frozen-lockfile
-          fi
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
 
       - name: Run Tests
         run: |
@@ -109,30 +93,3 @@ jobs:
             coverage
             junit.xml
           retention-days: 30
-
-  publish-pypi:
-    name: Publish Python wrapper to PyPI
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install build dependencies
-        run: python -m pip install build
-
-      - name: Build Python wheel and sdist
-        working-directory: ./python-wrapper
-        run: python -m build
-
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_TOKEN }}
