@@ -434,7 +434,7 @@ async function initializeProject(options = {}) {
 
 			// Generate brand rules from Cursor rules (fix for interactive branch)
 			const targetDir = process.cwd();
-			log('info', 'Generating Roo rules from Cursor rules...');
+			log('info', 'Generating brand rules from Cursor rules...');
 			if (Array.isArray(options.rules)) {
 				for (const rule of options.rules) {
 					const profile = ruleProfiles[rule];
