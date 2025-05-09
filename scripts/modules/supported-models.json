@@ -405,5 +405,19 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 32768
 		}
+	],
+	"cursor": [
+		{
+			"id": "cursor",
+			"name": "Cursor AI",
+			"swe_score": 9.0,
+			"cost_per_1m_tokens": 0,
+			"allowed_roles": ["main", "research", "fallback"],
+			"max_tokens": 100000,
+			"description": "Cursor's built-in AI model. Available only when running within Cursor IDE.",
+			"features": ["web_search", "codebase_context", "code_generation"],
+			"supports_tools": true,
+			"default_temperature": 0.2
+		}
 	]
 }

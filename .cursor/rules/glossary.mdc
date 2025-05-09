@@ -3,7 +3,6 @@ description: Glossary of other Cursor rules
 globs: **/*
 alwaysApply: true
 ---
-
 # Glossary of Task Master Cursor Rules
 
 This file provides a quick reference to the purpose of each rule file located in the `.cursor/rules` directory.
@@ -11,6 +10,8 @@ This file provides a quick reference to the purpose of each rule file located in
 - **[`architecture.mdc`](mdc:.cursor/rules/architecture.mdc)**: Describes the high-level architecture of the Task Master CLI application.
 - **[`changeset.mdc`](mdc:.cursor/rules/changeset.mdc)**: Guidelines for using Changesets (npm run changeset) to manage versioning and changelogs.
 - **[`commands.mdc`](mdc:.cursor/rules/commands.mdc)**: Guidelines for implementing CLI commands using Commander.js.
+- **[`cursor_ai_integration.mdc`](mdc:.cursor/rules/cursor_ai_integration.mdc)**: Complete guide to using Task Master with Cursor's built-in AI capabilities instead of requiring external API keys.
+- **[`cursor_ai_provider.mdc`](mdc:.cursor/rules/cursor_ai_provider.mdc)**: Guidelines for using Cursor's built-in AI capabilities with Task Master and technical implementation details.
 - **[`cursor_rules.mdc`](mdc:.cursor/rules/cursor_rules.mdc)**: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
 - **[`dependencies.mdc`](mdc:.cursor/rules/dependencies.mdc)**: Guidelines for managing task dependencies and relationships.
 - **[`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc)**: Guide for using Task Master to manage task-driven development workflows.
