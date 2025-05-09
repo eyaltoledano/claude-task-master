@@ -29,7 +29,7 @@ const globalReplacements = [
   { from: /Cursor/g, to: 'Cursor' },
   { from: /CURSOR/g, to: 'CURSOR' },
   // 4. Handle file extensions
-  { from: \/\.mdc\b/g, to: '.md' },
+  { from: /\.mdc\b/g, to: '.md' },
   // 5. Handle any missed URL patterns
   { from: /docs\.cursor\.com/gi, to: 'docs.cursor.com' }
 ];
