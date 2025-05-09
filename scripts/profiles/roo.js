@@ -164,7 +164,6 @@ export function onAddBrandRules(targetDir) {
 	}
 }
 
-
 function copyRecursiveSync(src, dest) {
 	const exists = fs.existsSync(src);
 	const stats = exists && fs.statSync(src);
@@ -222,6 +221,11 @@ function onPostConvertBrandRules(targetDir) {
 	onAddBrandRules(targetDir);
 }
 
-export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir, onPostConvertBrandRules };
-
-
+export {
+	conversionConfig,
+	fileMap,
+	globalReplacements,
+	brandName,
+	rulesDir,
+	onPostConvertBrandRules
+};

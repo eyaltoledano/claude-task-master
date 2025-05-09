@@ -223,7 +223,6 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
 			break;
 
-
 		default:
 			// For other files like env.example, gitignore, etc. that don't have direct equivalents
 			sourcePath = path.join(__dirname, '..', 'assets', templateName);
@@ -275,8 +274,6 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			}
 			return;
 		}
-
-
 
 		// Handle README.md - offer to preserve or create a different file
 		if (filename === 'README-task-master.md') {
@@ -374,7 +371,6 @@ async function initializeProject(options = {}) {
 			// fallback for safety
 			convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
 		}
-
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -452,7 +448,6 @@ async function initializeProject(options = {}) {
 				// fallback for safety
 				convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
 			}
-
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);

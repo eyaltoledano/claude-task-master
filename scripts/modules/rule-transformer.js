@@ -12,7 +12,6 @@ import { log } from './utils.js';
 // Import the shared MCP configuration helper
 import { setupMCPConfiguration } from './mcp-utils.js';
 
-
 /**
  * Replace basic Cursor terms with brand equivalents
  */
