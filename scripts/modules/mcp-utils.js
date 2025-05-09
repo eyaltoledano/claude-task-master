@@ -5,6 +5,9 @@ import { log } from './utils.js';
 // Structure matches project conventions (see scripts/init.js)
 export function setupMCPConfiguration(configDir) {
 	const mcpPath = path.join(configDir, 'mcp.json');
+
+	log('info', 'Setting up MCP configuration for brand integration...');
+
 	// New MCP config to be added - references the installed package
 	const newMCPServer = {
 		'task-master-ai': {
