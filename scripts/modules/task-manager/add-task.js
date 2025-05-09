@@ -12,7 +12,7 @@ import {
 } from '../ui.js';
 import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
-import { getDefaultPriority } from '../config-manager.js';
+import { getDefaultPriority, getMainProvider } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
 // Define Zod schema for the expected AI output object
