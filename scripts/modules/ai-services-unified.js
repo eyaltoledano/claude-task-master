@@ -24,7 +24,9 @@ import * as google from '../../src/ai-providers/google.js';
 import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
+
 // TODO: Import other provider modules when implemented (ollama, etc.)
+import * as ollama from '../../src/ai-providers/ollama.js';
 
 // --- Provider Function Map ---
 // Maps provider names (lowercase) to their respective service functions
@@ -62,7 +64,11 @@ const PROVIDER_FUNCTIONS = {
 		generateText: openrouter.generateOpenRouterText,
 		streamText: openrouter.streamOpenRouterText,
 		generateObject: openrouter.generateOpenRouterObject
-	}
+	}, ollama: {
+		generateText: ollama.generateOllamaText,
+		streamText: ollama.streamOllamaText,
+		generateObject: ollama.generateOllamaObject,
+	  }
 	// TODO: Add entries for ollama, etc. when implemented
 };
 
@@ -151,11 +157,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY'
 	};
-
-	// Double check this -- I have had to use an api key for ollama in the past
-	// if (providerName === 'ollama') {
-	// 	return null; // Ollama typically doesn't require an API key for basic setup
-	// }
+	
+	if (providerName === 'ollama') return null; // Ollama does not require an API key
 
 	const envVarName = keyMap[providerName];
 	if (!envVarName) {
