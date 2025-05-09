@@ -256,7 +256,7 @@ Apply telemetry pattern from telemetry.mdc:
 
 ## 12. Telemetry Integration for analyze-task-complexity [done]
 ### Dependencies: None
-### Description: Integrate AI usage telemetry capture and propagation for the analyze-task-complexity functionality.
+### Description: Integrate AI usage telemetry capture and propagation for the analyze-task-complexity functionality. [Updated: 5/9/2025]
 ### Details:
 \
 Apply telemetry pattern from telemetry.mdc:
@@ -276,6 +276,110 @@ Apply telemetry pattern from telemetry.mdc:
 3.  **Tool (`mcp-server/src/tools/analyze.js`):**
     *   Verify `handleApiResult` correctly passes `data.telemetryData` through.
 
+<info added on 2025-05-09T04:02:44.847Z>
+## Implementation Details for Telemetry Integration
+
+### Best Practices for Implementation
+
+1. **Use Structured Telemetry Objects:**
+   - Create a standardized `TelemetryEvent` object with fields:
+     ```javascript
+     {
+       commandName: string,       // e.g., 'analyze-complexity'
+       timestamp: ISO8601 string,
+       duration: number,          // in milliseconds
+       inputTokens: number,
+       outputTokens: number,
+       model: string,             // e.g., 'gpt-4'
+       success: boolean,
+       errorType?: string,        // if applicable
+       metadata: object           // command-specific context
+     }
+     ```
+
+2. **Asynchronous Telemetry Processing:**
+   - Use non-blocking telemetry submission to avoid impacting performance
+   - Implement queue-based processing for reliability during network issues
+
+3. **Error Handling:**
+   - Implement robust try/catch blocks around telemetry operations
+   - Ensure telemetry failures don't affect core functionality
+   - Log telemetry failures locally for debugging
+
+4. **Privacy Considerations:**
+   - Never include PII or sensitive data in telemetry
+   - Implement data minimization principles
+   - Add sanitization functions for metadata fields
+
+5. **Testing Strategy:**
+   - Create mock telemetry endpoints for testing
+   - Add unit tests verifying correct telemetry data structure
+   - Implement integration tests for end-to-end telemetry flow
+
+### Code Implementation Examples
+
+```javascript
+// Example telemetry submission function
+async function submitTelemetry(telemetryData, endpoint) {
+  try {
+    // Non-blocking submission
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(telemetryData)
+    }).catch(err => console.error('Telemetry submission failed:', err));
+  } catch (error) {
+    // Log locally but don't disrupt main flow
+    console.error('Telemetry error:', error);
+  }
+}
+
+// Example integration in AI service call
+async function callAiService(params) {
+  const startTime = Date.now();
+  try {
+    const result = await aiService.call({
+      ...params,
+      commandName: 'analyze-complexity',
+      outputType: 'mcp'
+    });
+    
+    // Construct telemetry object
+    const telemetryData = {
+      commandName: 'analyze-complexity',
+      timestamp: new Date().toISOString(),
+      duration: Date.now() - startTime,
+      inputTokens: result.usage?.prompt_tokens || 0,
+      outputTokens: result.usage?.completion_tokens || 0,
+      model: result.model || 'unknown',
+      success: true,
+      metadata: {
+        taskId: params.taskId,
+        // Add other relevant non-sensitive metadata
+      }
+    };
+    
+    return { mainResult: result.data, telemetryData };
+  } catch (error) {
+    // Error telemetry
+    const telemetryData = {
+      commandName: 'analyze-complexity',
+      timestamp: new Date().toISOString(),
+      duration: Date.now() - startTime,
+      success: false,
+      errorType: error.name,
+      metadata: {
+        taskId: params.taskId,
+        errorMessage: sanitizeErrorMessage(error.message)
+      }
+    };
+    
+    // Re-throw the original error after capturing telemetry
+    throw error;
+  }
+}
+```
+</info added on 2025-05-09T04:02:44.847Z>
 
 ## 13. Update google.js for Telemetry Compatibility [pending]
 ### Dependencies: None
