@@ -24,6 +24,7 @@ import * as google from '../../src/ai-providers/google.js';
 import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
+import * as cursor from '../../src/ai-providers/cursor.js';
 // TODO: Import other provider modules when implemented (ollama, etc.)
 
 // --- Provider Function Map ---
@@ -53,15 +54,20 @@ const PROVIDER_FUNCTIONS = {
 	},
 	xai: {
 		// ADD: xAI entry
-		generateText: xai.generateXaiText,
-		streamText: xai.streamXaiText,
-		generateObject: xai.generateXaiObject // Note: Object generation might be unsupported
+		generateText: xai.generateXAIText,
+		streamText: xai.streamXAIText,
+		generateObject: xai.generateXAIObject
 	},
 	openrouter: {
 		// ADD: OpenRouter entry
 		generateText: openrouter.generateOpenRouterText,
 		streamText: openrouter.streamOpenRouterText,
 		generateObject: openrouter.generateOpenRouterObject
+	},
+	cursor: {
+		generateText: cursor.generateCursorText,
+		streamText: cursor.streamCursorText,
+		generateObject: cursor.generateCursorObject
 	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
@@ -72,16 +78,30 @@ const INITIAL_RETRY_DELAY_MS = 1000;
 
 // Helper function to check if an error is retryable
 function isRetryableError(error) {
-	const errorMessage = error.message?.toLowerCase() || '';
-	return (
-		errorMessage.includes('rate limit') ||
-		errorMessage.includes('overloaded') ||
-		errorMessage.includes('service temporarily unavailable') ||
-		errorMessage.includes('timeout') ||
-		errorMessage.includes('network error') ||
-		error.status === 429 ||
-		error.status >= 500
-	);
+	try {
+		// Check for specific error types/patterns that indicate a temporary issue
+		const message = _extractErrorMessage(error).toLowerCase();
+		
+		// Return true if the error matches any retryable pattern
+		return (
+			message.includes('rate limit') ||
+			message.includes('too many requests') ||
+			message.includes('timeout') ||
+			message.includes('capacity') ||
+			message.includes('overloaded') ||
+			message.includes('busy') ||
+			message.includes('temporarily unavailable') ||
+			message.includes('try again') ||
+			// Network errors
+			message.includes('socket') ||
+			message.includes('econnreset') ||
+			message.includes('econnrefused') ||
+			message.includes('etimedout')
+		);
+	} catch (_) {
+		// Use underscore for unused variable
+		return false;
+	}
 }
 
 /**
@@ -91,44 +111,20 @@ function isRetryableError(error) {
  * @returns {string} A concise error message.
  */
 function _extractErrorMessage(error) {
+	// Simple extraction of the error message
 	try {
-		// Attempt 1: Look for Vercel SDK specific nested structure (common)
-		if (error?.data?.error?.message) {
-			return error.data.error.message;
-		}
-
-		// Attempt 2: Look for nested error message directly in the error object
-		if (error?.error?.message) {
-			return error.error.message;
-		}
-
-		// Attempt 3: Look for nested error message in response body if it's JSON string
-		if (typeof error?.responseBody === 'string') {
-			try {
-				const body = JSON.parse(error.responseBody);
-				if (body?.error?.message) {
-					return body.error.message;
-				}
-			} catch (parseError) {
-				// Ignore if responseBody is not valid JSON
-			}
-		}
-
-		// Attempt 4: Use the top-level message if it exists
-		if (typeof error?.message === 'string' && error.message) {
+		if (error && error.message) {
 			return error.message;
-		}
-
-		// Attempt 5: Handle simple string errors
-		if (typeof error === 'string') {
+		} else if (typeof error === 'string') {
 			return error;
+		} else if (error && error.toString) {
+			return error.toString();
+		} else {
+			return 'Unknown error';
 		}
-
-		// Fallback
-		return 'An unknown AI service error occurred.';
-	} catch (e) {
-		// Safety net
-		return 'Failed to extract error message.';
+	} catch (_) {
+		// Use underscore for unused variable
+		return 'Error extracting message from error object';
 	}
 }
 
@@ -141,21 +137,23 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
-	const keyMap = {
-		openai: 'OPENAI_API_KEY',
-		anthropic: 'ANTHROPIC_API_KEY',
-		google: 'GOOGLE_API_KEY',
-		perplexity: 'PERPLEXITY_API_KEY',
-		mistral: 'MISTRAL_API_KEY',
-		azure: 'AZURE_OPENAI_API_KEY',
-		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
-	};
+	// Skip API key resolution for Cursor provider since it doesn't need one
+	if (providerName === 'cursor') {
+		log('debug', 'Skipping API key resolution for Cursor provider');
+		return 'cursor-internal'; // Return a dummy value that will be ignored
+	}
 
-	// Double check this -- I have had to use an api key for ollama in the past
-	// if (providerName === 'ollama') {
-	// 	return null; // Ollama typically doesn't require an API key for basic setup
-	// }
+	const keyMap = {
+		anthropic: 'ANTHROPIC_API_KEY',
+		perplexity: 'PERPLEXITY_API_KEY', 
+		openai: 'OPENAI_API_KEY',
+		google: 'GOOGLE_API_KEY',
+		azure: 'AZURE_OPENAI_API_KEY',
+		xai: 'XAI_API_KEY',
+		openrouter: 'OPENROUTER_API_KEY',
+		mistral: 'MISTRAL_API_KEY',
+		ollama: 'OLLAMA_API_KEY' // Placeholder for future Ollama support
+	};
 
 	const envVarName = keyMap[providerName];
 	if (!envVarName) {
