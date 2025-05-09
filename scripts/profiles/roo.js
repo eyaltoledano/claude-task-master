@@ -1,6 +1,9 @@
 // Roo Code conversion profile for rule-transformer
 import path from 'path';
 
+const brandName = 'Roo';
+const rulesDir = '.roo/rules';
+
 // File name mapping (specific files with naming changes)
 const fileMap = {
   'cursor_rules.mdc': 'roo_rules.md',
@@ -9,6 +12,28 @@ const fileMap = {
   'taskmaster.mdc': 'taskmaster.md'
   // Add other mappings as needed
 };
+
+const globalReplacements = [
+  // 1. Handle cursor.so in any possible context
+  { from: /cursor\.so/gi, to: 'roocode.com' },
+  // Edge case: URL with different formatting
+  { from: /cursor\s*\.\s*so/gi, to: 'roocode.com' },
+  { from: /https?:\/\/cursor\.so/gi, to: 'https://roocode.com' },
+  { from: /https?:\/\/www\.cursor\.so/gi, to: 'https://www.roocode.com' },
+  // 2. Handle tool references - even partial ones
+  { from: /\bedit_file\b/gi, to: 'apply_diff' },
+  { from: /\bsearch tool\b/gi, to: 'search_files tool' },
+  { from: /\bSearch Tool\b/g, to: 'Search_Files Tool' },
+  // 3. Handle basic terms (with case handling)
+  { from: /\bcursor\b/gi, to: (match) => (match.charAt(0) === 'C' ? 'Roo Code' : 'roo') },
+  { from: /Cursor/g, to: 'Roo Code' },
+  { from: /CURSOR/g, to: 'ROO CODE' },
+  // 4. Handle file extensions
+  { from: /\.mdc\b/g, to: '.md' },
+  // 5. Handle any missed URL patterns
+  { from: /docs\.cursor\.com/gi, to: 'docs.roocode.com' },
+  { from: /docs\.roo\.com/gi, to: 'docs.roocode.com' }
+];
 
 const conversionConfig = {
   // Product and brand name replacements
@@ -87,4 +112,4 @@ const conversionConfig = {
   }
 };
 
-export { conversionConfig, fileMap };
+export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir };

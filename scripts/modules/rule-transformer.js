@@ -1,8 +1,8 @@
 /**
  * Rule Transformer Module
- * Handles conversion of Cursor rules to Roo rules
+ * Handles conversion of Cursor rules to brand rules
  *
- * This module procedurally generates .roo/rules files from .cursor/rules files,
+ * This module procedurally generates .{brand}/rules files from .cursor/rules files,
  * eliminating the need to maintain both sets of files manually.
  */
 import fs from 'fs';
@@ -95,64 +95,45 @@ function updateFileReferences(content) {
 /**
  * Main transformation function that applies all conversions
  */
-function transformCursorToRooRules(content) {
+// Main transformation function that applies all conversions, now brand-generic
+function transformCursorToBrandRules(content, conversionConfig, globalReplacements = []) {
 	// Apply all transformations in appropriate order
 	let result = content;
-	result = replaceBasicTerms(result);
-	result = replaceToolReferences(result);
-	result = updateDocReferences(result);
-	result = updateFileReferences(result);
+	result = replaceBasicTerms(result, conversionConfig);
+	result = replaceToolReferences(result, conversionConfig);
+	result = updateDocReferences(result, conversionConfig);
+	result = updateFileReferences(result, conversionConfig);
 
+	// Apply any global/catch-all replacements from the brand profile
 	// Super aggressive failsafe pass to catch any variations we might have missed
 	// This ensures critical transformations are applied even in contexts we didn't anticipate
-
-	// 1. Handle cursor.so in any possible context
-	result = result.replace(/cursor\.so/gi, 'roocode.com');
-	// Edge case: URL with different formatting
-	result = result.replace(/cursor\s*\.\s*so/gi, 'roocode.com');
-	result = result.replace(/https?:\/\/cursor\.so/gi, 'https://roocode.com');
-	result = result.replace(
-		/https?:\/\/www\.cursor\.so/gi,
-		'https://www.roocode.com'
-	);
-
-	// 2. Handle tool references - even partial ones
-	result = result.replace(/\bedit_file\b/gi, 'apply_diff');
-	result = result.replace(/\bsearch tool\b/gi, 'search_files tool');
-	result = result.replace(/\bSearch Tool\b/g, 'Search_Files Tool');
-
-	// 3. Handle basic terms (with case handling)
-	result = result.replace(/\bcursor\b/gi, (match) =>
-		match.charAt(0) === 'C' ? 'Roo Code' : 'roo'
-	);
-	result = result.replace(/Cursor/g, 'Roo Code');
-	result = result.replace(/CURSOR/g, 'ROO CODE');
-
-	// 4. Handle file extensions
-	result = result.replace(/\.mdc\b/g, '.md');
-
-	// 5. Handle any missed URL patterns
-	result = result.replace(/docs\.cursor\.com/gi, 'docs.roocode.com');
-	result = result.replace(/docs\.roo\.com/gi, 'docs.roocode.com');
+	globalReplacements.forEach((pattern) => {
+		if (typeof pattern.to === 'function') {
+			result = result.replace(pattern.from, pattern.to);
+		} else {
+			result = result.replace(pattern.from, pattern.to);
+		}
+	});
 
 	return result;
 }
 
 /**
- * Convert a single Cursor rule file to Roo rule format
+ * Convert a single Cursor rule file to brand rule format
  */
-function convertCursorRuleToRooRule(sourcePath, targetPath) {
+function convertCursorRuleToBrandRule(sourcePath, targetPath, profile) {
+	const { conversionConfig, brandName, globalReplacements } = profile;
 	try {
 		log(
 			'info',
-			`Converting Cursor rule ${path.basename(sourcePath)} to Roo rule ${path.basename(targetPath)}`
+			`Converting Cursor rule ${path.basename(sourcePath)} to ${brandName} rule ${path.basename(targetPath)}`
 		);
 
 		// Read source content
 		const content = fs.readFileSync(sourcePath, 'utf8');
 
 		// Transform content
-		const transformedContent = transformCursorToRooRules(content);
+		const transformedContent = transformCursorToBrandRules(content, conversionConfig, globalReplacements);
 
 		// Ensure target directory exists
 		const targetDir = path.dirname(targetPath);
@@ -178,21 +159,22 @@ function convertCursorRuleToRooRule(sourcePath, targetPath) {
 }
 
 /**
- * Process all Cursor rules and convert to Roo rules
+ * Process all Cursor rules and convert to brand rules
  */
-function convertAllCursorRulesToRooRules(projectDir) {
+function convertAllCursorRulesToBrandRules(projectDir, profile) {
+	const { fileMap, brandName, rulesDir } = profile;
 	const cursorRulesDir = path.join(projectDir, '.cursor', 'rules');
-	const rooRulesDir = path.join(projectDir, '.roo', 'rules');
+	const brandRulesDir = path.join(projectDir, rulesDir);
 
 	if (!fs.existsSync(cursorRulesDir)) {
 		log('warn', `Cursor rules directory not found: ${cursorRulesDir}`);
 		return { success: 0, failed: 0 };
 	}
 
-	// Ensure Roo rules directory exists
-	if (!fs.existsSync(rooRulesDir)) {
-		fs.mkdirSync(rooRulesDir, { recursive: true });
-		log('info', `Created Roo rules directory: ${rooRulesDir}`);
+	// Ensure brand rules directory exists
+	if (!fs.existsSync(brandRulesDir)) {
+		fs.mkdirSync(brandRulesDir, { recursive: true });
+		log('info', `Created ${brandName} rules directory: ${brandRulesDir}`);
 	}
 
 	// Count successful and failed conversions
@@ -206,10 +188,10 @@ function convertAllCursorRulesToRooRules(projectDir) {
 
 			// Determine target file name (either from mapping or by replacing extension)
 			const targetFilename = fileMap[file] || file.replace('.mdc', '.md');
-			const targetPath = path.join(rooRulesDir, targetFilename);
+			const targetPath = path.join(brandRulesDir, targetFilename);
 
 			// Convert the file
-			if (convertCursorRuleToRooRule(sourcePath, targetPath)) {
+			if (convertCursorRuleToBrandRule(sourcePath, targetPath, profile)) {
 				success++;
 			} else {
 				failed++;
@@ -224,4 +206,4 @@ function convertAllCursorRulesToRooRules(projectDir) {
 	return { success, failed };
 }
 
-export { convertAllCursorRulesToRooRules, convertCursorRuleToRooRule };
+export { convertAllCursorRulesToBrandRules, convertCursorRuleToBrandRule };
