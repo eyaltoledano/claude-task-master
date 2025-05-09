@@ -202,7 +202,7 @@ function convertAllCursorRulesToBrandRules(projectDir, profile) {
 			const sourcePath = path.join(cursorRulesDir, file);
 
 			// Determine target file name (either from mapping or by replacing extension)
-			const targetFilename = fileMap[file] || file.replace('.mdc', '.md');
+			const targetFilename = fileMap[file] || file;
 			const targetPath = path.join(brandRulesDir, targetFilename);
 
 			// Convert the file
