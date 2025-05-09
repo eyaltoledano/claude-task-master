@@ -24,7 +24,12 @@ export async function rulesDirect(args, log, context = {}) {
 	enableSilentMode();
 	try {
 		const { action, rules, projectRoot, yes } = args;
-		if (!action || !Array.isArray(rules) || rules.length === 0 || !projectRoot) {
+		if (
+			!action ||
+			!Array.isArray(rules) ||
+			rules.length === 0 ||
+			!projectRoot
+		) {
 			return {
 				success: false,
 				error: {
@@ -35,7 +40,8 @@ export async function rulesDirect(args, log, context = {}) {
 		}
 		const rulesList = rules.join(',');
 		const yesFlag = yes !== false ? '--yes' : '';
-		const cmd = `npx task-master rules ${action} ${rulesList} ${yesFlag}`.trim();
+		const cmd =
+			`npx task-master rules ${action} ${rulesList} ${yesFlag}`.trim();
 		log.info(`[rulesDirect] Running: ${cmd} in ${projectRoot}`);
 		const output = execSync(cmd, { cwd: projectRoot, encoding: 'utf8' });
 		log.info(`[rulesDirect] Output: ${output}`);

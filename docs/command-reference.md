@@ -218,6 +218,7 @@ task-master init --rules cursor,windsurf
 - You can use multiple comma-separated brands in a single command.
 
 **Example:**
+
 ```bash
 task-master init --rules cursor,roo
 ```
@@ -238,6 +239,7 @@ task-master rules remove <brand1,brand2,...>
 - You can use multiple comma-separated brands in a single command.
 
 **Examples:**
+
 ```bash
 task-master rules add windsurf,roo
 task-master rules remove windsurf

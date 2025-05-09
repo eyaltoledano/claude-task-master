@@ -319,9 +319,10 @@ async function initializeProject(options = {}) {
 	// }
 
 	const skipPrompts = options.yes || (options.name && options.description);
-let selectedBrandRules = options.rules && Array.isArray(options.rules) && options.rules.length > 0
-	? options.rules
-	: ['cursor'];
+	let selectedBrandRules =
+		options.rules && Array.isArray(options.rules) && options.rules.length > 0
+			? options.rules
+			: ['cursor'];
 
 	// if (!isSilentMode()) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
@@ -383,8 +384,8 @@ let selectedBrandRules = options.rules && Array.isArray(options.rules) && option
 			console.log('\nTask Master Project settings:');
 			console.log(
 				chalk.blue(
-					'Add shell aliases (so you can use "tm" instead of "task-master"):')
-				,
+					'Add shell aliases (so you can use "tm" instead of "task-master"):'
+				),
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
 			);
 
@@ -401,10 +402,11 @@ let selectedBrandRules = options.rules && Array.isArray(options.rules) && option
 				return;
 			}
 
-
 			// === Brand Rules Selection (Inquirer) ===
 			console.log(
-				chalk.cyan('\nRules help enforce best practices and conventions for Task Master.')
+				chalk.cyan(
+					'\nRules help enforce best practices and conventions for Task Master.'
+				)
 			);
 			const brandRulesQuestion = {
 				type: 'checkbox',
@@ -416,7 +418,6 @@ let selectedBrandRules = options.rules && Array.isArray(options.rules) && option
 			};
 			const { brandRules } = await inquirer.prompt([brandRulesQuestion]);
 			selectedBrandRules = brandRules;
-
 
 			const dryRun = options.dryRun || false;
 
@@ -435,12 +436,12 @@ let selectedBrandRules = options.rules && Array.isArray(options.rules) && option
 			// Create structure using only necessary values
 			createProjectStructure(addAliasesPrompted, dryRun, selectedBrandRules);
 
-				for (const rule of selectedBrandRules) {
-					const profile = ruleProfiles[rule];
-					if (profile) {
-						convertAllRulesToBrandRules(targetDir, profile);
-						// Ensure MCP config is set up under the correct brand folder
-						if (rule === 'windsurf' || rule === 'roo') {
+			for (const rule of selectedBrandRules) {
+				const profile = ruleProfiles[rule];
+				if (profile) {
+					convertAllRulesToBrandRules(targetDir, profile);
+					// Ensure MCP config is set up under the correct brand folder
+					if (rule === 'windsurf' || rule === 'roo') {
 					}
 				} else {
 					log('warn', `Unknown rules profile: ${rule}`);
@@ -468,7 +469,11 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun, selectedBrandRules = ['cursor']) {
+function createProjectStructure(
+	addAliases,
+	dryRun,
+	selectedBrandRules = ['cursor']
+) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 

@@ -39,7 +39,9 @@ export function registerInitializeProjectTool(server) {
 			rules: z
 				.array(z.string())
 				.optional()
-				.describe('List of brand rules to include at initialization (e.g., ["cursor", "roo"]). If omitted, defaults to ["cursor"].')
+				.describe(
+					'List of brand rules to include at initialization (e.g., ["cursor", "roo"]). If omitted, defaults to ["cursor"].'
+				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, context) => {
 			const { log } = context;
