@@ -14,6 +14,14 @@ import os from 'os'; // Import os module for home directory check
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
  */
+/**
+ * Direct function wrapper for initializing a project.
+ * Accepts a 'rules' array in args (e.g., ["cursor", "roo"]). If present, passes it as the --rules argument to the core init logic. Defaults to ["cursor"] if not provided.
+ * @param {object} args - Arguments containing initialization options (addAliases, skipInstall, yes, projectRoot, rules)
+ * @param {object} log - The FastMCP logger instance.
+ * @param {object} context - The context object, must contain { session }.
+ * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
+ */
 export async function initializeProjectDirect(args, log, context = {}) {
 	const { session } = context; // Keep session if core logic needs it
 	const homeDir = os.homedir();
@@ -68,6 +76,15 @@ export async function initializeProjectDirect(args, log, context = {}) {
 			skipInstall: args.skipInstall,
 			yes: true // Force yes mode
 		};
+
+		// Handle rules option just like CLI
+		if (Array.isArray(args.rules) && args.rules.length > 0) {
+			options.rules = args.rules;
+			log.info(`Including brand rules: ${args.rules.join(", ")}`);
+		} else {
+			options.rules = ["cursor"];
+			log.info(`No rules specified, defaulting to: cursor`);
+		}
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
 		const result = await initializeProject(options); // Call core logic
