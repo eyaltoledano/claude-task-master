@@ -477,25 +477,8 @@ function createProjectStructure(addAliases, dryRun) {
 
 	// Create directories
 	ensureDirectoryExists(path.join(targetDir, '.cursor', 'rules'));
-
-	// Create Roo directories
-	ensureDirectoryExists(path.join(targetDir, '.roo'));
-	ensureDirectoryExists(path.join(targetDir, '.roo', 'rules'));
-	for (const mode of [
-		'architect',
-		'ask',
-		'boomerang',
-		'code',
-		'debug',
-		'test'
-	]) {
-		ensureDirectoryExists(path.join(targetDir, '.roo', `rules-${mode}`));
-	}
-
 	ensureDirectoryExists(path.join(targetDir, 'scripts'));
 	ensureDirectoryExists(path.join(targetDir, 'tasks'));
-
-	// Removed root-level MCP configuration; handled by brand-specific logic only.
 
 	// Copy template files with replacements
 	const replacements = {
@@ -544,32 +527,6 @@ function createProjectStructure(addAliases, dryRun) {
 		'self_improve.mdc',
 		path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc')
 	);
-
-	const rooSourceDir = path.join(__dirname, '..', 'assets', 'roocode');
-	const rooModesDir = path.join(rooSourceDir, '.roo');
-	const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
-
-// Copy .roomodes to project root
-const roomodesSrc = path.join(rooSourceDir, '.roomodes');
-const roomodesDest = path.join(targetDir, '.roomodes');
-if (fs.existsSync(roomodesSrc)) {
-	fs.copyFileSync(roomodesSrc, roomodesDest);
-	log('info', `Copied .roomodes to ${roomodesDest}`);
-} else {
-	log('warn', `.roomodes not found at ${roomodesSrc}`);
-}
-
-// Copy each <mode>-rules file into the corresponding .roo/rules-<mode>/ folder
-for (const mode of rooModes) {
-	const src = path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`);
-	const dest = path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`);
-	if (fs.existsSync(src)) {
-		fs.copyFileSync(src, dest);
-		log('info', `Copied ${src} to ${dest}`);
-	} else {
-		log('warn', `Roo rule file not found for mode '${mode}': ${src}`);
-	}
-}
 
 	// Copy example_prd.txt
 	copyTemplateFile(

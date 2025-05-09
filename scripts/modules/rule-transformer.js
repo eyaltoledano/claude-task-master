@@ -12,13 +12,11 @@ import { log } from './utils.js';
 // Import the shared MCP configuration helper
 import { setupMCPConfiguration } from './mcp-utils.js';
 
-// Import Roo Code conversionConfig and fileMap from profiles
-import { conversionConfig, fileMap } from '../profiles/roo.js';
 
 /**
  * Replace basic Cursor terms with brand equivalents
  */
-function replaceBasicTerms(content) {
+function replaceBasicTerms(content, conversionConfig) {
 	let result = content;
 
 	// Apply brand term replacements
@@ -41,7 +39,7 @@ function replaceBasicTerms(content) {
 /**
  * Replace Cursor tool references with brand tool equivalents
  */
-function replaceToolReferences(content) {
+function replaceToolReferences(content, conversionConfig) {
 	let result = content;
 
 	// Basic pattern for direct tool name replacements
@@ -72,7 +70,7 @@ function replaceToolReferences(content) {
 /**
  * Update documentation URLs to point to brand documentation
  */
-function updateDocReferences(content) {
+function updateDocReferences(content, conversionConfig) {
 	let result = content;
 
 	// Apply documentation URL replacements
@@ -90,7 +88,7 @@ function updateDocReferences(content) {
 /**
  * Update file references in markdown links
  */
-function updateFileReferences(content) {
+function updateFileReferences(content, conversionConfig) {
 	const { pathPattern, replacement } = conversionConfig.fileReferences;
 	return content.replace(pathPattern, replacement);
 }
@@ -218,6 +216,12 @@ function convertAllCursorRulesToBrandRules(projectDir, profile) {
 		'info',
 		`Rule conversion complete: ${success} successful, ${failed} failed`
 	);
+
+	// Call post-processing hook if defined (e.g., for Roo's rules-*mode* folders)
+	if (typeof profile.onPostConvertBrandRules === 'function') {
+		profile.onPostConvertBrandRules(projectDir);
+	}
+
 	return { success, failed };
 }
 /**

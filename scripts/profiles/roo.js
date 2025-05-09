@@ -125,7 +125,45 @@ const conversionConfig = {
 export function onAddBrandRules(targetDir) {
 	const sourceDir = path.resolve(__dirname, '../../assets/roocode');
 	copyRecursiveSync(sourceDir, targetDir);
+
+	// Enhanced error checking and logging for .roomodes and rules-*mode* files
+	const rooModesDir = path.join(sourceDir, '.roo');
+	const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
+
+	// Copy .roomodes to project root
+	const roomodesSrc = path.join(sourceDir, '.roomodes');
+	const roomodesDest = path.join(targetDir, '.roomodes');
+	if (fs.existsSync(roomodesSrc)) {
+		try {
+			fs.copyFileSync(roomodesSrc, roomodesDest);
+			console.log(`[Roo] Copied .roomodes to ${roomodesDest}`);
+		} catch (err) {
+			console.warn(`[Roo] Failed to copy .roomodes: ${err.message}`);
+		}
+	} else {
+		console.warn(`[Roo] .roomodes not found at ${roomodesSrc}`);
+	}
+
+	// Copy each <mode>-rules file into the corresponding .roo/rules-<mode>/ folder
+	for (const mode of rooModes) {
+		const src = path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`);
+		const dest = path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`);
+		if (fs.existsSync(src)) {
+			try {
+				// Ensure destination directory exists
+				const destDir = path.dirname(dest);
+				if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+				fs.copyFileSync(src, dest);
+				console.log(`[Roo] Copied ${src} to ${dest}`);
+			} catch (err) {
+				console.warn(`[Roo] Failed to copy ${src} to ${dest}: ${err.message}`);
+			}
+		} else {
+			console.warn(`[Roo] Roo rule file not found for mode '${mode}': ${src}`);
+		}
+	}
 }
+
 
 function copyRecursiveSync(src, dest) {
 	const exists = fs.existsSync(src);
@@ -180,4 +218,10 @@ function isDirectoryEmpty(dirPath) {
 	return fs.readdirSync(dirPath).length === 0;
 }
 
-export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir };
+function onPostConvertBrandRules(targetDir) {
+	onAddBrandRules(targetDir);
+}
+
+export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir, onPostConvertBrandRules };
+
+
