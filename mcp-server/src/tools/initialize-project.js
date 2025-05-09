@@ -35,6 +35,12 @@ export function registerInitializeProjectTool(server) {
 				.string()
 				.describe(
 					'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
+				),
+			rules: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'List of brand rules to include at initialization (e.g., ["cursor", "roo"]). If omitted, defaults to ["cursor"].'
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, context) => {

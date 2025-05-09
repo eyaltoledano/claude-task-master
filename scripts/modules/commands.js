@@ -491,6 +491,68 @@ function registerCommands(programInstance) {
 		displayHelp();
 	});
 
+	// Add/remove brand rules command
+	programInstance
+		.command('rules <action> [brands...]')
+		.description(
+			'Add or remove rules for one or more brands (e.g., task-master rules add windsurf roo)'
+		)
+		.action(async (action, brands) => {
+			const projectDir = process.cwd();
+
+			if (!brands || brands.length === 0) {
+				console.error(
+					'Please specify at least one brand (e.g., windsurf, roo).'
+				);
+				process.exit(1);
+			}
+
+			// Support both space- and comma-separated brand lists
+			const expandedBrands = brands
+				.flatMap((b) => b.split(',').map((s) => s.trim()))
+				.filter(Boolean);
+			for (const brand of expandedBrands) {
+				let profile;
+				try {
+					// Use pathToFileURL for correct ESM dynamic import
+					const { pathToFileURL } = await import('url');
+					const profilePath = path.resolve(
+						process.cwd(),
+						'scripts',
+						'profiles',
+						`${brand}.js`
+					);
+					const profileModule = await import(pathToFileURL(profilePath).href);
+					profile = profileModule.default || profileModule;
+				} catch (e) {
+					console.warn(
+						`Rules profile for brand "${brand}" not found. Skipping.`
+					);
+					console.warn(`Import error: ${e && e.message ? e.message : e}`);
+					continue;
+				}
+
+				if (action === 'add') {
+					const { convertAllRulesToBrandRules } = await import(
+						'./rule-transformer.js'
+					);
+					convertAllRulesToBrandRules(projectDir, profile);
+					if (typeof profile.onAddBrandRules === 'function') {
+						profile.onAddBrandRules(projectDir);
+					}
+				} else if (action === 'remove') {
+					const { removeBrandRules } = await import('./rule-transformer.js');
+					removeBrandRules(projectDir, profile);
+					if (typeof profile.onRemoveBrandRules === 'function') {
+						profile.onRemoveBrandRules(projectDir);
+					}
+				} else {
+					console.error('Unknown action. Use "add" or "remove".');
+					process.exit(1);
+				}
+			}
+		});
+
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -2090,11 +2152,25 @@ function registerCommands(programInstance) {
 		.option('-d, --description <description>', 'Project description')
 		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
 		.option('-a, --author <author>', 'Author name')
+		.option(
+			'-r, --rules <rules...>',
+			'List of rules to add (roo, windsurf, cursor, ...). Accepts comma or space separated values.'
+		)
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.action(async (cmdOptions) => {
+			// Parse rules: accept space or comma separated, default to ['cursor']
+			let rules = ['cursor'];
+			if (cmdOptions.rules && Array.isArray(cmdOptions.rules)) {
+				rules = cmdOptions.rules
+					.flatMap((r) => r.split(','))
+					.map((r) => r.trim())
+					.filter(Boolean);
+				if (rules.length === 0) rules = ['cursor'];
+			}
 			// cmdOptions contains parsed arguments
+			cmdOptions.rules = rules;
 			try {
 				console.log('DEBUG: Running init command action in commands.js');
 				console.log(
