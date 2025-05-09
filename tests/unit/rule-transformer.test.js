@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { convertCursorRuleToRooRule } from '../../scripts/modules/rule-transformer.js';
+import { convertCursorRuleToBrandRule } from '../../scripts/modules/rule-transformer.js';
+import * as rooProfile from '../../scripts/profiles/roo.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,7 +41,7 @@ Also has references to .mdc files.`;
 
 		// Convert it
 		const testRooRule = path.join(testDir, 'basic-terms.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		convertCursorRuleToBrandRule(testCursorRule, testRooRule, rooProfile);
 
 		// Read the converted file
 		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
@@ -71,7 +72,7 @@ alwaysApply: true
 
 		// Convert it
 		const testRooRule = path.join(testDir, 'tool-refs.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		convertCursorRuleToBrandRule(testCursorRule, testRooRule, rooProfile);
 
 		// Read the converted file
 		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
@@ -99,7 +100,7 @@ This references [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc) and
 
 		// Convert it
 		const testRooRule = path.join(testDir, 'file-refs.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		convertCursorRuleToBrandRule(testCursorRule, testRooRule, rooProfile);
 
 		// Read the converted file
 		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
