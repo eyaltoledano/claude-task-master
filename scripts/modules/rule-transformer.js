@@ -2,7 +2,7 @@
  * Rule Transformer Module
  * Handles conversion of Cursor rules to brand rules
  *
- * This module procedurally generates .{brand}/rules files from .cursor/rules files,
+ * This module procedurally generates .{brand}/rules files from assets/rules files,
  * eliminating the need to maintain both sets of files manually.
  */
 import fs from 'fs';
@@ -163,7 +163,8 @@ function convertCursorRuleToBrandRule(sourcePath, targetPath, profile) {
  */
 function convertAllCursorRulesToBrandRules(projectDir, profile) {
 	const { fileMap, brandName, rulesDir } = profile;
-	const cursorRulesDir = path.join(projectDir, '.cursor', 'rules');
+	// Use assets/rules as the source of rules instead of .cursor/rules
+const cursorRulesDir = path.join(projectDir, 'assets', 'rules');
 	const brandRulesDir = path.join(projectDir, rulesDir);
 
 	if (!fs.existsSync(cursorRulesDir)) {
