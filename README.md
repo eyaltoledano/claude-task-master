@@ -102,6 +102,22 @@ task-master init --rules cursor,windsurf
 task-master parse-prd your-prd.txt
 
 # Add or remove brand rules after initialization
+
+You can add or remove brand rules at any time after project initialization:
+
+```
+task-master rules add windsurf,roo
+# Adds the specified brand rule sets (e.g., .windsurf/rules, .roo/rules) to your project.
+# Also sets up the corresponding MCP configuration in the brand directory.
+
+task-master rules remove windsurf
+# Removes the specified brand rule sets and their MCP config from your project.
+```
+
+- Adding rules creates the brand rules directory (e.g., `.roo/rules`) and copies/initializes the brand's rules.
+- Removing rules deletes the brand rules directory and associated MCP config.
+- You can use multiple comma-separated brands in a single command.
+
 task-master rules add windsurf,roo
 task-master rules remove windsurf
 

@@ -17,6 +17,15 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ### 1. Initialize Project (`init`)
 
+*   **Brand Rules Option:**
+    *   `--rules <brands>` or `-r <brands>`: Comma-separated list of brand rule sets to apply at initialization (e.g., `cursor,windsurf,roo`).
+    *   Example: `task-master init --rules cursor,windsurf`
+    *   Example: `task-master init -r roo`
+*   **What happens:**
+    *   For each brand, creates the appropriate rules directory (e.g., `.roo/rules`) and MCP config (e.g., `.roo/mcp.json`).
+    *   If not specified, only Cursor rules are initialized by default.
+
+
 *   **MCP Tool:** `initialize_project`
 *   **CLI Command:** `task-master init [options]`
 *   **Description:** `Set up the basic Taskmaster file structure and configuration in the current directory for a new project.`
@@ -81,6 +90,18 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **API note:** API keys for selected AI providers (based on their model) need to exist in the mcp.json file to be accessible in MCP context. The API keys must be present in the local .env file for the CLI to be able to read them.
 *   **Model costs:** The costs in supported models are expressed in dollars. An input/output value of 3 is $3.00. A value of 0.8 is $0.80. 
 *   **Warning:** DO NOT MANUALLY EDIT THE .taskmasterconfig FILE. Use the included commands either in the MCP or CLI format as needed. Always prioritize MCP tools when available and use the CLI as a fallback.
+
+---
+
+### Add or Remove Brand Rules After Initialization
+
+*   **CLI Command:**
+    *   `task-master rules add <brands>`: Add one or more brand rule sets to your project (e.g., `task-master rules add windsurf,roo`).
+    *   `task-master rules remove <brands>`: Remove one or more brand rule sets (e.g., `task-master rules remove windsurf`).
+*   **What happens:**
+    *   Adding rules creates the brand rules directory (e.g., `.roo/rules`) and MCP config.
+    *   Removing rules deletes the brand rules directory and associated MCP config.
+    *   You can use multiple comma-separated brands in a single command.
 
 ---
 
