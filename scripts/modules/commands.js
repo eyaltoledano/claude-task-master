@@ -533,10 +533,10 @@ function registerCommands(programInstance) {
 				}
 
 				if (action === 'add') {
-					const { convertAllCursorRulesToBrandRules } = await import(
+					const { convertAllRulesToBrandRules } = await import(
 						'./rule-transformer.js'
 					);
-					convertAllCursorRulesToBrandRules(projectDir, profile);
+					convertAllRulesToBrandRules(projectDir, profile);
 					if (typeof profile.onAddBrandRules === 'function') {
 						profile.onAddBrandRules(projectDir);
 					}

@@ -23,7 +23,7 @@ import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode } from './modules/utils.js';
-import { convertAllCursorRulesToBrandRules } from './modules/rule-transformer.js';
+import { convertAllRulesToBrandRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -358,7 +358,7 @@ async function initializeProject(options = {}) {
 			for (const rule of options.rules) {
 				const profile = ruleProfiles[rule];
 				if (profile) {
-					convertAllCursorRulesToBrandRules(targetDir, profile);
+					convertAllRulesToBrandRules(targetDir, profile);
 					// Ensure MCP config is set up under the correct brand folder for any non-cursor rule
 					if (rule !== 'cursor') {
 						setupMCPConfiguration(path.join(targetDir, `.${rule}`));
@@ -369,7 +369,7 @@ async function initializeProject(options = {}) {
 			}
 		} else {
 			// fallback for safety
-			convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
+			convertAllRulesToBrandRules(targetDir, cursorProfile);
 		}
 	} else {
 		// Interactive logic
@@ -435,7 +435,7 @@ async function initializeProject(options = {}) {
 				for (const rule of options.rules) {
 					const profile = ruleProfiles[rule];
 					if (profile) {
-						convertAllCursorRulesToBrandRules(targetDir, profile);
+						convertAllRulesToBrandRules(targetDir, profile);
 						// Ensure MCP config is set up under the correct brand folder
 						if (rule === 'windsurf' || rule === 'roo') {
 							setupMCPConfiguration(path.join(targetDir, `.${rule}`));
@@ -446,7 +446,7 @@ async function initializeProject(options = {}) {
 				}
 			} else {
 				// fallback for safety
-				convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
+				convertAllRulesToBrandRules(targetDir, cursorProfile);
 			}
 		} catch (error) {
 			rl.close();
