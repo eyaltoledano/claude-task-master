@@ -23,7 +23,7 @@ import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode } from './modules/utils.js';
-import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
+import { convertAllCursorRulesToBrandRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -222,30 +222,8 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			// case 'README-task-master.md':
 			// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
 			break;
-		case 'windsurfrules':
-			sourcePath = path.join(__dirname, '..', 'assets', '.windsurfrules');
-			break;
-		case '.roomodes':
-			sourcePath = path.join(__dirname, '..', 'assets', 'roocode', '.roomodes');
-			break;
-		case 'architect-rules':
-		case 'ask-rules':
-		case 'boomerang-rules':
-		case 'code-rules':
-		case 'debug-rules':
-		case 'test-rules':
-			// Extract the mode name from the template name (e.g., 'architect' from 'architect-rules')
-			const mode = templateName.split('-')[0];
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'assets',
-				'roocode',
-				'.roo',
-				`rules-${mode}`,
-				templateName
-			);
-			break;
+
+
 		default:
 			// For other files like env.example, gitignore, etc. that don't have direct equivalents
 			sourcePath = path.join(__dirname, '..', 'assets', templateName);
@@ -298,23 +276,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			return;
 		}
 
-		// Handle .windsurfrules - append the entire content
-		if (filename === '.windsurfrules') {
-			log(
-				'info',
-				`${targetPath} already exists, appending content instead of overwriting...`
-			);
-			const existingContent = fs.readFileSync(targetPath, 'utf8');
 
-			// Add a separator comment before appending our content
-			const updatedContent =
-				existingContent.trim() +
-				'\n\n# Added by Task Master - Development Workflow Rules\n\n' +
-				content;
-			fs.writeFileSync(targetPath, updatedContent);
-			log('success', `Updated ${targetPath} with additional rules`);
-			return;
-		}
 
 		// Handle README.md - offer to preserve or create a different file
 		if (filename === 'README-task-master.md') {
@@ -391,6 +353,28 @@ async function initializeProject(options = {}) {
 		}
 
 		createProjectStructure(addAliases, dryRun);
+
+		// Generate brand rules from Cursor rules
+		const targetDir = process.cwd();
+		log('info', 'Generating brand rules from Cursor rules...');
+		if (Array.isArray(options.rules)) {
+			for (const rule of options.rules) {
+				const profile = ruleProfiles[rule];
+				if (profile) {
+					convertAllCursorRulesToBrandRules(targetDir, profile);
+					// Ensure MCP config is set up under the correct brand folder for any non-cursor rule
+					if (rule !== 'cursor') {
+						setupMCPConfiguration(path.join(targetDir, `.${rule}`));
+					}
+				} else {
+					log('warn', `Unknown rules profile: ${rule}`);
+				}
+			}
+		} else {
+			// fallback for safety
+			convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
+		}
+
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -447,6 +431,28 @@ async function initializeProject(options = {}) {
 
 			// Create structure using only necessary values
 			createProjectStructure(addAliasesPrompted, dryRun);
+
+			// Generate brand rules from Cursor rules (fix for interactive branch)
+			const targetDir = process.cwd();
+			log('info', 'Generating Roo rules from Cursor rules...');
+			if (Array.isArray(options.rules)) {
+				for (const rule of options.rules) {
+					const profile = ruleProfiles[rule];
+					if (profile) {
+						convertAllCursorRulesToBrandRules(targetDir, profile);
+						// Ensure MCP config is set up under the correct brand folder
+						if (rule === 'windsurf' || rule === 'roo') {
+							setupMCPConfiguration(path.join(targetDir, `.${rule}`));
+						}
+					} else {
+						log('warn', `Unknown rules profile: ${rule}`);
+					}
+				}
+			} else {
+				// fallback for safety
+				convertAllCursorRulesToBrandRules(targetDir, cursorProfile);
+			}
+
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -489,8 +495,7 @@ function createProjectStructure(addAliases, dryRun) {
 	ensureDirectoryExists(path.join(targetDir, 'scripts'));
 	ensureDirectoryExists(path.join(targetDir, 'tasks'));
 
-	// Setup MCP configuration for integration with Cursor
-	setupMCPConfiguration(targetDir);
+	// Removed root-level MCP configuration; handled by brand-specific logic only.
 
 	// Copy template files with replacements
 	const replacements = {
@@ -540,12 +545,6 @@ function createProjectStructure(addAliases, dryRun) {
 		path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc')
 	);
 
-	// Generate Roo rules from Cursor rules
-	log('info', 'Generating Roo rules from Cursor rules...');
-	convertAllCursorRulesToRooRules(targetDir);
-
-	// Copy .windsurfrules
-	copyTemplateFile('windsurfrules', path.join(targetDir, '.windsurfrules'));
 
 	// Copy .roomodes for Roo Code integration
 	copyTemplateFile('.roomodes', path.join(targetDir, '.roomodes'));
@@ -747,114 +746,18 @@ function createProjectStructure(addAliases, dryRun) {
 	}
 }
 
-// Function to setup MCP configuration for Cursor integration
-function setupMCPConfiguration(targetDir) {
-	const mcpDirPath = path.join(targetDir, '.cursor');
-	const mcpJsonPath = path.join(mcpDirPath, 'mcp.json');
+// Import DRY MCP configuration helper
+import { setupMCPConfiguration } from './modules/mcp-utils.js';
+// Statically import rule profiles
+import * as rooProfile from './profiles/roo.js';
+import * as windsurfProfile from './profiles/windsurf.js';
+import * as cursorProfile from './profiles/cursor.js';
 
-	log('info', 'Setting up MCP configuration for Cursor integration...');
-
-	// Create .cursor directory if it doesn't exist
-	ensureDirectoryExists(mcpDirPath);
-
-	// New MCP config to be added - references the installed package
-	const newMCPServer = {
-		'task-master-ai': {
-			command: 'npx',
-			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
-			env: {
-				ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY_HERE',
-				PERPLEXITY_API_KEY: 'PERPLEXITY_API_KEY_HERE',
-				OPENAI_API_KEY: 'OPENAI_API_KEY_HERE',
-				GOOGLE_API_KEY: 'GOOGLE_API_KEY_HERE',
-				XAI_API_KEY: 'XAI_API_KEY_HERE',
-				OPENROUTER_API_KEY: 'OPENROUTER_API_KEY_HERE',
-				MISTRAL_API_KEY: 'MISTRAL_API_KEY_HERE',
-				AZURE_OPENAI_API_KEY: 'AZURE_OPENAI_API_KEY_HERE',
-				OLLAMA_API_KEY: 'OLLAMA_API_KEY_HERE'
-			}
-		}
-	};
-
-	// Check if mcp.json already existsimage.png
-	if (fs.existsSync(mcpJsonPath)) {
-		log(
-			'info',
-			'MCP configuration file already exists, checking for existing task-master-mcp...'
-		);
-		try {
-			// Read existing config
-			const mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
-
-			// Initialize mcpServers if it doesn't exist
-			if (!mcpConfig.mcpServers) {
-				mcpConfig.mcpServers = {};
-			}
-
-			// Check if any existing server configuration already has task-master-mcp in its args
-			const hasMCPString = Object.values(mcpConfig.mcpServers).some(
-				(server) =>
-					server.args &&
-					server.args.some(
-						(arg) => typeof arg === 'string' && arg.includes('task-master-ai')
-					)
-			);
-
-			if (hasMCPString) {
-				log(
-					'info',
-					'Found existing task-master-ai MCP configuration in mcp.json, leaving untouched'
-				);
-				return; // Exit early, don't modify the existing configuration
-			}
-
-			// Add the task-master-ai server if it doesn't exist
-			if (!mcpConfig.mcpServers['task-master-ai']) {
-				mcpConfig.mcpServers['task-master-ai'] = newMCPServer['task-master-ai'];
-				log(
-					'info',
-					'Added task-master-ai server to existing MCP configuration'
-				);
-			} else {
-				log('info', 'task-master-ai server already configured in mcp.json');
-			}
-
-			// Write the updated configuration
-			fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 4));
-			log('success', 'Updated MCP configuration file');
-		} catch (error) {
-			log('error', `Failed to update MCP configuration: ${error.message}`);
-			// Create a backup before potentially modifying
-			const backupPath = `${mcpJsonPath}.backup-${Date.now()}`;
-			if (fs.existsSync(mcpJsonPath)) {
-				fs.copyFileSync(mcpJsonPath, backupPath);
-				log('info', `Created backup of existing mcp.json at ${backupPath}`);
-			}
-
-			// Create new configuration
-			const newMCPConfig = {
-				mcpServers: newMCPServer
-			};
-
-			fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
-			log(
-				'warn',
-				'Created new MCP configuration file (backup of original file was created if it existed)'
-			);
-		}
-	} else {
-		// If mcp.json doesn't exist, create it
-		const newMCPConfig = {
-			mcpServers: newMCPServer
-		};
-
-		fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
-		log('success', 'Created MCP configuration file for Cursor integration');
-	}
-
-	// Add note to console about MCP integration
-	log('info', 'MCP server will use the installed task-master-ai package');
-}
+const ruleProfiles = {
+	roo: rooProfile,
+	windsurf: windsurfProfile,
+	cursor: cursorProfile
+};
 
 // Ensure necessary functions are exported
 export { initializeProject, log }; // Only export what's needed by commands.js
