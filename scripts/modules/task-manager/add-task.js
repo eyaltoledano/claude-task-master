@@ -216,6 +216,13 @@ async function addTask(
 				contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
 
 			// User Prompt
+			let ollamaInstruction = '';
+			if (getMainProvider && typeof getMainProvider === 'function') {
+				const provider = getMainProvider(projectRoot);
+				if (provider && provider.toLowerCase() === 'ollama') {
+					ollamaInstruction = '\n\nIMPORTANT: For the `details` and `testStrategy` fields, return plain Markdown text only. Do NOT return JSON, objects, or code blocks. Each field must be a single Markdown-formatted string.';
+				}
+			}
 			const userPrompt = `Create a comprehensive new task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
       
       ${contextTasks}
@@ -224,7 +231,7 @@ async function addTask(
       Return your answer as a single JSON object matching the schema precisely:
       ${taskStructureDesc}
       
-      Make sure the details and test strategy are thorough and specific.`;
+      Make sure the details and test strategy are thorough and specific.${ollamaInstruction}`;
 
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
