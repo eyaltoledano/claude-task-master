@@ -1,5 +1,10 @@
 // Roo Code conversion profile for rule-transformer
+import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const brandName = 'Roo';
 const rulesDir = '.roo/rules';
@@ -111,5 +116,65 @@ const conversionConfig = {
     }
   }
 };
+
+// Recursively copy everything from assets/roocode to the project root
+
+export function onAddBrandRules(targetDir) {
+  const sourceDir = path.resolve(__dirname, '../../assets/roocode');
+  copyRecursiveSync(sourceDir, targetDir);
+}
+
+function copyRecursiveSync(src, dest) {
+  const exists = fs.existsSync(src);
+  const stats = exists && fs.statSync(src);
+  const isDirectory = exists && stats.isDirectory();
+  if (isDirectory) {
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    fs.readdirSync(src).forEach(childItemName => {
+      copyRecursiveSync(
+        path.join(src, childItemName),
+        path.join(dest, childItemName)
+      );
+    });
+  } else {
+    fs.copyFileSync(src, dest);
+  }
+}
+
+export function onRemoveBrandRules(targetDir) {
+  const sourceDir = path.resolve(__dirname, '../../assets/roocode');
+  // Remove all files/folders that exist in assets/roocode from the project root
+  removeRecursiveSync(sourceDir, targetDir);
+
+  // After removing, check if .roo exists and is empty; if so, remove it
+  const rooDir = path.join(targetDir, '.roo');
+  if (fs.existsSync(rooDir) && isDirectoryEmpty(rooDir)) {
+    fs.rmSync(rooDir, { recursive: true, force: true });
+  }
+}
+
+function removeRecursiveSync(src, destRoot) {
+  if (!fs.existsSync(src)) return;
+  const stats = fs.statSync(src);
+  if (stats.isDirectory()) {
+    const destDir = path.join(destRoot, path.basename(src));
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true, force: true });
+    }
+    // Also walk subfolders in src to remove nested structure
+    fs.readdirSync(src).forEach(child => {
+      removeRecursiveSync(path.join(src, child), destRoot);
+    });
+  } else {
+    const destFile = path.join(destRoot, path.basename(src));
+    if (fs.existsSync(destFile)) {
+      fs.rmSync(destFile, { force: true });
+    }
+  }
+}
+
+function isDirectoryEmpty(dirPath) {
+  return fs.readdirSync(dirPath).length === 0;
+}
 
 export { conversionConfig, fileMap, globalReplacements, brandName, rulesDir };
