@@ -9,6 +9,10 @@ import fs from 'fs';
 import path from 'path';
 import { log } from './utils.js';
 
+// Import the shared MCP configuration helper
+import { setupMCPConfiguration } from './mcp-utils.js';
+
+
 // Import Roo Code conversionConfig and fileMap from profiles
 import { conversionConfig, fileMap } from '../profiles/roo.js';
 
@@ -176,6 +180,9 @@ const cursorRulesDir = path.join(projectDir, 'assets', 'rules');
 	if (!fs.existsSync(brandRulesDir)) {
 		fs.mkdirSync(brandRulesDir, { recursive: true });
 		log('info', `Created ${brandName} rules directory: ${brandRulesDir}`);
+		// Also create MCP configuration in the brand directory
+		const brandDir = path.dirname(brandRulesDir);
+		setupMCPConfiguration(brandDir);
 	}
 
 	// Count successful and failed conversions
@@ -206,7 +213,6 @@ const cursorRulesDir = path.join(projectDir, 'assets', 'rules');
 	);
 	return { success, failed };
 }
-
 /**
  * Remove a brand's rules directory and, if empty, the parent brand folder (except .cursor)
  * @param {string} projectDir - The root directory of the project
@@ -215,17 +221,27 @@ const cursorRulesDir = path.join(projectDir, 'assets', 'rules');
  */
 function removeBrandRules(projectDir, profile) {
     const { brandName, rulesDir } = profile;
+    const brandRulesDir = path.join(projectDir, rulesDir);
+    const brandDir = path.dirname(brandRulesDir);
+    // Also remove the mcp.json file if it exists in the brand directory
+    const mcpPath = path.join(brandDir, 'mcp.json');
+    if (fs.existsSync(mcpPath)) {
+        try {
+            fs.unlinkSync(mcpPath);
+            log('info', `Removed MCP configuration: ${mcpPath}`);
+        } catch (e) {
+            log('warn', `Failed to remove MCP configuration at ${mcpPath}: ${e.message}`);
+        }
+    }
     // Do not allow removal of the default Cursor rules directory
     if (brandName.toLowerCase() === 'cursor') {
         log('warn', 'Cannot remove default Cursor rules directory. Skipping.');
         return false;
     }
-    const brandRulesDir = path.join(projectDir, rulesDir);
     if (fs.existsSync(brandRulesDir)) {
         fs.rmSync(brandRulesDir, { recursive: true, force: true });
         log('info', `Removed rules directory: ${brandRulesDir}`);
         // Check if parent brand folder is empty
-        const brandDir = path.dirname(brandRulesDir);
         if (
             fs.existsSync(brandDir) &&
             path.basename(brandDir) !== '.cursor' &&
