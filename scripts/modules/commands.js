@@ -503,7 +503,9 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			for (const brand of brands) {
+			// Support both space- and comma-separated brand lists
+			const expandedBrands = brands.flatMap(b => b.split(',').map(s => s.trim())).filter(Boolean);
+			for (const brand of expandedBrands) {
 				let profile;
 				try {
 					// Use pathToFileURL for correct ESM dynamic import
@@ -520,9 +522,15 @@ function registerCommands(programInstance) {
 				if (action === 'add') {
 					const { convertAllCursorRulesToBrandRules } = await import('./rule-transformer.js');
 					convertAllCursorRulesToBrandRules(projectDir, profile);
+					if (typeof profile.onAddBrandRules === 'function') {
+						profile.onAddBrandRules(projectDir);
+					}
 				} else if (action === 'remove') {
 					const { removeBrandRules } = await import('./rule-transformer.js');
 					removeBrandRules(projectDir, profile);
+					if (typeof profile.onRemoveBrandRules === 'function') {
+						profile.onRemoveBrandRules(projectDir);
+					}
 				} else {
 					console.error('Unknown action. Use "add" or "remove".');
 					process.exit(1);
