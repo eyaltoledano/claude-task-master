@@ -83,6 +83,11 @@ npx task-master init
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
+You can also specify brand rules to apply during initialization:
+
+```bash
+task-master init --rules cursor,windsurf
+```
 
 #### Common Commands
 
@@ -90,8 +95,15 @@ This will prompt you for project details and set up a new project with the neces
 # Initialize a new project
 task-master init
 
+# Initialize a new project applying specific brand rules
+task-master init --rules cursor,windsurf
+
 # Parse a PRD and generate tasks
 task-master parse-prd your-prd.txt
+
+# Add or remove brand rules after initialization
+task-master rules add windsurf,roo
+task-master rules remove windsurf
 
 # List all tasks
 task-master list
