@@ -55,8 +55,7 @@ const conversionConfig = {
   // Documentation URL replacements
   docUrls: [
     {
-      from: /https:\/\/docs\.cursor\.com\/[^
-\s)'\"]+/g,
+      from: /https:\/\/docs\.cursor\.com\/[\^\s)\'"\\]+/g,
       to: (match) => match.replace('docs.cursor.com', 'docs.windsurf.com')
     },
     { from: /https:\/\/docs\.windsurf\.com\//g, to: 'https://docs.windsurf.com/' }
