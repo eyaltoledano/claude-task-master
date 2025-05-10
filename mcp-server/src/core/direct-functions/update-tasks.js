@@ -6,7 +6,7 @@
 import path from 'path';
 import { updateTasks } from '../../../../scripts/modules/task-manager.js';
 import { createLogWrapper } from '../../tools/utils.js';
- import {
+import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';

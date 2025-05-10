@@ -220,7 +220,8 @@ async function addTask(
 			if (getMainProvider && typeof getMainProvider === 'function') {
 				const provider = getMainProvider(projectRoot);
 				if (provider && provider.toLowerCase() === 'ollama') {
-					ollamaInstruction = '\n\nIMPORTANT: For the `details` and `testStrategy` fields, return plain Markdown text only. Do NOT return JSON, objects, or code blocks. Each field must be a single Markdown-formatted string.';
+					ollamaInstruction =
+						'\n\nIMPORTANT: For the `details` and `testStrategy` fields, return plain Markdown text only. Do NOT return JSON, objects, or code blocks. Each field must be a single Markdown-formatted string.';
 				}
 			}
 			const userPrompt = `Create a comprehensive new task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"

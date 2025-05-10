@@ -64,11 +64,12 @@ const PROVIDER_FUNCTIONS = {
 		generateText: openrouter.generateOpenRouterText,
 		streamText: openrouter.streamOpenRouterText,
 		generateObject: openrouter.generateOpenRouterObject
-	}, ollama: {
+	},
+	ollama: {
 		generateText: ollama.generateOllamaText,
 		streamText: ollama.streamOllamaText,
-		generateObject: ollama.generateOllamaObject,
-	  }
+		generateObject: ollama.generateOllamaObject
+	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
 
@@ -157,7 +158,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY'
 	};
-	
+
 	if (providerName === 'ollama') return null; // Ollama does not require an API key
 
 	const envVarName = keyMap[providerName];
