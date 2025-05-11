@@ -69,8 +69,8 @@ export async function generateCursorText({
 /**
  * Streams text using Cursor's built-in AI model.
  * 
- * Note: This is a placeholder implementation. Actual streaming may not be 
- * directly supported and might need to be simulated.
+ * Implements proper streaming leveraging Cursor's native streaming capabilities
+ * via the onChunk callback in the chat API.
  *
  * @param {object} params - Parameters for the text streaming.
  * @param {string} params.apiKey - Ignored for Cursor provider.
@@ -78,7 +78,7 @@ export async function generateCursorText({
  * @param {Array<object>} params.messages - The messages array.
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
- * @returns {Promise<object>} The stream result object.
+ * @returns {Promise<object>} The stream result object with a ReadableStream.
  * @throws {Error} If the API call fails to initiate the stream.
  */
 export async function streamCursorText({
@@ -90,27 +90,126 @@ export async function streamCursorText({
   log('debug', 'Streaming text using Cursor AI provider');
   
   try {
-    // For now, just use the regular text generation as streaming
-    // may not be directly supported in the same way
-    const textResult = await generateCursorText({
-      messages,
-      maxTokens,
-      temperature,
-      ...rest
+    // Extract the system prompt and user prompt from messages
+    let systemPrompt = '';
+    let userPrompt = '';
+    
+    for (const message of messages) {
+      if (message.role === 'system') {
+        systemPrompt = message.content;
+      } else if (message.role === 'user') {
+        userPrompt = message.content;
+      }
+    }
+    
+    // Create a ReadableStream to provide real streaming capability
+    let fullText = '';
+    
+    const textStream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Verify we're in a Cursor environment
+          const isCursorEnvironment = typeof globalThis.__CURSOR__ !== 'undefined';
+          if (!isCursorEnvironment) {
+            throw new Error('Cursor AI provider can only be used within Cursor');
+          }
+          
+          // Access Cursor's session
+          const session = globalThis.__CURSOR_MCP_SESSION__;
+          if (!session) {
+            throw new Error('Cursor MCP session not available');
+          }
+          
+          // Prepare the messages for Cursor's AI
+          const cursorMessages = [];
+          
+          // Add system message if provided
+          if (systemPrompt && systemPrompt.trim()) {
+            cursorMessages.push({
+              role: 'system',
+              content: systemPrompt
+            });
+          }
+          
+          // Add user message
+          cursorMessages.push({
+            role: 'user',
+            content: userPrompt
+          });
+          
+          // Define a function to handle tool calls
+          const handleToolCalls = async (toolCalls) => {
+            // Process each tool call
+            const results = [];
+            
+            for (const call of toolCalls) {
+              // Handle web_search tool specifically
+              if (call.name === 'web_search') {
+                try {
+                  const result = await session.callTool({
+                    name: 'web_search',
+                    args: call.args
+                  });
+                  
+                  results.push({
+                    toolCall: call,
+                    result: result
+                  });
+                } catch (error) {
+                  log('error', `Error calling web_search tool: ${error.message}`);
+                  results.push({
+                    toolCall: call,
+                    error: error.message
+                  });
+                }
+              } else {
+                // Handle other tools if needed
+                results.push({
+                  toolCall: call,
+                  result: `Tool '${call.name}' not supported directly in Cursor AI provider`
+                });
+              }
+            }
+            
+            return results;
+          };
+          
+          // Stream responses from Cursor's AI
+          await session.chat({
+            messages: cursorMessages,
+            temperature: temperature || 0.2,
+            max_tokens: maxTokens || 4000,
+            model: 'default', // Use Cursor's default model
+            onChunk: (chunk) => {
+              if (chunk && chunk.text) {
+                // Send chunk to the stream
+                controller.enqueue(chunk.text);
+                fullText += chunk.text;
+              }
+            },
+            onToolCall: async (toolCalls) => {
+              // Handle tool calls like web_search
+              return await handleToolCalls(toolCalls);
+            },
+            ...rest // Pass through any additional options
+          });
+          
+          // Close the stream when complete
+          controller.close();
+        } catch (error) {
+          // Handle errors by closing the stream with an error
+          controller.error(error);
+          throw error;
+        }
+      }
     });
     
-    // Return a mock stream object with the complete text
-    // This is a simplified approach until true streaming is implemented
+    // Return the stream object in the expected format
     return {
-      textStream: new ReadableStream({
-        start(controller) {
-          controller.enqueue(textResult);
-          controller.close();
-        }
-      }),
-      text: textResult,
+      textStream,
+      text: async () => fullText, // Function to get the full text when streaming is complete
       usage: {
-        promptTokens: 0,  // These values aren't available directly
+        promptTokens: 0,  // These values aren't available directly from Cursor
         completionTokens: 0,
         totalTokens: 0
       }
