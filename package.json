@@ -16,7 +16,7 @@
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
-		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
+		"prepare": "node -e \"try { require('fs').chmodSync('bin/task-master.js', '755'); require('fs').chmodSync('mcp-server/server.js', '755'); } catch (e) { console.log('File permission update skipped - Windows environment'); }\"",
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
