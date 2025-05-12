@@ -1,21 +1,21 @@
 {
   "models": {
     "main": {
-      "provider": "cursor",
-      "modelId": "cursor",
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet-20250219",
       "maxTokens": 100000,
       "temperature": 0.2
     },
     "research": {
-      "provider": "cursor",
-      "modelId": "cursor",
-      "maxTokens": 100000,
+      "provider": "perplexity",
+      "modelId": "sonar-pro",
+      "maxTokens": 8700,
       "temperature": 0.1
     },
     "fallback": {
-      "provider": "cursor",
-      "modelId": "cursor",
-      "maxTokens": 100000,
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet-20250219",
+      "maxTokens": 120000,
       "temperature": 0.2
     }
   },
