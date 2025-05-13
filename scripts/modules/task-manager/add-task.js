@@ -93,20 +93,6 @@ async function addTask(
 	};
 
 	try {
-		// Only display banner and UI elements for text output (CLI)
-		if (outputFormat === 'text') {
-			displayBanner();
-
-			console.log(
-				boxen(chalk.white.bold(`Creating New Task`), {
-					padding: 1,
-					borderColor: 'blue',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				})
-			);
-		}
-
 		// Read the existing tasks
 		const data = readJSON(tasksPath);
 		if (!data || !data.tasks) {
@@ -173,7 +159,7 @@ async function addTask(
 		} else {
 			report('DEBUG: Taking AI task generation path.', 'debug');
 			// --- Refactored AI Interaction ---
-			report('Generating task data with AI...', 'info');
+			report(`Generating task data with AI with prompt:\n${prompt}`, 'info');
 
 			// Create context string for task creation prompt
 			let contextTasks = '';
@@ -233,7 +219,7 @@ async function addTask(
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
 				loadingIndicator = startLoadingIndicator(
-					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI..\n`
+					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI...\n`
 				);
 			}
 
@@ -255,16 +241,27 @@ async function addTask(
 				});
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
 
-				if (
-					!aiServiceResponse ||
-					!aiServiceResponse.mainResult ||
-					!aiServiceResponse.mainResult.object
-				) {
+				if (!aiServiceResponse || !aiServiceResponse.mainResult) {
 					throw new Error(
 						'AI service did not return the expected object structure.'
 					);
 				}
-				taskData = aiServiceResponse.mainResult.object; // Extract the AI-generated task data
+
+				// Prefer mainResult if it looks like a valid task object, otherwise try mainResult.object
+				if (
+					aiServiceResponse.mainResult.title &&
+					aiServiceResponse.mainResult.description
+				) {
+					taskData = aiServiceResponse.mainResult;
+				} else if (
+					aiServiceResponse.mainResult.object &&
+					aiServiceResponse.mainResult.object.title &&
+					aiServiceResponse.mainResult.object.description
+				) {
+					taskData = aiServiceResponse.mainResult.object;
+				} else {
+					throw new Error('AI service did not return a valid task object.');
+				}
 
 				report('Successfully generated task data from AI.', 'success');
 			} catch (error) {

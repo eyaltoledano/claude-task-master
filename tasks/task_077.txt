@@ -381,7 +381,7 @@ async function callAiService(params) {
 ```
 </info added on 2025-05-09T04:02:44.847Z>
 
-## 13. Update google.js for Telemetry Compatibility [pending]
+## 13. Update google.js for Telemetry Compatibility [done]
 ### Dependencies: None
 ### Description: Modify src/ai-providers/google.js functions to return usage data.
 ### Details:
