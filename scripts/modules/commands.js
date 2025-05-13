@@ -510,7 +510,7 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
+			let useForce = force;
 			let useAppend = false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
@@ -604,7 +604,7 @@ function registerCommands(programInstance) {
 				spinner = ora('Parsing PRD and generating tasks...').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
-					force: useForce
+					useForce
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
