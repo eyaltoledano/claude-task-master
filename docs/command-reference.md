@@ -236,3 +236,24 @@ task-master models --setup
 ```
 
 Configuration is stored in `.taskmasterconfig` in your project root. API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+
+## Create GitHub Issues
+
+```bash
+# Create GitHub issues from task files in the tasks directory
+task-master create-github-issues
+
+# Test without creating actual issues (dry run)
+task-master create-github-issues --dry-run
+
+# Specify a custom tasks directory
+task-master create-github-issues --tasks-dir=custom/tasks/path
+
+# Customize issue content
+task-master create-github-issues --include-status=false --include-dependencies=false
+
+# Customize label prefix for status labels
+task-master create-github-issues --label-prefix="priority:"
+```
+
+This command requires GitHub configuration in your `.env` file. See [GitHub Issues Integration](github-issues.md) for details.
