@@ -20,6 +20,7 @@ import { log as consoleLog } from '../../utils.js';
  * @param {boolean} options.includePriority - Whether to include priority in the issue body
  * @param {string} options.labelPrefix - Prefix for labels based on task status
  * @param {boolean} options.dryRun - Whether to run in dry-run mode (don't create actual issues)
+ * @param {boolean} options.createSubtasks - Whether to create subtasks as child issues
  * @returns {Promise<Object>} Result object containing success status and data
  */
 async function exportToGitHub(options = {}) {
@@ -38,6 +39,7 @@ async function exportToGitHub(options = {}) {
       includeDependencies = true,
       includePriority = true,
       labelPrefix = "status:",
+      createSubtasks = true,
       dryRun = false
     } = options;
 
@@ -60,13 +62,34 @@ async function exportToGitHub(options = {}) {
       };
     }
 
-    // Get all task files that end with .txt
-    const files = fs.readdirSync(tasksDirectory).filter(file => file.endsWith(".txt"));
-
-    if (files.length === 0) {
+    // Path to tasks.json file
+    const tasksJsonPath = path.join(tasksDirectory, 'tasks.json');
+    
+    // Check if tasks.json exists
+    if (!fs.existsSync(tasksJsonPath)) {
       return {
         success: false,
-        error: `No task files found in '${tasksDirectory}'.`
+        error: `tasks.json file not found at '${tasksJsonPath}'.`
+      };
+    }
+
+    // Read tasks.json
+    let tasksData;
+    try {
+      const tasksJson = fs.readFileSync(tasksJsonPath, 'utf-8');
+      tasksData = JSON.parse(tasksJson);
+    } catch (error) {
+      return {
+        success: false,
+        error: `Error reading tasks.json: ${error.message}`
+      };
+    }
+
+    // Validate tasks data structure
+    if (!tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+      return {
+        success: false, 
+        error: "Invalid tasks.json format. Expected a 'tasks' array."
       };
     }
 
@@ -83,25 +106,69 @@ async function exportToGitHub(options = {}) {
       failed: []
     };
 
+    // Store issue numbers for parent tasks to link subtasks
+    const taskIssueMap = new Map();
+
     const spinner = startLoadingIndicator("Creating GitHub issues...");
 
-    for (const file of files) {
-      const filePath = path.join(tasksDirectory, file);
-      const content = fs.readFileSync(filePath, "utf-8").split("\n");
-
-      if (content.length === 0 || content[0].trim() === "") {
-        results.skipped.push({ file, reason: "Empty or invalid file" });
+    // Create parent tasks first
+    for (const task of tasksData.tasks) {
+      if (!task.title) {
+        results.skipped.push({ 
+          taskId: task.id, 
+          reason: "Missing title" 
+        });
         continue;
       }
 
-      // Extract task information
-      const title = content[0].trim().replace(/^#\s*/, ''); // Remove leading # if present
-      let body = content.slice(1).join("\n").trim();
+      // Format labels
+      const labels = [];
+      if (includeStatus && task.status) {
+        labels.push(`${labelPrefix}${task.status}`);
+      }
+      if (includePriority && task.priority) {
+        labels.push(`priority:${task.priority}`);
+      }
+
+      // Format body
+      let body = '';
+      
+      if (task.description) {
+        body += `${task.description}\n\n`;
+      }
+      
+      if (task.details) {
+        body += `## Details\n${task.details}\n\n`;
+      }
+      
+      if (includeStatus && task.status) {
+        body += `## Status\n${task.status}\n\n`;
+      }
+      
+      if (includeDependencies && task.dependencies && task.dependencies.length > 0) {
+        body += `## Dependencies\nDepends on task(s): ${task.dependencies.join(', ')}\n\n`;
+      }
+      
+      if (task.testStrategy) {
+        body += `## Test Strategy\n${task.testStrategy}\n\n`;
+      }
+      
+      if (task.subtasks && task.subtasks.length > 0) {
+        body += `## Subtasks\n`;
+        task.subtasks.forEach(subtask => {
+          body += `- ${subtask.title}\n`;
+        });
+        body += '\n';
+      }
 
       // If it's a dry run, just log what would happen
       if (dryRun) {
-        consoleLog('info', `[DRY RUN] Would create issue: ${title}`);
-        results.created.push({ file, title, dryRun: true });
+        consoleLog('info', `[DRY RUN] Would create issue: ${task.title}`);
+        results.created.push({ 
+          taskId: task.id, 
+          title: task.title, 
+          dryRun: true 
+        });
         continue;
       }
 
@@ -109,22 +176,105 @@ async function exportToGitHub(options = {}) {
         // Create the issue
         const response = await axios.post(
           API_URL,
-          { title, body },
+          { 
+            title: task.title, 
+            body,
+            labels
+          },
           { headers }
         );
         
+        const issueNumber = response.data.number;
+        taskIssueMap.set(task.id, issueNumber);
+        
         results.created.push({ 
-          file, 
-          title, 
-          issueNumber: response.data.number,
+          taskId: task.id, 
+          title: task.title, 
+          issueNumber,
           url: response.data.html_url 
         });
       } catch (error) {
         results.failed.push({ 
-          file, 
-          title, 
+          taskId: task.id, 
+          title: task.title, 
           error: error.response?.data?.message || error.message 
         });
+      }
+    }
+
+    // Create subtasks if enabled
+    if (createSubtasks && !dryRun) {
+      for (const task of tasksData.tasks) {
+        if (!task.subtasks || task.subtasks.length === 0 || !taskIssueMap.has(task.id)) {
+          continue;
+        }
+
+        const parentIssueNumber = taskIssueMap.get(task.id);
+
+        for (const subtask of task.subtasks) {
+          if (!subtask.title) {
+            results.skipped.push({ 
+              taskId: `${task.id}.${subtask.id}`, 
+              reason: "Missing title" 
+            });
+            continue;
+          }
+
+          // Format labels
+          const labels = [`subtask`];
+          if (includeStatus && subtask.status) {
+            labels.push(`${labelPrefix}${subtask.status}`);
+          }
+
+          // Format body
+          let body = '';
+          
+          if (subtask.description) {
+            body += `${subtask.description}\n\n`;
+          }
+          
+          if (subtask.details) {
+            body += `## Details\n${subtask.details}\n\n`;
+          }
+          
+          if (includeStatus && subtask.status) {
+            body += `## Status\n${subtask.status}\n\n`;
+          }
+          
+          if (includeDependencies && subtask.dependencies && subtask.dependencies.length > 0) {
+            body += `## Dependencies\nDepends on subtask(s): ${subtask.dependencies.join(', ')}\n\n`;
+          }
+          
+          // Add reference to parent task
+          body += `## Parent Task\nThis is a subtask of #${parentIssueNumber}\n\n`;
+
+          try {
+            // Create the subtask issue
+            const response = await axios.post(
+              API_URL,
+              { 
+                title: `[Subtask] ${subtask.title}`, 
+                body,
+                labels
+              },
+              { headers }
+            );
+            
+            results.created.push({ 
+              taskId: `${task.id}.${subtask.id}`, 
+              title: subtask.title, 
+              issueNumber: response.data.number,
+              url: response.data.html_url,
+              parentIssueNumber
+            });
+          } catch (error) {
+            results.failed.push({ 
+              taskId: `${task.id}.${subtask.id}`, 
+              title: subtask.title, 
+              error: error.response?.data?.message || error.message 
+            });
+          }
+        }
       }
     }
 

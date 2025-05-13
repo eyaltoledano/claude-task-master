@@ -2440,7 +2440,6 @@ Examples:
 	const exportTasksCommand = programInstance
 		.command('export-tasks')
 		.description('Export tasks to external issue tracking systems');
-
 	// export-tasks github subcommand
 	exportTasksCommand
 		.command('github')
@@ -2450,6 +2449,7 @@ Examples:
 		.option('--include-dependencies', 'Include dependencies in the issue body', true)
 		.option('--include-priority', 'Include priority in the issue body', true)
 		.option('--label-prefix <prefix>', 'Prefix for labels based on task status', 'status:')
+		.option('--create-subtasks', 'Create subtasks as child issues', true)
 		.option('--dry-run', 'Run without creating actual issues (test mode)', false)
 		.action(async (options) => {
 			try {
@@ -2534,6 +2534,9 @@ Examples:
 		.option('--include-dependencies', 'Include dependencies in the issue description', true)
 		.option('--include-priority', 'Include priority in the issue description', true)
 		.option('--issue-type <type>', 'The Jira issue type', 'Task')
+		.option('--subtask-type <type>', 'The Jira subtask issue type', 'Sub-task')
+		.option('--create-subtasks', 'Create subtasks as Jira subtasks', true)
+		.option('--map-priority', 'Map task priority to Jira priority field', true)
 		.option('--dry-run', 'Run without creating actual issues (test mode)', false)
 		.action(async (options) => {
 			try {

@@ -61,16 +61,6 @@ async function createGitHubIssues(options = {}) {
       };
     }
 
-    // Get all task files that end with .txt
-    const files = fs.readdirSync(tasksDirectory).filter(file => file.endsWith(".txt"));
-
-    if (files.length === 0) {
-      return {
-        success: false,
-        error: `No task files found in '${tasksDirectory}'.`
-      };
-    }
-
     const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`;
 
     const headers = {
@@ -84,52 +74,182 @@ async function createGitHubIssues(options = {}) {
       failed: []
     };
 
-    const spinner = startLoadingIndicator("Creating GitHub issues...");
-
-    for (const file of files) {
-      const filePath = path.join(tasksDirectory, file);
-      const content = fs.readFileSync(filePath, "utf-8").split("\n");
-
-      if (content.length === 0 || content[0].trim() === "") {
-        results.skipped.push({ file, reason: "Empty or invalid file" });
-        continue;
-      }
-
-      // Extract task information
-      const title = content[0].trim().replace(/^#\s*/, ''); // Remove leading # if present
-      let body = content.slice(1).join("\n").trim();
-
-      // If it's a dry run, just log what would happen
-      if (dryRun) {
-        consoleLog('info', `[DRY RUN] Would create issue: ${title}`);
-        results.created.push({ file, title, dryRun: true });
-        continue;
-      }
-
+    // Check if tasks.json exists, if so use it instead of individual task files
+    const tasksJsonPath = path.join(tasksDirectory, 'tasks.json');
+    
+    if (fs.existsSync(tasksJsonPath)) {
+      // Process tasks.json file
+      consoleLog('info', 'Using tasks.json for GitHub issues');
+      
+      // Read and parse tasks.json
       try {
-        // Create the issue
-        const response = await axios.post(
-          API_URL,
-          { title, body },
-          { headers }
-        );
+        const tasksJsonContent = fs.readFileSync(tasksJsonPath, 'utf-8');
+        const tasksData = JSON.parse(tasksJsonContent);
         
-        results.created.push({ 
-          file, 
-          title, 
-          issueNumber: response.data.number,
-          url: response.data.html_url 
-        });
+        if (!tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+          return {
+            success: false,
+            error: "Invalid tasks.json format. Expected a 'tasks' array."
+          };
+        }
+        
+        const spinner = startLoadingIndicator("Creating GitHub issues from tasks.json...");
+        
+        for (const task of tasksData.tasks) {
+          if (!task.title) {
+            results.skipped.push({ 
+              taskId: task.id, 
+              reason: "Missing title" 
+            });
+            continue;
+          }
+          
+          // Format labels
+          const labels = [];
+          if (includeStatus && task.status) {
+            labels.push(`${labelPrefix}${task.status}`);
+          }
+          if (includePriority && task.priority) {
+            labels.push(`priority:${task.priority}`);
+          }
+          
+          // Format body
+          let body = '';
+          
+          if (task.description) {
+            body += `${task.description}\n\n`;
+          }
+          
+          if (task.details) {
+            body += `## Details\n${task.details}\n\n`;
+          }
+          
+          if (includeStatus && task.status) {
+            body += `## Status\n${task.status}\n\n`;
+          }
+          
+          if (includeDependencies && task.dependencies && task.dependencies.length > 0) {
+            body += `## Dependencies\nDepends on task(s): ${task.dependencies.join(', ')}\n\n`;
+          }
+          
+          if (task.testStrategy) {
+            body += `## Test Strategy\n${task.testStrategy}\n\n`;
+          }
+          
+          if (task.subtasks && task.subtasks.length > 0) {
+            body += `## Subtasks\n`;
+            task.subtasks.forEach(subtask => {
+              body += `- ${subtask.title}\n`;
+            });
+            body += '\n';
+          }
+          
+          // If it's a dry run, just log what would happen
+          if (dryRun) {
+            consoleLog('info', `[DRY RUN] Would create issue: ${task.title}`);
+            results.created.push({ 
+              taskId: task.id, 
+              title: task.title, 
+              dryRun: true 
+            });
+            continue;
+          }
+          
+          try {
+            // Create the issue
+            const response = await axios.post(
+              API_URL,
+              { 
+                title: task.title, 
+                body,
+                labels
+              },
+              { headers }
+            );
+            
+            results.created.push({ 
+              taskId: task.id, 
+              title: task.title, 
+              issueNumber: response.data.number,
+              url: response.data.html_url 
+            });
+          } catch (error) {
+            results.failed.push({ 
+              taskId: task.id, 
+              title: task.title, 
+              error: error.response?.data?.message || error.message 
+            });
+          }
+        }
+        
+        stopLoadingIndicator(spinner);
       } catch (error) {
-        results.failed.push({ 
-          file, 
-          title, 
-          error: error.response?.data?.message || error.message 
-        });
+        return {
+          success: false,
+          error: `Error processing tasks.json: ${error.message}`
+        };
       }
-    }
+    } else {
+      // Legacy support: Process individual task files
+      consoleLog('info', 'Using individual task text files for GitHub issues');
+      
+      // Get all task files that end with .txt
+      const files = fs.readdirSync(tasksDirectory).filter(file => file.endsWith(".txt"));
 
-    stopLoadingIndicator(spinner);
+      if (files.length === 0) {
+        return {
+          success: false,
+          error: `No task files found in '${tasksDirectory}'.`
+        };
+      }
+      
+      const spinner = startLoadingIndicator("Creating GitHub issues from task files...");
+
+      for (const file of files) {
+        const filePath = path.join(tasksDirectory, file);
+        const content = fs.readFileSync(filePath, "utf-8").split("\n");
+
+        if (content.length === 0 || content[0].trim() === "") {
+          results.skipped.push({ file, reason: "Empty or invalid file" });
+          continue;
+        }
+
+        // Extract task information
+        const title = content[0].trim().replace(/^#\s*/, ''); // Remove leading # if present
+        let body = content.slice(1).join("\n").trim();
+
+        // If it's a dry run, just log what would happen
+        if (dryRun) {
+          consoleLog('info', `[DRY RUN] Would create issue: ${title}`);
+          results.created.push({ file, title, dryRun: true });
+          continue;
+        }
+
+        try {
+          // Create the issue
+          const response = await axios.post(
+            API_URL,
+            { title, body },
+            { headers }
+          );
+          
+          results.created.push({ 
+            file, 
+            title, 
+            issueNumber: response.data.number,
+            url: response.data.html_url 
+          });
+        } catch (error) {
+          results.failed.push({ 
+            file, 
+            title, 
+            error: error.response?.data?.message || error.message 
+          });
+        }
+      }
+
+      stopLoadingIndicator(spinner);
+    }
 
     return {
       success: true,
