@@ -486,11 +486,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -2367,13 +2362,6 @@ function setupCLI() {
 		})
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
