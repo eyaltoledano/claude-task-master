@@ -9,6 +9,9 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
+import { fileURLToPath } from 'url'; 
+import path, { dirname, join as pathJoin } from 'path'; 
+import fs from 'fs';
 import {
 	log,
 	findTaskById,
@@ -16,8 +19,6 @@ import {
 	truncate,
 	isSilentMode
 } from './utils.js';
-import path from 'path';
-import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 
@@ -48,14 +49,22 @@ function displayBanner() {
 	// Read version directly from package.json
 	let version = 'unknown'; // Initialize with a default
 	try {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
+		// Get the directory of the current module (ui.js)
+		const currentModuleFilename = fileURLToPath(import.meta.url);
+		const currentModuleDirname = dirname(currentModuleFilename);
+		// Construct the path to package.json relative to ui.js (../../package.json)
+		const packageJsonPath = pathJoin(currentModuleDirname, '..', '..', 'package.json');
+
 		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+			const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
+			const packageJson = JSON.parse(packageJsonContent);
 			version = packageJson.version;
+		} else {
+			log('warn', `Own package.json not found at expected path: ${packageJsonPath}`);
 		}
 	} catch (error) {
 		// Silently fall back to default version
-		log('warn', 'Could not read package.json for version info.');
+		log('warn', 'Could not read own package.json for version info.', error);
 	}
 
 	console.log(
@@ -809,12 +818,7 @@ async function displayNextTask(tasksPath) {
 			'padding-bottom': 0,
 			compact: true
 		},
-		chars: {
-			mid: '',
-			'left-mid': '',
-			'mid-mid': '',
-			'right-mid': ''
-		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 		colWidths: [15, Math.min(75, process.stdout.columns - 20 || 60)],
 		wordWrap: true
 	});
@@ -902,12 +906,7 @@ async function displayNextTask(tasksPath) {
 				'padding-bottom': 0,
 				compact: true
 			},
-			chars: {
-				mid: '',
-				'left-mid': '',
-				'mid-mid': '',
-				'right-mid': ''
-			},
+			chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 			wordWrap: true
 		});
 
@@ -947,7 +946,7 @@ async function displayNextTask(tasksPath) {
 						}
 						return chalk.red(`${nextTask.id}.${depId} (Not found)`);
 					}
-					return depId;
+					return depId; // Assume it's a top-level task ID if not a number < 100
 				});
 
 				// Join the formatted dependencies directly instead of passing to formatDependenciesWithStatus again
@@ -1239,6 +1238,7 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 			const statusColor = statusColorMap[st.status || 'pending'] || chalk.white;
 			let subtaskDeps = 'None';
 			if (st.dependencies && st.dependencies.length > 0) {
+				// Format dependencies with correct notation
 				const formattedDeps = st.dependencies.map((depId) => {
 					// Use the original, unfiltered list for dependency status lookup
 					const sourceListForDeps = originalSubtasks || task.subtasks;
