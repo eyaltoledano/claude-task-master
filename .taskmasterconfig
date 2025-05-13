@@ -1,8 +1,8 @@
 {
   "models": {
     "main": {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro-exp-03-25",
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet-20250219",
       "maxTokens": 100000,
       "temperature": 0.2
     },

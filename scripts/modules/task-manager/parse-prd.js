@@ -226,10 +226,30 @@ Guidelines:
 		if (!fs.existsSync(tasksDir)) {
 			fs.mkdirSync(tasksDir, { recursive: true });
 		}
-		logFn.success('Successfully parsed PRD via AI service.');
+		logFn.success('Successfully parsed PRD via AI service.\n');
 
 		// Validate and Process Tasks
-		const generatedData = aiServiceResponse?.mainResult?.object;
+		// const generatedData = aiServiceResponse?.mainResult?.object;
+
+		// Robustly get the actual AI-generated object
+		let generatedData = null;
+		if (aiServiceResponse?.mainResult) {
+			if (
+				typeof aiServiceResponse.mainResult === 'object' &&
+				aiServiceResponse.mainResult !== null &&
+				'tasks' in aiServiceResponse.mainResult
+			) {
+				// If mainResult itself is the object with a 'tasks' property
+				generatedData = aiServiceResponse.mainResult;
+			} else if (
+				typeof aiServiceResponse.mainResult.object === 'object' &&
+				aiServiceResponse.mainResult.object !== null &&
+				'tasks' in aiServiceResponse.mainResult.object
+			) {
+				// If mainResult.object is the object with a 'tasks' property
+				generatedData = aiServiceResponse.mainResult.object;
+			}
+		}
 
 		if (!generatedData || !Array.isArray(generatedData.tasks)) {
 			logFn.error(
