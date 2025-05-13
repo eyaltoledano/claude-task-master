@@ -2361,7 +2361,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
