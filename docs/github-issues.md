@@ -1,5 +1,7 @@
 # GitHub Issues Integration
 
+> ⚠️ **Deprecated**: The `create-github-issues` command is deprecated. Please use the new `export-tasks github` command instead. See [Exporting Tasks to Issue Trackers](export-tasks.md) for details.
+
 Task Master can automatically create GitHub issues from your task files. This feature enables you to sync your local task-based development workflow with GitHub's issue tracking system.
 
 ## Prerequisites

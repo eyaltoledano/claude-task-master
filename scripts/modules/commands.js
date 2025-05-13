@@ -31,7 +31,9 @@ import {
 	removeTask,
 	findTaskById,
 	taskExists,
-	createGitHubIssues
+	createGitHubIssues,
+	exportToGitHub,
+	exportToJira
 } from './task-manager.js';
 
 import {
@@ -2334,10 +2336,10 @@ Examples:
 			return; // Stop execution here
 		});
 
-	// create-github-issues command
+	// create-github-issues command (deprecated)
 	programInstance
 		.command('create-github-issues')
-		.description('Create GitHub issues from task files in the tasks directory')
+		.description('[Deprecated] Use "export-tasks github" instead. Create GitHub issues from task files.')
 		.option('--tasks-dir <dir>', 'Path to the tasks directory', 'tasks')
 		.option('--include-status', 'Include task status in the issue body', true)
 		.option('--include-dependencies', 'Include dependencies in the issue body', true)
@@ -2345,6 +2347,22 @@ Examples:
 		.option('--label-prefix <prefix>', 'Prefix for labels based on task status', 'status:')
 		.option('--dry-run', 'Run without creating actual issues (test mode)', false)
 		.action(async (options) => {
+			// Display deprecation warning
+			console.log(
+				boxen(
+					chalk.yellow.bold('⚠️ Command Deprecated') +
+					'\n\n' +
+					chalk.white('The "create-github-issues" command is deprecated.') + 
+					'\n' + 
+					chalk.white('Please use "export-tasks github" instead.'),
+					{
+						padding: 1,
+						borderColor: 'yellow',
+						borderStyle: 'round'
+					}
+				)
+			);
+
 			try {
 				console.log(chalk.blue('Creating GitHub issues from task files...'));
 				console.log(chalk.blue(`Tasks directory: ${options.tasksDir}`));
@@ -2408,6 +2426,179 @@ Examples:
 						console.log(chalk.yellow('GITHUB_TOKEN=your_github_personal_access_token'));
 						console.log(chalk.yellow('REPO_OWNER=the_github_username_or_organization'));
 						console.log(chalk.yellow('REPO_NAME=the_repository_name'));
+					} else if (result.error?.includes('not found')) {
+						console.log(chalk.yellow('\nMake sure you\'ve run `task-master generate` to create task files.'));
+					}
+				}
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+				process.exit(1);
+			}
+		});
+
+	// export-tasks command with subcommands
+	const exportTasksCommand = programInstance
+		.command('export-tasks')
+		.description('Export tasks to external issue tracking systems');
+
+	// export-tasks github subcommand
+	exportTasksCommand
+		.command('github')
+		.description('Export tasks to GitHub issues')
+		.option('--tasks-dir <dir>', 'Path to the tasks directory', 'tasks')
+		.option('--include-status', 'Include task status in the issue body', true)
+		.option('--include-dependencies', 'Include dependencies in the issue body', true)
+		.option('--include-priority', 'Include priority in the issue body', true)
+		.option('--label-prefix <prefix>', 'Prefix for labels based on task status', 'status:')
+		.option('--dry-run', 'Run without creating actual issues (test mode)', false)
+		.action(async (options) => {
+			try {
+				console.log(chalk.blue('Exporting tasks to GitHub issues...'));
+				console.log(chalk.blue(`Tasks directory: ${options.tasksDir}`));
+				
+				if (options.dryRun) {
+					console.log(chalk.yellow('[DRY RUN] Running in test mode (no issues will be created)'));
+				}
+
+				const result = await exportToGitHub(options);
+
+				if (result.success) {
+					const { created, skipped, failed, results } = result.data;
+					
+					// Display a summary of the operation
+					console.log(
+						boxen(
+							chalk.white.bold('GitHub Issues Export Summary') +
+							'\n\n' +
+							chalk.green(`✅ Created: ${created}`) +
+							(skipped ? `\n${chalk.yellow(`⚠️ Skipped: ${skipped}`)}` : '') +
+							(failed ? `\n${chalk.red(`❌ Failed: ${failed}`)}` : '') +
+							'\n\n' +
+							chalk.white.bold('Created Issues:') +
+							(results.created.length ? '\n' + results.created.map(issue => 
+								chalk.white(`- ${issue.title}${issue.dryRun ? ' (DRY RUN)' : ` (#${issue.issueNumber})`}`)
+							).join('\n') : '\n' + chalk.gray('None')) +
+							(results.failed.length ? '\n\n' + chalk.white.bold('Failed Issues:') + '\n' + 
+								results.failed.map(issue => 
+									chalk.red(`- ${issue.title}: ${issue.error}`)
+								).join('\n') : ''),
+							{
+								padding: 1,
+								borderColor: 'green',
+								borderStyle: 'round'
+							}
+						)
+					);
+
+					// Helpful prompts if environment variables might be missing
+					if (failed > 0 && results.failed.some(f => f.error?.includes('Bad credentials'))) {
+						console.log(chalk.yellow('\nTIP: Check your GITHUB_TOKEN for validity and permissions.'));
+						console.log(chalk.yellow('Make sure it has the "repo" scope to create issues.'));
+					}
+				} else {
+					console.error(
+						boxen(
+							chalk.red.bold('Error Exporting to GitHub Issues') +
+							'\n\n' +
+							chalk.white(result.error),
+							{
+								padding: 1,
+								borderColor: 'red',
+								borderStyle: 'round'
+							}
+						)
+					);
+
+					// Provide helpful guidance based on specific errors
+					if (result.error?.includes('Missing environment variables')) {
+						console.log(chalk.yellow('\nMake sure you have a .env file in your project root with:'));
+						console.log(chalk.yellow('GITHUB_TOKEN=your_github_personal_access_token'));
+						console.log(chalk.yellow('REPO_OWNER=the_github_username_or_organization'));
+						console.log(chalk.yellow('REPO_NAME=the_repository_name'));
+					} else if (result.error?.includes('not found')) {
+						console.log(chalk.yellow('\nMake sure you\'ve run `task-master generate` to create task files.'));
+					}
+				}
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+				process.exit(1);
+			}
+		});
+
+	// export-tasks jira subcommand
+	exportTasksCommand
+		.command('jira')
+		.description('Export tasks to Jira issues')
+		.option('--tasks-dir <dir>', 'Path to the tasks directory', 'tasks')
+		.option('--include-status', 'Include task status in the issue description', true)
+		.option('--include-dependencies', 'Include dependencies in the issue description', true)
+		.option('--include-priority', 'Include priority in the issue description', true)
+		.option('--issue-type <type>', 'The Jira issue type', 'Task')
+		.option('--dry-run', 'Run without creating actual issues (test mode)', false)
+		.action(async (options) => {
+			try {
+				console.log(chalk.blue('Exporting tasks to Jira issues...'));
+				console.log(chalk.blue(`Tasks directory: ${options.tasksDir}`));
+				
+				if (options.dryRun) {
+					console.log(chalk.yellow('[DRY RUN] Running in test mode (no issues will be created)'));
+				}
+
+				const result = await exportToJira(options);
+
+				if (result.success) {
+					const { created, skipped, failed, results } = result.data;
+					
+					// Display a summary of the operation
+					console.log(
+						boxen(
+							chalk.white.bold('Jira Issues Export Summary') +
+							'\n\n' +
+							chalk.green(`✅ Created: ${created}`) +
+							(skipped ? `\n${chalk.yellow(`⚠️ Skipped: ${skipped}`)}` : '') +
+							(failed ? `\n${chalk.red(`❌ Failed: ${failed}`)}` : '') +
+							'\n\n' +
+							chalk.white.bold('Created Issues:') +
+							(results.created.length ? '\n' + results.created.map(issue => 
+								chalk.white(`- ${issue.summary}${issue.dryRun ? ' (DRY RUN)' : ` (${issue.issueKey})`}`)
+							).join('\n') : '\n' + chalk.gray('None')) +
+							(results.failed.length ? '\n\n' + chalk.white.bold('Failed Issues:') + '\n' + 
+								results.failed.map(issue => 
+									chalk.red(`- ${issue.summary}: ${issue.error}`)
+								).join('\n') : ''),
+							{
+								padding: 1,
+								borderColor: 'green',
+								borderStyle: 'round'
+							}
+						)
+					);
+
+					// Helpful prompts if environment variables might be missing
+					if (failed > 0 && results.failed.some(f => f.error?.includes('Unauthorized'))) {
+						console.log(chalk.yellow('\nTIP: Check your JIRA_API_TOKEN and JIRA_EMAIL for validity.'));
+					}
+				} else {
+					console.error(
+						boxen(
+							chalk.red.bold('Error Exporting to Jira Issues') +
+							'\n\n' +
+							chalk.white(result.error),
+							{
+								padding: 1,
+								borderColor: 'red',
+								borderStyle: 'round'
+							}
+						)
+					);
+
+					// Provide helpful guidance based on specific errors
+					if (result.error?.includes('Missing environment variables')) {
+						console.log(chalk.yellow('\nMake sure you have a .env file in your project root with:'));
+						console.log(chalk.yellow('JIRA_API_TOKEN=your_jira_api_token'));
+						console.log(chalk.yellow('JIRA_EMAIL=your_jira_email'));
+						console.log(chalk.yellow('JIRA_HOST=your_jira_host_url'));
+						console.log(chalk.yellow('JIRA_PROJECT_KEY=your_jira_project_key'));
 					} else if (result.error?.includes('not found')) {
 						console.log(chalk.yellow('\nMake sure you\'ve run `task-master generate` to create task files.'));
 					}

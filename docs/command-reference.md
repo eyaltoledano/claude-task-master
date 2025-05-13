@@ -240,20 +240,29 @@ Configuration is stored in `.taskmasterconfig` in your project root. API keys ar
 ## Create GitHub Issues
 
 ```bash
-# Create GitHub issues from task files in the tasks directory
+# [DEPRECATED] Create GitHub issues from task files in the tasks directory
 task-master create-github-issues
 
+# Export tasks to GitHub issues (recommended)
+task-master export-tasks github
+
+# Export tasks to Jira issues
+task-master export-tasks jira
+
 # Test without creating actual issues (dry run)
-task-master create-github-issues --dry-run
+task-master export-tasks github --dry-run
+task-master export-tasks jira --dry-run
 
 # Specify a custom tasks directory
-task-master create-github-issues --tasks-dir=custom/tasks/path
+task-master export-tasks github --tasks-dir=custom/tasks/path
+task-master export-tasks jira --tasks-dir=custom/tasks/path
 
-# Customize issue content
-task-master create-github-issues --include-status=false --include-dependencies=false
+# Customize GitHub issue content and labels
+task-master export-tasks github --include-status=false --include-dependencies=false
+task-master export-tasks github --label-prefix="priority:"
 
-# Customize label prefix for status labels
-task-master create-github-issues --label-prefix="priority:"
+# Customize Jira issue type
+task-master export-tasks jira --issue-type="Story"
 ```
 
-This command requires GitHub configuration in your `.env` file. See [GitHub Issues Integration](github-issues.md) for details.
+These commands require configuration in your `.env` file. See [Exporting Tasks to Issue Trackers](export-tasks.md) for details.
