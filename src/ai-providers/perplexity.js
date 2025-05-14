@@ -56,7 +56,7 @@ export async function generatePerplexityText({
 			'debug',
 			`Perplexity generateText result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.text;
+		return { text: result.text, usage: result.usage };
 	} catch (error) {
 		log('error', `Perplexity generateText failed: ${error.message}`);
 		throw error;
@@ -153,7 +153,7 @@ export async function generatePerplexityObject({
 			'debug',
 			`Perplexity generateObject result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.object;
+		return { object: result.object, usage: result.usage };
 	} catch (error) {
 		log(
 			'error',

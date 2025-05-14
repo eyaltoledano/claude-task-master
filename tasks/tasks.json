@@ -5066,7 +5066,7 @@
           "title": "Update perplexity.js for Telemetry Compatibility",
           "description": "Modify src/ai-providers/perplexity.js functions to return usage data.",
           "details": "Update the provider functions in `src/ai-providers/perplexity.js` to ensure they return telemetry-compatible results:\\n\\n1.  **`generatePerplexityText`**: Return `{ text: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts from the Vercel AI SDK result.\\n2.  **`generatePerplexityObject`**: Return `{ object: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts.\\n3.  **`streamPerplexityText`**: Return the *full stream result object* returned by the Vercel AI SDK's `streamText`, not just the `textStream` property. The full object contains usage information.\\n\\nReference `anthropic.js` for the pattern.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
