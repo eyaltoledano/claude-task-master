@@ -486,11 +486,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -515,7 +510,7 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
+			let useForce = force;
 			let useAppend = false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
@@ -609,7 +604,7 @@ function registerCommands(programInstance) {
 				spinner = ora('Parsing PRD and generating tasks...').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
-					force: useForce
+					useForce
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
@@ -2366,14 +2361,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
