@@ -2066,7 +2066,7 @@ function registerCommands(programInstance) {
 					);
 
 					// Exit with error if any removals failed
-					if (successfulRemovals.length === 0) {
+					if (result.removedTasks.length === 0) {
 						process.exit(1);
 					}
 				}

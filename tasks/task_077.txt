@@ -89,6 +89,155 @@ For each command category, we'll need to:
 ### Description: Create a secure mechanism to transmit telemetry data to the external analytics endpoint
 ### Details:
 Implement HTTPS POST request functionality to securely send the telemetry payload to the closed-source analytics API. Include proper encryption in transit using TLS. Implement retry logic and graceful fallback mechanisms for handling transmission failures due to connectivity issues.
+<info added on 2025-05-14T17:52:40.647Z>
+To securely send structured JSON telemetry payloads from a Node.js CLI tool to an external analytics backend, follow these steps:
+
+1. Use the Axios library for HTTPS POST requests. Install it with: npm install axios.
+2. Store sensitive configuration such as the analytics endpoint URL and any secret keys in environment variables (e.g., process.env.ANALYTICS_URL, process.env.ANALYTICS_KEY). Use dotenv or a similar library to load these securely.
+3. Construct the telemetry payload as a JSON object with the required fields: userId, commandName, modelUsed, inputTokens, outputTokens, totalTokens, totalCost, and timestamp (ISO 8601).
+4. Implement robust retry logic using the axios-retry package (npm install axios-retry). Configure exponential backoff with a recommended maximum of 3 retries and a base delay (e.g., 500ms).
+5. Ensure all requests use HTTPS to guarantee TLS encryption in transit. Axios automatically uses HTTPS when the endpoint URL starts with https://.
+6. Handle errors gracefully: catch all transmission errors, log them for diagnostics, and ensure failures do not interrupt or degrade the CLI user experience. Optionally, queue failed payloads for later retry if persistent connectivity issues occur.
+7. Example code snippet:
+
+require('dotenv').config();
+const axios = require('axios');
+const axiosRetry = require('axios-retry');
+
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error),
+});
+
+async function sendTelemetry(payload) {
+  try {
+    await axios.post(process.env.ANALYTICS_URL, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.ANALYTICS_KEY}`,
+      },
+      timeout: 5000,
+    });
+  } catch (error) {
+    // Log error, do not throw to avoid impacting CLI UX
+    console.error('Telemetry transmission failed:', error.message);
+    // Optionally, queue payload for later retry
+  }
+}
+
+const telemetryPayload = {
+  userId: 'user-123',
+  commandName: 'expand',
+  modelUsed: 'gpt-4',
+  inputTokens: 100,
+  outputTokens: 200,
+  totalTokens: 300,
+  totalCost: 0.0123,
+  timestamp: new Date().toISOString(),
+};
+
+sendTelemetry(telemetryPayload);
+
+8. Best practices:
+- Never hardcode secrets or endpoint URLs in source code.
+- Use environment variables and restrict access permissions.
+- Validate all payload fields before transmission.
+- Ensure the CLI continues to function even if telemetry transmission fails.
+
+References: [1][2][3][5]
+</info added on 2025-05-14T17:52:40.647Z>
+<info added on 2025-05-14T17:57:18.218Z>
+User ID Retrieval and Generation:
+
+The telemetry system must securely retrieve the user ID from the .taskmasterconfig globals, where it should have been generated during the initialization phase. Implementation should:
+
+1. Check for an existing user ID in the .taskmasterconfig file before sending any telemetry data.
+2. If no user ID exists (for users who run AI commands without prior initialization or during upgrades), automatically generate a new UUID v4 and persist it to the .taskmasterconfig file.
+3. Implement a getOrCreateUserId() function that:
+   - Reads from the global configuration file
+   - Returns the existing ID if present
+   - Generates a cryptographically secure UUID v4 if not present
+   - Saves the newly generated ID to the configuration file
+   - Handles file access errors gracefully
+
+4. Example implementation:
+```javascript
+const fs = require('fs');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+
+function getOrCreateUserId() {
+  const configPath = path.join(os.homedir(), '.taskmasterconfig');
+  
+  try {
+    // Try to read existing config
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    
+    if (config.userId) {
+      return config.userId;
+    }
+    
+    // No user ID found, generate and save
+    config.userId = uuidv4();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    return config.userId;
+  } catch (error) {
+    // Handle case where config doesn't exist or is invalid
+    const userId = uuidv4();
+    const newConfig = { userId };
+    
+    try {
+      fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
+    } catch (writeError) {
+      console.error('Failed to save user ID to config:', writeError.message);
+    }
+    
+    return userId;
+  }
+}
+```
+
+5. Ensure this function is called before constructing any telemetry payload to guarantee a consistent user ID across all telemetry events.
+</info added on 2025-05-14T17:57:18.218Z>
+<info added on 2025-05-15T18:45:32.123Z>
+**Invocation Point for Sending Telemetry:**
+* The primary invocation for sending the telemetry payload should occur in `scripts/modules/ai-services-unified.js`.
+* This should happen *after* the `telemetryData` object is fully constructed and *after* user consent (from subtask 77.3) has been confirmed.
+
+**Dedicated Module for Transmission Logic:**
+* The actual HTTPS POST request mechanism, including TLS encryption, retry logic, and graceful fallbacks, should be implemented in a new, separate module (e.g., `scripts/modules/telemetry-sender.js` or `scripts/utils/telemetry-client.js`).
+* This module will be imported and utilized by `scripts/modules/ai-services-unified.js`.
+
+**Key Considerations:**
+* Robust error handling must be in place for the telemetry transmission process; failures should be logged locally and must not disrupt core application functionality.
+* The entire telemetry sending process is contingent upon explicit user consent as outlined in subtask 77.3.
+
+**Implementation Plan:**
+1. Create a new module `scripts/utils/telemetry-client.js` with the following functions:
+   - `sendTelemetryData(telemetryPayload)`: Main function that handles the HTTPS POST request
+   - `isUserConsentGiven()`: Helper function to check if user has consented to telemetry
+   - `logTelemetryError(error)`: Helper function for consistent error logging
+
+2. In `ai-services-unified.js`, after constructing the telemetryData object:
+   ```javascript
+   const telemetryClient = require('../utils/telemetry-client');
+   
+   // After telemetryData is constructed
+   if (telemetryClient.isUserConsentGiven()) {
+     // Non-blocking telemetry submission
+     telemetryClient.sendTelemetryData(telemetryData)
+       .catch(error => telemetryClient.logTelemetryError(error));
+   }
+   ```
+
+3. Ensure the telemetry-client module implements:
+   - Axios with retry logic for robust HTTP requests
+   - Proper TLS encryption via HTTPS
+   - Comprehensive error handling
+   - Configuration loading from environment variables
+   - Validation of payload data before transmission
+</info added on 2025-05-15T18:45:32.123Z>
 
 ## 3. Develop user consent and privacy notice system [deferred]
 ### Dependencies: None
@@ -410,4 +559,36 @@ Update the provider functions in `src/ai-providers/perplexity.js` to ensure they
 ### Description: Modify src/ai-providers/xai.js functions to return usage data.
 ### Details:
 Update the provider functions in `src/ai-providers/xai.js` to ensure they return telemetry-compatible results:\n\n1.  **`generateXaiText`**: Return `{ text: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts from the Vercel AI SDK result.\n2.  **`generateXaiObject`**: Return `{ object: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts.\n3.  **`streamXaiText`**: Return the *full stream result object* returned by the Vercel AI SDK's `streamText`, not just the `textStream` property. The full object contains usage information.\n\nReference `anthropic.js` for the pattern.
+
+## 18. Create dedicated telemetry transmission module [pending]
+### Dependencies: 77.1, 77.3
+### Description: Implement a separate module for handling telemetry transmission logic
+### Details:
+Create a new module (e.g., `scripts/utils/telemetry-client.js`) that encapsulates all telemetry transmission functionality:
+
+1. Implement core functions:
+   - `sendTelemetryData(telemetryPayload)`: Main function to handle HTTPS POST requests
+   - `isUserConsentGiven()`: Helper to check if user has consented to telemetry
+   - `logTelemetryError(error)`: Helper for consistent error logging
+
+2. Use Axios with retry logic:
+   - Configure with exponential backoff (max 3 retries, 500ms base delay)
+   - Implement proper TLS encryption via HTTPS
+   - Set appropriate timeouts (5000ms recommended)
+
+3. Implement robust error handling:
+   - Catch all transmission errors
+   - Log failures locally without disrupting application flow
+   - Ensure failures are transparent to users
+
+4. Configure securely:
+   - Load endpoint URL and authentication from environment variables
+   - Never hardcode secrets in source code
+   - Validate payload data before transmission
+
+5. Integration with ai-services-unified.js:
+   - Import the telemetry-client module
+   - Call after telemetryData object is constructed
+   - Only send if user consent is confirmed
+   - Use non-blocking approach to avoid performance impact
 
