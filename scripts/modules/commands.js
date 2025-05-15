@@ -11,7 +11,6 @@ import fs from 'fs';
 import https from 'https';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
-import { fileURLToPath } from 'url'; // Added import
 
 import { log, readJSON } from './utils.js';
 import {
@@ -1270,7 +1269,10 @@ function registerCommands(programInstance) {
 			'-d, --description <description>',
 			'Task description (for manual task creation)'
 		)
-		.option('--details <details>', 'Implementation details (for manual task creation)')
+		.option(
+			'--details <details>',
+			'Implementation details (for manual task creation)'
+		)
 		.option(
 			'--dependencies <dependencies>',
 			'Comma-separated list of task IDs this task depends on'
@@ -1642,7 +1644,7 @@ function registerCommands(programInstance) {
 								chalk.white('Create new subtask:') +
 								'\n' +
 								chalk.yellow(
-									`  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`
+									`  task-master add-subtask --parent=5 --title="Implement login UI" --description="Create the login form"`
 								) +
 								'\n\n',
 							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
@@ -2376,25 +2378,7 @@ function setupCLI() {
  */
 async function checkForUpdate() {
 	// Get current version from package.json ONLY
-	let currentVersion = 'unknown'; // Initialize with a default
-	try {
-		// Get the directory of the current module (commands.js)
-		const currentModuleFilename = fileURLToPath(import.meta.url);
-		const currentModuleDirname = dirname(currentModuleFilename);
-		// Construct the path to package.json relative to commands.js (../../package.json)
-		const packageJsonPath = pathJoin(currentModuleDirname, '..', '..', 'package.json');
-
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
-			const packageJson = JSON.parse(packageJsonContent);
-			currentVersion = packageJson.version;
-		} else {
-			log('debug', `Own package.json not found at expected path for update check: ${packageJsonPath}`);
-		}
-	} catch (error) {
-		// Silently fail and use default
-		log('debug', `Error reading current package version: ${error.message}`);
-	}
+	const currentVersion = getTaskMasterVersion();
 
 	return new Promise((resolve) => {
 		// Get the latest version from npm registry
