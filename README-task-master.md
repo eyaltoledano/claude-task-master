@@ -86,6 +86,9 @@ task-master next
 
 # Generate task files
 task-master generate
+
+# Create GitHub issues from task files
+task-master create-github-issues
 ```
 
 ## Troubleshooting

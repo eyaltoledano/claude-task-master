@@ -236,3 +236,33 @@ task-master models --setup
 ```
 
 Configuration is stored in `.taskmasterconfig` in your project root. API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+
+## Create GitHub Issues
+
+```bash
+# [DEPRECATED] Create GitHub issues from task files in the tasks directory
+task-master create-github-issues
+
+# Export tasks to GitHub issues (recommended)
+task-master export-tasks github
+
+# Export tasks to Jira issues
+task-master export-tasks jira
+
+# Test without creating actual issues (dry run)
+task-master export-tasks github --dry-run
+task-master export-tasks jira --dry-run
+
+# Specify a custom tasks directory
+task-master export-tasks github --tasks-dir=custom/tasks/path
+task-master export-tasks jira --tasks-dir=custom/tasks/path
+
+# Customize GitHub issue content and labels
+task-master export-tasks github --include-status=false --include-dependencies=false
+task-master export-tasks github --label-prefix="priority:"
+
+# Customize Jira issue type
+task-master export-tasks jira --issue-type="Story"
+```
+
+These commands require configuration in your `.env` file. See [Exporting Tasks to Issue Trackers](export-tasks.md) for details.
