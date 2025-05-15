@@ -4,7 +4,7 @@
  */
 
 import { program } from 'commander';
-import path, { dirname, join as pathJoin } from 'path';
+import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';

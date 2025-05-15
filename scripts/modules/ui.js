@@ -9,7 +9,6 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
-import fs from 'fs';
 import {
 	log,
 	findTaskById,
@@ -17,6 +16,7 @@ import {
 	truncate,
 	isSilentMode
 } from './utils.js';
+import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
