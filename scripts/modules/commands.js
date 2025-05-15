@@ -73,7 +73,7 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import { findProjectRoot } from './utils.js';
-
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
