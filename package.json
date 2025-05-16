@@ -21,8 +21,8 @@
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
-		"format-check": "prettier --check .",
-		"format": "prettier --write ."
+		"format-check": "node node_modules/.bin/biome format .",
+		"format": "node node_modules/.bin/biome format . --write"
 	},
 	"keywords": [
 		"claude",
@@ -96,6 +96,7 @@
 		"whatwg-url": "^11.0.0"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
 		"@types/jest": "^29.5.14",
