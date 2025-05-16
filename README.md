@@ -11,16 +11,16 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Requirements
 
-* **API key(s)** for any supported provider:
-  * Anthropic
-  * Perplexity
-  * OpenAI
-  * Google
-  * Mistral
-  * OpenRouter
-  * xAI
-  * Azure OpenAI
-* **(Optional)** OpenAI SDK (for Perplexity integration)
+- **API key(s)** for any supported provider:
+  - Anthropic
+  - Perplexity
+  - OpenAI
+  - Google
+  - Mistral
+  - OpenRouter
+  - xAI
+  - Azure OpenAI
+- **(Optional)** OpenAI SDK (for Perplexity integration)
 
 ## Quick Start
 
@@ -33,61 +33,62 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 | Editor       | Scope   | Linux/macOS Path                      | Windows Path                                      | Key          |
 | ------------ | ------- | ------------------------------------- | ------------------------------------------------- | ------------ |
 | **Cursor**   | Global  | `~/.cursor/mcp.json`                  | `%USERPROFILE%\.cursor\mcp.json`                  | `mcpServers` |
-|              | Project | `<project_folder>/.cursor/mcp.json`     | `<project_folder>\.cursor\mcp.json`                 | `mcpServers` |
+|              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
 | **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
-| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`     | `<project_folder>\.vscode\mcp.json`                 | `servers`    |
-
+| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
 
 ##### Cursor & Windsurf (`mcpServers`)
 
 ```jsonc
 {
-  "mcpServers": {
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY":    "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY":   "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY":       "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY":       "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY":      "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY":   "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY":          "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-      }
-    }
-  }
+	"mcpServers": {
+		"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+			}
+		}
+	}
 }
 ```
+
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
 ##### VS Code (`servers` + `type`)
 
 ```jsonc
 {
-  "servers": { 
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY":    "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY":   "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY":       "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY":       "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY":      "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY":   "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY":          "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-      },
-      "type": "stdio"
-    }
-  }
+	"servers": {
+		"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+			},
+			"type": "stdio"
+		}
+	}
 }
 ```
+
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
-#### 2. (Cursor-only) Enable Taskmaster MCP 
+#### 2. (Cursor-only) Enable Taskmaster MCP
 
 Open Cursor Settings (Ctrl+Shift+J) ➡ Click on MCP tab on the left ➡ Enable task-master-ai with the toggle
 
@@ -121,10 +122,10 @@ The more detailed your PRD, the better the generated tasks will be.
 
 Use your AI assistant to:
 
-- Parse requirements:   `Can you parse my PRD at scripts/prd.txt?` 
-- Plan next step:       `What’s the next task I should work on?`
-- Implement a task:     `Can you help me implement task 3?`
-- Expand a task:        `Can you help me expand task 4?`
+- Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
+- Plan next step: `What’s the next task I should work on?`
+- Implement a task: `Can you help me implement task 3?`
+- Expand a task: `Can you help me expand task 4?`
 
 [More examples on how to use Task Master in chat](docs/examples.md)
 
