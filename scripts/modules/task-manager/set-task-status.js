@@ -1,6 +1,7 @@
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import { z } from 'zod';
 
 import { log, readJSON, writeJSON, findTaskById } from '../utils.js';
 import { displayBanner } from '../ui.js';
@@ -9,16 +10,61 @@ import { getDebugFlag } from '../config-manager.js';
 import updateSingleTaskStatus from './update-single-task-status.js';
 import generateTaskFiles from './generate-task-files.js';
 
+export const TASK_STATUSES = Object.freeze({
+	PENDING: 'pending',
+	IN_PROGRESS: 'in-progress',
+	REVIEW: 'review',
+	DONE: 'done',
+	COMPLETED: 'completed',
+	DEFERRED: 'deferred',
+	CANCELLED: 'cancelled',
+	BLOCKED: 'blocked'
+});
+export const VALID_TASK_STATUS_VALUES = Object.values(TASK_STATUSES);
+
+// Create the Zod schema for status validation once
+const statusSchema = z.enum(VALID_TASK_STATUS_VALUES);
+
 /**
  * Set the status of a task
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIdInput - Task ID(s) to update
- * @param {string} newStatus - New status
+ * @param {string} newStatusInput - New status
  * @param {Object} options - Additional options (mcpLog for MCP mode)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
+async function setTaskStatus(
+	tasksPath,
+	taskIdInput,
+	newStatusInput,
+	options = {}
+) {
 	try {
+		const normalizedStatus = newStatusInput.trim().toLowerCase();
+		const validationResult = statusSchema.safeParse(normalizedStatus);
+
+		if (!validationResult.success) {
+			const prettyErrors = validationResult.error.errors
+				.map((err) => {
+					if (err.code === 'invalid_enum_value') {
+						return `Invalid status: "${newStatusInput}". Allowed values are: ${err.options.join(', ')}.`;
+					}
+					return err.message;
+				})
+				.join(' ');
+			const errorMessage =
+				prettyErrors || `Invalid status value: "${newStatusInput}"`;
+
+			log('error', errorMessage);
+			if (!options?.mcpLog) {
+				console.error(chalk.red(`Error: ${errorMessage}`));
+				process.exit(1);
+			}
+			throw new Error(errorMessage);
+		}
+
+		const newStatus = validationResult.data;
+
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 

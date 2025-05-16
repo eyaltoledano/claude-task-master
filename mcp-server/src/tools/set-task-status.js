@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { setTaskStatusDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { VALID_TASK_STATUS_VALUES } from '../../../../scripts/modules/task-manager/set-task-status.js';
 
 /**
  * Register the setTaskStatus tool with the MCP server
@@ -28,8 +29,10 @@ export function registerSetTaskStatusTool(server) {
 				),
 			status: z
 				.string()
+				.transform((val) => val.trim().toLowerCase())
+				.pipe(z.enum(VALID_TASK_STATUS_VALUES))
 				.describe(
-					"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled'."
+					`New status to set. Must be one of: ${VALID_TASK_STATUS_VALUES.join(', ')}. Input will be trimmed and lowercased.`
 				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
