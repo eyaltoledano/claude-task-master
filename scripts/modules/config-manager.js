@@ -677,6 +677,13 @@ function getAllProviders() {
 	return Object.keys(MODEL_MAP || {});
 }
 
+function getBaseUrlForRole(role, explicitRoot = null) {
+	const roleConfig = getModelConfigForRole(role, explicitRoot);
+	return roleConfig && typeof roleConfig.baseUrl === 'string'
+		? roleConfig.baseUrl
+		: undefined;
+}
+
 export {
 	// Core config access
 	getConfig,
@@ -704,6 +711,7 @@ export {
 	getFallbackModelId,
 	getFallbackMaxTokens,
 	getFallbackTemperature,
+	getBaseUrlForRole,
 
 	// Global setting getters (No env var overrides)
 	getLogLevel,

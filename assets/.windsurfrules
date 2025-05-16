@@ -198,7 +198,7 @@ alwaysApply: true
   - **MAX_TOKENS** (Default: `"4000"`): Maximum tokens for responses (Example: `MAX_TOKENS=8000`)
   - **TEMPERATURE** (Default: `"0.7"`): Temperature for model responses (Example: `TEMPERATURE=0.5`)
   - **DEBUG** (Default: `"false"`): Enable debug logging (Example: `DEBUG=true`)
-  - **LOG_LEVEL** (Default: `"info"`): Console output level (Example: `LOG_LEVEL=debug`)
+  - **TASKMASTER_LOG_LEVEL** (Default: `"info"`): Console output level (Example: `TASKMASTER_LOG_LEVEL=debug`)
   - **DEFAULT_SUBTASKS** (Default: `"3"`): Default subtask count (Example: `DEFAULT_SUBTASKS=5`)
   - **DEFAULT_PRIORITY** (Default: `"medium"`): Default priority (Example: `DEFAULT_PRIORITY=high`)
   - **PROJECT_NAME** (Default: `"MCP SaaS MVP"`): Project name in metadata (Example: `PROJECT_NAME=My Awesome Project`)

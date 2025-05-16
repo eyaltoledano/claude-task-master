@@ -116,7 +116,7 @@ Taskmaster configuration is managed through two main mechanisms:
     *   For MCP/Cursor integration, configure these keys in the `env` section of `.cursor/mcp.json`.
     *   Available keys/variables: See `assets/env.example` or the Configuration section in the command reference (previously linked to `taskmaster.mdc`).
 
-**Important:** Non-API key settings (like model selections, `MAX_TOKENS`, `LOG_LEVEL`) are **no longer configured via environment variables**. Use the `task-master models` command (or `--setup` for interactive configuration) or the `models` MCP tool.
+**Important:** Non-API key settings (like model selections, `MAX_TOKENS`, `TASKMASTER_LOG_LEVEL`) are **no longer configured via environment variables**. Use the `task-master models` command (or `--setup` for interactive configuration) or the `models` MCP tool.
 **If AI commands FAIL in MCP** verify that the API key for the selected provider is present in the `env` section of `.cursor/mcp.json`.
 **If AI commands FAIL in CLI** verify that the API key for the selected provider is present in the `.env` file in the root of the project.
 

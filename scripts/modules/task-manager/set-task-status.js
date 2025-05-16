@@ -8,6 +8,10 @@ import { validateTaskDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
 import updateSingleTaskStatus from './update-single-task-status.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../../src/constants/task-status.js';
 
 /**
  * Set the status of a task
@@ -19,6 +23,11 @@ import generateTaskFiles from './generate-task-files.js';
  */
 async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 	try {
+		if (!isValidTaskStatus(newStatus)) {
+			throw new Error(
+				`Error: Invalid status value: ${newStatus}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+			);
+		}
 		// Determine if we're in MCP mode by checking for mcpLog
 		const isMcpMode = !!options?.mcpLog;
 

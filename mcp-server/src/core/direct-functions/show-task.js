@@ -3,11 +3,10 @@
  * Direct function implementation for showing task details
  */
 
-import { findTaskById, readJSON } from '../../../../scripts/modules/utils.js';
-import { getCachedOrExecute } from '../../tools/utils.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	findTaskById,
+	readComplexityReport,
+	readJSON
 } from '../../../../scripts/modules/utils.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
 
@@ -17,6 +16,7 @@ import { findTasksJsonPath } from '../utils/path-utils.js';
  * @param {Object} args - Command arguments.
  * @param {string} args.id - Task ID to show.
  * @param {string} [args.file] - Optional path to the tasks file (passed to findTasksJsonPath).
+ * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {string} [args.status] - Optional status to filter subtasks by.
  * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
  * @param {Object} log - Logger object.
@@ -27,7 +27,7 @@ export async function showTaskDirect(args, log) {
 	// Destructure session from context if needed later, otherwise ignore
 	// const { session } = context;
 	// Destructure projectRoot and other args. projectRoot is assumed normalized.
-	const { id, file, status, projectRoot } = args;
+	const { id, file, reportPath, status, projectRoot } = args;
 
 	log.info(
 		`Showing task direct function. ID: ${id}, File: ${file}, Status Filter: ${status}, ProjectRoot: ${projectRoot}`
@@ -64,9 +64,12 @@ export async function showTaskDirect(args, log) {
 			};
 		}
 
+		const complexityReport = readComplexityReport(reportPath);
+
 		const { task, originalSubtaskCount } = findTaskById(
 			tasksData.tasks,
 			id,
+			complexityReport,
 			status
 		);
 

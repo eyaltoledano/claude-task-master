@@ -32,7 +32,7 @@ The script can be configured through environment variables in a `.env` file at t
 - `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
 - `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
 - `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
+- `TASKMASTER_LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
 - `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
 - `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
 - `PROJECT_NAME`: Override default project name in tasks.json
@@ -47,7 +47,7 @@ The script can be configured through environment variables in a `.env` file at t
    - Tasks can have `subtasks` for more detailed implementation steps.
    - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending) to easily track progress.
 
-2. **Script Commands**  
+2. **Script Commands**
    You can run the script via:
 
    ```bash
@@ -225,7 +225,7 @@ To use the Perplexity integration:
 
 ## Logging
 
-The script supports different logging levels controlled by the `LOG_LEVEL` environment variable:
+The script supports different logging levels controlled by the `TASKMASTER_LOG_LEVEL` environment variable:
 
 - `debug`: Detailed information, typically useful for troubleshooting
 - `info`: Confirmation that things are working as expected (default)

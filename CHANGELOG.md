@@ -1,5 +1,47 @@
 # task-master-ai
 
+## 0.14.0-rc.0
+
+### Minor Changes
+
+- [#521](https://github.com/eyaltoledano/claude-task-master/pull/521) [`ed17cb0`](https://github.com/eyaltoledano/claude-task-master/commit/ed17cb0e0a04dedde6c616f68f24f3660f68dd04) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - .taskmasterconfig now supports a baseUrl field per model role (main, research, fallback), allowing endpoint overrides for any provider.
+
+- [#528](https://github.com/eyaltoledano/claude-task-master/pull/528) [`58b417a`](https://github.com/eyaltoledano/claude-task-master/commit/58b417a8ce697e655f749ca4d759b1c20014c523) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Display task complexity scores in task lists, next task, and task details views.
+
+### Patch Changes
+
+- [#478](https://github.com/eyaltoledano/claude-task-master/pull/478) [`4117f71`](https://github.com/eyaltoledano/claude-task-master/commit/4117f71c18ee4d321a9c91308d00d5d69bfac61e) Thanks [@joedanz](https://github.com/joedanz)! - Fix CLI --force flag for parse-prd command
+
+  Previously, the --force flag was not respected when running `parse-prd`, causing the command to prompt for confirmation or fail even when --force was provided. This patch ensures that the flag is correctly passed and handled, allowing users to overwrite existing tasks.json files as intended.
+
+  - Fixes #477
+
+- [#511](https://github.com/eyaltoledano/claude-task-master/pull/511) [`17294ff`](https://github.com/eyaltoledano/claude-task-master/commit/17294ff25918d64278674e558698a1a9ad785098) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Task Master no longer tells you to update when you're already up to date
+
+- [#523](https://github.com/eyaltoledano/claude-task-master/pull/523) [`da317f2`](https://github.com/eyaltoledano/claude-task-master/commit/da317f2607ca34db1be78c19954996f634c40923) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix the error handling of task status settings
+
+- [#527](https://github.com/eyaltoledano/claude-task-master/pull/527) [`a8dabf4`](https://github.com/eyaltoledano/claude-task-master/commit/a8dabf44856713f488960224ee838761716bba26) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Remove caching layer from MCP direct functions for task listing, next task, and complexity report
+
+  - Fixes issues users where having where they were getting stale data
+
+- [#417](https://github.com/eyaltoledano/claude-task-master/pull/417) [`a1f8d52`](https://github.com/eyaltoledano/claude-task-master/commit/a1f8d52474fdbdf48e17a63e3f567a6d63010d9f) Thanks [@ksylvan](https://github.com/ksylvan)! - Fix for issue #409 LOG_LEVEL Pydantic validation error
+
+- [#501](https://github.com/eyaltoledano/claude-task-master/pull/501) [`0a61184`](https://github.com/eyaltoledano/claude-task-master/commit/0a611843b56a856ef0a479dc34078326e05ac3a8) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix initial .env.example to work out of the box
+
+  - Closes #419
+
+- [#435](https://github.com/eyaltoledano/claude-task-master/pull/435) [`a96215a`](https://github.com/eyaltoledano/claude-task-master/commit/a96215a359b25061fd3b3f3c7b10e8ac0390c062) Thanks [@lebsral](https://github.com/lebsral)! - Fix default fallback model and maxTokens in Taskmaster initialization
+
+- [#517](https://github.com/eyaltoledano/claude-task-master/pull/517) [`e96734a`](https://github.com/eyaltoledano/claude-task-master/commit/e96734a6cc6fec7731de72eb46b182a6e3743d02) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix bug when updating tasks on the MCP server (#412)
+
+- [#496](https://github.com/eyaltoledano/claude-task-master/pull/496) [`efce374`](https://github.com/eyaltoledano/claude-task-master/commit/efce37469bc58eceef46763ba32df1ed45242211) Thanks [@joedanz](https://github.com/joedanz)! - Fix duplicate output on CLI help screen
+
+  - Prevent the Task Master CLI from printing the help screen more than once when using `-h` or `--help`.
+  - Removed redundant manual event handlers and guards for help output; now only the Commander `.helpInformation` override is used for custom help.
+  - Simplified logic so that help is only shown once for both "no arguments" and help flag flows.
+  - Ensures a clean, branded help experience with no repeated content.
+  - Fixes #339
+
 ## 0.13.1
 
 ### Patch Changes

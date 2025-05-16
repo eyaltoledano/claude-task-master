@@ -73,7 +73,11 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import { findProjectRoot } from './utils.js';
-
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../src/constants/task-status.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -486,11 +490,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -515,7 +514,7 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
+			let useForce = force;
 			let useAppend = false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
@@ -609,7 +608,7 @@ function registerCommands(programInstance) {
 				spinner = ora('Parsing PRD and generating tasks...').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
-					force: useForce
+					useForce
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
@@ -1038,7 +1037,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-s, --status <status>',
-			'New status (todo, in-progress, review, done)'
+			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.action(async (options) => {
@@ -1048,6 +1047,16 @@ function registerCommands(programInstance) {
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
+				process.exit(1);
+			}
+
+			if (!isValidTaskStatus(status)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+					)
+				);
+
 				process.exit(1);
 			}
 
@@ -1063,10 +1072,16 @@ function registerCommands(programInstance) {
 		.command('list')
 		.description('List all tasks')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 
@@ -1078,7 +1093,7 @@ function registerCommands(programInstance) {
 				console.log(chalk.blue('Including subtasks in listing'));
 			}
 
-			await listTasks(tasksPath, statusFilter, withSubtasks);
+			await listTasks(tasksPath, statusFilter, reportPath, withSubtasks);
 		});
 
 	// expand command
@@ -1279,10 +1294,6 @@ function registerCommands(programInstance) {
 			'Implementation details (for manual task creation)'
 		)
 		.option(
-			'--test-strategy <testStrategy>',
-			'Test strategy (for manual task creation)'
-		)
-		.option(
 			'--dependencies <dependencies>',
 			'Comma-separated list of task IDs this task depends on'
 		)
@@ -1388,9 +1399,15 @@ function registerCommands(programInstance) {
 			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			await displayNextTask(tasksPath);
+			const reportPath = options.report;
+			await displayNextTask(tasksPath, reportPath);
 		});
 
 	// show command
@@ -1403,6 +1420,11 @@ function registerCommands(programInstance) {
 		.option('-i, --id <id>', 'Task ID to show')
 		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
 			const statusFilter = options.status; // ADDED: Capture status filter
@@ -1413,8 +1435,9 @@ function registerCommands(programInstance) {
 			}
 
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			// PASS statusFilter to the display function
-			await displayTaskById(tasksPath, idArg, statusFilter);
+			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
 		});
 
 	// add-dependency command
@@ -1663,6 +1686,7 @@ function registerCommands(programInstance) {
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
+				showAddSubtaskHelp();
 				process.exit(1);
 			}
 		})
@@ -2366,14 +2390,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
@@ -2393,28 +2410,7 @@ function setupCLI() {
  */
 async function checkForUpdate() {
 	// Get current version from package.json ONLY
-	let currentVersion = 'unknown'; // Initialize with a default
-	try {
-		// Try to get the version from the installed package (if applicable) or current dir
-		let packageJsonPath = path.join(
-			process.cwd(),
-			'node_modules',
-			'task-master-ai',
-			'package.json'
-		);
-		// Fallback to current directory package.json if not found in node_modules
-		if (!fs.existsSync(packageJsonPath)) {
-			packageJsonPath = path.join(process.cwd(), 'package.json');
-		}
-
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			currentVersion = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fail and use default
-		log('debug', `Error reading current package version: ${error.message}`);
-	}
+	const currentVersion = getTaskMasterVersion();
 
 	return new Promise((resolve) => {
 		// Get the latest version from npm registry

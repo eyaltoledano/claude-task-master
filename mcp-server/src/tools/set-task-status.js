@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { setTaskStatusDirect } from '../core/task-master-core.js';
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { TASK_STATUS_OPTIONS } from '../../../src/constants/task-status.js';
 
 /**
  * Register the setTaskStatus tool with the MCP server
@@ -27,7 +28,7 @@ export function registerSetTaskStatusTool(server) {
 					"Task ID or subtask ID (e.g., '15', '15.2'). Can be comma-separated to update multiple tasks/subtasks at once."
 				),
 			status: z
-				.string()
+				.enum(TASK_STATUS_OPTIONS)
 				.describe(
 					"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled'."
 				),

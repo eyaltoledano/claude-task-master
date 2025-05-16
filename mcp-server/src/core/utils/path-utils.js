@@ -339,6 +339,49 @@ export function findPRDDocumentPath(projectRoot, explicitPath, log) {
 	return null;
 }
 
+export function findComplexityReportPath(projectRoot, explicitPath, log) {
+	// If explicit path is provided, check if it exists
+	if (explicitPath) {
+		const fullPath = path.isAbsolute(explicitPath)
+			? explicitPath
+			: path.resolve(projectRoot, explicitPath);
+
+		if (fs.existsSync(fullPath)) {
+			log.info(`Using provided PRD document path: ${fullPath}`);
+			return fullPath;
+		} else {
+			log.warn(
+				`Provided PRD document path not found: ${fullPath}, will search for alternatives`
+			);
+		}
+	}
+
+	// Common locations and file patterns for PRD documents
+	const commonLocations = [
+		'', // Project root
+		'scripts/'
+	];
+
+	const commonFileNames = [
+		'complexity-report.json',
+		'task-complexity-report.json'
+	];
+
+	// Check all possible combinations
+	for (const location of commonLocations) {
+		for (const fileName of commonFileNames) {
+			const potentialPath = path.join(projectRoot, location, fileName);
+			if (fs.existsSync(potentialPath)) {
+				log.info(`Found PRD document at: ${potentialPath}`);
+				return potentialPath;
+			}
+		}
+	}
+
+	log.warn(`No PRD document found in common locations within ${projectRoot}`);
+	return null;
+}
+
 /**
  * Resolves the tasks output directory path
  * @param {string} projectRoot - The project root directory

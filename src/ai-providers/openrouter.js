@@ -2,6 +2,14 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText, generateObject } from 'ai';
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils.js is in scripts/modules
 
+function getClient(apiKey, baseUrl) {
+	if (!apiKey) throw new Error('OpenRouter API key is required.');
+	return createOpenRouter({
+		apiKey,
+		...(baseUrl && { baseURL: baseUrl })
+	});
+}
+
 /**
  * Generates text using an OpenRouter chat model.
  *
@@ -11,6 +19,7 @@ import { log } from '../../scripts/modules/utils.js'; // Assuming utils.js is in
  * @param {Array<object>} params.messages - Array of message objects (system, user, assistant).
  * @param {number} [params.maxTokens] - Maximum tokens to generate.
  * @param {number} [params.temperature] - Sampling temperature.
+ * @param {string} [params.baseUrl] - Base URL for the OpenRouter API.
  * @returns {Promise<string>} The generated text content.
  * @throws {Error} If the API call fails.
  */
@@ -20,6 +29,7 @@ async function generateOpenRouterText({
 	messages,
 	maxTokens,
 	temperature,
+	baseUrl,
 	...rest // Capture any other Vercel AI SDK compatible parameters
 }) {
 	if (!apiKey) throw new Error('OpenRouter API key is required.');
@@ -28,7 +38,7 @@ async function generateOpenRouterText({
 		throw new Error('Messages array cannot be empty.');
 
 	try {
-		const openrouter = createOpenRouter({ apiKey });
+		const openrouter = getClient(apiKey, baseUrl);
 		const model = openrouter.chat(modelId); // Assuming chat model
 
 		const { text } = await generateText({
@@ -58,6 +68,7 @@ async function generateOpenRouterText({
  * @param {Array<object>} params.messages - Array of message objects (system, user, assistant).
  * @param {number} [params.maxTokens] - Maximum tokens to generate.
  * @param {number} [params.temperature] - Sampling temperature.
+ * @param {string} [params.baseUrl] - Base URL for the OpenRouter API.
  * @returns {Promise<ReadableStream<string>>} A readable stream of text deltas.
  * @throws {Error} If the API call fails.
  */
@@ -67,6 +78,7 @@ async function streamOpenRouterText({
 	messages,
 	maxTokens,
 	temperature,
+	baseUrl,
 	...rest
 }) {
 	if (!apiKey) throw new Error('OpenRouter API key is required.');
@@ -75,7 +87,7 @@ async function streamOpenRouterText({
 		throw new Error('Messages array cannot be empty.');
 
 	try {
-		const openrouter = createOpenRouter({ apiKey });
+		const openrouter = getClient(apiKey, baseUrl);
 		const model = openrouter.chat(modelId);
 
 		// Directly return the stream from the Vercel AI SDK function
@@ -108,6 +120,7 @@ async function streamOpenRouterText({
  * @param {number} [params.maxRetries=3] - Max retries for object generation.
  * @param {number} [params.maxTokens] - Maximum tokens.
  * @param {number} [params.temperature] - Temperature.
+ * @param {string} [params.baseUrl] - Base URL for the OpenRouter API.
  * @returns {Promise<object>} The generated object matching the schema.
  * @throws {Error} If the API call fails or validation fails.
  */
@@ -120,6 +133,7 @@ async function generateOpenRouterObject({
 	maxRetries = 3,
 	maxTokens,
 	temperature,
+	baseUrl,
 	...rest
 }) {
 	if (!apiKey) throw new Error('OpenRouter API key is required.');
@@ -129,7 +143,7 @@ async function generateOpenRouterObject({
 		throw new Error('Messages array cannot be empty.');
 
 	try {
-		const openrouter = createOpenRouter({ apiKey });
+		const openrouter = getClient(apiKey, baseUrl);
 		const model = openrouter.chat(modelId);
 
 		const { object } = await generateObject({

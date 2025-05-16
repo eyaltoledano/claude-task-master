@@ -3,9 +3,8 @@
  */
 
 import { jest } from '@jest/globals';
-import path from 'path';
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 // Get the current module's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +26,7 @@ const mockReadJSON = jest.fn();
 const mockWriteJSON = jest.fn();
 const mockEnableSilentMode = jest.fn();
 const mockDisableSilentMode = jest.fn();
+const mockReadComplexityReport = jest.fn().mockReturnValue(null);
 
 const mockGetAnthropicClient = jest.fn().mockReturnValue({});
 const mockGetConfiguredAnthropicClient = jest.fn().mockReturnValue({});
@@ -130,6 +130,7 @@ jest.mock('../../../scripts/modules/utils.js', () => ({
 	writeJSON: mockWriteJSON,
 	enableSilentMode: mockEnableSilentMode,
 	disableSilentMode: mockDisableSilentMode,
+	readComplexityReport: mockReadComplexityReport,
 	CONFIG: {
 		model: 'claude-3-7-sonnet-20250219',
 		maxTokens: 64000,
@@ -160,15 +161,6 @@ jest.mock('../../../scripts/modules/task-manager.js', () => ({
 }));
 
 // Import dependencies after mocks are set up
-import fs from 'fs';
-import {
-	readJSON,
-	writeJSON,
-	enableSilentMode,
-	disableSilentMode
-} from '../../../scripts/modules/utils.js';
-import { expandTask } from '../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../../../mcp-server/src/core/utils/path-utils.js';
 import { sampleTasks } from '../../fixtures/sample-tasks.js';
 
 // Mock logger
@@ -220,6 +212,37 @@ describe('MCP Server Direct Functions', () => {
 	});
 
 	describe('listTasksDirect', () => {
+		// Sample complexity report for testing
+		const mockComplexityReport = {
+			meta: {
+				generatedAt: '2025-03-24T20:01:35.986Z',
+				tasksAnalyzed: 3,
+				thresholdScore: 5,
+				projectName: 'Test Project',
+				usedResearch: false
+			},
+			complexityAnalysis: [
+				{
+					taskId: 1,
+					taskTitle: 'Initialize Project',
+					complexityScore: 3,
+					recommendedSubtasks: 2
+				},
+				{
+					taskId: 2,
+					taskTitle: 'Create Core Functionality',
+					complexityScore: 8,
+					recommendedSubtasks: 5
+				},
+				{
+					taskId: 3,
+					taskTitle: 'Implement UI Components',
+					complexityScore: 6,
+					recommendedSubtasks: 4
+				}
+			]
+		};
+
 		// Test wrapper function that doesn't rely on the actual implementation
 		async function testListTasks(args, mockLogger) {
 			// File not found case
@@ -235,21 +258,35 @@ describe('MCP Server Direct Functions', () => {
 				};
 			}
 
+			// Check for complexity report
+			const complexityReport = mockReadComplexityReport();
+			let tasksData = [...sampleTasks.tasks];
+
+			// Add complexity scores if report exists
+			if (complexityReport && complexityReport.complexityAnalysis) {
+				tasksData = tasksData.map((task) => {
+					const analysis = complexityReport.complexityAnalysis.find(
+						(a) => a.taskId === task.id
+					);
+					if (analysis) {
+						return { ...task, complexityScore: analysis.complexityScore };
+					}
+					return task;
+				});
+			}
+
 			// Success case
 			if (!args.status && !args.withSubtasks) {
 				return {
 					success: true,
 					data: {
-						tasks: sampleTasks.tasks,
+						tasks: tasksData,
 						stats: {
-							total: sampleTasks.tasks.length,
-							completed: sampleTasks.tasks.filter((t) => t.status === 'done')
+							total: tasksData.length,
+							completed: tasksData.filter((t) => t.status === 'done').length,
+							inProgress: tasksData.filter((t) => t.status === 'in-progress')
 								.length,
-							inProgress: sampleTasks.tasks.filter(
-								(t) => t.status === 'in-progress'
-							).length,
-							pending: sampleTasks.tasks.filter((t) => t.status === 'pending')
-								.length
+							pending: tasksData.filter((t) => t.status === 'pending').length
 						}
 					},
 					fromCache: false
@@ -258,16 +295,14 @@ describe('MCP Server Direct Functions', () => {
 
 			// Status filter case
 			if (args.status) {
-				const filteredTasks = sampleTasks.tasks.filter(
-					(t) => t.status === args.status
-				);
+				const filteredTasks = tasksData.filter((t) => t.status === args.status);
 				return {
 					success: true,
 					data: {
 						tasks: filteredTasks,
 						filter: args.status,
 						stats: {
-							total: sampleTasks.tasks.length,
+							total: tasksData.length,
 							filtered: filteredTasks.length
 						}
 					},
@@ -280,10 +315,10 @@ describe('MCP Server Direct Functions', () => {
 				return {
 					success: true,
 					data: {
-						tasks: sampleTasks.tasks,
+						tasks: tasksData,
 						includeSubtasks: true,
 						stats: {
-							total: sampleTasks.tasks.length
+							total: tasksData.length
 						}
 					},
 					fromCache: false
@@ -369,6 +404,29 @@ describe('MCP Server Direct Functions', () => {
 			expect(result.success).toBe(false);
 			expect(result.error.code).toBe('FILE_NOT_FOUND_ERROR');
 			expect(mockLogger.error).toHaveBeenCalled();
+		});
+
+		test('should include complexity scores when complexity report exists', async () => {
+			// Arrange
+			mockReadComplexityReport.mockReturnValueOnce(mockComplexityReport);
+			const args = {
+				projectRoot: testProjectRoot,
+				file: testTasksPath,
+				withSubtasks: true
+			};
+
+			// Act
+			const result = await testListTasks(args, mockLogger);
+			// Assert
+			expect(result.success).toBe(true);
+
+			// Check that tasks have complexity scores from the report
+			mockComplexityReport.complexityAnalysis.forEach((analysis) => {
+				const task = result.data.tasks.find((t) => t.id === analysis.taskId);
+				if (task) {
+					expect(task.complexityScore).toBe(analysis.complexityScore);
+				}
+			});
 		});
 	});
 
