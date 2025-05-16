@@ -9,14 +9,13 @@ import { generateText, streamText, generateObject } from 'ai'; // Only import wh
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils is accessible
 
 // --- Client Instantiation ---
-function getClient(apiKey) {
+function getClient(apiKey, baseUrl) {
 	if (!apiKey) {
 		throw new Error('xAI API key is required.');
 	}
-	// Create and return a new instance directly
 	return createXai({
-		apiKey: apiKey
-		// Add baseURL or other options if needed later
+		apiKey: apiKey,
+		baseURL: baseUrl || 'https://api.grok.x.ai/v1'
 	});
 }
 
@@ -31,6 +30,7 @@ function getClient(apiKey) {
  * @param {Array<object>} params.messages - The messages array (e.g., [{ role: 'user', content: '...' }]).
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
+ * @param {string} [params.baseUrl] - The base URL for the xAI API.
  * @returns {Promise<string>} The generated text content.
  * @throws {Error} If the API call fails.
  */
@@ -39,13 +39,14 @@ export async function generateXaiText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseUrl
 }) {
 	log('debug', `Generating xAI text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		const client = getClient(apiKey, baseUrl);
 		const result = await generateText({
-			model: client(modelId), // Correct model invocation
+			model: client(modelId),
 			messages: messages,
 			maxTokens: maxTokens,
 			temperature: temperature
@@ -70,6 +71,7 @@ export async function generateXaiText({
  * @param {Array<object>} params.messages - The messages array.
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
+ * @param {string} [params.baseUrl] - The base URL for the xAI API.
  * @returns {Promise<object>} The full stream result object from the Vercel AI SDK.
  * @throws {Error} If the API call fails to initiate the stream.
  */
@@ -78,18 +80,19 @@ export async function streamXaiText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseUrl
 }) {
 	log('debug', `Streaming xAI text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		const client = getClient(apiKey, baseUrl);
 		const stream = await streamText({
-			model: client(modelId), // Correct model invocation
+			model: client(modelId),
 			messages: messages,
 			maxTokens: maxTokens,
 			temperature: temperature
 		});
-		return stream; // Return the full stream object
+		return stream;
 	} catch (error) {
 		log('error', `xAI streamText failed: ${error.message}`, error.stack);
 		throw error;
@@ -110,6 +113,7 @@ export async function streamXaiText({
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
  * @param {number} [params.maxRetries] - Max retries for validation/generation.
+ * @param {string} [params.baseUrl] - The base URL for the xAI API.
  * @returns {Promise<object>} The generated object matching the schema.
  * @throws {Error} If generation or validation fails.
  */
@@ -121,17 +125,17 @@ export async function generateXaiObject({
 	objectName = 'generated_xai_object',
 	maxTokens,
 	temperature,
-	maxRetries = 3
+	maxRetries = 3,
+	baseUrl
 }) {
 	log(
-		'warn', // Log warning as this is likely unsupported
+		'warn',
 		`Attempting to generate xAI object ('${objectName}') with model: ${modelId}. This may not be supported by the provider.`
 	);
 	try {
-		const client = getClient(apiKey);
+		const client = getClient(apiKey, baseUrl);
 		const result = await generateObject({
-			model: client(modelId), // Correct model invocation
-			// Note: mode might need adjustment if xAI ever supports object generation differently
+			model: client(modelId),
 			mode: 'tool',
 			schema: schema,
 			messages: messages,
@@ -153,6 +157,6 @@ export async function generateXaiObject({
 			'error',
 			`xAI generateObject ('${objectName}') failed: ${error.message}. (Likely unsupported by provider)`
 		);
-		throw error; // Re-throw the error
+		throw error;
 	}
 }

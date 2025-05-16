@@ -2,15 +2,25 @@ import { createOpenAI, openai } from '@ai-sdk/openai'; // Using openai provider 
 import { generateText, streamText, generateObject } from 'ai'; // Import necessary functions from 'ai'
 import { log } from '../../scripts/modules/utils.js';
 
+function getClient(apiKey, baseUrl) {
+	if (!apiKey) {
+		throw new Error('OpenAI API key is required.');
+	}
+	return createOpenAI({
+		apiKey: apiKey,
+		baseURL: baseUrl || 'https://api.openai.com/v1'
+	});
+}
+
 /**
  * Generates text using OpenAI models via Vercel AI SDK.
  *
- * @param {object} params - Parameters including apiKey, modelId, messages, maxTokens, temperature.
+ * @param {object} params - Parameters including apiKey, modelId, messages, maxTokens, temperature, baseUrl.
  * @returns {Promise<string>} The generated text content.
  * @throws {Error} If API call fails.
  */
 export async function generateOpenAIText(params) {
-	const { apiKey, modelId, messages, maxTokens, temperature } = params;
+	const { apiKey, modelId, messages, maxTokens, temperature, baseUrl } = params;
 	log('debug', `generateOpenAIText called with model: ${modelId}`);
 
 	if (!apiKey) {
@@ -23,18 +33,15 @@ export async function generateOpenAIText(params) {
 		throw new Error('Invalid or empty messages array provided for OpenAI.');
 	}
 
-	const openaiClient = createOpenAI({ apiKey });
+	const openaiClient = getClient(apiKey, baseUrl);
 
 	try {
 		const result = await openaiClient.chat(messages, {
-			// Updated: Use openaiClient.chat directly
 			model: modelId,
 			max_tokens: maxTokens,
 			temperature
 		});
 
-		// Adjust based on actual Vercel SDK response structure for openaiClient.chat
-		// This might need refinement based on testing the SDK's output.
 		const textContent = result?.choices?.[0]?.message?.content?.trim();
 
 		if (!textContent) {
@@ -65,12 +72,12 @@ export async function generateOpenAIText(params) {
 /**
  * Streams text using OpenAI models via Vercel AI SDK.
  *
- * @param {object} params - Parameters including apiKey, modelId, messages, maxTokens, temperature.
+ * @param {object} params - Parameters including apiKey, modelId, messages, maxTokens, temperature, baseUrl.
  * @returns {Promise<ReadableStream>} A readable stream of text deltas.
  * @throws {Error} If API call fails.
  */
 export async function streamOpenAIText(params) {
-	const { apiKey, modelId, messages, maxTokens, temperature } = params;
+	const { apiKey, modelId, messages, maxTokens, temperature, baseUrl } = params;
 	log('debug', `streamOpenAIText called with model: ${modelId}`);
 
 	if (!apiKey) {
@@ -85,12 +92,10 @@ export async function streamOpenAIText(params) {
 		);
 	}
 
-	const openaiClient = createOpenAI({ apiKey });
+	const openaiClient = getClient(apiKey, baseUrl);
 
 	try {
-		// Use the streamText function from Vercel AI SDK core
 		const stream = await openaiClient.chat.stream(messages, {
-			// Updated: Use openaiClient.chat.stream
 			model: modelId,
 			max_tokens: maxTokens,
 			temperature
@@ -100,7 +105,6 @@ export async function streamOpenAIText(params) {
 			'debug',
 			`OpenAI streamText initiated successfully for model: ${modelId}`
 		);
-		// The Vercel SDK's streamText should directly return the stream object
 		return stream;
 	} catch (error) {
 		log(
@@ -117,7 +121,7 @@ export async function streamOpenAIText(params) {
 /**
  * Generates structured objects using OpenAI models via Vercel AI SDK.
  *
- * @param {object} params - Parameters including apiKey, modelId, messages, schema, objectName, maxTokens, temperature.
+ * @param {object} params - Parameters including apiKey, modelId, messages, schema, objectName, maxTokens, temperature, baseUrl.
  * @returns {Promise<object>} The generated object matching the schema.
  * @throws {Error} If API call fails or object generation fails.
  */
@@ -129,7 +133,8 @@ export async function generateOpenAIObject(params) {
 		schema,
 		objectName,
 		maxTokens,
-		temperature
+		temperature,
+		baseUrl
 	} = params;
 	log(
 		'debug',
@@ -145,10 +150,9 @@ export async function generateOpenAIObject(params) {
 	if (!objectName)
 		throw new Error('Object name is required for OpenAI object generation.');
 
-	const openaiClient = createOpenAI({ apiKey });
+	const openaiClient = getClient(apiKey, baseUrl);
 
 	try {
-		// Use the imported generateObject function from 'ai' package
 		const result = await generateObject({
 			model: openaiClient(modelId),
 			schema: schema,

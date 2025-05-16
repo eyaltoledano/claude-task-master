@@ -14,7 +14,8 @@ import {
 	getResearchModelId,
 	getFallbackProvider,
 	getFallbackModelId,
-	getParametersForRole
+	getParametersForRole,
+	getModelConfigForRole
 } from './config-manager.js';
 import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
@@ -284,13 +285,18 @@ async function _unifiedServiceRunner(serviceType, params) {
 		'AI service call failed for all configured roles.';
 
 	for (const currentRole of sequence) {
-		let providerName, modelId, apiKey, roleParams, providerFnSet, providerApiFn;
+		let providerName,
+			modelId,
+			apiKey,
+			roleParams,
+			providerFnSet,
+			providerApiFn,
+			baseUrl;
 
 		try {
 			log('info', `New AI service call with role: ${currentRole}`);
 
 			// 1. Get Config: Provider, Model, Parameters for the current role
-			// Pass effectiveProjectRoot to config getters
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
 				modelId = getMainModelId(effectiveProjectRoot);
@@ -323,10 +329,9 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Pass effectiveProjectRoot to getParametersForRole
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
+			baseUrl = _getBaseUrlForRole(currentRole, effectiveProjectRoot);
 
-			// 2. Get Provider Function Set
 			providerFnSet = PROVIDER_FUNCTIONS[providerName?.toLowerCase()];
 			if (!providerFnSet) {
 				log(
@@ -339,7 +344,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Use the original service type to get the function
 			providerApiFn = providerFnSet[serviceType];
 			if (typeof providerApiFn !== 'function') {
 				log(
@@ -354,58 +358,33 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// 3. Resolve API Key (will throw if required and missing)
-			// Pass effectiveProjectRoot to _resolveApiKey
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
 				effectiveProjectRoot
 			);
 
-			// 4. Construct Messages Array
 			const messages = [];
 			if (systemPrompt) {
 				messages.push({ role: 'system', content: systemPrompt });
 			}
-
-			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
-			// {
-			//     type: 'text',
-			//     text: 'Large cached context here like a tasks json',
-			//     providerOptions: {
-			//       anthropic: { cacheControl: { type: 'ephemeral' } }
-			//     }
-			//   }
-
-			// Example
-			// if (params.context) { // context is a json string of a tasks object or some other stu
-			//     messages.push({
-			//         type: 'text',
-			//         text: params.context,
-			//         providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } }
-			//     });
-			// }
-
 			if (prompt) {
-				// Ensure prompt exists before adding
 				messages.push({ role: 'user', content: prompt });
 			} else {
-				// Throw an error if the prompt is missing, as it's essential
 				throw new Error('User prompt content is missing.');
 			}
 
-			// 5. Prepare call parameters (using messages array)
 			const callParams = {
 				apiKey,
 				modelId,
-				maxTokens: roleParams.maxTokens,
-				temperature: roleParams.temperature,
 				messages,
-				...(serviceType === 'generateObject' && { schema, objectName }),
+				...roleParams,
+				baseUrl,
+				schema,
+				objectName,
 				...restApiParams
 			};
 
-			// 6. Attempt the call with retries
 			const result = await _attemptProviderCallWithRetries(
 				providerApiFn,
 				callParams,
@@ -413,42 +392,25 @@ async function _unifiedServiceRunner(serviceType, params) {
 				modelId,
 				currentRole
 			);
-
-			log('info', `${serviceType}Service succeeded using role: ${currentRole}`);
-
 			return result;
 		} catch (error) {
-			const cleanMessage = _extractErrorMessage(error);
-			log(
-				'error',
-				`Service call failed for role ${currentRole} (Provider: ${providerName || 'unknown'}, Model: ${modelId || 'unknown'}): ${cleanMessage}`
-			);
 			lastError = error;
-			lastCleanErrorMessage = cleanMessage;
-
-			if (serviceType === 'generateObject') {
-				const lowerCaseMessage = cleanMessage.toLowerCase();
-				if (
-					lowerCaseMessage.includes(
-						'no endpoints found that support tool use'
-					) ||
-					lowerCaseMessage.includes('does not support tool_use') ||
-					lowerCaseMessage.includes('tool use is not supported') ||
-					lowerCaseMessage.includes('tools are not supported') ||
-					lowerCaseMessage.includes('function calling is not supported')
-				) {
-					const specificErrorMsg = `Model '${modelId || 'unknown'}' via provider '${providerName || 'unknown'}' does not support the 'tool use' required by generateObjectService. Please configure a model that supports tool/function calling for the '${currentRole}' role, or use generateTextService if structured output is not strictly required.`;
-					log('error', `[Tool Support Error] ${specificErrorMsg}`);
-					throw new Error(specificErrorMsg);
-				}
-			}
+			lastCleanErrorMessage = _extractErrorMessage(error);
+			log(
+				'warn',
+				`AI service call failed for role ${currentRole}: ${lastCleanErrorMessage}`
+			);
+			continue;
 		}
 	}
 
-	// If loop completes, all roles failed
-	log('error', `All roles in the sequence [${sequence.join(', ')}] failed.`);
-	// Throw a new error with the cleaner message from the last failure
-	throw new Error(lastCleanErrorMessage);
+	throw (
+		lastError ||
+		new Error(
+			lastCleanErrorMessage ||
+				'AI service call failed for all configured roles (no error details)'
+		)
+	);
 }
 
 /**
@@ -507,6 +469,13 @@ async function generateObjectService(params) {
 	};
 	const combinedParams = { ...defaults, ...params };
 	return _unifiedServiceRunner('generateObject', combinedParams);
+}
+
+function _getBaseUrlForRole(role, explicitRoot = null) {
+	const roleConfig = getModelConfigForRole(role, explicitRoot);
+	return roleConfig && typeof roleConfig.baseUrl === 'string'
+		? roleConfig.baseUrl
+		: undefined;
 }
 
 export { generateTextService, streamTextService, generateObjectService };
