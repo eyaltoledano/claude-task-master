@@ -15,7 +15,7 @@ import {
 	getFallbackProvider,
 	getFallbackModelId,
 	getParametersForRole,
-	getModelConfigForRole
+	getBaseUrlForRole
 } from './config-manager.js';
 import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
@@ -332,7 +332,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Pass effectiveProjectRoot to getParametersForRole
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
-			baseUrl = _getBaseUrlForRole(currentRole, effectiveProjectRoot);
+			baseUrl = getBaseUrlForRole(currentRole, effectiveProjectRoot);
 
 			// 2. Get Provider Function Set
 			providerFnSet = PROVIDER_FUNCTIONS[providerName?.toLowerCase()];
@@ -516,13 +516,6 @@ async function generateObjectService(params) {
 	};
 	const combinedParams = { ...defaults, ...params };
 	return _unifiedServiceRunner('generateObject', combinedParams);
-}
-
-function _getBaseUrlForRole(role, explicitRoot = null) {
-	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseUrl === 'string'
-		? roleConfig.baseUrl
-		: undefined;
 }
 
 export { generateTextService, streamTextService, generateObjectService };

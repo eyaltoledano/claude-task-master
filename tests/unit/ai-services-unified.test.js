@@ -8,7 +8,7 @@ const mockGetResearchModelId = jest.fn();
 const mockGetFallbackProvider = jest.fn();
 const mockGetFallbackModelId = jest.fn();
 const mockGetParametersForRole = jest.fn();
-
+const mockGetBaseUrlForRole = jest.fn();
 jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMainProvider: mockGetMainProvider,
 	getMainModelId: mockGetMainModelId,
@@ -16,7 +16,8 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getResearchModelId: mockGetResearchModelId,
 	getFallbackProvider: mockGetFallbackProvider,
 	getFallbackModelId: mockGetFallbackModelId,
-	getParametersForRole: mockGetParametersForRole
+	getParametersForRole: mockGetParametersForRole,
+	getBaseUrlForRole: mockGetBaseUrlForRole
 }));
 
 // Mock AI Provider Modules
