@@ -16,7 +16,7 @@ function getClient(apiKey, baseUrl) {
  * Generates text using OpenAI models via Vercel AI SDK.
  *
  * @param {object} params - Parameters including apiKey, modelId, messages, maxTokens, temperature, baseUrl.
- * @returns {Promise<string>} The generated text content.
+ * @returns {Promise<object>} The generated text content and usage.
  * @throws {Error} If API call fails.
  */
 export async function generateOpenAIText(params) {
@@ -36,15 +36,14 @@ export async function generateOpenAIText(params) {
 	const openaiClient = getClient(apiKey, baseUrl);
 
 	try {
-		const result = await openaiClient.chat(messages, {
-			model: modelId,
-			max_tokens: maxTokens,
+		const result = await generateText({
+			model: openaiClient(modelId),
+			messages,
+			maxTokens,
 			temperature
 		});
 
-		const textContent = result?.choices?.[0]?.message?.content?.trim();
-
-		if (!textContent) {
+		if (!result || !result.text) {
 			log(
 				'warn',
 				'OpenAI generateText response did not contain expected content.',
@@ -56,7 +55,13 @@ export async function generateOpenAIText(params) {
 			'debug',
 			`OpenAI generateText completed successfully for model: ${modelId}`
 		);
-		return textContent;
+		return {
+			text: result.text.trim(),
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
 		log(
 			'error',
@@ -122,7 +127,7 @@ export async function streamOpenAIText(params) {
  * Generates structured objects using OpenAI models via Vercel AI SDK.
  *
  * @param {object} params - Parameters including apiKey, modelId, messages, schema, objectName, maxTokens, temperature, baseUrl.
- * @returns {Promise<object>} The generated object matching the schema.
+ * @returns {Promise<object>} The generated object matching the schema and usage.
  * @throws {Error} If API call fails or object generation fails.
  */
 export async function generateOpenAIObject(params) {
@@ -166,7 +171,21 @@ export async function generateOpenAIObject(params) {
 			'debug',
 			`OpenAI generateObject completed successfully for model: ${modelId}`
 		);
-		return result.object;
+		if (!result || typeof result.object === 'undefined') {
+			log(
+				'warn',
+				'OpenAI generateObject response did not contain expected object.',
+				{ result }
+			);
+			throw new Error('Failed to extract object from OpenAI response.');
+		}
+		return {
+			object: result.object,
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
 		log(
 			'error',

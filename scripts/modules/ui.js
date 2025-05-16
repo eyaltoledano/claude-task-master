@@ -870,8 +870,11 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 		);
 	}
 
-	// Show subtasks if they exist
-	if (nextTask.subtasks && nextTask.subtasks.length > 0) {
+	// Determine if the nextTask is a subtask
+	const isSubtask = !!nextTask.parentId;
+
+	// Show subtasks if they exist (only for parent tasks)
+	if (!isSubtask && nextTask.subtasks && nextTask.subtasks.length > 0) {
 		console.log(
 			boxen(chalk.white.bold('Subtasks'), {
 				padding: { top: 0, bottom: 0, left: 1, right: 1 },
@@ -971,8 +974,10 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 		});
 
 		console.log(subtaskTable.toString());
-	} else {
-		// Suggest expanding if no subtasks
+	}
+
+	// Suggest expanding if no subtasks (only for parent tasks without subtasks)
+	if (!isSubtask && (!nextTask.subtasks || nextTask.subtasks.length === 0)) {
 		console.log(
 			boxen(
 				chalk.yellow('No subtasks found. Consider breaking down this task:') +
@@ -991,22 +996,30 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 	}
 
 	// Show action suggestions
+	let suggestedActionsContent = chalk.white.bold('Suggested Actions:') + '\n';
+	if (isSubtask) {
+		// Suggested actions for a subtask
+		suggestedActionsContent +=
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
+			`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show --id=${nextTask.parentId}`)}`;
+	} else {
+		// Suggested actions for a parent task
+		suggestedActionsContent +=
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
+			(nextTask.subtasks && nextTask.subtasks.length > 0
+				? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${nextTask.id}.1 --status=done`)}` // Example: first subtask
+				: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${nextTask.id}`)}`);
+	}
+
 	console.log(
-		boxen(
-			chalk.white.bold('Suggested Actions:') +
-				'\n' +
-				`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
-				`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
-				(nextTask.subtasks && nextTask.subtasks.length > 0
-					? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${nextTask.id}.1 --status=done`)}`
-					: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${nextTask.id}`)}`),
-			{
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				borderColor: 'green',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			}
-		)
+		boxen(suggestedActionsContent, {
+			padding: { top: 0, bottom: 0, left: 1, right: 1 },
+			borderColor: 'green',
+			borderStyle: 'round',
+			margin: { top: 1 }
+		})
 	);
 }
 
@@ -2005,6 +2018,51 @@ function displayAvailableModels(availableModels) {
 	);
 }
 
+/**
+ * Displays AI usage telemetry summary in the CLI.
+ * @param {object} telemetryData - The telemetry data object.
+ * @param {string} outputType - 'cli' or 'mcp' (though typically only called for 'cli').
+ */
+function displayAiUsageSummary(telemetryData, outputType = 'cli') {
+	if (
+		(outputType !== 'cli' && outputType !== 'text') ||
+		!telemetryData ||
+		isSilentMode()
+	) {
+		return; // Only display for CLI and if data exists and not in silent mode
+	}
+
+	const {
+		modelUsed,
+		providerName,
+		inputTokens,
+		outputTokens,
+		totalTokens,
+		totalCost,
+		commandName
+	} = telemetryData;
+
+	let summary = chalk.bold.blue('AI Usage Summary:') + '\n';
+	summary += chalk.gray(`  Command: ${commandName}\n`);
+	summary += chalk.gray(`  Provider: ${providerName}\n`);
+	summary += chalk.gray(`  Model: ${modelUsed}\n`);
+	summary += chalk.gray(
+		`  Tokens: ${totalTokens} (Input: ${inputTokens}, Output: ${outputTokens})\n`
+	);
+	summary += chalk.gray(`  Est. Cost: $${totalCost.toFixed(6)}`);
+
+	console.log(
+		boxen(summary, {
+			padding: 1,
+			margin: { top: 1 },
+			borderColor: 'blue',
+			borderStyle: 'round',
+			title: '💡 Telemetry',
+			titleAlignment: 'center'
+		})
+	);
+}
+
 // Export UI functions
 export {
 	displayBanner,
@@ -2022,5 +2080,6 @@ export {
 	confirmTaskOverwrite,
 	displayApiKeyStatus,
 	displayModelConfiguration,
-	displayAvailableModels
+	displayAvailableModels,
+	displayAiUsageSummary
 };

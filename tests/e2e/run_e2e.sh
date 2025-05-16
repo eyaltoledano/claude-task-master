@@ -60,9 +60,52 @@ MAIN_ENV_FILE="$TASKMASTER_SOURCE_DIR/.env"
 # ---
 
 # <<< Source the helper script >>>
+# shellcheck source=tests/e2e/e2e_helpers.sh
 source "$TASKMASTER_SOURCE_DIR/tests/e2e/e2e_helpers.sh"
+
+# ==========================================
+# >>> Global Helper Functions Defined in run_e2e.sh <<<
+# --- Helper Functions (Define globally before export) ---
+_format_duration() {
+  local total_seconds=$1
+  local minutes=$((total_seconds / 60))
+  local seconds=$((total_seconds % 60))
+  printf "%dm%02ds" "$minutes" "$seconds"
+}
+
+# Note: This relies on 'overall_start_time' being set globally before the function is called
+_get_elapsed_time_for_log() {
+  local current_time
+  current_time=$(date +%s)
+  # Use overall_start_time here, as start_time_for_helpers might not be relevant globally
+  local elapsed_seconds
+  elapsed_seconds=$((current_time - overall_start_time))
+  _format_duration "$elapsed_seconds"
+}
+
+log_info() {
+  echo "[INFO] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_success() {
+  echo "[SUCCESS] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_error() {
+  echo "[ERROR] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1" >&2
+}
+
+log_step() {
+  test_step_count=$((test_step_count + 1))
+  echo ""
+  echo "============================================="
+  echo "  STEP ${test_step_count}: [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+  echo "============================================="
+}
+# ==========================================
+
 # <<< Export helper functions for subshells >>>
-export -f log_info log_success log_error log_step _format_duration _get_elapsed_time_for_log
+export -f log_info log_success log_error log_step _format_duration _get_elapsed_time_for_log extract_and_sum_cost
 
 # --- Argument Parsing for Analysis-Only Mode ---
 # This remains the same, as it exits early if matched
@@ -138,6 +181,7 @@ fi
 # Note: These are mainly for step numbering within the log now, not for final summary
 test_step_count=0
 start_time_for_helpers=0 # Separate start time for helper functions inside the pipe
+total_e2e_cost="0.0" # Initialize total E2E cost
 # ---
 
 # --- Log File Setup ---
@@ -220,12 +264,16 @@ log_step() {
   fi
 
   # --- Dependency Checks ---
-  log_step "Checking for dependencies (jq)"
+  log_step "Checking for dependencies (jq, bc)"
   if ! command -v jq &> /dev/null; then
       log_error "Dependency 'jq' is not installed or not found in PATH. Please install jq (e.g., 'brew install jq' or 'sudo apt-get install jq')."
       exit 1
   fi
-  log_success "Dependency 'jq' found."
+  if ! command -v bc &> /dev/null; then
+      log_error "Dependency 'bc' not installed (for cost calculation). Please install bc (e.g., 'brew install bc' or 'sudo apt-get install bc')."
+      exit 1
+  fi
+  log_success "Dependencies 'jq' and 'bc' found."
 
   # --- Test Setup (Output to tee) ---
   log_step "Setting up test environment"
@@ -393,7 +441,7 @@ log_step() {
   declare -a models=(
     "claude-3-7-sonnet-20250219"
     "gpt-4o"
-    "gemini-2.5-pro-exp-03-25"
+    "gemini-2.5-pro-preview-05-06"
     "sonar-pro" # Note: This is research-only, add-task might fail if not using research model
     "grok-3"
     "anthropic/claude-3.7-sonnet" # OpenRouter uses Claude 3.7
@@ -435,9 +483,8 @@ log_step() {
 
     # 3. Check for success and extract task ID
     new_task_id=""
-    if [ $add_task_exit_code -eq 0 ] && echo "$add_task_cmd_output" | grep -q "✓ Added new task #"; then
-      # Attempt to extract the ID (adjust grep/sed/awk as needed based on actual output format)
-      new_task_id=$(echo "$add_task_cmd_output" | grep "✓ Added new task #" | sed 's/.*✓ Added new task #\([0-9.]\+\).*/\1/')
+    if [ $add_task_exit_code -eq 0 ] && (echo "$add_task_cmd_output" | grep -q "✓ Added new task #" || echo "$add_task_cmd_output" | grep -q "✅ New task created successfully:" || echo "$add_task_cmd_output" | grep -q "Task [0-9]\+ Created Successfully"); then
+      new_task_id=$(echo "$add_task_cmd_output" | grep -o -E "(Task |#)[0-9.]+" | grep -o -E "[0-9.]+" | head -n 1)
       if [ -n "$new_task_id" ]; then
         log_success "Add-task succeeded for $provider. New task ID: $new_task_id"
         echo "Provider $provider add-task SUCCESS (ID: $new_task_id)" >> provider_add_task_summary.log
@@ -774,5 +821,9 @@ else
   formatted_duration_for_error=$(_format_duration "$total_elapsed_seconds")
   echo "[ERROR] [$formatted_duration_for_error] $(date +"%Y-%m-%d %H:%M:%S") Test run directory $TEST_RUN_DIR not found. Cannot perform LLM analysis." >&2
 fi
+
+# Final cost formatting
+formatted_total_e2e_cost=$(printf "%.6f" "$total_e2e_cost")
+echo "Total E2E AI Cost: $formatted_total_e2e_cost USD"
 
 exit $EXIT_CODE

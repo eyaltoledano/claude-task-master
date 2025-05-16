@@ -94,6 +94,7 @@ export async function addTaskDirect(args, log, context = {}) {
 
 		let manualTaskData = null;
 		let newTaskId;
+		let telemetryData;
 
 		if (isManualCreation) {
 			// Create manual task data object
@@ -109,7 +110,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			);
 
 			// Call the addTask function with manual task data
-			newTaskId = await addTask(
+			const result = await addTask(
 				tasksPath,
 				null, // prompt is null for manual creation
 				taskDependencies,
@@ -117,13 +118,17 @@ export async function addTaskDirect(args, log, context = {}) {
 				{
 					session,
 					mcpLog,
-					projectRoot
+					projectRoot,
+					commandName: 'add-task',
+					outputType: 'mcp'
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
 				false, // research flag is false for manual creation
 				projectRoot // Pass projectRoot
 			);
+			newTaskId = result.newTaskId;
+			telemetryData = result.telemetryData;
 		} else {
 			// AI-driven task creation
 			log.info(
@@ -131,7 +136,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			);
 
 			// Call the addTask function, passing the research flag
-			newTaskId = await addTask(
+			const result = await addTask(
 				tasksPath,
 				prompt, // Use the prompt for AI creation
 				taskDependencies,
@@ -139,12 +144,16 @@ export async function addTaskDirect(args, log, context = {}) {
 				{
 					session,
 					mcpLog,
-					projectRoot
+					projectRoot,
+					commandName: 'add-task',
+					outputType: 'mcp'
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation
 				research // Pass the research flag
 			);
+			newTaskId = result.newTaskId;
+			telemetryData = result.telemetryData;
 		}
 
 		// Restore normal logging
@@ -154,7 +163,8 @@ export async function addTaskDirect(args, log, context = {}) {
 			success: true,
 			data: {
 				taskId: newTaskId,
-				message: `Successfully added new task #${newTaskId}`
+				message: `Successfully added new task #${newTaskId}`,
+				telemetryData: telemetryData
 			}
 		};
 	} catch (error) {

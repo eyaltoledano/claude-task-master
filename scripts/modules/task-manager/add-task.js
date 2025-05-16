@@ -8,7 +8,8 @@ import {
 	displayBanner,
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator
+	stopLoadingIndicator,
+	displayAiUsageSummary
 } from '../ui.js';
 import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
@@ -44,7 +45,9 @@ const AiTaskDataSchema = z.object({
  * @param {boolean} useResearch - Whether to use the research model (passed to unified service)
  * @param {Object} context - Context object containing session and potentially projectRoot
  * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
- * @returns {number} The new task ID
+ * @param {string} [context.commandName] - The name of the command being executed (for telemetry)
+ * @param {string} [context.outputType] - The output type ('cli' or 'mcp', for telemetry)
+ * @returns {Promise<object>} An object containing newTaskId and telemetryData
  */
 async function addTask(
 	tasksPath,
@@ -56,7 +59,7 @@ async function addTask(
 	manualTaskData = null,
 	useResearch = false
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot, commandName, outputType } = context;
 	const isMCP = !!mcpLog;
 
 	// Create a consistent logFn object regardless of context
@@ -78,6 +81,7 @@ async function addTask(
 	);
 
 	let loadingIndicator = null;
+	let aiServiceResponse = null; // To store the full response from AI service
 
 	// Create custom reporter that checks for MCP log
 	const report = (message, level = 'info') => {
@@ -89,20 +93,6 @@ async function addTask(
 	};
 
 	try {
-		// Only display banner and UI elements for text output (CLI)
-		if (outputFormat === 'text') {
-			displayBanner();
-
-			console.log(
-				boxen(chalk.white.bold(`Creating New Task`), {
-					padding: 1,
-					borderColor: 'blue',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				})
-			);
-		}
-
 		// Read the existing tasks
 		const data = readJSON(tasksPath);
 		if (!data || !data.tasks) {
@@ -169,7 +159,7 @@ async function addTask(
 		} else {
 			report('DEBUG: Taking AI task generation path.', 'debug');
 			// --- Refactored AI Interaction ---
-			report('Generating task data with AI...', 'info');
+			report(`Generating task data with AI with prompt:\n${prompt}`, 'info');
 
 			// Create context string for task creation prompt
 			let contextTasks = '';
@@ -229,29 +219,51 @@ async function addTask(
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
 				loadingIndicator = startLoadingIndicator(
-					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI...`
+					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI...\n`
 				);
 			}
 
 			try {
-				// Determine the service role based on the useResearch flag
 				const serviceRole = useResearch ? 'research' : 'main';
-
 				report('DEBUG: Calling generateObjectService...', 'debug');
-				// Call the unified AI service
-				const aiGeneratedTaskData = await generateObjectService({
-					role: serviceRole, // <-- Use the determined role
-					session: session, // Pass session for API key resolution
-					projectRoot: projectRoot, // <<< Pass projectRoot here
-					schema: AiTaskDataSchema, // Pass the Zod schema
-					objectName: 'newTaskData', // Name for the object
+
+				aiServiceResponse = await generateObjectService({
+					// Capture the full response
+					role: serviceRole,
+					session: session,
+					projectRoot: projectRoot,
+					schema: AiTaskDataSchema,
+					objectName: 'newTaskData',
 					systemPrompt: systemPrompt,
-					prompt: userPrompt
+					prompt: userPrompt,
+					commandName: commandName || 'add-task', // Use passed commandName or default
+					outputType: outputType || (isMCP ? 'mcp' : 'cli') // Use passed outputType or derive
 				});
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
 
+				if (!aiServiceResponse || !aiServiceResponse.mainResult) {
+					throw new Error(
+						'AI service did not return the expected object structure.'
+					);
+				}
+
+				// Prefer mainResult if it looks like a valid task object, otherwise try mainResult.object
+				if (
+					aiServiceResponse.mainResult.title &&
+					aiServiceResponse.mainResult.description
+				) {
+					taskData = aiServiceResponse.mainResult;
+				} else if (
+					aiServiceResponse.mainResult.object &&
+					aiServiceResponse.mainResult.object.title &&
+					aiServiceResponse.mainResult.object.description
+				) {
+					taskData = aiServiceResponse.mainResult.object;
+				} else {
+					throw new Error('AI service did not return a valid task object.');
+				}
+
 				report('Successfully generated task data from AI.', 'success');
-				taskData = aiGeneratedTaskData; // Assign the validated object
 			} catch (error) {
 				report(
 					`DEBUG: generateObjectService caught error: ${error.message}`,
@@ -362,11 +374,25 @@ async function addTask(
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
 			);
+
+			// Display AI Usage Summary if telemetryData is available
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.telemetryData &&
+				(outputType === 'cli' || outputType === 'text')
+			) {
+				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+			}
 		}
 
-		// Return the new task ID
-		report(`DEBUG: Returning new task ID: ${newTaskId}`, 'debug');
-		return newTaskId;
+		report(
+			`DEBUG: Returning new task ID: ${newTaskId} and telemetry.`,
+			'debug'
+		);
+		return {
+			newTaskId: newTaskId,
+			telemetryData: aiServiceResponse ? aiServiceResponse.telemetryData : null
+		};
 	} catch (error) {
 		// Stop any loading indicator on error
 		if (loadingIndicator) {

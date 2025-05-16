@@ -108,18 +108,24 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 
 		try {
 			// Execute core updateSubtaskById function
-			const updatedSubtask = await updateSubtaskById(
+			const coreResult = await updateSubtaskById(
 				tasksPath,
 				subtaskIdStr,
 				prompt,
 				useResearch,
-				{ mcpLog: logWrapper, session, projectRoot },
+				{
+					mcpLog: logWrapper,
+					session,
+					projectRoot,
+					commandName: 'update-subtask',
+					outputType: 'mcp'
+				},
 				'json'
 			);
 
-			if (updatedSubtask === null) {
+			if (!coreResult || coreResult.updatedSubtask === null) {
 				const message = `Subtask ${id} or its parent task not found.`;
-				logWrapper.error(message); // Log as error since it couldn't be found
+				logWrapper.error(message);
 				return {
 					success: false,
 					error: { code: 'SUBTASK_NOT_FOUND', message: message },
@@ -136,9 +142,10 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					message: `Successfully updated subtask with ID ${subtaskIdStr}`,
 					subtaskId: subtaskIdStr,
 					parentId: subtaskIdStr.split('.')[0],
-					subtask: updatedSubtask,
+					subtask: coreResult.updatedSubtask,
 					tasksPath,
-					useResearch
+					useResearch,
+					telemetryData: coreResult.telemetryData
 				},
 				fromCache: false
 			};

@@ -3,7 +3,6 @@ description: Glossary of other Cursor rules
 globs: **/*
 alwaysApply: true
 ---
-
 # Glossary of Task Master Cursor Rules
 
 This file provides a quick reference to the purpose of each rule file located in the `.cursor/rules` directory.
@@ -23,4 +22,5 @@ This file provides a quick reference to the purpose of each rule file located in
 - **[`tests.mdc`](mdc:.cursor/rules/tests.mdc)**: Guidelines for implementing and maintaining tests for Task Master CLI.
 - **[`ui.mdc`](mdc:.cursor/rules/ui.mdc)**: Guidelines for implementing and maintaining user interface components.
 - **[`utilities.mdc`](mdc:.cursor/rules/utilities.mdc)**: Guidelines for implementing utility functions.
+- **[`telemetry.mdc`](mdc:.cursor/rules/telemetry.mdc)**: Guidelines for integrating AI usage telemetry across Task Master.
 

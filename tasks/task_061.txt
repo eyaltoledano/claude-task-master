@@ -1,6 +1,6 @@
 # Task ID: 61
 # Title: Implement Flexible AI Model Management
-# Status: in-progress
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Currently, Task Master only supports Claude for main operations and Perplexity for research. Users are limited in flexibility when managing AI models. Adding comprehensive support for multiple popular AI models (OpenAI, Ollama, Gemini, OpenRouter, Grok) and providing intuitive CLI commands for model management will significantly enhance usability, transparency, and adaptability to user preferences and project-specific needs. This task will now leverage Vercel's AI SDK to streamline integration and management of these models.
@@ -486,7 +486,7 @@ The existing `ai-services.js` should be refactored to:
 7. Add verbose output option for debugging
 8. Testing approach: Create integration tests that verify model setting functionality with various inputs
 
-## 8. Update Main Task Processing Logic [deferred]
+## 8. Update Main Task Processing Logic [done]
 ### Dependencies: 61.4, 61.5, 61.18
 ### Description: Refactor the main task processing logic to use the new AI services module and support dynamic model selection.
 ### Details:
@@ -554,7 +554,7 @@ When updating the main task processing logic, implement the following changes to
    ```
 </info added on 2025-04-20T03:55:56.310Z>
 
-## 9. Update Research Processing Logic [deferred]
+## 9. Update Research Processing Logic [done]
 ### Dependencies: 61.4, 61.5, 61.8, 61.18
 ### Description: Refactor the research processing logic to use the new AI services module and support dynamic model selection for research operations.
 ### Details:
@@ -747,7 +747,7 @@ const result = await generateObjectService({
 5. Ensure any default values previously hardcoded are now retrieved from the configuration system.
 </info added on 2025-04-20T03:55:01.707Z>
 
-## 12. Refactor Basic Subtask Generation to use generateObjectService [cancelled]
+## 12. Refactor Basic Subtask Generation to use generateObjectService [done]
 ### Dependencies: 61.23
 ### Description: Update the `generateSubtasks` function in `ai-services.js` to use the new `generateObjectService` from `ai-services-unified.js` with a Zod schema for the subtask array.
 ### Details:
@@ -798,7 +798,7 @@ The refactoring should leverage the new configuration system:
    ```
 </info added on 2025-04-20T03:54:45.542Z>
 
-## 13. Refactor Research Subtask Generation to use generateObjectService [cancelled]
+## 13. Refactor Research Subtask Generation to use generateObjectService [done]
 ### Dependencies: 61.23
 ### Description: Update the `generateSubtasksWithPerplexity` function in `ai-services.js` to first perform research (potentially keeping the Perplexity call separate or adapting it) and then use `generateObjectService` from `ai-services-unified.js` with research results included in the prompt.
 ### Details:
@@ -828,7 +828,7 @@ const { verbose } = getLoggingConfig();
 5. Ensure the transition to generateObjectService maintains all existing functionality while leveraging the new configuration system
 </info added on 2025-04-20T03:54:26.882Z>
 
-## 14. Refactor Research Task Description Generation to use generateObjectService [cancelled]
+## 14. Refactor Research Task Description Generation to use generateObjectService [done]
 ### Dependencies: 61.23
 ### Description: Update the `generateTaskDescriptionWithPerplexity` function in `ai-services.js` to first perform research and then use `generateObjectService` from `ai-services-unified.js` to generate the structured task description.
 ### Details:
@@ -869,7 +869,7 @@ return generateObjectService({
 5. Remove any hardcoded configuration values, ensuring all settings are retrieved from the centralized configuration system.
 </info added on 2025-04-20T03:54:04.420Z>
 
-## 15. Refactor Complexity Analysis AI Call to use generateObjectService [cancelled]
+## 15. Refactor Complexity Analysis AI Call to use generateObjectService [done]
 ### Dependencies: 61.23
 ### Description: Update the logic that calls the AI after using `generateComplexityAnalysisPrompt` in `ai-services.js` to use the new `generateObjectService` from `ai-services-unified.js` with a Zod schema for the complexity report.
 ### Details:
@@ -916,7 +916,7 @@ The complexity analysis AI call should be updated to align with the new configur
    ```
 </info added on 2025-04-20T03:53:46.120Z>
 
-## 16. Refactor Task Addition AI Call to use generateObjectService [cancelled]
+## 16. Refactor Task Addition AI Call to use generateObjectService [done]
 ### Dependencies: 61.23
 ### Description: Update the logic that calls the AI after using `_buildAddTaskPrompt` in `ai-services.js` to use the new `generateObjectService` from `ai-services-unified.js` with a Zod schema for the single task object.
 ### Details:
@@ -961,7 +961,7 @@ To implement this refactoring, you'll need to:
 4. Update any error handling to match the new service's error patterns.
 </info added on 2025-04-20T03:53:27.455Z>
 
-## 17. Refactor General Chat/Update AI Calls [deferred]
+## 17. Refactor General Chat/Update AI Calls [done]
 ### Dependencies: 61.23
 ### Description: Refactor functions like `sendChatWithContext` (and potentially related task update functions in `task-manager.js` if they make direct AI calls) to use `streamTextService` or `generateTextService` from `ai-services-unified.js`.
 ### Details:
@@ -1008,7 +1008,7 @@ When refactoring `sendChatWithContext` and related functions, ensure they align 
 5. Ensure any default behaviors respect configuration defaults rather than hardcoded values.
 </info added on 2025-04-20T03:53:03.709Z>
 
-## 18. Refactor Callers of AI Parsing Utilities [deferred]
+## 18. Refactor Callers of AI Parsing Utilities [done]
 ### Dependencies: None
 ### Description: Update the code that calls `parseSubtasksFromText`, `parseTaskJsonResponse`, and `parseTasksFromCompletion` to instead directly handle the structured JSON output provided by `generateObjectService` (as the refactored AI calls will now use it).
 ### Details:
@@ -1761,19 +1761,19 @@ export async function generateGoogleObject({
 ```
 </info added on 2025-04-27T00:00:46.675Z>
 
-## 25. Implement `ollama.js` Provider Module [pending]
+## 25. Implement `ollama.js` Provider Module [done]
 ### Dependencies: None
 ### Description: Create and implement the `ollama.js` module within `src/ai-providers/`. This module should contain functions to interact with local Ollama models using the **`ollama-ai-provider` library**, adhering to the standardized input/output format defined for `ai-services-unified.js`. Note the specific library used.
 ### Details:
 
 
-## 26. Implement `mistral.js` Provider Module using Vercel AI SDK [pending]
+## 26. Implement `mistral.js` Provider Module using Vercel AI SDK [done]
 ### Dependencies: None
 ### Description: Create and implement the `mistral.js` module within `src/ai-providers/`. This module should contain functions to interact with Mistral AI models using the **Vercel AI SDK (`@ai-sdk/mistral`)**, adhering to the standardized input/output format defined for `ai-services-unified.js`.
 ### Details:
 
 
-## 27. Implement `azure.js` Provider Module using Vercel AI SDK [pending]
+## 27. Implement `azure.js` Provider Module using Vercel AI SDK [done]
 ### Dependencies: None
 ### Description: Create and implement the `azure.js` module within `src/ai-providers/`. This module should contain functions to interact with Azure OpenAI models using the **Vercel AI SDK (`@ai-sdk/azure`)**, adhering to the standardized input/output format defined for `ai-services-unified.js`.
 ### Details:
@@ -2649,13 +2649,13 @@ Here are more detailed steps for removing unnecessary console logs:
 10. After committing changes, monitor the application in staging environment to ensure no critical information is lost.
 </info added on 2025-05-02T20:47:56.080Z>
 
-## 44. Add setters for temperature, max tokens on per role basis. [pending]
+## 44. Add setters for temperature, max tokens on per role basis. [done]
 ### Dependencies: None
 ### Description: NOT per model/provider basis though we could probably just define those in the .taskmasterconfig file but then they would be hard-coded. if we let users define them on a per role basis, they will define incorrect values. maybe a good middle ground is to do both - we enforce maximum using known max tokens for input and output at the .taskmasterconfig level but then we also give setters to adjust temp/input tokens/output tokens for each of the 3 roles.
 ### Details:
 
 
-## 45. Add support for Bedrock provider with ai sdk and unified service [pending]
+## 45. Add support for Bedrock provider with ai sdk and unified service [done]
 ### Dependencies: None
 ### Description: 
 ### Details:

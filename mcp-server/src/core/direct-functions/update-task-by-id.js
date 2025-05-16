@@ -110,7 +110,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 
 		try {
 			// Execute core updateTaskById function with proper parameters
-			const updatedTask = await updateTaskById(
+			const coreResult = await updateTaskById(
 				tasksPath,
 				taskId,
 				prompt,
@@ -118,19 +118,26 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				{
 					mcpLog: logWrapper,
 					session,
-					projectRoot
+					projectRoot,
+					commandName: 'update-task',
+					outputType: 'mcp'
 				},
 				'json'
 			);
 
-			// Check if the core function indicated the task wasn't updated (e.g., status was 'done')
-			if (updatedTask === null) {
+			// Check if the core function returned null or an object without success
+			if (!coreResult || coreResult.updatedTask === null) {
 				// Core function logs the reason, just return success with info
 				const message = `Task ${taskId} was not updated (likely already completed).`;
 				logWrapper.info(message);
 				return {
 					success: true,
-					data: { message: message, taskId: taskId, updated: false },
+					data: {
+						message: message,
+						taskId: taskId,
+						updated: false,
+						telemetryData: coreResult?.telemetryData
+					},
 					fromCache: false
 				};
 			}
@@ -146,7 +153,8 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					tasksPath: tasksPath,
 					useResearch: useResearch,
 					updated: true,
-					updatedTask: updatedTask
+					updatedTask: coreResult.updatedTask,
+					telemetryData: coreResult.telemetryData
 				},
 				fromCache: false
 			};
