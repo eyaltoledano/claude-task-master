@@ -208,7 +208,61 @@ task-master add-task --prompt="Description" --priority=high
 ```bash
 # Initialize a new project with Task Master structure
 task-master init
+
+# Initialize a new project applying specific brand rules
+task-master init --rules cursor,windsurf
 ```
+
+- The `--rules` flag allows you to specify one or more brand rule sets (e.g., `cursor`, `roo`, `windsurf`) to apply during initialization.
+- If omitted, the default is `cursor`.
+- You can use multiple comma-separated brands in a single command.
+
+**Example:**
+
+```bash
+task-master init --rules cursor,roo
+```
+
+## Manage Brand Rules
+
+```bash
+# Add brand rule sets to your project
+# (e.g., .roo/rules, .windsurf/rules)
+task-master rules add <brand1,brand2,...>
+
+# Remove brand rule sets from your project
+task-master rules remove <brand1,brand2,...>
+
+# Launch interactive rules setup to select brands
+# (does not re-initialize project or ask about shell aliases)
+task-master rules setup
+```
+
+- Adding rules creates the brand rules directory (e.g., `.roo/rules`) and copies/initializes the brand's rules.
+- Removing rules deletes the brand rules directory and associated MCP config.
+- You can use multiple comma-separated brands in a single command.
+- The `setup` action launches an interactive prompt to select which brand rules to apply. The list of brands is always current with the available profiles, and no manual updates are needed. This command does **not** re-initialize your project or affect shell aliases; it only manages rules interactively.
+
+**Examples:**
+
+```bash
+task-master rules add windsurf,roo
+task-master rules remove windsurf
+task-master rules setup
+```
+
+### Interactive Rules Setup
+
+You can launch the interactive rules setup at any time with:
+
+```bash
+task-master rules setup
+```
+
+This command opens a prompt where you can select which brand rules (e.g., Cursor, Roo, Windsurf) you want to apply to your project. The list of brands is always current with the available profiles—no manual updates needed. This does **not** re-initialize your project or ask about shell aliases; it only manages rules.
+
+- Use this command to update, enforce, or switch brand rules interactively after project creation.
+- The same interactive prompt is also used during `init` if you don't specify brands with `--rules`.
 
 ## Configure AI Models
 

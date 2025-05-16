@@ -78,6 +78,15 @@ import {
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
+import {
+	convertAllRulesToBrandRules,
+	removeBrandRules,
+	BRAND_NAMES,
+	isValidBrand,
+	getBrandProfile
+} from './rule-transformer.js';
+import { runInteractiveRulesSetup } from './rules-setup.js';
+
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -489,6 +498,148 @@ function registerCommands(programInstance) {
 		);
 		process.exit(1);
 	});
+
+	// Add/remove brand rules command
+	programInstance
+		.command('rules <action> [brands...]')
+		.description(
+			'Add or remove rules for one or more brands (e.g., task-master rules add windsurf roo)'
+		)
+		.option(
+			'-f, --force',
+			'Skip confirmation prompt when removing rules (dangerous)'
+		)
+		.action(async (action, brands, options) => {
+			const projectDir = process.cwd();
+
+			/**
+			 * 'task-master rules setup' action:
+			 *
+			 * Launches an interactive prompt to select which brand rules to apply to the current project.
+			 * This does NOT perform project initialization or ask about shell aliases—only rules selection.
+			 *
+			 * Example usage:
+			 *   $ task-master rules setup
+			 *
+			 * Useful for updating/enforcing rules after project creation, or switching brands.
+			 *
+			 * The list of brands is always up-to-date with the available profiles.
+			 */
+			if (action === 'setup') {
+				// Run interactive rules setup ONLY (no project init)
+				const selectedBrandRules = await runInteractiveRulesSetup();
+				for (const brand of selectedBrandRules) {
+					if (!isValidBrand(brand)) {
+						console.warn(
+							`Rules profile for brand "${brand}" not found. Valid brands: ${BRAND_NAMES.join(', ')}. Skipping.`
+						);
+						continue;
+					}
+					const profile = getBrandProfile(brand);
+					const addResult = convertAllRulesToBrandRules(projectDir, profile);
+					if (typeof profile.onAddBrandRules === 'function') {
+						profile.onAddBrandRules(projectDir);
+					}
+					console.log(
+						chalk.green(
+							`Summary for ${brand}: ${addResult.success} rules added, ${addResult.failed} failed.`
+						)
+					);
+				}
+				return;
+			}
+
+			if (!brands || brands.length === 0) {
+				console.error(
+					'Please specify at least one brand (e.g., windsurf, roo).'
+				);
+				process.exit(1);
+			}
+
+			// Support both space- and comma-separated brand lists
+			const expandedBrands = brands
+				.flatMap((b) => b.split(',').map((s) => s.trim()))
+				.filter(Boolean);
+
+			if (action === 'remove') {
+				let confirmed = true;
+				if (!options.force) {
+					const ui = await import('./ui.js');
+					confirmed = await ui.confirmRulesRemove(expandedBrands);
+				}
+				if (!confirmed) {
+					console.log(chalk.yellow('Aborted: No rules were removed.'));
+					return;
+				}
+			}
+
+			// (removed duplicate projectDir, brands check, and expandedBrands parsing)
+
+			const removalResults = [];
+
+			for (const brand of expandedBrands) {
+				if (!isValidBrand(brand)) {
+					console.warn(
+						`Rules profile for brand "${brand}" not found. Valid brands: ${BRAND_NAMES.join(', ')}. Skipping.`
+					);
+					continue;
+				}
+				const profile = getBrandProfile(brand);
+
+				if (action === 'add') {
+					console.log(chalk.blue(`Adding rules for brand: ${brand}...`));
+					const addResult = convertAllRulesToBrandRules(projectDir, profile);
+					if (typeof profile.onAddBrandRules === 'function') {
+						profile.onAddBrandRules(projectDir);
+					}
+					console.log(chalk.blue(`Completed adding rules for brand: ${brand}`));
+					console.log(
+						chalk.green(
+							`Summary for ${brand}: ${addResult.success} rules added, ${addResult.failed} failed.`
+						)
+					);
+				} else if (action === 'remove') {
+					console.log(chalk.blue(`Removing rules for brand: ${brand}...`));
+					const result = removeBrandRules(projectDir, profile);
+					removalResults.push(result);
+					console.log(chalk.blue(`Completed removal for brand: ${brand}`));
+				} else {
+					console.error('Unknown action. Use "add" or "remove".');
+					process.exit(1);
+				}
+			}
+
+			// Print summary for removals
+			if (action === 'remove') {
+				const successes = removalResults
+					.filter((r) => r.success)
+					.map((r) => r.brandName);
+				const skipped = removalResults
+					.filter((r) => r.skipped)
+					.map((r) => r.brandName);
+				const errors = removalResults.filter(
+					(r) => r.error && !r.success && !r.skipped
+				);
+
+				if (successes.length > 0) {
+					console.log(
+						chalk.green(`Successfully removed rules: ${successes.join(', ')}`)
+					);
+				}
+				if (skipped.length > 0) {
+					console.log(
+						chalk.yellow(
+							`Skipped (default or protected): ${skipped.join(', ')}`
+						)
+					);
+				}
+				if (errors.length > 0) {
+					errors.forEach((r) => {
+						console.log(chalk.red(`Error removing ${r.brandName}: ${r.error}`));
+					});
+				}
+			}
+		});
 
 	// parse-prd command
 	programInstance
@@ -2096,11 +2247,25 @@ function registerCommands(programInstance) {
 		.option('-d, --description <description>', 'Project description')
 		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
 		.option('-a, --author <author>', 'Author name')
+		.option(
+			'-r, --rules <rules...>',
+			'List of rules to add (roo, windsurf, cursor, ...). Accepts comma or space separated values.'
+		)
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.action(async (cmdOptions) => {
+			// Parse rules: accept space or comma separated, default to ['cursor']
+			let rules = ['cursor'];
+			if (cmdOptions.rules && Array.isArray(cmdOptions.rules)) {
+				rules = cmdOptions.rules
+					.flatMap((r) => r.split(','))
+					.map((r) => r.trim())
+					.filter(Boolean);
+				if (rules.length === 0) rules = ['cursor'];
+			}
 			// cmdOptions contains parsed arguments
+			cmdOptions.rules = rules;
 			try {
 				console.log('DEBUG: Running init command action in commands.js');
 				console.log(
