@@ -683,14 +683,12 @@ export {
 	writeConfig,
 	ConfigurationError, // Export custom error type
 	isConfigFilePresent, // Add the new function export
-
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
 	VALID_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
-
 	// Role-specific getters (No env var overrides)
 	getMainProvider,
 	getMainModelId,
@@ -704,7 +702,6 @@ export {
 	getFallbackModelId,
 	getFallbackMaxTokens,
 	getFallbackTemperature,
-
 	// Global setting getters (No env var overrides)
 	getLogLevel,
 	getDebugFlag,
@@ -714,11 +711,9 @@ export {
 	getProjectName,
 	getOllamaBaseUrl,
 	getParametersForRole,
-
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
-
 	// ADD: Function to get all provider names
 	getAllProviders
 };

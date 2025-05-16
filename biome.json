@@ -1,0 +1,47 @@
+{
+	"files": {
+		"ignore": [
+			"build",
+			"coverage",
+			".changeset",
+			"tasks",
+			"package-lock.json",
+			"tests/fixture/*.json"
+		]
+	},
+	"formatter": {
+		"bracketSpacing": true,
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 80
+	},
+	"javascript": {
+		"formatter": {
+			"arrowParentheses": "always",
+			"quoteStyle": "single",
+			"trailingCommas": "none"
+		}
+	},
+	"linter": {
+		"rules": {
+			"complexity": {
+				"noForEach": "off",
+				"useOptionalChain": "off"
+			},
+			"correctness": {
+				"noConstantCondition": "off",
+				"noUnreachable": "off"
+			},
+			"suspicious": {
+				"noDuplicateTestHooks": "off",
+				"noPrototypeBuiltins": "off"
+			},
+			"style": {
+				"noUselessElse": "off",
+				"useNodejsImportProtocol": "off",
+				"useNumberNamespace": "off",
+				"noParameterAssign": "off"
+			}
+		}
+	}
+}
