@@ -1,0 +1,199 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Task Master Cursor AI Integration
+
+This document provides a comprehensive guide to using Task Master with Cursor's built-in AI capabilities instead of requiring external API keys. This integration enables a seamless workflow by leveraging the AI model that powers Cursor for all Task Master AI operations.
+
+## Overview
+
+When running inside Cursor IDE, Task Master can now use Cursor's built-in AI capabilities for all AI-powered features, including:
+
+- Task generation and expansion
+- Project complexity analysis
+- Task updating and research
+- Subtask creation and management
+
+This integration eliminates the need for external API keys, making Task Master instantly usable within Cursor with zero configuration.
+
+## Setup Instructions
+
+### 1. Configure Task Master to Use Cursor AI
+
+There are two ways to set up Task Master to use Cursor's built-in AI:
+
+**Method 1: Using the MCP Tool**
+```javascript
+// Set Cursor as the provider for all roles
+models(setMain='cursor', setResearch='cursor', setFallback='cursor')
+```
+
+**Method 2: Using the CLI**
+```bash
+task-master models --set-main=cursor --set-research=cursor --set-fallback=cursor
+```
+
+The configuration will be saved in your `.taskmasterconfig` file with entries for each role:
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "cursor",
+      "modelId": "cursor",
+      "maxTokens": 4000,
+      "temperature": 0.2
+    },
+    "research": {
+      "provider": "cursor",
+      "modelId": "cursor",
+      "maxTokens": 4000,
+      "temperature": 0.1
+    },
+    "fallback": {
+      "provider": "cursor",
+      "modelId": "cursor",
+      "maxTokens": 4000,
+      "temperature": 0.2
+    }
+  }
+}
+```
+
+### 2. Verify Configuration
+
+To verify that the Cursor provider is properly configured:
+
+```bash
+task-master models
+```
+
+You should see "cursor" listed as the provider for each role.
+
+## Implementation Details
+
+The Cursor AI provider leverages Cursor's built-in APIs through the MCP protocol, accessing the following capabilities:
+
+### 1. Cursor AI Chat Interface
+
+The primary integration uses Cursor's Chat feature, which provides:
+
+- Support for multiple messages in a conversation
+- Streaming responses for improved responsiveness
+- Tool calls for additional capabilities like web search
+
+### 2. Web Search Integration
+
+The provider includes support for web search, allowing Task Master to access up-to-date information when needed. This is particularly useful for:
+
+- Researching technical details when expanding tasks
+- Verifying implementation approaches
+- Gathering documentation references
+
+When a web search is needed, the provider automatically makes the appropriate tool calls through Cursor's interface.
+
+### 3. Fallback Mechanisms
+
+For maximum reliability, the implementation includes several fallback strategies:
+
+- Primary method: Using Cursor's chat API with message streaming and tool call support
+- Secondary method: Using a simpler AI call interface for basic text generation
+- Error handling for graceful degradation when specific features are unavailable
+
+## Technical Implementation
+
+The core implementation resides in the following files:
+
+1. **`src/ai-providers/cursor.js`**: Contains the provider-specific implementation with functions for:
+   - `generateCursorText`: Generates text responses
+   - `streamCursorText`: Simulates streaming text responses
+   - `generateCursorObject`: Generates structured objects with schema validation
+   - `_callCursorAI`: Core integration with Cursor's API
+
+2. **`scripts/modules/ai-services-unified.js`**: Integrates the Cursor provider into the unified AI service layer:
+   - Registers the Cursor provider in `PROVIDER_FUNCTIONS`
+   - Skips API key resolution for the Cursor provider
+   - Handles provider selection based on configuration
+
+## Usage Examples
+
+### Example 1: Task Expansion
+
+When expanding a task, Task Master will use Cursor's AI capabilities to break down complex tasks into subtasks:
+
+```bash
+task-master expand --id=5 --research
+```
+
+The `--research` flag will allow the tool to use web search when beneficial.
+
+### Example 2: Project Analysis
+
+When analyzing project complexity, Task Master will leverage Cursor's AI to evaluate task difficulty:
+
+```bash
+task-master analyze-complexity --research
+```
+
+### Example 3: Task Updates with Research
+
+When updating tasks, Task Master can incorporate web research through Cursor's search tool:
+
+```bash
+task-master update-task --id=7 --prompt="Update based on latest React best practices" --research
+```
+
+## Limitations and Considerations
+
+1. **Cursor-Only Functionality**:
+   - This provider only works when running inside Cursor IDE.
+   - Attempts to use it outside Cursor will result in an error.
+
+2. **Token Limits**:
+   - The default token limit is set to 4000 tokens, which may be lower than some external models.
+   - For very large tasks, consider adjusting your prompts to be more concise.
+
+3. **Performance Considerations**:
+   - Response times may vary based on Cursor's own AI integration.
+   - Streaming is simulated rather than using native streaming.
+
+4. **Web Search Usage**:
+   - Web search is only used when the `--research` flag is specified.
+   - Search queries are constructed automatically based on the task context.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Cursor MCP session not available" error**:
+   - Ensure you're running inside Cursor IDE.
+   - Check that Cursor's AI features are properly configured.
+
+2. **Slow responses or timeouts**:
+   - The default timeout is 60 seconds, which should be sufficient for most operations.
+   - For complex tasks, consider breaking them into smaller operations.
+
+3. **Incomplete task expansions**:
+   - If task expansions seem incomplete, try adjusting the number of subtasks with `--num`.
+   - Consider using more specific prompts with the `--prompt` parameter.
+
+### Getting Support
+
+If you encounter issues with the Cursor AI integration, you can:
+
+1. Check Cursor's own documentation for AI capabilities
+2. Verify that you're using the latest version of Task Master
+3. Submit issues to the Task Master GitHub repository
+
+## Future Enhancements
+
+Future versions of the Cursor AI integration may include:
+
+1. **Native streaming support**: Using Cursor's streaming capabilities more directly
+2. **Enhanced tool integration**: Supporting additional Cursor tools beyond web search
+3. **Performance optimizations**: Improving response time and reliability
+4. **Automatic provider selection**: Detecting Cursor automatically when available
+
+By leveraging Cursor's AI capabilities, Task Master provides a seamless, zero-configuration experience that makes it instantly usable within the Cursor IDE, while still maintaining the option to use external providers when desired.

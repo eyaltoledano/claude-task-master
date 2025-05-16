@@ -1,0 +1,251 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Task Master Cursor AI Provider Integration
+
+This rule provides guidelines for using Cursor's built-in AI capabilities with Task Master, eliminating the need for external API keys.
+
+## Overview
+
+The Cursor AI Provider is a special implementation that leverages Cursor's built-in AI model access rather than requiring separate API keys. This enables Task Master to operate seamlessly within Cursor without the configuration overhead of external API providers.
+
+## Key Concepts
+
+- **No API Keys Required**: Unlike other providers (Anthropic, OpenAI, etc.), the Cursor provider doesn't require API keys as it uses the same model that powers Cursor.
+- **Easy Configuration**: Set `cursor` as your provider in the Task Master configuration.
+- **Full Functionality**: All AI-powered Task Master features work using Cursor's model.
+- **Web Search Integration**: The implementation supports web search through Cursor's tool capabilities.
+- **Seamless Integration**: The implementation detects when running in Cursor and uses the appropriate integration method.
+
+## Configuration
+
+1. **Setting Cursor as the Provider**:
+   ```bash
+   # Using the MCP tool
+   models(setMain='cursor', setResearch='cursor', setFallback='cursor')
+   
+   # Using the CLI
+   task-master models --set-main=cursor --set-research=cursor --set-fallback=cursor
+   ```
+
+2. **`.taskmasterconfig` Structure**:
+   ```json
+   {
+     "models": {
+       "main": {
+         "provider": "cursor",
+         "modelId": "cursor",
+         "maxTokens": 4000,
+         "temperature": 0.2
+       },
+       "research": {
+         "provider": "cursor",
+         "modelId": "cursor",
+         "maxTokens": 4000,
+         "temperature": 0.1
+       },
+       "fallback": {
+         "provider": "cursor",
+         "modelId": "cursor",
+         "maxTokens": 4000,
+         "temperature": 0.2
+       }
+     }
+   }
+   ```
+
+## Implementation Details
+
+The Cursor AI Provider consists of three main components:
+
+### 1. Provider Implementation (`src/ai-providers/cursor.js`)
+
+The provider implements three standard functions required by Task Master's unified AI service:
+
+```javascript
+// Generate text responses
+export async function generateCursorText({
+  messages,
+  maxTokens,
+  temperature,
+  ...rest
+}) {
+  // Implementation that extracts prompts and calls Cursor's AI
+}
+
+// Stream text responses (simulated for now)
+export async function streamCursorText({
+  messages,
+  maxTokens,
+  temperature,
+  ...rest
+}) {
+  // Implementation that simulates streaming
+}
+
+// Generate structured objects with schema validation
+export async function generateCursorObject({
+  messages,
+  schema,
+  objectName,
+  maxTokens,
+  temperature,
+  maxRetries,
+  ...rest
+}) {
+  // Implementation that generates JSON and validates against schema
+}
+```
+
+### 2. Integration with Unified Service Layer
+
+The `scripts/modules/ai-services-unified.js` file has been updated to:
+
+1. Import the Cursor provider:
+   ```javascript
+   import * as cursor from '../../src/ai-providers/cursor.js';
+   ```
+
+2. Add it to the provider map:
+   ```javascript
+   const PROVIDER_FUNCTIONS = {
+     // ... other providers ...
+     cursor: {
+       generateText: cursor.generateCursorText,
+       streamText: cursor.streamCursorText,
+       generateObject: cursor.generateCursorObject
+     }
+   };
+   ```
+
+3. Bypass API key resolution for the Cursor provider:
+   ```javascript
+   function _resolveApiKey(providerName, session, projectRoot = null) {
+     // Skip API key resolution for Cursor provider since it doesn't need one
+     if (providerName === 'cursor') {
+       log('debug', 'Skipping API key resolution for Cursor provider');
+       return 'cursor-internal'; // Return a dummy value that will be ignored
+     }
+     // ... existing code for other providers ...
+   }
+   ```
+
+### 3. The Core Integration Method
+
+The heart of the integration is the `_callCursorAI` function that detects the Cursor environment and uses its capabilities:
+
+```javascript
+async function _callCursorAI(systemPrompt, userPrompt, options = {}) {
+  // Verify we're in a Cursor environment
+  const isCursorEnvironment = typeof globalThis.__CURSOR__ !== 'undefined';
+  if (!isCursorEnvironment) {
+    throw new Error('Cursor AI provider can only be used within Cursor');
+  }
+  
+  try {
+    // Prepare the messages array
+    const messages = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+    messages.push({ role: 'user', content: userPrompt });
+    
+    // Access Cursor's session
+    const session = globalThis.__CURSOR_MCP_SESSION__;
+    if (!session) {
+      throw new Error('Cursor MCP session not available');
+    }
+    
+    // Define tool handling functions
+    // ... tool handler implementation ...
+    
+    // Call Cursor's AI with appropriate options
+    const response = await session.chat({
+      messages: messages,
+      temperature: options.temperature || 0.2,
+      max_tokens: options.maxTokens || 4000,
+      model: 'default',
+      onChunk: (chunk) => { /* ... */ },
+      onToolCall: async (toolCalls) => { /* ... */ }
+    });
+    
+    return response;
+  } catch (error) {
+    // Fallback mechanisms
+    // ... fallback implementation ...
+  }
+}
+```
+
+## Usage in Core Logic
+
+Task Master's unified AI service layer automatically handles provider selection based on your configuration. When `cursor` is specified as the provider, all AI calls will be routed through Cursor's model.
+
+```javascript
+// Example in task-manager code
+const result = await generateTextService({
+  role: 'main',     // Will use cursor if configured
+  systemPrompt: '...',
+  prompt: '...',
+  session
+});
+```
+
+## Web Search Integration
+
+The implementation supports Cursor's web search capability, enabling Task Master to access up-to-date information for research-backed operations. This is automatically used when the `--research` flag is specified in Task Master commands:
+
+```bash
+# Example with research flag that will use web search when needed
+task-master expand --id=5 --research
+```
+
+The web search integration works through Cursor's tool calling mechanism:
+
+```javascript
+// Handle web_search tool call
+if (call.name === 'web_search') {
+  try {
+    const result = await session.callTool({
+      name: 'web_search',
+      args: call.args
+    });
+    
+    results.push({
+      toolCall: call,
+      result: result
+    });
+  } catch (error) {
+    // Error handling...
+  }
+}
+```
+
+## Implementation Requirements
+
+For developers implementing or updating the Cursor provider:
+
+1. **Environment Detection**: The implementation detects if it's running in Cursor.
+2. **MCP Session Access**: It accesses the `__CURSOR_MCP_SESSION__` global.
+3. **Fallback Strategy**: It implements fallbacks for graceful degradation.
+4. **Tool Support**: It provides web search support through tool calls.
+
+## Troubleshooting
+
+- **Ensure Proper Configuration**: Verify that `.taskmasterconfig` has `cursor` set as the provider.
+- **MCP Session**: Make sure the code is running inside Cursor with an active MCP session.
+- **Context Limits**: Be aware that the default token limit is 4000.
+- **Tool Authorization**: When web search is used, ensure the user has authorized the tool call.
+
+## Future Improvements
+
+- **Native Streaming**: Implement actual streaming for improved responsiveness.
+- **Additional Tools**: Support more Cursor tools beyond web search.
+- **Auto-Detection**: Automatically detect Cursor environment and use it when available.
+- **Performance Tuning**: Optimize response times and reliability.
+
+
+
+
