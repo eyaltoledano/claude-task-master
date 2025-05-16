@@ -71,7 +71,6 @@
 | xai        | grok-3                     | —         | 3          | 15          |
 | xai        | grok-3-fast                | —         | 5          | 25          |
 
-
 ## Fallback Models
 
 | Provider   | Model Name                                     | SWE Score | Input Cost | Output Cost |
@@ -122,6 +121,3 @@
 | openrouter | mistralai/mistral-small-3.1-24b-instruct\:free | —         | 0          | 0           |
 | openrouter | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter | thudm/glm-4-32b\:free                          | —         | 0          | 0           |
-
-
-
