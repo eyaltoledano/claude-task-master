@@ -8,6 +8,7 @@ const mockGetResearchModelId = jest.fn();
 const mockGetFallbackProvider = jest.fn();
 const mockGetFallbackModelId = jest.fn();
 const mockGetParametersForRole = jest.fn();
+const mockGetResponseLanguage = jest.fn();
 
 jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMainProvider: mockGetMainProvider,
@@ -16,7 +17,8 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getResearchModelId: mockGetResearchModelId,
 	getFallbackProvider: mockGetFallbackProvider,
 	getFallbackModelId: mockGetFallbackModelId,
-	getParametersForRole: mockGetParametersForRole
+	getParametersForRole: mockGetParametersForRole,
+	getResponseLanguage: mockGetResponseLanguage
 }));
 
 // Mock AI Provider Modules
@@ -75,6 +77,7 @@ describe('Unified AI Services', () => {
 			if (role === 'fallback') return { maxTokens: 150, temperature: 0.6 };
 			return { maxTokens: 100, temperature: 0.5 }; // Default
 		});
+		mockGetResponseLanguage.mockReturnValue('English');
 		mockResolveEnvVariable.mockImplementation((key) => {
 			if (key === 'ANTHROPIC_API_KEY') return 'mock-anthropic-key';
 			if (key === 'PERPLEXITY_API_KEY') return 'mock-perplexity-key';
@@ -110,16 +113,21 @@ describe('Unified AI Services', () => {
 				fakeProjectRoot
 			);
 			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(1);
-			expect(mockGenerateAnthropicText).toHaveBeenCalledWith({
-				apiKey: 'mock-anthropic-key',
-				modelId: 'test-main-model',
-				maxTokens: 100,
-				temperature: 0.5,
-				messages: [
-					{ role: 'system', content: 'System' },
-					{ role: 'user', content: 'Test' }
-				]
-			});
+			expect(mockGenerateAnthropicText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'mock-anthropic-key',
+					modelId: 'test-main-model',
+					maxTokens: 100,
+					temperature: 0.5,
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('System')
+						},
+						{ role: 'user', content: 'Test' }
+					]
+				})
+			);
 			expect(mockGeneratePerplexityText).not.toHaveBeenCalled();
 		});
 
@@ -275,6 +283,58 @@ describe('Unified AI Services', () => {
 				null
 			);
 			expect(mockGenerateAnthropicText).toHaveBeenCalledTimes(1);
+		});
+
+		test('should use configured responseLanguage in system prompt', async () => {
+			mockGetResponseLanguage.mockReturnValue('中文');
+			mockGenerateAnthropicText.mockResolvedValue('中文回复');
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello'
+			};
+			await generateTextService(params);
+
+			expect(mockGenerateAnthropicText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in 中文')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(fakeProjectRoot);
+		});
+
+		test('should pass custom projectRoot to getResponseLanguage', async () => {
+			const customRoot = '/custom/project/root';
+			mockGetResponseLanguage.mockReturnValue('Español');
+			mockGenerateAnthropicText.mockResolvedValue('Respuesta en Español');
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello',
+				projectRoot: customRoot
+			};
+			await generateTextService(params);
+
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(customRoot);
+			expect(mockGenerateAnthropicText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in Español')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
 		});
 
 		// Add more tests for edge cases:

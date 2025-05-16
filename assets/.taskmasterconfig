@@ -26,6 +26,7 @@
 		"defaultPriority": "medium",
 		"projectName": "Taskmaster",
 		"ollamaBaseUrl": "http://localhost:11434/api",
-		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/",
+		"responseLanguage": "English"
 	}
 }

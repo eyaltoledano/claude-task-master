@@ -85,7 +85,8 @@ const DEFAULT_CONFIG = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		responseLanguage: 'English'
 	}
 };
 
@@ -618,6 +619,82 @@ describe('Getter Functions', () => {
 
 		// Assert
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
+	});
+
+	test('getResponseLanguage should return responseLanguage from config', () => {
+		// Arrange
+		// 为这个测试准备一个具有responseLanguage属性的配置对象
+		const configWithLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project',
+				responseLanguage: '中文'
+			}
+		});
+
+		// 设置fs.readFileSync以返回我们的测试配置
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// 确保getConfig返回新的值而不是缓存的值
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('中文');
+	});
+
+	test('getResponseLanguage should return undefined when responseLanguage is not in config', () => {
+		// Arrange
+		const configWithoutLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project'
+				// No responseLanguage property
+			}
+		});
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithoutLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// 确保getConfig返回新的值而不是缓存的值
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('English');
 	});
 
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)

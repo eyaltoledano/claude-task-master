@@ -37,7 +37,8 @@ Taskmaster uses two primary methods for configuration:
       		"defaultPriority": "medium",
       		"projectName": "Your Project Name",
       		"ollamaBaseUrl": "http://localhost:11434/api",
-      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/",
+      		"responseLanguage": "English"
       	}
       }
       ```
