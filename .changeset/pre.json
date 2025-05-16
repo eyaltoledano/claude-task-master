@@ -1,8 +1,8 @@
 {
-  "mode": "pre",
+  "mode": "exit",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.13.1"
+    "task-master-ai": "0.13.2"
   },
   "changesets": [
     "beige-doodles-type",

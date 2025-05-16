@@ -16,10 +16,10 @@ import {
 	truncate,
 	isSilentMode
 } from './utils.js';
-import path from 'path';
 import fs from 'fs';
 import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
@@ -46,17 +46,7 @@ function displayBanner() {
 	);
 
 	// Read version directly from package.json
-	let version = 'unknown'; // Initialize with a default
-	try {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			version = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fall back to default version
-		log('warn', 'Could not read package.json for version info.');
-	}
+	const version = getTaskMasterVersion();
 
 	console.log(
 		boxen(
@@ -809,12 +799,7 @@ async function displayNextTask(tasksPath) {
 			'padding-bottom': 0,
 			compact: true
 		},
-		chars: {
-			mid: '',
-			'left-mid': '',
-			'mid-mid': '',
-			'right-mid': ''
-		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 		colWidths: [15, Math.min(75, process.stdout.columns - 20 || 60)],
 		wordWrap: true
 	});
@@ -902,12 +887,7 @@ async function displayNextTask(tasksPath) {
 				'padding-bottom': 0,
 				compact: true
 			},
-			chars: {
-				mid: '',
-				'left-mid': '',
-				'mid-mid': '',
-				'right-mid': ''
-			},
+			chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 			wordWrap: true
 		});
 

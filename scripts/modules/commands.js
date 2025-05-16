@@ -73,7 +73,7 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import { findProjectRoot } from './utils.js';
-
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -486,11 +486,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -515,7 +510,7 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
+			let useForce = force;
 			let useAppend = false;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
@@ -609,7 +604,7 @@ function registerCommands(programInstance) {
 				spinner = ora('Parsing PRD and generating tasks...').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
-					force: useForce
+					useForce
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
@@ -1279,10 +1274,6 @@ function registerCommands(programInstance) {
 			'Implementation details (for manual task creation)'
 		)
 		.option(
-			'--test-strategy <testStrategy>',
-			'Test strategy (for manual task creation)'
-		)
-		.option(
 			'--dependencies <dependencies>',
 			'Comma-separated list of task IDs this task depends on'
 		)
@@ -1663,6 +1654,7 @@ function registerCommands(programInstance) {
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
+				showAddSubtaskHelp();
 				process.exit(1);
 			}
 		})
@@ -2366,14 +2358,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
@@ -2393,28 +2378,7 @@ function setupCLI() {
  */
 async function checkForUpdate() {
 	// Get current version from package.json ONLY
-	let currentVersion = 'unknown'; // Initialize with a default
-	try {
-		// Try to get the version from the installed package (if applicable) or current dir
-		let packageJsonPath = path.join(
-			process.cwd(),
-			'node_modules',
-			'task-master-ai',
-			'package.json'
-		);
-		// Fallback to current directory package.json if not found in node_modules
-		if (!fs.existsSync(packageJsonPath)) {
-			packageJsonPath = path.join(process.cwd(), 'package.json');
-		}
-
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			currentVersion = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fail and use default
-		log('debug', `Error reading current package version: ${error.message}`);
-	}
+	const currentVersion = getTaskMasterVersion();
 
 	return new Promise((resolve) => {
 		// Get the latest version from npm registry

@@ -10,6 +10,7 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+
 /**
  * Direct function wrapper for updating tasks based on new context.
  *
