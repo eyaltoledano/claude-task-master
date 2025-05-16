@@ -9,6 +9,7 @@ const mockGetFallbackProvider = jest.fn();
 const mockGetFallbackModelId = jest.fn();
 const mockGetParametersForRole = jest.fn();
 const mockGetBaseUrlForRole = jest.fn();
+
 jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMainProvider: mockGetMainProvider,
 	getMainModelId: mockGetMainModelId,
