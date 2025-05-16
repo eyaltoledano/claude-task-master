@@ -5,7 +5,7 @@
  * using the Vercel AI SDK.
  */
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText, streamText, generateObject, streamObject } from 'ai';
+import { generateText, streamText, generateObject } from 'ai';
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils is accessible
 
 // TODO: Implement standardized functions for generateText, streamText, generateObject
@@ -19,11 +19,19 @@ import { log } from '../../scripts/modules/utils.js'; // Assuming utils is acces
 
 function getClient(apiKey, baseUrl) {
 	if (!apiKey) {
+		// In a real scenario, this would use the config resolver.
+		// Throwing error here if key isn't passed for simplicity.
+		// Keep the error check for the passed key
 		throw new Error('Anthropic API key is required.');
 	}
+	// Remove the check for anthropicClient
+	// if (!anthropicClient) {
+	// TODO: Explore passing options like default headers if needed
+	// Create and return a new instance directly with standard version header
 	return createAnthropic({
 		apiKey: apiKey,
-		baseURL: baseUrl || 'https://api.anthropic.com/v1',
+		...(baseUrl && { baseURL: baseUrl }),
+		// Use standard version header instead of beta
 		headers: {
 			'anthropic-beta': 'output-128k-2025-02-19'
 		}
@@ -61,6 +69,8 @@ export async function generateAnthropicText({
 			messages: messages,
 			maxTokens: maxTokens,
 			temperature: temperature
+			// Beta header moved to client initialization
+			// TODO: Add other relevant parameters like topP, topK if needed
 		});
 		log(
 			'debug',
@@ -69,6 +79,7 @@ export async function generateAnthropicText({
 		return result.text;
 	} catch (error) {
 		log('error', `Anthropic generateText failed: ${error.message}`);
+		// Consider more specific error handling or re-throwing a standardized error
 		throw error;
 	}
 }
@@ -97,6 +108,7 @@ export async function streamAnthropicText({
 	log('debug', `Streaming Anthropic text with model: ${modelId}`);
 	try {
 		const client = getClient(apiKey, baseUrl);
+
 		log(
 			'debug',
 			'[streamAnthropicText] Parameters received by streamText:',
@@ -111,12 +123,16 @@ export async function streamAnthropicText({
 				2
 			)
 		);
+
 		const stream = await streamText({
 			model: client(modelId),
 			messages: messages,
 			maxTokens: maxTokens,
 			temperature: temperature
+			// TODO: Add other relevant parameters
 		});
+
+		// *** RETURN THE FULL STREAM OBJECT, NOT JUST stream.textStream ***
 		return stream;
 	} catch (error) {
 		log('error', `Anthropic streamText failed: ${error.message}`, error.stack);

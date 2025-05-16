@@ -692,6 +692,7 @@ export {
 	getAvailableModels,
 
 	// Role-specific getters (No env var overrides)
+	getModelConfigForRole,
 	getMainProvider,
 	getMainModelId,
 	getMainMaxTokens,

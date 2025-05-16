@@ -16,7 +16,7 @@ function getClient(apiKey, baseUrl) {
 	}
 	return createPerplexity({
 		apiKey: apiKey,
-		baseURL: baseUrl || 'https://api.perplexity.ai/v1'
+		...(baseUrl && { baseURL: baseUrl })
 	});
 }
 

@@ -18,7 +18,7 @@ function getClient(apiKey, baseUrl) {
 	}
 	return createGoogleGenerativeAI({
 		apiKey: apiKey,
-		baseURL: baseUrl || 'https://generativelanguage.googleapis.com/v1beta'
+		...(baseUrl && { baseURL: baseUrl })
 	});
 }
 
@@ -130,7 +130,7 @@ async function generateGoogleObject({
 	temperature = DEFAULT_TEMPERATURE,
 	messages,
 	schema,
-	objectName,
+	objectName, // Note: Vercel SDK might use this differently or not at all
 	maxTokens,
 	baseUrl
 }) {

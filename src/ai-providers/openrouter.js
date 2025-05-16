@@ -2,6 +2,14 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText, generateObject } from 'ai';
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils.js is in scripts/modules
 
+function getClient(apiKey, baseUrl) {
+	if (!apiKey) throw new Error('OpenRouter API key is required.');
+	return createOpenRouter({
+		apiKey,
+		...(baseUrl && { baseURL: baseUrl })
+	});
+}
+
 /**
  * Generates text using an OpenRouter chat model.
  *
@@ -162,14 +170,6 @@ async function generateOpenRouterObject({
 		);
 		throw error;
 	}
-}
-
-function getClient(apiKey, baseUrl) {
-	if (!apiKey) throw new Error('OpenRouter API key is required.');
-	return createOpenRouter({
-		apiKey,
-		baseURL: baseUrl || 'https://openrouter.ai/api/v1'
-	});
 }
 
 export {

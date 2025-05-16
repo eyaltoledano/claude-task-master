@@ -15,7 +15,7 @@ function getClient(apiKey, baseUrl) {
 	}
 	return createXai({
 		apiKey: apiKey,
-		baseURL: baseUrl || 'https://api.grok.x.ai/v1'
+		...(baseUrl && { baseURL: baseUrl })
 	});
 }
 
@@ -136,6 +136,7 @@ export async function generateXaiObject({
 		const client = getClient(apiKey, baseUrl);
 		const result = await generateObject({
 			model: client(modelId),
+			// Note: mode might need adjustment if xAI ever supports object generation differently
 			mode: 'tool',
 			schema: schema,
 			messages: messages,
