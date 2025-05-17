@@ -206,8 +206,14 @@ task-master add-task --prompt="Description" --priority=high
 ## Initialize a Project
 
 ```bash
-# Initialize a new project with Task Master structure
+# Initialize a new project with Task Master structure (default: tasks.json and task files are stored in Git)
 task-master init
+
+# Explicitly store in Git (equivalent to default)
+task-master init --git-tasks=true
+
+# Do not store tasks.json and task files in Git
+task-master init --git-tasks=false
 ```
 
 ## Configure AI Models
