@@ -1,7 +1,7 @@
 {
-	"name": "task-master-ai",
-	"version": "0.13.2-rc.1",
-	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
+	"name": "task-master-ai-cs",
+	"version": "0.13.2-rc.2",
+	"description": "Use task-master-ai change for use chinese.A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor. ",
 	"main": "index.js",
 	"type": "module",
 	"bin": {
@@ -75,11 +75,11 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/eyaltoledano/claude-task-master.git"
+		"url": "git+https://github.com/pandabo1985/claude-task-master-cs.git"
 	},
-	"homepage": "https://github.com/eyaltoledano/claude-task-master#readme",
+	"homepage": "https://github.com/pandabo1985/claude-task-master-cs#readme",
 	"bugs": {
-		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
+		"url": "https://github.com/pandabo1985/claude-task-master-cs/issues"
 	},
 	"files": [
 		"scripts/**",
