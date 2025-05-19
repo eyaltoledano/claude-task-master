@@ -179,7 +179,8 @@ Guidelines:
 8. Include detailed implementation guidance in the "details" field
 9. If the PRD contains specific requirements for libraries, database schemas, frameworks, tech stacks, or any other implementation details, STRICTLY ADHERE to these requirements in your task breakdown and do not discard them under any circumstance
 10. Focus on filling in any gaps left by the PRD or areas that aren't fully specified, while preserving all explicit requirements
-11. Always aim to provide the most direct path to implementation, avoiding over-engineering or roundabout approaches`;
+11. Always aim to provide the most direct path to implementation, avoiding over-engineering or roundabout approaches
+12. Respond in Chinese.`;
 
 		// Build user prompt with PRD content
 		const userPrompt = `Here's the Product Requirements Document (PRD) to break down into approximately ${numTasks} tasks, starting IDs from ${nextId}:\n\n${prdContent}\n\n

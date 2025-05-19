@@ -69,6 +69,7 @@ For each subtask, provide:
 - dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
 - details: Implementation details
 - testStrategy: Optional testing approach
+- Respond in Chinese.
 
 
 Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array matching the structure described. Do not include any explanatory text, markdown formatting, or code block markers.`;
@@ -451,7 +452,7 @@ async function expandTask(
 			promptContent += `${complexityReasoningContext}`.trim();
 
 			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
+			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.Respond in Chinese.`;
 			logger.info(
 				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
 			);
@@ -468,7 +469,7 @@ async function expandTask(
 					nextSubtaskId
 				);
 				// Use the specific research system prompt if needed, or a standard one
-				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.`; // Or keep generateResearchSystemPrompt if it exists
+				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.Respond in Chinese.`; // Or keep generateResearchSystemPrompt if it exists
 			} else {
 				promptContent = generateMainUserPrompt(
 					task,

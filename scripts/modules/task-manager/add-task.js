@@ -193,7 +193,7 @@ async function addTask(
 
 			// System Prompt
 			const systemPrompt =
-				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema.";
+				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema.Respond in Chinese.";
 
 			// Task Structure Description (for user prompt)
 			const taskStructureDesc = `
