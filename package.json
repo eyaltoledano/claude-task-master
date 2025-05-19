@@ -21,8 +21,8 @@
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
-		"format-check": "node node_modules/.bin/biome format .",
-		"format": "node node_modules/.bin/biome format . --write"
+		"format-check": "biome format .",
+		"format": "biome format . --write"
 	},
 	"keywords": [
 		"claude",
