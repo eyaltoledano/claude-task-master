@@ -190,7 +190,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY'
+		ollama: 'OLLAMA_API_KEY',
+		burncloud: 'BURNCLOUD_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
