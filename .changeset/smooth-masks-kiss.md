@@ -2,4 +2,4 @@
 'task-master-ai-cs': patch
 ---
 
-Resolve all issues related to MCP
+修复读写错误
