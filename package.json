@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai-cs",
-	"version": "0.13.2-rc.2",
+	"version": "1.13.13",
 	"description": "Use task-master-ai change for use chinese.A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor. ",
 	"main": "index.js",
 	"type": "module",

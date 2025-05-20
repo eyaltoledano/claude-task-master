@@ -28,6 +28,7 @@ import { registerAddDependencyTool } from './add-dependency.js';
 import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
+import { registerAnalyzeDocumentComplexityTool } from './analyze-document-complexity.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -66,6 +67,7 @@ export function registerTaskMasterTools(server) {
 		registerAnalyzeProjectComplexityTool(server);
 		registerExpandTaskTool(server);
 		registerExpandAllTool(server);
+		registerAnalyzeDocumentComplexityTool(server);
 
 		// Group 6: Dependency Management
 		registerAddDependencyTool(server);
