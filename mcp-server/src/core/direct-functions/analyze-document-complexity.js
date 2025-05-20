@@ -21,13 +21,15 @@ export async function analyzeDocumentComplexityDirect(args, log, context = {}) {
         enableSilentMode();
         try {
             const result = await analyzeDocumentComplexity(
+                documentPath,
                 {
-                    file: documentPath,
-                    output: outputPath,
-                    research: useResearch,
-                    projectRoot: projectRoot
-                },
-                { session, mcpLog: log }
+                    useResearch: useResearch,
+                    context: {
+                        projectRoot: projectRoot,
+                        session: session,
+                        mcpLog: log
+                    }
+                }
             );
             return { success: true, data: result, fromCache: false };
         } finally {
