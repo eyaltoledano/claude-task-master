@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import path from 'path';
+import fs from 'fs/promises';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { 
@@ -54,18 +55,25 @@ async function analyzeDocumentComplexity(
   let loadingIndicator = null;
 
   try {
-    // Read document content
-    logFn.info(`Analyzing document: ${documentPath}`);
-    const documentContent = await readFile(documentPath);
+    // Check if file exists before reading
+    try {
+      await fs.access(documentPath);
+    } catch (error) {
+      throw new Error(`文件 ${documentPath} 不存在或无法访问`);
+    }
     
-    if (!documentContent) {
-      throw new Error(`Unable to read document: ${documentPath}`);
+    // Read document content
+    logFn.info(`正在分析文档: ${documentPath}`);
+    const documentContent = await fs.readFile(documentPath, 'utf8');
+    
+    if (!documentContent || documentContent.trim() === '') {
+      throw new Error(`文档为空或无法读取: ${documentPath}`);
     }
 
     // Show loading indicator - only in text mode
     if (outputFormat === 'text') {
       loadingIndicator = startLoadingIndicator(
-        `Analyzing document complexity using ${useResearch ? 'Research' : 'Main'} AI...`
+        `正在使用${useResearch ? '研究' : '主要'} AI 分析文档复杂度...`
       );
     }
 
