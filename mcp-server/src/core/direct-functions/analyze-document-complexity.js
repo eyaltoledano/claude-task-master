@@ -1,4 +1,4 @@
-import { analyzeDocumentComplexity } from '../../../../scripts/modules/task-manager/analyze-document-complexity.js';
+import analyzeDocumentComplexity from '../../../../scripts/modules/task-manager/analyze-document-complexity.js';
 import { findTasksJsonPath } from '../utils/path-utils.js';
 import { enableSilentMode, disableSilentMode } from '../../../../scripts/modules/utils.js';
 

@@ -3,7 +3,7 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { 
-  readFile, 
+  readJSON,
   log as consoleLog 
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
