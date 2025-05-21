@@ -83,10 +83,20 @@ export function registerSetTaskStatusTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						status: args.status,
-						complexityReportPath: complexityReportPath
+						complexityReportPath
 					},
 					log
 				);
+
+				if (result.success) {
+					log.info(
+						`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`
+					);
+				} else {
+					log.error(
+						`Failed to update task status: ${result.error?.message || 'Unknown error'}`
+					);
+				}
 
 				return handleApiResult(result, log, 'Error setting task status');
 			} catch (error) {

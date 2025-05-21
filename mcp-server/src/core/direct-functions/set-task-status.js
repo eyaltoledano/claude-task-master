@@ -102,9 +102,12 @@ export async function setTaskStatusDirect(args, log) {
 						log.info(
 							`Successfully retrieved next task: ${nextResult.data.nextTask}`
 						);
-						result.data.nextTask = nextResult.data.nextTask;
-						result.data.isNextSubtask = nextResult.data.isSubtask;
-						result.data.nextSteps = nextResult.data.nextSteps;
+						result.data = {
+						  ...result.data, 
+						  nextTask: nextResult.data.nextTask, 
+						  isNextSubtask: nextResult.data.isSubtask, 
+						  nextSteps: nextResult.data.nextSteps
+						}
 					} else {
 						log.warn(
 							`Failed to retrieve next task: ${nextResult.error?.message || 'Unknown error'}`
