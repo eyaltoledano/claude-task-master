@@ -67,61 +67,26 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						args.projectRoot,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
+
 				const result = await setTaskStatusDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						status: args.status
+						status: args.status,
+						complexityReportPath: complexityReportPath
 					},
 					log
 				);
-
-				if (result.success) {
-					log.info(
-						`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`
-					);
-
-					// If the task was completed, attempt to fetch the next task
-					if (args.status === 'done') {
-						try {
-							// Resolve complexity report path for next-task logic
-							let complexityReportPath;
-							try {
-								complexityReportPath = findComplexityReportPath(
-									args.projectRoot,
-									args.complexityReport,
-									log
-								);
-							} catch (error) {
-								log.error(`Error finding complexity report: ${error.message}`);
-							}
-
-							const nextResult = await nextTaskDirect(
-								{
-									tasksJsonPath: tasksJsonPath,
-									reportPath: complexityReportPath
-								},
-								log
-							);
-
-							if (nextResult.success) {
-								result.data.nextTask = nextResult.data.nextTask;
-								result.data.isNextSubtask = nextResult.data.isSubtask;
-								result.data.nextSteps = nextResult.data.nextSteps;
-							} else {
-								log.warn(
-									`Failed to retrieve next task: ${nextResult.error?.message || 'Unknown error'}`
-								);
-							}
-						} catch (nextErr) {
-							log.error(`Error retrieving next task: ${nextErr.message}`);
-						}
-					}
-				} else {
-					log.error(
-						`Failed to update task status: ${result.error?.message || 'Unknown error'}`
-					);
-				}
 
 				return handleApiResult(result, log, 'Error setting task status');
 			} catch (error) {
