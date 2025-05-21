@@ -19,6 +19,9 @@ import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
 
+// Utility: detect Hangul characters to determine if text is Korean
+const containsKorean = (text) => /[\u3131-\uD79D]/.test(text);
+
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
 	id: z.number().int().positive(),
@@ -142,14 +145,17 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			}
 		}
 
-		report(`Reading PRD content from ${prdPath}`, 'info');
-		const prdContent = fs.readFileSync(prdPath, 'utf8');
-		if (!prdContent) {
-			throw new Error(`Input file ${prdPath} is empty or could not be read.`);
-		}
+                report(`Reading PRD content from ${prdPath}`, 'info');
+                const prdContent = fs.readFileSync(prdPath, 'utf8');
+                if (!prdContent) {
+                        throw new Error(`Input file ${prdPath} is empty or could not be read.`);
+                }
+
+                // Determine if the PRD is written in Korean
+                const useKorean = containsKorean(prdContent);
 
 		// Build system prompt for PRD parsing
-		const systemPrompt = `You are an AI assistant specialized in analyzing Product Requirements Documents (PRDs) and generating a structured, logically ordered, dependency-aware and sequenced list of development tasks in JSON format.
+                let systemPrompt = `You are an AI assistant specialized in analyzing Product Requirements Documents (PRDs) and generating a structured, logically ordered, dependency-aware and sequenced list of development tasks in JSON format.
 Analyze the provided PRD content and generate approximately ${numTasks} top-level development tasks. If the complexity or the level of detail of the PRD is high, generate more tasks relative to the complexity of the PRD
 Each task should represent a logical unit of work needed to implement the requirements and focus on the most direct and effective way to implement the requirements without unnecessary complexity or overengineering. Include pseudo-code, implementation details, and test strategy for each task. Find the most up to date information to implement each task.
 Assign sequential IDs starting from ${nextId}. Infer title, description, details, and test strategy for each task based *only* on the PRD content.
@@ -181,8 +187,12 @@ Guidelines:
 10. Focus on filling in any gaps left by the PRD or areas that aren't fully specified, while preserving all explicit requirements
 11. Always aim to provide the most direct path to implementation, avoiding over-engineering or roundabout approaches`;
 
+                if (useKorean) {
+                        systemPrompt += '\n모든 응답은 한국어로 작성하세요.';
+                }
+
 		// Build user prompt with PRD content
-		const userPrompt = `Here's the Product Requirements Document (PRD) to break down into approximately ${numTasks} tasks, starting IDs from ${nextId}:\n\n${prdContent}\n\n
+                let userPrompt = `Here's the Product Requirements Document (PRD) to break down into approximately ${numTasks} tasks, starting IDs from ${nextId}:\n\n${prdContent}\n\n
 
 		Return your response in this format:
 {
@@ -201,7 +211,11 @@ Guidelines:
         "sourceFile": "${prdPath}",
         "generatedAt": "YYYY-MM-DD"
     }
-}`;
+    }`;
+
+                if (useKorean) {
+                        userPrompt += '\n\n모든 응답은 한국어로 작성해 주세요.';
+                }
 
 		// Call the unified AI service
 		report('Calling AI service to generate tasks from PRD...', 'info');
