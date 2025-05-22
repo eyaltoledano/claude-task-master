@@ -4,17 +4,10 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'scripts/modules/supported-models.json'
-      - 'docs/scripts/models-json-to-markdown.js'
-  pull_request:
-    branches:
-      - main
       - next
     paths:
       - 'scripts/modules/supported-models.json'
       - 'docs/scripts/models-json-to-markdown.js'
-      - 'docs/models.md'
 
 jobs:
   update_markdown:
@@ -34,11 +27,14 @@ jobs:
       - name: Format Markdown with Prettier
         run: npx prettier --write docs/models.md
 
-      - name: Commit and push if changed
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Stage docs/models.md
+        run: git add docs/models.md
+
+      - name: Commit & Push docs/models.md
+        uses: actions-js/push@master
         with:
-          commit_message: 'docs: Auto-update and format models.md'
-          file_pattern: 'docs/models.md'
-          commit_user_name: 'github-actions[bot]'
-          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+          message: 'docs: Auto-update and format models.md'
+          author_name: 'github-actions[bot]'
+          author_email: 'github-actions[bot]@users.noreply.github.com'
