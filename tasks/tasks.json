@@ -5305,12 +5305,57 @@
     },
     {
       "id": 89,
-      "title": "Task #89: Introduce Prioritize Command with Enhanced Priority Levels",
+      "title": "Introduce Prioritize Command with Enhanced Priority Levels",
       "description": "Implement a prioritize command with --up/--down/--priority/--id flags and shorthand equivalents (-u/-d/-p/-i). Add 'lowest' and 'highest' priority levels, updating CLI output accordingly.",
-      "details": "The new prioritize command should allow users to adjust task priorities using the specified flags. The --up and --down flags will modify the priority relative to the current level, while --priority sets an absolute priority. The --id flag specifies which task to prioritize. Shorthand equivalents (-u/-d/-p/-i) should be supported for user convenience.\n\nThe priority levels should now include 'lowest', 'low', 'medium', 'high', and 'highest'. The CLI output should be updated to reflect these new priority levels accurately.\n\nConsiderations:\n- Ensure backward compatibility with existing commands and configurations.\n- Update the help documentation to include the new command and its usage.\n- Implement proper error handling for invalid priority levels or missing flags.",
-      "testStrategy": "To verify task completion, perform the following tests:\n1. Test each flag (--up, --down, --priority, --id) individually and in combination to ensure they function as expected.\n2. Verify that shorthand equivalents (-u, -d, -p, -i) work correctly.\n3. Check that the new priority levels ('lowest' and 'highest') are recognized and displayed properly in CLI output.\n4. Test error handling for invalid inputs (e.g., non-existent task IDs, invalid priority levels).\n5. Ensure that the help command displays accurate information about the new prioritize command.",
       "status": "pending",
       "dependencies": [],
+      "priority": "medium",
+      "details": "The new prioritize command should allow users to adjust task priorities using the specified flags. The --up and --down flags will modify the priority relative to the current level, while --priority sets an absolute priority. The --id flag specifies which task to prioritize. Shorthand equivalents (-u/-d/-p/-i) should be supported for user convenience.\n\nThe priority levels should now include 'lowest', 'low', 'medium', 'high', and 'highest'. The CLI output should be updated to reflect these new priority levels accurately.\n\nConsiderations:\n- Ensure backward compatibility with existing commands and configurations.\n- Update the help documentation to include the new command and its usage.\n- Implement proper error handling for invalid priority levels or missing flags.",
+      "testStrategy": "To verify task completion, perform the following tests:\n1. Test each flag (--up, --down, --priority, --id) individually and in combination to ensure they function as expected.\n2. Verify that shorthand equivalents (-u, -d, -p, -i) work correctly.\n3. Check that the new priority levels ('lowest' and 'highest') are recognized and displayed properly in CLI output.\n4. Test error handling for invalid inputs (e.g., non-existent task IDs, invalid priority levels).\n5. Ensure that the help command displays accurate information about the new prioritize command.",
+      "subtasks": []
+    },
+    {
+      "id": 90,
+      "title": "Implement Subtask Progress Analyzer and Reporting System",
+      "description": "Develop a subtask analyzer that monitors the progress of all subtasks, validates their status, and generates comprehensive reports for users to track project advancement.",
+      "details": "The subtask analyzer should be implemented with the following components and considerations:\n\n1. Progress Tracking Mechanism:\n   - Create a function to scan the task data structure and identify all tasks with subtasks\n   - Implement logic to determine the completion status of each subtask\n   - Calculate overall progress percentages for tasks with multiple subtasks\n\n2. Status Validation:\n   - Develop validation rules to check if subtasks are progressing according to expected timelines\n   - Implement detection for stalled or blocked subtasks\n   - Create alerts for subtasks that are behind schedule or have dependency issues\n\n3. Reporting System:\n   - Design a structured report format that clearly presents:\n     - Overall project progress\n     - Task-by-task breakdown with subtask status\n     - Highlighted issues or blockers\n   - Support multiple output formats (console, JSON, exportable text)\n   - Include visual indicators for progress (e.g., progress bars in CLI)\n\n4. Integration Points:\n   - Hook into the existing task management system\n   - Ensure the analyzer can be triggered via CLI commands\n   - Make the reporting feature accessible through the main command interface\n\n5. Performance Considerations:\n   - Optimize for large task lists with many subtasks\n   - Implement caching if necessary to avoid redundant calculations\n   - Ensure reports generate quickly even for complex project structures\n\nThe implementation should follow the existing code style and patterns, leveraging the task data structure already in place. The analyzer should be non-intrusive to existing functionality while providing valuable insights to users.",
+      "testStrategy": "Testing for the subtask analyzer should include:\n\n1. Unit Tests:\n   - Test the progress calculation logic with various task/subtask configurations\n   - Verify status validation correctly identifies issues in different scenarios\n   - Ensure report generation produces consistent and accurate output\n   - Test edge cases (empty subtasks, all complete, all incomplete, mixed states)\n\n2. Integration Tests:\n   - Verify the analyzer correctly integrates with the existing task data structure\n   - Test CLI command integration and parameter handling\n   - Ensure reports reflect actual changes to task/subtask status\n\n3. Performance Tests:\n   - Benchmark report generation with large task sets (100+ tasks with multiple subtasks)\n   - Verify memory usage remains reasonable during analysis\n\n4. User Acceptance Testing:\n   - Create sample projects with various subtask configurations\n   - Generate reports and verify they provide clear, actionable information\n   - Confirm visual indicators accurately represent progress\n\n5. Regression Testing:\n   - Verify that the analyzer doesn't interfere with existing task management functionality\n   - Ensure backward compatibility with existing task data structures\n\nDocumentation should be updated to include examples of how to use the new analyzer and interpret the reports. Success criteria include accurate progress tracking, clear reporting, and performance that scales with project size.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        3
+      ],
+      "priority": "medium",
+      "subtasks": []
+    },
+    {
+      "id": 91,
+      "title": "Implement Move Command for Tasks and Subtasks",
+      "description": "Introduce a 'move' command to enable moving tasks or subtasks to a different id, facilitating conflict resolution by allowing teams to assign new ids as needed.",
+      "details": "The move command should accept --id/-i and --to/-t flags, where --id specifies the task/subtask to be moved and --to indicates the new parent id for subtasks. Ensure that the command works seamlessly with both tasks and subtasks, allowing users to reassign them within the same project structure. The implementation should handle edge cases such as invalid ids, non-existent parents, and circular dependencies.",
+      "testStrategy": "Verify the move command by testing various scenarios including moving a task to a new id, moving a subtask under a different parent while preserving its hierarchy, handling errors for invalid or non-existent ids, and ensuring that the command does not disrupt existing task relationships.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        3
+      ],
+      "priority": "medium",
+      "subtasks": []
+    },
+    {
+      "id": 92,
+      "title": "Implement Scheduling System for Periodic Task Execution",
+      "description": "Develop a system that allows tasks to be scheduled with custom time intervals and timezone configuration, enabling periodic execution of tasks at specified times.",
+      "details": "1. Design the scheduling system architecture to support:\n   - Custom time intervals (e.g., every X minutes/hours/days)\n   - Timezone configuration\n   - Task prioritization in scheduling\n2. Implement the core scheduling functionality:\n   - Create a scheduler service that manages scheduled tasks\n   - Develop task execution logic based on schedules\n   - Integrate with existing task management system (Task 3)\n3. Add user interface for scheduling tasks:\n   - Create command-line options for setting up scheduled tasks\n   - Implement configuration validation and error handling (Task 19)\n4. Ensure proper logging of scheduled tasks and their execution (Task 17)\n5. Handle timezone conversions accurately\n6. Implement batch scheduling operations (Task 11)\n7. Add support for recurring tasks with complex schedules (e.g., cron-like syntax)\n8. Integrate with the existing task data structure (Task 1)",
+      "testStrategy": "1. Verify that tasks can be scheduled with various time intervals and timezone configurations\n2. Test scheduling edge cases (e.g., overlapping schedules, different timezones)\n3. Check proper execution of scheduled tasks at specified times\n4. Validate logging of scheduled task executions\n5. Ensure error handling works correctly for invalid schedule configurations\n6. Test batch scheduling operations\n7. Verify timezone conversion accuracy",
+      "status": "pending",
+      "dependencies": [
+        1,
+        3,
+        11,
+        17,
+        19
+      ],
       "priority": "medium",
       "subtasks": []
     }

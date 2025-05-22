@@ -1,5 +1,5 @@
 # Task ID: 89
-# Title: Task #89: Introduce Prioritize Command with Enhanced Priority Levels
+# Title: Introduce Prioritize Command with Enhanced Priority Levels
 # Status: pending
 # Dependencies: None
 # Priority: medium

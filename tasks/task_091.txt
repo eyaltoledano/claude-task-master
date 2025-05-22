@@ -1,0 +1,11 @@
+# Task ID: 91
+# Title: Implement Move Command for Tasks and Subtasks
+# Status: pending
+# Dependencies: 1, 3
+# Priority: medium
+# Description: Introduce a 'move' command to enable moving tasks or subtasks to a different id, facilitating conflict resolution by allowing teams to assign new ids as needed.
+# Details:
+The move command should accept --id/-i and --to/-t flags, where --id specifies the task/subtask to be moved and --to indicates the new parent id for subtasks. Ensure that the command works seamlessly with both tasks and subtasks, allowing users to reassign them within the same project structure. The implementation should handle edge cases such as invalid ids, non-existent parents, and circular dependencies.
+
+# Test Strategy:
+Verify the move command by testing various scenarios including moving a task to a new id, moving a subtask under a different parent while preserving its hierarchy, handling errors for invalid or non-existent ids, and ensuring that the command does not disrupt existing task relationships.
