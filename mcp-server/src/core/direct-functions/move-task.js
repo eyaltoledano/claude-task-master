@@ -22,7 +22,7 @@ import {
  */
 export async function moveTaskDirect(args, log, context = {}) {
 	const { session } = context;
-	
+
 	// Validate required parameters
 	if (!args.sourceId) {
 		return {
@@ -52,7 +52,8 @@ export async function moveTaskDirect(args, log, context = {}) {
 				return {
 					success: false,
 					error: {
-						message: 'Project root is required if tasksJsonPath is not provided',
+						message:
+							'Project root is required if tasksJsonPath is not provided',
 						code: 'MISSING_PROJECT_ROOT'
 					}
 				};
@@ -64,7 +65,12 @@ export async function moveTaskDirect(args, log, context = {}) {
 		enableSilentMode();
 
 		// Call the core moveTask function, always generate files
-		const result = await moveTask(tasksPath, args.sourceId, args.destinationId, true);
+		const result = await moveTask(
+			tasksPath,
+			args.sourceId,
+			args.destinationId,
+			true
+		);
 
 		// Restore console output
 		disableSilentMode();
@@ -81,7 +87,7 @@ export async function moveTaskDirect(args, log, context = {}) {
 		disableSilentMode();
 
 		log.error(`Failed to move task: ${error.message}`);
-		
+
 		return {
 			success: false,
 			error: {
@@ -90,4 +96,4 @@ export async function moveTaskDirect(args, log, context = {}) {
 			}
 		};
 	}
-} 
+}

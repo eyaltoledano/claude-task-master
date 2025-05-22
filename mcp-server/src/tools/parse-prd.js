@@ -53,7 +53,9 @@ export function registerParsePRDTool(server) {
 				.boolean()
 				.optional()
 				.default(false)
-				.describe('Use the research model for research-backed task generation, providing more comprehensive, accurate and up-to-date task details.'),
+				.describe(
+					'Use the research model for research-backed task generation, providing more comprehensive, accurate and up-to-date task details.'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')

@@ -58,12 +58,14 @@ Task 8 should actually be a subtask of task 4. Can you reorganize this?
 I just merged the main branch and there's a conflict in tasks.json. My teammates created tasks 10-15 on their branch while I created tasks 10-12 on my branch. Can you help me resolve this by moving my tasks?
 ```
 
-(Agent runs: 
+(Agent runs:
+
 ```bash
 task-master move --from=10 --to=16
 task-master move --from=11 --to=17
 task-master move --from=12 --to=18
 ```
+
 )
 
 ## Analyzing complexity

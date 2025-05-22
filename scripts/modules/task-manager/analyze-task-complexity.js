@@ -70,7 +70,12 @@ async function analyzeTaskComplexity(options, context = {}) {
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
 	// New parameters for task ID filtering
-	const specificIds = options.id ? options.id.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id)) : null;
+	const specificIds = options.id
+		? options.id
+				.split(',')
+				.map((id) => parseInt(id.trim(), 10))
+				.filter((id) => !isNaN(id))
+		: null;
 	const fromId = options.from !== undefined ? parseInt(options.from, 10) : null;
 	const toId = options.to !== undefined ? parseInt(options.to, 10) : null;
 
@@ -122,43 +127,68 @@ async function analyzeTaskComplexity(options, context = {}) {
 				throw new Error('No tasks found in the tasks file');
 			}
 			originalTaskCount = originalData.tasks.length;
-			
+
 			// Filter tasks based on active status
 			const activeStatuses = ['pending', 'blocked', 'in-progress'];
 			let filteredTasks = originalData.tasks.filter((task) =>
 				activeStatuses.includes(task.status?.toLowerCase() || 'pending')
 			);
-			
+
 			// Apply ID filtering if specified
 			if (specificIds && specificIds.length > 0) {
-				reportLog(`Filtering tasks by specific IDs: ${specificIds.join(', ')}`, 'info');
-				filteredTasks = filteredTasks.filter(task => specificIds.includes(task.id));
-				
+				reportLog(
+					`Filtering tasks by specific IDs: ${specificIds.join(', ')}`,
+					'info'
+				);
+				filteredTasks = filteredTasks.filter((task) =>
+					specificIds.includes(task.id)
+				);
+
 				if (outputFormat === 'text') {
 					if (filteredTasks.length === 0 && specificIds.length > 0) {
-						console.log(chalk.yellow(`Warning: No active tasks found with IDs: ${specificIds.join(', ')}`));
+						console.log(
+							chalk.yellow(
+								`Warning: No active tasks found with IDs: ${specificIds.join(', ')}`
+							)
+						);
 					} else if (filteredTasks.length < specificIds.length) {
-						const foundIds = filteredTasks.map(t => t.id);
-						const missingIds = specificIds.filter(id => !foundIds.includes(id));
-						console.log(chalk.yellow(`Warning: Some requested task IDs were not found or are not active: ${missingIds.join(', ')}`));
+						const foundIds = filteredTasks.map((t) => t.id);
+						const missingIds = specificIds.filter(
+							(id) => !foundIds.includes(id)
+						);
+						console.log(
+							chalk.yellow(
+								`Warning: Some requested task IDs were not found or are not active: ${missingIds.join(', ')}`
+							)
+						);
 					}
 				}
-			} 
+			}
 			// Apply range filtering if specified
 			else if (fromId !== null || toId !== null) {
 				const effectiveFromId = fromId !== null ? fromId : 1;
-				const effectiveToId = toId !== null ? toId : Math.max(...originalData.tasks.map(t => t.id));
-				
-				reportLog(`Filtering tasks by ID range: ${effectiveFromId} to ${effectiveToId}`, 'info');
-				filteredTasks = filteredTasks.filter(task => 
-					task.id >= effectiveFromId && task.id <= effectiveToId
+				const effectiveToId =
+					toId !== null
+						? toId
+						: Math.max(...originalData.tasks.map((t) => t.id));
+
+				reportLog(
+					`Filtering tasks by ID range: ${effectiveFromId} to ${effectiveToId}`,
+					'info'
 				);
-				
+				filteredTasks = filteredTasks.filter(
+					(task) => task.id >= effectiveFromId && task.id <= effectiveToId
+				);
+
 				if (outputFormat === 'text' && filteredTasks.length === 0) {
-					console.log(chalk.yellow(`Warning: No active tasks found in range: ${effectiveFromId}-${effectiveToId}`));
+					console.log(
+						chalk.yellow(
+							`Warning: No active tasks found in range: ${effectiveFromId}-${effectiveToId}`
+						)
+					);
 				}
 			}
-			
+
 			tasksData = {
 				...originalData,
 				tasks: filteredTasks,
@@ -171,13 +201,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 			`Found ${originalTaskCount} total tasks in the task file.`,
 			'info'
 		);
-		
+
 		// Updated messaging to reflect filtering logic
 		if (specificIds || fromId !== null || toId !== null) {
-			const filterMsg = specificIds 
+			const filterMsg = specificIds
 				? `Analyzing ${tasksData.tasks.length} tasks with specific IDs: ${specificIds.join(', ')}`
 				: `Analyzing ${tasksData.tasks.length} tasks in range: ${fromId || 1} to ${toId || 'end'}`;
-				
+
 			reportLog(filterMsg, 'info');
 			if (outputFormat === 'text') {
 				console.log(chalk.blue(filterMsg));
@@ -197,19 +227,27 @@ async function analyzeTaskComplexity(options, context = {}) {
 			if (fs.existsSync(outputPath)) {
 				existingReport = readJSON(outputPath);
 				reportLog(`Found existing complexity report at ${outputPath}`, 'info');
-				
-				if (existingReport && 
-					existingReport.complexityAnalysis && 
-					Array.isArray(existingReport.complexityAnalysis)) {
+
+				if (
+					existingReport &&
+					existingReport.complexityAnalysis &&
+					Array.isArray(existingReport.complexityAnalysis)
+				) {
 					// Create lookup map of existing analysis entries
-					existingReport.complexityAnalysis.forEach(item => {
+					existingReport.complexityAnalysis.forEach((item) => {
 						existingAnalysisMap.set(item.taskId, item);
 					});
-					reportLog(`Existing report contains ${existingReport.complexityAnalysis.length} task analyses`, 'info');
+					reportLog(
+						`Existing report contains ${existingReport.complexityAnalysis.length} task analyses`,
+						'info'
+					);
 				}
 			}
 		} catch (readError) {
-			reportLog(`Warning: Could not read existing report: ${readError.message}`, 'warn');
+			reportLog(
+				`Warning: Could not read existing report: ${readError.message}`,
+				'warn'
+			);
 			existingReport = null;
 			existingAnalysisMap.clear();
 		}
@@ -217,16 +255,23 @@ async function analyzeTaskComplexity(options, context = {}) {
 		if (tasksData.tasks.length === 0) {
 			// If using ID filtering but no matching tasks, return existing report or empty
 			if (existingReport && (specificIds || fromId !== null || toId !== null)) {
-				reportLog(`No matching tasks found for analysis. Keeping existing report.`, 'info');
+				reportLog(
+					`No matching tasks found for analysis. Keeping existing report.`,
+					'info'
+				);
 				if (outputFormat === 'text') {
-					console.log(chalk.yellow(`No matching tasks found for analysis. Keeping existing report.`));
+					console.log(
+						chalk.yellow(
+							`No matching tasks found for analysis. Keeping existing report.`
+						)
+					);
 				}
 				return {
 					report: existingReport,
 					telemetryData: null
 				};
 			}
-			
+
 			// Otherwise create empty report
 			const emptyReport = {
 				meta: {
@@ -422,20 +467,29 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 			// Merge with existing report
 			let finalComplexityAnalysis = [];
-			
+
 			if (existingReport && Array.isArray(existingReport.complexityAnalysis)) {
 				// Create a map of task IDs that we just analyzed
-				const analyzedTaskIds = new Set(complexityAnalysis.map(item => item.taskId));
-				
-				// Keep existing entries that weren't in this analysis run
-				const existingEntriesNotAnalyzed = existingReport.complexityAnalysis.filter(
-					item => !analyzedTaskIds.has(item.taskId)
+				const analyzedTaskIds = new Set(
+					complexityAnalysis.map((item) => item.taskId)
 				);
-				
+
+				// Keep existing entries that weren't in this analysis run
+				const existingEntriesNotAnalyzed =
+					existingReport.complexityAnalysis.filter(
+						(item) => !analyzedTaskIds.has(item.taskId)
+					);
+
 				// Combine with new analysis
-				finalComplexityAnalysis = [...existingEntriesNotAnalyzed, ...complexityAnalysis];
-				
-				reportLog(`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`, 'info');
+				finalComplexityAnalysis = [
+					...existingEntriesNotAnalyzed,
+					...complexityAnalysis
+				];
+
+				reportLog(
+					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`,
+					'info'
+				);
 			} else {
 				// No existing report or invalid format, just use the new analysis
 				finalComplexityAnalysis = complexityAnalysis;
@@ -485,15 +539,19 @@ async function analyzeTaskComplexity(options, context = {}) {
 				console.log(`High complexity tasks: ${highComplexity}`);
 				console.log(`Medium complexity tasks: ${mediumComplexity}`);
 				console.log(`Low complexity tasks: ${lowComplexity}`);
-				
+
 				if (existingReport) {
 					console.log('\nUpdated Report Summary:');
 					console.log('----------------------------');
-					console.log(`Total analyses in report: ${finalComplexityAnalysis.length}`);
-					console.log(`Analyses from previous runs: ${finalComplexityAnalysis.length - totalAnalyzed}`);
+					console.log(
+						`Total analyses in report: ${finalComplexityAnalysis.length}`
+					);
+					console.log(
+						`Analyses from previous runs: ${finalComplexityAnalysis.length - totalAnalyzed}`
+					);
 					console.log(`New/updated analyses: ${totalAnalyzed}`);
 				}
-				
+
 				console.log(`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`);
 				console.log(
 					`\nSee ${outputPath} for the full report and expansion commands.`

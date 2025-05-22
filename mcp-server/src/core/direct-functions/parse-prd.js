@@ -116,7 +116,9 @@ export async function parsePRDDirect(args, log, context = {}) {
 	}
 
 	if (research) {
-		logWrapper.info('Research mode enabled. Using Perplexity AI for enhanced PRD analysis.');
+		logWrapper.info(
+			'Research mode enabled. Using Perplexity AI for enhanced PRD analysis.'
+		);
 	}
 
 	logWrapper.info(

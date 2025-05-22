@@ -244,7 +244,7 @@
 		{
 			"id": "google/gemini-2.5-flash-preview-05-20:thinking",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.15, "output": 3.50 },
+			"cost_per_1m_tokens": { "input": 0.15, "output": 3.5 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1048576
 		},
@@ -279,14 +279,14 @@
 		{
 			"id": "openai/gpt-4.1-mini",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.40, "output": 1.60 },
+			"cost_per_1m_tokens": { "input": 0.4, "output": 1.6 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1000000
 		},
 		{
 			"id": "openai/gpt-4.1-nano",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.10, "output": 0.40 },
+			"cost_per_1m_tokens": { "input": 0.1, "output": 0.4 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1000000
 		},
@@ -342,14 +342,14 @@
 		{
 			"id": "meta-llama/llama-4-maverick",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.18, "output": 0.60 },
+			"cost_per_1m_tokens": { "input": 0.18, "output": 0.6 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1000000
 		},
 		{
 			"id": "meta-llama/llama-4-scout",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.08, "output": 0.30 },
+			"cost_per_1m_tokens": { "input": 0.08, "output": 0.3 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1000000
 		},
@@ -391,7 +391,7 @@
 		{
 			"id": "mistralai/devstral-small",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0.10, "output": 0.30 },
+			"cost_per_1m_tokens": { "input": 0.1, "output": 0.3 },
 			"allowed_roles": ["main"],
 			"max_tokens": 110000
 		},

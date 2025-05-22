@@ -92,7 +92,9 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		}
 	};
 
-	report(`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`);
+	report(
+		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
+	);
 
 	let existingTasks = [];
 	let nextId = 1;
@@ -220,7 +222,10 @@ Guidelines:
 }`;
 
 		// Call the unified AI service
-		report(`Calling AI service to generate tasks from PRD${research ? ' with research-backed analysis' : ''}...`, 'info');
+		report(
+			`Calling AI service to generate tasks from PRD${research ? ' with research-backed analysis' : ''}...`,
+			'info'
+		);
 
 		// Call generateObjectService with the CORRECT schema and additional telemetry params
 		aiServiceResponse = await generateObjectService({
@@ -240,7 +245,9 @@ Guidelines:
 		if (!fs.existsSync(tasksDir)) {
 			fs.mkdirSync(tasksDir, { recursive: true });
 		}
-		logFn.success(`Successfully parsed PRD via AI service${research ? ' with research-backed analysis' : ''}.`);
+		logFn.success(
+			`Successfully parsed PRD via AI service${research ? ' with research-backed analysis' : ''}.`
+		);
 
 		// Validate and Process Tasks
 		// const generatedData = aiServiceResponse?.mainResult?.object;

@@ -21,33 +21,36 @@ export function registerMoveTaskTool(server) {
 		name: 'move_task',
 		description: 'Move a task or subtask to a new position',
 		parameters: z.object({
-			from: z.string().describe(
-				'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
-			),
-			to: z.string().describe(
-				'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
-			),
-			file: z
+			from: z
 				.string()
-				.optional()
-				.describe('Custom path to tasks.json file'),
+				.describe(
+					'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
+				),
+			to: z
+				.string()
+				.describe(
+					'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
+				),
+			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
 				.string()
 				.optional()
-				.describe('Root directory of the project (typically derived from session)')
+				.describe(
+					'Root directory of the project (typically derived from session)'
+				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				// Find tasks.json path if not provided
 				let tasksJsonPath = args.file;
-				
+
 				if (!tasksJsonPath) {
 					tasksJsonPath = findTasksJsonPath(args, log);
 				}
 
 				// Parse comma-separated IDs
-				const fromIds = args.from.split(',').map(id => id.trim());
-				const toIds = args.to.split(',').map(id => id.trim());
+				const fromIds = args.from.split(',').map((id) => id.trim());
+				const toIds = args.to.split(',').map((id) => id.trim());
 
 				// Validate matching IDs count
 				if (fromIds.length !== toIds.length) {
@@ -64,13 +67,13 @@ export function registerMoveTaskTool(server) {
 					for (let i = 0; i < fromIds.length; i++) {
 						const fromId = fromIds[i];
 						const toId = toIds[i];
-						
+
 						// Skip if source and destination are the same
 						if (fromId === toId) {
 							log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
 							continue;
 						}
-						
+
 						const shouldGenerateFiles = i === fromIds.length - 1;
 						const result = await moveTaskDirect(
 							{
@@ -82,14 +85,16 @@ export function registerMoveTaskTool(server) {
 							log,
 							{ session }
 						);
-						
+
 						if (!result.success) {
-							log.error(`Failed to move ${fromId} to ${toId}: ${result.error.message}`);
+							log.error(
+								`Failed to move ${fromId} to ${toId}: ${result.error.message}`
+							);
 						} else {
 							results.push(result.data);
 						}
 					}
-					
+
 					return {
 						success: true,
 						data: {
@@ -121,4 +126,4 @@ export function registerMoveTaskTool(server) {
 			}
 		})
 	});
-} 
+}

@@ -285,13 +285,14 @@ task-master move --from=5.2 --to=7.3
 You can reorganize tasks in various ways:
 
 - Moving a standalone task to become a subtask: `--from=5 --to=7`
-- Moving a subtask to become a standalone task: `--from=5.2 --to=7` 
+- Moving a subtask to become a standalone task: `--from=5.2 --to=7`
 - Moving a subtask to a different parent: `--from=5.2 --to=7.3`
 - Reordering subtasks within the same parent: `--from=5.2 --to=5.4`
 - Moving a task to a new ID position: `--from=5 --to=25` (even if task 25 doesn't exist yet)
 - Moving multiple tasks at once: `--from=10,11,12 --to=16,17,18` (must have same number of IDs, Taskmaster will look through each position)
 
 When moving tasks to new IDs:
+
 - The system automatically creates placeholder tasks for non-existent destination IDs
 - This prevents accidental data loss during reorganization
 - Any tasks that depend on moved tasks will have their dependencies updated

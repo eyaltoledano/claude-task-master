@@ -615,15 +615,19 @@ function registerCommands(programInstance) {
 					console.log(chalk.blue('Appending to existing tasks...'));
 				}
 				if (research) {
-					console.log(chalk.blue('Using Perplexity AI for research-backed task generation'));
+					console.log(
+						chalk.blue(
+							'Using Perplexity AI for research-backed task generation'
+						)
+					);
 				}
 
 				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
-						append: useAppend,
-						force: useForce,
-						research: research
-					});
+					append: useAppend,
+					force: useForce,
+					research: research
+				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
 				if (spinner) {
@@ -1230,14 +1234,8 @@ function registerCommands(programInstance) {
 			'-i, --id <ids>',
 			'Comma-separated list of specific task IDs to analyze (e.g., "1,3,5")'
 		)
-		.option(
-			'--from <id>',
-			'Starting task ID in a range to analyze'
-		)
-		.option(
-			'--to <id>',
-			'Ending task ID in a range to analyze'
-		)
+		.option('--from <id>', 'Starting task ID in a range to analyze')
+		.option('--to <id>', 'Ending task ID in a range to analyze')
 		.action(async (options) => {
 			const tasksPath = options.file || 'tasks/tasks.json';
 			const outputPath = options.output;
@@ -1253,7 +1251,9 @@ function registerCommands(programInstance) {
 			} else if (options.from || options.to) {
 				const fromStr = options.from ? options.from : 'first';
 				const toStr = options.to ? options.to : 'last';
-				console.log(chalk.blue(`Analyzing tasks in range: ${fromStr} to ${toStr}`));
+				console.log(
+					chalk.blue(`Analyzing tasks in range: ${fromStr} to ${toStr}`)
+				);
 			}
 
 			if (useResearch) {
@@ -2389,8 +2389,14 @@ Examples:
 		.command('move')
 		.description('Move a task or subtask to a new position')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-		.option('--from <id>', 'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")')
-		.option('--to <id>', 'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated')
+		.option(
+			'--from <id>',
+			'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
+		)
+		.option(
+			'--to <id>',
+			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file;
 			const sourceId = options.from;
@@ -2409,18 +2415,18 @@ Examples:
 			}
 
 			// Check if we're moving multiple tasks (comma-separated IDs)
-			const sourceIds = sourceId.split(',').map(id => id.trim());
-			const destinationIds = destinationId.split(',').map(id => id.trim());
+			const sourceIds = sourceId.split(',').map((id) => id.trim());
+			const destinationIds = destinationId.split(',').map((id) => id.trim());
 
 			// Validate that the number of source and destination IDs match
 			if (sourceIds.length !== destinationIds.length) {
 				console.error(
-					chalk.red('Error: The number of source and destination IDs must match')
+					chalk.red(
+						'Error: The number of source and destination IDs must match'
+					)
 				);
 				console.log(
-					chalk.yellow(
-						'Example: task-master move --from=5,6,7 --to=10,11,12'
-					)
+					chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
 				);
 				process.exit(1);
 			}
@@ -2428,14 +2434,18 @@ Examples:
 			// If moving multiple tasks
 			if (sourceIds.length > 1) {
 				console.log(
-					chalk.blue(`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`)
+					chalk.blue(
+						`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+					)
 				);
 
 				try {
 					// Read tasks data once to validate destination IDs
 					const tasksData = readJSON(tasksPath);
 					if (!tasksData || !tasksData.tasks) {
-						console.error(chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`));
+						console.error(
+							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
+						);
 						process.exit(1);
 					}
 
@@ -2446,20 +2456,31 @@ Examples:
 
 						// Skip if source and destination are the same
 						if (fromId === toId) {
-							console.log(chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`));
+							console.log(
+								chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`)
+							);
 							continue;
 						}
 
-						console.log(chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`));
+						console.log(
+							chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`)
+						);
 						try {
-							await moveTask(tasksPath, fromId, toId, i === sourceIds.length - 1);
+							await moveTask(
+								tasksPath,
+								fromId,
+								toId,
+								i === sourceIds.length - 1
+							);
 							console.log(
 								chalk.green(
 									`✓ Successfully moved task/subtask ${fromId} to ${toId}`
 								)
 							);
 						} catch (error) {
-							console.error(chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`));
+							console.error(
+								chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`)
+							);
 							// Continue with the next task rather than exiting
 						}
 					}
@@ -2474,7 +2495,12 @@ Examples:
 				);
 
 				try {
-					const result = await moveTask(tasksPath, sourceId, destinationId, true);
+					const result = await moveTask(
+						tasksPath,
+						sourceId,
+						destinationId,
+						true
+					);
 					console.log(
 						chalk.green(
 							`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`

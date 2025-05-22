@@ -52,16 +52,16 @@ export function registerAnalyzeProjectComplexityTool(server) {
 			ids: z
 				.string()
 				.optional()
-				.describe('Comma-separated list of task IDs to analyze specifically (e.g., "1,3,5").'),
-			from: z
-				.coerce
+				.describe(
+					'Comma-separated list of task IDs to analyze specifically (e.g., "1,3,5").'
+				),
+			from: z.coerce
 				.number()
 				.int()
 				.positive()
 				.optional()
 				.describe('Starting task ID in a range to analyze.'),
-			to: z
-				.coerce
+			to: z.coerce
 				.number()
 				.int()
 				.positive()

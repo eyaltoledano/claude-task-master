@@ -323,7 +323,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		});
 	}
 
-	const { findProjectRoot: detectProjectRoot } = await import('./utils.js'); 
+	const { findProjectRoot: detectProjectRoot } = await import('./utils.js');
 	const effectiveProjectRoot = projectRoot || detectProjectRoot();
 	const userId = getUserId(effectiveProjectRoot);
 
@@ -435,7 +435,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 					);
 				continue;
 			}
-			
+
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,

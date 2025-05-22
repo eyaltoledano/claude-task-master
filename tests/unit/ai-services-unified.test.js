@@ -368,14 +368,13 @@ describe('Unified AI Services', () => {
 		// 3. The system throws an appropriate error if all providers' API keys are missing
 		// 4. Ollama is a special case where API key is optional and not checked
 		// 5. Session context is correctly used for API key checks
-		
+
 		test('should skip provider with missing API key and try next in fallback sequence', async () => {
 			// Setup isApiKeySet to return false for anthropic but true for perplexity
-			mockIsApiKeySet
-				.mockImplementation((provider, session, root) => {
-					if (provider === 'anthropic') return false; // Main provider has no key
-					return true; // Other providers have keys
-				});
+			mockIsApiKeySet.mockImplementation((provider, session, root) => {
+				if (provider === 'anthropic') return false; // Main provider has no key
+				return true; // Other providers have keys
+			});
 
 			// Mock perplexity text response (since we'll skip anthropic)
 			mockGeneratePerplexityText.mockResolvedValue({
@@ -388,49 +387,59 @@ describe('Unified AI Services', () => {
 				prompt: 'Skip main provider test',
 				session: { env: {} }
 			};
-			
+
 			const result = await generateTextService(params);
 
 			// Should have gotten the perplexity response
-			expect(result.mainResult).toBe('Perplexity response (skipped to research)');
-			
+			expect(result.mainResult).toBe(
+				'Perplexity response (skipped to research)'
+			);
+
 			// Should check API keys
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('anthropic', params.session, fakeProjectRoot);
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('perplexity', params.session, fakeProjectRoot);
-			
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'anthropic',
+				params.session,
+				fakeProjectRoot
+			);
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'perplexity',
+				params.session,
+				fakeProjectRoot
+			);
+
 			// Should log a warning
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`
+				)
 			);
-			
+
 			// Should NOT call anthropic provider
 			expect(mockGenerateAnthropicText).not.toHaveBeenCalled();
-			
+
 			// Should call perplexity provider
 			expect(mockGeneratePerplexityText).toHaveBeenCalledTimes(1);
 		});
 
 		test('should skip multiple providers with missing API keys and use first available', async () => {
 			// Setup: Main and fallback providers have no keys, only research has a key
-			mockIsApiKeySet
-				.mockImplementation((provider, session, root) => {
-					if (provider === 'anthropic') return false; // Main and fallback are both anthropic
-					if (provider === 'perplexity') return true; // Research has a key
-					return false;
-				});
+			mockIsApiKeySet.mockImplementation((provider, session, root) => {
+				if (provider === 'anthropic') return false; // Main and fallback are both anthropic
+				if (provider === 'perplexity') return true; // Research has a key
+				return false;
+			});
 
 			// Define different providers for testing multiple skips
 			mockGetFallbackProvider.mockReturnValue('openai'); // Different from main
 			mockGetFallbackModelId.mockReturnValue('test-openai-model');
-			
+
 			// Mock isApiKeySet to return false for both main and fallback
-			mockIsApiKeySet
-				.mockImplementation((provider, session, root) => {
-					if (provider === 'anthropic') return false; // Main provider has no key 
-					if (provider === 'openai') return false; // Fallback provider has no key
-					return true; // Research provider has a key
-				});
+			mockIsApiKeySet.mockImplementation((provider, session, root) => {
+				if (provider === 'anthropic') return false; // Main provider has no key
+				if (provider === 'openai') return false; // Fallback provider has no key
+				return true; // Research provider has a key
+			});
 
 			// Mock perplexity text response (since we'll skip to research)
 			mockGeneratePerplexityText.mockResolvedValue({
@@ -443,31 +452,49 @@ describe('Unified AI Services', () => {
 				prompt: 'Skip multiple providers test',
 				session: { env: {} }
 			};
-			
+
 			const result = await generateTextService(params);
 
 			// Should have gotten the perplexity (research) response
-			expect(result.mainResult).toBe('Research response after skipping main and fallback');
-			
+			expect(result.mainResult).toBe(
+				'Research response after skipping main and fallback'
+			);
+
 			// Should check API keys for all three roles
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('anthropic', params.session, fakeProjectRoot);
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('openai', params.session, fakeProjectRoot);
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('perplexity', params.session, fakeProjectRoot);
-			
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'anthropic',
+				params.session,
+				fakeProjectRoot
+			);
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'openai',
+				params.session,
+				fakeProjectRoot
+			);
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'perplexity',
+				params.session,
+				fakeProjectRoot
+			);
+
 			// Should log warnings for both skipped providers
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`
+				)
 			);
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'fallback' (Provider: openai): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'fallback' (Provider: openai): API key not set or invalid.`
+				)
 			);
-			
+
 			// Should NOT call skipped providers
 			expect(mockGenerateAnthropicText).not.toHaveBeenCalled();
 			expect(mockGenerateOpenAIText).not.toHaveBeenCalled();
-			
+
 			// Should call perplexity provider
 			expect(mockGeneratePerplexityText).toHaveBeenCalledTimes(1);
 		});
@@ -490,23 +517,31 @@ describe('Unified AI Services', () => {
 			// Should log warnings for all skipped providers
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'main' (Provider: anthropic): API key not set or invalid.`
+				)
 			);
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'fallback' (Provider: anthropic): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'fallback' (Provider: anthropic): API key not set or invalid.`
+				)
 			);
 			expect(mockLog).toHaveBeenCalledWith(
 				'warn',
-				expect.stringContaining(`Skipping role 'research' (Provider: perplexity): API key not set or invalid.`)
+				expect.stringContaining(
+					`Skipping role 'research' (Provider: perplexity): API key not set or invalid.`
+				)
 			);
-			
+
 			// Should log final error
 			expect(mockLog).toHaveBeenCalledWith(
 				'error',
-				expect.stringContaining('All roles in the sequence [main, fallback, research] failed.')
+				expect.stringContaining(
+					'All roles in the sequence [main, fallback, research] failed.'
+				)
 			);
-			
+
 			// Should NOT call any providers
 			expect(mockGenerateAnthropicText).not.toHaveBeenCalled();
 			expect(mockGeneratePerplexityText).not.toHaveBeenCalled();
@@ -516,7 +551,7 @@ describe('Unified AI Services', () => {
 			// Setup: Set main provider to ollama
 			mockGetMainProvider.mockReturnValue('ollama');
 			mockGetMainModelId.mockReturnValue('llama3');
-			
+
 			// Mock Ollama text generation to succeed
 			mockGenerateOllamaText.mockResolvedValue({
 				text: 'Ollama response (no API key required)',
@@ -528,17 +563,17 @@ describe('Unified AI Services', () => {
 				prompt: 'Ollama special case test',
 				session: { env: {} }
 			};
-			
+
 			const result = await generateTextService(params);
 
 			// Should have gotten the Ollama response
 			expect(result.mainResult).toBe('Ollama response (no API key required)');
-			
+
 			// isApiKeySet shouldn't be called for Ollama
 			// Note: This is indirect - the code just doesn't check isApiKeySet for ollama
 			// so we're verifying ollama provider was called despite isApiKeySet being mocked to false
 			mockIsApiKeySet.mockReturnValue(false); // Should be ignored for Ollama
-			
+
 			// Should call Ollama provider
 			expect(mockGenerateOllamaText).toHaveBeenCalledTimes(1);
 		});
@@ -546,14 +581,13 @@ describe('Unified AI Services', () => {
 		test('should correctly use the provided session for API key check', async () => {
 			// Mock custom session object with env vars
 			const customSession = { env: { ANTHROPIC_API_KEY: 'session-api-key' } };
-			
+
 			// Setup API key check to verify the session is passed correctly
-			mockIsApiKeySet
-				.mockImplementation((provider, session, root) => {
-					// Only return true if the correct session was provided
-					return session === customSession;
-				});
-			
+			mockIsApiKeySet.mockImplementation((provider, session, root) => {
+				// Only return true if the correct session was provided
+				return session === customSession;
+			});
+
 			// Mock the anthropic response
 			mockGenerateAnthropicText.mockResolvedValue({
 				text: 'Anthropic response with session key',
@@ -565,12 +599,16 @@ describe('Unified AI Services', () => {
 				prompt: 'Session API key test',
 				session: customSession
 			};
-			
+
 			const result = await generateTextService(params);
 
 			// Should check API key with the custom session
-			expect(mockIsApiKeySet).toHaveBeenCalledWith('anthropic', customSession, fakeProjectRoot);
-			
+			expect(mockIsApiKeySet).toHaveBeenCalledWith(
+				'anthropic',
+				customSession,
+				fakeProjectRoot
+			);
+
 			// Should have gotten the anthropic response
 			expect(result.mainResult).toBe('Anthropic response with session key');
 		});

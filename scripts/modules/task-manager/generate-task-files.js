@@ -36,7 +36,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		validateAndFixDependencies(data, tasksPath);
 
 		// Get valid task IDs from tasks.json
-		const validTaskIds = data.tasks.map(task => task.id);
+		const validTaskIds = data.tasks.map((task) => task.id);
 
 		// Cleanup orphaned task files
 		log('info', 'Checking for orphaned task files to clean up...');
@@ -44,9 +44,9 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			// Get all task files in the output directory
 			const files = fs.readdirSync(outputDir);
 			const taskFilePattern = /^task_(\d+)\.txt$/;
-			
+
 			// Filter for task files and check if they match a valid task ID
-			const orphanedFiles = files.filter(file => {
+			const orphanedFiles = files.filter((file) => {
 				const match = file.match(taskFilePattern);
 				if (match) {
 					const fileTaskId = parseInt(match[1], 10);
@@ -54,18 +54,24 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 				}
 				return false;
 			});
-			
+
 			// Delete orphaned files
 			if (orphanedFiles.length > 0) {
-				log('info', `Found ${orphanedFiles.length} orphaned task files to remove`);
-				
-				orphanedFiles.forEach(file => {
+				log(
+					'info',
+					`Found ${orphanedFiles.length} orphaned task files to remove`
+				);
+
+				orphanedFiles.forEach((file) => {
 					const filePath = path.join(outputDir, file);
 					try {
 						fs.unlinkSync(filePath);
 						log('info', `Removed orphaned task file: ${file}`);
 					} catch (err) {
-						log('warn', `Failed to remove orphaned task file ${file}: ${err.message}`);
+						log(
+							'warn',
+							`Failed to remove orphaned task file ${file}: ${err.message}`
+						);
 					}
 				});
 			} else {

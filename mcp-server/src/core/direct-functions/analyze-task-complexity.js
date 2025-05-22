@@ -29,11 +29,11 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 	const { session } = context;
-	const { 
-		tasksJsonPath, 
-		outputPath, 
-		threshold, 
-		research, 
+	const {
+		tasksJsonPath,
+		outputPath,
+		threshold,
+		research,
 		projectRoot,
 		ids,
 		from,
