@@ -116,6 +116,21 @@ task-master next
 task-master generate
 ```
 
+## Web GUI
+
+A web-based Graphical User Interface (GUI) is available to view task status.
+
+To run the web GUI:
+1. Make sure you have installed all project dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the web server:
+   ```bash
+   npm run start:web
+   ```
+3. Open your browser and navigate to `http://localhost:3000`. (The port is defined in `web-gui.js` and defaults to 3000).
+
 ## Documentation
 
 For more detailed information, check out the documentation in the `docs` directory:
