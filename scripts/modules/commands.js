@@ -619,8 +619,8 @@ function registerCommands(programInstance) {
 
 				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
-						useAppend: useAppend,
-						useForce: useForce,
+						append: useAppend,
+						force: useForce,
 						research: research
 					});
 				spinner.succeed('Tasks generated successfully!');
