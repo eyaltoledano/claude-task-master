@@ -23,6 +23,7 @@ import updateSubtaskById from './task-manager/update-subtask-by-id.js';
 import removeTask from './task-manager/remove-task.js';
 import taskExists from './task-manager/task-exists.js';
 import isTaskDependentOn from './task-manager/is-task-dependent.js';
+import moveTask from './task-manager/move-task.js';
 import { readComplexityReport } from './utils.js';
 // Export task manager functions
 export {
@@ -46,5 +47,6 @@ export {
 	findTaskById,
 	taskExists,
 	isTaskDependentOn,
+	moveTask,
 	readComplexityReport
 };

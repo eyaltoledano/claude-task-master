@@ -1,6 +1,6 @@
 # Task ID: 69
 # Title: Enhance Analyze Complexity for Specific Task IDs
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Modify the analyze-complexity feature (CLI and MCP) to allow analyzing only specified task IDs or ranges, and append/update results in the report.
@@ -71,25 +71,25 @@ Implementation Plan:
 3. Verify report `meta` section is updated correctly on each run.
 
 # Subtasks:
-## 1. Modify core complexity analysis logic [pending]
+## 1. Modify core complexity analysis logic [done]
 ### Dependencies: None
 ### Description: Update the core complexity analysis function to accept specific task IDs or ranges as input parameters
 ### Details:
 Refactor the existing complexity analysis module to allow filtering by task IDs or ranges. This involves modifying the data processing pipeline to filter tasks before analysis, ensuring the complexity metrics are calculated only for the specified tasks while maintaining context awareness.
 
-## 2. Update CLI interface for task-specific complexity analysis [pending]
+## 2. Update CLI interface for task-specific complexity analysis [done]
 ### Dependencies: 69.1
 ### Description: Extend the CLI to accept task IDs or ranges as parameters for the complexity analysis command
 ### Details:
 Add new flags `--id/-i`, `--from/-f`, and `--to/-t` to the CLI that allow users to specify task IDs or ranges for targeted complexity analysis. Update the command parser, help documentation, and ensure proper validation of the provided values.
 
-## 3. Integrate task-specific analysis with MCP tool [pending]
+## 3. Integrate task-specific analysis with MCP tool [done]
 ### Dependencies: 69.1
 ### Description: Update the MCP tool interface to support analyzing complexity for specific tasks or ranges
 ### Details:
 Modify the MCP tool's API endpoints and UI components to allow users to select specific tasks or ranges for complexity analysis. Ensure the UI provides clear feedback about which tasks are being analyzed and update the visualization components to properly display partial analysis results.
 
-## 4. Create comprehensive tests for task-specific complexity analysis [pending]
+## 4. Create comprehensive tests for task-specific complexity analysis [done]
 ### Dependencies: 69.1, 69.2, 69.3
 ### Description: Develop test cases to verify the correct functioning of task-specific complexity analysis
 ### Details:

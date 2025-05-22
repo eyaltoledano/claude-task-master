@@ -4545,7 +4545,7 @@
       "id": 69,
       "title": "Enhance Analyze Complexity for Specific Task IDs",
       "description": "Modify the analyze-complexity feature (CLI and MCP) to allow analyzing only specified task IDs or ranges, and append/update results in the report.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "details": "\nImplementation Plan:\n\n1. **Core Logic (`scripts/modules/task-manager/analyze-task-complexity.js`)**\n    * Modify function signature to accept optional parameters: `options.ids` (string, comma-separated IDs) and range parameters `options.from` and `options.to`.\n    * If `options.ids` is present:\n        * Parse the `ids` string into an array of target IDs.\n        * Filter `tasksData.tasks` to include only tasks matching the target IDs.\n        * Handle cases where provided IDs don't exist in `tasks.json`.\n    * If range parameters (`options.from` and `options.to`) are present:\n        * Parse these values into integers.\n        * Filter tasks within the specified ID range (inclusive).\n    * If neither `options.ids` nor range parameters are present: Continue with existing logic (filtering by active status).\n    * Maintain existing logic for skipping completed tasks.\n    * **Report Handling:**\n        * Before generating analysis, check if the `outputPath` report file exists.\n        * If it exists:\n            * Read the existing `complexityAnalysis` array.\n            * Generate new analysis only for target tasks (filtered by ID or range).\n            * Merge results: Remove entries from the existing array that match IDs analyzed in the current run, then append new analysis results to the array.\n            * Update the `meta` section (`generatedAt`, `tasksAnalyzed`).\n            * Write merged `complexityAnalysis` and updated `meta` back to report file.\n        * If the report file doesn't exist: Create it as usual.\n    * **Prompt Generation:** Ensure `generateInternalComplexityAnalysisPrompt` receives correctly filtered list of tasks.\n\n2. **CLI (`scripts/modules/commands.js`)**\n    * Add new options to the `analyze-complexity` command:\n        * `--id/-i <ids>`: \"Comma-separated list of specific task IDs to analyze\"\n        * `--from/-f <startId>`: \"Start ID for range analysis (inclusive)\"\n        * `--to/-t <endId>`: \"End ID for range analysis (inclusive)\"\n    * In the `.action` handler:\n        * Check if `options.id`, `options.from`, or `options.to` are provided.\n        * If yes, pass appropriate values to the `analyzeTaskComplexity` core function via the `options` object.\n        * Update user feedback messages to indicate specific task analysis.\n\n3. **MCP Tool (`mcp-server/src/tools/analyze.js`)**\n    * Add new optional parameters to Zod schema for `analyze_project_complexity` tool:\n        * `ids: z.string().optional().describe(\"Comma-separated list of task IDs to analyze specifically\")`\n        * `from: z.number().optional().describe(\"Start ID for range analysis (inclusive)\")`\n        * `to: z.number().optional().describe(\"End ID for range analysis (inclusive)\")`\n    * In the `execute` method, pass `args.ids`, `args.from`, and `args.to` to the `analyzeTaskComplexityDirect` function within its `args` object.\n\n4. **Direct Function (`mcp-server/src/core/direct-functions/analyze-task-complexity.js`)**\n    * Update function to receive `ids`, `from`, and `to` values within the `args` object.\n    * Pass these values along to the core `analyzeTaskComplexity` function within its `options` object.\n\n5. **Documentation:** Update relevant rule files (`commands.mdc`, `taskmaster.mdc`) to reflect new `--id/-i`, `--from/-f`, and `--to/-t` options/parameters.",
@@ -4557,7 +4557,7 @@
           "description": "Update the core complexity analysis function to accept specific task IDs or ranges as input parameters",
           "dependencies": [],
           "details": "Refactor the existing complexity analysis module to allow filtering by task IDs or ranges. This involves modifying the data processing pipeline to filter tasks before analysis, ensuring the complexity metrics are calculated only for the specified tasks while maintaining context awareness.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 2,
@@ -4567,7 +4567,7 @@
             1
           ],
           "details": "Add new flags `--id/-i`, `--from/-f`, and `--to/-t` to the CLI that allow users to specify task IDs or ranges for targeted complexity analysis. Update the command parser, help documentation, and ensure proper validation of the provided values.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 3,
@@ -4577,7 +4577,7 @@
             1
           ],
           "details": "Modify the MCP tool's API endpoints and UI components to allow users to select specific tasks or ranges for complexity analysis. Ensure the UI provides clear feedback about which tasks are being analyzed and update the visualization components to properly display partial analysis results.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 4,
@@ -4589,7 +4589,7 @@
             3
           ],
           "details": "Create unit and integration tests that verify the task-specific complexity analysis works correctly across both CLI and MCP interfaces. Include tests for edge cases such as invalid task IDs, tasks with dependencies outside the selected set, and performance tests for large task sets.",
-          "status": "pending"
+          "status": "done"
         }
       ]
     },
@@ -5332,15 +5332,84 @@
       "id": 91,
       "title": "Implement Move Command for Tasks and Subtasks",
       "description": "Introduce a 'move' command to enable moving tasks or subtasks to a different id, facilitating conflict resolution by allowing teams to assign new ids as needed.",
-      "details": "The move command should accept --id/-i and --to/-t flags, where --id specifies the task/subtask to be moved and --to indicates the new parent id for subtasks. Ensure that the command works seamlessly with both tasks and subtasks, allowing users to reassign them within the same project structure. The implementation should handle edge cases such as invalid ids, non-existent parents, and circular dependencies.",
-      "testStrategy": "Verify the move command by testing various scenarios including moving a task to a new id, moving a subtask under a different parent while preserving its hierarchy, handling errors for invalid or non-existent ids, and ensuring that the command does not disrupt existing task relationships.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1,
         3
       ],
       "priority": "medium",
-      "subtasks": []
+      "details": "The move command will consist of three core components: 1) Core Logic Function in scripts/modules/task-manager/move-task.js, 2) Direct Function Wrapper in mcp-server/src/core/direct-functions/move-task.js, and 3) MCP Tool in mcp-server/src/tools/move-task.js. The command will accept source and destination IDs, handling various scenarios including moving tasks to become subtasks, subtasks to become tasks, and subtasks between different parents. The implementation will handle edge cases such as invalid ids, non-existent parents, circular dependencies, and will properly update all dependencies.",
+      "testStrategy": "Testing will follow a three-tier approach: 1) Unit tests for core functionality including moving tasks to subtasks, subtasks to tasks, subtasks between parents, dependency handling, and validation error cases; 2) Integration tests for the direct function with mock MCP environment and task file regeneration; 3) End-to-end tests for the full MCP tool call path. This will verify all scenarios including moving a task to a new id, moving a subtask under a different parent while preserving its hierarchy, and handling errors for invalid operations.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design and implement core move logic",
+          "description": "Create the fundamental logic for moving tasks and subtasks within the task management system hierarchy",
+          "dependencies": [],
+          "details": "Implement the core logic function in scripts/modules/task-manager/move-task.js with the signature that accepts tasksPath, sourceId, destinationId, and generateFiles parameters. Develop functions to handle all movement operations including task-to-subtask, subtask-to-task, and subtask-to-subtask conversions. Implement validation for source and destination IDs, and ensure proper updating of parent-child relationships and dependencies.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 2,
+          "title": "Implement edge case handling",
+          "description": "Develop robust error handling for all potential edge cases in the move operation",
+          "dependencies": [
+            1
+          ],
+          "details": "Create validation functions to detect invalid task IDs, non-existent parent tasks, and circular dependencies. Handle special cases such as moving a task to become the first/last subtask, reordering within the same parent, preventing moving a task to itself, and preventing moving a parent to its own subtask. Implement proper error messages and status codes for each edge case, and ensure system stability if a move operation fails.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 3,
+          "title": "Update CLI interface for move commands",
+          "description": "Extend the command-line interface to support the new move functionality with appropriate flags and options",
+          "dependencies": [
+            1
+          ],
+          "details": "Create the Direct Function Wrapper in mcp-server/src/core/direct-functions/move-task.js to adapt the core logic for MCP, handling path resolution and parameter validation. Implement silent mode to prevent console output interfering with JSON responses. Create the MCP Tool in mcp-server/src/tools/move-task.js that exposes the functionality to Cursor, handles project root resolution, and includes proper Zod parameter definitions. Update MCP tool definition in .cursor/mcp.json and register the tool in mcp-server/src/tools/index.js.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 4,
+          "title": "Ensure data integrity during moves",
+          "description": "Implement safeguards to maintain data consistency and update all relationships during move operations",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement dependency handling logic to update dependencies when converting between task/subtask, add appropriate parent dependencies when needed, and validate no circular dependencies are created. Create transaction-like operations to ensure atomic moves that either complete fully or roll back. Implement functions to update all affected task relationships after a move, and add verification steps to confirm data integrity post-move.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 5,
+          "title": "Create comprehensive test suite",
+          "description": "Develop and execute tests covering all move scenarios and edge cases",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Create unit tests for core functionality including moving tasks to subtasks, subtasks to tasks, subtasks between parents, dependency handling, and validation error cases. Implement integration tests for the direct function with mock MCP environment and task file regeneration. Develop end-to-end tests for the full MCP tool call path. Ensure tests cover all identified edge cases and potential failure points, and verify data integrity after moves.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 6,
+          "title": "Export and integrate the move function",
+          "description": "Ensure the move function is properly exported and integrated with existing code",
+          "dependencies": [
+            1
+          ],
+          "details": "Export the move function in scripts/modules/task-manager.js. Update task-master-core.js to include the direct function. Reuse validation logic from add-subtask.js and remove-subtask.js where appropriate. Follow silent mode implementation pattern from other direct functions and match parameter naming conventions in MCP tools.",
+          "status": "done",
+          "parentTaskId": 91
+        }
+      ]
     }
   ]
 }

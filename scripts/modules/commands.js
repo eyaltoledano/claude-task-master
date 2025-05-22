@@ -30,7 +30,8 @@ import {
 	updateSubtaskById,
 	removeTask,
 	findTaskById,
-	taskExists
+	taskExists,
+	moveTask
 } from './task-manager.js';
 
 import {
@@ -1043,6 +1044,8 @@ function registerCommands(programInstance) {
 	// set-status command
 	programInstance
 		.command('set-status')
+		.alias('mark')
+		.alias('set')
 		.description('Set the status of a task')
 		.option(
 			'-i, --id <id>',
@@ -2379,6 +2382,109 @@ Examples:
 			}
 			// --- IMPORTANT: Exit after displaying status ---
 			return; // Stop execution here
+		});
+
+	// move-task command
+	programInstance
+		.command('move')
+		.description('Move a task or subtask to a new position')
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('--from <id>', 'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")')
+		.option('--to <id>', 'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated')
+		.action(async (options) => {
+			const tasksPath = options.file;
+			const sourceId = options.from;
+			const destinationId = options.to;
+
+			if (!sourceId || !destinationId) {
+				console.error(
+					chalk.red('Error: Both --from and --to parameters are required')
+				);
+				console.log(
+					chalk.yellow(
+						'Usage: task-master move --from=<sourceId> --to=<destinationId>'
+					)
+				);
+				process.exit(1);
+			}
+
+			// Check if we're moving multiple tasks (comma-separated IDs)
+			const sourceIds = sourceId.split(',').map(id => id.trim());
+			const destinationIds = destinationId.split(',').map(id => id.trim());
+
+			// Validate that the number of source and destination IDs match
+			if (sourceIds.length !== destinationIds.length) {
+				console.error(
+					chalk.red('Error: The number of source and destination IDs must match')
+				);
+				console.log(
+					chalk.yellow(
+						'Example: task-master move --from=5,6,7 --to=10,11,12'
+					)
+				);
+				process.exit(1);
+			}
+
+			// If moving multiple tasks
+			if (sourceIds.length > 1) {
+				console.log(
+					chalk.blue(`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`)
+				);
+
+				try {
+					// Read tasks data once to validate destination IDs
+					const tasksData = readJSON(tasksPath);
+					if (!tasksData || !tasksData.tasks) {
+						console.error(chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`));
+						process.exit(1);
+					}
+
+					// Move tasks one by one
+					for (let i = 0; i < sourceIds.length; i++) {
+						const fromId = sourceIds[i];
+						const toId = destinationIds[i];
+
+						// Skip if source and destination are the same
+						if (fromId === toId) {
+							console.log(chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`));
+							continue;
+						}
+
+						console.log(chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`));
+						try {
+							await moveTask(tasksPath, fromId, toId, i === sourceIds.length - 1);
+							console.log(
+								chalk.green(
+									`✓ Successfully moved task/subtask ${fromId} to ${toId}`
+								)
+							);
+						} catch (error) {
+							console.error(chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`));
+							// Continue with the next task rather than exiting
+						}
+					}
+				} catch (error) {
+					console.error(chalk.red(`Error: ${error.message}`));
+					process.exit(1);
+				}
+			} else {
+				// Moving a single task (existing logic)
+				console.log(
+					chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
+				);
+
+				try {
+					const result = await moveTask(tasksPath, sourceId, destinationId, true);
+					console.log(
+						chalk.green(
+							`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`
+						)
+					);
+				} catch (error) {
+					console.error(chalk.red(`Error: ${error.message}`));
+					process.exit(1);
+				}
+			}
 		});
 
 	return programInstance;
