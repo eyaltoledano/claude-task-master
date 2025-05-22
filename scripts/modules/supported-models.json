@@ -410,5 +410,35 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 32768
 		}
+	],
+	"bedrock": [
+		{
+			"id": "us.anthropic.claude-opus-4-20250514-v1:0",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 15.0, "output": 75.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 200000
+		},
+		{
+			"id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 200000
+		},
+		{
+			"id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 200000
+		},
+		{
+			"id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			"swe_score": 0,
+			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 200000
+		}
 	]
 }
