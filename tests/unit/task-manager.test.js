@@ -199,6 +199,12 @@ const testSetTaskStatus = (tasksData, taskIdInput, newStatus) => {
 
 // Simplified version of updateSingleTaskStatus for testing
 const testUpdateSingleTaskStatus = (tasksData, taskIdInput, newStatus) => {
+	if (!isValidTaskStatus(newStatus)) {
+		throw new Error(
+			`Error: Invalid status value: ${newStatus}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+		);
+	}
+
 	// Check if it's a subtask (e.g., "1.2")
 	if (taskIdInput.includes('.')) {
 		const [parentId, subtaskId] = taskIdInput
@@ -329,6 +335,10 @@ const testAddTask = (
 import * as taskManager from '../../scripts/modules/task-manager.js';
 import { sampleClaudeResponse } from '../fixtures/sample-claude-response.js';
 import { sampleTasks, emptySampleTasks } from '../fixtures/sample-tasks.js';
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../src/constants/task-status.js';
 
 // Destructure the required functions for convenience
 const { findNextTask, generateTaskFiles, clearSubtasks, updateTaskById } =
@@ -1163,6 +1173,16 @@ describe('Task Manager Module', () => {
 			// Assert
 			expect(result).toBe(true);
 			expect(testTasksData.tasks[1].status).toBe('done');
+		});
+
+		test('should throw error for invalid status', async () => {
+			// Arrange
+			const testTasksData = JSON.parse(JSON.stringify(sampleTasks));
+
+			// Assert
+			expect(() =>
+				testUpdateSingleTaskStatus(testTasksData, '2', 'Done')
+			).toThrow(/Error: Invalid status value: Done./);
 		});
 
 		test('should update subtask status', async () => {

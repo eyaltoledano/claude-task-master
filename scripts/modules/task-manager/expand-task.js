@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
 
-import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
+import {
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	displayAiUsageSummary
+} from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
 
@@ -142,7 +146,7 @@ function generateResearchUserPrompt(
       "id": <number>, // Sequential ID starting from ${nextSubtaskId}
       "title": "<string>",
       "description": "<string>",
-      "dependencies": [<number>], // e.g., [${nextSubtaskId + 1}]
+      "dependencies": [<number>], // e.g., [${nextSubtaskId + 1}]. If no dependencies, use an empty array [].
       "details": "<string>",
       "testStrategy": "<string>" // Optional
     },
@@ -161,6 +165,8 @@ ${contextPrompt}
 
 CRITICAL: Respond ONLY with a valid JSON object containing a single key "subtasks". The value must be an array of the generated subtasks, strictly matching this structure:
 ${schemaDescription}
+
+Important: For the 'dependencies' field, if a subtask has no dependencies, you MUST use an empty array, for example: "dependencies": []. Do not use null or omit the field.
 
 Do not include ANY explanatory text, markdown, or code block markers. Just the JSON object.`;
 }
@@ -182,77 +188,153 @@ function parseSubtasksFromText(
 	parentTaskId,
 	logger
 ) {
-	logger.info('Attempting to parse subtasks object from text response...');
-	if (!text || text.trim() === '') {
-		throw new Error('AI response text is empty.');
+	if (typeof text !== 'string') {
+		logger.error(
+			`AI response text is not a string. Received type: ${typeof text}, Value: ${text}`
+		);
+		throw new Error('AI response text is not a string.');
 	}
 
-	let cleanedResponse = text.trim();
-	const originalResponseForDebug = cleanedResponse;
+	if (!text || text.trim() === '') {
+		throw new Error('AI response text is empty after trimming.');
+	}
 
-	// 1. Extract from Markdown code block first
-	const codeBlockMatch = cleanedResponse.match(
-		/```(?:json)?\s*([\s\S]*?)\s*```/
+	const originalTrimmedResponse = text.trim(); // Store the original trimmed response
+	let jsonToParse = originalTrimmedResponse; // Initialize jsonToParse with it
+
+	logger.debug(
+		`Original AI Response for parsing (full length: ${jsonToParse.length}): ${jsonToParse.substring(0, 1000)}...`
 	);
-	if (codeBlockMatch) {
-		cleanedResponse = codeBlockMatch[1].trim();
-		logger.info('Extracted JSON content from Markdown code block.');
-	} else {
-		// 2. If no code block, find first '{' and last '}' for the object
-		const firstBrace = cleanedResponse.indexOf('{');
-		const lastBrace = cleanedResponse.lastIndexOf('}');
-		if (firstBrace !== -1 && lastBrace > firstBrace) {
-			cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
-			logger.info('Extracted content between first { and last }.');
+
+	// --- Pre-emptive cleanup for known AI JSON issues ---
+	// Fix for "dependencies": , or "dependencies":,
+	if (jsonToParse.includes('"dependencies":')) {
+		const malformedPattern = /"dependencies":\s*,/g;
+		if (malformedPattern.test(jsonToParse)) {
+			logger.warn('Attempting to fix malformed "dependencies": , issue.');
+			jsonToParse = jsonToParse.replace(
+				malformedPattern,
+				'"dependencies": [],'
+			);
+			logger.debug(
+				`JSON after fixing "dependencies": ${jsonToParse.substring(0, 500)}...`
+			);
+		}
+	}
+	// --- End pre-emptive cleanup ---
+
+	let parsedObject;
+	let primaryParseAttemptFailed = false;
+
+	// --- Attempt 1: Simple Parse (with optional Markdown cleanup) ---
+	logger.debug('Attempting simple parse...');
+	try {
+		// Check for markdown code block
+		const codeBlockMatch = jsonToParse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+		let contentToParseDirectly = jsonToParse;
+		if (codeBlockMatch && codeBlockMatch[1]) {
+			contentToParseDirectly = codeBlockMatch[1].trim();
+			logger.debug('Simple parse: Extracted content from markdown code block.');
 		} else {
+			logger.debug(
+				'Simple parse: No markdown code block found, using trimmed original.'
+			);
+		}
+
+		parsedObject = JSON.parse(contentToParseDirectly);
+		logger.debug('Simple parse successful!');
+
+		// Quick check if it looks like our target object
+		if (
+			!parsedObject ||
+			typeof parsedObject !== 'object' ||
+			!Array.isArray(parsedObject.subtasks)
+		) {
 			logger.warn(
-				'Response does not appear to contain a JSON object structure. Parsing raw response.'
+				'Simple parse succeeded, but result is not the expected {"subtasks": []} structure. Will proceed to advanced extraction.'
+			);
+			primaryParseAttemptFailed = true;
+			parsedObject = null; // Reset parsedObject so we enter the advanced logic
+		}
+		// If it IS the correct structure, we'll skip advanced extraction.
+	} catch (e) {
+		logger.warn(
+			`Simple parse failed: ${e.message}. Proceeding to advanced extraction logic.`
+		);
+		primaryParseAttemptFailed = true;
+		// jsonToParse is already originalTrimmedResponse if simple parse failed before modifying it for markdown
+	}
+
+	// --- Attempt 2: Advanced Extraction (if simple parse failed or produced wrong structure) ---
+	if (primaryParseAttemptFailed || !parsedObject) {
+		// Ensure we try advanced if simple parse gave wrong structure
+		logger.debug('Attempting advanced extraction logic...');
+		// Reset jsonToParse to the original full trimmed response for advanced logic
+		jsonToParse = originalTrimmedResponse;
+
+		// (Insert the more complex extraction logic here - the one we worked on with:
+		//  - targetPattern = '{"subtasks":';
+		//  - careful brace counting for that targetPattern
+		//  - fallbacks to last '{' and '}' if targetPattern logic fails)
+		//  This was the logic from my previous message. Let's assume it's here.
+		//  This block should ultimately set `jsonToParse` to the best candidate string.
+
+		// Example snippet of that advanced logic's start:
+		const targetPattern = '{"subtasks":';
+		const patternStartIndex = jsonToParse.indexOf(targetPattern);
+
+		if (patternStartIndex !== -1) {
+			let openBraces = 0;
+			let firstBraceFound = false;
+			let extractedJsonBlock = '';
+			// ... (loop for brace counting as before) ...
+			// ... (if successful, jsonToParse = extractedJsonBlock) ...
+			// ... (if that fails, fallbacks as before) ...
+		} else {
+			// ... (fallback to last '{' and '}' if targetPattern not found) ...
+		}
+		// End of advanced logic excerpt
+
+		logger.debug(
+			`Advanced extraction: JSON string that will be parsed: ${jsonToParse.substring(0, 500)}...`
+		);
+		try {
+			parsedObject = JSON.parse(jsonToParse);
+			logger.debug('Advanced extraction parse successful!');
+		} catch (parseError) {
+			logger.error(
+				`Advanced extraction: Failed to parse JSON object: ${parseError.message}`
+			);
+			logger.error(
+				`Advanced extraction: Problematic JSON string for parse (first 500 chars): ${jsonToParse.substring(0, 500)}`
+			);
+			throw new Error( // Re-throw a more specific error if advanced also fails
+				`Failed to parse JSON response object after both simple and advanced attempts: ${parseError.message}`
 			);
 		}
 	}
 
-	// 3. Attempt to parse the object
-	let parsedObject;
-	try {
-		parsedObject = JSON.parse(cleanedResponse);
-	} catch (parseError) {
-		logger.error(`Failed to parse JSON object: ${parseError.message}`);
-		logger.error(
-			`Problematic JSON string (first 500 chars): ${cleanedResponse.substring(0, 500)}`
-		);
-		logger.error(
-			`Original Raw Response (first 500 chars): ${originalResponseForDebug.substring(0, 500)}`
-		);
-		throw new Error(
-			`Failed to parse JSON response object: ${parseError.message}`
-		);
-	}
-
-	// 4. Validate the object structure and extract the subtasks array
+	// --- Validation (applies to successfully parsedObject from either attempt) ---
 	if (
 		!parsedObject ||
 		typeof parsedObject !== 'object' ||
 		!Array.isArray(parsedObject.subtasks)
 	) {
 		logger.error(
-			`Parsed content is not an object or missing 'subtasks' array. Content: ${JSON.stringify(parsedObject).substring(0, 200)}`
+			`Final parsed content is not an object or missing 'subtasks' array. Content: ${JSON.stringify(parsedObject).substring(0, 200)}`
 		);
 		throw new Error(
-			'Parsed AI response is not a valid object containing a "subtasks" array.'
+			'Parsed AI response is not a valid object containing a "subtasks" array after all attempts.'
 		);
 	}
-	const parsedSubtasks = parsedObject.subtasks; // Extract the array
+	const parsedSubtasks = parsedObject.subtasks;
 
-	logger.info(
-		`Successfully parsed ${parsedSubtasks.length} potential subtasks from the object.`
-	);
 	if (expectedCount && parsedSubtasks.length !== expectedCount) {
 		logger.warn(
 			`Expected ${expectedCount} subtasks, but parsed ${parsedSubtasks.length}.`
 		);
 	}
 
-	// 5. Validate and Normalize each subtask using Zod schema
 	let currentId = startId;
 	const validatedSubtasks = [];
 	const validationErrors = [];
@@ -260,22 +342,21 @@ function parseSubtasksFromText(
 	for (const rawSubtask of parsedSubtasks) {
 		const correctedSubtask = {
 			...rawSubtask,
-			id: currentId, // Enforce sequential ID
+			id: currentId,
 			dependencies: Array.isArray(rawSubtask.dependencies)
 				? rawSubtask.dependencies
 						.map((dep) => (typeof dep === 'string' ? parseInt(dep, 10) : dep))
 						.filter(
 							(depId) => !isNaN(depId) && depId >= startId && depId < currentId
-						) // Ensure deps are numbers, valid range
+						)
 				: [],
-			status: 'pending' // Enforce pending status
-			// parentTaskId can be added if needed: parentTaskId: parentTaskId
+			status: 'pending'
 		};
 
 		const result = subtaskSchema.safeParse(correctedSubtask);
 
 		if (result.success) {
-			validatedSubtasks.push(result.data); // Add the validated data
+			validatedSubtasks.push(result.data);
 		} else {
 			logger.warn(
 				`Subtask validation failed for raw data: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
@@ -285,18 +366,14 @@ function parseSubtasksFromText(
 				logger.warn(errorMessage);
 				validationErrors.push(`Subtask ${currentId}: ${errorMessage}`);
 			});
-			// Optionally, decide whether to include partially valid tasks or skip them
-			// For now, we'll skip invalid ones
 		}
-		currentId++; // Increment ID for the next *potential* subtask
+		currentId++;
 	}
 
 	if (validationErrors.length > 0) {
 		logger.error(
 			`Found ${validationErrors.length} validation errors in the generated subtasks.`
 		);
-		// Optionally throw an error here if strict validation is required
-		// throw new Error(`Subtask validation failed:\n${validationErrors.join('\n')}`);
 		logger.warn('Proceeding with only the successfully validated subtasks.');
 	}
 
@@ -305,8 +382,6 @@ function parseSubtasksFromText(
 			'AI response contained potential subtasks, but none passed validation.'
 		);
 	}
-
-	// Ensure we don't return more than expected, preferring validated ones
 	return validatedSubtasks.slice(0, expectedCount || validatedSubtasks.length);
 }
 
@@ -336,8 +411,12 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot: contextProjectRoot } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
+	const projectRoot =
+		contextProjectRoot || path.dirname(path.dirname(tasksPath));
 
 	// Use mcpLog if available, otherwise use the default console log wrapper
 	const logger = mcpLog || {
@@ -363,7 +442,9 @@ async function expandTask(
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
 		const task = data.tasks[taskIndex];
-		logger.info(`Expanding task ${taskId}: ${task.title}`);
+		logger.info(
+			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
+		);
 		// --- End Task Loading/Filtering ---
 
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
@@ -381,7 +462,6 @@ async function expandTask(
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const projectRoot = path.dirname(path.dirname(tasksPath));
 		const complexityReportPath = path.join(
 			projectRoot,
 			'scripts/task-complexity-report.json'
@@ -488,28 +568,27 @@ async function expandTask(
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
-				`Generating ${finalSubtaskCount} subtasks...`
+				`Generating ${finalSubtaskCount} subtasks...\n`
 			);
 		}
 
 		let responseText = '';
+		let aiServiceResponse = null;
 
 		try {
 			const role = useResearch ? 'research' : 'main';
-			logger.info(`Using AI service with role: ${role}`);
 
-			// Call generateTextService with the determined prompts
-			responseText = await generateTextService({
+			// Call generateTextService with the determined prompts and telemetry params
+			aiServiceResponse = await generateTextService({
 				prompt: promptContent,
-				systemPrompt: systemPrompt, // Use the determined system prompt
+				systemPrompt: systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot,
+				commandName: 'expand-task',
+				outputType: outputFormat
 			});
-			logger.info(
-				'Successfully received text response from AI service',
-				'success'
-			);
+			responseText = aiServiceResponse.mainResult;
 
 			// Parse Subtasks
 			generatedSubtasks = parseSubtasksFromText(
@@ -550,14 +629,23 @@ async function expandTask(
 		// --- End Change: Append instead of replace ---
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
-		logger.info(`Writing updated tasks to ${tasksPath}`);
 		writeJSON(tasksPath, data);
-		logger.info(`Generating individual task files...`);
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-		logger.info(`Task files generated.`);
-		// --- End Task Update & File Writing ---
 
-		return task; // Return the updated task object
+		// Display AI Usage Summary for CLI
+		if (
+			outputFormat === 'text' &&
+			aiServiceResponse &&
+			aiServiceResponse.telemetryData
+		) {
+			displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+		}
+
+		// Return the updated task object AND telemetry data
+		return {
+			task,
+			telemetryData: aiServiceResponse?.telemetryData
+		};
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');

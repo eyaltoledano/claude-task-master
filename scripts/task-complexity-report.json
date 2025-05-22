@@ -1,7 +1,7 @@
 {
 	"meta": {
-		"generatedAt": "2025-05-03T04:45:36.864Z",
-		"tasksAnalyzed": 36,
+		"generatedAt": "2025-05-17T22:29:22.179Z",
+		"tasksAnalyzed": 40,
 		"thresholdScore": 5,
 		"projectName": "Taskmaster",
 		"usedResearch": false
@@ -10,290 +10,322 @@
 		{
 			"taskId": 24,
 			"taskTitle": "Implement AI-Powered Test Generation Command",
-			"complexityScore": 8,
+			"complexityScore": 7,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement AI-Powered Test Generation Command' task by detailing the specific steps required for AI prompt engineering, including data extraction, prompt formatting, and error handling.",
-			"reasoning": "Requires AI integration, complex logic, and thorough testing. Prompt engineering and API interaction add significant complexity."
+			"expansionPrompt": "Break down the implementation of the AI-powered test generation command into detailed subtasks covering: command structure setup, AI prompt engineering, test file generation logic, integration with Claude API, and comprehensive error handling.",
+			"reasoning": "This task involves complex integration with an AI service (Claude), requires sophisticated prompt engineering, and needs to generate structured code files. The existing 3 subtasks are a good start but could be expanded to include more detailed steps for AI integration, error handling, and test file formatting."
 		},
 		{
 			"taskId": 26,
 			"taskTitle": "Implement Context Foundation for AI Operations",
-			"complexityScore": 7,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Implement Context Foundation for AI Operations' task by detailing the specific steps for integrating file reading, cursor rules, and basic context extraction into the Claude API prompts.",
-			"reasoning": "Involves modifying multiple commands and integrating different context sources. Error handling and backwards compatibility are crucial."
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "The current 4 subtasks for implementing the context foundation appear comprehensive. Consider if any additional subtasks are needed for testing, documentation, or integration with existing systems.",
+			"reasoning": "This task involves creating a foundation for context integration with several well-defined components. The existing 4 subtasks cover the main implementation areas (context-file flag, cursor rules integration, context extraction utility, and command handler updates). The complexity is moderate as it requires careful integration with existing systems but has clear requirements."
 		},
 		{
 			"taskId": 27,
 			"taskTitle": "Implement Context Enhancements for AI Operations",
-			"complexityScore": 8,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Implement Context Enhancements for AI Operations' task by detailing the specific steps for code context extraction, task history integration, and PRD context integration, including parsing, summarization, and formatting.",
-			"reasoning": "Builds upon the previous task with more sophisticated context extraction and integration. Requires intelligent parsing and summarization."
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "The current 4 subtasks for implementing context enhancements appear well-structured. Consider if any additional subtasks are needed for testing, documentation, or performance optimization.",
+			"reasoning": "This task builds upon the foundation from Task #26 and adds more sophisticated context handling features. The 4 existing subtasks cover the main implementation areas (code context extraction, task history context, PRD context integration, and context formatting). The complexity is higher than the foundation task due to the need for intelligent context selection and optimization."
 		},
 		{
 			"taskId": 28,
 			"taskTitle": "Implement Advanced ContextManager System",
-			"complexityScore": 9,
-			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Implement Advanced ContextManager System' task by detailing the specific steps for creating the ContextManager class, implementing the optimization pipeline, and adding command interface enhancements, including caching and performance monitoring.",
-			"reasoning": "A comprehensive system requiring careful design, optimization, and testing. Involves complex algorithms and performance considerations."
-		},
-		{
-			"taskId": 32,
-			"taskTitle": "Implement \"learn\" Command for Automatic Cursor Rule Generation",
-			"complexityScore": 9,
-			"recommendedSubtasks": 10,
-			"expansionPrompt": "Expand the 'Implement \"learn\" Command for Automatic Cursor Rule Generation' task by detailing the specific steps for Cursor data analysis, rule management, and AI integration, including error handling and performance optimization.",
-			"reasoning": "Requires deep integration with Cursor's data, complex pattern analysis, and AI interaction. Significant error handling and performance optimization are needed."
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "The current 5 subtasks for implementing the advanced ContextManager system appear comprehensive. Consider if any additional subtasks are needed for testing, documentation, or backward compatibility with previous context implementations.",
+			"reasoning": "This task represents the most complex phase of the context implementation, requiring a sophisticated class design, optimization algorithms, and integration with multiple systems. The 5 existing subtasks cover the core implementation areas, but the complexity is high due to the need for intelligent context prioritization, token management, and performance monitoring."
 		},
 		{
 			"taskId": 40,
 			"taskTitle": "Implement 'plan' Command for Task Implementation Planning",
-			"complexityScore": 6,
+			"complexityScore": 5,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Implement 'plan' Command for Task Implementation Planning' task by detailing the steps for retrieving task content, generating implementation plans with AI, and formatting the plan within XML tags.",
-			"reasoning": "Involves AI integration and requires careful formatting and error handling. Switching between Claude and Perplexity adds complexity."
+			"expansionPrompt": "The current 4 subtasks for implementing the 'plan' command appear well-structured. Consider if any additional subtasks are needed for testing, documentation, or integration with existing task management workflows.",
+			"reasoning": "This task involves creating a new command that leverages AI to generate implementation plans. The existing 4 subtasks cover the main implementation areas (retrieving task content, generating plans with AI, formatting in XML, and error handling). The complexity is moderate as it builds on existing patterns for task updates but requires careful AI integration."
 		},
 		{
 			"taskId": 41,
 			"taskTitle": "Implement Visual Task Dependency Graph in Terminal",
 			"complexityScore": 8,
-			"recommendedSubtasks": 8,
-			"expansionPrompt": "Expand the 'Implement Visual Task Dependency Graph in Terminal' task by detailing the steps for designing the graph rendering system, implementing layout algorithms, and handling circular dependencies and filtering options.",
-			"reasoning": "Requires complex graph algorithms and terminal rendering. Accessibility and performance are important considerations."
+			"recommendedSubtasks": 10,
+			"expansionPrompt": "The current 10 subtasks for implementing the visual task dependency graph appear comprehensive. Consider if any additional subtasks are needed for performance optimization with large graphs or additional visualization options.",
+			"reasoning": "This task involves creating a sophisticated visualization system for terminal display, which is inherently complex due to layout algorithms, ASCII/Unicode rendering, and handling complex dependency relationships. The 10 existing subtasks cover all major aspects of implementation, from CLI interface to accessibility features."
 		},
 		{
 			"taskId": 42,
 			"taskTitle": "Implement MCP-to-MCP Communication Protocol",
-			"complexityScore": 8,
-			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Implement MCP-to-MCP Communication Protocol' task by detailing the steps for defining the protocol, implementing the adapter pattern, and building the client module, including error handling and security considerations.",
-			"reasoning": "Requires designing a new protocol and implementing communication with external systems. Security and error handling are critical."
-		},
-		{
-			"taskId": 43,
-			"taskTitle": "Add Research Flag to Add-Task Command",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Expand the 'Add Research Flag to Add-Task Command' task by detailing the steps for updating the command parser, generating research subtasks, and linking them to the parent task.",
-			"reasoning": "Relatively straightforward, but requires careful handling of subtask generation and linking."
+			"complexityScore": 9,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "The current 8 subtasks for implementing the MCP-to-MCP communication protocol appear well-structured. Consider if any additional subtasks are needed for security hardening, performance optimization, or comprehensive documentation.",
+			"reasoning": "This task involves designing and implementing a complex communication protocol between different MCP tools and servers. It requires sophisticated adapter patterns, client-server architecture, and handling of multiple operational modes. The complexity is very high due to the need for standardization, security, and backward compatibility."
 		},
 		{
 			"taskId": 44,
 			"taskTitle": "Implement Task Automation with Webhooks and Event Triggers",
 			"complexityScore": 8,
 			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Implement Task Automation with Webhooks and Event Triggers' task by detailing the steps for implementing the webhook registration system, event system, and trigger definition interface, including security and error handling.",
-			"reasoning": "Requires designing a robust event system and integrating with external services. Security and error handling are critical."
+			"expansionPrompt": "The current 7 subtasks for implementing task automation with webhooks appear comprehensive. Consider if any additional subtasks are needed for security testing, rate limiting implementation, or webhook monitoring tools.",
+			"reasoning": "This task involves creating a sophisticated event system with webhooks for integration with external services. The complexity is high due to the need for secure authentication, reliable delivery mechanisms, and handling of various webhook formats and protocols. The existing subtasks cover the main implementation areas but security and monitoring could be emphasized more."
 		},
 		{
 			"taskId": 45,
 			"taskTitle": "Implement GitHub Issue Import Feature",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement GitHub Issue Import Feature' task by detailing the steps for parsing the URL, fetching issue details from the GitHub API, and generating a well-formatted task.",
-			"reasoning": "Requires interacting with the GitHub API and handling various error conditions. Authentication adds complexity."
+			"expansionPrompt": "The current 5 subtasks for implementing the GitHub issue import feature appear well-structured. Consider if any additional subtasks are needed for handling GitHub API rate limiting, caching, or supporting additional issue metadata.",
+			"reasoning": "This task involves integrating with the GitHub API to import issues as tasks. The complexity is moderate as it requires API authentication, data mapping, and error handling. The existing 5 subtasks cover the main implementation areas from design to end-to-end implementation."
 		},
 		{
 			"taskId": 46,
 			"taskTitle": "Implement ICE Analysis Command for Task Prioritization",
 			"complexityScore": 7,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement ICE Analysis Command for Task Prioritization' task by detailing the steps for calculating ICE scores, generating the report file, and implementing the CLI rendering.",
-			"reasoning": "Requires AI integration for scoring and careful formatting of the report. Integration with existing complexity reports adds complexity."
+			"expansionPrompt": "The current 5 subtasks for implementing the ICE analysis command appear comprehensive. Consider if any additional subtasks are needed for visualization of ICE scores or integration with other prioritization methods.",
+			"reasoning": "This task involves creating an AI-powered analysis system for task prioritization using the ICE methodology. The complexity is high due to the need for sophisticated scoring algorithms, AI integration, and report generation. The existing subtasks cover the main implementation areas from algorithm design to integration with existing systems."
 		},
 		{
 			"taskId": 47,
 			"taskTitle": "Enhance Task Suggestion Actions Card Workflow",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Enhance Task Suggestion Actions Card Workflow' task by detailing the steps for implementing the task expansion, context addition, and task management phases, including UI/UX considerations.",
-			"reasoning": "Requires significant UI/UX work and careful state management. Integration with existing functionality is crucial."
+			"expansionPrompt": "The current 6 subtasks for enhancing the task suggestion actions card workflow appear well-structured. Consider if any additional subtasks are needed for user testing, accessibility improvements, or performance optimization.",
+			"reasoning": "This task involves redesigning the UI workflow for task expansion and management. The complexity is moderate as it requires careful UX design and state management but builds on existing components. The 6 existing subtasks cover the main implementation areas from design to testing."
 		},
 		{
 			"taskId": 48,
 			"taskTitle": "Refactor Prompts into Centralized Structure",
-			"complexityScore": 5,
+			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Expand the 'Refactor Prompts into Centralized Structure' task by detailing the steps for creating the 'prompts' directory, extracting prompts into individual files, and updating functions to import them.",
-			"reasoning": "Primarily a refactoring task, but requires careful attention to detail to avoid breaking existing functionality."
+			"expansionPrompt": "The current 3 subtasks for refactoring prompts into a centralized structure appear appropriate. Consider if any additional subtasks are needed for prompt versioning, documentation, or testing.",
+			"reasoning": "This task involves a straightforward refactoring to improve code organization. The complexity is relatively low as it primarily involves moving code rather than creating new functionality. The 3 existing subtasks cover the main implementation areas from directory structure to integration."
 		},
 		{
 			"taskId": 49,
 			"taskTitle": "Implement Code Quality Analysis Command",
 			"complexityScore": 8,
 			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Implement Code Quality Analysis Command' task by detailing the steps for pattern recognition, best practice verification, and improvement recommendations, including AI integration and task creation.",
-			"reasoning": "Requires complex code analysis and AI integration. Generating actionable recommendations adds complexity."
+			"expansionPrompt": "The current 6 subtasks for implementing the code quality analysis command appear comprehensive. Consider if any additional subtasks are needed for performance optimization with large codebases or integration with existing code quality tools.",
+			"reasoning": "This task involves creating a sophisticated code analysis system with pattern recognition, best practice verification, and AI-powered recommendations. The complexity is high due to the need for code parsing, complex analysis algorithms, and integration with AI services. The existing subtasks cover the main implementation areas from algorithm design to user interface."
 		},
 		{
 			"taskId": 50,
 			"taskTitle": "Implement Test Coverage Tracking System by Task",
 			"complexityScore": 9,
-			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Implement Test Coverage Tracking System by Task' task by detailing the steps for creating the tests.json file structure, developing the coverage report parser, and implementing the CLI commands and AI-powered test generation system.",
-			"reasoning": "A comprehensive system requiring deep integration with testing tools and AI. Maintaining bidirectional relationships adds complexity."
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "The current 5 subtasks for implementing the test coverage tracking system appear well-structured. Consider if any additional subtasks are needed for integration with CI/CD systems, performance optimization, or visualization tools.",
+			"reasoning": "This task involves creating a complex system that maps test coverage to specific tasks and subtasks. The complexity is very high due to the need for sophisticated data structures, integration with coverage tools, and AI-powered test generation. The existing subtasks are comprehensive and cover the main implementation areas from data structure design to AI integration."
 		},
 		{
 			"taskId": 51,
 			"taskTitle": "Implement Perplexity Research Command",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement Perplexity Research Command' task by detailing the steps for creating the Perplexity API client, implementing task context extraction, and building the CLI interface.",
-			"reasoning": "Requires API integration and careful formatting of the research results. Caching adds complexity."
+			"expansionPrompt": "The current 5 subtasks for implementing the Perplexity research command appear comprehensive. Consider if any additional subtasks are needed for caching optimization, result formatting, or integration with other research tools.",
+			"reasoning": "This task involves creating a new command that integrates with the Perplexity AI API for research. The complexity is moderate as it requires API integration, context extraction, and result formatting. The 5 existing subtasks cover the main implementation areas from API client to caching system."
 		},
 		{
 			"taskId": 52,
 			"taskTitle": "Implement Task Suggestion Command for CLI",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement Task Suggestion Command for CLI' task by detailing the steps for collecting existing task data, generating task suggestions with AI, and implementing the interactive CLI interface.",
-			"reasoning": "Requires AI integration and careful design of the interactive interface. Handling various flag combinations adds complexity."
+			"expansionPrompt": "The current 5 subtasks for implementing the task suggestion command appear well-structured. Consider if any additional subtasks are needed for suggestion quality evaluation, user feedback collection, or integration with existing task workflows.",
+			"reasoning": "This task involves creating a new CLI command that generates contextually relevant task suggestions using AI. The complexity is moderate as it requires AI integration, context collection, and interactive CLI interfaces. The existing subtasks cover the main implementation areas from data collection to user interface."
 		},
 		{
 			"taskId": 53,
 			"taskTitle": "Implement Subtask Suggestion Feature for Parent Tasks",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Implement Subtask Suggestion Feature for Parent Tasks' task by detailing the steps for validating parent tasks, gathering context, generating subtask suggestions with AI, and implementing the interactive CLI interface.",
-			"reasoning": "Requires AI integration and careful design of the interactive interface. Linking subtasks to parent tasks adds complexity."
+			"expansionPrompt": "The current 6 subtasks for implementing the subtask suggestion feature appear comprehensive. Consider if any additional subtasks are needed for suggestion quality metrics, user feedback collection, or performance optimization.",
+			"reasoning": "This task involves creating a feature that suggests contextually relevant subtasks for parent tasks. The complexity is moderate as it builds on existing task management systems but requires sophisticated AI integration and context analysis. The 6 existing subtasks cover the main implementation areas from validation to testing."
 		},
 		{
 			"taskId": 55,
 			"taskTitle": "Implement Positional Arguments Support for CLI Commands",
-			"complexityScore": 7,
+			"complexityScore": 5,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement Positional Arguments Support for CLI Commands' task by detailing the steps for updating the argument parsing logic, defining the positional argument order, and handling edge cases.",
-			"reasoning": "Requires careful modification of the command parsing logic and ensuring backward compatibility. Handling edge cases adds complexity."
+			"expansionPrompt": "The current 5 subtasks for implementing positional arguments support appear well-structured. Consider if any additional subtasks are needed for backward compatibility testing, documentation updates, or user experience improvements.",
+			"reasoning": "This task involves modifying the command parsing logic to support positional arguments alongside the existing flag-based syntax. The complexity is moderate as it requires careful handling of different argument styles and edge cases. The 5 existing subtasks cover the main implementation areas from analysis to documentation."
 		},
 		{
 			"taskId": 57,
 			"taskTitle": "Enhance Task-Master CLI User Experience and Interface",
 			"complexityScore": 7,
 			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Enhance Task-Master CLI User Experience and Interface' task by detailing the steps for log management, visual enhancements, interactive elements, and output formatting.",
-			"reasoning": "Requires significant UI/UX work and careful consideration of different terminal environments. Reducing verbose logging adds complexity."
+			"expansionPrompt": "The current 6 subtasks for enhancing the CLI user experience appear comprehensive. Consider if any additional subtasks are needed for accessibility testing, internationalization, or performance optimization.",
+			"reasoning": "This task involves a significant overhaul of the CLI interface to improve user experience. The complexity is high due to the breadth of changes (logging, visual elements, interactive components, etc.) and the need for consistent design across all commands. The 6 existing subtasks cover the main implementation areas from log management to help systems."
 		},
 		{
 			"taskId": 60,
 			"taskTitle": "Implement Mentor System with Round-Table Discussion Feature",
 			"complexityScore": 8,
 			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Implement Mentor System with Round-Table Discussion Feature' task by detailing the steps for mentor management, round-table discussion implementation, and integration with the task system, including LLM integration.",
-			"reasoning": "Requires complex AI simulation and careful formatting of the discussion output. Integrating with the task system adds complexity."
-		},
-		{
-			"taskId": 61,
-			"taskTitle": "Implement Flexible AI Model Management",
-			"complexityScore": 9,
-			"recommendedSubtasks": 8,
-			"expansionPrompt": "Expand the 'Implement Flexible AI Model Management' task by detailing the steps for creating the configuration management module, implementing the CLI command parser, and integrating the Vercel AI SDK.",
-			"reasoning": "Requires deep integration with multiple AI models and careful management of API keys and configuration options. Vercel AI SDK integration adds complexity."
+			"expansionPrompt": "The current 7 subtasks for implementing the mentor system appear well-structured. Consider if any additional subtasks are needed for mentor personality consistency, discussion quality evaluation, or performance optimization with multiple mentors.",
+			"reasoning": "This task involves creating a sophisticated mentor simulation system with round-table discussions. The complexity is high due to the need for personality simulation, complex LLM integration, and structured discussion management. The 7 existing subtasks cover the main implementation areas from architecture to testing."
 		},
 		{
 			"taskId": 62,
 			"taskTitle": "Add --simple Flag to Update Commands for Direct Text Input",
-			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Add --simple Flag to Update Commands for Direct Text Input' task by detailing the steps for updating the command parsers, implementing the conditional logic, and formatting the user input with a timestamp.",
-			"reasoning": "Relatively straightforward, but requires careful attention to formatting and ensuring consistency with AI-processed updates."
+			"complexityScore": 4,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "The current 8 subtasks for implementing the --simple flag appear comprehensive. Consider if any additional subtasks are needed for user experience testing or documentation updates.",
+			"reasoning": "This task involves adding a simple flag option to bypass AI processing for updates. The complexity is relatively low as it primarily involves modifying existing command handlers and adding a flag. The 8 existing subtasks are very detailed and cover all aspects of implementation from command parsing to testing."
 		},
 		{
 			"taskId": 63,
 			"taskTitle": "Add pnpm Support for the Taskmaster Package",
-			"complexityScore": 7,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Add pnpm Support for the Taskmaster Package' task by detailing the steps for updating the documentation, ensuring package scripts compatibility, and testing the installation and operation with pnpm.",
-			"reasoning": "Requires careful attention to detail to ensure compatibility with pnpm's execution model. Testing and documentation are crucial."
+			"complexityScore": 5,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "The current 8 subtasks for adding pnpm support appear comprehensive. Consider if any additional subtasks are needed for CI/CD integration, performance comparison, or documentation updates.",
+			"reasoning": "This task involves ensuring the package works correctly with pnpm as an alternative package manager. The complexity is moderate as it requires careful testing of installation processes and scripts across different environments. The 8 existing subtasks cover all major aspects from documentation to binary verification."
 		},
 		{
 			"taskId": 64,
 			"taskTitle": "Add Yarn Support for Taskmaster Installation",
-			"complexityScore": 7,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Add Yarn Support for Taskmaster Installation' task by detailing the steps for updating package.json, adding Yarn-specific configuration files, and testing the installation and operation with Yarn.",
-			"reasoning": "Requires careful attention to detail to ensure compatibility with Yarn's execution model. Testing and documentation are crucial."
+			"complexityScore": 5,
+			"recommendedSubtasks": 9,
+			"expansionPrompt": "The current 9 subtasks for adding Yarn support appear comprehensive. Consider if any additional subtasks are needed for performance testing, CI/CD integration, or compatibility with different Yarn versions.",
+			"reasoning": "This task involves ensuring the package works correctly with Yarn as an alternative package manager. The complexity is moderate as it requires careful testing of installation processes and scripts across different environments. The 9 existing subtasks are very detailed and cover all aspects from configuration to testing."
 		},
 		{
 			"taskId": 65,
 			"taskTitle": "Add Bun Support for Taskmaster Installation",
-			"complexityScore": 7,
+			"complexityScore": 6,
 			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Add Bun Support for Taskmaster Installation' task by detailing the steps for updating the installation scripts, testing the installation and operation with Bun, and updating the documentation.",
-			"reasoning": "Requires careful attention to detail to ensure compatibility with Bun's execution model. Testing and documentation are crucial."
-		},
-		{
-			"taskId": 66,
-			"taskTitle": "Support Status Filtering in Show Command for Subtasks",
-			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Support Status Filtering in Show Command for Subtasks' task by detailing the steps for updating the command parser, modifying the show command handler, and updating the help documentation.",
-			"reasoning": "Relatively straightforward, but requires careful handling of status validation and filtering."
+			"expansionPrompt": "The current 6 subtasks for adding Bun support appear well-structured. Consider if any additional subtasks are needed for handling Bun-specific issues, performance testing, or documentation updates.",
+			"reasoning": "This task involves adding support for the newer Bun package manager. The complexity is slightly higher than the other package manager tasks due to Bun's differences from Node.js and potential compatibility issues. The 6 existing subtasks cover the main implementation areas from research to documentation."
 		},
 		{
 			"taskId": 67,
 			"taskTitle": "Add CLI JSON output and Cursor keybindings integration",
-			"complexityScore": 7,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Add CLI JSON output and Cursor keybindings integration' task by detailing the steps for implementing the JSON output logic, creating the install-keybindings command structure, and handling keybinding file manipulation.",
-			"reasoning": "Requires careful formatting of the JSON output and handling of file system operations. OS detection adds complexity."
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "The current 5 subtasks for implementing JSON output and Cursor keybindings appear well-structured. Consider if any additional subtasks are needed for testing across different operating systems, documentation updates, or user experience improvements.",
+			"reasoning": "This task involves two distinct features: adding JSON output to CLI commands and creating a keybindings installation command. The complexity is moderate as it requires careful handling of different output formats and OS-specific file paths. The 5 existing subtasks cover the main implementation areas for both features."
 		},
 		{
 			"taskId": 68,
 			"taskTitle": "Ability to create tasks without parsing PRD",
 			"complexityScore": 3,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Expand the 'Ability to create tasks without parsing PRD' task by detailing the steps for creating tasks without a PRD.",
-			"reasoning": "Simple task to allow task creation without a PRD."
+			"expansionPrompt": "The current 2 subtasks for implementing task creation without PRD appear appropriate. Consider if any additional subtasks are needed for validation, error handling, or integration with existing task management workflows.",
+			"reasoning": "This task involves a relatively simple modification to allow task creation without requiring a PRD document. The complexity is low as it primarily involves creating a form interface and saving functionality. The 2 existing subtasks cover the main implementation areas of UI design and data saving."
 		},
 		{
 			"taskId": 69,
 			"taskTitle": "Enhance Analyze Complexity for Specific Task IDs",
-			"complexityScore": 6,
+			"complexityScore": 5,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Enhance Analyze Complexity for Specific Task IDs' task by detailing the steps for modifying the core logic, updating the CLI, and updating the MCP tool.",
-			"reasoning": "Requires modifying existing functionality and ensuring compatibility with both CLI and MCP."
+			"expansionPrompt": "The current 4 subtasks for enhancing the analyze-complexity feature appear well-structured. Consider if any additional subtasks are needed for performance optimization with large task sets or visualization improvements.",
+			"reasoning": "This task involves modifying the existing analyze-complexity feature to support analyzing specific task IDs and updating reports. The complexity is moderate as it requires careful handling of report merging and filtering logic. The 4 existing subtasks cover the main implementation areas from core logic to testing."
 		},
 		{
 			"taskId": 70,
 			"taskTitle": "Implement 'diagram' command for Mermaid diagram generation",
 			"complexityScore": 6,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Implement 'diagram' command for Mermaid diagram generation' task by detailing the steps for creating the command, generating the Mermaid diagram, and handling different output options.",
-			"reasoning": "Requires generating Mermaid diagrams and handling different output options."
+			"expansionPrompt": "The current 4 subtasks for implementing the 'diagram' command appear well-structured. Consider if any additional subtasks are needed for handling large dependency graphs, additional output formats, or integration with existing visualization tools.",
+			"reasoning": "This task involves creating a new command that generates Mermaid diagrams to visualize task dependencies. The complexity is moderate as it requires parsing task relationships, generating proper Mermaid syntax, and handling various output options. The 4 existing subtasks cover the main implementation areas from interface design to documentation."
 		},
 		{
 			"taskId": 72,
 			"taskTitle": "Implement PDF Generation for Project Progress and Dependency Overview",
-			"complexityScore": 8,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Expand the 'Implement PDF Generation for Project Progress and Dependency Overview' task by detailing the steps for summarizing project progress, visualizing the dependency chain, and generating the PDF document.",
-			"reasoning": "Requires integrating with the diagram command and using a PDF generation library. Handling large dependency chains adds complexity."
-		},
-		{
-			"taskId": 73,
-			"taskTitle": "Implement Custom Model ID Support for Ollama/OpenRouter",
 			"complexityScore": 7,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Expand the 'Implement Custom Model ID Support for Ollama/OpenRouter' task by detailing the steps for modifying the CLI, implementing the interactive setup, and handling validation and warnings.",
-			"reasoning": "Requires integrating with external APIs and handling different model types. Validation and warnings are crucial."
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "The current 6 subtasks for implementing PDF generation appear comprehensive. Consider if any additional subtasks are needed for handling large projects, additional visualization options, or integration with existing reporting tools.",
+			"reasoning": "This task involves creating a feature to generate PDF reports of project progress and dependency visualization. The complexity is high due to the need for PDF generation, data collection, and visualization integration. The 6 existing subtasks cover the main implementation areas from library selection to export options."
 		},
 		{
 			"taskId": 75,
 			"taskTitle": "Integrate Google Search Grounding for Research Role",
-			"complexityScore": 6,
+			"complexityScore": 5,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand the 'Integrate Google Search Grounding for Research Role' task by detailing the steps for modifying the AI service layer, implementing the conditional logic, and updating the supported models.",
-			"reasoning": "Requires conditional logic and integration with the Google Search Grounding API."
+			"expansionPrompt": "The current 4 subtasks for integrating Google Search Grounding appear well-structured. Consider if any additional subtasks are needed for testing with different query types, error handling, or performance optimization.",
+			"reasoning": "This task involves updating the AI service layer to enable Google Search Grounding for research roles. The complexity is moderate as it requires careful integration with the existing AI service architecture and conditional logic. The 4 existing subtasks cover the main implementation areas from service layer modification to testing."
 		},
 		{
 			"taskId": 76,
 			"taskTitle": "Develop E2E Test Framework for Taskmaster MCP Server (FastMCP over stdio)",
-			"complexityScore": 9,
+			"complexityScore": 8,
 			"recommendedSubtasks": 7,
-			"expansionPrompt": "Expand the 'Develop E2E Test Framework for Taskmaster MCP Server (FastMCP over stdio)' task by detailing the steps for launching the FastMCP server, implementing the message protocol handler, and developing the request/response correlation mechanism.",
-			"reasoning": "Requires complex system integration and robust error handling. Designing a comprehensive test framework adds complexity."
+			"expansionPrompt": "The current 7 subtasks for developing the E2E test framework appear comprehensive. Consider if any additional subtasks are needed for test result reporting, CI/CD integration, or performance benchmarking.",
+			"reasoning": "This task involves creating a sophisticated end-to-end testing framework for the MCP server. The complexity is high due to the need for subprocess management, protocol handling, and robust test case definition. The 7 existing subtasks cover the main implementation areas from architecture to documentation."
+		},
+		{
+			"taskId": 77,
+			"taskTitle": "Implement AI Usage Telemetry for Taskmaster (with external analytics endpoint)",
+			"complexityScore": 7,
+			"recommendedSubtasks": 18,
+			"expansionPrompt": "The current 18 subtasks for implementing AI usage telemetry appear very comprehensive. Consider if any additional subtasks are needed for security hardening, privacy compliance, or user feedback collection.",
+			"reasoning": "This task involves creating a telemetry system to track AI usage metrics. The complexity is high due to the need for secure data transmission, comprehensive data collection, and integration across multiple commands. The 18 existing subtasks are extremely detailed and cover all aspects of implementation from core utility to provider-specific updates."
+		},
+		{
+			"taskId": 80,
+			"taskTitle": "Implement Unique User ID Generation and Storage During Installation",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "The current 5 subtasks for implementing unique user ID generation appear well-structured. Consider if any additional subtasks are needed for privacy compliance, security auditing, or integration with the telemetry system.",
+			"reasoning": "This task involves generating and storing a unique user identifier during installation. The complexity is relatively low as it primarily involves UUID generation and configuration file management. The 5 existing subtasks cover the main implementation areas from script structure to documentation."
+		},
+		{
+			"taskId": 81,
+			"taskTitle": "Task #81: Implement Comprehensive Local Telemetry System with Future Server Integration Capability",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "The current 6 subtasks for implementing the comprehensive local telemetry system appear well-structured. Consider if any additional subtasks are needed for data migration, storage optimization, or visualization tools.",
+			"reasoning": "This task involves expanding the telemetry system to capture additional metrics and implement local storage with future server integration capability. The complexity is high due to the breadth of data collection, storage requirements, and privacy considerations. The 6 existing subtasks cover the main implementation areas from data collection to user-facing benefits."
+		},
+		{
+			"taskId": 82,
+			"taskTitle": "Update supported-models.json with token limit fields",
+			"complexityScore": 3,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears straightforward enough to be implemented without further subtasks. Focus on researching accurate token limit values for each model and ensuring backward compatibility.",
+			"reasoning": "This task involves a simple update to the supported-models.json file to include new token limit fields. The complexity is low as it primarily involves research and data entry. No subtasks are necessary as the task is well-defined and focused."
+		},
+		{
+			"taskId": 83,
+			"taskTitle": "Update config-manager.js defaults and getters",
+			"complexityScore": 4,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears straightforward enough to be implemented without further subtasks. Focus on updating the DEFAULTS object and related getter functions while maintaining backward compatibility.",
+			"reasoning": "This task involves updating the config-manager.js module to replace maxTokens with more specific token limit fields. The complexity is relatively low as it primarily involves modifying existing code rather than creating new functionality. No subtasks are necessary as the task is well-defined and focused."
+		},
+		{
+			"taskId": 84,
+			"taskTitle": "Implement token counting utility",
+			"complexityScore": 5,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears well-defined enough to be implemented without further subtasks. Focus on implementing accurate token counting for different models and proper fallback mechanisms.",
+			"reasoning": "This task involves creating a utility function to count tokens for different AI models. The complexity is moderate as it requires integration with the tiktoken library and handling different tokenization schemes. No subtasks are necessary as the task is well-defined and focused."
+		},
+		{
+			"taskId": 85,
+			"taskTitle": "Update ai-services-unified.js for dynamic token limits",
+			"complexityScore": 6,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears well-defined enough to be implemented without further subtasks. Focus on implementing dynamic token limit adjustment based on input length and model capabilities.",
+			"reasoning": "This task involves modifying the AI service runner to use the new token counting utility and dynamically adjust output token limits. The complexity is moderate to high as it requires careful integration with existing code and handling various edge cases. No subtasks are necessary as the task is well-defined and focused."
+		},
+		{
+			"taskId": 86,
+			"taskTitle": "Update .taskmasterconfig schema and user guide",
+			"complexityScore": 4,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears straightforward enough to be implemented without further subtasks. Focus on creating clear migration guidance and updating documentation.",
+			"reasoning": "This task involves creating a migration guide for users to update their configuration files and documenting the new token limit options. The complexity is relatively low as it primarily involves documentation and schema validation. No subtasks are necessary as the task is well-defined and focused."
+		},
+		{
+			"taskId": 87,
+			"taskTitle": "Implement validation and error handling",
+			"complexityScore": 5,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "This task appears well-defined enough to be implemented without further subtasks. Focus on comprehensive validation and helpful error messages throughout the system.",
+			"reasoning": "This task involves adding validation and error handling for token limits throughout the system. The complexity is moderate as it requires careful integration with multiple components and creating helpful error messages. No subtasks are necessary as the task is well-defined and focused."
 		}
 	]
 }

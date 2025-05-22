@@ -31,7 +31,7 @@ Task Master configuration is now managed through two primary methods:
     - Create a `.env` file in your project root for CLI usage.
     - See `assets/env.example` for required key names.
 
-**Important:** Settings like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`, `LOG_LEVEL`, etc., are **no longer set via `.env`**. Use `task-master models --setup` instead.
+**Important:** Settings like `MODEL`, `MAX_TOKENS`, `TEMPERATURE`, `TASKMASTER_LOG_LEVEL`, etc., are **no longer set via `.env`**. Use `task-master models --setup` instead.
 
 ## How It Works
 
@@ -42,7 +42,7 @@ Task Master configuration is now managed through two primary methods:
    - Tasks can have `subtasks` for more detailed implementation steps.
    - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending) to easily track progress.
 
-2. **CLI Commands**  
+2. **CLI Commands**
    You can run the commands via:
 
    ```bash
@@ -200,7 +200,7 @@ Notes:
 
 ## Logging
 
-The script supports different logging levels controlled by the `LOG_LEVEL` environment variable:
+The script supports different logging levels controlled by the `TASKMASTER_LOG_LEVEL` environment variable:
 
 - `debug`: Detailed information, typically useful for troubleshooting
 - `info`: Confirmation that things are working as expected (default)

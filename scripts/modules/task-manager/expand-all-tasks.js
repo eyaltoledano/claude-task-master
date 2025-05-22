@@ -1,7 +1,14 @@
 import { log, readJSON, isSilentMode } from '../utils.js';
-import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
+import {
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	displayAiUsageSummary
+} from '../ui.js';
 import expandTask from './expand-task.js';
 import { getDebugFlag } from '../config-manager.js';
+import { aggregateTelemetry } from '../utils.js';
+import chalk from 'chalk';
+import boxen from 'boxen';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.
@@ -14,7 +21,7 @@ import { getDebugFlag } from '../config-manager.js';
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
- * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, message?: string}>} - Result summary.
+ * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
  */
 async function expandAllTasks(
 	tasksPath,
@@ -51,8 +58,8 @@ async function expandAllTasks(
 	let loadingIndicator = null;
 	let expandedCount = 0;
 	let failedCount = 0;
-	// No skipped count needed now as the filter handles it upfront
-	let tasksToExpandCount = 0; // Renamed for clarity
+	let tasksToExpandCount = 0;
+	const allTelemetryData = []; // Still collect individual data first
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
@@ -90,6 +97,7 @@ async function expandAllTasks(
 				failedCount: 0,
 				skippedCount: 0,
 				tasksToExpand: 0,
+				telemetryData: allTelemetryData,
 				message: 'No tasks eligible for expansion.'
 			};
 			// --- End Fix ---
@@ -97,19 +105,6 @@ async function expandAllTasks(
 
 		// Iterate over the already filtered tasks
 		for (const task of tasksToExpand) {
-			// --- Remove Redundant Check ---
-			// The check below is no longer needed as the initial filter handles it
-			/*
-			if (task.subtasks && task.subtasks.length > 0 && !force) {
-				logger.info(
-					`Skipping task ${task.id}: Already has subtasks. Use --force to overwrite.`
-				);
-				skippedCount++;
-				continue;
-			}
-			*/
-			// --- End Removed Redundant Check ---
-
 			// Start indicator for individual task expansion in CLI mode
 			let taskIndicator = null;
 			if (!isMCPCall && outputFormat === 'text') {
@@ -117,17 +112,23 @@ async function expandAllTasks(
 			}
 
 			try {
-				// Call the refactored expandTask function
-				await expandTask(
+				// Call the refactored expandTask function AND capture result
+				const result = await expandTask(
 					tasksPath,
 					task.id,
-					numSubtasks, // Pass numSubtasks, expandTask handles defaults/complexity
+					numSubtasks,
 					useResearch,
 					additionalContext,
 					context, // Pass the whole context object { session, mcpLog }
-					force // Pass the force flag down
+					force
 				);
 				expandedCount++;
+
+				// Collect individual telemetry data
+				if (result && result.telemetryData) {
+					allTelemetryData.push(result.telemetryData);
+				}
+
 				if (taskIndicator) {
 					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
 				}
@@ -146,18 +147,48 @@ async function expandAllTasks(
 			}
 		}
 
-		// Log final summary (removed skipped count from message)
+		// --- AGGREGATION AND DISPLAY ---
 		logger.info(
 			`Expansion complete: ${expandedCount} expanded, ${failedCount} failed.`
 		);
 
-		// Return summary (skippedCount is now 0) - Add success: true here as well for consistency
+		// Aggregate the collected telemetry data
+		const aggregatedTelemetryData = aggregateTelemetry(
+			allTelemetryData,
+			'expand-all-tasks'
+		);
+
+		if (outputFormat === 'text') {
+			const summaryContent =
+				`${chalk.white.bold('Expansion Summary:')}\n\n` +
+				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
+				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
+				// Skipped count is always 0 now due to pre-filtering
+				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
+				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
+
+			console.log(
+				boxen(summaryContent, {
+					padding: 1,
+					margin: { top: 1 },
+					borderColor: failedCount > 0 ? 'red' : 'green', // Red if failures, green otherwise
+					borderStyle: 'round'
+				})
+			);
+		}
+
+		if (outputFormat === 'text' && aggregatedTelemetryData) {
+			displayAiUsageSummary(aggregatedTelemetryData, 'cli');
+		}
+
+		// Return summary including the AGGREGATED telemetry data
 		return {
-			success: true, // Indicate overall success
+			success: true,
 			expandedCount,
 			failedCount,
 			skippedCount: 0,
-			tasksToExpand: tasksToExpandCount
+			tasksToExpand: tasksToExpandCount,
+			telemetryData: aggregatedTelemetryData
 		};
 	} catch (error) {
 		if (loadingIndicator)

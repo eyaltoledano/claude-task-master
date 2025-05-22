@@ -15,7 +15,8 @@ import {
 import {
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator
+	stopLoadingIndicator,
+	displayAiUsageSummary
 } from '../ui.js';
 
 import { getDebugFlag } from '../config-manager.js';
@@ -93,10 +94,6 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 			// It worked! Use this as the primary cleaned response.
 			cleanedResponse = potentialJsonFromArray;
 			parseMethodUsed = 'brackets';
-			report(
-				'info',
-				'Successfully parsed JSON content extracted between first [ and last ].'
-			);
 		} catch (e) {
 			report(
 				'info',
@@ -350,31 +347,100 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 		const userPrompt = `Here are the tasks to update:\n${taskDataString}\n\nPlease update these tasks based on the following new context:\n${prompt}\n\nIMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated tasks as a valid JSON array.`;
 		// --- End Build Prompts ---
 
+		// --- AI Call ---
 		let loadingIndicator = null;
-		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator('Updating tasks...\n');
+		let aiServiceResponse = null;
+
+		if (!isMCP && outputFormat === 'text') {
+			loadingIndicator = startLoadingIndicator('Updating tasks with AI...\n');
 		}
 
-		let responseText = '';
-		let updatedTasks;
-
 		try {
-			// --- Call Unified AI Service ---
-			const role = useResearch ? 'research' : 'main';
-			if (isMCP) logFn.info(`Using AI service with role: ${role}`);
-			else logFn('info', `Using AI service with role: ${role}`);
+			// Determine role based on research flag
+			const serviceRole = useResearch ? 'research' : 'main';
 
-			responseText = await generateTextService({
-				prompt: userPrompt,
+			// Call the unified AI service
+			aiServiceResponse = await generateTextService({
+				role: serviceRole,
+				session: session,
+				projectRoot: projectRoot,
 				systemPrompt: systemPrompt,
-				role,
-				session,
-				projectRoot
+				prompt: userPrompt,
+				commandName: 'update-tasks',
+				outputType: isMCP ? 'mcp' : 'cli'
 			});
-			if (isMCP) logFn.info('Successfully received text response');
+
+			if (loadingIndicator)
+				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
+
+			// Use the mainResult (text) for parsing
+			const parsedUpdatedTasks = parseUpdatedTasksFromText(
+				aiServiceResponse.mainResult,
+				tasksToUpdate.length,
+				logFn,
+				isMCP
+			);
+
+			// --- Update Tasks Data (Unchanged) ---
+			if (!Array.isArray(parsedUpdatedTasks)) {
+				// Should be caught by parser, but extra check
+				throw new Error(
+					'Parsed AI response for updated tasks was not an array.'
+				);
+			}
+			if (isMCP)
+				logFn.info(
+					`Received ${parsedUpdatedTasks.length} updated tasks from AI.`
+				);
 			else
-				logFn('success', 'Successfully received text response via AI service');
-			// --- End AI Service Call ---
+				logFn(
+					'info',
+					`Received ${parsedUpdatedTasks.length} updated tasks from AI.`
+				);
+			// Create a map for efficient lookup
+			const updatedTasksMap = new Map(
+				parsedUpdatedTasks.map((task) => [task.id, task])
+			);
+
+			let actualUpdateCount = 0;
+			data.tasks.forEach((task, index) => {
+				if (updatedTasksMap.has(task.id)) {
+					// Only update if the task was part of the set sent to AI
+					data.tasks[index] = updatedTasksMap.get(task.id);
+					actualUpdateCount++;
+				}
+			});
+			if (isMCP)
+				logFn.info(
+					`Applied updates to ${actualUpdateCount} tasks in the dataset.`
+				);
+			else
+				logFn(
+					'info',
+					`Applied updates to ${actualUpdateCount} tasks in the dataset.`
+				);
+
+			writeJSON(tasksPath, data);
+			if (isMCP)
+				logFn.info(
+					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
+				);
+			else
+				logFn(
+					'success',
+					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
+				);
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+
+			if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
+				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+			}
+
+			return {
+				success: true,
+				updatedTasks: parsedUpdatedTasks,
+				telemetryData: aiServiceResponse.telemetryData
+			};
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 			if (isMCP) logFn.error(`Error during AI service call: ${error.message}`);
@@ -390,98 +456,10 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 						'Please ensure API keys are configured correctly in .env or mcp.json.'
 					);
 			}
-			throw error; // Re-throw error
+			throw error;
 		} finally {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 		}
-
-		// --- Parse and Validate Response ---
-		try {
-			updatedTasks = parseUpdatedTasksFromText(
-				responseText,
-				tasksToUpdate.length,
-				logFn,
-				isMCP
-			);
-		} catch (parseError) {
-			if (isMCP)
-				logFn.error(
-					`Failed to parse updated tasks from AI response: ${parseError.message}`
-				);
-			else
-				logFn(
-					'error',
-					`Failed to parse updated tasks from AI response: ${parseError.message}`
-				);
-			if (getDebugFlag(session)) {
-				if (isMCP) logFn.error(`Raw AI Response:\n${responseText}`);
-				else logFn('error', `Raw AI Response:\n${responseText}`);
-			}
-			throw new Error(
-				`Failed to parse valid updated tasks from AI response: ${parseError.message}`
-			);
-		}
-		// --- End Parse/Validate ---
-
-		// --- Update Tasks Data (Unchanged) ---
-		if (!Array.isArray(updatedTasks)) {
-			// Should be caught by parser, but extra check
-			throw new Error('Parsed AI response for updated tasks was not an array.');
-		}
-		if (isMCP)
-			logFn.info(`Received ${updatedTasks.length} updated tasks from AI.`);
-		else
-			logFn('info', `Received ${updatedTasks.length} updated tasks from AI.`);
-		// Create a map for efficient lookup
-		const updatedTasksMap = new Map(
-			updatedTasks.map((task) => [task.id, task])
-		);
-
-		// Iterate through the original data and update based on the map
-		let actualUpdateCount = 0;
-		data.tasks.forEach((task, index) => {
-			if (updatedTasksMap.has(task.id)) {
-				// Only update if the task was part of the set sent to AI
-				data.tasks[index] = updatedTasksMap.get(task.id);
-				actualUpdateCount++;
-			}
-		});
-		if (isMCP)
-			logFn.info(
-				`Applied updates to ${actualUpdateCount} tasks in the dataset.`
-			);
-		else
-			logFn(
-				'info',
-				`Applied updates to ${actualUpdateCount} tasks in the dataset.`
-			);
-		// --- End Update Tasks Data ---
-
-		// --- Write File and Generate (Unchanged) ---
-		writeJSON(tasksPath, data);
-		if (isMCP)
-			logFn.info(
-				`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
-			);
-		else
-			logFn(
-				'success',
-				`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
-			);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-		// --- End Write File ---
-
-		// --- Final CLI Output (Unchanged) ---
-		if (outputFormat === 'text') {
-			console.log(
-				boxen(chalk.green(`Successfully updated ${actualUpdateCount} tasks`), {
-					padding: 1,
-					borderColor: 'green',
-					borderStyle: 'round'
-				})
-			);
-		}
-		// --- End Final CLI Output ---
 	} catch (error) {
 		// --- General Error Handling (Unchanged) ---
 		if (isMCP) logFn.error(`Error updating tasks: ${error.message}`);

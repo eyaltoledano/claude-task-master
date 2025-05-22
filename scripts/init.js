@@ -38,10 +38,10 @@ const LOG_LEVELS = {
 	success: 4
 };
 
-// Get log level from environment or default to info
-const LOG_LEVEL = process.env.LOG_LEVEL
-	? LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()]
-	: LOG_LEVELS.info;
+// Determine log level from environment variable or default to 'info'
+const LOG_LEVEL = process.env.TASKMASTER_LOG_LEVEL
+	? LOG_LEVELS[process.env.TASKMASTER_LOG_LEVEL.toLowerCase()]
+	: LOG_LEVELS.info; // Default to info
 
 // Create a color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);

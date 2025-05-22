@@ -5,7 +5,7 @@
  * using the Vercel AI SDK.
  */
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText, streamText, generateObject, streamObject } from 'ai';
+import { generateText, streamText, generateObject } from 'ai';
 import { log } from '../../scripts/modules/utils.js'; // Assuming utils is accessible
 
 // TODO: Implement standardized functions for generateText, streamText, generateObject
@@ -17,7 +17,7 @@ import { log } from '../../scripts/modules/utils.js'; // Assuming utils is acces
 // Remove the global variable and caching logic
 // let anthropicClient;
 
-function getClient(apiKey) {
+function getClient(apiKey, baseUrl) {
 	if (!apiKey) {
 		// In a real scenario, this would use the config resolver.
 		// Throwing error here if key isn't passed for simplicity.
@@ -30,14 +30,12 @@ function getClient(apiKey) {
 	// Create and return a new instance directly with standard version header
 	return createAnthropic({
 		apiKey: apiKey,
-		baseURL: 'https://api.anthropic.com/v1',
+		...(baseUrl && { baseURL: baseUrl }),
 		// Use standard version header instead of beta
 		headers: {
 			'anthropic-beta': 'output-128k-2025-02-19'
 		}
 	});
-	// }
-	// return anthropicClient;
 }
 
 // --- Standardized Service Function Implementations ---
@@ -51,7 +49,8 @@ function getClient(apiKey) {
  * @param {Array<object>} params.messages - The messages array (e.g., [{ role: 'user', content: '...' }]).
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
- * @returns {Promise<string>} The generated text content.
+ * @param {string} [params.baseUrl] - The base URL for the Anthropic API.
+ * @returns {Promise<object>} The generated text content and usage.
  * @throws {Error} If the API call fails.
  */
 export async function generateAnthropicText({
@@ -59,11 +58,12 @@ export async function generateAnthropicText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseUrl
 }) {
 	log('debug', `Generating Anthropic text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		const client = getClient(apiKey, baseUrl);
 		const result = await generateText({
 			model: client(modelId),
 			messages: messages,
@@ -76,7 +76,14 @@ export async function generateAnthropicText({
 			'debug',
 			`Anthropic generateText result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.text;
+		// Return both text and usage
+		return {
+			text: result.text,
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
 		log('error', `Anthropic generateText failed: ${error.message}`);
 		// Consider more specific error handling or re-throwing a standardized error
@@ -93,6 +100,7 @@ export async function generateAnthropicText({
  * @param {Array<object>} params.messages - The messages array.
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
+ * @param {string} [params.baseUrl] - The base URL for the Anthropic API.
  * @returns {Promise<object>} The full stream result object from the Vercel AI SDK.
  * @throws {Error} If the API call fails to initiate the stream.
  */
@@ -101,20 +109,20 @@ export async function streamAnthropicText({
 	modelId,
 	messages,
 	maxTokens,
-	temperature
+	temperature,
+	baseUrl
 }) {
 	log('debug', `Streaming Anthropic text with model: ${modelId}`);
 	try {
-		const client = getClient(apiKey);
+		const client = getClient(apiKey, baseUrl);
 
-		// --- DEBUG LOGGING --- >>
 		log(
 			'debug',
 			'[streamAnthropicText] Parameters received by streamText:',
 			JSON.stringify(
 				{
-					modelId: modelId, // Log modelId being used
-					messages: messages, // Log the messages array
+					modelId: modelId,
+					messages: messages,
 					maxTokens: maxTokens,
 					temperature: temperature
 				},
@@ -122,25 +130,19 @@ export async function streamAnthropicText({
 				2
 			)
 		);
-		// --- << DEBUG LOGGING ---
 
 		const stream = await streamText({
 			model: client(modelId),
 			messages: messages,
 			maxTokens: maxTokens,
 			temperature: temperature
-			// Beta header moved to client initialization
 			// TODO: Add other relevant parameters
 		});
 
 		// *** RETURN THE FULL STREAM OBJECT, NOT JUST stream.textStream ***
 		return stream;
 	} catch (error) {
-		log(
-			'error',
-			`Anthropic streamText failed: ${error.message}`,
-			error.stack // Log stack trace for more details
-		);
+		log('error', `Anthropic streamText failed: ${error.message}`, error.stack);
 		throw error;
 	}
 }
@@ -160,7 +162,8 @@ export async function streamAnthropicText({
  * @param {number} [params.maxTokens] - Maximum tokens for the response.
  * @param {number} [params.temperature] - Temperature for generation.
  * @param {number} [params.maxRetries] - Max retries for validation/generation.
- * @returns {Promise<object>} The generated object matching the schema.
+ * @param {string} [params.baseUrl] - The base URL for the Anthropic API.
+ * @returns {Promise<object>} The generated object matching the schema and usage.
  * @throws {Error} If generation or validation fails.
  */
 export async function generateAnthropicObject({
@@ -171,24 +174,22 @@ export async function generateAnthropicObject({
 	objectName = 'generated_object',
 	maxTokens,
 	temperature,
-	maxRetries = 3
+	maxRetries = 3,
+	baseUrl
 }) {
 	log(
 		'debug',
 		`Generating Anthropic object ('${objectName}') with model: ${modelId}`
 	);
 	try {
-		const client = getClient(apiKey);
-
-		// Log basic debug info
+		const client = getClient(apiKey, baseUrl);
 		log(
 			'debug',
 			`Using maxTokens: ${maxTokens}, temperature: ${temperature}, model: ${modelId}`
 		);
-
 		const result = await generateObject({
 			model: client(modelId),
-			mode: 'tool', // Anthropic generally uses 'tool' mode for structured output
+			mode: 'tool',
 			schema: schema,
 			messages: messages,
 			tool: {
@@ -199,14 +200,19 @@ export async function generateAnthropicObject({
 			temperature: temperature,
 			maxRetries: maxRetries
 		});
-
 		log(
 			'debug',
 			`Anthropic generateObject result received. Tokens: ${result.usage.completionTokens}/${result.usage.promptTokens}`
 		);
-		return result.object;
+		// Return both object and usage
+		return {
+			object: result.object,
+			usage: {
+				inputTokens: result.usage.promptTokens,
+				outputTokens: result.usage.completionTokens
+			}
+		};
 	} catch (error) {
-		// Simple error logging
 		log(
 			'error',
 			`Anthropic generateObject ('${objectName}') failed: ${error.message}`

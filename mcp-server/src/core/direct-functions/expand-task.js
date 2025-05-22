@@ -193,13 +193,19 @@ export async function expandTaskDirect(args, log, context = {}) {
 			if (!wasSilent) enableSilentMode();
 
 			// Call the core expandTask function with the wrapped logger and projectRoot
-			const updatedTaskResult = await expandTask(
+			const coreResult = await expandTask(
 				tasksPath,
 				taskId,
 				numSubtasks,
 				useResearch,
 				additionalContext,
-				{ mcpLog, session, projectRoot },
+				{
+					mcpLog,
+					session,
+					projectRoot,
+					commandName: 'expand-task',
+					outputType: 'mcp'
+				},
 				forceFlag
 			);
 
@@ -215,16 +221,17 @@ export async function expandTaskDirect(args, log, context = {}) {
 				? updatedTask.subtasks.length - subtasksCountBefore
 				: 0;
 
-			// Return the result
+			// Return the result, including telemetryData
 			log.info(
 				`Successfully expanded task ${taskId} with ${subtasksAdded} new subtasks`
 			);
 			return {
 				success: true,
 				data: {
-					task: updatedTask,
+					task: coreResult.task,
 					subtasksAdded,
-					hasExistingSubtasks
+					hasExistingSubtasks,
+					telemetryData: coreResult.telemetryData
 				},
 				fromCache: false
 			};

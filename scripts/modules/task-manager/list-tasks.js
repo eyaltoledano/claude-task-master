@@ -2,13 +2,20 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
 
-import { log, readJSON, truncate } from '../utils.js';
+import {
+	log,
+	readJSON,
+	truncate,
+	readComplexityReport,
+	addComplexityToTask
+} from '../utils.js';
 import findNextTask from './find-next-task.js';
 
 import {
 	displayBanner,
 	getStatusWithColor,
 	formatDependenciesWithStatus,
+	getComplexityWithColor,
 	createProgressBar
 } from '../ui.js';
 
@@ -16,6 +23,7 @@ import {
  * List all tasks
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} statusFilter - Filter by status
+ * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
  * @returns {Object} - Task list result for json format
@@ -23,6 +31,7 @@ import {
 function listTasks(
 	tasksPath,
 	statusFilter,
+	reportPath = null,
 	withSubtasks = false,
 	outputFormat = 'text'
 ) {
@@ -35,6 +44,13 @@ function listTasks(
 		const data = readJSON(tasksPath); // Reads the whole tasks.json
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
+		}
+
+		// Add complexity scores to tasks if report exists
+		const complexityReport = readComplexityReport(reportPath);
+		// Apply complexity scores to tasks
+		if (complexityReport && complexityReport.complexityAnalysis) {
+			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
 		}
 
 		// Filter tasks by status if specified
@@ -257,8 +273,8 @@ function listTasks(
 		);
 		const avgDependenciesPerTask = totalDependencies / data.tasks.length;
 
-		// Find next task to work on
-		const nextItem = findNextTask(data.tasks);
+		// Find next task to work on, passing the complexity report
+		const nextItem = findNextTask(data.tasks, complexityReport);
 
 		// Get terminal width - more reliable method
 		let terminalWidth;
@@ -301,8 +317,11 @@ function listTasks(
 			`${chalk.blue('•')} ${chalk.white('Avg dependencies per task:')} ${avgDependenciesPerTask.toFixed(1)}\n\n` +
 			chalk.cyan.bold('Next Task to Work On:') +
 			'\n' +
-			`ID: ${chalk.cyan(nextItem ? nextItem.id : 'N/A')} - ${nextItem ? chalk.white.bold(truncate(nextItem.title, 40)) : chalk.yellow('No task available')}\n` +
-			`Priority: ${nextItem ? chalk.white(nextItem.priority || 'medium') : ''}  Dependencies: ${nextItem ? formatDependenciesWithStatus(nextItem.dependencies, data.tasks, true) : ''}`;
+			`ID: ${chalk.cyan(nextItem ? nextItem.id : 'N/A')} - ${nextItem ? chalk.white.bold(truncate(nextItem.title, 40)) : chalk.yellow('No task available')}
+` +
+			`Priority: ${nextItem ? chalk.white(nextItem.priority || 'medium') : ''}  Dependencies: ${nextItem ? formatDependenciesWithStatus(nextItem.dependencies, data.tasks, true, complexityReport) : ''}
+` +
+			`Complexity: ${nextItem && nextItem.complexityScore ? getComplexityWithColor(nextItem.complexityScore) : chalk.gray('N/A')}`;
 
 		// Calculate width for side-by-side display
 		// Box borders, padding take approximately 4 chars on each side
@@ -412,9 +431,16 @@ function listTasks(
 		// Make dependencies column smaller as requested (-20%)
 		const depsWidthPct = 20;
 
+		const complexityWidthPct = 10;
+
 		// Calculate title/description width as remaining space (+20% from dependencies reduction)
 		const titleWidthPct =
-			100 - idWidthPct - statusWidthPct - priorityWidthPct - depsWidthPct;
+			100 -
+			idWidthPct -
+			statusWidthPct -
+			priorityWidthPct -
+			depsWidthPct -
+			complexityWidthPct;
 
 		// Allow 10 characters for borders and padding
 		const availableWidth = terminalWidth - 10;
@@ -424,6 +450,9 @@ function listTasks(
 		const statusWidth = Math.floor(availableWidth * (statusWidthPct / 100));
 		const priorityWidth = Math.floor(availableWidth * (priorityWidthPct / 100));
 		const depsWidth = Math.floor(availableWidth * (depsWidthPct / 100));
+		const complexityWidth = Math.floor(
+			availableWidth * (complexityWidthPct / 100)
+		);
 		const titleWidth = Math.floor(availableWidth * (titleWidthPct / 100));
 
 		// Create a table with correct borders and spacing
@@ -433,9 +462,17 @@ function listTasks(
 				chalk.cyan.bold('Title'),
 				chalk.cyan.bold('Status'),
 				chalk.cyan.bold('Priority'),
-				chalk.cyan.bold('Dependencies')
+				chalk.cyan.bold('Dependencies'),
+				chalk.cyan.bold('Complexity')
 			],
-			colWidths: [idWidth, titleWidth, statusWidth, priorityWidth, depsWidth],
+			colWidths: [
+				idWidth,
+				titleWidth,
+				statusWidth,
+				priorityWidth,
+				depsWidth,
+				complexityWidth // Added complexity column width
+			],
 			style: {
 				head: [], // No special styling for header
 				border: [], // No special styling for border
@@ -454,7 +491,8 @@ function listTasks(
 				depText = formatDependenciesWithStatus(
 					task.dependencies,
 					data.tasks,
-					true
+					true,
+					complexityReport
 				);
 			} else {
 				depText = chalk.gray('None');
@@ -480,7 +518,10 @@ function listTasks(
 				truncate(cleanTitle, titleWidth - 3),
 				status,
 				priorityColor(truncate(task.priority || 'medium', priorityWidth - 2)),
-				depText // No truncation for dependencies
+				depText,
+				task.complexityScore
+					? getComplexityWithColor(task.complexityScore)
+					: chalk.gray('N/A')
 			]);
 
 			// Add subtasks if requested
@@ -516,6 +557,8 @@ function listTasks(
 								// Default to regular task dependency
 								const depTask = data.tasks.find((t) => t.id === depId);
 								if (depTask) {
+									// Add complexity to depTask before checking status
+									addComplexityToTask(depTask, complexityReport);
 									const isDone =
 										depTask.status === 'done' || depTask.status === 'completed';
 									const isInProgress = depTask.status === 'in-progress';
@@ -541,7 +584,10 @@ function listTasks(
 						chalk.dim(`└─ ${truncate(subtask.title, titleWidth - 5)}`),
 						getStatusWithColor(subtask.status, true),
 						chalk.dim('-'),
-						subtaskDepText // No truncation for dependencies
+						subtaskDepText,
+						subtask.complexityScore
+							? chalk.gray(`${subtask.complexityScore}`)
+							: chalk.gray('N/A')
 					]);
 				});
 			}
@@ -597,6 +643,8 @@ function listTasks(
 				subtasksSection = `\n\n${chalk.white.bold('Subtasks:')}\n`;
 				subtasksSection += parentTaskForSubtasks.subtasks
 					.map((subtask) => {
+						// Add complexity to subtask before display
+						addComplexityToTask(subtask, complexityReport);
 						// Using a more simplified format for subtask status display
 						const status = subtask.status || 'pending';
 						const statusColors = {
@@ -625,8 +673,8 @@ function listTasks(
 						'\n\n' +
 						// Use nextItem.priority, nextItem.status, nextItem.dependencies
 						`${chalk.white('Priority:')} ${priorityColors[nextItem.priority || 'medium'](nextItem.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextItem.status, true)}\n` +
-						`${chalk.white('Dependencies:')} ${nextItem.dependencies && nextItem.dependencies.length > 0 ? formatDependenciesWithStatus(nextItem.dependencies, data.tasks, true) : chalk.gray('None')}\n\n` +
-						// Use nextItem.description (Note: findNextTask doesn't return description, need to fetch original task/subtask for this)
+						`${chalk.white('Dependencies:')} ${nextItem.dependencies && nextItem.dependencies.length > 0 ? formatDependenciesWithStatus(nextItem.dependencies, data.tasks, true, complexityReport) : chalk.gray('None')}\n\n` +
+						// Use nextTask.description (Note: findNextTask doesn't return description, need to fetch original task/subtask for this)
 						// *** Fetching original item for description and details ***
 						`${chalk.white('Description:')} ${getWorkItemDescription(nextItem, data.tasks)}` +
 						subtasksSection + // <-- Subtasks are handled above now

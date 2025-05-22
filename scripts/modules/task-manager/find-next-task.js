@@ -1,3 +1,6 @@
+import { log } from '../utils.js';
+import { addComplexityToTask } from '../utils.js';
+
 /**
  * Return the next work item:
  *   •  Prefer an eligible SUBTASK that belongs to any parent task
@@ -15,9 +18,10 @@
  *  ─ parentId      →  number  (present only when it's a subtask)
  *
  * @param {Object[]} tasks  – full array of top-level tasks, each may contain .subtasks[]
+ * @param {Object} [complexityReport=null] - Optional complexity report object
  * @returns {Object|null}   – next work item or null if nothing is eligible
  */
-function findNextTask(tasks) {
+function findNextTask(tasks, complexityReport = null) {
 	// ---------- helpers ----------------------------------------------------
 	const priorityValues = { high: 3, medium: 2, low: 1 };
 
@@ -91,7 +95,14 @@ function findNextTask(tasks) {
 			if (aPar !== bPar) return aPar - bPar;
 			return aSub - bSub;
 		});
-		return candidateSubtasks[0];
+		const nextTask = candidateSubtasks[0];
+
+		// Add complexity to the task before returning
+		if (nextTask && complexityReport) {
+			addComplexityToTask(nextTask, complexityReport);
+		}
+
+		return nextTask;
 	}
 
 	// ---------- 2) fall back to top-level tasks (original logic) ------------
@@ -115,6 +126,11 @@ function findNextTask(tasks) {
 
 		return a.id - b.id;
 	})[0];
+
+	// Add complexity to the task before returning
+	if (nextTask && complexityReport) {
+		addComplexityToTask(nextTask, complexityReport);
+	}
 
 	return nextTask;
 }

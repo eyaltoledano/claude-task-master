@@ -9,3 +9,17 @@
 
 # Test Strategy:
 
+
+# Subtasks:
+## 1. Design task creation form without PRD [pending]
+### Dependencies: None
+### Description: Create a user interface form that allows users to manually input task details without requiring a PRD document
+### Details:
+Design a form with fields for task title, description, priority, assignee, due date, and other relevant task attributes. Include validation to ensure required fields are completed. The form should be intuitive and provide clear guidance on how to create a task manually.
+
+## 2. Implement task saving functionality [pending]
+### Dependencies: 68.1
+### Description: Develop the backend functionality to save manually created tasks to the database
+### Details:
+Create API endpoints to handle task creation requests from the frontend. Implement data validation, error handling, and confirmation messages. Ensure the saved tasks appear in the task list view and can be edited or deleted like PRD-parsed tasks.
+

@@ -42,3 +42,23 @@ Testing should verify that the refactoring maintains identical functionality whi
 4. Documentation:
    - Verify documentation is updated to reflect the new prompt organization
    - Confirm the index.js export pattern works as expected for importing prompts
+
+# Subtasks:
+## 1. Create prompts directory structure [pending]
+### Dependencies: None
+### Description: Create a centralized 'prompts' directory with appropriate subdirectories for different prompt categories
+### Details:
+Create a 'prompts' directory at the project root. Within this directory, create subdirectories based on functional categories (e.g., 'core', 'agents', 'utils'). Add an index.js file in each subdirectory to facilitate imports. Create a root index.js file that re-exports all prompts for easy access.
+
+## 2. Extract prompts into individual files [pending]
+### Dependencies: 48.1
+### Description: Identify all hardcoded prompts in the codebase and extract them into individual files in the prompts directory
+### Details:
+Search through the codebase for all hardcoded prompt strings. For each prompt, create a new file in the appropriate subdirectory with a descriptive name (e.g., 'taskBreakdownPrompt.js'). Format each file to export the prompt string as a constant. Add JSDoc comments to document the purpose and expected usage of each prompt.
+
+## 3. Update functions to import prompts [pending]
+### Dependencies: 48.1, 48.2
+### Description: Modify all functions that use hardcoded prompts to import them from the centralized structure
+### Details:
+For each function that previously used a hardcoded prompt, add an import statement to pull in the prompt from the centralized structure. Test each function after modification to ensure it still works correctly. Update any tests that might be affected by the refactoring. Create a pull request with the changes and document the new prompt structure in the project documentation.
+

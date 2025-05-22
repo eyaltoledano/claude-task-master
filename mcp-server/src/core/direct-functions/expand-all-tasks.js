@@ -63,12 +63,18 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			{ session, mcpLog, projectRoot }
 		);
 
-		// Core function now returns a summary object
+		// Core function now returns a summary object including the *aggregated* telemetryData
 		return {
 			success: true,
 			data: {
 				message: `Expand all operation completed. Expanded: ${result.expandedCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}`,
-				details: result // Include the full result details
+				details: {
+					expandedCount: result.expandedCount,
+					failedCount: result.failedCount,
+					skippedCount: result.skippedCount,
+					tasksToExpand: result.tasksToExpand
+				},
+				telemetryData: result.telemetryData // Pass the aggregated object
 			}
 		};
 	} catch (error) {

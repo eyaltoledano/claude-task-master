@@ -1,6 +1,6 @@
 # Task ID: 32
 # Title: Implement "learn" Command for Automatic Cursor Rule Generation
-# Status: pending
+# Status: deferred
 # Dependencies: None
 # Priority: high
 # Description: Create a new "learn" command that analyzes Cursor's chat history and code changes to automatically generate or update rule files in the .cursor/rules directory, following the cursor_rules.mdc template format. This command will help Cursor autonomously improve its ability to follow development standards by learning from successful implementations.

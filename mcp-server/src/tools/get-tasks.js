@@ -10,7 +10,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	findTasksJsonPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 
 /**
  * Register the getTasks tool with the MCP server
@@ -38,6 +41,12 @@ export function registerListTasksTool(server) {
 				.describe(
 					'Path to the tasks file (relative to project root or absolute)'
 				),
+			complexityReport: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the complexity report file (relative to project root or absolute)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -60,11 +69,23 @@ export function registerListTasksTool(server) {
 					);
 				}
 
+				// Resolve the path to complexity report
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						args.projectRoot,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
 				const result = await listTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						status: args.status,
-						withSubtasks: args.withSubtasks
+						withSubtasks: args.withSubtasks,
+						reportPath: complexityReportPath
 					},
 					log
 				);

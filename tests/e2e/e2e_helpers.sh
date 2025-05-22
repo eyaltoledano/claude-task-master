@@ -5,6 +5,42 @@
 # It requires curl and jq to be installed.
 # It expects the project root path to be passed as the second argument.
 
+# --- New Function: extract_and_sum_cost ---
+# Takes a string containing command output.
+# Extracts costs (lines with "Est. Cost: $X.YYYYYY" or similar from telemetry output)
+# from the output, sums them, and adds them to the GLOBAL total_e2e_cost variable.
+extract_and_sum_cost() {
+  local command_output="$1"
+  # Ensure total_e2e_cost is treated as a number, default to 0.0 if not set or invalid
+  if ! [[ "$total_e2e_cost" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    total_e2e_cost="0.0"
+  fi
+
+  local extracted_cost_sum="0.0"
+
+  # Grep for lines containing "Est. Cost: $", then extract the numeric value.
+  # Example line: │     Est. Cost: $0.093549                       │
+  # Accumulate all costs found in the command_output
+  while IFS= read -r line; do
+    # Extract the numeric part after 'Est. Cost: $' and before any trailing spaces/chars
+    cost_value=$(echo "$line" | grep -o -E 'Est\. Cost: \$([0-9]+\.[0-9]+)' | sed -E 's/Est\. Cost: \$//g')
+    if [[ -n "$cost_value" && "$cost_value" =~ ^[0-9]+\.[0-9]+$ ]]; then
+      # echo "[DEBUG] Found cost value: $cost_value in line: '$line'" # For debugging
+      extracted_cost_sum=$(echo "$extracted_cost_sum + $cost_value" | bc)
+    # else # For debugging
+      # echo "[DEBUG] No valid cost value found or extracted in line: '$line' (extracted: '$cost_value')" # For debugging
+    fi
+  done < <(echo "$command_output" | grep -E 'Est\. Cost: \$')
+
+  # echo "[DEBUG] Extracted sum from this command output: $extracted_cost_sum" # For debugging
+  if (( $(echo "$extracted_cost_sum > 0" | bc -l) )); then
+    total_e2e_cost=$(echo "$total_e2e_cost + $extracted_cost_sum" | bc)
+    # echo "[DEBUG] Updated global total_e2e_cost: $total_e2e_cost" # For debugging
+  fi
+  # No echo here, the function modifies a global variable.
+}
+export -f extract_and_sum_cost # Export for use in other scripts if sourced
+
 analyze_log_with_llm() {
   local log_file="$1"
   local project_root="$2" # Expect project root as the second argument
@@ -15,17 +51,17 @@ analyze_log_with_llm() {
   fi
 
   local env_file="${project_root}/.env" # Path to .env in project root
+  local supported_models_file="${project_root}/scripts/modules/supported-models.json"
 
   local provider_summary_log="provider_add_task_summary.log" # File summarizing provider test outcomes
   local api_key=""
-  # !!! IMPORTANT: Replace with your actual Claude API endpoint if different !!!
   local api_endpoint="https://api.anthropic.com/v1/messages"
-  # !!! IMPORTANT: Ensure this matches the variable name in your .env file !!!
   local api_key_name="ANTHROPIC_API_KEY"
+  local llm_analysis_model_id="claude-3-7-sonnet-20250219" # Model used for this analysis
+  local llm_analysis_provider="anthropic"
 
   echo "" # Add a newline before analysis starts
 
-  # Check for jq and curl
   if ! command -v jq &> /dev/null; then
     echo "[HELPER_ERROR] LLM Analysis requires 'jq'. Skipping analysis." >&2
     return 1
@@ -34,34 +70,31 @@ analyze_log_with_llm() {
     echo "[HELPER_ERROR] LLM Analysis requires 'curl'. Skipping analysis." >&2
     return 1
   fi
+  if ! command -v bc &> /dev/null; then
+    echo "[HELPER_ERROR] LLM Analysis requires 'bc' for cost calculation. Skipping analysis." >&2
+    return 1
+  fi
 
-  # Check for API Key in the PROJECT ROOT's .env file
   if [ -f "$env_file" ]; then
-    # Original assignment - Reading from project root .env
     api_key=$(grep "^${api_key_name}=" "$env_file" | sed -e "s/^${api_key_name}=//" -e 's/^[[:space:]"]*//' -e 's/[[:space:]"]*$//')
   fi
 
   if [ -z "$api_key" ]; then
-    echo "[HELPER_ERROR] ${api_key_name} not found or empty in project root .env file ($env_file). Skipping LLM analysis." >&2 # Updated error message
+    echo "[HELPER_ERROR] ${api_key_name} not found or empty in project root .env file ($env_file). Skipping LLM analysis." >&2
     return 1
   fi
 
-  # Log file path is passed as argument, need to ensure it exists relative to where the script *calling* this function is, OR use absolute path.
-  # Assuming absolute path or path relative to the initial PWD for simplicity here.
-  # The calling script passes the correct path relative to the original PWD.
   if [ ! -f "$log_file" ]; then
-    echo "[HELPER_ERROR] Log file not found: $log_file (PWD: $(pwd)). Check path passed to function. Skipping LLM analysis." >&2 # Updated error
+    echo "[HELPER_ERROR] Log file not found: $log_file (PWD: $(pwd)). Check path passed to function. Skipping LLM analysis." >&2
     return 1
   fi
 
   local log_content
-  # Read entire file, handle potential errors
   log_content=$(cat "$log_file") || {
     echo "[HELPER_ERROR] Failed to read log file: $log_file. Skipping LLM analysis." >&2
     return 1
   }
 
-  # Prepare the prompt using a quoted heredoc for literal interpretation
   read -r -d '' prompt_template <<'EOF'
 Analyze the following E2E test log for the task-master tool. The log contains output from various 'task-master' commands executed sequentially.
 
@@ -99,41 +132,34 @@ Here is the main log content:
 
 %s
 EOF
-# Note: The final %s is a placeholder for printf later
 
   local full_prompt
-  # Use printf to substitute the log content into the %s placeholder
   if ! printf -v full_prompt "$prompt_template" "$log_content"; then
     echo "[HELPER_ERROR] Failed to format prompt using printf." >&2
-    # It's unlikely printf itself fails, but good practice
     return 1
   fi
 
-  # Construct the JSON payload for Claude Messages API
   local payload
   payload=$(jq -n --arg prompt "$full_prompt" '{
-    "model": "claude-3-haiku-20240307",  # Using Haiku for faster/cheaper testing
-    "max_tokens": 3072, # Increased slightly
+    "model": "'"$llm_analysis_model_id"'",
+    "max_tokens": 3072,
     "messages": [
       {"role": "user", "content": $prompt}
     ]
-    # "temperature": 0.0 # Optional: Lower temperature for more deterministic JSON output
   }') || {
       echo "[HELPER_ERROR] Failed to create JSON payload using jq." >&2
       return 1
   }
 
   local response_raw response_http_code response_body
-  # Capture body and HTTP status code separately
   response_raw=$(curl -s -w "\nHTTP_STATUS_CODE:%{http_code}" -X POST "$api_endpoint" \
        -H "Content-Type: application/json" \
        -H "x-api-key: $api_key" \
        -H "anthropic-version: 2023-06-01" \
        --data "$payload")
 
-  # Extract status code and body
   response_http_code=$(echo "$response_raw" | grep '^HTTP_STATUS_CODE:' | sed 's/HTTP_STATUS_CODE://')
-  response_body=$(echo "$response_raw" | sed '$d') # Remove last line (status code)
+  response_body=$(echo "$response_raw" | sed '$d')
 
   if [ "$response_http_code" != "200" ]; then
       echo "[HELPER_ERROR] LLM API call failed with HTTP status $response_http_code." >&2
@@ -146,17 +172,41 @@ EOF
       return 1
   fi
 
-  # Pipe the raw response body directly to the Node.js parser script
+  # Calculate cost of this LLM analysis call
+  local input_tokens output_tokens input_cost_per_1m output_cost_per_1m calculated_llm_cost
+  input_tokens=$(echo "$response_body" | jq -r '.usage.input_tokens // 0')
+  output_tokens=$(echo "$response_body" | jq -r '.usage.output_tokens // 0')
+
+  if [ -f "$supported_models_file" ]; then
+      model_cost_info=$(jq -r --arg provider "$llm_analysis_provider" --arg model_id "$llm_analysis_model_id" '
+          .[$provider][] | select(.id == $model_id) | .cost_per_1m_tokens
+      ' "$supported_models_file")
+
+      if [[ -n "$model_cost_info" && "$model_cost_info" != "null" ]]; then
+          input_cost_per_1m=$(echo "$model_cost_info" | jq -r '.input // 0')
+          output_cost_per_1m=$(echo "$model_cost_info" | jq -r '.output // 0')
+
+          calculated_llm_cost=$(echo "($input_tokens / 1000000 * $input_cost_per_1m) + ($output_tokens / 1000000 * $output_cost_per_1m)" | bc -l)
+          # Format to 6 decimal places
+          formatted_llm_cost=$(printf "%.6f" "$calculated_llm_cost")
+          echo "LLM Analysis AI Cost: $formatted_llm_cost USD" # This line will be parsed by run_e2e.sh
+      else
+          echo "[HELPER_WARNING] Cost data for model $llm_analysis_model_id not found in $supported_models_file. LLM analysis cost not calculated."
+      fi
+  else
+      echo "[HELPER_WARNING] $supported_models_file not found. LLM analysis cost not calculated."
+  fi
+  # --- End cost calculation for this call ---
+
   if echo "$response_body" | node "${project_root}/tests/e2e/parse_llm_output.cjs" "$log_file"; then
       echo "[HELPER_SUCCESS] LLM analysis parsed and printed successfully by Node.js script."
-      return 0 # Success
+      return 0
   else
       local node_exit_code=$?
       echo "[HELPER_ERROR] Node.js parsing script failed with exit code ${node_exit_code}."
       echo "[HELPER_ERROR] Raw API response body (first 500 chars): $(echo "$response_body" | head -c 500)"
-      return 1 # Failure
+      return 1
   fi
 }
 
-# Export the function so it might be available to subshells if sourced
 export -f analyze_log_with_llm 
