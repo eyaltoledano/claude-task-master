@@ -61,7 +61,8 @@ const DEFAULTS = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		responseLanguage: 'English'
 	}
 };
 
@@ -364,6 +365,11 @@ function getProjectName(explicitRoot = null) {
 function getOllamaBaseUrl(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).ollamaBaseUrl;
+}
+
+function getResponseLanguage(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).responseLanguage;
 }
 
 /**
@@ -749,6 +755,7 @@ export {
 	getDefaultPriority,
 	getProjectName,
 	getOllamaBaseUrl,
+	getResponseLanguage,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
