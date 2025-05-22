@@ -377,6 +377,7 @@ async function initializeProject(options = {}) {
 		const authorName = options.author || 'Vibe coder';
 		const dryRun = options.dryRun || false;
 		const addAliases = options.aliases || false;
+		const jiraProjectKey = options.jiraProjectKey || '';
 
 		if (dryRun) {
 			log('info', 'DRY RUN MODE: No files will be modified');
@@ -390,7 +391,8 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun);
+		// Pass the jiraProjectKey from options in non-interactive mode
+		createProjectStructure(addAliases, dryRun, jiraProjectKey);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -400,7 +402,7 @@ async function initializeProject(options = {}) {
 		});
 
 		try {
-			// Only prompt for shell aliases
+			// Prompt for shell aliases
 			const addAliasesInput = await promptQuestion(
 				rl,
 				chalk.cyan(
@@ -409,6 +411,15 @@ async function initializeProject(options = {}) {
 			);
 			const addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
 
+			// Prompt for Jira project key
+			const jiraProjectKeyInput = await promptQuestion(
+				rl,
+				chalk.cyan(
+					'Enter your Jira project key (leave empty if not using Jira): '
+				)
+			);
+			const jiraProjectKey = jiraProjectKeyInput.trim();
+
 			// Confirm settings...
 			console.log('\nTask Master Project settings:');
 			console.log(
@@ -416,6 +427,10 @@ async function initializeProject(options = {}) {
 					'Add shell aliases (so you can use "tm" instead of "task-master"):'
 				),
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
+			);
+			console.log(
+				chalk.blue('Jira project key:'),
+				chalk.white(jiraProjectKey ? jiraProjectKey : 'Not set')
 			);
 
 			const confirmInput = await promptQuestion(
@@ -446,7 +461,7 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(addAliasesPrompted, dryRun);
+			createProjectStructure(addAliasesPrompted, dryRun, jiraProjectKey);
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -465,7 +480,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun) {
+function createProjectStructure(addAliases, dryRun, jiraProjectKey = '') {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
@@ -504,12 +519,13 @@ function createProjectStructure(addAliases, dryRun) {
 		replacements
 	);
 
-	// Copy .taskmasterconfig with project name
+	// Copy .taskmasterconfig with project name and Jira project key
 	copyTemplateFile(
 		'.taskmasterconfig',
 		path.join(targetDir, '.taskmasterconfig'),
 		{
-			...replacements
+			...replacements,
+			jiraProjectKey: jiraProjectKey
 		}
 	);
 

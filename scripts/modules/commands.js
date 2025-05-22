@@ -16,8 +16,11 @@ import { log, readJSON } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
+	updateTaskById,
+	updateSubtaskById,
 	generateTaskFiles,
 	setTaskStatus,
+	updateSingleTaskStatus,
 	listTasks,
 	expandTask,
 	expandAllTasks,
@@ -25,12 +28,13 @@ import {
 	addTask,
 	addSubtask,
 	removeSubtask,
+	findNextTask,
 	analyzeTaskComplexity,
-	updateTaskById,
-	updateSubtaskById,
 	removeTask,
 	findTaskById,
-	taskExists
+	taskExists,
+	isTaskDependentOn,
+	syncJira
 } from './task-manager.js';
 
 import {
@@ -63,7 +67,7 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary
+	displayJiraSyncResults
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -1267,6 +1271,36 @@ function registerCommands(programInstance) {
 				clearSubtasks(tasksPath, allIds);
 			} else {
 				clearSubtasks(tasksPath, taskIds);
+			}
+		});
+
+	// sync-jira command
+	programInstance
+		.command('sync-jira')
+		.description('Synchronize tasks with Jira')
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'--force',
+			'Force synchronization even if Jira integration is not enabled'
+		)
+		.action(async (options) => {
+			const tasksPath = path.resolve(options.file);
+
+			// Check if tasks.json exists
+			if (!fs.existsSync(tasksPath)) {
+				console.error(chalk.red(`Error: Tasks file not found at ${tasksPath}`));
+				process.exit(1);
+			}
+
+			try {
+				const results = await syncJira(tasksPath, {
+					force: options.force
+				});
+
+				displayJiraSyncResults(results);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+				process.exit(1);
 			}
 		});
 

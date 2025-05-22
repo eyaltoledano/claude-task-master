@@ -61,7 +61,12 @@ const DEFAULTS = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		jiraProjectKey: '',
+		jiraBaseUrl: '',
+		jiraEmail: '',
+		jiraApiToken: '',
+		jiraIntegrationEnabled: false
 	}
 };
 
@@ -364,6 +369,56 @@ function getProjectName(explicitRoot = null) {
 function getOllamaBaseUrl(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).ollamaBaseUrl;
+}
+
+/**
+ * Gets the Jira project key from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The Jira project key or empty string if not set.
+ */
+function getJiraProjectKey(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).jiraProjectKey || '';
+}
+
+/**
+ * Gets the Jira base URL from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The Jira base URL or empty string if not set.
+ */
+function getJiraBaseUrl(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).jiraBaseUrl || '';
+}
+
+/**
+ * Gets the Jira email from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The Jira email or empty string if not set.
+ */
+function getJiraEmail(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).jiraEmail || '';
+}
+
+/**
+ * Gets the Jira API token from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The Jira API token or empty string if not set.
+ */
+function getJiraApiToken(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).jiraApiToken || '';
+}
+
+/**
+ * Gets whether Jira integration is enabled from the configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {boolean} Whether Jira integration is enabled.
+ */
+function getJiraIntegrationEnabled(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).jiraIntegrationEnabled === true;
 }
 
 /**
@@ -749,6 +804,11 @@ export {
 	getDefaultPriority,
 	getProjectName,
 	getOllamaBaseUrl,
+	getJiraProjectKey,
+	getJiraBaseUrl,
+	getJiraEmail,
+	getJiraApiToken,
+	getJiraIntegrationEnabled,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

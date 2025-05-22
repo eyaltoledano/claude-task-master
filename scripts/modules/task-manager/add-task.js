@@ -13,7 +13,16 @@ import {
 } from '../ui.js';
 import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
-import { getDefaultPriority } from '../config-manager.js';
+import {
+	getDefaultPriority,
+	getJiraIntegrationEnabled
+} from '../config-manager.js';
+import {
+	createUserStory,
+	storeJiraKey,
+	isJiraConfigured
+} from '../jira-integration.js';
+import { generateUserStoryRefId, storeRefId } from '../reference-id-service.js';
 import generateTaskFiles from './generate-task-files.js';
 
 // Define Zod schema for the expected AI output object
@@ -280,7 +289,7 @@ async function addTask(
 		}
 
 		// Create the new task object
-		const newTask = {
+		let newTask = {
 			id: newTaskId,
 			title: taskData.title,
 			description: taskData.description,
@@ -291,6 +300,39 @@ async function addTask(
 			priority: effectivePriority,
 			subtasks: [] // Initialize with empty subtasks array
 		};
+
+		// Store reference ID in task metadata if Jira integration is enabled
+		if (getJiraIntegrationEnabled(projectRoot)) {
+			const refId = generateUserStoryRefId(newTaskId, projectRoot);
+			if (refId) {
+				newTask = storeRefId(newTask, refId);
+				report(`Stored reference ID ${refId} in task metadata`, 'info');
+			}
+		}
+
+		// Check if Jira integration is enabled and configured
+		if (
+			getJiraIntegrationEnabled(projectRoot) &&
+			isJiraConfigured(projectRoot)
+		) {
+			report(
+				'Jira integration is enabled. Creating user story in Jira...',
+				'info'
+			);
+			try {
+				// Create user story in Jira
+				const jiraIssue = await createUserStory(taskData, projectRoot);
+				if (jiraIssue && jiraIssue.key) {
+					// Store Jira issue key in task metadata
+					newTask = storeJiraKey(newTask, jiraIssue.key);
+					report(`Created Jira user story: ${jiraIssue.key}`, 'success');
+				} else {
+					report('Failed to create Jira user story', 'warn');
+				}
+			} catch (jiraError) {
+				report(`Error creating Jira user story: ${jiraError.message}`, 'error');
+			}
+		}
 
 		// Add the task to the tasks array
 		data.tasks.push(newTask);

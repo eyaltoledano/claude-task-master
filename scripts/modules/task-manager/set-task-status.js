@@ -6,6 +6,7 @@ import { log, readJSON, writeJSON, findTaskById } from '../utils.js';
 import { displayBanner } from '../ui.js';
 import { validateTaskDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
+import { updateJiraTaskStatus } from '../jira-integration.js';
 import updateSingleTaskStatus from './update-single-task-status.js';
 import generateTaskFiles from './generate-task-files.js';
 import {
@@ -58,6 +59,13 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		for (const id of taskIds) {
 			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode);
 			updatedTasks.push(id);
+
+			// Update Jira issues if integration is enabled
+			// Pass the writeJSON function to enable updating metadata
+			await updateJiraTaskStatus(id, newStatus, data, tasksPath, {
+				...options,
+				writeJSON
+			});
 		}
 
 		// Write the updated tasks to the file

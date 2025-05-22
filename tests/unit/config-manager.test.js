@@ -85,7 +85,12 @@ const DEFAULT_CONFIG = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		jiraProjectKey: '',
+		jiraBaseUrl: '',
+		jiraEmail: '',
+		jiraApiToken: '',
+		jiraIntegrationEnabled: false
 	}
 };
 

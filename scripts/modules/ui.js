@@ -2019,6 +2019,100 @@ function displayAvailableModels(availableModels) {
 }
 
 /**
+ * Display Jira synchronization results
+ * @param {Object} syncResults - Results from the Jira synchronization
+ */
+function displayJiraSyncResults(syncResults) {
+	if (isSilentMode()) return;
+
+	const { stats } = syncResults;
+
+	if (!stats) {
+		console.log(
+			boxen(chalk.red.bold('Synchronization failed'), {
+				padding: 1,
+				borderColor: 'red',
+				borderStyle: 'round'
+			})
+		);
+		return;
+	}
+
+	const table = new Table({
+		head: [
+			chalk.cyan.bold('Type'),
+			chalk.cyan.bold('Created'),
+			chalk.cyan.bold('Updated')
+		],
+		colWidths: [20, 15, 15]
+	});
+
+	table.push(
+		[
+			chalk.white('User Stories (Tasks)'),
+			chalk.green(stats.tasksCreated),
+			chalk.blue(stats.tasksUpdated)
+		],
+		[
+			chalk.white('Tasks (Subtasks)'),
+			chalk.green(stats.subtasksCreated),
+			chalk.blue(stats.subtasksUpdated)
+		]
+	);
+
+	// Build the results message
+	let resultsMessage = chalk.white.bold('Jira Synchronization Results');
+	resultsMessage += `
+
+`;
+	resultsMessage += table.toString();
+
+	if (stats.errors > 0) {
+		resultsMessage += `
+
+`;
+		resultsMessage += chalk.red(`Errors: ${stats.errors}`);
+	}
+
+	console.log(
+		boxen(resultsMessage, {
+			padding: 1,
+			borderColor: stats.errors > 0 ? 'yellow' : 'green',
+			borderStyle: 'round'
+		})
+	);
+
+	// Build the next steps message
+	let nextStepsMessage = chalk.white.bold('Next Steps:');
+	nextStepsMessage += `
+
+`;
+	nextStepsMessage += chalk.cyan(
+		`1. Run ${chalk.yellow('task-master list')} to view all tasks`
+	);
+	nextStepsMessage += `
+`;
+	nextStepsMessage += chalk.cyan(
+		`2. Run ${chalk.yellow('task-master next')} to find the next task to work on`
+	);
+	nextStepsMessage += `
+`;
+	nextStepsMessage += chalk.cyan(
+		`3. Run ${chalk.yellow('task-master sync-jira')} again to update Jira with any new changes`
+	);
+
+	// Display next steps
+	console.log(
+		boxen(nextStepsMessage, {
+			padding: 1,
+			borderColor: 'cyan',
+			borderStyle: 'round',
+			margin: { top: 1 }
+		})
+	);
+}
+
+/**
  * Displays AI usage telemetry summary in the CLI.
  * @param {object} telemetryData - The telemetry data object.
  * @param {string} outputType - 'cli' or 'mcp' (though typically only called for 'cli').
@@ -2063,7 +2157,7 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	);
 }
 
-// Export UI functions
+// Export all UI functions
 export {
 	displayBanner,
 	startLoadingIndicator,
@@ -2081,5 +2175,6 @@ export {
 	displayApiKeyStatus,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	displayJiraSyncResults
 };
