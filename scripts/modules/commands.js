@@ -1211,6 +1211,18 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed complexity analysis'
 		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated list of specific task IDs to analyze (e.g., "1,3,5")'
+		)
+		.option(
+			'--from <id>',
+			'Starting task ID in a range to analyze'
+		)
+		.option(
+			'--to <id>',
+			'Ending task ID in a range to analyze'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file || 'tasks/tasks.json';
 			const outputPath = options.output;
@@ -1220,6 +1232,14 @@ function registerCommands(programInstance) {
 
 			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
 			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
+
+			if (options.id) {
+				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));
+			} else if (options.from || options.to) {
+				const fromStr = options.from ? options.from : 'first';
+				const toStr = options.to ? options.to : 'last';
+				console.log(chalk.blue(`Analyzing tasks in range: ${fromStr} to ${toStr}`));
+			}
 
 			if (useResearch) {
 				console.log(
