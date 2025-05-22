@@ -16,10 +16,15 @@ import {
 	truncate,
 	isSilentMode
 } from './utils.js';
-import path from 'path';
 import fs from 'fs';
-import { findNextTask, analyzeTaskComplexity } from './task-manager.js';
+import {
+	findNextTask,
+	analyzeTaskComplexity,
+	readComplexityReport
+} from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
+import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
@@ -46,17 +51,7 @@ function displayBanner() {
 	);
 
 	// Read version directly from package.json
-	let version = 'unknown'; // Initialize with a default
-	try {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			version = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fall back to default version
-		log('warn', 'Could not read package.json for version info.');
-	}
+	const version = getTaskMasterVersion();
 
 	console.log(
 		boxen(
@@ -273,12 +268,14 @@ function getStatusWithColor(status, forTable = false) {
  * @param {Array} dependencies - Array of dependency IDs
  * @param {Array} allTasks - Array of all tasks
  * @param {boolean} forConsole - Whether the output is for console display
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
  * @returns {string} Formatted dependencies string
  */
 function formatDependenciesWithStatus(
 	dependencies,
 	allTasks,
-	forConsole = false
+	forConsole = false,
+	complexityReport = null // Add complexityReport parameter
 ) {
 	if (
 		!dependencies ||
@@ -342,7 +339,11 @@ function formatDependenciesWithStatus(
 			typeof depId === 'string' ? parseInt(depId, 10) : depId;
 
 		// Look up the task using the numeric ID
-		const depTaskResult = findTaskById(allTasks, numericDepId);
+		const depTaskResult = findTaskById(
+			allTasks,
+			numericDepId,
+			complexityReport
+		);
 		const depTask = depTaskResult.task; // Access the task object from the result
 
 		if (!depTask) {
@@ -458,7 +459,7 @@ function displayHelp() {
 				{
 					name: 'set-status',
 					args: '--id=<id> --status=<status>',
-					desc: 'Update task status (done, pending, etc.)'
+					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
 				},
 				{
 					name: 'update',
@@ -761,7 +762,7 @@ function truncateString(str, maxLength) {
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
  */
-async function displayNextTask(tasksPath) {
+async function displayNextTask(tasksPath, complexityReportPath = null) {
 	displayBanner();
 
 	// Read the tasks file
@@ -771,8 +772,11 @@ async function displayNextTask(tasksPath) {
 		process.exit(1);
 	}
 
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
 	// Find the next task
-	const nextTask = findNextTask(data.tasks);
+	const nextTask = findNextTask(data.tasks, complexityReport);
 
 	if (!nextTask) {
 		console.log(
@@ -809,12 +813,7 @@ async function displayNextTask(tasksPath) {
 			'padding-bottom': 0,
 			compact: true
 		},
-		chars: {
-			mid: '',
-			'left-mid': '',
-			'mid-mid': '',
-			'right-mid': ''
-		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 		colWidths: [15, Math.min(75, process.stdout.columns - 20 || 60)],
 		wordWrap: true
 	});
@@ -838,7 +837,18 @@ async function displayNextTask(tasksPath) {
 		],
 		[
 			chalk.cyan.bold('Dependencies:'),
-			formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)
+			formatDependenciesWithStatus(
+				nextTask.dependencies,
+				data.tasks,
+				true,
+				complexityReport
+			)
+		],
+		[
+			chalk.cyan.bold('Complexity:'),
+			nextTask.complexityScore
+				? getComplexityWithColor(nextTask.complexityScore)
+				: chalk.gray('N/A')
 		],
 		[chalk.cyan.bold('Description:'), nextTask.description]
 	);
@@ -860,8 +870,11 @@ async function displayNextTask(tasksPath) {
 		);
 	}
 
-	// Show subtasks if they exist
-	if (nextTask.subtasks && nextTask.subtasks.length > 0) {
+	// Determine if the nextTask is a subtask
+	const isSubtask = !!nextTask.parentId;
+
+	// Show subtasks if they exist (only for parent tasks)
+	if (!isSubtask && nextTask.subtasks && nextTask.subtasks.length > 0) {
 		console.log(
 			boxen(chalk.white.bold('Subtasks'), {
 				padding: { top: 0, bottom: 0, left: 1, right: 1 },
@@ -902,12 +915,7 @@ async function displayNextTask(tasksPath) {
 				'padding-bottom': 0,
 				compact: true
 			},
-			chars: {
-				mid: '',
-				'left-mid': '',
-				'mid-mid': '',
-				'right-mid': ''
-			},
+			chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
 			wordWrap: true
 		});
 
@@ -966,8 +974,10 @@ async function displayNextTask(tasksPath) {
 		});
 
 		console.log(subtaskTable.toString());
-	} else {
-		// Suggest expanding if no subtasks
+	}
+
+	// Suggest expanding if no subtasks (only for parent tasks without subtasks)
+	if (!isSubtask && (!nextTask.subtasks || nextTask.subtasks.length === 0)) {
 		console.log(
 			boxen(
 				chalk.yellow('No subtasks found. Consider breaking down this task:') +
@@ -986,22 +996,30 @@ async function displayNextTask(tasksPath) {
 	}
 
 	// Show action suggestions
+	let suggestedActionsContent = chalk.white.bold('Suggested Actions:') + '\n';
+	if (isSubtask) {
+		// Suggested actions for a subtask
+		suggestedActionsContent +=
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
+			`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show --id=${nextTask.parentId}`)}`;
+	} else {
+		// Suggested actions for a parent task
+		suggestedActionsContent +=
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
+			(nextTask.subtasks && nextTask.subtasks.length > 0
+				? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${nextTask.id}.1 --status=done`)}` // Example: first subtask
+				: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${nextTask.id}`)}`);
+	}
+
 	console.log(
-		boxen(
-			chalk.white.bold('Suggested Actions:') +
-				'\n' +
-				`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
-				`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
-				(nextTask.subtasks && nextTask.subtasks.length > 0
-					? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${nextTask.id}.1 --status=done`)}`
-					: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${nextTask.id}`)}`),
-			{
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				borderColor: 'green',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			}
-		)
+		boxen(suggestedActionsContent, {
+			padding: { top: 0, bottom: 0, left: 1, right: 1 },
+			borderColor: 'green',
+			borderStyle: 'round',
+			margin: { top: 1 }
+		})
 	);
 }
 
@@ -1011,7 +1029,12 @@ async function displayNextTask(tasksPath) {
  * @param {string|number} taskId - The ID of the task to display
  * @param {string} [statusFilter] - Optional status to filter subtasks by
  */
-async function displayTaskById(tasksPath, taskId, statusFilter = null) {
+async function displayTaskById(
+	tasksPath,
+	taskId,
+	complexityReportPath = null,
+	statusFilter = null
+) {
 	displayBanner();
 
 	// Read the tasks file
@@ -1021,11 +1044,15 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 		process.exit(1);
 	}
 
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
 	// Find the task by ID, applying the status filter if provided
 	// Returns { task, originalSubtaskCount, originalSubtasks }
 	const { task, originalSubtaskCount, originalSubtasks } = findTaskById(
 		data.tasks,
 		taskId,
+		complexityReport,
 		statusFilter
 	);
 
@@ -1079,6 +1106,12 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 			[
 				chalk.cyan.bold('Status:'),
 				getStatusWithColor(task.status || 'pending', true)
+			],
+			[
+				chalk.cyan.bold('Complexity:'),
+				task.complexityScore
+					? getComplexityWithColor(task.complexityScore)
+					: chalk.gray('N/A')
 			],
 			[
 				chalk.cyan.bold('Description:'),
@@ -1158,7 +1191,18 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 		[chalk.cyan.bold('Priority:'), priorityColor(task.priority || 'medium')],
 		[
 			chalk.cyan.bold('Dependencies:'),
-			formatDependenciesWithStatus(task.dependencies, data.tasks, true)
+			formatDependenciesWithStatus(
+				task.dependencies,
+				data.tasks,
+				true,
+				complexityReport
+			)
+		],
+		[
+			chalk.cyan.bold('Complexity:'),
+			task.complexityScore
+				? getComplexityWithColor(task.complexityScore)
+				: chalk.gray('N/A')
 		],
 		[chalk.cyan.bold('Description:'), task.description]
 	);
@@ -1974,6 +2018,51 @@ function displayAvailableModels(availableModels) {
 	);
 }
 
+/**
+ * Displays AI usage telemetry summary in the CLI.
+ * @param {object} telemetryData - The telemetry data object.
+ * @param {string} outputType - 'cli' or 'mcp' (though typically only called for 'cli').
+ */
+function displayAiUsageSummary(telemetryData, outputType = 'cli') {
+	if (
+		(outputType !== 'cli' && outputType !== 'text') ||
+		!telemetryData ||
+		isSilentMode()
+	) {
+		return; // Only display for CLI and if data exists and not in silent mode
+	}
+
+	const {
+		modelUsed,
+		providerName,
+		inputTokens,
+		outputTokens,
+		totalTokens,
+		totalCost,
+		commandName
+	} = telemetryData;
+
+	let summary = chalk.bold.blue('AI Usage Summary:') + '\n';
+	summary += chalk.gray(`  Command: ${commandName}\n`);
+	summary += chalk.gray(`  Provider: ${providerName}\n`);
+	summary += chalk.gray(`  Model: ${modelUsed}\n`);
+	summary += chalk.gray(
+		`  Tokens: ${totalTokens} (Input: ${inputTokens}, Output: ${outputTokens})\n`
+	);
+	summary += chalk.gray(`  Est. Cost: $${totalCost.toFixed(6)}`);
+
+	console.log(
+		boxen(summary, {
+			padding: 1,
+			margin: { top: 1 },
+			borderColor: 'blue',
+			borderStyle: 'round',
+			title: '💡 Telemetry',
+			titleAlignment: 'center'
+		})
+	);
+}
+
 // Export UI functions
 export {
 	displayBanner,
@@ -1991,5 +2080,6 @@ export {
 	confirmTaskOverwrite,
 	displayApiKeyStatus,
 	displayModelConfiguration,
-	displayAvailableModels
+	displayAvailableModels,
+	displayAiUsageSummary
 };

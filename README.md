@@ -11,16 +11,20 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Requirements
 
-- **API key(s)** for any supported provider:
-  - Anthropic
-  - Perplexity
-  - OpenAI
-  - Google
-  - Mistral
-  - OpenRouter
-  - xAI
-  - Azure OpenAI
-- **(Optional)** OpenAI SDK (for Perplexity integration)
+Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
+
+You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider API key must be present in either mcp.json or .env.
+
+At least one (1) of the following is required:
+
+- Anthropic API key (Claude API)
+- OpenAI API key
+- Google Gemini API key
+- Perplexity API key (for research model)
+- xAI API Key (for research or main model)
+- OpenRouter API Key (for research or main model)
+
+Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
 
 ## Quick Start
 
@@ -53,7 +57,8 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
 				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
 				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
 		}
 	}

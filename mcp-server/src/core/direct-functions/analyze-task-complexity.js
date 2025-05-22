@@ -79,17 +79,19 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		}
 
 		let report;
+		let coreResult;
 
 		try {
 			// --- Call Core Function (Pass context separately) ---
 			// Pass coreOptions as the first argument
 			// Pass context object { session, mcpLog } as the second argument
-			report = await analyzeTaskComplexity(
-				coreOptions, // Pass options object
-				{ session, mcpLog: logWrapper } // Pass context object
-				// Removed the explicit 'json' format argument, assuming context handling is sufficient
-				// If issues persist, we might need to add an explicit format param to analyzeTaskComplexity
-			);
+			coreResult = await analyzeTaskComplexity(coreOptions, {
+				session,
+				mcpLog: logWrapper,
+				commandName: 'analyze-complexity',
+				outputType: 'mcp'
+			});
+			report = coreResult.report;
 		} catch (error) {
 			log.error(
 				`Error in analyzeTaskComplexity core function: ${error.message}`
@@ -125,8 +127,11 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			};
 		}
 
-		// Added a check to ensure report is defined before accessing its properties
-		if (!report || typeof report !== 'object') {
+		if (
+			!coreResult ||
+			!coreResult.report ||
+			typeof coreResult.report !== 'object'
+		) {
 			log.error(
 				'Core analysis function returned an invalid or undefined response.'
 			);
@@ -141,8 +146,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 
 		try {
 			// Ensure complexityAnalysis exists and is an array
-			const analysisArray = Array.isArray(report.complexityAnalysis)
-				? report.complexityAnalysis
+			const analysisArray = Array.isArray(coreResult.report.complexityAnalysis)
+				? coreResult.report.complexityAnalysis
 				: [];
 
 			// Count tasks by complexity (remains the same)
@@ -159,15 +164,16 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${outputPath}`, // Use outputPath from args
-					reportPath: outputPath, // Use outputPath from args
+					message: `Task complexity analysis complete. Report saved to ${outputPath}`,
+					reportPath: outputPath,
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,
 						mediumComplexityTasks,
 						lowComplexityTasks
 					},
-					fullReport: report // Now includes the full report
+					fullReport: coreResult.report,
+					telemetryData: coreResult.telemetryData
 				}
 			};
 		} catch (parseError) {

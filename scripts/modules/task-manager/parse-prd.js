@@ -17,6 +17,7 @@ import {
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+import { displayAiUsageSummary } from '../ui.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -47,8 +48,8 @@ const prdResponseSchema = z.object({
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} numTasks - Number of tasks to generate
  * @param {Object} options - Additional options
- * @param {boolean} [options.useForce=false] - Whether to overwrite existing tasks.json.
- * @param {boolean} [options.useAppend=false] - Append to existing tasks file.
+ * @param {boolean} [options.force=false] - Whether to overwrite existing tasks.json.
+ * @param {boolean} [options.append=false] - Append to existing tasks file.
  * @param {Object} [options.reportProgress] - Function to report progress (optional, likely unused).
  * @param {Object} [options.mcpLog] - MCP logger object (optional).
  * @param {Object} [options.session] - Session object from MCP server (optional).
@@ -61,8 +62,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		mcpLog,
 		session,
 		projectRoot,
-		useForce = false,
-		useAppend = false
+		force = false,
+		append = false
 	} = options;
 	const isMCP = !!mcpLog;
 	const outputFormat = isMCP ? 'json' : 'text';
@@ -89,17 +90,16 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		}
 	};
 
-	report(
-		`Parsing PRD file: ${prdPath}, Force: ${useForce}, Append: ${useAppend}`
-	);
+	report(`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}`);
 
 	let existingTasks = [];
 	let nextId = 1;
+	let aiServiceResponse = null;
 
 	try {
 		// Handle file existence and overwrite/append logic
 		if (fs.existsSync(tasksPath)) {
-			if (useAppend) {
+			if (append) {
 				report(
 					`Append mode enabled. Reading existing tasks from ${tasksPath}`,
 					'info'
@@ -121,7 +121,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 					);
 					existingTasks = []; // Reset if read fails
 				}
-			} else if (!useForce) {
+			} else if (!force) {
 				// Not appending and not forcing overwrite
 				const overwriteError = new Error(
 					`Output file ${tasksPath} already exists. Use --force to overwrite or --append.`
@@ -206,8 +206,8 @@ Guidelines:
 		// Call the unified AI service
 		report('Calling AI service to generate tasks from PRD...', 'info');
 
-		// Call generateObjectService with the CORRECT schema
-		const generatedData = await generateObjectService({
+		// Call generateObjectService with the CORRECT schema and additional telemetry params
+		aiServiceResponse = await generateObjectService({
 			role: 'main',
 			session: session,
 			projectRoot: projectRoot,
@@ -215,7 +215,8 @@ Guidelines:
 			objectName: 'tasks_data',
 			systemPrompt: systemPrompt,
 			prompt: userPrompt,
-			reportProgress
+			commandName: 'parse-prd',
+			outputType: isMCP ? 'mcp' : 'cli'
 		});
 
 		// Create the directory if it doesn't exist
@@ -223,12 +224,32 @@ Guidelines:
 		if (!fs.existsSync(tasksDir)) {
 			fs.mkdirSync(tasksDir, { recursive: true });
 		}
-		logFn.success('Successfully parsed PRD via AI service.'); // Assumes generateObjectService validated
+		logFn.success('Successfully parsed PRD via AI service.\n');
 
 		// Validate and Process Tasks
+		// const generatedData = aiServiceResponse?.mainResult?.object;
+
+		// Robustly get the actual AI-generated object
+		let generatedData = null;
+		if (aiServiceResponse?.mainResult) {
+			if (
+				typeof aiServiceResponse.mainResult === 'object' &&
+				aiServiceResponse.mainResult !== null &&
+				'tasks' in aiServiceResponse.mainResult
+			) {
+				// If mainResult itself is the object with a 'tasks' property
+				generatedData = aiServiceResponse.mainResult;
+			} else if (
+				typeof aiServiceResponse.mainResult.object === 'object' &&
+				aiServiceResponse.mainResult.object !== null &&
+				'tasks' in aiServiceResponse.mainResult.object
+			) {
+				// If mainResult.object is the object with a 'tasks' property
+				generatedData = aiServiceResponse.mainResult.object;
+			}
+		}
+
 		if (!generatedData || !Array.isArray(generatedData.tasks)) {
-			// This error *shouldn't* happen if generateObjectService enforced prdResponseSchema
-			// But keep it as a safeguard
 			logFn.error(
 				`Internal Error: generateObjectService returned unexpected data structure: ${JSON.stringify(generatedData)}`
 			);
@@ -265,36 +286,27 @@ Guidelines:
 				);
 		});
 
-		const allTasks = useAppend
+		const finalTasks = append
 			? [...existingTasks, ...processedNewTasks]
 			: processedNewTasks;
+		const outputData = { tasks: finalTasks };
 
-		const finalTaskData = { tasks: allTasks }; // Use the combined list
-
-		// Write the tasks to the file
-		writeJSON(tasksPath, finalTaskData);
+		// Write the final tasks to the file
+		writeJSON(tasksPath, outputData);
 		report(
-			`Successfully wrote ${allTasks.length} total tasks to ${tasksPath} (${processedNewTasks.length} new).`,
+			`Successfully ${append ? 'appended' : 'generated'} ${processedNewTasks.length} tasks in ${tasksPath}`,
 			'success'
 		);
-		report(`Tasks saved to: ${tasksPath}`, 'info');
 
-		// Generate individual task files
-		if (reportProgress && mcpLog) {
-			// Enable silent mode when being called from MCP server
-			enableSilentMode();
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-			disableSilentMode();
-		} else {
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-		}
+		// Generate markdown task files after writing tasks.json
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 
-		// Only show success boxes for text output (CLI)
+		// Handle CLI output (e.g., success message)
 		if (outputFormat === 'text') {
 			console.log(
 				boxen(
 					chalk.green(
-						`Successfully generated ${processedNewTasks.length} new tasks. Total tasks in ${tasksPath}: ${allTasks.length}`
+						`Successfully generated ${processedNewTasks.length} new tasks. Total tasks in ${tasksPath}: ${finalTasks.length}`
 					),
 					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
 				)
@@ -314,9 +326,18 @@ Guidelines:
 					}
 				)
 			);
+
+			if (aiServiceResponse && aiServiceResponse.telemetryData) {
+				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+			}
 		}
 
-		return { success: true, tasks: processedNewTasks };
+		// Return telemetry data
+		return {
+			success: true,
+			tasksPath,
+			telemetryData: aiServiceResponse?.telemetryData
+		};
 	} catch (error) {
 		report(`Error parsing PRD: ${error.message}`, 'error');
 

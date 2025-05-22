@@ -16,7 +16,8 @@ import {
 import {
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator
+	stopLoadingIndicator,
+	displayAiUsageSummary
 } from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
@@ -94,10 +95,6 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
 			// It worked! Use this as the primary cleaned response.
 			cleanedResponse = potentialJsonFromBraces;
 			parseMethodUsed = 'braces';
-			report(
-				'info',
-				'Successfully parsed JSON content extracted between first { and last }.'
-			);
 		} catch (e) {
 			report(
 				'info',
@@ -376,29 +373,125 @@ The changes described in the prompt should be thoughtfully applied to make the t
 		const userPrompt = `Here is the task to update:\n${taskDataString}\n\nPlease update this task based on the following new context:\n${prompt}\n\nIMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated task as a valid JSON object.`;
 		// --- End Build Prompts ---
 
-		let updatedTask;
 		let loadingIndicator = null;
-		if (outputFormat === 'text') {
+		let aiServiceResponse = null;
+
+		if (!isMCP && outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
 				useResearch ? 'Updating task with research...\n' : 'Updating task...\n'
 			);
 		}
 
-		let responseText = '';
 		try {
-			// --- Call Unified AI Service (generateTextService) ---
-			const role = useResearch ? 'research' : 'main';
-			report('info', `Using AI service with role: ${role}`);
-
-			responseText = await generateTextService({
-				prompt: userPrompt,
+			const serviceRole = useResearch ? 'research' : 'main';
+			aiServiceResponse = await generateTextService({
+				role: serviceRole,
+				session: session,
+				projectRoot: projectRoot,
 				systemPrompt: systemPrompt,
-				role,
-				session,
-				projectRoot
+				prompt: userPrompt,
+				commandName: 'update-task',
+				outputType: isMCP ? 'mcp' : 'cli'
 			});
-			report('success', 'Successfully received text response from AI service');
-			// --- End AI Service Call ---
+
+			if (loadingIndicator)
+				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
+
+			// Use mainResult (text) for parsing
+			const updatedTask = parseUpdatedTaskFromText(
+				aiServiceResponse.mainResult,
+				taskId,
+				logFn,
+				isMCP
+			);
+
+			// --- Task Validation/Correction (Keep existing logic) ---
+			if (!updatedTask || typeof updatedTask !== 'object')
+				throw new Error('Received invalid task object from AI.');
+			if (!updatedTask.title || !updatedTask.description)
+				throw new Error('Updated task missing required fields.');
+			// Preserve ID if AI changed it
+			if (updatedTask.id !== taskId) {
+				report('warn', `AI changed task ID. Restoring original ID ${taskId}.`);
+				updatedTask.id = taskId;
+			}
+			// Preserve status if AI changed it
+			if (
+				updatedTask.status !== taskToUpdate.status &&
+				!prompt.toLowerCase().includes('status')
+			) {
+				report(
+					'warn',
+					`AI changed task status. Restoring original status '${taskToUpdate.status}'.`
+				);
+				updatedTask.status = taskToUpdate.status;
+			}
+			// Preserve completed subtasks (Keep existing logic)
+			if (taskToUpdate.subtasks?.length > 0) {
+				if (!updatedTask.subtasks) {
+					report(
+						'warn',
+						'Subtasks removed by AI. Restoring original subtasks.'
+					);
+					updatedTask.subtasks = taskToUpdate.subtasks;
+				} else {
+					const completedOriginal = taskToUpdate.subtasks.filter(
+						(st) => st.status === 'done' || st.status === 'completed'
+					);
+					completedOriginal.forEach((compSub) => {
+						const updatedSub = updatedTask.subtasks.find(
+							(st) => st.id === compSub.id
+						);
+						if (
+							!updatedSub ||
+							JSON.stringify(updatedSub) !== JSON.stringify(compSub)
+						) {
+							report(
+								'warn',
+								`Completed subtask ${compSub.id} was modified or removed. Restoring.`
+							);
+							// Remove potentially modified version
+							updatedTask.subtasks = updatedTask.subtasks.filter(
+								(st) => st.id !== compSub.id
+							);
+							// Add back original
+							updatedTask.subtasks.push(compSub);
+						}
+					});
+					// Deduplicate just in case
+					const subtaskIds = new Set();
+					updatedTask.subtasks = updatedTask.subtasks.filter((st) => {
+						if (!subtaskIds.has(st.id)) {
+							subtaskIds.add(st.id);
+							return true;
+						}
+						report('warn', `Duplicate subtask ID ${st.id} removed.`);
+						return false;
+					});
+				}
+			}
+			// --- End Task Validation/Correction ---
+
+			// --- Update Task Data (Keep existing) ---
+			data.tasks[taskIndex] = updatedTask;
+			// --- End Update Task Data ---
+
+			// --- Write File and Generate (Unchanged) ---
+			writeJSON(tasksPath, data);
+			report('success', `Successfully updated task ${taskId}`);
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// --- End Write File ---
+
+			// --- Display CLI Telemetry ---
+			if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
+				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli'); // <<< ADD display
+			}
+
+			// --- Return Success with Telemetry ---
+			return {
+				updatedTask: updatedTask, // Return the updated task object
+				telemetryData: aiServiceResponse.telemetryData // <<< ADD telemetryData
+			};
 		} catch (error) {
 			// Catch errors from generateTextService
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
@@ -407,114 +500,7 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				report('error', 'Please ensure API keys are configured correctly.');
 			}
 			throw error; // Re-throw error
-		} finally {
-			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 		}
-
-		// --- Parse and Validate Response ---
-		try {
-			// Pass logFn and isMCP flag to the parser
-			updatedTask = parseUpdatedTaskFromText(
-				responseText,
-				taskId,
-				logFn,
-				isMCP
-			);
-		} catch (parseError) {
-			report(
-				'error',
-				`Failed to parse updated task from AI response: ${parseError.message}`
-			);
-			if (getDebugFlag(session)) {
-				report('error', `Raw AI Response:\n${responseText}`);
-			}
-			throw new Error(
-				`Failed to parse valid updated task from AI response: ${parseError.message}`
-			);
-		}
-		// --- End Parse/Validate ---
-
-		// --- Task Validation/Correction (Keep existing logic) ---
-		if (!updatedTask || typeof updatedTask !== 'object')
-			throw new Error('Received invalid task object from AI.');
-		if (!updatedTask.title || !updatedTask.description)
-			throw new Error('Updated task missing required fields.');
-		// Preserve ID if AI changed it
-		if (updatedTask.id !== taskId) {
-			report('warn', `AI changed task ID. Restoring original ID ${taskId}.`);
-			updatedTask.id = taskId;
-		}
-		// Preserve status if AI changed it
-		if (
-			updatedTask.status !== taskToUpdate.status &&
-			!prompt.toLowerCase().includes('status')
-		) {
-			report(
-				'warn',
-				`AI changed task status. Restoring original status '${taskToUpdate.status}'.`
-			);
-			updatedTask.status = taskToUpdate.status;
-		}
-		// Preserve completed subtasks (Keep existing logic)
-		if (taskToUpdate.subtasks?.length > 0) {
-			if (!updatedTask.subtasks) {
-				report('warn', 'Subtasks removed by AI. Restoring original subtasks.');
-				updatedTask.subtasks = taskToUpdate.subtasks;
-			} else {
-				const completedOriginal = taskToUpdate.subtasks.filter(
-					(st) => st.status === 'done' || st.status === 'completed'
-				);
-				completedOriginal.forEach((compSub) => {
-					const updatedSub = updatedTask.subtasks.find(
-						(st) => st.id === compSub.id
-					);
-					if (
-						!updatedSub ||
-						JSON.stringify(updatedSub) !== JSON.stringify(compSub)
-					) {
-						report(
-							'warn',
-							`Completed subtask ${compSub.id} was modified or removed. Restoring.`
-						);
-						// Remove potentially modified version
-						updatedTask.subtasks = updatedTask.subtasks.filter(
-							(st) => st.id !== compSub.id
-						);
-						// Add back original
-						updatedTask.subtasks.push(compSub);
-					}
-				});
-				// Deduplicate just in case
-				const subtaskIds = new Set();
-				updatedTask.subtasks = updatedTask.subtasks.filter((st) => {
-					if (!subtaskIds.has(st.id)) {
-						subtaskIds.add(st.id);
-						return true;
-					}
-					report('warn', `Duplicate subtask ID ${st.id} removed.`);
-					return false;
-				});
-			}
-		}
-		// --- End Task Validation/Correction ---
-
-		// --- Update Task Data (Keep existing) ---
-		data.tasks[taskIndex] = updatedTask;
-		// --- End Update Task Data ---
-
-		// --- Write File and Generate (Keep existing) ---
-		writeJSON(tasksPath, data);
-		report('success', `Successfully updated task ${taskId}`);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-		// --- End Write File ---
-
-		// --- Final CLI Output (Keep existing) ---
-		if (outputFormat === 'text') {
-			/* ... success boxen ... */
-		}
-		// --- End Final CLI Output ---
-
-		return updatedTask; // Return the updated task
 	} catch (error) {
 		// General error catch
 		// --- General Error Handling (Keep existing) ---

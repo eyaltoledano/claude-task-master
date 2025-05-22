@@ -105,11 +105,9 @@ export async function parsePRDDirect(args, log, context = {}) {
 		}
 	}
 
-	const useForce = force === true;
-	const useAppend = append === true;
-	if (useAppend) {
+	if (append) {
 		logWrapper.info('Append mode enabled.');
-		if (useForce) {
+		if (force) {
 			logWrapper.warn(
 				'Both --force and --append flags were provided. --force takes precedence; append mode will be ignored.'
 			);
@@ -117,7 +115,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 	}
 
 	logWrapper.info(
-		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${useForce}, Append: ${useAppend}, ProjectRoot: ${projectRoot}`
+		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${force}, Append: ${append}, ProjectRoot: ${projectRoot}`
 	);
 
 	const wasSilent = isSilentMode();
@@ -131,21 +129,28 @@ export async function parsePRDDirect(args, log, context = {}) {
 			inputPath,
 			outputPath,
 			numTasks,
-			{ session, mcpLog: logWrapper, projectRoot, useForce, useAppend },
+			{
+				session,
+				mcpLog: logWrapper,
+				projectRoot,
+				force,
+				append,
+				commandName: 'parse-prd',
+				outputType: 'mcp'
+			},
 			'json'
 		);
 
-		// parsePRD returns { success: true, tasks: processedTasks } on success
-		if (result && result.success && Array.isArray(result.tasks)) {
-			logWrapper.success(
-				`Successfully parsed PRD. Generated ${result.tasks.length} tasks.`
-			);
+		// Adjust check for the new return structure
+		if (result && result.success) {
+			const successMsg = `Successfully parsed PRD and generated tasks in ${result.tasksPath}`;
+			logWrapper.success(successMsg);
 			return {
 				success: true,
 				data: {
-					message: `Successfully parsed PRD and generated ${result.tasks.length} tasks.`,
-					outputPath: outputPath,
-					taskCount: result.tasks.length
+					message: successMsg,
+					outputPath: result.tasksPath,
+					telemetryData: result.telemetryData
 				}
 			};
 		} else {

@@ -60,9 +60,52 @@ MAIN_ENV_FILE="$TASKMASTER_SOURCE_DIR/.env"
 # ---
 
 # <<< Source the helper script >>>
+# shellcheck source=tests/e2e/e2e_helpers.sh
 source "$TASKMASTER_SOURCE_DIR/tests/e2e/e2e_helpers.sh"
+
+# ==========================================
+# >>> Global Helper Functions Defined in run_e2e.sh <<<
+# --- Helper Functions (Define globally before export) ---
+_format_duration() {
+  local total_seconds=$1
+  local minutes=$((total_seconds / 60))
+  local seconds=$((total_seconds % 60))
+  printf "%dm%02ds" "$minutes" "$seconds"
+}
+
+# Note: This relies on 'overall_start_time' being set globally before the function is called
+_get_elapsed_time_for_log() {
+  local current_time
+  current_time=$(date +%s)
+  # Use overall_start_time here, as start_time_for_helpers might not be relevant globally
+  local elapsed_seconds
+  elapsed_seconds=$((current_time - overall_start_time))
+  _format_duration "$elapsed_seconds"
+}
+
+log_info() {
+  echo "[INFO] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_success() {
+  echo "[SUCCESS] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_error() {
+  echo "[ERROR] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1" >&2
+}
+
+log_step() {
+  test_step_count=$((test_step_count + 1))
+  echo ""
+  echo "============================================="
+  echo "  STEP ${test_step_count}: [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+  echo "============================================="
+}
+# ==========================================
+
 # <<< Export helper functions for subshells >>>
-export -f log_info log_success log_error log_step _format_duration _get_elapsed_time_for_log
+export -f log_info log_success log_error log_step _format_duration _get_elapsed_time_for_log extract_and_sum_cost
 
 # --- Argument Parsing for Analysis-Only Mode ---
 # This remains the same, as it exits early if matched
@@ -138,6 +181,7 @@ fi
 # Note: These are mainly for step numbering within the log now, not for final summary
 test_step_count=0
 start_time_for_helpers=0 # Separate start time for helper functions inside the pipe
+total_e2e_cost="0.0" # Initialize total E2E cost
 # ---
 
 # --- Log File Setup ---
@@ -220,12 +264,16 @@ log_step() {
   fi
 
   # --- Dependency Checks ---
-  log_step "Checking for dependencies (jq)"
+  log_step "Checking for dependencies (jq, bc)"
   if ! command -v jq &> /dev/null; then
       log_error "Dependency 'jq' is not installed or not found in PATH. Please install jq (e.g., 'brew install jq' or 'sudo apt-get install jq')."
       exit 1
   fi
-  log_success "Dependency 'jq' found."
+  if ! command -v bc &> /dev/null; then
+      log_error "Dependency 'bc' not installed (for cost calculation). Please install bc (e.g., 'brew install bc' or 'sudo apt-get install bc')."
+      exit 1
+  fi
+  log_success "Dependencies 'jq' and 'bc' found."
 
   # --- Test Setup (Output to tee) ---
   log_step "Setting up test environment"
@@ -292,30 +340,43 @@ log_step() {
   log_success "Project initialized."
 
   log_step "Parsing PRD"
-  task-master parse-prd ./prd.txt --force
-  if [ ! -s "tasks/tasks.json" ]; then
-    log_error "Parsing PRD failed: tasks/tasks.json not found or is empty."
+  cmd_output_prd=$(task-master parse-prd ./prd.txt --force 2>&1)
+  exit_status_prd=$?
+  echo "$cmd_output_prd"
+  extract_and_sum_cost "$cmd_output_prd"
+  if [ $exit_status_prd -ne 0 ] || [ ! -s "tasks/tasks.json" ]; then
+    log_error "Parsing PRD failed: tasks/tasks.json not found or is empty. Exit status: $exit_status_prd"
     exit 1
+  else
+    log_success "PRD parsed successfully."
   fi
-  log_success "PRD parsed successfully."
 
   log_step "Expanding Task 1 (to ensure subtask 1.1 exists)"
-  # Add --research flag if needed and API keys support it
-  task-master analyze-complexity --research --output complexity_results.json
-  if [ ! -f "complexity_results.json" ]; then
-    log_error "Complexity analysis failed: complexity_results.json not found."
+  cmd_output_analyze=$(task-master analyze-complexity --research --output complexity_results.json 2>&1)
+  exit_status_analyze=$?
+  echo "$cmd_output_analyze"
+  extract_and_sum_cost "$cmd_output_analyze"
+  if [ $exit_status_analyze -ne 0 ] || [ ! -f "complexity_results.json" ]; then
+    log_error "Complexity analysis failed: complexity_results.json not found. Exit status: $exit_status_analyze"
     exit 1
+  else
+    log_success "Complexity analysis saved to complexity_results.json"
   fi
-  log_success "Complexity analysis saved to complexity_results.json"
 
   log_step "Generating complexity report"
   task-master complexity-report --file complexity_results.json > complexity_report_formatted.log
   log_success "Formatted complexity report saved to complexity_report_formatted.log"
 
   log_step "Expanding Task 1 (assuming it exists)"
-  # Add --research flag if needed and API keys support it
-  task-master expand --id=1 # Add --research?
-  log_success "Attempted to expand Task 1."
+  cmd_output_expand1=$(task-master expand --id=1 2>&1)
+  exit_status_expand1=$?
+  echo "$cmd_output_expand1"
+  extract_and_sum_cost "$cmd_output_expand1"
+  if [ $exit_status_expand1 -ne 0 ]; then
+    log_error "Expanding Task 1 failed. Exit status: $exit_status_expand1"
+  else
+    log_success "Attempted to expand Task 1."
+  fi
 
   log_step "Setting status for Subtask 1.1 (assuming it exists)"
   task-master set-status --id=1.1 --status=done
@@ -359,10 +420,11 @@ log_step() {
 
     if [ -x "$verification_script_path" ]; then
         log_info "--- Executing Fallback Verification Script: $verification_script_path ---"
-        # Execute the script directly, allowing output to flow to tee
-        # Pass the current directory (the test run dir) as the argument
-        "$verification_script_path" "$(pwd)"
-        verification_exit_code=$? # Capture exit code immediately
+        verification_output=$("$verification_script_path" "$(pwd)" 2>&1)
+        verification_exit_code=$?
+        echo "$verification_output"
+        extract_and_sum_cost "$verification_output"
+
         log_info "--- Finished Fallback Verification Script Execution (Exit Code: $verification_exit_code) ---"
 
         # Log success/failure based on captured exit code
@@ -370,13 +432,9 @@ log_step() {
             log_success "Fallback verification script reported success."
         else
             log_error "Fallback verification script reported FAILURE (Exit Code: $verification_exit_code)."
-            # Decide whether to exit the main script or just log the error
-            # exit 1 # Uncomment to make verification failure fatal
         fi
     else
         log_error "Fallback verification script not found or not executable at $verification_script_path. Skipping verification."
-        # Decide whether to exit or continue
-        # exit 1
     fi
   else
       log_info "Skipping Fallback Verification test as requested by flag."
@@ -393,7 +451,7 @@ log_step() {
   declare -a models=(
     "claude-3-7-sonnet-20250219"
     "gpt-4o"
-    "gemini-2.5-pro-exp-03-25"
+    "gemini-2.5-pro-preview-05-06"
     "sonar-pro" # Note: This is research-only, add-task might fail if not using research model
     "grok-3"
     "anthropic/claude-3.7-sonnet" # OpenRouter uses Claude 3.7
@@ -435,9 +493,9 @@ log_step() {
 
     # 3. Check for success and extract task ID
     new_task_id=""
-    if [ $add_task_exit_code -eq 0 ] && echo "$add_task_cmd_output" | grep -q "✓ Added new task #"; then
-      # Attempt to extract the ID (adjust grep/sed/awk as needed based on actual output format)
-      new_task_id=$(echo "$add_task_cmd_output" | grep "✓ Added new task #" | sed 's/.*✓ Added new task #\([0-9.]\+\).*/\1/')
+    extract_and_sum_cost "$add_task_cmd_output"
+    if [ $add_task_exit_code -eq 0 ] && (echo "$add_task_cmd_output" | grep -q "✓ Added new task #" || echo "$add_task_cmd_output" | grep -q "✅ New task created successfully:" || echo "$add_task_cmd_output" | grep -q "Task [0-9]\+ Created Successfully"); then
+      new_task_id=$(echo "$add_task_cmd_output" | grep -o -E "(Task |#)[0-9.]+" | grep -o -E "[0-9.]+" | head -n 1)
       if [ -n "$new_task_id" ]; then
         log_success "Add-task succeeded for $provider. New task ID: $new_task_id"
         echo "Provider $provider add-task SUCCESS (ID: $new_task_id)" >> provider_add_task_summary.log
@@ -522,8 +580,6 @@ log_step() {
       log_success "Validation correctly identified non-existent dependency 999."
   else
       log_error "Validation DID NOT report non-existent dependency 999 as expected. Check validate_deps_non_existent.log"
-      # Consider exiting here if this check fails, as it indicates a validation logic problem
-      # exit 1
   fi
 
   log_step "Fixing dependencies (should remove 1 -> 999)"
@@ -534,7 +590,6 @@ log_step() {
   task-master validate-dependencies > validate_deps_after_fix_non_existent.log 2>&1 || true # Allow potential failure
   if grep -q "Non-existent dependency ID: 999" validate_deps_after_fix_non_existent.log; then
       log_error "Validation STILL reports non-existent dependency 999 after fix. Check logs."
-      # exit 1
   else
       log_success "Validation shows non-existent dependency 999 was removed."
   fi
@@ -553,7 +608,6 @@ log_step() {
       log_success "Validation correctly identified circular dependency between 4 and 5."
   else
       log_error "Validation DID NOT report circular dependency 4<->5 as expected. Check validate_deps_circular.log"
-      # exit 1
   fi
 
   log_step "Fixing dependencies (should remove one side of 4 <-> 5)"
@@ -564,7 +618,6 @@ log_step() {
   task-master validate-dependencies > validate_deps_after_fix_circular.log 2>&1 || true # Allow potential failure
   if grep -q -E "Circular dependency detected involving task IDs: (4, 5|5, 4)" validate_deps_after_fix_circular.log; then
       log_error "Validation STILL reports circular dependency 4<->5 after fix. Check logs."
-      # exit 1
   else
       log_success "Validation shows circular dependency 4<->5 was resolved."
   fi
@@ -582,25 +635,60 @@ log_step() {
   log_success "Added Task $manual_task_id manually."
 
   log_step "Adding Task $ai_task_id (AI)"
-  task-master add-task --prompt="Implement basic UI styling using CSS variables for colors and spacing" --priority=medium --dependencies=1 # Depends on frontend setup
-  log_success "Added Task $ai_task_id via AI prompt."
+  cmd_output_add_ai=$(task-master add-task --prompt="Implement basic UI styling using CSS variables for colors and spacing" --priority=medium --dependencies=1 2>&1)
+  exit_status_add_ai=$?
+  echo "$cmd_output_add_ai"
+  extract_and_sum_cost "$cmd_output_add_ai"
+  if [ $exit_status_add_ai -ne 0 ]; then
+    log_error "Adding AI Task $ai_task_id failed. Exit status: $exit_status_add_ai"
+  else
+    log_success "Added Task $ai_task_id via AI prompt."
+  fi
 
 
   log_step "Updating Task 3 (update-task AI)"
-  task-master update-task --id=3 --prompt="Update backend server setup: Ensure CORS is configured to allow requests from the frontend origin."
-  log_success "Attempted update for Task 3."
+  cmd_output_update_task3=$(task-master update-task --id=3 --prompt="Update backend server setup: Ensure CORS is configured to allow requests from the frontend origin." 2>&1)
+  exit_status_update_task3=$?
+  echo "$cmd_output_update_task3"
+  extract_and_sum_cost "$cmd_output_update_task3"
+  if [ $exit_status_update_task3 -ne 0 ]; then
+    log_error "Updating Task 3 failed. Exit status: $exit_status_update_task3"
+  else
+    log_success "Attempted update for Task 3."
+  fi
 
   log_step "Updating Tasks from Task 5 (update AI)"
-  task-master update --from=5 --prompt="Refactor the backend storage module to use a simple JSON file (storage.json) instead of an in-memory object for persistence. Update relevant tasks."
-  log_success "Attempted update from Task 5 onwards."
+  cmd_output_update_from5=$(task-master update --from=5 --prompt="Refactor the backend storage module to use a simple JSON file (storage.json) instead of an in-memory object for persistence. Update relevant tasks." 2>&1)
+  exit_status_update_from5=$?
+  echo "$cmd_output_update_from5"
+  extract_and_sum_cost "$cmd_output_update_from5"
+  if [ $exit_status_update_from5 -ne 0 ]; then
+    log_error "Updating from Task 5 failed. Exit status: $exit_status_update_from5"
+  else
+    log_success "Attempted update from Task 5 onwards."
+  fi
 
   log_step "Expanding Task 8 (AI)"
-  task-master expand --id=8 # Expand task 8: Frontend logic
-  log_success "Attempted to expand Task 8."
+  cmd_output_expand8=$(task-master expand --id=8 2>&1)
+  exit_status_expand8=$?
+  echo "$cmd_output_expand8"
+  extract_and_sum_cost "$cmd_output_expand8"
+  if [ $exit_status_expand8 -ne 0 ]; then
+    log_error "Expanding Task 8 failed. Exit status: $exit_status_expand8"
+  else
+    log_success "Attempted to expand Task 8."
+  fi
 
   log_step "Updating Subtask 8.1 (update-subtask AI)"
-  task-master update-subtask --id=8.1 --prompt="Implementation note: Remember to handle potential API errors and display a user-friendly message."
-  log_success "Attempted update for Subtask 8.1."
+  cmd_output_update_subtask81=$(task-master update-subtask --id=8.1 --prompt="Implementation note: Remember to handle potential API errors and display a user-friendly message." 2>&1)
+  exit_status_update_subtask81=$?
+  echo "$cmd_output_update_subtask81"
+  extract_and_sum_cost "$cmd_output_update_subtask81"
+  if [ $exit_status_update_subtask81 -ne 0 ]; then
+    log_error "Updating Subtask 8.1 failed. Exit status: $exit_status_update_subtask81"
+  else
+    log_success "Attempted update for Subtask 8.1."
+  fi
 
   # Add a couple more subtasks for multi-remove test
   log_step 'Adding subtasks to Task 2 (for multi-remove test)'
@@ -693,9 +781,16 @@ log_step() {
 
   # === AI Commands (Re-test some after changes) ===
   log_step "Analyzing complexity (AI with Research - Final Check)"
-  task-master analyze-complexity --research --output complexity_results_final.json
-  if [ ! -f "complexity_results_final.json" ]; then log_error "Final Complexity analysis failed."; exit 1; fi
-  log_success "Final Complexity analysis saved."
+  cmd_output_analyze_final=$(task-master analyze-complexity --research --output complexity_results_final.json 2>&1)
+  exit_status_analyze_final=$?
+  echo "$cmd_output_analyze_final"
+  extract_and_sum_cost "$cmd_output_analyze_final"
+  if [ $exit_status_analyze_final -ne 0 ] || [ ! -f "complexity_results_final.json" ]; then
+    log_error "Final Complexity analysis failed. Exit status: $exit_status_analyze_final. File found: $(test -f complexity_results_final.json && echo true || echo false)"
+    exit 1 # Critical for subsequent report step
+  else
+    log_success "Final Complexity analysis command executed and file created."
+  fi
 
   log_step "Generating complexity report (Non-AI - Final Check)"
   task-master complexity-report --file complexity_results_final.json > complexity_report_formatted_final.log
@@ -774,5 +869,9 @@ else
   formatted_duration_for_error=$(_format_duration "$total_elapsed_seconds")
   echo "[ERROR] [$formatted_duration_for_error] $(date +"%Y-%m-%d %H:%M:%S") Test run directory $TEST_RUN_DIR not found. Cannot perform LLM analysis." >&2
 fi
+
+# Final cost formatting
+formatted_total_e2e_cost=$(printf "%.6f" "$total_e2e_cost")
+echo "Total E2E AI Cost: $formatted_total_e2e_cost USD"
 
 exit $EXIT_CODE

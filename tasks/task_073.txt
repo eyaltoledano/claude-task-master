@@ -1,6 +1,6 @@
 # Task ID: 73
 # Title: Implement Custom Model ID Support for Ollama/OpenRouter
-# Status: in-progress
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Allow users to specify custom model IDs for Ollama and OpenRouter providers via CLI flag and interactive setup, with appropriate validation and warnings.

@@ -1,6 +1,6 @@
 # Task ID: 43
 # Title: Add Research Flag to Add-Task Command
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Implement a '--research' flag for the add-task command that enables users to automatically generate research-related subtasks when creating a new task.

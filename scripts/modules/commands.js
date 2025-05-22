@@ -62,7 +62,8 @@ import {
 	stopLoadingIndicator,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayApiKeyStatus
+	displayApiKeyStatus,
+	displayAiUsageSummary
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -73,7 +74,11 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import { findProjectRoot } from './utils.js';
-
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../src/constants/task-status.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -486,11 +491,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -515,8 +515,8 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
-			let useAppend = false;
+			let useForce = force;
+			let useAppend = append;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
@@ -544,10 +544,10 @@ function registerCommands(programInstance) {
 						if (!(await confirmOverwriteIfNeeded())) return;
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-						spinner = ora('Parsing PRD and generating tasks...').start();
+						spinner = ora('Parsing PRD and generating tasks...\n').start();
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
-							useAppend,
-							useForce
+							append: useAppend, // Changed key from useAppend to append
+							force: useForce // Changed key from useForce to force
 						});
 						spinner.succeed('Tasks generated successfully!');
 						return;
@@ -606,10 +606,10 @@ function registerCommands(programInstance) {
 					console.log(chalk.blue('Appending to existing tasks...'));
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...').start();
+				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
-					append: useAppend,
-					force: useForce
+					useAppend: useAppend,
+					useForce: useForce
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
@@ -1038,7 +1038,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-s, --status <status>',
-			'New status (todo, in-progress, review, done)'
+			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.action(async (options) => {
@@ -1048,6 +1048,16 @@ function registerCommands(programInstance) {
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
+				process.exit(1);
+			}
+
+			if (!isValidTaskStatus(status)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+					)
+				);
+
 				process.exit(1);
 			}
 
@@ -1063,10 +1073,16 @@ function registerCommands(programInstance) {
 		.command('list')
 		.description('List all tasks')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 
@@ -1078,7 +1094,7 @@ function registerCommands(programInstance) {
 				console.log(chalk.blue('Including subtasks in listing'));
 			}
 
-			await listTasks(tasksPath, statusFilter, withSubtasks);
+			await listTasks(tasksPath, statusFilter, reportPath, withSubtasks);
 		});
 
 	// expand command
@@ -1128,12 +1144,6 @@ function registerCommands(programInstance) {
 						{} // Pass empty context for CLI calls
 						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
-					// Optional: Display summary from result
-					console.log(chalk.green(`Expansion Summary:`));
-					console.log(chalk.green(` - Attempted: ${result.tasksToExpand}`));
-					console.log(chalk.green(` - Expanded:  ${result.expandedCount}`));
-					console.log(chalk.yellow(` - Skipped:   ${result.skippedCount}`));
-					console.log(chalk.red(` - Failed:    ${result.failedCount}`));
 				} catch (error) {
 					console.error(
 						chalk.red(`Error expanding all tasks: ${error.message}`)
@@ -1263,7 +1273,7 @@ function registerCommands(programInstance) {
 	// add-task command
 	programInstance
 		.command('add-task')
-		.description('Add a new task using AI or manual input')
+		.description('Add a new task using AI, optionally providing manual details')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-p, --prompt <prompt>',
@@ -1277,10 +1287,6 @@ function registerCommands(programInstance) {
 		.option(
 			'--details <details>',
 			'Implementation details (for manual task creation)'
-		)
-		.option(
-			'--test-strategy <testStrategy>',
-			'Test strategy (for manual task creation)'
 		)
 		.option(
 			'--dependencies <dependencies>',
@@ -1308,74 +1314,70 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
+			const tasksPath =
+				options.file ||
+				path.join(findProjectRoot() || '.', 'tasks', 'tasks.json') || // Ensure tasksPath is also relative to a found root or current dir
+				'tasks/tasks.json';
+
+			// Correctly determine projectRoot
+			const projectRoot = findProjectRoot();
+
+			let manualTaskData = null;
+			if (isManualCreation) {
+				manualTaskData = {
+					title: options.title,
+					description: options.description,
+					details: options.details || '',
+					testStrategy: options.testStrategy || ''
+				};
+				// Restore specific logging for manual creation
+				console.log(
+					chalk.blue(`Creating task manually with title: "${options.title}"`)
+				);
+			} else {
+				// Restore specific logging for AI creation
+				console.log(
+					chalk.blue(`Creating task with AI using prompt: "${options.prompt}"`)
+				);
+			}
+
+			// Log dependencies and priority if provided (restored)
+			const dependenciesArray = options.dependencies
+				? options.dependencies.split(',').map((id) => id.trim())
+				: [];
+			if (dependenciesArray.length > 0) {
+				console.log(
+					chalk.blue(`Dependencies: [${dependenciesArray.join(', ')}]`)
+				);
+			}
+			if (options.priority) {
+				console.log(chalk.blue(`Priority: ${options.priority}`));
+			}
+
+			const context = {
+				projectRoot,
+				commandName: 'add-task',
+				outputType: 'cli'
+			};
+
 			try {
-				// Prepare dependencies if provided
-				let dependencies = [];
-				if (options.dependencies) {
-					dependencies = options.dependencies
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10));
-				}
-
-				// Create manual task data if title and description are provided
-				let manualTaskData = null;
-				if (isManualCreation) {
-					manualTaskData = {
-						title: options.title,
-						description: options.description,
-						details: options.details || '',
-						testStrategy: options.testStrategy || ''
-					};
-
-					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
-					console.log(
-						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
-						)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				}
-
-				// Pass mcpLog and session for MCP mode
-				const newTaskId = await addTask(
-					options.file,
-					options.prompt, // Pass prompt (will be null/undefined if not provided)
-					dependencies,
+				const { newTaskId, telemetryData } = await addTask(
+					tasksPath,
+					options.prompt,
+					dependenciesArray,
 					options.priority,
-					{
-						// For CLI, session context isn't directly available like MCP
-						// We don't need to pass session here for CLI API key resolution
-						// as dotenv loads .env, and utils.resolveEnvVariable checks process.env
-					},
-					'text', // outputFormat
-					manualTaskData, // Pass the potentially created manualTaskData object
-					options.research || false // Pass the research flag value
+					context,
+					'text',
+					manualTaskData,
+					options.research
 				);
 
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
-				console.log(chalk.gray('Next: Complete this task or add more tasks'));
+				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
+				// No need to call displayAiUsageSummary here anymore.
 			} catch (error) {
 				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && getDebugFlag()) {
-					console.error(error.stack);
+				if (error.details) {
+					console.error(chalk.red(error.details));
 				}
 				process.exit(1);
 			}
@@ -1388,9 +1390,15 @@ function registerCommands(programInstance) {
 			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			await displayNextTask(tasksPath);
+			const reportPath = options.report;
+			await displayNextTask(tasksPath, reportPath);
 		});
 
 	// show command
@@ -1403,6 +1411,11 @@ function registerCommands(programInstance) {
 		.option('-i, --id <id>', 'Task ID to show')
 		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
 			const statusFilter = options.status; // ADDED: Capture status filter
@@ -1413,8 +1426,9 @@ function registerCommands(programInstance) {
 			}
 
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			// PASS statusFilter to the display function
-			await displayTaskById(tasksPath, idArg, statusFilter);
+			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
 		});
 
 	// add-dependency command
@@ -1663,6 +1677,7 @@ function registerCommands(programInstance) {
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
+				showAddSubtaskHelp();
 				process.exit(1);
 			}
 		})
@@ -2069,7 +2084,7 @@ function registerCommands(programInstance) {
 					);
 
 					// Exit with error if any removals failed
-					if (successfulRemovals.length === 0) {
+					if (result.removedTasks.length === 0) {
 						process.exit(1);
 					}
 				}
@@ -2366,14 +2381,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
@@ -2393,28 +2401,7 @@ function setupCLI() {
  */
 async function checkForUpdate() {
 	// Get current version from package.json ONLY
-	let currentVersion = 'unknown'; // Initialize with a default
-	try {
-		// Try to get the version from the installed package (if applicable) or current dir
-		let packageJsonPath = path.join(
-			process.cwd(),
-			'node_modules',
-			'task-master-ai',
-			'package.json'
-		);
-		// Fallback to current directory package.json if not found in node_modules
-		if (!fs.existsSync(packageJsonPath)) {
-			packageJsonPath = path.join(process.cwd(), 'package.json');
-		}
-
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			currentVersion = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fail and use default
-		log('debug', `Error reading current package version: ${error.message}`);
-	}
+	const currentVersion = getTaskMasterVersion();
 
 	return new Promise((resolve) => {
 		// Get the latest version from npm registry

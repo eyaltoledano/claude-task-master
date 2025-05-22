@@ -99,34 +99,39 @@
 	],
 	"google": [
 		{
-			"id": "gemini-2.5-pro-exp-03-25",
+			"id": "gemini-2.5-pro-preview-05-06",
 			"swe_score": 0.638,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048000
+		},
+		{
+			"id": "gemini-2.5-pro-preview-03-25",
+			"swe_score": 0.638,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.5-flash-preview-04-17",
 			"swe_score": 0,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.0-flash",
 			"swe_score": 0.754,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048000
 		},
 		{
-			"id": "gemini-2.0-flash-thinking-experimental",
-			"swe_score": 0.754,
-			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
-			"allowed_roles": ["main", "fallback"]
-		},
-		{
-			"id": "gemini-2.0-pro",
+			"id": "gemini-2.0-flash-lite",
 			"swe_score": 0,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048000
 		}
 	],
 	"perplexity": [
