@@ -146,10 +146,18 @@ async function addTask(
 
 	try {
 		// Read the existing tasks
-		const data = readJSON(tasksPath);
+		let data = readJSON(tasksPath);
+		
+		// If tasks.json doesn't exist or is invalid, create a new one
 		if (!data || !data.tasks) {
-			report('Invalid or missing tasks.json.', 'error');
-			throw new Error('Invalid or missing tasks.json.');
+			report('tasks.json not found or invalid. Creating a new one.', 'info');
+			// Create default tasks data structure
+			data = {
+				tasks: []
+			};
+			// Ensure the directory exists and write the new file
+			writeJSON(tasksPath, data);
+			report('Created new tasks.json file with empty tasks array.', 'info');
 		}
 
 		// Find the highest task ID to determine the next ID
