@@ -11,3 +11,5 @@ Add `--research` flag to parse-prd command, enabling enhanced task generation fr
 - Create more accurate dependency relationships between tasks
 
 This results in higher quality, more actionable tasks with minimal additional effort.
+
+*NOTE* That this is an experimental feature. Research models don't typically do great at structured output. You may find some failures when using research mode, so please share your feedback so we can improve this.

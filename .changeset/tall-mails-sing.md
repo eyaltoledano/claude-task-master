@@ -2,4 +2,4 @@
 'task-master-ai': patch
 ---
 
-ensures that the second fallback which tries to call research if main and fallback both fail will correctly check if the api key is set before attempting to make the call. this closes #421 #519
+Fixes an issue where the research fallback would attempt to make API calls without checking for a valid API key first. This ensures proper error handling when the main task generation and first fallback both fail. Closes #421 #519.
