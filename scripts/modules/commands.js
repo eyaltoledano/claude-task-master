@@ -507,6 +507,10 @@ function registerCommands(programInstance) {
 			'--append',
 			'Append new tasks to existing tasks.json instead of overwriting'
 		)
+		.option(
+			'-r, --research',
+			'Use Perplexity AI for research-backed task generation, providing more comprehensive and accurate task breakdown'
+		)
 		.action(async (file, options) => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
@@ -515,6 +519,7 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
+			const research = options.research || false;
 			let useForce = force;
 			let useAppend = append;
 
@@ -547,7 +552,8 @@ function registerCommands(programInstance) {
 						spinner = ora('Parsing PRD and generating tasks...\n').start();
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
 							append: useAppend, // Changed key from useAppend to append
-							force: useForce // Changed key from useForce to force
+							force: useForce, // Changed key from useForce to force
+							research: research
 						});
 						spinner.succeed('Tasks generated successfully!');
 						return;
@@ -571,13 +577,15 @@ function registerCommands(programInstance) {
 								'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
 								'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
 								'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
-								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n\n' +
+								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n' +
+								'  -r, --research           Use Perplexity AI for research-backed task generation\n\n' +
 								chalk.cyan('Example:') +
 								'\n' +
 								'  task-master parse-prd requirements.txt --num-tasks 15\n' +
 								'  task-master parse-prd --input=requirements.txt\n' +
 								'  task-master parse-prd --force\n' +
-								'  task-master parse-prd requirements_v2.txt --append\n\n' +
+								'  task-master parse-prd requirements_v2.txt --append\n' +
+								'  task-master parse-prd requirements.txt --research\n\n' +
 								chalk.yellow('Note: This command will:') +
 								'\n' +
 								'  1. Look for a PRD file at scripts/prd.txt by default\n' +
@@ -605,12 +613,16 @@ function registerCommands(programInstance) {
 				if (append) {
 					console.log(chalk.blue('Appending to existing tasks...'));
 				}
+				if (research) {
+					console.log(chalk.blue('Using Perplexity AI for research-backed task generation'));
+				}
 
 				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
-					useAppend: useAppend,
-					useForce: useForce
-				});
+						useAppend: useAppend,
+						useForce: useForce,
+						research: research
+					});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
 				if (spinner) {
