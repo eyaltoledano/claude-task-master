@@ -21,7 +21,7 @@ import {
 	getBaseUrlForRole,
 	isApiKeySet
 } from './config-manager.js';
-import { log, resolveEnvVariable, isSilentMode } from './utils.js';
+import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
 import * as anthropic from '../../src/ai-providers/anthropic.js';
 import * as perplexity from '../../src/ai-providers/perplexity.js';
@@ -323,8 +323,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		});
 	}
 
-	const { findProjectRoot: detectProjectRoot } = await import('./utils.js');
-	const effectiveProjectRoot = projectRoot || detectProjectRoot();
+	const effectiveProjectRoot = projectRoot || findProjectRoot();
 	const userId = getUserId(effectiveProjectRoot);
 
 	let sequence;

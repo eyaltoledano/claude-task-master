@@ -1,5 +1,5 @@
 ---
-'task-master-ai': patch
+'task-master-ai': minor
 ---
 
 This change significantly enhances the `add-task` command's intelligence. When you add a new task, Taskmaster now automatically:

@@ -1,5 +1,5 @@
 ---
-'task-master-ai': patch
+'task-master-ai': minor
 ---
 
 Add move command to enable moving tasks and subtasks within the task hierarchy. This new command supports moving standalone tasks to become subtasks, subtasks to become standalone tasks, and moving subtasks between different parents. The implementation handles circular dependencies, validation, and proper updating of parent-child relationships.

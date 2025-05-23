@@ -1,5 +1,5 @@
 ---
-'task-master-ai': patch
+'task-master-ai': minor
 ---
 
 Adds and updates supported AI models with costs:

@@ -1,8 +1,8 @@
 ---
-'task-master-ai': patch
+'task-master-ai': minor
 ---
 
-Add `--research` flag to parse-prd command, enabling enhanced task generation from PRD files. When used, Taskmaster leverages the Perplexity AI research model to:
+Add `--research` flag to parse-prd command, enabling enhanced task generation from PRD files. When used, Taskmaster leverages the research model to:
 
 - Research current technologies and best practices relevant to the project
 - Identify technical challenges and security concerns not explicitly mentioned in the PRD
