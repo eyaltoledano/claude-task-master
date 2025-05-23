@@ -29,6 +29,7 @@ import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
 import * as ollama from '../../src/ai-providers/ollama.js';
+import * as burncloud from '../../src/ai-providers/burncloud.js';
 // TODO: Import other provider modules when implemented (ollama, etc.)
 
 // Helper function to get cost for a specific model
@@ -102,6 +103,11 @@ const PROVIDER_FUNCTIONS = {
 		generateText: ollama.generateOllamaText,
 		streamText: ollama.streamOllamaText,
 		generateObject: ollama.generateOllamaObject
+	},
+	burncloud: {
+		generateText: burncloud.generateBurncloudText,
+		streamText: burncloud.streamBurncloudText,
+		generateObject: burncloud.generateBurncloudObject
 	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
