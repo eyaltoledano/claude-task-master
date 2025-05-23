@@ -2152,6 +2152,10 @@ function registerCommands(programInstance) {
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
+		.option(
+			'--burncloud',
+			'Allow setting a custom Burncloud model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2162,16 +2166,23 @@ Examples:
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main claude-3-7-sonnet-20250219 --burncloud # Set custom Burncloud model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
 			const projectRoot = findProjectRoot(); // Find project root for context
 
-			// Validate flags: cannot use both --openrouter and --ollama simultaneously
-			if (options.openrouter && options.ollama) {
+			// Validate flags: cannot use multiple provider flags simultaneously
+			const providerFlags = [
+				options.openrouter && 'openrouter',
+				options.ollama && 'ollama',
+				options.burncloud && 'burncloud'
+			].filter(Boolean);
+			
+			if (providerFlags.length > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use both --openrouter and --ollama flags simultaneously.'
+						`Error: Cannot use multiple provider flags simultaneously. Found: ${providerFlags.join(', ')}`
 					)
 				);
 				process.exit(1);
@@ -2203,15 +2214,19 @@ Examples:
 			if (isSetOperation) {
 				// Action 2: Perform Direct Set Operations
 				let updateOccurred = false; // Track if any update actually happened
+				// Determine provider hint from flags
+				const providerHint = options.openrouter 
+					? 'openrouter' 
+					: options.ollama 
+						? 'ollama' 
+						: options.burncloud 
+							? 'burncloud' 
+							: undefined;
 
 				if (options.setMain) {
 					const result = await setModel('main', options.setMain, {
 						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: undefined
+						providerHint
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2227,11 +2242,7 @@ Examples:
 				if (options.setResearch) {
 					const result = await setModel('research', options.setResearch, {
 						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: undefined
+						providerHint
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2249,11 +2260,7 @@ Examples:
 				if (options.setFallback) {
 					const result = await setModel('fallback', options.setFallback, {
 						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: undefined
+						providerHint
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
