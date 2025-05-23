@@ -11,20 +11,12 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Requirements
 
-Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
+Either:
+- Claude Code CLI (recommended)
+- OR Anthropic API key (Claude API)
 
-You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider API key must be present in either mcp.json or .env.
-
-At least one (1) of the following is required:
-
-- Anthropic API key (Claude API)
-- OpenAI API key
-- Google Gemini API key
-- Perplexity API key (for research model)
-- xAI API Key (for research or main model)
-- OpenRouter API Key (for research or main model)
-
-Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
+Optional:
+- OpenAI SDK (for Perplexity API integration, optional)
 
 ## Quick Start
 
@@ -48,8 +40,7 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
 				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
 				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
 			}
 		}
 	}
@@ -57,6 +48,8 @@ MCP (Model Control Protocol) provides the easiest way to get started with Task M
 ```
 
 2. **Enable the MCP** in your editor
+
+> **Note:** If using Claude Code CLI, you don't need to set the ANTHROPIC_API_KEY environment variable!
 
 3. **Prompt the AI** to initialize Task Master:
 
@@ -121,6 +114,7 @@ task-master generate
 For more detailed information, check out the documentation in the `docs` directory:
 
 - [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
+- [Claude Code Integration](docs/claude-code-integration.md) - Use Task Master with local Claude Code CLI
 - [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
 - [Command Reference](docs/command-reference.md) - Complete list of all available commands
 - [Task Structure](docs/task-structure.md) - Understanding the task format and features
