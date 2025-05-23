@@ -14,27 +14,28 @@ Add the following configuration to the user's MCP settings file (`.cursor/mcp.js
 
 ```json
 {
-  "mcpServers": {
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "user_will_add_their_key_here",
-        "PERPLEXITY_API_KEY": "user_will_add_their_key_here",
-        "OPENAI_API_KEY": "user_will_add_their_key_here",
-        "GOOGLE_API_KEY": "user_will_add_their_key_here",
-        "MISTRAL_API_KEY": "user_will_add_their_key_here",
-        "OPENROUTER_API_KEY": "user_will_add_their_key_here",
-        "XAI_API_KEY": "user_will_add_their_key_here"
-      }
-    }
-  }
+	"mcpServers": {
+		"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "user_will_add_their_key_here",
+				"PERPLEXITY_API_KEY": "user_will_add_their_key_here",
+				"OPENAI_API_KEY": "user_will_add_their_key_here",
+				"GOOGLE_API_KEY": "user_will_add_their_key_here",
+				"MISTRAL_API_KEY": "user_will_add_their_key_here",
+				"OPENROUTER_API_KEY": "user_will_add_their_key_here",
+				"XAI_API_KEY": "user_will_add_their_key_here"
+			}
+		}
+	}
 }
 ```
 
 ### Step 2: API Key Requirements
 
 Inform the user they need **at least one** API key from the following providers:
+
 - **Anthropic** (for Claude models) - Recommended
 - **OpenAI** (for GPT models)
 - **Google** (for Gemini models)
@@ -88,7 +89,6 @@ If the user does not have a PRD, the AI agent can help them create one and store
 > Can you move task [ID] to become a subtask of [parent ID]?
 > Can you update task [ID] with this new information: [details]
 
-
 ## Verification Steps
 
 After installation, verify everything is working:
@@ -104,22 +104,25 @@ When adding keys to `.env` only, the `models` tool will explain that the keys ar
 ## Troubleshooting
 
 **If MCP server doesn't start:**
+
 - Verify the JSON configuration is valid
 - Check that Node.js is installed
 - Ensure API keys are properly formatted
 
 **If AI commands fail:**
+
 - Verify at least one API key is configured
 - Check API key permissions and quotas
 - Try using a different model via the `models` tool
 
 ## CLI Fallback
 
-Taskmaster is also available via CLI commands, by installing with `npm install task-master-ai@latest` in a terminal. Running `task-master help` will show all available commands, which offer a 1:1 experience with the MCP server. As the AI agent, you should refer to the system prompts and rules provided to you to identify Taskmaster-specific rules that help you understand how and when to use it. 
+Taskmaster is also available via CLI commands, by installing with `npm install task-master-ai@latest` in a terminal. Running `task-master help` will show all available commands, which offer a 1:1 experience with the MCP server. As the AI agent, you should refer to the system prompts and rules provided to you to identify Taskmaster-specific rules that help you understand how and when to use it.
 
 ## Next Steps
 
 Once installed, users can:
+
 - Create new tasks with `add-task` or parse a PRD (scripts/prd.txt) into tasks with `parse-prd`
 - Set up model preferences with `models` tool
 - Expand tasks into subtasks with `expand-all` and `expand-task`
