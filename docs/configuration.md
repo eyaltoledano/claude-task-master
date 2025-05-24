@@ -37,10 +37,34 @@ Taskmaster uses two primary methods for configuration:
       		"defaultPriority": "medium",
       		"projectName": "Your Project Name",
       		"ollamaBaseUrl": "http://localhost:11434/api",
+      		"tasksPath": "./tasks",
       		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
       	}
       }
       ```
+
+### Global Settings in `.taskmasterconfig`
+
+The `global` object within `.taskmasterconfig` contains settings that apply to the overall behavior of Taskmaster:
+
+*   `logLevel` (string): Sets the logging verbosity. Common values: "debug", "info", "warn", "error".
+    *   Default: `"info"`
+*   `debug` (boolean): Enables or disables debug mode, which may output more verbose logs or error stacks.
+    *   Default: `false`
+*   `defaultSubtasks` (number): The default number of subtasks to generate when expanding a task if not specified.
+    *   Default: `5`
+*   `defaultPriority` (string): The default priority for newly created tasks.
+    *   Default: `"medium"`
+*   `projectName` (string): The name of your project, which may be used in generated outputs or reports.
+    *   Default: `"Your Project Name"` (or a name derived during `init`)
+*   `ollamaBaseUrl` (string): The base URL for the Ollama API, if you are using Ollama for local model inference.
+    *   Default: `"http://localhost:11434/api"`
+*   `tasksPath` (string): Specifies the default directory for storing all task-related files, including `tasks.json` and individual task files (e.g., `task_001.txt`).
+    *   Default: `"./tasks"`
+    *   Example: If set to `"./my_project_tasks"`, then `tasks.json` will be looked for/created at `./my_project_tasks/tasks.json`, and generated task files will go into the `./my_project_tasks/` directory.
+    *   Command-line options like `--file` and `--output` can still be used to override this default for specific commands.
+*   `azureOpenaiBaseUrl` (string): The base URL for Azure OpenAI services. This is typically your Azure endpoint.
+    *   Default: `null` or not present (Example shows `"https://your-endpoint.openai.azure.com/"` if configured)
 
 2.  **Environment Variables (`.env` file or MCP `env` block - For API Keys Only)**
     - Used **exclusively** for sensitive API keys and specific endpoint URLs.
