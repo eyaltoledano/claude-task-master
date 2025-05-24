@@ -15,29 +15,92 @@ This task has two main components:\n\n1. Add `--json` flag to all relevant CLI c
 ### Dependencies: None
 ### Description: Modify the command handlers for `task-master next` and `task-master show <id>` to recognize and handle a `--json` flag. When the flag is present, output the raw data received from MCP tools directly as JSON.
 ### Details:
-Use a CLI argument parsing library (e.g., argparse, click, commander) to add the `--json` boolean flag. In the command execution logic, check if the flag is set. If true, serialize the data object (before any human-readable formatting) into a JSON string and print it to stdout. If false, proceed with the existing formatting logic. Focus on these two commands first to establish the pattern.
+1. Update the CLI argument parser to add the `--json` boolean flag to both commands
+2. Create a `formatAsJson` utility function in `src/utils/output.js` that takes a data object and returns a properly formatted JSON string
+3. In the command handler functions (`src/commands/next.js` and `src/commands/show.js`), add a conditional check for the `--json` flag
+4. If the flag is set, call the `formatAsJson` function with the raw data object and print the result
+5. If the flag is not set, continue with the existing human-readable formatting logic
+6. Ensure proper error handling for JSON serialization failures
+7. Update the command help text in both files to document the new flag
 
 ## 2. Extend JSON Output to All Relevant Commands and Ensure Schema Consistency [pending]
 ### Dependencies: 67.1
 ### Description: Apply the JSON output pattern established in subtask 1 to all other relevant Taskmaster CLI commands that display data (e.g., `list`, `status`, etc.). Ensure the JSON structure is consistent where applicable (e.g., task objects should have the same fields). Add help text mentioning the `--json` flag for each modified command.
 ### Details:
-Identify all commands that output structured data. Refactor the JSON output logic into a reusable utility function if possible. Define a standard schema for common data types like tasks. Update the help documentation for each command to include the `--json` flag description. Ensure error outputs are also handled appropriately (e.g., potentially outputting JSON error objects).
+1. Create a JSON schema definition file at `src/schemas/task.json` to define the standard structure for task objects
+2. Modify the following command files to support the `--json` flag:
+   - `src/commands/list.js`
+   - `src/commands/status.js`
+   - `src/commands/search.js`
+   - `src/commands/summary.js`
+3. Refactor the `formatAsJson` utility to handle different data types (single task, task array, status object, etc.)
+4. Add a `validateJsonSchema` function in `src/utils/validation.js` to ensure output conforms to defined schemas
+5. Update each command's help text documentation to include the `--json` flag description
+6. Implement consistent error handling for JSON output (using a standard error object format)
+7. For list-type commands, ensure array outputs are properly formatted as JSON arrays
 
 ## 3. Create `install-keybindings` Command Structure and OS Detection [pending]
 ### Dependencies: None
 ### Description: Set up the basic structure for the new `task-master install-keybindings` command. Implement logic to detect the user's operating system (Linux, macOS, Windows) and determine the default path to Cursor's `keybindings.json` file.
 ### Details:
-Add a new command entry point using the CLI framework. Use standard library functions (e.g., `os.platform()` in Node, `platform.system()` in Python) to detect the OS. Define constants or a configuration map for the default `keybindings.json` paths for each supported OS. Handle cases where the path might vary (e.g., different installation methods for Cursor). Add basic help text for the new command.
+1. Create a new command file at `src/commands/install-keybindings.js`
+2. Register the command in the main CLI entry point (`src/index.js`)
+3. Implement OS detection using `os.platform()` in Node.js
+4. Define the following path constants in `src/config/paths.js`:
+   - Windows: `%APPDATA%\Cursor\User\keybindings.json`
+   - macOS: `~/Library/Application Support/Cursor/User/keybindings.json`
+   - Linux: `~/.config/Cursor/User/keybindings.json`
+5. Create a `getCursorKeybindingsPath()` function that returns the appropriate path based on detected OS
+6. Add path override capability via a `--path` command line option
+7. Implement proper error handling for unsupported operating systems
+8. Add detailed help text explaining the command's purpose and options
 
 ## 4. Implement Keybinding File Handling and Backup Logic [pending]
 ### Dependencies: 67.3
 ### Description: Implement the core logic within the `install-keybindings` command to read the target `keybindings.json` file. If it exists, create a backup. If it doesn't exist, create a new file with an empty JSON array `[]`. Prepare the structure to add new keybindings.
 ### Details:
-Use file system modules to check for file existence, read, write, and copy files. Implement a backup mechanism (e.g., copy `keybindings.json` to `keybindings.json.bak`). Handle potential file I/O errors gracefully (e.g., permissions issues). Parse the existing JSON content; if parsing fails, report an error and potentially abort. Ensure the file is created with `[]` if it's missing.
+1. Create a `KeybindingsManager` class in `src/utils/keybindings.js` with the following methods:
+   - `checkFileExists(path)`: Verify if the keybindings file exists
+   - `createBackup(path)`: Copy existing file to `keybindings.json.bak`
+   - `readKeybindings(path)`: Read and parse the JSON file
+   - `writeKeybindings(path, data)`: Serialize and write data to the file
+   - `createEmptyFile(path)`: Create a new file with `[]` content
+2. In the command handler, use these methods to:
+   - Check if the target file exists
+   - Create a backup if it does (with timestamp in filename)
+   - Read existing keybindings or create an empty file
+   - Parse the JSON content with proper error handling
+3. Add a `--no-backup` flag to skip backup creation
+4. Implement verbose logging with a `--verbose` flag
+5. Handle all potential file system errors (permissions, disk space, etc.)
+6. Add a `--dry-run` option that shows what would be done without making changes
 
 ## 5. Add Taskmaster Keybindings, Prevent Duplicates, and Support Customization [pending]
 ### Dependencies: 67.4
 ### Description: Define the specific Taskmaster keybindings (e.g., next task to clipboard, status update, open agent chat) and implement the logic to merge them into the user's `keybindings.json` data. Prevent adding duplicate keybindings (based on command ID or key combination). Add support for custom key combinations via command flags.
 ### Details:
-Define the desired keybindings as a list of JSON objects following Cursor's format. Before adding, iterate through the existing keybindings (parsed in subtask 4) to check if a Taskmaster keybinding with the same command or key combination already exists. If not, append the new keybinding to the list. Add command-line flags (e.g., `--next-key='ctrl+alt+n'`) to allow users to override default key combinations. Serialize the updated list back to JSON and write it to the `keybindings.json` file.
+1. Define default Taskmaster keybindings in `src/config/default-keybindings.js` as an array of objects with:
+   - `key`: Default key combination (e.g., `"ctrl+alt+n"`)
+   - `command`: Cursor command ID (e.g., `"taskmaster.nextTask"`)
+   - `when`: Context when keybinding is active (e.g., `"editorTextFocus"`)
+   - `args`: Any command arguments as an object
+   - `description`: Human-readable description of what the keybinding does
+2. Implement the following keybindings:
+   - Next task to clipboard: `ctrl+alt+n`
+   - Update task status: `ctrl+alt+u`
+   - Open agent chat with task context: `ctrl+alt+a`
+   - Show task details: `ctrl+alt+d`
+3. Add command-line options to customize each keybinding:
+   - `--next-key="ctrl+alt+n"`
+   - `--update-key="ctrl+alt+u"`
+   - `--agent-key="ctrl+alt+a"`
+   - `--details-key="ctrl+alt+d"`
+4. Implement a `mergeKeybindings(existing, new)` function that:
+   - Checks for duplicates based on command ID
+   - Checks for key combination conflicts
+   - Warns about conflicts but allows override with `--force` flag
+   - Preserves existing non-Taskmaster keybindings
+5. Add a `--reset` flag to remove all existing Taskmaster keybindings before adding new ones
+6. Add a `--list` option to display currently installed Taskmaster keybindings
+7. Implement an `--uninstall` option to remove all Taskmaster keybindings
 

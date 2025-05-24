@@ -30,6 +30,7 @@ import { addDependencyDirect } from './direct-functions/add-dependency.js';
 import { removeTaskDirect } from './direct-functions/remove-task.js';
 import { initializeProjectDirect } from './direct-functions/initialize-project.js';
 import { modelsDirect } from './direct-functions/models.js';
+import { moveTaskDirect } from './direct-functions/move-task.js';
 
 // Re-export utility functions
 export { findTasksJsonPath } from './utils/path-utils.js';
@@ -60,7 +61,8 @@ export const directFunctions = new Map([
 	['addDependencyDirect', addDependencyDirect],
 	['removeTaskDirect', removeTaskDirect],
 	['initializeProjectDirect', initializeProjectDirect],
-	['modelsDirect', modelsDirect]
+	['modelsDirect', modelsDirect],
+	['moveTaskDirect', moveTaskDirect]
 ]);
 
 // Re-export all direct function implementations
@@ -89,5 +91,6 @@ export {
 	addDependencyDirect,
 	removeTaskDirect,
 	initializeProjectDirect,
-	modelsDirect
+	modelsDirect,
+	moveTaskDirect
 };

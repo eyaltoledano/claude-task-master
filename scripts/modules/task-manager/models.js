@@ -6,6 +6,7 @@
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
+import http from 'http';
 import {
 	getMainModelId,
 	getResearchModelId,
@@ -19,7 +20,8 @@ import {
 	getConfig,
 	writeConfig,
 	isConfigFilePresent,
-	getAllProviders
+	getAllProviders,
+	getBaseUrlForRole
 } from '../config-manager.js';
 
 /**
@@ -65,6 +67,68 @@ function fetchOpenRouterModels() {
 			resolve(null); // Indicate failure
 		});
 		req.end();
+	});
+}
+
+/**
+ * Fetches the list of models from Ollama instance.
+ * @param {string} baseUrl - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
+ * @returns {Promise<Array|null>} A promise that resolves with the list of model objects or null if fetch fails.
+ */
+function fetchOllamaModels(baseUrl = 'http://localhost:11434/api') {
+	return new Promise((resolve) => {
+		try {
+			// Parse the base URL to extract hostname, port, and base path
+			const url = new URL(baseUrl);
+			const isHttps = url.protocol === 'https:';
+			const port = url.port || (isHttps ? 443 : 80);
+			const basePath = url.pathname.endsWith('/')
+				? url.pathname.slice(0, -1)
+				: url.pathname;
+
+			const options = {
+				hostname: url.hostname,
+				port: parseInt(port, 10),
+				path: `${basePath}/tags`,
+				method: 'GET',
+				headers: {
+					Accept: 'application/json'
+				}
+			};
+
+			const requestLib = isHttps ? https : http;
+			const req = requestLib.request(options, (res) => {
+				let data = '';
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				res.on('end', () => {
+					if (res.statusCode === 200) {
+						try {
+							const parsedData = JSON.parse(data);
+							resolve(parsedData.models || []); // Return the array of models
+						} catch (e) {
+							console.error('Error parsing Ollama response:', e);
+							resolve(null); // Indicate failure
+						}
+					} else {
+						console.error(
+							`Ollama API request failed with status code: ${res.statusCode}`
+						);
+						resolve(null); // Indicate failure
+					}
+				});
+			});
+
+			req.on('error', (e) => {
+				console.error('Error fetching Ollama models:', e);
+				resolve(null); // Indicate failure
+			});
+			req.end();
+		} catch (e) {
+			console.error('Error parsing Ollama base URL:', e);
+			resolve(null); // Indicate failure
+		}
 	});
 }
 
@@ -416,10 +480,29 @@ async function setModel(role, modelId, options = {}) {
 						);
 					}
 				} else if (providerHint === 'ollama') {
-					// Hinted as Ollama - set provider directly WITHOUT checking OpenRouter
-					determinedProvider = 'ollama';
-					warningMessage = `Warning: Custom Ollama model '${modelId}' set. Ensure your Ollama server is running and has pulled this model. Taskmaster cannot guarantee compatibility.`;
-					report('warn', warningMessage);
+					// Check Ollama ONLY because hint was ollama
+					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
+
+					// Get the Ollama base URL from config
+					const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
+					const ollamaModels = await fetchOllamaModels(ollamaBaseUrl);
+
+					if (ollamaModels === null) {
+						// Connection failed - server probably not running
+						throw new Error(
+							`Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+						);
+					} else if (ollamaModels.some((m) => m.model === modelId)) {
+						determinedProvider = 'ollama';
+						warningMessage = `Warning: Custom Ollama model '${modelId}' set. Ensure your Ollama server is running and has pulled this model. Taskmaster cannot guarantee compatibility.`;
+						report('warn', warningMessage);
+					} else {
+						// Server is running but model not found
+						const tagsUrl = `${ollamaBaseUrl}/tags`;
+						throw new Error(
+							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
+						);
+					}
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
