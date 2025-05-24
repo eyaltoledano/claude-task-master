@@ -9,8 +9,14 @@ import {
 	createErrorResponse,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { setTaskStatusDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	setTaskStatusDirect,
+	nextTaskDirect
+} from '../core/task-master-core.js';
+import {
+	findTasksJsonPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 import { TASK_STATUS_OPTIONS } from '../../../src/constants/task-status.js';
 
 /**
@@ -33,6 +39,12 @@ export function registerSetTaskStatusTool(server) {
 					"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled'."
 				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
+			complexityReport: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the complexity report file (relative to project root or absolute)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -55,11 +67,23 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						args.projectRoot,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
+
 				const result = await setTaskStatusDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						status: args.status
+						status: args.status,
+						complexityReportPath
 					},
 					log
 				);

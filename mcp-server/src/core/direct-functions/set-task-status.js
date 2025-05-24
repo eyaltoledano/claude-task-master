@@ -9,7 +9,7 @@ import {
 	disableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-
+import { nextTaskDirect } from './next-task.js';
 /**
  * Direct function wrapper for setTaskStatus with error handling.
  *
@@ -19,7 +19,7 @@ import {
  */
 export async function setTaskStatusDirect(args, log) {
 	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, status } = args;
+	const { tasksJsonPath, id, status, complexityReportPath } = args;
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
 
@@ -85,6 +85,39 @@ export async function setTaskStatusDirect(args, log) {
 				},
 				fromCache: false // This operation always modifies state and should never be cached
 			};
+
+			// If the task was completed, attempt to fetch the next task
+			if (result.data.status === 'done') {
+				try {
+					log.info(`Attempting to fetch next task for task ${taskId}`);
+					const nextResult = await nextTaskDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							reportPath: complexityReportPath
+						},
+						log
+					);
+
+					if (nextResult.success) {
+						log.info(
+							`Successfully retrieved next task: ${nextResult.data.nextTask}`
+						);
+						result.data = {
+							...result.data,
+							nextTask: nextResult.data.nextTask,
+							isNextSubtask: nextResult.data.isSubtask,
+							nextSteps: nextResult.data.nextSteps
+						};
+					} else {
+						log.warn(
+							`Failed to retrieve next task: ${nextResult.error?.message || 'Unknown error'}`
+						);
+					}
+				} catch (nextErr) {
+					log.error(`Error retrieving next task: ${nextErr.message}`);
+				}
+			}
+
 			return result;
 		} catch (error) {
 			log.error(`Error setting task status: ${error.message}`);
