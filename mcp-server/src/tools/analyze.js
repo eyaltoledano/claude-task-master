@@ -49,6 +49,24 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe(
 					'Path to the tasks file relative to project root (default: tasks/tasks.json).'
 				),
+			ids: z
+				.string()
+				.optional()
+				.describe(
+					'Comma-separated list of task IDs to analyze specifically (e.g., "1,3,5").'
+				),
+			from: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.describe('Starting task ID in a range to analyze.'),
+			to: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.describe('Ending task ID in a range to analyze.'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -107,7 +125,10 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						outputPath: outputPath,
 						threshold: args.threshold,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						ids: args.ids,
+						from: args.from,
+						to: args.to
 					},
 					log,
 					{ session }

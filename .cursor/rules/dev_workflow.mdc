@@ -49,6 +49,7 @@ Task Master offers two primary ways to interact:
 -   Maintain valid dependency structure with `add_dependency`/`remove_dependency` tools or `task-master add-dependency`/`remove-dependency` commands, `validate_dependencies` / `task-master validate-dependencies`, and `fix_dependencies` / `task-master fix-dependencies` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) when needed
 -   Respect dependency chains and task priorities when selecting work
 -   Report progress regularly using `get_tasks` / `task-master list`
+-   Reorganize tasks as needed using `move_task` / `task-master move --from=<id> --to=<id>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to change task hierarchy or ordering
 
 ## Task Complexity Analysis
 
@@ -153,6 +154,25 @@ Taskmaster configuration is managed through two main mechanisms:
 - Dependencies are checked for existence before being added or removed
 - Task files are automatically regenerated after dependency changes
 - Dependencies are visualized with status indicators in task listings and files
+
+## Task Reorganization
+
+- Use `move_task` / `task-master move --from=<id> --to=<id>` to move tasks or subtasks within the hierarchy
+- This command supports several use cases:
+  - Moving a standalone task to become a subtask (e.g., `--from=5 --to=7`)
+  - Moving a subtask to become a standalone task (e.g., `--from=5.2 --to=7`) 
+  - Moving a subtask to a different parent (e.g., `--from=5.2 --to=7.3`)
+  - Reordering subtasks within the same parent (e.g., `--from=5.2 --to=5.4`)
+  - Moving a task to a new, non-existent ID position (e.g., `--from=5 --to=25`)
+  - Moving multiple tasks at once using comma-separated IDs (e.g., `--from=10,11,12 --to=16,17,18`)
+- The system includes validation to prevent data loss:
+  - Allows moving to non-existent IDs by creating placeholder tasks
+  - Prevents moving to existing task IDs that have content (to avoid overwriting)
+  - Validates source tasks exist before attempting to move them
+- The system maintains proper parent-child relationships and dependency integrity
+- Task files are automatically regenerated after the move operation
+- This provides greater flexibility in organizing and refining your task structure as project understanding evolves
+- This is especially useful when dealing with potential merge conflicts arising from teams creating tasks on separate branches. Solve these conflicts very easily by moving your tasks and keeping theirs.
 
 ## Iterative Subtask Implementation
 

@@ -18,9 +18,10 @@ import {
 	getUserId,
 	MODEL_MAP,
 	getDebugFlag,
-	getBaseUrlForRole
+	getBaseUrlForRole,
+	isApiKeySet
 } from './config-manager.js';
-import { log, resolveEnvVariable, isSilentMode } from './utils.js';
+import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
 import * as anthropic from '../../src/ai-providers/anthropic.js';
 import * as perplexity from '../../src/ai-providers/perplexity.js';
@@ -322,11 +323,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		});
 	}
 
-	// Determine the effective project root (passed in or detected if needed by config getters)
-	const { findProjectRoot: detectProjectRoot } = await import('./utils.js'); // Dynamically import if needed
-	const effectiveProjectRoot = projectRoot || detectProjectRoot();
-
-	// Get userId from config - ensure effectiveProjectRoot is passed
+	const effectiveProjectRoot = projectRoot || findProjectRoot();
 	const userId = getUserId(effectiveProjectRoot);
 
 	let sequence;
@@ -362,8 +359,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 		try {
 			log('info', `New AI service call with role: ${currentRole}`);
 
-			// 1. Get Config: Provider, Model, Parameters for the current role
-			// Pass effectiveProjectRoot to config getters
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
 				modelId = getMainModelId(effectiveProjectRoot);
@@ -396,11 +391,24 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Pass effectiveProjectRoot to getParametersForRole
+			// Check if API key is set for the current provider and role (excluding 'ollama')
+			if (providerName?.toLowerCase() !== 'ollama') {
+				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
+					log(
+						'warn',
+						`Skipping role '${currentRole}' (Provider: ${providerName}): API key not set or invalid.`
+					);
+					lastError =
+						lastError ||
+						new Error(
+							`API key for provider '${providerName}' (role: ${currentRole}) is not set.`
+						);
+					continue; // Skip to the next role in the sequence
+				}
+			}
+
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
 			baseUrl = getBaseUrlForRole(currentRole, effectiveProjectRoot);
-
-			// 2. Get Provider Function Set
 			providerFnSet = PROVIDER_FUNCTIONS[providerName?.toLowerCase()];
 			if (!providerFnSet) {
 				log(
@@ -413,7 +421,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Use the original service type to get the function
 			providerApiFn = providerFnSet[serviceType];
 			if (typeof providerApiFn !== 'function') {
 				log(
@@ -428,15 +435,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// 3. Resolve API Key (will throw if required and missing)
-			// Pass effectiveProjectRoot to _resolveApiKey
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
 				effectiveProjectRoot
 			);
 
-			// 4. Construct Messages Array
 			const messages = [];
 			if (systemPrompt) {
 				messages.push({ role: 'system', content: systemPrompt });
@@ -461,14 +465,11 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// }
 
 			if (prompt) {
-				// Ensure prompt exists before adding
 				messages.push({ role: 'user', content: prompt });
 			} else {
-				// Throw an error if the prompt is missing, as it's essential
 				throw new Error('User prompt content is missing.');
 			}
 
-			// 5. Prepare call parameters (using messages array)
 			const callParams = {
 				apiKey,
 				modelId,
@@ -480,7 +481,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 				...restApiParams
 			};
 
-			// 6. Attempt the call with retries
 			providerResponse = await _attemptProviderCallWithRetries(
 				providerApiFn,
 				callParams,
@@ -489,8 +489,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 				currentRole
 			);
 
-			// --- Log Telemetry & Capture Data ---
-			// Use providerResponse which contains the usage data directly for text/object
 			if (userId && providerResponse && providerResponse.usage) {
 				try {
 					telemetryData = await logAiUsage({
@@ -512,26 +510,22 @@ async function _unifiedServiceRunner(serviceType, params) {
 					`Cannot log telemetry for ${commandName} (${providerName}/${modelId}): AI result missing 'usage' data. (May be expected for streams)`
 				);
 			}
-			// --- End Log Telemetry ---
 
-			// --- Extract the correct main result based on serviceType ---
 			let finalMainResult;
 			if (serviceType === 'generateText') {
 				finalMainResult = providerResponse.text;
 			} else if (serviceType === 'generateObject') {
 				finalMainResult = providerResponse.object;
 			} else if (serviceType === 'streamText') {
-				finalMainResult = providerResponse; // Return the whole stream object
+				finalMainResult = providerResponse;
 			} else {
 				log(
 					'error',
 					`Unknown serviceType in _unifiedServiceRunner: ${serviceType}`
 				);
-				finalMainResult = providerResponse; // Default to returning the whole object as fallback
+				finalMainResult = providerResponse;
 			}
-			// --- End Main Result Extraction ---
 
-			// Return a composite object including the extracted main result and telemetry data
 			return {
 				mainResult: finalMainResult,
 				telemetryData: telemetryData
@@ -564,9 +558,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		}
 	}
 
-	// If loop completes, all roles failed
 	log('error', `All roles in the sequence [${sequence.join(', ')}] failed.`);
-	// Throw a new error with the cleaner message from the last failure
 	throw new Error(lastCleanErrorMessage);
 }
 

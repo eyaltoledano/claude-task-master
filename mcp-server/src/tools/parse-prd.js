@@ -49,6 +49,13 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.default(false)
 				.describe('Append generated tasks to existing file.'),
+			research: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe(
+					'Use the research model for research-backed task generation, providing more comprehensive, accurate and up-to-date task details.'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -68,6 +75,7 @@ export function registerParsePRDTool(server) {
 						numTasks: args.numTasks,
 						force: args.force,
 						append: args.append,
+						research: args.research,
 						projectRoot: args.projectRoot
 					},
 					log,

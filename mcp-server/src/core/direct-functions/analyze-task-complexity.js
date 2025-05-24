@@ -18,6 +18,9 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
+ * @param {string} [args.ids] - Comma-separated list of task IDs to analyze
+ * @param {number} [args.from] - Starting task ID in a range to analyze
+ * @param {number} [args.to] - Ending task ID in a range to analyze
  * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
@@ -26,7 +29,16 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 	const { session } = context;
-	const { tasksJsonPath, outputPath, threshold, research, projectRoot } = args;
+	const {
+		tasksJsonPath,
+		outputPath,
+		threshold,
+		research,
+		projectRoot,
+		ids,
+		from,
+		to
+	} = args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -58,6 +70,14 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		log.info(`Analyzing task complexity from: ${tasksPath}`);
 		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
 
+		if (ids) {
+			log.info(`Analyzing specific task IDs: ${ids}`);
+		} else if (from || to) {
+			const fromStr = from !== undefined ? from : 'first';
+			const toStr = to !== undefined ? to : 'last';
+			log.info(`Analyzing tasks in range: ${fromStr} to ${toStr}`);
+		}
+
 		if (research) {
 			log.info('Using research role for complexity analysis');
 		}
@@ -68,7 +88,10 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			output: outputPath,
 			threshold: threshold,
 			research: research === true, // Ensure boolean
-			projectRoot: projectRoot // Pass projectRoot here
+			projectRoot: projectRoot, // Pass projectRoot here
+			id: ids, // Pass the ids parameter to the core function as 'id'
+			from: from, // Pass from parameter
+			to: to // Pass to parameter
 		};
 		// --- End Initial Checks ---
 
