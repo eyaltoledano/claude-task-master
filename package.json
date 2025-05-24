@@ -47,6 +47,7 @@
 		"@ai-sdk/perplexity": "^1.1.7",
 		"@ai-sdk/xai": "^1.2.15",
 		"@anthropic-ai/sdk": "^0.39.0",
+		"@burncloud/ai-sdk-provider": "^1.0.3",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"ai": "^4.3.10",
 		"boxen": "^8.0.1",
