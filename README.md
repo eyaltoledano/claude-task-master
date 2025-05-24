@@ -23,6 +23,7 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
+- AWS Bedrock credentials
 
 Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
 

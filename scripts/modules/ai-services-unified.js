@@ -30,6 +30,7 @@ import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
 import * as ollama from '../../src/ai-providers/ollama.js';
+import * as bedrock from '../../src/ai-providers/aws-bedrock.js';
 // TODO: Import other provider modules when implemented (ollama, etc.)
 
 // Helper function to get cost for a specific model
@@ -103,6 +104,11 @@ const PROVIDER_FUNCTIONS = {
 		generateText: ollama.generateOllamaText,
 		streamText: ollama.streamOllamaText,
 		generateObject: ollama.generateOllamaObject
+	},
+	bedrock: {
+		generateText: bedrock.generateBedrockText,
+		streamText: bedrock.streamBedrockText,
+		generateObject: bedrock.generateBedrockObject
 	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
@@ -191,7 +197,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY'
+		ollama: 'OLLAMA_API_KEY',
+		bedrock: 'AWS_PROFILE'
 	};
 
 	const envVarName = keyMap[providerName];
@@ -205,6 +212,13 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 
 	// Special handling for Ollama - API key is optional
 	if (providerName === 'ollama') {
+		return apiKey || null;
+	}
+
+	// Bedrock doesn't use a single environment variable for API access, so we can't
+	// use the AWS_PROFILE as the key and later look up environment or config
+	// throught the AWS SDK.
+	if (providerName === 'bedrock') {
 		return apiKey || null;
 	}
 

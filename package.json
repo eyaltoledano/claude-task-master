@@ -39,6 +39,7 @@
 	"author": "Eyal Toledano",
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
+		"@ai-sdk/amazon-bedrock": "^2.2.9",
 		"@ai-sdk/anthropic": "^1.2.10",
 		"@ai-sdk/azure": "^1.3.17",
 		"@ai-sdk/google": "^1.2.13",
@@ -47,6 +48,7 @@
 		"@ai-sdk/perplexity": "^1.1.7",
 		"@ai-sdk/xai": "^1.2.15",
 		"@anthropic-ai/sdk": "^0.39.0",
+		"@aws-sdk/credential-providers": "^3.812.0",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"ai": "^4.3.10",
 		"boxen": "^8.0.1",
