@@ -16,35 +16,52 @@ describe('Roo Files Inclusion in Package', () => {
 		expect(packageJson.files).toContain('assets/**');
 	});
 
-	test('init.js creates Roo directories and copies files', () => {
-		// Read the init.js file
-		const initJsPath = path.join(process.cwd(), 'scripts', 'init.js');
-		const initJsContent = fs.readFileSync(initJsPath, 'utf8');
+	test('roo.js profile contains logic for Roo directory creation and file copying', () => {
+		// Read the roo.js profile file
+		const rooJsPath = path.join(process.cwd(), 'scripts', 'profiles', 'roo.js');
+		const rooJsContent = fs.readFileSync(rooJsPath, 'utf8');
 
-		// Check for Roo directory creation (using more flexible pattern matching)
-		const hasRooDir = initJsContent.includes(
-			"ensureDirectoryExists(path.join(targetDir, '.roo"
+		// Check for the main handler function
+		expect(rooJsContent.includes('onAddBrandRules(targetDir)')).toBe(true);
+
+		// Check for general recursive copy of assets/roocode
+		expect(
+			rooJsContent.includes('copyRecursiveSync(sourceDir, targetDir)')
+		).toBe(true);
+
+		// Check for .roomodes file copying logic (source and destination paths)
+		expect(rooJsContent.includes("path.join(sourceDir, '.roomodes')")).toBe(
+			true
 		);
-		expect(hasRooDir).toBe(true);
+		expect(rooJsContent.includes("path.join(targetDir, '.roomodes')")).toBe(
+			true
+		);
 
-		// Check for .roomodes file copying
-		const hasRoomodes = initJsContent.includes("copyTemplateFile('.roomodes'");
-		expect(hasRoomodes).toBe(true);
+		// Check for mode-specific rule file copying logic
+		expect(rooJsContent.includes('for (const mode of rooModes)')).toBe(true);
+		expect(
+			rooJsContent.includes(
+				'path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`)'
+			)
+		).toBe(true);
+		expect(
+			rooJsContent.includes(
+				"path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`)"
+			)
+		).toBe(true);
 
-		// Check for mode-specific patterns (using more flexible pattern matching)
-		const hasArchitect = initJsContent.includes('architect');
-		const hasAsk = initJsContent.includes('ask');
-		const hasBoomerang = initJsContent.includes('boomerang');
-		const hasCode = initJsContent.includes('code');
-		const hasDebug = initJsContent.includes('debug');
-		const hasTest = initJsContent.includes('test');
-
-		expect(hasArchitect).toBe(true);
-		expect(hasAsk).toBe(true);
-		expect(hasBoomerang).toBe(true);
-		expect(hasCode).toBe(true);
-		expect(hasDebug).toBe(true);
-		expect(hasTest).toBe(true);
+		// Check for definition of rooModes array and all modes
+		const rooModesArrayRegex = /const rooModes\s*=\s*\[([^\]]+)\]\s*;?/;
+		const rooModesMatch = rooJsContent.match(rooModesArrayRegex);
+		expect(rooModesMatch).not.toBeNull();
+		if (rooModesMatch) {
+			expect(rooModesMatch[1].includes('architect')).toBe(true);
+			expect(rooModesMatch[1].includes('ask')).toBe(true);
+			expect(rooModesMatch[1].includes('boomerang')).toBe(true);
+			expect(rooModesMatch[1].includes('code')).toBe(true);
+			expect(rooModesMatch[1].includes('debug')).toBe(true);
+			expect(rooModesMatch[1].includes('test')).toBe(true);
+		}
 	});
 
 	test('source Roo files exist in assets directory', () => {

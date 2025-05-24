@@ -28,6 +28,7 @@ import { registerAddDependencyTool } from './add-dependency.js';
 import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
+import { registerRulesTool } from './rules.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -40,6 +41,7 @@ export function registerTaskMasterTools(server) {
 		// Group 1: Initialization & Setup
 		registerInitializeProjectTool(server);
 		registerModelsTool(server);
+		registerRulesTool(server);
 		registerParsePRDTool(server);
 
 		// Group 2: Task Listing & Viewing

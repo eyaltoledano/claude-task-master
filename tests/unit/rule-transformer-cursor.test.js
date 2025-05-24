@@ -2,12 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { convertCursorRuleToRooRule } from '../../scripts/modules/rule-transformer.js';
+import {
+	convertRuleToBrandRule,
+	convertAllRulesToBrandRules
+} from '../../src/utils/rule-transformer.js';
+import * as cursorProfile from '../../scripts/profiles/cursor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-describe('Rule Transformer', () => {
+describe('Cursor Rule Transformer', () => {
 	const testDir = path.join(__dirname, 'temp-test-dir');
 
 	beforeAll(() => {
@@ -39,18 +43,18 @@ Also has references to .mdc files.`;
 		fs.writeFileSync(testCursorRule, testContent);
 
 		// Convert it
-		const testRooRule = path.join(testDir, 'basic-terms.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		const testCursorOut = path.join(testDir, 'basic-terms.mdc');
+		convertRuleToBrandRule(testCursorRule, testCursorOut, cursorProfile);
 
 		// Read the converted file
-		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
+		const convertedContent = fs.readFileSync(testCursorOut, 'utf8');
 
-		// Verify transformations
-		expect(convertedContent).toContain('Roo Code');
-		expect(convertedContent).toContain('roocode.com');
-		expect(convertedContent).toContain('.md');
-		expect(convertedContent).not.toContain('cursor.so');
-		expect(convertedContent).not.toContain('Cursor rule');
+		// Verify transformations (should preserve Cursor branding and references)
+		expect(convertedContent).toContain('Cursor rule');
+		expect(convertedContent).toContain('cursor.so');
+		expect(convertedContent).toContain('.mdc');
+		expect(convertedContent).not.toContain('roocode.com');
+		expect(convertedContent).not.toContain('windsurf.com');
 	});
 
 	it('should correctly convert tool references', () => {
@@ -70,17 +74,19 @@ alwaysApply: true
 		fs.writeFileSync(testCursorRule, testContent);
 
 		// Convert it
-		const testRooRule = path.join(testDir, 'tool-refs.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		const testCursorOut = path.join(testDir, 'tool-refs.mdc');
+		convertRuleToBrandRule(testCursorRule, testCursorOut, cursorProfile);
 
 		// Read the converted file
-		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
+		const convertedContent = fs.readFileSync(testCursorOut, 'utf8');
 
-		// Verify transformations
-		expect(convertedContent).toContain('search_files tool');
-		expect(convertedContent).toContain('apply_diff tool');
-		expect(convertedContent).toContain('execute_command');
-		expect(convertedContent).toContain('use_mcp_tool');
+		// Verify transformations (should preserve Cursor tool references)
+		expect(convertedContent).toContain('search tool');
+		expect(convertedContent).toContain('edit_file tool');
+		expect(convertedContent).toContain('run_command');
+		expect(convertedContent).toContain('use_mcp');
+		expect(convertedContent).not.toContain('apply_diff');
+		expect(convertedContent).not.toContain('search_files');
 	});
 
 	it('should correctly update file references', () => {
@@ -98,15 +104,16 @@ This references [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc) and
 		fs.writeFileSync(testCursorRule, testContent);
 
 		// Convert it
-		const testRooRule = path.join(testDir, 'file-refs.md');
-		convertCursorRuleToRooRule(testCursorRule, testRooRule);
+		const testCursorOut = path.join(testDir, 'file-refs.mdc');
+		convertRuleToBrandRule(testCursorRule, testCursorOut, cursorProfile);
 
 		// Read the converted file
-		const convertedContent = fs.readFileSync(testRooRule, 'utf8');
+		const convertedContent = fs.readFileSync(testCursorOut, 'utf8');
 
-		// Verify transformations
-		expect(convertedContent).toContain('(mdc:.roo/rules/dev_workflow.md)');
-		expect(convertedContent).toContain('(mdc:.roo/rules/taskmaster.md)');
-		expect(convertedContent).not.toContain('(mdc:.cursor/rules/');
+		// Verify transformations (should preserve Cursor file references)
+		expect(convertedContent).toContain('(mdc:.cursor/rules/dev_workflow.mdc)');
+		expect(convertedContent).toContain('(mdc:.cursor/rules/taskmaster.mdc)');
+		expect(convertedContent).not.toContain('(mdc:.roo/rules/');
+		expect(convertedContent).not.toContain('(mdc:.windsurf/rules/');
 	});
 });
