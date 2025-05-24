@@ -115,7 +115,8 @@ const VALID_CUSTOM_CONFIG = {
 	global: {
 		logLevel: 'debug',
 		defaultPriority: 'high',
-		projectName: 'My Custom Project'
+		projectName: 'My Custom Project',
+		tasksPath: './custom_test_tasks' // Explicitly define for this test config
 	}
 };
 
@@ -640,14 +641,13 @@ describe('Getter Functions', () => {
 		});
 		fsExistsSyncSpy.mockReturnValue(true);
 		// Ensure getConfig is called to load the VALID_CUSTOM_CONFIG
-		configManager.getConfig(MOCK_PROJECT_ROOT, true);
-
+		configManager.getConfig(MOCK_PROJECT_ROOT, true); // This loads the config
 
 		// Act
-		const tasksPath = configManager.getTasksPath(MOCK_PROJECT_ROOT);
+		const tasksPath = configManager.getTasksPath(MOCK_PROJECT_ROOT); // This retrieves from the loaded config
 
 		// Assert
-		expect(tasksPath).toBe(VALID_CUSTOM_CONFIG.global.tasksPath);
+		expect(tasksPath).toBe('./custom_test_tasks'); // Assert against the expected custom value
 	});
 
 	test('getTasksPath should return default tasksPath if not in config', () => {

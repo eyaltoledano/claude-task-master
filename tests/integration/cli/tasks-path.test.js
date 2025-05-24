@@ -7,19 +7,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Path to the CLI script
-// Corrected path: from /app/tests/integration/cli, we go up three levels to /app, then to scripts/cli.js
-const CLI_SCRIPT_PATH = path.resolve(__dirname, '../../../scripts/cli.js');
+// Changed to point to bin/task-master.js as per new instructions
+const CLI_SCRIPT_PATH = path.resolve(__dirname, '../../../bin/task-master.js');
 
 import { spawn } from 'child_process'; // Import spawn
 
 // Helper function to run CLI commands
-async function runCliCommand(command, cwd) {
+// Accepts commandName (e.g., 'generate') and commandArgs (e.g., ['--file', 'tasks.json'])
+async function runCliCommand(commandName, commandArgs = [], cwd) {
     return new Promise((resolve, reject) => {
         const nodeExecutable = process.execPath;
-        // Split command string into arguments, filtering out empty strings from multiple spaces
-        const commandParts = command.split(' ').filter(part => part !== '');
         // Add --experimental-vm-modules to the node arguments
-        const args = ['--experimental-vm-modules', CLI_SCRIPT_PATH, ...commandParts];
+        const args = ['--experimental-vm-modules', CLI_SCRIPT_PATH, commandName, ...commandArgs];
 
         // console.log(`Executing: ${nodeExecutable} ${args.join(' ')} in ${cwd} (CLI_SCRIPT_PATH: ${CLI_SCRIPT_PATH})`); // Debug log
 
@@ -103,7 +102,7 @@ describe('CLI Commands with custom tasksPath Integration Tests', () => {
         await setupTemporaryProject(tempTestDir, projectConfig, tasksData, customTasksPath);
 
         // Act: Run the generate command from the temp directory root
-        await runCliCommand('generate', tempTestDir);
+        await runCliCommand('generate', [], tempTestDir);
 
         // Assert: Check if task file is created in the custom tasksPath
         const expectedTaskFilePath = path.join(tempTestDir, customTasksPath, 'task_001.txt');
@@ -124,7 +123,7 @@ describe('CLI Commands with custom tasksPath Integration Tests', () => {
         await setupTemporaryProject(tempTestDir, projectConfig, tasksData, customTasksPath);
 
         // Act: Run the list command
-        const { stdout } = await runCliCommand('list', tempTestDir);
+        const { stdout } = await runCliCommand('list', [], tempTestDir);
 
         // Assert: Check stdout for the task title
         expect(stdout).toContain('Custom List Task Alpha');
@@ -135,9 +134,9 @@ describe('CLI Commands with custom tasksPath Integration Tests', () => {
     test('add-task command should use tasksPath from .taskmasterconfig', async () => {
         const customTasksPath = 'specific_add_dir';
         const projectConfig = { global: { tasksPath: `./${customTasksPath}` } };
-        // No initial tasks.json needed for add-task
+        const initialTasksData = { tasks: [] }; // Create an empty tasks array
 
-        await setupTemporaryProject(tempTestDir, projectConfig, null, customTasksPath);
+        await setupTemporaryProject(tempTestDir, projectConfig, initialTasksData, customTasksPath);
 
         const taskTitle = 'My New Added Task';
         // Act: Run the add-task command
@@ -149,8 +148,9 @@ describe('CLI Commands with custom tasksPath Integration Tests', () => {
         // To avoid AI call, we'd need to ensure it can run without it or mock AI.
         // The prompt is required for AI, but we want to test path creation.
         // Let's use --title and --description for manual creation if that bypasses AI
+        const addTaskArgs = [`--title=${taskTitle}`, '--description="A test task desc"'];
         try {
-            await runCliCommand(`add-task --title="${taskTitle}" --description="A test task desc"`, tempTestDir);
+            await runCliCommand('add-task', addTaskArgs, tempTestDir);
         } catch (e) {
             // If add-task fails because of AI/API key issues, this test might be flaky.
             // For now, we'll proceed assuming it can create the file structure.
