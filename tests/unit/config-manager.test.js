@@ -85,7 +85,8 @@ const DEFAULT_CONFIG = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		tasksPath: './tasks' // Added tasksPath to default
 	}
 };
 
@@ -618,6 +619,75 @@ describe('Getter Functions', () => {
 
 		// Assert
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
+	});
+
+	test('getTasksPath should return tasksPath from config if present', () => {
+		// Arrange: VALID_CUSTOM_CONFIG now includes tasksPath
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(VALID_CUSTOM_CONFIG);
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({ // Provide necessary models for validation
+					openai: [{ id: 'gpt-4o' }],
+					google: [{ id: 'gemini-1.5-pro-latest' }],
+					anthropic: [{ id: 'claude-3-opus-20240229' }, { id: 'claude-3-7-sonnet-20250219' }, { id: 'claude-3-5-sonnet' }],
+					perplexity: [{ id: 'sonar-pro' }],
+					ollama: [],
+					openrouter: []
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+		// Ensure getConfig is called to load the VALID_CUSTOM_CONFIG
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+
+		// Act
+		const tasksPath = configManager.getTasksPath(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(tasksPath).toBe(VALID_CUSTOM_CONFIG.global.tasksPath);
+	});
+
+	test('getTasksPath should return default tasksPath if not in config', () => {
+		// Arrange: Config without tasksPath (using PARTIAL_CONFIG as an example)
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(PARTIAL_CONFIG); // PARTIAL_CONFIG does not have tasksPath
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({ // Provide necessary models
+					openai: [{ id: 'gpt-4-turbo' }],
+					perplexity: [{ id: 'sonar-pro' }],
+					anthropic: [{ id: 'claude-3-7-sonnet-20250219' }, { id: 'claude-3-5-sonnet' }],
+					ollama: [],
+					openrouter: []
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Act: Force reload getConfig to use the new mocked file content
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+		const tasksPath = configManager.getTasksPath(MOCK_PROJECT_ROOT);
+
+
+		// Assert
+		expect(tasksPath).toBe(DEFAULT_CONFIG.global.tasksPath); // Should be './tasks'
+	});
+
+	test('getTasksPath should return default tasksPath if config file does not exist', () => {
+		// Arrange
+		fsExistsSyncSpy.mockReturnValue(false); // Config file does not exist
+
+		// Act: Force reload getConfig
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+		const tasksPath = configManager.getTasksPath(MOCK_PROJECT_ROOT);
+
+
+		// Assert
+		expect(tasksPath).toBe(DEFAULT_CONFIG.global.tasksPath); // Should be './tasks'
 	});
 
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)
