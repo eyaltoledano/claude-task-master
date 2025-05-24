@@ -22,6 +22,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
+import updateGitignore from '../src/utils/updateGitignore.js';
 import { isSilentMode } from './modules/utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
@@ -174,7 +175,12 @@ alias taskmaster='task-master'
 }
 
 // Function to copy a file from the package to the target directory
-function copyTemplateFile(templateName, targetPath, replacements = {}) {
+function copyTemplateFile(
+	templateName,
+	targetPath,
+	replacements = {},
+	storeTasksInGit
+) {
 	// Get the file content from the appropriate source directory
 	let sourcePath;
 
@@ -268,6 +274,12 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 		const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
 		content = content.replace(regex, value);
 	});
+
+	// Special handling for .gitignore: adjust last two lines and merge
+	if (path.basename(targetPath) === '.gitignore') {
+		updateGitignore(targetPath, content, storeTasksInGit, log);
+		return;
+	}
 
 	// Handle special files that should be merged instead of overwritten
 	if (fs.existsSync(targetPath)) {
@@ -364,6 +376,8 @@ async function initializeProject(options = {}) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
 	// }
 
+	let resolvedStoreTasksInGit = options.storeTasksInGit;
+
 	if (skipPrompts) {
 		if (!isSilentMode()) {
 			console.log('SKIPPING PROMPTS - Using defaults or provided values');
@@ -390,7 +404,26 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun);
+		// Determine storeTasksInGit: use CLI option if provided, otherwise prompt
+		resolvedStoreTasksInGit = options.storeTasksInGit;
+		if (typeof resolvedStoreTasksInGit === 'undefined') {
+			const rl = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
+			const storeTasksAnswer = await new Promise((resolve) => {
+				rl.question(
+					'Would you like your tasks.json and task files stored in Git? (y/N): ',
+					(answer) => {
+						rl.close();
+						resolve(answer.trim().toLowerCase());
+					}
+				);
+			});
+			resolvedStoreTasksInGit =
+				storeTasksAnswer === 'y' || storeTasksAnswer === 'yes';
+		}
+		createProjectStructure(addAliases, dryRun, resolvedStoreTasksInGit);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -409,13 +442,28 @@ async function initializeProject(options = {}) {
 			);
 			const addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
 
-			// Confirm settings...
+			// Prompt for storeTasksInGit if not provided
+			if (typeof resolvedStoreTasksInGit === 'undefined') {
+				const storeTasksAnswer = await promptQuestion(
+					rl,
+					'Would you like your tasks.json and task files stored in Git? (y/N): '
+				);
+				resolvedStoreTasksInGit =
+					storeTasksAnswer.trim().toLowerCase() === 'y' ||
+					storeTasksAnswer.trim().toLowerCase() === 'yes';
+			}
+
+			// Confirm settings after all questions
 			console.log('\nTask Master Project settings:');
 			console.log(
 				chalk.blue(
 					'Add shell aliases (so you can use "tm" instead of "task-master"):'
 				),
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
+			);
+			console.log(
+				chalk.blue('Store tasks.json and task files in Git: '),
+				chalk.white(resolvedStoreTasksInGit ? 'Yes' : 'No')
 			);
 
 			const confirmInput = await promptQuestion(
@@ -446,7 +494,11 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(addAliasesPrompted, dryRun);
+			createProjectStructure(
+				addAliasesPrompted,
+				dryRun,
+				resolvedStoreTasksInGit
+			);
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -465,7 +517,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun) {
+function createProjectStructure(addAliases, dryRun, storeTasksInGit) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
@@ -513,8 +565,13 @@ function createProjectStructure(addAliases, dryRun) {
 		}
 	);
 
-	// Copy .gitignore
-	copyTemplateFile('gitignore', path.join(targetDir, '.gitignore'));
+	// Copy .gitignore with dynamic tasks lines
+	copyTemplateFile(
+		'gitignore',
+		path.join(targetDir, '.gitignore'),
+		{},
+		storeTasksInGit
+	);
 
 	// Copy dev_workflow.mdc
 	copyTemplateFile(
