@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';
 import https from 'https';
+import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
@@ -48,7 +49,8 @@ import {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-	getAvailableModels
+	getAvailableModels,
+	getBaseUrlForRole
 } from './config-manager.js';
 
 import {
@@ -153,6 +155,64 @@ async function runInteractiveSetup(projectRoot) {
 		});
 	}
 
+	// Helper function to fetch Ollama models (duplicated for CLI context)
+	function fetchOllamaModelsCLI(baseUrl = 'http://localhost:11434/api') {
+		return new Promise((resolve) => {
+			try {
+				// Parse the base URL to extract hostname, port, and base path
+				const url = new URL(baseUrl);
+				const isHttps = url.protocol === 'https:';
+				const port = url.port || (isHttps ? 443 : 80);
+				const basePath = url.pathname.endsWith('/')
+					? url.pathname.slice(0, -1)
+					: url.pathname;
+
+				const options = {
+					hostname: url.hostname,
+					port: parseInt(port, 10),
+					path: `${basePath}/tags`,
+					method: 'GET',
+					headers: {
+						Accept: 'application/json'
+					}
+				};
+
+				const requestLib = isHttps ? https : http;
+				const req = requestLib.request(options, (res) => {
+					let data = '';
+					res.on('data', (chunk) => {
+						data += chunk;
+					});
+					res.on('end', () => {
+						if (res.statusCode === 200) {
+							try {
+								const parsedData = JSON.parse(data);
+								resolve(parsedData.models || []); // Return the array of models
+							} catch (e) {
+								console.error('Error parsing Ollama response:', e);
+								resolve(null); // Indicate failure
+							}
+						} else {
+							console.error(
+								`Ollama API request failed with status code: ${res.statusCode}`
+							);
+							resolve(null); // Indicate failure
+						}
+					});
+				});
+
+				req.on('error', (e) => {
+					console.error('Error fetching Ollama models:', e);
+					resolve(null); // Indicate failure
+				});
+				req.end();
+			} catch (e) {
+				console.error('Error parsing Ollama base URL:', e);
+				resolve(null); // Indicate failure
+			}
+		});
+	}
+
 	// Helper to get choices and default index for a role
 	const getPromptData = (role, allowNone = false) => {
 		const currentModel = currentModels[role]; // Use the fetched data
@@ -178,6 +238,11 @@ async function runInteractiveSetup(projectRoot) {
 		const customOpenRouterOption = {
 			name: '* Custom OpenRouter model', // Symbol updated
 			value: '__CUSTOM_OPENROUTER__'
+		};
+
+		const customOllamaOption = {
+			name: '* Custom Ollama model', // Symbol updated
+			value: '__CUSTOM_OLLAMA__'
 		};
 
 		let choices = [];
@@ -225,6 +290,7 @@ async function runInteractiveSetup(projectRoot) {
 		}
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
+		commonPrefix.push(customOllamaOption);
 
 		let prefixLength = commonPrefix.length; // Initial prefix length
 
@@ -350,6 +416,47 @@ async function runInteractiveSetup(projectRoot) {
 				console.error(
 					chalk.red(
 						`Error: Model ID "${modelIdToSet}" not found in the live OpenRouter model list. Please check the ID.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+		} else if (selectedValue === '__CUSTOM_OLLAMA__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Ollama Model ID for the ${role} role:`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'ollama';
+			// Get the Ollama base URL from config for this role
+			const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
+			// Validate against live Ollama list
+			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseUrl);
+			if (ollamaModels === null) {
+				console.error(
+					chalk.red(
+						`Error: Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			} else if (!ollamaModels.some((m) => m.model === modelIdToSet)) {
+				console.error(
+					chalk.red(
+						`Error: Model ID "${modelIdToSet}" not found in the Ollama instance. Please verify the model is pulled and available.`
+					)
+				);
+				console.log(
+					chalk.yellow(
+						`You can check available models with: curl ${ollamaBaseUrl}/tags`
 					)
 				);
 				setupSuccess = false;
