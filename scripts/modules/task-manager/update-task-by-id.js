@@ -10,7 +10,8 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -390,12 +391,21 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			const role = useResearch ? 'research' : 'main';
 			report('info', `Using AI service with role: ${role}`);
 
+			// Derive correct project root from tasks.json location if needed
+			let effectiveProjectRoot = projectRoot;
+			if (!effectiveProjectRoot) {
+				// Find project root by looking for .git, package.json, etc. starting from tasks.json location
+				const tasksDir = path.dirname(tasksPath);
+				effectiveProjectRoot = findProjectRoot(tasksDir);
+				report('info', `Derived project root from tasks location: ${effectiveProjectRoot}`);
+			}
+
 			responseText = await generateTextService({
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot: effectiveProjectRoot
 			});
 			report('success', 'Successfully received text response from AI service');
 			// --- End AI Service Call ---

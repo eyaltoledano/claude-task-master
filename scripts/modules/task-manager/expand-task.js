@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, writeJSON, isSilentMode, findProjectRoot } from '../utils.js';
 
 import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
 
@@ -336,7 +336,7 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Use mcpLog if available, otherwise use the default console log wrapper
@@ -498,13 +498,22 @@ async function expandTask(
 			const role = useResearch ? 'research' : 'main';
 			logger.info(`Using AI service with role: ${role}`);
 
+			// Derive correct project root from tasks.json location if needed
+			let effectiveProjectRoot = projectRoot;
+			if (!effectiveProjectRoot) {
+				// Find project root by looking for .git, package.json, etc. starting from tasks.json location
+				const tasksDir = path.dirname(tasksPath);
+				effectiveProjectRoot = findProjectRoot(tasksDir);
+				logger.info(`Derived project root from tasks location: ${effectiveProjectRoot}`);
+			}
+
 			// Call generateTextService with the determined prompts
 			responseText = await generateTextService({
 				prompt: promptContent,
 				systemPrompt: systemPrompt, // Use the determined system prompt
 				role,
 				session,
-				projectRoot
+				projectRoot: effectiveProjectRoot
 			});
 			logger.info(
 				'Successfully received text response from AI service',

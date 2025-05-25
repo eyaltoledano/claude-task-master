@@ -9,7 +9,8 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -364,12 +365,22 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 			if (isMCP) logFn.info(`Using AI service with role: ${role}`);
 			else logFn('info', `Using AI service with role: ${role}`);
 
+			// Derive correct project root from tasks.json location if needed
+			let effectiveProjectRoot = projectRoot;
+			if (!effectiveProjectRoot) {
+				// Find project root by looking for .git, package.json, etc. starting from tasks.json location
+				const tasksDir = path.dirname(tasksPath);
+				effectiveProjectRoot = findProjectRoot(tasksDir);
+				if (isMCP) logFn.info(`Derived project root from tasks location: ${effectiveProjectRoot}`);
+				else logFn('info', `Derived project root from tasks location: ${effectiveProjectRoot}`);
+			}
+
 			responseText = await generateTextService({
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot: effectiveProjectRoot
 			});
 			if (isMCP) logFn.info('Successfully received text response');
 			else

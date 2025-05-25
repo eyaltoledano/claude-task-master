@@ -15,7 +15,8 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	findProjectRoot
 } from '../utils.js';
 import {
 	generateObjectService,
@@ -240,6 +241,15 @@ Guidelines:
 			const role = useResearch ? 'research' : 'main';
 			report('info', `Using AI object service with role: ${role}`);
 
+			// Derive correct project root from tasks.json location if needed
+			let effectiveProjectRoot = projectRoot;
+			if (!effectiveProjectRoot) {
+				// Find project root by looking for .git, package.json, etc. starting from tasks.json location
+				const tasksDir = path.dirname(tasksPath);
+				effectiveProjectRoot = findProjectRoot(tasksDir);
+				report('info', `Derived project root from tasks location: ${effectiveProjectRoot}`);
+			}
+
 			parsedAIResponse = await generateObjectService({
 				prompt: userPrompt,
 				systemPrompt: systemPrompt,
@@ -247,7 +257,7 @@ Guidelines:
 				objectName: 'updatedSubtask',
 				role,
 				session,
-				projectRoot,
+				projectRoot: effectiveProjectRoot,
 				maxRetries: 2
 			});
 			report(

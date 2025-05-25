@@ -1,8 +1,9 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import readline from 'readline';
+import path from 'path';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, writeJSON, isSilentMode, findProjectRoot } from '../utils.js';
 
 import { startLoadingIndicator, stopLoadingIndicator } from '../ui.js';
 
@@ -211,12 +212,21 @@ async function analyzeTaskComplexity(options, context = {}) {
 			const role = useResearch ? 'research' : 'main';
 			reportLog(`Using AI service with role: ${role}`, 'info');
 
+			// Derive correct project root from tasks.json location if needed
+			let effectiveProjectRoot = projectRoot;
+			if (!effectiveProjectRoot) {
+				// Find project root by looking for .git, package.json, etc. starting from tasks.json location
+				const tasksDir = path.dirname(tasksPath);
+				effectiveProjectRoot = findProjectRoot(tasksDir);
+				reportLog(`Derived project root from tasks location: ${effectiveProjectRoot}`, 'info');
+			}
+
 			fullResponse = await generateTextService({
 				prompt,
 				systemPrompt,
 				role,
 				session,
-				projectRoot
+				projectRoot: effectiveProjectRoot
 			});
 
 			reportLog(
