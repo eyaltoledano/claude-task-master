@@ -1,13 +1,6 @@
-# Task Master [![GitHub stars](https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social)](https://github.com/eyaltoledano/claude-task-master/stargazers)
+### By [@delorenj](https://delorenj.com)
 
-[![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
-
-### By [@eyaltoledano](https://x.com/eyaltoledano) & [@RalphEcom](https://x.com/RalphEcom)
-
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano?style=flat)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom?style=flat)](https://x.com/RalphEcom)
-
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+A fork of task-master-ai with various improvements that make it more configurable and robust.
 
 ## Requirements
 
@@ -120,26 +113,21 @@ For more detailed information, check out the documentation in the `docs` directo
 Try running it with Node directly:
 
 ```bash
-node node_modules/claude-task-master/scripts/init.js
+node node_modules/taskmaster/scripts/init.js
 ```
 
 Or clone the repository and run:
 
 ```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
+git clone https://github.com/delorenj/taskmaster.git
+cd taskmaster
 node scripts/init.js
 ```
+## Huge thanks to the original repo
+
+This is one of the truly workflow-changing MCP server I've incorporated into my daily tasks
 
 ## Contributors
-
-<a href="https://github.com/eyaltoledano/claude-task-master/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=eyaltoledano/claude-task-master" alt="Task Master project contributors" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=eyaltoledano/claude-task-master&type=Timeline)](https://www.star-history.com/#eyaltoledano/claude-task-master&Timeline)
 
 ## Licensing
 

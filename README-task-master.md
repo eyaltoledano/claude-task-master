@@ -1,8 +1,10 @@
 # Task Master
 
-### by [@eyaltoledano](https://x.com/eyaltoledano)
+### by [@delorenj](https://delorenj.com)
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+		"taskmaster": "bin/taskmaster.js",
+		"taskmaster-mcp": "mcp-server/server.js",
+A fork of task-master-ai with various improvements that make it more configurable and robust.
 
 ## Requirements
 
@@ -10,6 +12,7 @@ A task management system for AI-driven development with Claude, designed to work
 - Anthropic API key (Claude API)
 - Anthropic SDK version 0.39.0 or higher
 - OpenAI SDK (for Perplexity API integration, optional)
+- OpenRouter API key (optional)
 
 ## Configuration
 
@@ -18,7 +21,7 @@ Taskmaster uses two primary configuration methods:
 1.  **`.taskmasterconfig` File (Project Root)**
 
     - Stores most settings: AI model selections (main, research, fallback), parameters (max tokens, temperature), logging level, default priority/subtasks, project name.
-    - **Created and managed using `task-master models --setup` CLI command or the `models` MCP tool.**
+    - **Created and managed using `taskmaster models --setup` CLI command or the `models` MCP tool.**
     - Do not edit manually unless you know what you are doing.
 
 2.  **Environment Variables (`.env` file or MCP `env` block)**
@@ -26,46 +29,23 @@ Taskmaster uses two primary configuration methods:
     - **For CLI:** Place keys in a `.env` file in your project root.
     - **For MCP/Cursor:** Place keys in the `env` section of your `.cursor/mcp.json` (or other MCP config according to the AI IDE or client you use) file under the `taskmaster-ai` server definition.
 
-**Important:** Settings like model choices, max tokens, temperature, and log level are **no longer configured via environment variables.** Use the `task-master models` command or tool.
+**Important:** Settings like model choices, max tokens, temperature, and log level are **no longer configured via environment variables.** Use the `taskmaster models` command or tool.
 
 See the [Configuration Guide](docs/configuration.md) for full details.
 
 ## Installation
 
 ```bash
-# Install globally
-npm install -g task-master-ai
-
-# OR install locally within your project
-npm install task-master-ai
+pnpm install -g taskmaster
 ```
 
 ### Initialize a new project
 
 ```bash
-# If installed globally
-task-master init
-
-# If installed locally
-npx task-master init
+taskmaster init
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
-
-### Important Notes
-
-1. **ES Modules Configuration:**
-
-   - This project uses ES Modules (ESM) instead of CommonJS.
-   - This is set via `"type": "module"` in your package.json.
-   - Use `import/export` syntax instead of `require()`.
-   - Files should use `.js` or `.mjs` extensions.
-   - To use a CommonJS module, either:
-     - Rename it with `.cjs` extension
-     - Use `await import()` for dynamic imports
-   - If you need CommonJS throughout your project, remove `"type": "module"` from package.json, but Task Master scripts expect ESM.
-
-2. The Anthropic SDK version should be 0.39.0 or higher.
 
 ## Quick Start with Global Commands
 
@@ -73,37 +53,19 @@ After installing the package globally, you can use these CLI commands from any d
 
 ```bash
 # Initialize a new project
-task-master init
+taskmaster init
 
 # Parse a PRD and generate tasks
-task-master parse-prd your-prd.txt
+taskmaster parse-prd docs/PRD.md
 
 # List all tasks
-task-master list
+taskmaster list
 
-# Show the next task to work on
-task-master next
+# Analyze Complexity
+taskmaster analyze-complexity
 
-# Generate task files
-task-master generate
-```
-
-## Troubleshooting
-
-### If `task-master init` doesn't respond:
-
-Try running it with Node directly:
-
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
-
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
+# Expand tasks according to complexity report
+taskmaster expand --all
 ```
 
 ## Task Structure
@@ -143,7 +105,7 @@ To enable enhanced task management capabilities directly within Cursor using the
 4. Configure with the following details:
    - Name: "Task Master"
    - Type: "Command"
-   - Command: "npx -y task-master-ai"
+   - Command: "npx -y taskmaster-ai"
 5. Save the settings
 
 Once configured, you can interact with Task Master's task management commands directly through Cursor's interface, providing a more integrated experience.
@@ -153,13 +115,13 @@ Once configured, you can interact with Task Master's task management commands di
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
+Please use the taskmaster parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
 ```
 
 The agent will execute:
 
 ```bash
-task-master parse-prd scripts/prd.txt
+taskmaster parse-prd scripts/prd.txt
 ```
 
 This will:
@@ -179,7 +141,7 @@ Please generate individual task files from tasks.json
 The agent will execute:
 
 ```bash
-task-master generate
+taskmaster generate
 ```
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
@@ -198,8 +160,8 @@ What tasks are available to work on next?
 
 The agent will:
 
-- Run `task-master list` to see all tasks
-- Run `task-master next` to determine the next task to work on
+- Run `taskmaster list` to see all tasks
+- Run `taskmaster next` to determine the next task to work on
 - Analyze dependencies to determine which tasks are ready to be worked on
 - Prioritize tasks based on priority level and ID order
 - Suggest the next task(s) to implement
@@ -238,7 +200,7 @@ Task 3 is now complete. Please update its status.
 The agent will execute:
 
 ```bash
-task-master set-status --id=3 --status=done
+taskmaster set-status --id=3 --status=done
 ```
 
 ### 5. Handling Implementation Drift
@@ -258,7 +220,7 @@ We've changed our approach. We're now using Express instead of Fastify. Please u
 The agent will execute:
 
 ```bash
-task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
+taskmaster update --from=4 --prompt="Now we are using Express instead of Fastify."
 ```
 
 This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
@@ -274,7 +236,7 @@ Task 5 seems complex. Can you break it down into subtasks?
 The agent will execute:
 
 ```bash
-task-master expand --id=5 --num=3
+taskmaster expand --id=5 --num=3
 ```
 
 You can provide additional context:
@@ -286,7 +248,7 @@ Please break down task 5 with a focus on security considerations.
 The agent will execute:
 
 ```bash
-task-master expand --id=5 --prompt="Focus on security aspects"
+taskmaster expand --id=5 --prompt="Focus on security aspects"
 ```
 
 You can also expand all pending tasks:
@@ -298,7 +260,7 @@ Please break down all pending tasks into subtasks.
 The agent will execute:
 
 ```bash
-task-master expand --all
+taskmaster expand --all
 ```
 
 For research-backed subtask generation using Perplexity AI:
@@ -310,7 +272,7 @@ Please break down task 5 using research-backed generation.
 The agent will execute:
 
 ```bash
-task-master expand --id=5 --research
+taskmaster expand --id=5 --research
 ```
 
 ## Command Reference
@@ -321,72 +283,72 @@ Here's a comprehensive reference of all available commands:
 
 ```bash
 # Parse a PRD file and generate tasks
-task-master parse-prd <prd-file.txt>
+taskmaster parse-prd <prd-file.txt>
 
 # Limit the number of tasks generated
-task-master parse-prd <prd-file.txt> --num-tasks=10
+taskmaster parse-prd <prd-file.txt> --num-tasks=10
 ```
 
 ### List Tasks
 
 ```bash
 # List all tasks
-task-master list
+taskmaster list
 
 # List tasks with a specific status
-task-master list --status=<status>
+taskmaster list --status=<status>
 
 # List tasks with subtasks
-task-master list --with-subtasks
+taskmaster list --with-subtasks
 
 # List tasks with a specific status and include subtasks
-task-master list --status=<status> --with-subtasks
+taskmaster list --status=<status> --with-subtasks
 ```
 
 ### Show Next Task
 
 ```bash
 # Show the next task to work on based on dependencies and status
-task-master next
+taskmaster next
 ```
 
 ### Show Specific Task
 
 ```bash
 # Show details of a specific task
-task-master show <id>
+taskmaster show <id>
 # or
-task-master show --id=<id>
+taskmaster show --id=<id>
 
 # View a specific subtask (e.g., subtask 2 of task 1)
-task-master show 1.2
+taskmaster show 1.2
 ```
 
 ### Update Tasks
 
 ```bash
 # Update tasks from a specific ID and provide context
-task-master update --from=<id> --prompt="<prompt>"
+taskmaster update --from=<id> --prompt="<prompt>"
 ```
 
 ### Generate Task Files
 
 ```bash
 # Generate individual task files from tasks.json
-task-master generate
+taskmaster generate
 ```
 
 ### Set Task Status
 
 ```bash
 # Set status of a single task
-task-master set-status --id=<id> --status=<status>
+taskmaster set-status --id=<id> --status=<status>
 
 # Set status for multiple tasks
-task-master set-status --id=1,2,3 --status=<status>
+taskmaster set-status --id=1,2,3 --status=<status>
 
 # Set status for subtasks
-task-master set-status --id=1.1,1.2 --status=<status>
+taskmaster set-status --id=1.1,1.2 --status=<status>
 ```
 
 When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
@@ -395,96 +357,96 @@ When marking a task as "done", all of its subtasks will automatically be marked 
 
 ```bash
 # Expand a specific task with subtasks
-task-master expand --id=<id> --num=<number>
+taskmaster expand --id=<id> --num=<number>
 
 # Expand with additional context
-task-master expand --id=<id> --prompt="<context>"
+taskmaster expand --id=<id> --prompt="<context>"
 
 # Expand all pending tasks
-task-master expand --all
+taskmaster expand --all
 
 # Force regeneration of subtasks for tasks that already have them
-task-master expand --all --force
+taskmaster expand --all --force
 
 # Research-backed subtask generation for a specific task
-task-master expand --id=<id> --research
+taskmaster expand --id=<id> --research
 
 # Research-backed generation for all tasks
-task-master expand --all --research
+taskmaster expand --all --research
 ```
 
 ### Clear Subtasks
 
 ```bash
 # Clear subtasks from a specific task
-task-master clear-subtasks --id=<id>
+taskmaster clear-subtasks --id=<id>
 
 # Clear subtasks from multiple tasks
-task-master clear-subtasks --id=1,2,3
+taskmaster clear-subtasks --id=1,2,3
 
 # Clear subtasks from all tasks
-task-master clear-subtasks --all
+taskmaster clear-subtasks --all
 ```
 
 ### Analyze Task Complexity
 
 ```bash
 # Analyze complexity of all tasks
-task-master analyze-complexity
+taskmaster analyze-complexity
 
 # Save report to a custom location
-task-master analyze-complexity --output=my-report.json
+taskmaster analyze-complexity --output=my-report.json
 
 # Use a specific LLM model
-task-master analyze-complexity --model=claude-3-opus-20240229
+taskmaster analyze-complexity --model=claude-3-opus-20240229
 
 # Set a custom complexity threshold (1-10)
-task-master analyze-complexity --threshold=6
+taskmaster analyze-complexity --threshold=6
 
 # Use an alternative tasks file
-task-master analyze-complexity --file=custom-tasks.json
+taskmaster analyze-complexity --file=custom-tasks.json
 
 # Use Perplexity AI for research-backed complexity analysis
-task-master analyze-complexity --research
+taskmaster analyze-complexity --research
 ```
 
 ### View Complexity Report
 
 ```bash
 # Display the task complexity analysis report
-task-master complexity-report
+taskmaster complexity-report
 
 # View a report at a custom location
-task-master complexity-report --file=my-report.json
+taskmaster complexity-report --file=my-report.json
 ```
 
 ### Managing Task Dependencies
 
 ```bash
 # Add a dependency to a task
-task-master add-dependency --id=<id> --depends-on=<id>
+taskmaster add-dependency --id=<id> --depends-on=<id>
 
 # Remove a dependency from a task
-task-master remove-dependency --id=<id> --depends-on=<id>
+taskmaster remove-dependency --id=<id> --depends-on=<id>
 
 # Validate dependencies without fixing them
-task-master validate-dependencies
+taskmaster validate-dependencies
 
 # Find and fix invalid dependencies automatically
-task-master fix-dependencies
+taskmaster fix-dependencies
 ```
 
 ### Add a New Task
 
 ```bash
 # Add a new task using AI
-task-master add-task --prompt="Description of the new task"
+taskmaster add-task --prompt="Description of the new task"
 
 # Add a task with dependencies
-task-master add-task --prompt="Description" --dependencies=1,2,3
+taskmaster add-task --prompt="Description" --dependencies=1,2,3
 
 # Add a task with priority
-task-master add-task --prompt="Description" --priority=high
+taskmaster add-task --prompt="Description" --priority=high
 ```
 
 ## Feature Details
@@ -532,15 +494,15 @@ Example workflow:
 
 ```bash
 # Generate the complexity analysis report with research capabilities
-task-master analyze-complexity --research
+taskmaster analyze-complexity --research
 
 # Review the report in a readable format
-task-master complexity-report
+taskmaster complexity-report
 
 # Expand tasks using the optimized recommendations
-task-master expand --id=8
+taskmaster expand --id=8
 # or expand all tasks
-task-master expand --all
+taskmaster expand --all
 ```
 
 ### Finding the Next Task

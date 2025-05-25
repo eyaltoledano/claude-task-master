@@ -1,13 +1,15 @@
 {
-	"name": "task-master-ai",
-	"version": "0.13.2-rc.1",
-	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
+	"name": "taskmaster",
+	"version": "0.13.2-rc.1.1",
+	"description": "A fork of task-master-ai with various improvements that make it more configurable and robust.",
 	"main": "index.js",
 	"type": "module",
 	"bin": {
 		"task-master": "bin/task-master.js",
 		"task-master-mcp": "mcp-server/server.js",
-		"task-master-ai": "mcp-server/server.js"
+		"task-master-ai": "mcp-server/server.js",
+		"taskmaster": "bin/task-master.js",
+		"taskmaster-mcp": "mcp-server/server.js"
 	},
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
@@ -20,7 +22,7 @@
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
-		"mcp-server": "node mcp-server/server.js",
+		"serve": "node mcp-server/server.js",
 		"format-check": "prettier --check .",
 		"format": "prettier --write ."
 	},
@@ -31,12 +33,15 @@
 		"ai",
 		"development",
 		"cursor",
+		"roo",
+		"cline",
+		"divide-and-conquer",
 		"anthropic",
 		"llm",
 		"mcp",
 		"context"
 	],
-	"author": "Eyal Toledano",
+	"author": "Jarad DeLorenzo",
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
 		"@ai-sdk/anthropic": "^1.2.10",
@@ -75,11 +80,11 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/eyaltoledano/claude-task-master.git"
+		"url": "git+https://github.com/delorenj/taskmaster.git"
 	},
-	"homepage": "https://github.com/eyaltoledano/claude-task-master#readme",
+	"homepage": "https://github.com/delorenj/taskmaster#readme",
 	"bugs": {
-		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
+		"url": "https://github.com/delorenj/taskmaster/issues"
 	},
 	"files": [
 		"scripts/**",
