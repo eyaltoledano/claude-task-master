@@ -269,11 +269,36 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Delete unnecessary subtasks or promote a subtask to a top-level task.
 
+### 17. Move Task (`move_task`)
+
+*   **MCP Tool:** `move_task`
+*   **CLI Command:** `task-master move [options]`
+*   **Description:** `Move a task or subtask to a new position within the task hierarchy.`
+*   **Key Parameters/Options:**
+    *   `from`: `Required. ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated for multiple tasks.` (CLI: `--from <id>`)
+    *   `to`: `Required. ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated.` (CLI: `--to <id>`)
+    *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
+*   **Usage:** Reorganize tasks by moving them within the hierarchy. Supports various scenarios like:
+    *   Moving a task to become a subtask
+    *   Moving a subtask to become a standalone task
+    *   Moving a subtask to a different parent
+    *   Reordering subtasks within the same parent
+    *   Moving a task to a new, non-existent ID (automatically creates placeholders)
+    *   Moving multiple tasks at once with comma-separated IDs
+*   **Validation Features:**
+    *   Allows moving tasks to non-existent destination IDs (creates placeholder tasks)
+    *   Prevents moving to existing task IDs that already have content (to avoid overwriting)
+    *   Validates that source tasks exist before attempting to move them
+    *   Maintains proper parent-child relationships
+*   **Example CLI:** `task-master move --from=5.2 --to=7.3` to move subtask 5.2 to become subtask 7.3.
+*   **Example Multi-Move:** `task-master move --from=10,11,12 --to=16,17,18` to move multiple tasks to new positions.
+*   **Common Use:** Resolving merge conflicts in tasks.json when multiple team members create tasks on different branches.
+
 ---
 
 ## Dependency Management
 
-### 17. Add Dependency (`add_dependency`)
+### 18. Add Dependency (`add_dependency`)
 
 *   **MCP Tool:** `add_dependency`
 *   **CLI Command:** `task-master add-dependency [options]`
@@ -284,7 +309,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <path>`)
 *   **Usage:** Establish the correct order of execution between tasks.
 
-### 18. Remove Dependency (`remove_dependency`)
+### 19. Remove Dependency (`remove_dependency`)
 
 *   **MCP Tool:** `remove_dependency`
 *   **CLI Command:** `task-master remove-dependency [options]`
@@ -295,7 +320,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Update task relationships when the order of execution changes.
 
-### 19. Validate Dependencies (`validate_dependencies`)
+### 20. Validate Dependencies (`validate_dependencies`)
 
 *   **MCP Tool:** `validate_dependencies`
 *   **CLI Command:** `task-master validate-dependencies [options]`
@@ -304,7 +329,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Audit the integrity of your task dependencies.
 
-### 20. Fix Dependencies (`fix_dependencies`)
+### 21. Fix Dependencies (`fix_dependencies`)
 
 *   **MCP Tool:** `fix_dependencies`
 *   **CLI Command:** `task-master fix-dependencies [options]`
@@ -317,7 +342,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## Analysis & Reporting
 
-### 21. Analyze Project Complexity (`analyze_project_complexity`)
+### 22. Analyze Project Complexity (`analyze_project_complexity`)
 
 *   **MCP Tool:** `analyze_project_complexity`
 *   **CLI Command:** `task-master analyze-complexity [options]`
@@ -330,7 +355,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Used before breaking down tasks to identify which ones need the most attention.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 22. View Complexity Report (`complexity_report`)
+### 23. View Complexity Report (`complexity_report`)
 
 *   **MCP Tool:** `complexity_report`
 *   **CLI Command:** `task-master complexity-report [options]`
@@ -343,7 +368,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 
 ## File Management
 
-### 23. Generate Task Files (`generate`)
+### 24. Generate Task Files (`generate`)
 
 *   **MCP Tool:** `generate`
 *   **CLI Command:** `task-master generate [options]`

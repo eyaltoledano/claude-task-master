@@ -1793,7 +1793,7 @@
           "title": "Create command structure for 'generate-test'",
           "description": "Implement the basic structure for the 'generate-test' command, including command registration, parameter validation, and help documentation.",
           "dependencies": [],
-          "details": "Implementation steps:\n1. Create a new file `src/commands/generate-test.ts`\n2. Implement the command structure following the pattern of existing commands\n3. Register the new command in the CLI framework\n4. Add command options for task ID (--id=X) parameter\n5. Implement parameter validation to ensure a valid task ID is provided\n6. Add help documentation for the command\n7. Create the basic command flow that retrieves the task from the task store\n8. Implement error handling for invalid task IDs and other basic errors\n\nTesting approach:\n- Test command registration\n- Test parameter validation (missing ID, invalid ID format)\n- Test error handling for non-existent task IDs\n- Test basic command flow with a mock task store",
+          "details": "Implementation steps:\n1. Create a new file `src/commands/generate-test.ts`\n2. Implement the command structure following the pattern of existing commands\n3. Register the new command in the CLI framework\n4. Add command options for task ID (--id=X) parameter\n5. Implement parameter validation to ensure a valid task ID is provided\n6. Add help documentation for the command\n7. Create the basic command flow that retrieves the task from the task store\n8. Implement error handling for invalid task IDs and other basic errors\n\nTesting approach:\n- Test command registration\n- Test parameter validation (missing ID, invalid ID format)\n- Test error handling for non-existent task IDs\n- Test basic command flow with a mock task store\n<info added on 2025-05-23T21:02:03.909Z>\n## Updated Implementation Approach\n\nBased on code review findings, the implementation approach needs to be revised:\n\n1. Implement the command in `scripts/modules/commands.js` instead of creating a new file\n2. Add command registration in the `registerCommands()` function (around line 482)\n3. Follow existing command structure pattern:\n   ```javascript\n   programInstance\n       .command('generate-test')\n       .description('Generate test cases for a task using AI')\n       .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')\n       .option('-i, --id <id>', 'Task ID parameter')\n       .option('-p, --prompt <text>', 'Additional prompt context')\n       .option('-r, --research', 'Use research model')\n       .action(async (options) => {\n           // Implementation\n       });\n   ```\n\n4. Use the following utilities:\n   - `findProjectRoot()` for resolving project paths\n   - `findTaskById()` for retrieving task data\n   - `chalk` for formatted console output\n\n5. Implement error handling following the pattern:\n   ```javascript\n   try {\n       // Implementation\n   } catch (error) {\n       console.error(chalk.red(`Error generating test: ${error.message}`));\n       if (error.details) {\n           console.error(chalk.red(error.details));\n       }\n       process.exit(1);\n   }\n   ```\n\n6. Required imports:\n   - chalk for colored output\n   - path for file path operations\n   - findProjectRoot and findTaskById from './utils.js'\n</info added on 2025-05-23T21:02:03.909Z>",
           "status": "pending",
           "parentTaskId": 24
         },
@@ -1804,7 +1804,7 @@
           "dependencies": [
             1
           ],
-          "details": "Implementation steps:\n1. Create a utility function to analyze task descriptions and subtasks for test requirements\n2. Implement a prompt builder that formats task information into an effective AI prompt\n3. Use FastMCP to send the prompt and receive the response\n4. Process the FastMCP response to extract the generated test code\n5. Implement error handling for FastMCP failures, rate limits, and malformed responses\n6. Add appropriate logging for the FastMCP interaction process\n\nTesting approach:\n- Test prompt construction with various task types\n- Test FastMCP integration with mocked responses\n- Test error handling for FastMCP failures\n- Test response processing with sample FastMCP outputs",
+          "details": "Implementation steps:\n1. Create a utility function to analyze task descriptions and subtasks for test requirements\n2. Implement a prompt builder that formats task information into an effective AI prompt\n3. Use FastMCP to send the prompt and receive the response\n4. Process the FastMCP response to extract the generated test code\n5. Implement error handling for FastMCP failures, rate limits, and malformed responses\n6. Add appropriate logging for the FastMCP interaction process\n\nTesting approach:\n- Test prompt construction with various task types\n- Test FastMCP integration with mocked responses\n- Test error handling for FastMCP failures\n- Test response processing with sample FastMCP outputs\n<info added on 2025-05-23T21:04:33.890Z>\n## AI Integration Implementation\n\n### AI Service Integration\n- Use the unified AI service layer, not FastMCP directly\n- Implement with `generateObjectService` from '../ai-services-unified.js'\n- Define Zod schema for structured test generation output:\n  - testContent: Complete Jest test file content\n  - fileName: Suggested filename for the test file\n  - mockRequirements: External dependencies that need mocking\n\n### Prompt Construction\n- Create system prompt defining AI's role as test generator\n- Build user prompt with task context (ID, title, description, details)\n- Include test strategy and subtasks context in the prompt\n- Follow patterns from add-task.js for prompt structure\n\n### Task Analysis\n- Retrieve task data using `findTaskById()` from utils.js\n- Build context by analyzing task description, details, and testStrategy\n- Examine project structure for import patterns\n- Parse specific testing requirements from task.testStrategy field\n\n### File System Operations\n- Determine output path in same directory as tasks.json\n- Generate standardized filename based on task ID\n- Use fs.writeFileSync for writing test content to file\n\n### Error Handling & UI\n- Implement try/catch blocks for AI service calls\n- Display user-friendly error messages with chalk\n- Use loading indicators during AI processing\n- Support both research and main AI models\n\n### Telemetry\n- Pass through telemetryData from AI service response\n- Display AI usage summary for CLI output\n\n### Required Dependencies\n- generateObjectService from ai-services-unified.js\n- UI components (loading indicators, display functions)\n- Zod for schema validation\n- Chalk for formatted console output\n</info added on 2025-05-23T21:04:33.890Z>",
           "status": "pending",
           "parentTaskId": 24
         },
@@ -1815,8 +1815,30 @@
           "dependencies": [
             2
           ],
-          "details": "Implementation steps:\n1. Create a utility to format the FastMCP response into a well-structured Jest test file\n2. Implement naming logic for test files (task_XXX.test.ts for parent tasks, task_XXX_YYY.test.ts for subtasks)\n3. Add logic to determine the appropriate file path for saving the test\n4. Implement file system operations to write the test file\n5. Add validation to ensure the generated test follows Jest conventions\n6. Implement formatting of the test file for consistency with project coding standards\n7. Add user feedback about successful test generation and file location\n8. Implement handling for both parent tasks and subtasks\n\nTesting approach:\n- Test file naming logic for various task/subtask combinations\n- Test file content formatting with sample FastMCP outputs\n- Test file system operations with mocked fs module\n- Test the complete flow from command input to file output\n- Verify generated tests can be executed by Jest",
+          "details": "Implementation steps:\n1. Create a utility to format the FastMCP response into a well-structured Jest test file\n2. Implement naming logic for test files (task_XXX.test.ts for parent tasks, task_XXX_YYY.test.ts for subtasks)\n3. Add logic to determine the appropriate file path for saving the test\n4. Implement file system operations to write the test file\n5. Add validation to ensure the generated test follows Jest conventions\n6. Implement formatting of the test file for consistency with project coding standards\n7. Add user feedback about successful test generation and file location\n8. Implement handling for both parent tasks and subtasks\n\nTesting approach:\n- Test file naming logic for various task/subtask combinations\n- Test file content formatting with sample FastMCP outputs\n- Test file system operations with mocked fs module\n- Test the complete flow from command input to file output\n- Verify generated tests can be executed by Jest\n<info added on 2025-05-23T21:06:32.457Z>\n## Detailed Implementation Guidelines\n\n### File Naming Convention Implementation\n```javascript\nfunction generateTestFileName(taskId, isSubtask = false) {\n  if (isSubtask) {\n    // For subtasks like \"24.1\", generate \"task_024_001.test.js\"\n    const [parentId, subtaskId] = taskId.split('.');\n    return `task_${parentId.padStart(3, '0')}_${subtaskId.padStart(3, '0')}.test.js`;\n  } else {\n    // For parent tasks like \"24\", generate \"task_024.test.js\"\n    return `task_${taskId.toString().padStart(3, '0')}.test.js`;\n  }\n}\n```\n\n### File Location Strategy\n- Place generated test files in the `tasks/` directory alongside task files\n- This ensures co-location with task documentation and simplifies implementation\n\n### File Content Structure Template\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { jest } from '@jest/globals';\n// Additional imports based on task requirements\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n  beforeEach(() => {\n    // Setup code\n  });\n\n  afterEach(() => {\n    // Cleanup code\n  });\n\n  test('should ${testDescription}', () => {\n    // Test implementation\n  });\n});\n```\n\n### Code Formatting Standards\n- Follow project's .prettierrc configuration:\n  - Tab width: 2 spaces (useTabs: true)\n  - Print width: 80 characters\n  - Semicolons: Required (semi: true)\n  - Quotes: Single quotes (singleQuote: true)\n  - Trailing commas: None (trailingComma: \"none\")\n  - Bracket spacing: True\n  - Arrow parens: Always\n\n### File System Operations Implementation\n```javascript\nimport fs from 'fs';\nimport path from 'path';\n\n// Determine output path\nconst tasksDir = path.dirname(tasksPath); // Same directory as tasks.json\nconst fileName = generateTestFileName(task.id, isSubtask);\nconst filePath = path.join(tasksDir, fileName);\n\n// Ensure directory exists\nif (!fs.existsSync(tasksDir)) {\n  fs.mkdirSync(tasksDir, { recursive: true });\n}\n\n// Write test file with proper error handling\ntry {\n  fs.writeFileSync(filePath, formattedTestContent, 'utf8');\n} catch (error) {\n  throw new Error(`Failed to write test file: ${error.message}`);\n}\n```\n\n### Error Handling for File Operations\n```javascript\ntry {\n  // File writing operation\n  fs.writeFileSync(filePath, testContent, 'utf8');\n} catch (error) {\n  if (error.code === 'ENOENT') {\n    throw new Error(`Directory does not exist: ${path.dirname(filePath)}`);\n  } else if (error.code === 'EACCES') {\n    throw new Error(`Permission denied writing to: ${filePath}`);\n  } else if (error.code === 'ENOSPC') {\n    throw new Error('Insufficient disk space to write test file');\n  } else {\n    throw new Error(`Failed to write test file: ${error.message}`);\n  }\n}\n```\n\n### User Feedback Implementation\n```javascript\n// Success feedback\nconsole.log(chalk.green('✅ Test file generated successfully:'));\nconsole.log(chalk.cyan(`   File: ${fileName}`));\nconsole.log(chalk.cyan(`   Location: ${filePath}`));\nconsole.log(chalk.gray(`   Size: ${testContent.length} characters`));\n\n// Additional info\nif (mockRequirements && mockRequirements.length > 0) {\n  console.log(chalk.yellow(`   Mocks needed: ${mockRequirements.join(', ')}`));\n}\n```\n\n### Content Validation Requirements\n1. Jest Syntax Validation:\n   - Ensure proper describe/test structure\n   - Validate import statements\n   - Check for balanced brackets and parentheses\n\n2. Code Quality Checks:\n   - Verify no syntax errors\n   - Ensure proper indentation\n   - Check for required imports\n\n3. Test Completeness:\n   - At least one test case\n   - Proper test descriptions\n   - Appropriate assertions\n\n### Required Dependencies\n```javascript\nimport fs from 'fs';\nimport path from 'path';\nimport chalk from 'chalk';\nimport { log } from '../utils.js';\n```\n\n### Integration with Existing Patterns\nFollow the pattern from `generate-task-files.js`:\n1. Read task data using existing utilities\n2. Process content with proper formatting\n3. Write files with error handling\n4. Provide feedback to user\n5. Return success data for MCP integration\n</info added on 2025-05-23T21:06:32.457Z>\n<info added on 2025-05-23T21:18:25.369Z>\n## Corrected Implementation Approach\n\n### Updated File Location Strategy\n\n**CORRECTION**: Tests should go in `/tests/` directory, not `/tasks/` directory.\n\nBased on Jest configuration analysis:\n- Jest is configured with `roots: ['<rootDir>/tests']`\n- Test pattern: `**/?(*.)+(spec|test).js`\n- Current test structure has `/tests/unit/`, `/tests/integration/`, etc.\n\n### Recommended Directory Structure:\n```\ntests/\n├── unit/                    # Manual unit tests\n├── integration/             # Manual integration tests  \n├── generated/               # AI-generated tests\n│   ├── tasks/              # Generated task tests\n│   │   ├── task_024.test.js\n│   │   └── task_024_001.test.js\n│   └── README.md           # Explains generated tests\n└── fixtures/               # Test fixtures\n```\n\n### Updated File Path Logic:\n```javascript\n// Determine output path - place in tests/generated/tasks/\nconst projectRoot = findProjectRoot() || '.';\nconst testsDir = path.join(projectRoot, 'tests', 'generated', 'tasks');\nconst fileName = generateTestFileName(task.id, isSubtask);\nconst filePath = path.join(testsDir, fileName);\n\n// Ensure directory structure exists\nif (!fs.existsSync(testsDir)) {\n    fs.mkdirSync(testsDir, { recursive: true });\n}\n```\n\n### Testing Framework Configuration\n\nThe generate-test command should read the configured testing framework from `.taskmasterconfig`:\n\n```javascript\n// Read testing framework from config\nconst config = getConfig(projectRoot);\nconst testingFramework = config.testingFramework || 'jest'; // Default to Jest\n\n// Generate different templates based on framework\nswitch (testingFramework) {\n    case 'jest':\n        return generateJestTest(task, context);\n    case 'mocha':\n        return generateMochaTest(task, context);\n    case 'vitest':\n        return generateVitestTest(task, context);\n    default:\n        throw new Error(`Unsupported testing framework: ${testingFramework}`);\n}\n```\n\n### Framework-Specific Templates\n\n**Jest Template** (current):\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { jest } from '@jest/globals';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        jest.clearAllMocks();\n    });\n\n    test('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n**Mocha Template**:\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { expect } from 'chai';\nimport sinon from 'sinon';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        sinon.restore();\n    });\n\n    it('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n**Vitest Template**:\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { describe, test, expect, vi, beforeEach } from 'vitest';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        vi.clearAllMocks();\n    });\n\n    test('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n### AI Prompt Enhancement for Mocking\n\nTo address the mocking challenge, enhance the AI prompt with project context:\n\n```javascript\nconst systemPrompt = `You are an expert at generating comprehensive test files. When generating tests, pay special attention to mocking external dependencies correctly.\n\nCRITICAL MOCKING GUIDELINES:\n1. Analyze the task requirements to identify external dependencies (APIs, databases, file system, etc.)\n2. Mock external dependencies at the module level, not inline\n3. Use the testing framework's mocking utilities (jest.mock(), sinon.stub(), vi.mock())\n4. Create realistic mock data that matches the expected API responses\n5. Test both success and error scenarios for mocked dependencies\n6. Ensure mocks are cleared between tests to prevent test pollution\n\nTesting Framework: ${testingFramework}\nProject Structure: ${projectStructureContext}\n`;\n```\n\n### Integration with Future Features\n\nThis primitive command design enables:\n1. **Automatic test generation**: `task-master add-task --with-test`\n2. **Batch test generation**: `task-master generate-tests --all`\n3. **Framework-agnostic**: Support multiple testing frameworks\n4. **Smart mocking**: LLM analyzes dependencies and generates appropriate mocks\n\n### Updated Implementation Requirements:\n\n1. **Read testing framework** from `.taskmasterconfig`\n2. **Create tests directory structure** if it doesn't exist\n3. **Generate framework-specific templates** based on configuration\n4. **Enhanced AI prompts** with mocking best practices\n5. **Project structure analysis** for better import resolution\n6. **Mock dependency detection** from task requirements\n</info added on 2025-05-23T21:18:25.369Z>",
           "status": "pending",
+          "parentTaskId": 24
+        },
+        {
+          "id": 4,
+          "title": "Implement MCP tool integration for generate-test command",
+          "description": "Create MCP server tool support for the generate-test command to enable integration with Claude Code and other MCP clients.",
+          "details": "Implementation steps:\n1. Create direct function wrapper in mcp-server/src/core/direct-functions/\n2. Create MCP tool registration in mcp-server/src/tools/\n3. Add tool to the main tools index\n4. Implement proper parameter validation and error handling\n5. Ensure telemetry data is properly passed through\n6. Add tool to MCP server registration\n\nThe MCP tool should support the same parameters as the CLI command:\n- id: Task ID to generate tests for\n- file: Path to tasks.json file\n- research: Whether to use research model\n- prompt: Additional context for test generation\n\nFollow the existing pattern from other MCP tools like add-task.js and expand-task.js.",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
+          "parentTaskId": 24
+        },
+        {
+          "id": 5,
+          "title": "Add testing framework configuration to project initialization",
+          "description": "Enhance the init.js process to let users choose their preferred testing framework (Jest, Mocha, Vitest, etc.) and store this choice in .taskmasterconfig for use by the generate-test command.",
+          "details": "Implementation requirements:\n\n1. **Add Testing Framework Prompt to init.js**:\n   - Add interactive prompt asking users to choose testing framework\n   - Support Jest (default), Mocha + Chai, Vitest, Ava, Jasmine\n   - Include brief descriptions of each framework\n   - Allow --testing-framework flag for non-interactive mode\n\n2. **Update .taskmasterconfig Template**:\n   - Add testingFramework field to configuration file\n   - Include default dependencies for each framework\n   - Store framework-specific configuration options\n\n3. **Framework-Specific Setup**:\n   - Generate appropriate config files (jest.config.js, vitest.config.ts, etc.)\n   - Add framework dependencies to package.json suggestions\n   - Create sample test file for the chosen framework\n\n4. **Integration Points**:\n   - Ensure generate-test command reads testingFramework from config\n   - Add validation to prevent conflicts between framework choices\n   - Support switching frameworks later via models command or separate config command\n\nThis makes the generate-test command truly framework-agnostic and sets up the foundation for --with-test flags in other commands.\n<info added on 2025-05-23T21:22:02.048Z>\n# Implementation Plan for Testing Framework Integration\n\n## Code Structure\n\n### 1. Update init.js\n- Add testing framework prompt after addAliases prompt\n- Implement framework selection with descriptions\n- Support non-interactive mode with --testing-framework flag\n- Create setupTestingFramework() function to handle framework-specific setup\n\n### 2. Create New Module Files\n- Create `scripts/modules/testing-frameworks.js` for framework templates and setup\n- Add sample test generators for each supported framework\n- Implement config file generation for each framework\n\n### 3. Update Configuration Templates\n- Modify `assets/.taskmasterconfig` to include testing fields:\n  ```json\n  \"testingFramework\": \"{{testingFramework}}\",\n  \"testingConfig\": {\n    \"framework\": \"{{testingFramework}}\",\n    \"setupFiles\": [],\n    \"testDirectory\": \"tests\",\n    \"testPattern\": \"**/*.test.js\",\n    \"coverage\": {\n      \"enabled\": false,\n      \"threshold\": 80\n    }\n  }\n  ```\n\n### 4. Create Framework-Specific Templates\n- `assets/jest.config.template.js`\n- `assets/vitest.config.template.ts`\n- `assets/.mocharc.template.json`\n- `assets/ava.config.template.js`\n- `assets/jasmine.json.template`\n\n### 5. Update commands.js\n- Add `--testing-framework <framework>` option to init command\n- Add validation for supported frameworks\n\n## Error Handling\n- Validate selected framework against supported list\n- Handle existing config files gracefully with warning/overwrite prompt\n- Provide recovery options if framework setup fails\n- Add conflict detection for multiple testing frameworks\n\n## Integration Points\n- Ensure generate-test command reads testingFramework from config\n- Prepare for future --with-test flag in other commands\n- Support framework switching via config command\n\n## Testing Requirements\n- Unit tests for framework selection logic\n- Integration tests for config file generation\n- Validation tests for each supported framework\n</info added on 2025-05-23T21:22:02.048Z>",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
           "parentTaskId": 24
         }
       ]
@@ -2427,7 +2449,7 @@
           "title": "CLI Command Setup",
           "description": "Design and implement the command-line interface for the dependency graph tool, including argument parsing and help documentation.",
           "dependencies": [],
-          "details": "Define commands for input file specification, output options, filtering, and other user-configurable parameters.",
+          "details": "Define commands for input file specification, output options, filtering, and other user-configurable parameters.\n<info added on 2025-05-23T21:02:26.442Z>\nImplement a new 'diagram' command (with 'graph' alias) in commands.js following the Commander.js pattern. The command should:\n\n1. Import diagram-generator.js module functions for generating visual representations\n2. Support multiple visualization types with --type option:\n   - dependencies: show task dependency relationships\n   - subtasks: show task/subtask hierarchy\n   - flow: show task workflow\n   - gantt: show timeline visualization\n\n3. Include the following options:\n   - --task <id>: Filter diagram to show only specified task and its relationships\n   - --mermaid: Output raw Mermaid markdown for external rendering\n   - --visual: Render diagram directly in terminal\n   - --format <format>: Output format (text, svg, png)\n\n4. Implement proper error handling and validation:\n   - Validate task IDs using existing taskExists() function\n   - Handle invalid option combinations\n   - Provide descriptive error messages\n\n5. Integrate with UI components:\n   - Use ui.js display functions for consistent output formatting\n   - Apply chalk coloring for terminal output\n   - Use boxen formatting consistent with other commands\n\n6. Handle file operations:\n   - Resolve file paths using findProjectRoot() pattern\n   - Support saving diagrams to files when appropriate\n\n7. Include comprehensive help text following the established pattern in other commands\n</info added on 2025-05-23T21:02:26.442Z>",
           "status": "pending"
         },
         {
@@ -2437,7 +2459,7 @@
           "dependencies": [
             1
           ],
-          "details": "Consider topological sorting, hierarchical, and force-directed layouts suitable for ASCII/Unicode rendering.",
+          "details": "Consider topological sorting, hierarchical, and force-directed layouts suitable for ASCII/Unicode rendering.\n<info added on 2025-05-23T21:02:49.434Z>\nCreate a new diagram-generator.js module in the scripts/modules/ directory following Task Master's module architecture pattern. The module should include:\n\n1. Core functions for generating Mermaid diagrams:\n   - generateDependencyGraph(tasks, options) - creates flowchart showing task dependencies\n   - generateSubtaskDiagram(task, options) - creates hierarchy diagram for subtasks\n   - generateProjectFlow(tasks, options) - creates overall project workflow\n   - generateGanttChart(tasks, options) - creates timeline visualization\n\n2. Integration with existing Task Master data structures:\n   - Use the same task object format from task-manager.js\n   - Leverage dependency analysis from dependency-manager.js\n   - Support complexity scores from analyze-complexity functionality\n   - Handle both main tasks and subtasks with proper ID notation (parentId.subtaskId)\n\n3. Layout algorithm considerations for Mermaid:\n   - Topological sorting for dependency flows\n   - Hierarchical layouts for subtask trees\n   - Circular dependency detection and highlighting\n   - Terminal width-aware formatting for ASCII fallback\n\n4. Export functions following the existing module pattern at the bottom of the file\n</info added on 2025-05-23T21:02:49.434Z>",
           "status": "pending"
         },
         {
@@ -2447,7 +2469,7 @@
           "dependencies": [
             2
           ],
-          "details": "Support for various node and edge styles, and ensure compatibility with different terminal types.",
+          "details": "Support for various node and edge styles, and ensure compatibility with different terminal types.\n<info added on 2025-05-23T21:03:10.001Z>\nExtend ui.js with diagram display functions that integrate with Task Master's existing UI patterns:\n\n1. Implement core diagram display functions:\n   - displayTaskDiagram(tasksPath, diagramType, options) as the main entry point\n   - displayMermaidCode(mermaidCode, title) for formatted code output with boxen\n   - displayDiagramLegend() to explain symbols and colors\n\n2. Ensure UI consistency by:\n   - Using established chalk color schemes (blue/green/yellow/red)\n   - Applying boxen for consistent component formatting\n   - Following existing display function patterns (displayTaskById, displayComplexityReport)\n   - Utilizing cli-table3 for any diagram metadata tables\n\n3. Address terminal rendering challenges:\n   - Implement ASCII/Unicode fallback when Mermaid rendering isn't available\n   - Respect terminal width constraints using process.stdout.columns\n   - Integrate with loading indicators via startLoadingIndicator/stopLoadingIndicator\n\n4. Update task file generation to include Mermaid diagram sections in individual task files\n\n5. Support both CLI and MCP output formats through the outputFormat parameter\n</info added on 2025-05-23T21:03:10.001Z>",
           "status": "pending"
         },
         {
@@ -2457,7 +2479,7 @@
           "dependencies": [
             3
           ],
-          "details": "Use ANSI escape codes for color; provide options for colorblind-friendly palettes.",
+          "details": "Use ANSI escape codes for color; provide options for colorblind-friendly palettes.\n<info added on 2025-05-23T21:03:35.762Z>\nIntegrate color coding with Task Master's existing status system:\n\n1. Extend getStatusWithColor() in ui.js to support diagram contexts:\n   - Add 'diagram' parameter to determine rendering context\n   - Modify color intensity for better visibility in graph elements\n\n2. Implement Task Master's established color scheme using ANSI codes:\n   - Green (\\x1b[32m) for 'done'/'completed' tasks\n   - Yellow (\\x1b[33m) for 'pending' tasks\n   - Orange (\\x1b[38;5;208m) for 'in-progress' tasks\n   - Red (\\x1b[31m) for 'blocked' tasks\n   - Gray (\\x1b[90m) for 'deferred'/'cancelled' tasks\n   - Magenta (\\x1b[35m) for 'review' tasks\n\n3. Create diagram-specific color functions:\n   - getDependencyLineColor(fromTaskStatus, toTaskStatus) - color dependency arrows based on relationship status\n   - getNodeBorderColor(task) - style node borders using priority/complexity indicators\n   - getSubtaskGroupColor(parentTask) - visually group related subtasks\n\n4. Integrate complexity visualization:\n   - Use getComplexityWithColor() for node background or border thickness\n   - Map complexity scores to visual weight in the graph\n\n5. Ensure accessibility:\n   - Add text-based indicators (symbols like ✓, ⚠, ⏳) alongside colors\n   - Implement colorblind-friendly palettes as user-selectable option\n   - Include shape variations for different statuses\n\n6. Follow existing ANSI patterns:\n   - Maintain consistency with terminal UI color usage\n   - Reuse color constants from the codebase\n\n7. Support graceful degradation:\n   - Check terminal capabilities using existing detection\n   - Provide monochrome fallbacks with distinctive patterns\n   - Use bold/underline as alternatives when colors unavailable\n</info added on 2025-05-23T21:03:35.762Z>",
           "status": "pending"
         },
         {
@@ -2467,7 +2489,7 @@
           "dependencies": [
             2
           ],
-          "details": "Clearly mark cycles in the rendered output and provide warnings or errors as appropriate.",
+          "details": "Clearly mark cycles in the rendered output and provide warnings or errors as appropriate.\n<info added on 2025-05-23T21:04:20.125Z>\nIntegrate with Task Master's existing circular dependency detection:\n\n1. Import the dependency detection logic from dependency-manager.js module\n2. Utilize the findCycles function from utils.js or dependency-manager.js\n3. Extend validateDependenciesCommand functionality to highlight cycles in diagrams\n\nVisual representation in Mermaid diagrams:\n- Apply red/bold styling to nodes involved in dependency cycles\n- Add warning annotations to cyclic edges\n- Implement cycle path highlighting with distinctive line styles\n\nIntegration with validation workflow:\n- Execute dependency validation before diagram generation\n- Display cycle warnings consistent with existing CLI error messaging\n- Utilize chalk.red and boxen for error highlighting following established patterns\n\nAdd diagram legend entries that explain cycle notation and warnings\n\nEnsure detection of cycles in both:\n- Main task dependencies\n- Subtask dependencies within parent tasks\n\nFollow Task Master's error handling patterns for graceful cycle reporting and user notification\n</info added on 2025-05-23T21:04:20.125Z>",
           "status": "pending"
         },
         {
@@ -2478,7 +2500,7 @@
             1,
             2
           ],
-          "details": "Support command-line flags for filtering and interactive search if feasible.",
+          "details": "Support command-line flags for filtering and interactive search if feasible.\n<info added on 2025-05-23T21:04:57.811Z>\nImplement MCP tool integration for task dependency visualization:\n\n1. Create task_diagram.js in mcp-server/src/tools/ following existing tool patterns\n2. Implement taskDiagramDirect.js in mcp-server/src/core/direct-functions/\n3. Use Zod schema for parameter validation:\n   - diagramType (dependencies, subtasks, flow, gantt)\n   - taskId (optional string)\n   - format (mermaid, text, json)\n   - includeComplexity (boolean)\n\n4. Structure response data with:\n   - mermaidCode for client-side rendering\n   - metadata (nodeCount, edgeCount, cycleWarnings)\n   - support for both task-specific and project-wide diagrams\n\n5. Integrate with session management and project root handling\n6. Implement error handling using handleApiResult pattern\n7. Register the tool in tools/index.js\n\nMaintain compatibility with existing command-line flags for filtering and interactive search.\n</info added on 2025-05-23T21:04:57.811Z>",
           "status": "pending"
         },
         {
@@ -2489,7 +2511,7 @@
             3,
             4
           ],
-          "details": "Provide alternative text output and ensure color is not the sole means of conveying information.",
+          "details": "Provide alternative text output and ensure color is not the sole means of conveying information.\n<info added on 2025-05-23T21:05:54.584Z>\n# Accessibility and Export Integration\n\n## Accessibility Features\n- Provide alternative text output for visual elements\n- Ensure color is not the sole means of conveying information\n- Support keyboard navigation through the dependency graph\n- Add screen reader compatible node descriptions\n\n## Export Integration\n- Extend generateTaskFiles function in task-manager.js to include Mermaid diagram sections\n- Add Mermaid code blocks to task markdown files under ## Diagrams header\n- Follow existing task file generation patterns and markdown structure\n- Support multiple diagram types per task file:\n  * Task dependencies (prerequisite relationships)\n  * Subtask hierarchy visualization\n  * Task flow context in project workflow\n- Integrate with existing fs module file writing operations\n- Add diagram export options to the generate command in commands.js\n- Support SVG and PNG export using Mermaid CLI when available\n- Implement error handling for diagram generation failures\n- Reference exported diagrams in task markdown with proper paths\n- Update CLI generate command with options like --include-diagrams\n</info added on 2025-05-23T21:05:54.584Z>",
           "status": "pending"
         },
         {
@@ -2503,7 +2525,7 @@
             5,
             6
           ],
-          "details": "Implement lazy loading, efficient data structures, and parallel processing where appropriate.",
+          "details": "Implement lazy loading, efficient data structures, and parallel processing where appropriate.\n<info added on 2025-05-23T21:06:14.533Z>\n# Mermaid Library Integration and Terminal-Specific Handling\n\n## Package Dependencies\n- Add mermaid package as an optional dependency in package.json for generating raw Mermaid diagram code\n- Consider mermaid-cli for SVG/PNG conversion capabilities\n- Evaluate terminal-image or similar libraries for terminals with image support\n- Explore ascii-art-ansi or box-drawing character libraries for text-only terminals\n\n## Terminal Capability Detection\n- Leverage existing terminal detection from ui.js to assess rendering capabilities\n- Implement detection for:\n  - iTerm2 and other terminals with image protocol support\n  - Terminals with Unicode/extended character support\n  - Basic terminals requiring pure ASCII output\n\n## Rendering Strategy with Fallbacks\n1. Primary: Generate raw Mermaid code for user copy/paste\n2. Secondary: Render simplified ASCII tree/flow representation using box characters\n3. Tertiary: Present dependencies in tabular format for minimal terminals\n\n## Implementation Approach\n- Use dynamic imports for optional rendering libraries to maintain lightweight core\n- Implement graceful degradation when optional packages aren't available\n- Follow Task Master's philosophy of minimal dependencies\n- Ensure performance optimization through lazy loading where appropriate\n- Design modular rendering components that can be swapped based on terminal capabilities\n</info added on 2025-05-23T21:06:14.533Z>",
           "status": "pending"
         },
         {
@@ -2538,7 +2560,7 @@
             8,
             9
           ],
-          "details": "Include unit, integration, and regression tests; validate accessibility and performance claims.",
+          "details": "Include unit, integration, and regression tests; validate accessibility and performance claims.\n<info added on 2025-05-23T21:08:36.329Z>\n# Documentation Tasks for Visual Task Dependency Graph\n\n## User Documentation\n1. Update README.md with diagram command documentation following existing command reference format\n2. Add examples to CLI command help text in commands.js matching patterns from other commands\n3. Create docs/diagrams.md with detailed usage guide including:\n   - Command examples for each diagram type\n   - Mermaid code samples and output\n   - Terminal compatibility notes\n   - Integration with task workflow examples\n   - Troubleshooting section for common diagram rendering issues\n   - Accessibility features and terminal fallback options\n\n## Developer Documentation\n1. Update MCP tool documentation to include the new task_diagram tool\n2. Add JSDoc comments to all new functions following existing code standards\n3. Create contributor documentation for extending diagram types\n4. Update API documentation for any new MCP interface endpoints\n\n## Integration Documentation\n1. Document integration with existing commands (analyze-complexity, generate, etc.)\n2. Provide examples showing how diagrams complement other Task Master features\n</info added on 2025-05-23T21:08:36.329Z>",
           "status": "pending"
         }
       ]
@@ -3068,20 +3090,20 @@
     {
       "id": 51,
       "title": "Implement Perplexity Research Command",
-      "description": "Create a command that allows users to quickly research topics using Perplexity AI, with options to include task context or custom prompts.",
+      "description": "Create an interactive REPL-style chat interface for AI-powered research that maintains conversation context, integrates project information, and provides session management capabilities.",
       "status": "pending",
       "dependencies": [],
       "priority": "medium",
-      "details": "Develop a new command called 'research' that integrates with Perplexity AI's API to fetch information on specified topics. The command should:\n\n1. Accept the following parameters:\n   - A search query string (required)\n   - A task or subtask ID for context (optional)\n   - A custom prompt to guide the research (optional)\n\n2. When a task/subtask ID is provided, extract relevant information from it to enrich the research query with context.\n\n3. Implement proper API integration with Perplexity, including authentication and rate limiting handling.\n\n4. Format and display the research results in a readable format in the terminal, with options to:\n   - Save the results to a file\n   - Copy results to clipboard\n   - Generate a summary of key points\n\n5. Cache research results to avoid redundant API calls for the same queries.\n\n6. Provide a configuration option to set the depth/detail level of research (quick overview vs. comprehensive).\n\n7. Handle errors gracefully, especially network issues or API limitations.\n\nThe command should follow the existing CLI structure and maintain consistency with other commands in the system.",
-      "testStrategy": "1. Unit tests:\n   - Test the command with various combinations of parameters (query only, query+task, query+custom prompt, all parameters)\n   - Mock the Perplexity API responses to test different scenarios (successful response, error response, rate limiting)\n   - Verify that task context is correctly extracted and incorporated into the research query\n\n2. Integration tests:\n   - Test actual API calls to Perplexity with valid credentials (using a test account)\n   - Verify the caching mechanism works correctly for repeated queries\n   - Test error handling with intentionally invalid requests\n\n3. User acceptance testing:\n   - Have team members use the command for real research needs and provide feedback\n   - Verify the command works in different network environments\n   - Test the command with very long queries and responses\n\n4. Performance testing:\n   - Measure and optimize response time for queries\n   - Test behavior under poor network conditions\n\nValidate that the research results are properly formatted, readable, and that all output options (save, copy) function correctly.",
+      "details": "Develop an interactive REPL-style chat interface for AI-powered research that allows users to have ongoing research conversations with context awareness. The system should:\n\n1. Create an interactive REPL using inquirer that:\n   - Maintains conversation history and context\n   - Provides a natural chat-like experience\n   - Supports special commands with the '/' prefix\n\n2. Integrate with the existing ai-services-unified.js using research mode:\n   - Leverage our unified AI service architecture\n   - Configure appropriate system prompts for research context\n   - Handle streaming responses for real-time feedback\n\n3. Support multiple context sources:\n   - Task/subtask IDs for project context\n   - File paths for code or document context\n   - Custom prompts for specific research directions\n   - Project file tree for system context\n\n4. Implement chat commands including:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n\n5. Create session management capabilities:\n   - Generate and track unique session IDs\n   - Save/load sessions automatically\n   - Browse and switch between previous sessions\n   - Export sessions to portable formats\n\n6. Design a consistent UI using ui.js patterns:\n   - Color-coded messages for user/AI distinction\n   - Support for markdown rendering in terminal\n   - Progressive display of AI responses\n   - Clear visual hierarchy and readability\n\n7. Follow the \"taskmaster way\":\n   - Create something new and exciting\n   - Focus on usefulness and practicality\n   - Avoid over-engineering\n   - Maintain consistency with existing patterns\n\nThe REPL should feel like a natural conversation while providing powerful research capabilities that integrate seamlessly with the rest of the system.",
+      "testStrategy": "1. Unit tests:\n   - Test the REPL command parsing and execution\n   - Mock AI service responses to test different scenarios\n   - Verify context extraction and integration from various sources\n   - Test session serialization and deserialization\n\n2. Integration tests:\n   - Test actual AI service integration with the REPL\n   - Verify session persistence across application restarts\n   - Test conversation state management with long interactions\n   - Verify context switching between different tasks and files\n\n3. User acceptance testing:\n   - Have team members use the REPL for real research needs\n   - Test the conversation flow and command usability\n   - Verify the UI is intuitive and responsive\n   - Test with various terminal sizes and environments\n\n4. Performance testing:\n   - Measure and optimize response time for queries\n   - Test behavior with large conversation histories\n   - Verify performance with complex context sources\n   - Test under poor network conditions\n\n5. Specific test scenarios:\n   - Verify markdown rendering for complex formatting\n   - Test streaming display with various response lengths\n   - Verify export features create properly formatted files\n   - Test session recovery from simulated crashes\n   - Validate handling of special characters and unicode",
       "subtasks": [
         {
           "id": 1,
           "title": "Create Perplexity API Client Service",
           "description": "Develop a service module that handles all interactions with the Perplexity AI API, including authentication, request formatting, and response handling.",
           "dependencies": [],
-          "details": "Implementation details:\n1. Create a new service file `services/perplexityService.js`\n2. Implement authentication using the PERPLEXITY_API_KEY from environment variables\n3. Create functions for making API requests to Perplexity with proper error handling:\n   - `queryPerplexity(searchQuery, options)` - Main function to query the API\n   - `handleRateLimiting(response)` - Logic to handle rate limits with exponential backoff\n4. Implement response parsing and formatting functions\n5. Add proper error handling for network issues, authentication problems, and API limitations\n6. Create a simple caching mechanism using a Map or object to store recent query results\n7. Add configuration options for different detail levels (quick vs comprehensive)\n\nTesting approach:\n- Write unit tests using Jest to verify API client functionality with mocked responses\n- Test error handling with simulated network failures\n- Verify caching mechanism works correctly\n- Test with various query types and options",
-          "status": "pending",
+          "details": "Implementation details:\n1. Create a new service file `services/perplexityService.js`\n2. Implement authentication using the PERPLEXITY_API_KEY from environment variables\n3. Create functions for making API requests to Perplexity with proper error handling:\n   - `queryPerplexity(searchQuery, options)` - Main function to query the API\n   - `handleRateLimiting(response)` - Logic to handle rate limits with exponential backoff\n4. Implement response parsing and formatting functions\n5. Add proper error handling for network issues, authentication problems, and API limitations\n6. Create a simple caching mechanism using a Map or object to store recent query results\n7. Add configuration options for different detail levels (quick vs comprehensive)\n\nTesting approach:\n- Write unit tests using Jest to verify API client functionality with mocked responses\n- Test error handling with simulated network failures\n- Verify caching mechanism works correctly\n- Test with various query types and options\n<info added on 2025-05-23T21:06:45.726Z>\nDEPRECATION NOTICE: This subtask is no longer needed and has been marked for removal. Instead of creating a new Perplexity service, we will leverage the existing ai-services-unified.js with research mode. This approach allows us to maintain a unified architecture for AI services rather than implementing a separate service specifically for Perplexity.\n</info added on 2025-05-23T21:06:45.726Z>",
+          "status": "cancelled",
           "parentTaskId": 51
         },
         {
@@ -3089,7 +3111,7 @@
           "title": "Implement Task Context Extraction Logic",
           "description": "Create utility functions to extract relevant context from tasks and subtasks to enhance research queries with project-specific information.",
           "dependencies": [],
-          "details": "Implementation details:\n1. Create a new utility file `utils/contextExtractor.js`\n2. Implement a function `extractTaskContext(taskId)` that:\n   - Loads the task/subtask data from tasks.json\n   - Extracts relevant information (title, description, details)\n   - Formats the extracted information into a context string for research\n3. Add logic to handle both task and subtask IDs\n4. Implement a function to combine extracted context with the user's search query\n5. Create a function to identify and extract key terminology from tasks\n6. Add functionality to include parent task context when a subtask ID is provided\n7. Implement proper error handling for invalid task IDs\n\nTesting approach:\n- Write unit tests to verify context extraction from sample tasks\n- Test with various task structures and content types\n- Verify error handling for missing or invalid tasks\n- Test the quality of extracted context with sample queries",
+          "details": "Implementation details:\n1. Create a new utility file `utils/contextExtractor.js`\n2. Implement a function `extractTaskContext(taskId)` that:\n   - Loads the task/subtask data from tasks.json\n   - Extracts relevant information (title, description, details)\n   - Formats the extracted information into a context string for research\n3. Add logic to handle both task and subtask IDs\n4. Implement a function to combine extracted context with the user's search query\n5. Create a function to identify and extract key terminology from tasks\n6. Add functionality to include parent task context when a subtask ID is provided\n7. Implement proper error handling for invalid task IDs\n\nTesting approach:\n- Write unit tests to verify context extraction from sample tasks\n- Test with various task structures and content types\n- Verify error handling for missing or invalid tasks\n- Test the quality of extracted context with sample queries\n<info added on 2025-05-23T21:11:44.560Z>\nUpdated Implementation Approach:\n\nREFACTORED IMPLEMENTATION:\n1. Extract the fuzzy search logic from add-task.js (lines ~240-400) into `utils/contextExtractor.js`\n2. Implement a reusable `TaskContextExtractor` class with the following methods:\n   - `extractTaskContext(taskId)` - Base context extraction\n   - `performFuzzySearch(query, options)` - Enhanced Fuse.js implementation\n   - `getRelevanceScore(task, query)` - Scoring mechanism from add-task.js\n   - `detectPurposeCategories(task)` - Category classification logic\n   - `findRelatedTasks(taskId)` - Identify dependencies and relationships\n   - `aggregateMultiQueryContext(queries)` - Support for multiple search terms\n\n3. Add configurable context depth levels:\n   - Minimal: Just task title and description\n   - Standard: Include details and immediate relationships\n   - Comprehensive: Full context with all dependencies and related tasks\n\n4. Implement context formatters:\n   - `formatForSystemPrompt(context)` - Structured for AI system instructions\n   - `formatForChatContext(context)` - Conversational format for chat\n   - `formatForResearchQuery(context, query)` - Optimized for research commands\n\n5. Add caching layer for performance optimization:\n   - Implement LRU cache for expensive fuzzy search results\n   - Cache invalidation on task updates\n\n6. Ensure backward compatibility with existing context extraction requirements\n\nThis approach leverages our existing sophisticated search logic rather than rebuilding from scratch, while making it more flexible and reusable across the application.\n</info added on 2025-05-23T21:11:44.560Z>",
           "status": "pending",
           "parentTaskId": 51
         },
@@ -3101,7 +3123,7 @@
             1,
             2
           ],
-          "details": "Implementation details:\n1. Create a new command file `commands/research.js`\n2. Set up the Commander.js command structure with the following options:\n   - Required search query parameter\n   - `--task` or `-t` option for task/subtask ID\n   - `--prompt` or `-p` option for custom research prompt\n   - `--save` or `-s` option to save results to a file\n   - `--copy` or `-c` option to copy results to clipboard\n   - `--summary` or `-m` option to generate a summary\n   - `--detail` or `-d` option to set research depth (default: medium)\n3. Implement command validation logic\n4. Connect the command to the Perplexity service created in subtask 1\n5. Integrate the context extraction logic from subtask 2\n6. Register the command in the main CLI application\n7. Add help text and examples\n\nTesting approach:\n- Test command registration and option parsing\n- Verify command validation logic works correctly\n- Test with various combinations of options\n- Ensure proper error messages for invalid inputs",
+          "details": "Implementation details:\n1. Create a new command file `commands/research.js`\n2. Set up the Commander.js command structure with the following options:\n   - Required search query parameter\n   - `--task` or `-t` option for task/subtask ID\n   - `--prompt` or `-p` option for custom research prompt\n   - `--save` or `-s` option to save results to a file\n   - `--copy` or `-c` option to copy results to clipboard\n   - `--summary` or `-m` option to generate a summary\n   - `--detail` or `-d` option to set research depth (default: medium)\n3. Implement command validation logic\n4. Connect the command to the Perplexity service created in subtask 1\n5. Integrate the context extraction logic from subtask 2\n6. Register the command in the main CLI application\n7. Add help text and examples\n\nTesting approach:\n- Test command registration and option parsing\n- Verify command validation logic works correctly\n- Test with various combinations of options\n- Ensure proper error messages for invalid inputs\n<info added on 2025-05-23T21:09:08.478Z>\nImplementation details:\n1. Create a new module `repl/research-chat.js` for the interactive research experience\n2. Implement REPL-style chat interface using inquirer with:\n   - Persistent conversation history management\n   - Context-aware prompting system\n   - Command parsing for special instructions\n3. Implement REPL commands:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n4. Create context initialization system:\n   - Task/subtask context loading\n   - File content integration\n   - System prompt configuration\n5. Integrate with ai-services-unified.js research mode\n6. Implement conversation state management:\n   - Track message history\n   - Maintain context window\n   - Handle context pruning for long conversations\n7. Design consistent UI patterns using ui.js library\n8. Add entry point in main CLI application\n\nTesting approach:\n- Test REPL command parsing and execution\n- Verify context initialization with various inputs\n- Test conversation state management\n- Ensure proper error handling and recovery\n- Validate UI consistency across different terminal environments\n</info added on 2025-05-23T21:09:08.478Z>",
           "status": "pending",
           "parentTaskId": 51
         },
@@ -3113,7 +3135,7 @@
             1,
             3
           ],
-          "details": "Implementation details:\n1. Create a new module `utils/researchFormatter.js`\n2. Implement terminal output formatting with:\n   - Color-coded sections for better readability\n   - Proper text wrapping for terminal width\n   - Highlighting of key points\n3. Add functionality to save results to a file:\n   - Create a `research-results` directory if it doesn't exist\n   - Save results with timestamp and query in filename\n   - Support multiple formats (text, markdown, JSON)\n4. Implement clipboard copying using a library like `clipboardy`\n5. Create a summarization function that extracts key points from research results\n6. Add progress indicators during API calls\n7. Implement pagination for long results\n\nTesting approach:\n- Test output formatting with various result lengths and content types\n- Verify file saving functionality creates proper files with correct content\n- Test clipboard functionality\n- Verify summarization produces useful results",
+          "details": "Implementation details:\n1. Create a new module `utils/researchFormatter.js`\n2. Implement terminal output formatting with:\n   - Color-coded sections for better readability\n   - Proper text wrapping for terminal width\n   - Highlighting of key points\n3. Add functionality to save results to a file:\n   - Create a `research-results` directory if it doesn't exist\n   - Save results with timestamp and query in filename\n   - Support multiple formats (text, markdown, JSON)\n4. Implement clipboard copying using a library like `clipboardy`\n5. Create a summarization function that extracts key points from research results\n6. Add progress indicators during API calls\n7. Implement pagination for long results\n\nTesting approach:\n- Test output formatting with various result lengths and content types\n- Verify file saving functionality creates proper files with correct content\n- Test clipboard functionality\n- Verify summarization produces useful results\n<info added on 2025-05-23T21:10:00.181Z>\nImplementation details:\n1. Create a new module `utils/chatFormatter.js` for REPL interface formatting\n2. Implement terminal output formatting for conversational display:\n   - Color-coded messages distinguishing user inputs and AI responses\n   - Proper text wrapping and indentation for readability\n   - Support for markdown rendering in terminal\n   - Visual indicators for system messages and status updates\n3. Implement streaming/progressive display of AI responses:\n   - Character-by-character or chunk-by-chunk display\n   - Cursor animations during response generation\n   - Ability to interrupt long responses\n4. Design chat history visualization:\n   - Scrollable history with clear message boundaries\n   - Timestamp display options\n   - Session identification\n5. Create specialized formatters for different content types:\n   - Code blocks with syntax highlighting\n   - Bulleted and numbered lists\n   - Tables and structured data\n   - Citations and references\n6. Implement export functionality:\n   - Save conversations to markdown or text files\n   - Export individual responses\n   - Copy responses to clipboard\n7. Adapt existing ui.js patterns for conversational context:\n   - Maintain consistent styling while supporting chat flow\n   - Handle multi-turn context appropriately\n\nTesting approach:\n- Test streaming display with various response lengths and speeds\n- Verify markdown rendering accuracy for complex formatting\n- Test history navigation and scrolling functionality\n- Verify export features create properly formatted files\n- Test display on various terminal sizes and configurations\n- Verify handling of special characters and unicode\n</info added on 2025-05-23T21:10:00.181Z>",
           "status": "pending",
           "parentTaskId": 51
         },
@@ -3125,7 +3147,41 @@
             1,
             4
           ],
-          "details": "Implementation details:\n1. Create a research results database using a simple JSON file or SQLite:\n   - Store queries, timestamps, and results\n   - Index by query and related task IDs\n2. Implement cache retrieval and validation:\n   - Check for cached results before making API calls\n   - Validate cache freshness with configurable TTL\n3. Add commands to manage research history:\n   - List recent research queries\n   - Retrieve past research by ID or search term\n   - Clear cache or delete specific entries\n4. Create functionality to associate research results with tasks:\n   - Add metadata linking research to specific tasks\n   - Implement command to show all research related to a task\n5. Add configuration options for cache behavior in user settings\n6. Implement export/import functionality for research data\n\nTesting approach:\n- Test cache storage and retrieval with various queries\n- Verify cache invalidation works correctly\n- Test history management commands\n- Verify task association functionality\n- Test with large cache sizes to ensure performance",
+          "details": "Implementation details:\n1. Create a research results database using a simple JSON file or SQLite:\n   - Store queries, timestamps, and results\n   - Index by query and related task IDs\n2. Implement cache retrieval and validation:\n   - Check for cached results before making API calls\n   - Validate cache freshness with configurable TTL\n3. Add commands to manage research history:\n   - List recent research queries\n   - Retrieve past research by ID or search term\n   - Clear cache or delete specific entries\n4. Create functionality to associate research results with tasks:\n   - Add metadata linking research to specific tasks\n   - Implement command to show all research related to a task\n5. Add configuration options for cache behavior in user settings\n6. Implement export/import functionality for research data\n\nTesting approach:\n- Test cache storage and retrieval with various queries\n- Verify cache invalidation works correctly\n- Test history management commands\n- Verify task association functionality\n- Test with large cache sizes to ensure performance\n<info added on 2025-05-23T21:10:28.544Z>\nImplementation details:\n1. Create a session management system for the REPL experience:\n   - Generate and track unique session IDs\n   - Store conversation history with timestamps\n   - Maintain context and state between interactions\n2. Implement session persistence:\n   - Save sessions to disk automatically\n   - Load previous sessions on startup\n   - Handle graceful recovery from crashes\n3. Build session browser and selector:\n   - List available sessions with preview\n   - Filter sessions by date, topic, or content\n   - Enable quick switching between sessions\n4. Implement conversation state serialization:\n   - Capture full conversation context\n   - Preserve user preferences per session\n   - Handle state migration during updates\n5. Add session sharing capabilities:\n   - Export sessions to portable formats\n   - Import sessions from files\n   - Generate shareable links (if applicable)\n6. Create session management commands:\n   - Create new sessions\n   - Clone existing sessions\n   - Archive or delete old sessions\n\nTesting approach:\n- Verify session persistence across application restarts\n- Test session recovery from simulated crashes\n- Validate state serialization with complex conversations\n- Ensure session switching maintains proper context\n- Test session import/export functionality\n- Verify performance with large conversation histories\n</info added on 2025-05-23T21:10:28.544Z>",
+          "status": "cancelled",
+          "parentTaskId": 51
+        },
+        {
+          "id": 6,
+          "title": "Implement Project Context Generation",
+          "description": "Create functionality to generate and include project-level context such as file trees, repository structure, and codebase insights for more informed research.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation details:\n1. Create a new module `utils/projectContextGenerator.js` for project-level context extraction\n2. Implement file tree generation functionality:\n   - Scan project directory structure recursively\n   - Filter out irrelevant files (node_modules, .git, etc.)\n   - Format file tree for AI consumption\n   - Include file counts and structure statistics\n3. Add code analysis capabilities:\n   - Extract key imports and dependencies\n   - Identify main modules and their relationships\n   - Generate high-level architecture overview\n4. Implement context summarization:\n   - Create concise project overview\n   - Identify key technologies and patterns\n   - Summarize project purpose and structure\n5. Add caching for expensive operations:\n   - Cache file tree with invalidation on changes\n   - Store analysis results with TTL\n6. Create integration with research REPL:\n   - Add project context to system prompts\n   - Support `/project` command to refresh context\n   - Allow selective inclusion of project components\n\nTesting approach:\n- Test file tree generation with various project structures\n- Verify filtering logic works correctly\n- Test context summarization quality\n- Measure performance impact of context generation\n- Verify caching mechanism effectiveness",
+          "status": "pending",
+          "parentTaskId": 51
+        },
+        {
+          "id": 7,
+          "title": "Create REPL Command System",
+          "description": "Implement a flexible command system for the research REPL that allows users to control the conversation flow, manage sessions, and access additional functionality.",
+          "dependencies": [
+            3
+          ],
+          "details": "Implementation details:\n1. Create a new module `repl/commands.js` for REPL command handling\n2. Implement a command parser that:\n   - Detects commands starting with `/`\n   - Parses arguments and options\n   - Handles quoted strings and special characters\n3. Create a command registry system:\n   - Register command handlers with descriptions\n   - Support command aliases\n   - Enable command discovery and help\n4. Implement core commands:\n   - `/save [filename]` - Save conversation\n   - `/task <taskId>` - Load task context\n   - `/file <path>` - Include file content\n   - `/help [command]` - Show help\n   - `/exit` - End session\n   - `/copy [n]` - Copy nth response\n   - `/summary` - Generate conversation summary\n   - `/detail <level>` - Set detail level\n   - `/clear` - Clear conversation\n   - `/project` - Refresh project context\n   - `/session <id|new>` - Switch/create session\n5. Add command completion and suggestions\n6. Implement error handling for invalid commands\n7. Create a help system with examples\n\nTesting approach:\n- Test command parsing with various inputs\n- Verify command execution and error handling\n- Test command completion functionality\n- Verify help system provides useful information\n- Test with complex command sequences",
+          "status": "pending",
+          "parentTaskId": 51
+        },
+        {
+          "id": 8,
+          "title": "Integrate with AI Services Unified",
+          "description": "Integrate the research REPL with the existing ai-services-unified.js to leverage the unified AI service architecture with research mode.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implementation details:\n1. Update `repl/research-chat.js` to integrate with ai-services-unified.js\n2. Configure research mode in AI service:\n   - Set appropriate system prompts\n   - Configure temperature and other parameters\n   - Enable streaming responses\n3. Implement context management:\n   - Format conversation history for AI context\n   - Include task and project context\n   - Handle context window limitations\n4. Add support for different research styles:\n   - Exploratory research with broader context\n   - Focused research with specific questions\n   - Comparative analysis between concepts\n5. Implement response handling:\n   - Process streaming chunks\n   - Format and display responses\n   - Handle errors and retries\n6. Add configuration options for AI service selection\n7. Implement fallback mechanisms for service unavailability\n\nTesting approach:\n- Test integration with mocked AI services\n- Verify context formatting and management\n- Test streaming response handling\n- Verify error handling and recovery\n- Test with various research styles and queries",
           "status": "pending",
           "parentTaskId": 51
         }
@@ -4163,7 +4219,7 @@
       "id": 63,
       "title": "Add pnpm Support for the Taskmaster Package",
       "description": "Implement full support for pnpm as an alternative package manager in the Taskmaster application, ensuring users have the exact same experience as with npm when installing and managing the package. The installation process, including any CLI prompts or web interfaces, must serve the exact same content and user experience regardless of whether npm or pnpm is used. The project uses 'module' as the package type, defines binaries 'task-master' and 'task-master-mcp', and its core logic resides in 'scripts/modules/'. The 'init' command (via scripts/init.js) creates the directory structure (.cursor/rules, scripts, tasks), copies templates (.env.example, .gitignore, rule files, dev.js), manages package.json merging, and sets up MCP config (.cursor/mcp.json). All dependencies are standard npm dependencies listed in package.json, and manual modifications are being removed.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "details": "This task involves:\n\n1. Update the installation documentation to include pnpm installation commands (e.g., `pnpm add taskmaster`).\n\n2. Ensure all package scripts are compatible with pnpm's execution model:\n   - Review and modify package.json scripts if necessary\n   - Test script execution with pnpm syntax (`pnpm run <script>`)\n   - Address any pnpm-specific path or execution differences\n   - Confirm that scripts responsible for showing a website or prompt during install behave identically with pnpm and npm\n\n3. Create a pnpm-lock.yaml file by installing dependencies with pnpm.\n\n4. Test the application's installation and operation when installed via pnpm:\n   - Global installation (`pnpm add -g taskmaster`)\n   - Local project installation\n   - Verify CLI commands work correctly when installed with pnpm\n   - Verify binaries `task-master` and `task-master-mcp` are properly linked\n   - Ensure the `init` command (scripts/init.js) correctly creates directory structure and copies templates as described\n\n5. Update CI/CD pipelines to include testing with pnpm:\n   - Add a pnpm test matrix to GitHub Actions workflows\n   - Ensure tests pass when dependencies are installed with pnpm\n\n6. Handle any pnpm-specific dependency resolution issues:\n   - Address potential hoisting differences between npm and pnpm\n   - Test with pnpm's strict mode to ensure compatibility\n   - Verify proper handling of 'module' package type\n\n7. Document any pnpm-specific considerations or commands in the README and documentation.\n\n8. Verify that the `scripts/init.js` file works correctly with pnpm:\n   - Ensure it properly creates `.cursor/rules`, `scripts`, and `tasks` directories\n   - Verify template copying (`.env.example`, `.gitignore`, rule files, `dev.js`)\n   - Confirm `package.json` merging works correctly\n   - Test MCP config setup (`.cursor/mcp.json`)\n\n9. Ensure core logic in `scripts/modules/` works correctly when installed via pnpm.\n\nThis implementation should maintain full feature parity and identical user experience regardless of which package manager is used to install Taskmaster.",
@@ -4175,7 +4231,7 @@
           "description": "Revise installation and usage documentation to include pnpm commands and instructions for installing and managing Taskmaster with pnpm. Clearly state that the installation process, including any website or UI shown, is identical to npm. Ensure documentation reflects the use of 'module' package type, binaries, and the init process as defined in scripts/init.js.",
           "dependencies": [],
           "details": "Add pnpm installation commands (e.g., `pnpm add taskmaster`) and update all relevant sections in the README and official docs to reflect pnpm as a supported package manager. Document that any installation website or prompt is the same as with npm. Include notes on the 'module' package type, binaries, and the directory/template setup performed by scripts/init.js.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Verify that documentation changes are clear, accurate, and render correctly in all documentation formats. Confirm that documentation explicitly states the identical experience for npm and pnpm, including any website or UI shown during install, and describes the init process and binaries."
         },
         {
@@ -4186,7 +4242,7 @@
             1
           ],
           "details": "Test all scripts using `pnpm run <script>`, address any pnpm-specific path or execution differences, and modify scripts as needed for compatibility. Pay special attention to any scripts that trigger a website or prompt during installation, ensuring they serve the same content as npm. Validate that scripts/init.js and binaries are referenced correctly for ESM ('module') projects.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Run all package scripts using pnpm and confirm expected behavior matches npm, especially for any website or UI shown during install. Validate correct execution of scripts/init.js and binary linking."
         },
         {
@@ -4197,7 +4253,7 @@
             2
           ],
           "details": "Run `pnpm install` to generate the lockfile, check it into version control, and verify that dependency resolution is correct and consistent. Ensure that all dependencies listed in package.json are resolved as expected for an ESM project.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Compare dependency trees between npm and pnpm; ensure no missing or extraneous dependencies. Validate that the lockfile works for both CLI and init.js flows."
         },
         {
@@ -4208,7 +4264,7 @@
             3
           ],
           "details": "Perform global (`pnpm add -g taskmaster`) and local installations, verify CLI commands, and check for any pnpm-specific issues or incompatibilities. Ensure any installation UIs or websites appear identical to npm installations, including any website or prompt shown during install. Test that binaries 'task-master' and 'task-master-mcp' are linked and that scripts/init.js creates the correct structure and templates.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Document and resolve any errors encountered during installation or usage with pnpm. Compare the installation experience side-by-side with npm, including any website or UI shown during install. Validate directory and template setup as per scripts/init.js."
         },
         {
@@ -4219,7 +4275,7 @@
             4
           ],
           "details": "Modify GitHub Actions or other CI configurations to use pnpm/action-setup, run tests with pnpm, and cache pnpm dependencies for efficiency. Ensure that CI covers CLI commands, binary linking, and the directory/template setup performed by scripts/init.js.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Confirm that CI passes for all supported package managers, including pnpm, and that pnpm-specific jobs are green. Validate that tests cover ESM usage, binaries, and init.js flows."
         },
         {
@@ -4230,7 +4286,7 @@
             4
           ],
           "details": "Identify all user-facing elements during the installation process, including any website or prompt shown during install, and verify they are consistent across package managers. If a website is shown during installation, ensure it appears the same regardless of package manager used. Validate that any prompts or UIs triggered by scripts/init.js are identical.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Perform side-by-side installations with npm and pnpm, capturing screenshots of any UIs or websites for comparison. Test all interactive elements to ensure identical behavior, including any website or prompt shown during install and those from scripts/init.js."
         },
         {
@@ -4241,7 +4297,7 @@
             4
           ],
           "details": "Test the init command to ensure it properly creates .cursor/rules, scripts, and tasks directories, copies templates (.env.example, .gitignore, rule files, dev.js), handles package.json merging, and sets up MCP config (.cursor/mcp.json) as per scripts/init.js.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Run the init command after installing with pnpm and verify all directories and files are created correctly. Compare the results with an npm installation to ensure identical behavior and structure."
         },
         {
@@ -4252,7 +4308,7 @@
             4
           ],
           "details": "Check that the binaries defined in package.json are correctly linked in node_modules/.bin when installed with pnpm, and that they can be executed without errors. Validate that binaries work for ESM ('module') projects and are accessible after both global and local installs.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Install Taskmaster with pnpm and verify that the binaries are accessible and executable. Test both global and local installations, ensuring correct behavior for ESM projects."
         }
       ]
@@ -4261,7 +4317,7 @@
       "id": 64,
       "title": "Add Yarn Support for Taskmaster Installation",
       "description": "Implement full support for installing and managing Taskmaster using Yarn package manager, ensuring users have the exact same experience as with npm or pnpm. The installation process, including any CLI prompts or web interfaces, must serve the exact same content and user experience regardless of whether npm, pnpm, or Yarn is used. The project uses 'module' as the package type, defines binaries 'task-master' and 'task-master-mcp', and its core logic resides in 'scripts/modules/'. The 'init' command (via scripts/init.js) creates the directory structure (.cursor/rules, scripts, tasks), copies templates (.env.example, .gitignore, rule files, dev.js), manages package.json merging, and sets up MCP config (.cursor/mcp.json). All dependencies are standard npm dependencies listed in package.json, and manual modifications are being removed. \n\nIf the installation process includes a website component (such as for account setup or registration), ensure that any required website actions (e.g., creating an account, logging in, or configuring user settings) are clearly documented and tested for parity between Yarn and other package managers. If no website or account setup is required, confirm and document this explicitly.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "details": "This task involves adding comprehensive Yarn support to the Taskmaster package to ensure it can be properly installed and managed using Yarn. Implementation should include:\n\n1. Update package.json to ensure compatibility with Yarn installation methods, considering the 'module' package type and binary definitions\n2. Verify all scripts and dependencies work correctly with Yarn\n3. Add Yarn-specific configuration files (e.g., .yarnrc.yml if needed)\n4. Update installation documentation to include Yarn installation instructions\n5. Ensure all post-install scripts work correctly with Yarn\n6. Verify that all CLI commands function properly when installed via Yarn\n7. Ensure binaries `task-master` and `task-master-mcp` are properly linked\n8. Test the `scripts/init.js` file with Yarn to verify it correctly:\n   - Creates directory structure (`.cursor/rules`, `scripts`, `tasks`)\n   - Copies templates (`.env.example`, `.gitignore`, rule files, `dev.js`)\n   - Manages `package.json` merging\n   - Sets up MCP config (`.cursor/mcp.json`)\n9. Handle any Yarn-specific package resolution or hoisting issues\n10. Test compatibility with different Yarn versions (classic and berry/v2+)\n11. Ensure proper lockfile generation and management\n12. Update any package manager detection logic in the codebase to recognize Yarn installations\n13. Verify that core logic in `scripts/modules/` works correctly when installed via Yarn\n14. If the installation process includes a website component, verify that any account setup or user registration flows work identically with Yarn as they do with npm or pnpm. If website actions are required, document the steps and ensure they are tested for parity. If not, confirm and document that no website or account setup is needed.\n\nThe implementation should maintain feature parity and identical user experience regardless of which package manager (npm, pnpm, or Yarn) is used to install Taskmaster.",
@@ -4273,7 +4329,7 @@
           "description": "Modify the package.json file to ensure all dependencies, scripts, and configurations are compatible with Yarn's installation and resolution methods. Confirm that any scripts responsible for showing a website or prompt during install behave identically with Yarn and npm. Ensure compatibility with 'module' package type and correct binary definitions.",
           "dependencies": [],
           "details": "Review and update dependency declarations, script syntax, and any package manager-specific fields to avoid conflicts or unsupported features when using Yarn. Pay special attention to any scripts that trigger a website or prompt during installation, ensuring they serve the same content as npm. Validate that scripts/init.js and binaries are referenced correctly for ESM ('module') projects.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Run 'yarn install' and 'yarn run <script>' for all scripts to confirm successful execution and dependency resolution, especially for any website or UI shown during install. Validate correct execution of scripts/init.js and binary linking."
         },
         {
@@ -4284,7 +4340,7 @@
             1
           ],
           "details": "Determine if Yarn v2+ (Berry) or classic requires additional configuration for the project, and add or update .yarnrc.yml or .yarnrc files accordingly. Ensure configuration supports ESM and binary linking.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Verify that Yarn respects the configuration by running installs and checking for expected behaviors (e.g., plug'n'play, nodeLinker settings, ESM support, binary linking)."
         },
         {
@@ -4295,7 +4351,7 @@
             2
           ],
           "details": "Test all lifecycle scripts, post-install actions, and CLI commands using Yarn. Address any issues related to environment variables, script execution, or dependency hoisting. Ensure any website or prompt shown during install is the same as with npm. Validate that binaries 'task-master' and 'task-master-mcp' are linked and that scripts/init.js creates the correct structure and templates.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Install Taskmaster using Yarn and run all documented scripts and CLI commands, comparing results to npm installations, especially for any website or UI shown during install. Validate directory and template setup as per scripts/init.js."
         },
         {
@@ -4306,7 +4362,7 @@
             3
           ],
           "details": "Add Yarn-specific installation commands, troubleshooting tips, and notes on version compatibility to the README and any relevant docs. Document that any installation website or prompt is the same as with npm. Include notes on the 'module' package type, binaries, and the directory/template setup performed by scripts/init.js. If website or account setup is required during installation, provide clear instructions; otherwise, confirm and document that no such steps are needed.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Review documentation for accuracy and clarity; have a user follow the Yarn instructions to verify successful installation and usage. Confirm that documentation explicitly states the identical experience for npm and Yarn, including any website or UI shown during install, and describes the init process and binaries. If website/account setup is required, verify that instructions are complete and accurate; if not, confirm this is documented."
         },
         {
@@ -4317,7 +4373,7 @@
             4
           ],
           "details": "Modify detection logic to recognize Yarn (classic and berry), handle lockfile generation, and resolve any Yarn-specific package resolution or hoisting issues. Ensure detection logic supports ESM and binary linking.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Install Taskmaster using npm, pnpm, and Yarn (classic and berry), verifying that the application detects the package manager correctly and behaves consistently for ESM projects and binaries."
         },
         {
@@ -4328,7 +4384,7 @@
             3
           ],
           "details": "Identify all user-facing elements during the installation process, including any website or prompt shown during install, and verify they are consistent across package managers. If a website is shown during installation or account setup is required, ensure it appears and functions the same regardless of package manager used, and document the steps. If not, confirm and document that no website or account setup is needed. Validate that any prompts or UIs triggered by scripts/init.js are identical.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Perform side-by-side installations with npm and Yarn, capturing screenshots of any UIs or websites for comparison. Test all interactive elements to ensure identical behavior, including any website or prompt shown during install and those from scripts/init.js. If website/account setup is required, verify and document the steps; if not, confirm this is documented."
         },
         {
@@ -4339,7 +4395,7 @@
             3
           ],
           "details": "Test the init command to ensure it properly creates .cursor/rules, scripts, and tasks directories, copies templates (.env.example, .gitignore, rule files, dev.js), handles package.json merging, and sets up MCP config (.cursor/mcp.json) as per scripts/init.js.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Run the init command after installing with Yarn and verify all directories and files are created correctly. Compare the results with an npm installation to ensure identical behavior and structure."
         },
         {
@@ -4350,7 +4406,7 @@
             3
           ],
           "details": "Check that the binaries defined in package.json are correctly linked in node_modules/.bin when installed with Yarn, and that they can be executed without errors. Validate that binaries work for ESM ('module') projects and are accessible after both global and local installs.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Install Taskmaster with Yarn and verify that the binaries are accessible and executable. Test both global and local installations, ensuring correct behavior for ESM projects."
         },
         {
@@ -4361,7 +4417,7 @@
             6
           ],
           "details": "Test the complete user flow for any website component that appears during installation, including account creation, login, and configuration steps. Ensure that all website interactions work identically with Yarn as they do with npm or pnpm. Document any website-specific steps that users need to complete during the installation process. If no website or account setup is required, confirm and document this.\n\n<info added on 2025-04-25T08:45:48.709Z>\nSince the request is vague, I'll provide helpful implementation details for testing website account setup with Yarn:\n\nFor thorough testing, create a test matrix covering different browsers (Chrome, Firefox, Safari) and operating systems (Windows, macOS, Linux). Document specific Yarn-related environment variables that might affect website connectivity. Use tools like Playwright or Cypress to automate the account setup flow testing, capturing screenshots at each step for documentation. Implement network throttling tests to verify behavior under poor connectivity. Create a checklist of all UI elements that should be verified during the account setup process, including form validation, error messages, and success states. If no website component exists, explicitly document this in the project README and installation guides to prevent user confusion.\n</info added on 2025-04-25T08:45:48.709Z>\n\n<info added on 2025-04-25T08:46:08.651Z>\n- For environments where the website component requires integration with external authentication providers (such as OAuth, SSO, or LDAP), ensure that these flows are tested specifically when Taskmaster is installed via Yarn. Validate that redirect URIs, token exchanges, and session persistence behave as expected across all supported browsers.\n\n- If the website setup involves configuring application pools or web server settings (e.g., with IIS), document any Yarn-specific considerations, such as environment variable propagation or file permission differences, that could affect the web service's availability or configuration[2].\n\n- When automating tests, include validation for accessibility compliance (e.g., using axe-core or Lighthouse) during the account setup process to ensure the UI is usable for all users.\n\n- Capture and log all HTTP requests and responses during the account setup flow to help diagnose any discrepancies between Yarn and other package managers. This can be achieved by enabling network logging in Playwright or Cypress test runs.\n\n- If the website component supports batch operations or automated uploads (such as uploading user data or configuration files), verify that these automation features function identically after installation with Yarn[3].\n\n- For documentation, provide annotated screenshots or screen recordings of the account setup process, highlighting any Yarn-specific prompts, warnings, or differences encountered.\n\n- If the website component is not required, add a badge or prominent note in the README and installation guides stating \"No website or account setup required,\" and reference the test results confirming this.\n</info added on 2025-04-25T08:46:08.651Z>\n\n<info added on 2025-04-25T17:04:12.550Z>\nFor clarity, this task does not involve setting up a Yarn account. Yarn itself is just a package manager that doesn't require any account creation. The task is about testing whether any website component that is part of Taskmaster (if one exists) works correctly when Taskmaster is installed using Yarn as the package manager.\n\nTo be specific:\n- You don't need to create a Yarn account\n- Yarn is simply the tool used to install Taskmaster (`yarn add taskmaster` instead of `npm install taskmaster`)\n- The testing focuses on whether any web interfaces or account setup processes that are part of Taskmaster itself function correctly when the installation was done via Yarn\n- If Taskmaster includes a web dashboard or requires users to create accounts within the Taskmaster system, those features should be tested\n\nIf you're uncertain whether Taskmaster includes a website component at all, the first step would be to check the project documentation or perform an initial installation to determine if any web interface exists.\n</info added on 2025-04-25T17:04:12.550Z>\n\n<info added on 2025-04-25T17:19:03.256Z>\nWhen testing website account setup with Yarn after the codebase refactor, pay special attention to:\n\n- Verify that any environment-specific configuration files (like `.env` or config JSON files) are properly loaded when the application is installed via Yarn\n- Test the session management implementation to ensure user sessions persist correctly across page refreshes and browser restarts\n- Check that any database migrations or schema updates required for account setup execute properly when installed via Yarn\n- Validate that client-side form validation logic works consistently with server-side validation\n- Ensure that any WebSocket connections for real-time features initialize correctly after the refactor\n- Test account deletion and data export functionality to verify GDPR compliance remains intact\n- Document any changes to the authentication flow that resulted from the refactor and confirm they work identically with Yarn installation\n</info added on 2025-04-25T17:19:03.256Z>\n\n<info added on 2025-04-25T17:22:05.951Z>\nWhen testing website account setup with Yarn after the logging fix, implement these additional verification steps:\n\n1. Verify that all account-related actions are properly logged with the correct log levels (debug, info, warn, error) according to the updated logging framework\n2. Test the error handling paths specifically - force authentication failures and verify the logs contain sufficient diagnostic information\n3. Check that sensitive user information is properly redacted in logs according to privacy requirements\n4. Confirm that log rotation and persistence work correctly when high volumes of authentication attempts occur\n5. Validate that any custom logging middleware correctly captures HTTP request/response data for account operations\n6. Test that log aggregation tools (if used) can properly parse and display the account setup logs in their expected format\n7. Verify that performance metrics for account setup flows are correctly captured in logs for monitoring purposes\n8. Document any Yarn-specific environment variables that affect the logging configuration for the website component\n</info added on 2025-04-25T17:22:05.951Z>\n\n<info added on 2025-04-25T17:22:46.293Z>\nWhen testing website account setup with Yarn, consider implementing a positive user experience validation:\n\n1. Measure and document time-to-completion for the account setup process to ensure it meets usability standards\n2. Create a satisfaction survey for test users to rate the account setup experience on a 1-5 scale\n3. Implement A/B testing for different account setup flows to identify the most user-friendly approach\n4. Add delightful micro-interactions or success animations that make the setup process feel rewarding\n5. Test the \"welcome\" or \"onboarding\" experience that follows successful account creation\n6. Ensure helpful tooltips and contextual help are displayed at appropriate moments during setup\n7. Verify that error messages are friendly, clear, and provide actionable guidance rather than technical jargon\n8. Test the account recovery flow to ensure users have a smooth experience if they forget credentials\n</info added on 2025-04-25T17:22:46.293Z>",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Perform a complete installation with Yarn and follow through any website account setup process. Compare the experience with npm installation to ensure identical behavior. Test edge cases such as account creation failures, login issues, and configuration changes. If no website or account setup is required, confirm and document this in the test results."
         }
       ]
@@ -4372,7 +4428,7 @@
       "description": "Implement full support for installing and managing Taskmaster using the Bun package manager, ensuring the installation process and user experience are identical to npm, pnpm, and Yarn.",
       "details": "Update the Taskmaster installation scripts and documentation to support Bun as a first-class package manager. Ensure that users can install Taskmaster and run all CLI commands (including 'init' via scripts/init.js) using Bun, with the same directory structure, template copying, package.json merging, and MCP config setup as with npm, pnpm, and Yarn. Verify that all dependencies are compatible with Bun and that any Bun-specific configuration (such as lockfile handling or binary linking) is handled correctly. If the installation process includes a website or account setup, document and test these flows for parity; if not, explicitly confirm and document that no such steps are required. Update all relevant documentation and installation guides to include Bun instructions for macOS, Linux, and Windows (including WSL and PowerShell). Address any known Bun-specific issues (e.g., sporadic install hangs) with clear troubleshooting guidance.",
       "testStrategy": "1. Install Taskmaster using Bun on macOS, Linux, and Windows (including WSL and PowerShell), following the updated documentation. 2. Run the full installation and initialization process, verifying that the directory structure, templates, and MCP config are set up identically to npm, pnpm, and Yarn. 3. Execute all CLI commands (including 'init') and confirm functional parity. 4. If a website or account setup is required, test these flows for consistency; if not, confirm and document this. 5. Check for Bun-specific issues (e.g., install hangs) and verify that troubleshooting steps are effective. 6. Ensure the documentation is clear, accurate, and up to date for all supported platforms.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "subtasks": [
@@ -4382,7 +4438,7 @@
           "description": "Investigate Bun's JavaScript runtime environment and identify key differences from Node.js that may affect Taskmaster's installation and operation.",
           "dependencies": [],
           "details": "Research Bun's package management, module resolution, and API compatibility with Node.js. Document any potential issues or limitations that might affect Taskmaster. Identify required changes to make Taskmaster compatible with Bun's execution model.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 2,
@@ -4392,7 +4448,7 @@
             1
           ],
           "details": "Add Bun detection logic to installation scripts. Update package management commands to use Bun equivalents where needed. Ensure all dependencies are compatible with Bun. Modify any Node.js-specific code to work with Bun's runtime.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 3,
@@ -4402,7 +4458,7 @@
             2
           ],
           "details": "Create a Bun-specific installation script that leverages Bun's performance advantages. Update any environment detection logic to properly identify Bun environments. Ensure proper path resolution and environment variable handling for Bun.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 4,
@@ -4412,7 +4468,7 @@
             3
           ],
           "details": "Test installation on Windows, macOS, and Linux using Bun. Verify that all Taskmaster features work correctly when installed via Bun. Document any issues encountered and implement fixes as needed.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 5,
@@ -4422,7 +4478,7 @@
             4
           ],
           "details": "Test all Taskmaster commands and features when running with Bun. Compare performance metrics between Node.js and Bun. Identify and fix any runtime issues specific to Bun. Ensure all plugins and extensions are compatible.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 6,
@@ -4433,7 +4489,7 @@
             5
           ],
           "details": "Add Bun installation instructions to README and documentation. Document any Bun-specific considerations or limitations. Update troubleshooting guides to include Bun-specific issues. Create examples showing Bun usage with Taskmaster.",
-          "status": "pending"
+          "status": "done"
         }
       ]
     },
@@ -4452,20 +4508,20 @@
       "id": 67,
       "title": "Add CLI JSON output and Cursor keybindings integration",
       "description": "Enhance Taskmaster CLI with JSON output option and add a new command to install pre-configured Cursor keybindings",
-      "details": "This task has two main components:\\n\\n1. Add `--json` flag to all relevant CLI commands:\\n   - Modify the CLI command handlers to check for a `--json` flag\\n   - When the flag is present, output the raw data from the MCP tools in JSON format instead of formatting for human readability\\n   - Ensure consistent JSON schema across all commands\\n   - Add documentation for this feature in the help text for each command\\n   - Test with common scenarios like `task-master next --json` and `task-master show <id> --json`\\n\\n2. Create a new `install-keybindings` command:\\n   - Create a new CLI command that installs pre-configured Taskmaster keybindings to Cursor\\n   - Detect the user's OS to determine the correct path to Cursor's keybindings.json\\n   - Check if the file exists; create it if it doesn't\\n   - Add useful Taskmaster keybindings like:\\n     - Quick access to next task with output to clipboard\\n     - Task status updates\\n     - Opening new agent chat with context from the current task\\n   - Implement safeguards to prevent duplicate keybindings\\n   - Add undo functionality or backup of previous keybindings\\n   - Support custom key combinations via command flags",
-      "testStrategy": "1. JSON output testing:\\n   - Unit tests for each command with the --json flag\\n   - Verify JSON schema consistency across commands\\n   - Validate that all necessary task data is included in the JSON output\\n   - Test piping output to other commands like jq\\n\\n2. Keybindings command testing:\\n   - Test on different OSes (macOS, Windows, Linux)\\n   - Verify correct path detection for Cursor's keybindings.json\\n   - Test behavior when file doesn't exist\\n   - Test behavior when existing keybindings conflict\\n   - Validate the installed keybindings work as expected\\n   - Test uninstall/restore functionality",
       "status": "pending",
       "dependencies": [],
       "priority": "high",
+      "details": "This task has two main components:\\n\\n1. Add `--json` flag to all relevant CLI commands:\\n   - Modify the CLI command handlers to check for a `--json` flag\\n   - When the flag is present, output the raw data from the MCP tools in JSON format instead of formatting for human readability\\n   - Ensure consistent JSON schema across all commands\\n   - Add documentation for this feature in the help text for each command\\n   - Test with common scenarios like `task-master next --json` and `task-master show <id> --json`\\n\\n2. Create a new `install-keybindings` command:\\n   - Create a new CLI command that installs pre-configured Taskmaster keybindings to Cursor\\n   - Detect the user's OS to determine the correct path to Cursor's keybindings.json\\n   - Check if the file exists; create it if it doesn't\\n   - Add useful Taskmaster keybindings like:\\n     - Quick access to next task with output to clipboard\\n     - Task status updates\\n     - Opening new agent chat with context from the current task\\n   - Implement safeguards to prevent duplicate keybindings\\n   - Add undo functionality or backup of previous keybindings\\n   - Support custom key combinations via command flags",
+      "testStrategy": "1. JSON output testing:\\n   - Unit tests for each command with the --json flag\\n   - Verify JSON schema consistency across commands\\n   - Validate that all necessary task data is included in the JSON output\\n   - Test piping output to other commands like jq\\n\\n2. Keybindings command testing:\\n   - Test on different OSes (macOS, Windows, Linux)\\n   - Verify correct path detection for Cursor's keybindings.json\\n   - Test behavior when file doesn't exist\\n   - Test behavior when existing keybindings conflict\\n   - Validate the installed keybindings work as expected\\n   - Test uninstall/restore functionality",
       "subtasks": [
         {
           "id": 1,
           "title": "Implement Core JSON Output Logic for `next` and `show` Commands",
           "description": "Modify the command handlers for `task-master next` and `task-master show <id>` to recognize and handle a `--json` flag. When the flag is present, output the raw data received from MCP tools directly as JSON.",
           "dependencies": [],
-          "details": "Use a CLI argument parsing library (e.g., argparse, click, commander) to add the `--json` boolean flag. In the command execution logic, check if the flag is set. If true, serialize the data object (before any human-readable formatting) into a JSON string and print it to stdout. If false, proceed with the existing formatting logic. Focus on these two commands first to establish the pattern.",
+          "details": "1. Update the CLI argument parser to add the `--json` boolean flag to both commands\n2. Create a `formatAsJson` utility function in `src/utils/output.js` that takes a data object and returns a properly formatted JSON string\n3. In the command handler functions (`src/commands/next.js` and `src/commands/show.js`), add a conditional check for the `--json` flag\n4. If the flag is set, call the `formatAsJson` function with the raw data object and print the result\n5. If the flag is not set, continue with the existing human-readable formatting logic\n6. Ensure proper error handling for JSON serialization failures\n7. Update the command help text in both files to document the new flag",
           "status": "pending",
-          "testStrategy": "Run `task-master next --json` and `task-master show <some_id> --json`. Verify the output is valid JSON and contains the expected data fields. Compare with non-JSON output to ensure data consistency."
+          "testStrategy": "1. Create unit tests in `tests/commands/next.test.js` and `tests/commands/show.test.js`\n2. Mock the MCP data response and verify the JSON output matches expected format\n3. Test with both valid and invalid task IDs for the `show` command\n4. Verify the JSON output can be parsed back into a valid object\n5. Run manual tests with `task-master next --json` and `task-master show 123 --json` to confirm functionality"
         },
         {
           "id": 2,
@@ -4474,18 +4530,18 @@
           "dependencies": [
             1
           ],
-          "details": "Identify all commands that output structured data. Refactor the JSON output logic into a reusable utility function if possible. Define a standard schema for common data types like tasks. Update the help documentation for each command to include the `--json` flag description. Ensure error outputs are also handled appropriately (e.g., potentially outputting JSON error objects).",
+          "details": "1. Create a JSON schema definition file at `src/schemas/task.json` to define the standard structure for task objects\n2. Modify the following command files to support the `--json` flag:\n   - `src/commands/list.js`\n   - `src/commands/status.js`\n   - `src/commands/search.js`\n   - `src/commands/summary.js`\n3. Refactor the `formatAsJson` utility to handle different data types (single task, task array, status object, etc.)\n4. Add a `validateJsonSchema` function in `src/utils/validation.js` to ensure output conforms to defined schemas\n5. Update each command's help text documentation to include the `--json` flag description\n6. Implement consistent error handling for JSON output (using a standard error object format)\n7. For list-type commands, ensure array outputs are properly formatted as JSON arrays",
           "status": "pending",
-          "testStrategy": "Test the `--json` flag on all modified commands with various inputs. Validate the output against the defined JSON schemas. Check help text using `--help` flag for each command."
+          "testStrategy": "1. Create unit tests for each modified command in their respective test files\n2. Test each command with the `--json` flag and validate output against the defined schemas\n3. Create specific test cases for edge conditions (empty lists, error states, etc.)\n4. Verify help text includes `--json` documentation for each command\n5. Test piping JSON output to tools like `jq` to confirm proper formatting\n6. Create integration tests that verify schema consistency across different commands"
         },
         {
           "id": 3,
           "title": "Create `install-keybindings` Command Structure and OS Detection",
           "description": "Set up the basic structure for the new `task-master install-keybindings` command. Implement logic to detect the user's operating system (Linux, macOS, Windows) and determine the default path to Cursor's `keybindings.json` file.",
           "dependencies": [],
-          "details": "Add a new command entry point using the CLI framework. Use standard library functions (e.g., `os.platform()` in Node, `platform.system()` in Python) to detect the OS. Define constants or a configuration map for the default `keybindings.json` paths for each supported OS. Handle cases where the path might vary (e.g., different installation methods for Cursor). Add basic help text for the new command.",
+          "details": "1. Create a new command file at `src/commands/install-keybindings.js`\n2. Register the command in the main CLI entry point (`src/index.js`)\n3. Implement OS detection using `os.platform()` in Node.js\n4. Define the following path constants in `src/config/paths.js`:\n   - Windows: `%APPDATA%\\Cursor\\User\\keybindings.json`\n   - macOS: `~/Library/Application Support/Cursor/User/keybindings.json`\n   - Linux: `~/.config/Cursor/User/keybindings.json`\n5. Create a `getCursorKeybindingsPath()` function that returns the appropriate path based on detected OS\n6. Add path override capability via a `--path` command line option\n7. Implement proper error handling for unsupported operating systems\n8. Add detailed help text explaining the command's purpose and options",
           "status": "pending",
-          "testStrategy": "Run the command stub on different OSes (or mock the OS detection) and verify it correctly identifies the expected default path. Test edge cases like unsupported OS."
+          "testStrategy": "1. Create unit tests in `tests/commands/install-keybindings.test.js`\n2. Mock the OS detection to test path resolution for each supported platform\n3. Test the path override functionality with the `--path` option\n4. Verify error handling for unsupported OS scenarios\n5. Test the command's help output to ensure it's comprehensive\n6. Run manual tests on different operating systems if possible"
         },
         {
           "id": 4,
@@ -4494,9 +4550,9 @@
           "dependencies": [
             3
           ],
-          "details": "Use file system modules to check for file existence, read, write, and copy files. Implement a backup mechanism (e.g., copy `keybindings.json` to `keybindings.json.bak`). Handle potential file I/O errors gracefully (e.g., permissions issues). Parse the existing JSON content; if parsing fails, report an error and potentially abort. Ensure the file is created with `[]` if it's missing.",
+          "details": "1. Create a `KeybindingsManager` class in `src/utils/keybindings.js` with the following methods:\n   - `checkFileExists(path)`: Verify if the keybindings file exists\n   - `createBackup(path)`: Copy existing file to `keybindings.json.bak`\n   - `readKeybindings(path)`: Read and parse the JSON file\n   - `writeKeybindings(path, data)`: Serialize and write data to the file\n   - `createEmptyFile(path)`: Create a new file with `[]` content\n2. In the command handler, use these methods to:\n   - Check if the target file exists\n   - Create a backup if it does (with timestamp in filename)\n   - Read existing keybindings or create an empty file\n   - Parse the JSON content with proper error handling\n3. Add a `--no-backup` flag to skip backup creation\n4. Implement verbose logging with a `--verbose` flag\n5. Handle all potential file system errors (permissions, disk space, etc.)\n6. Add a `--dry-run` option that shows what would be done without making changes",
           "status": "pending",
-          "testStrategy": "Test file handling scenarios: file exists, file doesn't exist, file exists but is invalid JSON, file exists but has no write permissions (if possible to simulate). Verify backup file creation."
+          "testStrategy": "1. Create unit tests for the `KeybindingsManager` class\n2. Test all file handling scenarios with mocked file system:\n   - File exists with valid JSON\n   - File exists with invalid JSON\n   - File doesn't exist\n   - File exists but is not writable\n   - Backup creation succeeds/fails\n3. Test the `--no-backup` and `--dry-run` flags\n4. Verify error messages are clear and actionable\n5. Test with various mock file contents to ensure proper parsing"
         },
         {
           "id": 5,
@@ -4505,9 +4561,9 @@
           "dependencies": [
             4
           ],
-          "details": "Define the desired keybindings as a list of JSON objects following Cursor's format. Before adding, iterate through the existing keybindings (parsed in subtask 4) to check if a Taskmaster keybinding with the same command or key combination already exists. If not, append the new keybinding to the list. Add command-line flags (e.g., `--next-key='ctrl+alt+n'`) to allow users to override default key combinations. Serialize the updated list back to JSON and write it to the `keybindings.json` file.",
+          "details": "1. Define default Taskmaster keybindings in `src/config/default-keybindings.js` as an array of objects with:\n   - `key`: Default key combination (e.g., `\"ctrl+alt+n\"`)\n   - `command`: Cursor command ID (e.g., `\"taskmaster.nextTask\"`)\n   - `when`: Context when keybinding is active (e.g., `\"editorTextFocus\"`)\n   - `args`: Any command arguments as an object\n   - `description`: Human-readable description of what the keybinding does\n2. Implement the following keybindings:\n   - Next task to clipboard: `ctrl+alt+n`\n   - Update task status: `ctrl+alt+u`\n   - Open agent chat with task context: `ctrl+alt+a`\n   - Show task details: `ctrl+alt+d`\n3. Add command-line options to customize each keybinding:\n   - `--next-key=\"ctrl+alt+n\"`\n   - `--update-key=\"ctrl+alt+u\"`\n   - `--agent-key=\"ctrl+alt+a\"`\n   - `--details-key=\"ctrl+alt+d\"`\n4. Implement a `mergeKeybindings(existing, new)` function that:\n   - Checks for duplicates based on command ID\n   - Checks for key combination conflicts\n   - Warns about conflicts but allows override with `--force` flag\n   - Preserves existing non-Taskmaster keybindings\n5. Add a `--reset` flag to remove all existing Taskmaster keybindings before adding new ones\n6. Add a `--list` option to display currently installed Taskmaster keybindings\n7. Implement an `--uninstall` option to remove all Taskmaster keybindings",
           "status": "pending",
-          "testStrategy": "Test adding keybindings to an empty file, a file with existing non-Taskmaster keybindings, and a file that already contains some Taskmaster keybindings (to test duplicate prevention). Test overriding default keys using flags. Manually inspect the resulting `keybindings.json` file and test the keybindings within Cursor if possible."
+          "testStrategy": "1. Create unit tests for the keybinding merging logic\n2. Test duplicate detection and conflict resolution\n3. Test each customization flag to verify it properly overrides defaults\n4. Test the `--reset`, `--list`, and `--uninstall` options\n5. Create integration tests with various starting keybindings.json states\n6. Manually verify the installed keybindings work in Cursor\n7. Test edge cases like:\n   - All keybindings customized\n   - Conflicting key combinations with `--force` and without\n   - Empty initial keybindings file\n   - File with existing Taskmaster keybindings"
         }
       ]
     },
@@ -4517,7 +4573,7 @@
       "description": "Which just means that when we create a task, if there's no tasks.json, we should create it calling the same function that is done by parse-prd. this lets taskmaster be used without a prd as a starding point.",
       "details": "",
       "testStrategy": "",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "subtasks": [
@@ -4527,7 +4583,7 @@
           "description": "Create a user interface form that allows users to manually input task details without requiring a PRD document",
           "dependencies": [],
           "details": "Design a form with fields for task title, description, priority, assignee, due date, and other relevant task attributes. Include validation to ensure required fields are completed. The form should be intuitive and provide clear guidance on how to create a task manually.",
-          "status": "pending"
+          "status": "done"
         },
         {
           "id": 2,
@@ -4537,47 +4593,47 @@
             1
           ],
           "details": "Create API endpoints to handle task creation requests from the frontend. Implement data validation, error handling, and confirmation messages. Ensure the saved tasks appear in the task list view and can be edited or deleted like PRD-parsed tasks.",
-          "status": "pending"
+          "status": "done"
         }
       ]
     },
     {
       "id": 69,
       "title": "Enhance Analyze Complexity for Specific Task IDs",
-      "description": "Modify the analyze-complexity feature (CLI and MCP) to allow analyzing only specified task IDs and append/update results in the report.",
-      "details": "\nImplementation Plan:\n\n1.  **Core Logic (`scripts/modules/task-manager/analyze-task-complexity.js`):**\n    *   Modify the function signature to accept an optional `options.ids` parameter (string, comma-separated IDs).\n    *   If `options.ids` is present:\n        *   Parse the `ids` string into an array of target IDs.\n        *   Filter `tasksData.tasks` to *only* include tasks matching the target IDs. Use this filtered list for analysis.\n        *   Handle cases where provided IDs don't exist in `tasks.json`.\n    *   If `options.ids` is *not* present: Continue with existing logic (filtering by active status).\n    *   **Report Handling:**\n        *   Before generating the analysis, check if the `outputPath` report file exists.\n        *   If it exists, read the existing `complexityAnalysis` array.\n        *   Generate the new analysis *only* for the target tasks (filtered by ID or status).\n        *   Merge the results: Remove any entries from the *existing* array that match the IDs analyzed in the *current run*. Then, append the *new* analysis results to the array.\n        *   Update the `meta` section (`generatedAt`, `tasksAnalyzed` should reflect *this run*).\n        *   Write the *merged* `complexityAnalysis` array and updated `meta` back to the report file.\n        *   If the report file doesn't exist, create it as usual.\n    *   **Prompt Generation:** Ensure `generateInternalComplexityAnalysisPrompt` receives the correctly filtered list of tasks.\n\n2.  **CLI (`scripts/modules/commands.js`):**\n    *   Add a new option `--id <ids>` to the `analyze-complexity` command definition. Description: \"Comma-separated list of specific task IDs to analyze\".\n    *   In the `.action` handler:\n        *   Check if `options.id` is provided.\n        *   If yes, pass `options.id` (as the comma-separated string) to the `analyzeTaskComplexity` core function via the `options` object.\n        *   Update user feedback messages to indicate specific task analysis.\n\n3.  **MCP Tool (`mcp-server/src/tools/analyze.js`):**\n    *   Add a new optional parameter `ids: z.string().optional().describe(\"Comma-separated list of task IDs to analyze specifically\")` to the Zod schema for the `analyze_project_complexity` tool.\n    *   In the `execute` method, pass `args.ids` to the `analyzeTaskComplexityDirect` function within its `args` object.\n\n4.  **Direct Function (`mcp-server/src/core/direct-functions/analyze-task-complexity.js`):**\n    *   Update the function to receive the `ids` string within the `args` object.\n    *   Pass the `ids` string along to the core `analyzeTaskComplexity` function within its `options` object.\n\n5.  **Documentation:** Update relevant rule files (`commands.mdc`, `taskmaster.mdc`) to reflect the new `--id` option/parameter.\n",
-      "testStrategy": "\n1.  **CLI:**\n    *   Run `task-master analyze-complexity --id=<id1>` (where report doesn't exist). Verify report created with only task id1.\n    *   Run `task-master analyze-complexity --id=<id2>` (where report exists). Verify report updated, containing analysis for both id1 and id2 (id2 replaces any previous id2 analysis).\n    *   Run `task-master analyze-complexity --id=<id1>,<id3>`. Verify report updated, containing id1, id2, id3.\n    *   Run `task-master analyze-complexity` (no id). Verify it analyzes *all* active tasks and updates the report accordingly, merging with previous specific analyses.\n    *   Test with invalid/non-existent IDs.\n2.  **MCP:**\n    *   Call `analyze_project_complexity` tool with `ids: \"<id1>\"`. Verify report creation/update.\n    *   Call `analyze_project_complexity` tool with `ids: \"<id1>,<id2>\"`. Verify report merging.\n    *   Call `analyze_project_complexity` tool without `ids`. Verify full analysis and merging.\n3.  Verify report `meta` section is updated correctly on each run.\n",
-      "status": "pending",
+      "description": "Modify the analyze-complexity feature (CLI and MCP) to allow analyzing only specified task IDs or ranges, and append/update results in the report.",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
+      "details": "\nImplementation Plan:\n\n1. **Core Logic (`scripts/modules/task-manager/analyze-task-complexity.js`)**\n    * Modify function signature to accept optional parameters: `options.ids` (string, comma-separated IDs) and range parameters `options.from` and `options.to`.\n    * If `options.ids` is present:\n        * Parse the `ids` string into an array of target IDs.\n        * Filter `tasksData.tasks` to include only tasks matching the target IDs.\n        * Handle cases where provided IDs don't exist in `tasks.json`.\n    * If range parameters (`options.from` and `options.to`) are present:\n        * Parse these values into integers.\n        * Filter tasks within the specified ID range (inclusive).\n    * If neither `options.ids` nor range parameters are present: Continue with existing logic (filtering by active status).\n    * Maintain existing logic for skipping completed tasks.\n    * **Report Handling:**\n        * Before generating analysis, check if the `outputPath` report file exists.\n        * If it exists:\n            * Read the existing `complexityAnalysis` array.\n            * Generate new analysis only for target tasks (filtered by ID or range).\n            * Merge results: Remove entries from the existing array that match IDs analyzed in the current run, then append new analysis results to the array.\n            * Update the `meta` section (`generatedAt`, `tasksAnalyzed`).\n            * Write merged `complexityAnalysis` and updated `meta` back to report file.\n        * If the report file doesn't exist: Create it as usual.\n    * **Prompt Generation:** Ensure `generateInternalComplexityAnalysisPrompt` receives correctly filtered list of tasks.\n\n2. **CLI (`scripts/modules/commands.js`)**\n    * Add new options to the `analyze-complexity` command:\n        * `--id/-i <ids>`: \"Comma-separated list of specific task IDs to analyze\"\n        * `--from/-f <startId>`: \"Start ID for range analysis (inclusive)\"\n        * `--to/-t <endId>`: \"End ID for range analysis (inclusive)\"\n    * In the `.action` handler:\n        * Check if `options.id`, `options.from`, or `options.to` are provided.\n        * If yes, pass appropriate values to the `analyzeTaskComplexity` core function via the `options` object.\n        * Update user feedback messages to indicate specific task analysis.\n\n3. **MCP Tool (`mcp-server/src/tools/analyze.js`)**\n    * Add new optional parameters to Zod schema for `analyze_project_complexity` tool:\n        * `ids: z.string().optional().describe(\"Comma-separated list of task IDs to analyze specifically\")`\n        * `from: z.number().optional().describe(\"Start ID for range analysis (inclusive)\")`\n        * `to: z.number().optional().describe(\"End ID for range analysis (inclusive)\")`\n    * In the `execute` method, pass `args.ids`, `args.from`, and `args.to` to the `analyzeTaskComplexityDirect` function within its `args` object.\n\n4. **Direct Function (`mcp-server/src/core/direct-functions/analyze-task-complexity.js`)**\n    * Update function to receive `ids`, `from`, and `to` values within the `args` object.\n    * Pass these values along to the core `analyzeTaskComplexity` function within its `options` object.\n\n5. **Documentation:** Update relevant rule files (`commands.mdc`, `taskmaster.mdc`) to reflect new `--id/-i`, `--from/-f`, and `--to/-t` options/parameters.",
+      "testStrategy": "\n1. **CLI:**\n    * Run `task-master analyze-complexity -i=<id1>` (where report doesn't exist). Verify report created with only task id1.\n    * Run `task-master analyze-complexity -i=<id2>` (where report exists). Verify report updated, containing analysis for both id1 and id2 (id2 replaces any previous id2 analysis).\n    * Run `task-master analyze-complexity -i=<id1>,<id3>`. Verify report updated, containing id1, id2, id3.\n    * Run `task-master analyze-complexity -f=50 -t=60`. Verify report created/updated with tasks in the range 50-60.\n    * Run `task-master analyze-complexity` (no flags). Verify it analyzes all active tasks and updates the report accordingly, merging with previous specific analyses.\n    * Test with invalid/non-existent IDs or ranges.\n    * Verify that completed tasks are still skipped in all scenarios, maintaining existing behavior.\n2. **MCP:**\n    * Call `analyze_project_complexity` tool with `ids: \"<id1>\"`. Verify report creation/update.\n    * Call `analyze_project_complexity` tool with `ids: \"<id1>,<id2>,<id3>\"`. Verify report created/updated with multiple specific tasks.\n    * Call `analyze_project_complexity` tool with `from: 50, to: 60`. Verify report created/updated for tasks in range.\n    * Call `analyze_project_complexity` tool without parameters. Verify full analysis and merging.\n3. Verify report `meta` section is updated correctly on each run.",
       "subtasks": [
         {
           "id": 1,
           "title": "Modify core complexity analysis logic",
-          "description": "Update the core complexity analysis function to accept specific task IDs as input parameters",
+          "description": "Update the core complexity analysis function to accept specific task IDs or ranges as input parameters",
           "dependencies": [],
-          "details": "Refactor the existing complexity analysis module to allow filtering by task IDs. This involves modifying the data processing pipeline to filter tasks before analysis, ensuring the complexity metrics are calculated only for the specified tasks while maintaining context awareness.",
-          "status": "pending"
+          "details": "Refactor the existing complexity analysis module to allow filtering by task IDs or ranges. This involves modifying the data processing pipeline to filter tasks before analysis, ensuring the complexity metrics are calculated only for the specified tasks while maintaining context awareness.",
+          "status": "done"
         },
         {
           "id": 2,
           "title": "Update CLI interface for task-specific complexity analysis",
-          "description": "Extend the CLI to accept task IDs as parameters for the complexity analysis command",
+          "description": "Extend the CLI to accept task IDs or ranges as parameters for the complexity analysis command",
           "dependencies": [
             1
           ],
-          "details": "Add a new flag or parameter to the CLI that allows users to specify task IDs for targeted complexity analysis. Update the command parser, help documentation, and ensure proper validation of the provided task IDs.",
-          "status": "pending"
+          "details": "Add new flags `--id/-i`, `--from/-f`, and `--to/-t` to the CLI that allow users to specify task IDs or ranges for targeted complexity analysis. Update the command parser, help documentation, and ensure proper validation of the provided values.",
+          "status": "done"
         },
         {
           "id": 3,
           "title": "Integrate task-specific analysis with MCP tool",
-          "description": "Update the MCP tool interface to support analyzing complexity for specific tasks",
+          "description": "Update the MCP tool interface to support analyzing complexity for specific tasks or ranges",
           "dependencies": [
             1
           ],
-          "details": "Modify the MCP tool's API endpoints and UI components to allow users to select specific tasks for complexity analysis. Ensure the UI provides clear feedback about which tasks are being analyzed and update the visualization components to properly display partial analysis results.",
-          "status": "pending"
+          "details": "Modify the MCP tool's API endpoints and UI components to allow users to select specific tasks or ranges for complexity analysis. Ensure the UI provides clear feedback about which tasks are being analyzed and update the visualization components to properly display partial analysis results.",
+          "status": "done"
         },
         {
           "id": 4,
@@ -4589,7 +4645,7 @@
             3
           ],
           "details": "Create unit and integration tests that verify the task-specific complexity analysis works correctly across both CLI and MCP interfaces. Include tests for edge cases such as invalid task IDs, tasks with dependencies outside the selected set, and performance tests for large task sets.",
-          "status": "pending"
+          "status": "done"
         }
       ]
     },
@@ -4898,7 +4954,7 @@
       "id": 77,
       "title": "Implement AI Usage Telemetry for Taskmaster (with external analytics endpoint)",
       "description": "Capture detailed AI usage data (tokens, costs, models, commands) within Taskmaster and send this telemetry to an external, closed-source analytics backend for usage analysis, profitability measurement, and pricing optimization.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [],
       "priority": "medium",
       "details": "*   Add a telemetry utility (`logAiUsage`) within `ai-services.js` to track AI usage.\n*   Collected telemetry data fields must include:\n    *   `timestamp`: Current date/time in ISO 8601.\n    *   `userId`: Unique user identifier generated at setup (stored in `.taskmasterconfig`).\n    *   `commandName`: Taskmaster command invoked (`expand`, `parse-prd`, `research`, etc.).\n    *   `modelUsed`: Name/ID of the AI model invoked.\n    *   `inputTokens`: Count of input tokens used.\n    *   `outputTokens`: Count of output tokens generated.\n    *   `totalTokens`: Sum of input and output tokens.\n    *   `totalCost`: Monetary cost calculated using pricing from `supported_models.json`.\n*   Send telemetry payload securely via HTTPS POST request from user's Taskmaster installation directly to the closed-source analytics API (Express/Supabase backend).\n*   Introduce a privacy notice and explicit user consent prompt upon initial installation/setup to enable telemetry.\n*   Provide a graceful fallback if telemetry request fails (e.g., no internet connectivity).\n*   Optionally display a usage summary directly in Taskmaster CLI output for user transparency.",
@@ -5040,7 +5096,7 @@
           "title": "Update openai.js for Telemetry Compatibility",
           "description": "Modify src/ai-providers/openai.js functions to return usage data.",
           "details": "Update the provider functions in `src/ai-providers/openai.js` to ensure they return telemetry-compatible results:\\n\\n1.  **`generateOpenAIText`**: Return `{ text: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts from the Vercel AI SDK result.\\n2.  **`generateOpenAIObject`**: Return `{ object: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts.\\n3.  **`streamOpenAIText`**: Return the *full stream result object* returned by the Vercel AI SDK's `streamText`, not just the `textStream` property. The full object contains usage information.\\n\\nReference `anthropic.js` for the pattern.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -5049,7 +5105,7 @@
           "title": "Update openrouter.js for Telemetry Compatibility",
           "description": "Modify src/ai-providers/openrouter.js functions to return usage data.",
           "details": "Update the provider functions in `src/ai-providers/openrouter.js` to ensure they return telemetry-compatible results:\\n\\n1.  **`generateOpenRouterText`**: Return `{ text: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts from the Vercel AI SDK result.\\n2.  **`generateOpenRouterObject`**: Return `{ object: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts.\\n3.  **`streamOpenRouterText`**: Return the *full stream result object* returned by the Vercel AI SDK's `streamText`, not just the `textStream` property. The full object contains usage information.\\n\\nReference `anthropic.js` for the pattern.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -5067,7 +5123,7 @@
           "title": "Update xai.js for Telemetry Compatibility",
           "description": "Modify src/ai-providers/xai.js functions to return usage data.",
           "details": "Update the provider functions in `src/ai-providers/xai.js` to ensure they return telemetry-compatible results:\\n\\n1.  **`generateXaiText`**: Return `{ text: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts from the Vercel AI SDK result.\\n2.  **`generateXaiObject`**: Return `{ object: ..., usage: { inputTokens: ..., outputTokens: ... } }`. Extract token counts.\\n3.  **`streamXaiText`**: Return the *full stream result object* returned by the Vercel AI SDK's `streamText`, not just the `textStream` property. The full object contains usage information.\\n\\nReference `anthropic.js` for the pattern.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "parentTaskId": 77
         },
@@ -5076,7 +5132,7 @@
           "title": "Create dedicated telemetry transmission module",
           "description": "Implement a separate module for handling telemetry transmission logic",
           "details": "Create a new module (e.g., `scripts/utils/telemetry-client.js`) that encapsulates all telemetry transmission functionality:\n\n1. Implement core functions:\n   - `sendTelemetryData(telemetryPayload)`: Main function to handle HTTPS POST requests\n   - `isUserConsentGiven()`: Helper to check if user has consented to telemetry\n   - `logTelemetryError(error)`: Helper for consistent error logging\n\n2. Use Axios with retry logic:\n   - Configure with exponential backoff (max 3 retries, 500ms base delay)\n   - Implement proper TLS encryption via HTTPS\n   - Set appropriate timeouts (5000ms recommended)\n\n3. Implement robust error handling:\n   - Catch all transmission errors\n   - Log failures locally without disrupting application flow\n   - Ensure failures are transparent to users\n\n4. Configure securely:\n   - Load endpoint URL and authentication from environment variables\n   - Never hardcode secrets in source code\n   - Validate payload data before transmission\n\n5. Integration with ai-services-unified.js:\n   - Import the telemetry-client module\n   - Call after telemetryData object is constructed\n   - Only send if user consent is confirmed\n   - Use non-blocking approach to avoid performance impact",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             3
@@ -5149,75 +5205,6 @@
           "details": "Create comprehensive documentation explaining: 1) The purpose of the anonymous ID, 2) How user privacy is protected, 3) How to opt out of telemetry, and 4) Technical details of the implementation. Implement a simple API function 'getUserId()' that reads the ID from config for use by the telemetry system. Update the README and user documentation to include information about anonymous usage tracking. Ensure cross-platform compatibility by testing on all supported operating systems. Make it clear in the documentation that while we're collecting this ID, the server-side collection is not yet implemented, so data remains local for now.",
           "status": "pending",
           "testStrategy": "Verify documentation accuracy and completeness. Test the getUserId() function across platforms to ensure consistent behavior. Create a mock telemetry system to verify proper ID access."
-        }
-      ]
-    },
-    {
-      "id": 81,
-      "title": "Task #81: Implement Comprehensive Local Telemetry System with Future Server Integration Capability",
-      "description": "Expand the existing telemetry system to capture additional metrics about feature usage, performance, and user behavior patterns, implementing local storage and aggregation of telemetry data with the capability for future server integration.",
-      "status": "pending",
-      "dependencies": [],
-      "priority": "medium",
-      "details": "This task builds upon the existing telemetry infrastructure (Tasks #77 and #80) to provide more comprehensive insights into how users interact with the application, while storing data locally until a server endpoint becomes available.\n\nKey implementation details:\n1. Identify and implement additional telemetry data points:\n   - Command execution frequency and timing metrics\n   - Feature usage patterns (which commands/features are most/least used)\n   - Performance metrics (execution time, memory usage, etc.)\n   - Error rates and types\n   - Session duration and activity patterns\n   - System environment information (OS, Node version, etc.)\n\n2. Implement a local telemetry storage system:\n   - Create a robust local storage mechanism to hold telemetry data indefinitely\n   - Implement data aggregation to combine similar events and reduce storage size\n   - Add data retention policies to prevent excessive local storage usage\n   - Implement configurable storage limits and cleanup procedures\n   - Design the storage format to be compatible with future server transmission\n\n3. Add privacy-preserving mechanisms:\n   - Ensure all personally identifiable information is properly anonymized\n   - Implement data minimization principles (only collect what's necessary)\n   - Add user-configurable telemetry levels (basic, enhanced, full)\n   - Provide clear documentation on what data is collected and how it's used\n\n4. Design for future server integration:\n   - Create a pluggable transmission architecture that can be connected to a server later\n   - Define API contracts and data formats for future server endpoints\n   - Add configuration options for server URLs and authentication that will be used later\n   - Implement feature flags to easily enable server transmission when available\n\n5. Add telemetry debugging capabilities:\n   - Create a developer mode to view telemetry data being collected\n   - Implement logging of telemetry events (when in debug mode)\n   - Add commands to export telemetry data for manual analysis\n   - Create visualization tools for local telemetry data\n\n6. Focus on user-facing benefits:\n   - Implement personal usage dashboards showing the user's own patterns\n   - Add productivity insights based on collected telemetry\n   - Create features that allow users to optimize their workflow based on their usage data\n   - Ensure all telemetry collection provides immediate value to the user",
-      "testStrategy": "The testing strategy for the expanded telemetry system should be comprehensive and cover all aspects of the implementation:\n\n1. Unit Tests:\n   - Test each telemetry collection function in isolation\n   - Verify proper anonymization of sensitive data\n   - Test aggregation logic with various input scenarios\n   - Validate local storage mechanisms with different data volumes\n   - Test data retention and cleanup policies\n\n2. Integration Tests:\n   - Verify telemetry data is properly stored locally\n   - Test the complete flow from data collection to local storage\n   - Validate that the storage format is suitable for future server transmission\n   - Test different application states (startup, shutdown, crash recovery)\n   - Verify proper handling of storage failures\n\n3. End-to-End Tests:\n   - Create automated E2E tests that perform various user actions and verify telemetry is captured\n   - Test with simulated long-term usage to verify storage efficiency\n   - Verify that aggregated data accurately represents the performed actions\n\n4. Performance Tests:\n   - Measure the performance impact of the expanded telemetry system\n   - Test with large volumes of telemetry data to ensure efficient handling\n   - Verify memory usage remains within acceptable limits\n   - Test CPU utilization during telemetry collection and storage operations\n\n5. Manual Testing:\n   - Verify telemetry debug mode correctly displays collected data\n   - Test different telemetry level configurations\n   - Manually verify the accuracy of collected metrics\n   - Test the export functionality and analyze the exported data\n   - Validate that user-facing insights and dashboards provide accurate and useful information\n\n6. Privacy Compliance Testing:\n   - Verify no PII is stored without proper anonymization\n   - Test opt-out functionality works correctly\n   - Ensure telemetry levels properly restrict data collection as configured\n\n7. Regression Testing:\n   - Verify existing functionality continues to work with the expanded telemetry\n   - Ensure the system is designed to be compatible with future server integration\n\n8. User Experience Testing:\n   - Test the usability of personal dashboards and insights features\n   - Gather feedback on the usefulness of telemetry-based recommendations\n   - Verify users can easily understand their own usage patterns",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement Additional Telemetry Data Collection Points",
-          "description": "Extend the telemetry system to capture new metrics including command execution frequency, feature usage patterns, performance metrics, error rates, session data, and system environment information. [Updated: 5/8/2025] [Updated: 5/8/2025] [Updated: 5/8/2025]",
-          "dependencies": [],
-          "details": "Create new telemetry event types and collection points throughout the codebase. Implement hooks in the command execution pipeline to track timing and frequency. Add performance monitoring for key operations using high-resolution timers. Capture system environment data at startup. Implement error tracking that records error types and frequencies. Add session tracking with start/end events and periodic heartbeats.\n<info added on 2025-05-08T22:57:23.259Z>\nThis is a test note added via the MCP tool. The telemetry collection system should be thoroughly tested before implementation.\n</info added on 2025-05-08T22:57:23.259Z>\n<info added on 2025-05-08T22:59:29.818Z>\nFor future server integration, Prometheus time-series database with its companion storage solutions (like Cortex or Thanos) would be an excellent choice for handling our telemetry data. The local telemetry collection system should be designed with compatible data structures and metrics formatting that will allow seamless export to Prometheus once server-side infrastructure is in place. This approach would provide powerful querying capabilities, visualization options through Grafana, and scalable long-term storage. Consider implementing the OpenMetrics format locally to ensure compatibility with the Prometheus ecosystem.\n</info added on 2025-05-08T22:59:29.818Z>\n<info added on 2025-05-08T23:02:59.692Z>\nPrometheus would be an excellent choice for server-side telemetry storage and analysis. When designing the local telemetry collection system, we should structure our metrics and events to be compatible with Prometheus' data model (time series with key-value pairs). This would allow for straightforward export to Prometheus once server infrastructure is established. For long-term storage, companion solutions like Cortex or Thanos could extend Prometheus' capabilities, enabling historical analysis and scalable retention. Additionally, adopting the OpenMetrics format locally would ensure seamless integration with the broader Prometheus ecosystem, including visualization through Grafana dashboards.\n</info added on 2025-05-08T23:02:59.692Z>",
-          "status": "pending",
-          "testStrategy": "Create unit tests for each new telemetry point. Implement integration tests that verify telemetry is captured during normal application usage. Add mock services to verify data format correctness."
-        },
-        {
-          "id": 2,
-          "title": "Build Robust Local Telemetry Storage System",
-          "description": "Create a persistent local storage mechanism to hold telemetry data indefinitely with aggregation capabilities to combine similar events and reduce storage requirements.",
-          "dependencies": [],
-          "details": "Implement a persistent local store using SQLite or similar lightweight database. Create data schemas for different telemetry types. Develop aggregation functions that can combine similar events (e.g., multiple instances of the same command) into summary statistics. Implement data retention policies to prevent excessive storage usage. Add serialization/deserialization for telemetry objects. Design the storage format to be compatible with future server transmission needs.",
-          "status": "pending",
-          "testStrategy": "Test storage persistence across application restarts. Verify aggregation logic correctly combines similar events. Benchmark storage performance with large volumes of telemetry data. Test data retention policies with simulated long-term usage."
-        },
-        {
-          "id": 3,
-          "title": "Design Server Transmission Architecture for Future Implementation",
-          "description": "Create a pluggable architecture for future server transmission capabilities while maintaining local-only functionality for now.",
-          "dependencies": [],
-          "details": "Design a modular transmission system with clear interfaces that can be implemented later when a server becomes available. Define data formats and API contracts for future server endpoints. Add configuration options for server URLs and authentication that will be used in the future. Implement feature flags to easily enable server transmission when available. Create a transmission queue design that can be activated later. Document the architecture for future implementation.",
-          "status": "pending",
-          "testStrategy": "Create interface tests to verify the design is implementable. Test configuration loading for future server settings. Verify the architecture allows for easy extension without major refactoring. Create mock implementations to validate the design."
-        },
-        {
-          "id": 4,
-          "title": "Implement Privacy Controls and User Configuration",
-          "description": "Add privacy-preserving mechanisms including data anonymization, minimization principles, and user-configurable telemetry levels.",
-          "dependencies": [],
-          "details": "Create a telemetry sanitization layer that removes or hashes PII before storage. Implement three telemetry levels (basic, enhanced, full) with clear documentation of what each includes. Add user settings UI for controlling telemetry levels. Create a first-run experience that explains telemetry and requests user consent. Implement runtime filtering of telemetry events based on user settings.",
-          "status": "pending",
-          "testStrategy": "Verify PII is properly anonymized in all telemetry events. Test that changing telemetry levels correctly adjusts what data is collected. Ensure user preferences persist across application updates."
-        },
-        {
-          "id": 5,
-          "title": "Add Telemetry Debugging and Local Analysis Tools",
-          "description": "Create developer tools for debugging telemetry including a developer mode to view collected data, logging capabilities, and local data analysis features.",
-          "dependencies": [],
-          "details": "Implement a developer console command to toggle telemetry debug mode. Create a UI panel that displays collected telemetry data when in debug mode. Add detailed logging of telemetry events to the application log when debugging is enabled. Create commands to export telemetry data in various formats (JSON, CSV) for manual analysis. Implement basic visualization tools for local telemetry data to help users understand their own usage patterns.",
-          "status": "pending",
-          "testStrategy": "Verify debug mode correctly displays all telemetry events. Test data export functionality with various output formats. Ensure visualizations accurately represent the underlying data. Test with large datasets to verify performance."
-        },
-        {
-          "id": 6,
-          "title": "Develop User-Facing Telemetry Benefits",
-          "description": "Create features that provide immediate value to users based on their telemetry data, focusing on personal insights and workflow optimization.",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "Implement a personal usage dashboard that visualizes the user's command usage patterns, feature adoption, and productivity trends. Create a 'productivity insights' feature that offers personalized recommendations based on usage patterns. Add workflow optimization suggestions that help users discover more efficient ways to use the application. Develop weekly/monthly usage reports that users can view to track their own progress. Ensure all telemetry collection has a direct benefit to the user in the absence of server-side analysis.",
-          "status": "pending",
-          "testStrategy": "Test dashboard visualizations with various usage patterns. Verify recommendations are relevant and helpful based on simulated usage data. Conduct usability testing to ensure insights are presented in an understandable way. Test with different user profiles to ensure recommendations are appropriately personalized."
         }
       ]
     },
@@ -5306,6 +5293,179 @@
       ],
       "status": "pending",
       "subtasks": []
+    },
+    {
+      "id": 88,
+      "title": "Enhance Add-Task Functionality to Consider All Task Dependencies",
+      "description": "Improve the add-task feature to accurately account for all dependencies among tasks, ensuring proper task ordering and execution.",
+      "details": "1. Review current implementation of add-task functionality.\n2. Identify existing mechanisms for handling task dependencies.\n3. Modify add-task to recursively analyze and incorporate all dependencies.\n4. Ensure that dependencies are resolved in the correct order during task execution.\n5. Update documentation to reflect changes in dependency handling.\n6. Consider edge cases such as circular dependencies and handle them appropriately.\n7. Optimize performance to ensure efficient dependency resolution, especially for projects with a large number of tasks.\n8. Integrate with existing validation and error handling mechanisms (from Task 87) to provide clear feedback if dependencies cannot be resolved.\n9. Test thoroughly with various dependency scenarios to ensure robustness.",
+      "testStrategy": "1. Create test cases with simple linear dependencies to verify correct ordering.\n2. Develop test cases with complex, nested dependencies to ensure recursive resolution works correctly.\n3. Include tests for edge cases such as circular dependencies, verifying appropriate error messages are displayed.\n4. Measure performance with large sets of tasks and dependencies to ensure efficiency.\n5. Conduct integration testing with other components that rely on task dependencies.\n6. Perform manual code reviews to validate implementation against requirements.\n7. Execute automated tests to verify no regressions in existing functionality.",
+      "status": "done",
+      "dependencies": [],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Review Current Add-Task Implementation and Identify Dependency Mechanisms",
+          "description": "Examine the existing add-task functionality to understand how task dependencies are currently handled.",
+          "dependencies": [],
+          "details": "Conduct a code review of the add-task feature. Document any existing mechanisms for handling task dependencies.",
+          "status": "done",
+          "testStrategy": "Verify that all current dependency handling features work as expected."
+        },
+        {
+          "id": 2,
+          "title": "Modify Add-Task to Recursively Analyze Dependencies",
+          "description": "Update the add-task functionality to recursively analyze and incorporate all task dependencies.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement a recursive algorithm that identifies and incorporates all dependencies for a given task. Ensure it handles nested dependencies correctly.",
+          "status": "done",
+          "testStrategy": "Test with various dependency scenarios, including nested dependencies."
+        },
+        {
+          "id": 3,
+          "title": "Ensure Correct Order of Dependency Resolution",
+          "description": "Modify the add-task functionality to ensure that dependencies are resolved in the correct order during task execution.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implement logic to sort and execute tasks based on their dependency order. Handle cases where multiple tasks depend on each other.",
+          "status": "done",
+          "testStrategy": "Test with complex dependency chains to verify correct ordering."
+        },
+        {
+          "id": 4,
+          "title": "Integrate with Existing Validation and Error Handling",
+          "description": "Update the add-task functionality to integrate with existing validation and error handling mechanisms (from Task 87).",
+          "dependencies": [
+            3
+          ],
+          "details": "Modify the code to provide clear feedback if dependencies cannot be resolved. Ensure that circular dependencies are detected and handled appropriately.",
+          "status": "done",
+          "testStrategy": "Test with invalid dependency scenarios to verify proper error handling."
+        },
+        {
+          "id": 5,
+          "title": "Optimize Performance for Large Projects",
+          "description": "Optimize the add-task functionality to ensure efficient dependency resolution, especially for projects with a large number of tasks.",
+          "dependencies": [
+            4
+          ],
+          "details": "Profile and optimize the recursive dependency analysis algorithm. Implement caching or other performance improvements as needed.",
+          "status": "done",
+          "testStrategy": "Test with large sets of tasks to verify performance improvements."
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "title": "Introduce Prioritize Command with Enhanced Priority Levels",
+      "description": "Implement a prioritize command with --up/--down/--priority/--id flags and shorthand equivalents (-u/-d/-p/-i). Add 'lowest' and 'highest' priority levels, updating CLI output accordingly.",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "medium",
+      "details": "The new prioritize command should allow users to adjust task priorities using the specified flags. The --up and --down flags will modify the priority relative to the current level, while --priority sets an absolute priority. The --id flag specifies which task to prioritize. Shorthand equivalents (-u/-d/-p/-i) should be supported for user convenience.\n\nThe priority levels should now include 'lowest', 'low', 'medium', 'high', and 'highest'. The CLI output should be updated to reflect these new priority levels accurately.\n\nConsiderations:\n- Ensure backward compatibility with existing commands and configurations.\n- Update the help documentation to include the new command and its usage.\n- Implement proper error handling for invalid priority levels or missing flags.",
+      "testStrategy": "To verify task completion, perform the following tests:\n1. Test each flag (--up, --down, --priority, --id) individually and in combination to ensure they function as expected.\n2. Verify that shorthand equivalents (-u, -d, -p, -i) work correctly.\n3. Check that the new priority levels ('lowest' and 'highest') are recognized and displayed properly in CLI output.\n4. Test error handling for invalid inputs (e.g., non-existent task IDs, invalid priority levels).\n5. Ensure that the help command displays accurate information about the new prioritize command.",
+      "subtasks": []
+    },
+    {
+      "id": 90,
+      "title": "Implement Subtask Progress Analyzer and Reporting System",
+      "description": "Develop a subtask analyzer that monitors the progress of all subtasks, validates their status, and generates comprehensive reports for users to track project advancement.",
+      "details": "The subtask analyzer should be implemented with the following components and considerations:\n\n1. Progress Tracking Mechanism:\n   - Create a function to scan the task data structure and identify all tasks with subtasks\n   - Implement logic to determine the completion status of each subtask\n   - Calculate overall progress percentages for tasks with multiple subtasks\n\n2. Status Validation:\n   - Develop validation rules to check if subtasks are progressing according to expected timelines\n   - Implement detection for stalled or blocked subtasks\n   - Create alerts for subtasks that are behind schedule or have dependency issues\n\n3. Reporting System:\n   - Design a structured report format that clearly presents:\n     - Overall project progress\n     - Task-by-task breakdown with subtask status\n     - Highlighted issues or blockers\n   - Support multiple output formats (console, JSON, exportable text)\n   - Include visual indicators for progress (e.g., progress bars in CLI)\n\n4. Integration Points:\n   - Hook into the existing task management system\n   - Ensure the analyzer can be triggered via CLI commands\n   - Make the reporting feature accessible through the main command interface\n\n5. Performance Considerations:\n   - Optimize for large task lists with many subtasks\n   - Implement caching if necessary to avoid redundant calculations\n   - Ensure reports generate quickly even for complex project structures\n\nThe implementation should follow the existing code style and patterns, leveraging the task data structure already in place. The analyzer should be non-intrusive to existing functionality while providing valuable insights to users.",
+      "testStrategy": "Testing for the subtask analyzer should include:\n\n1. Unit Tests:\n   - Test the progress calculation logic with various task/subtask configurations\n   - Verify status validation correctly identifies issues in different scenarios\n   - Ensure report generation produces consistent and accurate output\n   - Test edge cases (empty subtasks, all complete, all incomplete, mixed states)\n\n2. Integration Tests:\n   - Verify the analyzer correctly integrates with the existing task data structure\n   - Test CLI command integration and parameter handling\n   - Ensure reports reflect actual changes to task/subtask status\n\n3. Performance Tests:\n   - Benchmark report generation with large task sets (100+ tasks with multiple subtasks)\n   - Verify memory usage remains reasonable during analysis\n\n4. User Acceptance Testing:\n   - Create sample projects with various subtask configurations\n   - Generate reports and verify they provide clear, actionable information\n   - Confirm visual indicators accurately represent progress\n\n5. Regression Testing:\n   - Verify that the analyzer doesn't interfere with existing task management functionality\n   - Ensure backward compatibility with existing task data structures\n\nDocumentation should be updated to include examples of how to use the new analyzer and interpret the reports. Success criteria include accurate progress tracking, clear reporting, and performance that scales with project size.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        3
+      ],
+      "priority": "medium",
+      "subtasks": []
+    },
+    {
+      "id": 91,
+      "title": "Implement Move Command for Tasks and Subtasks",
+      "description": "Introduce a 'move' command to enable moving tasks or subtasks to a different id, facilitating conflict resolution by allowing teams to assign new ids as needed.",
+      "status": "done",
+      "dependencies": [
+        1,
+        3
+      ],
+      "priority": "medium",
+      "details": "The move command will consist of three core components: 1) Core Logic Function in scripts/modules/task-manager/move-task.js, 2) Direct Function Wrapper in mcp-server/src/core/direct-functions/move-task.js, and 3) MCP Tool in mcp-server/src/tools/move-task.js. The command will accept source and destination IDs, handling various scenarios including moving tasks to become subtasks, subtasks to become tasks, and subtasks between different parents. The implementation will handle edge cases such as invalid ids, non-existent parents, circular dependencies, and will properly update all dependencies.",
+      "testStrategy": "Testing will follow a three-tier approach: 1) Unit tests for core functionality including moving tasks to subtasks, subtasks to tasks, subtasks between parents, dependency handling, and validation error cases; 2) Integration tests for the direct function with mock MCP environment and task file regeneration; 3) End-to-end tests for the full MCP tool call path. This will verify all scenarios including moving a task to a new id, moving a subtask under a different parent while preserving its hierarchy, and handling errors for invalid operations.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design and implement core move logic",
+          "description": "Create the fundamental logic for moving tasks and subtasks within the task management system hierarchy",
+          "dependencies": [],
+          "details": "Implement the core logic function in scripts/modules/task-manager/move-task.js with the signature that accepts tasksPath, sourceId, destinationId, and generateFiles parameters. Develop functions to handle all movement operations including task-to-subtask, subtask-to-task, and subtask-to-subtask conversions. Implement validation for source and destination IDs, and ensure proper updating of parent-child relationships and dependencies.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 2,
+          "title": "Implement edge case handling",
+          "description": "Develop robust error handling for all potential edge cases in the move operation",
+          "dependencies": [
+            1
+          ],
+          "details": "Create validation functions to detect invalid task IDs, non-existent parent tasks, and circular dependencies. Handle special cases such as moving a task to become the first/last subtask, reordering within the same parent, preventing moving a task to itself, and preventing moving a parent to its own subtask. Implement proper error messages and status codes for each edge case, and ensure system stability if a move operation fails.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 3,
+          "title": "Update CLI interface for move commands",
+          "description": "Extend the command-line interface to support the new move functionality with appropriate flags and options",
+          "dependencies": [
+            1
+          ],
+          "details": "Create the Direct Function Wrapper in mcp-server/src/core/direct-functions/move-task.js to adapt the core logic for MCP, handling path resolution and parameter validation. Implement silent mode to prevent console output interfering with JSON responses. Create the MCP Tool in mcp-server/src/tools/move-task.js that exposes the functionality to Cursor, handles project root resolution, and includes proper Zod parameter definitions. Update MCP tool definition in .cursor/mcp.json and register the tool in mcp-server/src/tools/index.js.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 4,
+          "title": "Ensure data integrity during moves",
+          "description": "Implement safeguards to maintain data consistency and update all relationships during move operations",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement dependency handling logic to update dependencies when converting between task/subtask, add appropriate parent dependencies when needed, and validate no circular dependencies are created. Create transaction-like operations to ensure atomic moves that either complete fully or roll back. Implement functions to update all affected task relationships after a move, and add verification steps to confirm data integrity post-move.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 5,
+          "title": "Create comprehensive test suite",
+          "description": "Develop and execute tests covering all move scenarios and edge cases",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Create unit tests for core functionality including moving tasks to subtasks, subtasks to tasks, subtasks between parents, dependency handling, and validation error cases. Implement integration tests for the direct function with mock MCP environment and task file regeneration. Develop end-to-end tests for the full MCP tool call path. Ensure tests cover all identified edge cases and potential failure points, and verify data integrity after moves.",
+          "status": "done",
+          "parentTaskId": 91
+        },
+        {
+          "id": 6,
+          "title": "Export and integrate the move function",
+          "description": "Ensure the move function is properly exported and integrated with existing code",
+          "dependencies": [
+            1
+          ],
+          "details": "Export the move function in scripts/modules/task-manager.js. Update task-master-core.js to include the direct function. Reuse validation logic from add-subtask.js and remove-subtask.js where appropriate. Follow silent mode implementation pattern from other direct functions and match parameter naming conventions in MCP tools.",
+          "status": "done",
+          "parentTaskId": 91
+        }
+      ]
     }
   ]
 }

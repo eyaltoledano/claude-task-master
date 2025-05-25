@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.14.0",
+	"version": "0.15.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -58,7 +58,7 @@
 		"express": "^4.21.2",
 		"fastmcp": "^1.20.5",
 		"figlet": "^1.8.0",
-		"fuse.js": "^7.0.0",
+		"fuse.js": "^7.1.0",
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",
 		"inquirer": "^12.5.0",
