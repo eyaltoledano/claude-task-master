@@ -66,10 +66,24 @@ class TaskMasterMCPServer {
 		}
 
 		// Start the FastMCP server with increased timeout
-		await this.server.start({
-			transportType: 'stdio',
+		const startOptions = {
 			timeout: 120000 // 2 minutes timeout (in milliseconds)
-		});
+		};
+
+		if (process.env.ENABLE_SSE === 'true') {
+			startOptions.transportType = 'sse';
+			startOptions.sse = {
+				endpoint: '/events',
+				port: process.env.MCP_SSE_PORT ? parseInt(process.env.MCP_SSE_PORT, 10) : 3000
+			};
+			logger.info(`Starting MCP server with SSE transport on port ${startOptions.sse.port}`);
+		} else {
+			startOptions.transportType = 'stdio';
+			logger.info('Starting MCP server with STDIO transport (SSE disabled)');
+		}
+
+		// Start the FastMCP server with increased timeout
+		await this.server.start(startOptions);
 
 		return this;
 	}
