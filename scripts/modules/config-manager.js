@@ -449,6 +449,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		perplexity: 'PERPLEXITY_API_KEY',
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
+		'azure-openai': 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY'
 		// Add other providers as needed
@@ -539,6 +540,7 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
 				break;
 			case 'azure':
+			case 'azure-openai':
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
 				break;

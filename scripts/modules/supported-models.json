@@ -29,6 +29,73 @@
 			"max_tokens": 64000
 		}
 	],
+	"azure": [
+		{
+			"id": "gpt-4o-mini",
+			"swe_score": 0.3,
+			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
+			"id": "o3-mini",
+			"swe_score": 0.493,
+			"cost_per_1m_tokens": { "input": 1.1, "output": 4.4 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000
+		},
+		{
+			"id": "gpt-4o",
+			"swe_score": 0.332,
+			"cost_per_1m_tokens": { "input": 2.5, "output": 10.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
+			"id": "gpt-4o-mini",
+			"swe_score": 0.3,
+			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
+			"id": "gpt-35-turbo",
+			"swe_score": 0.2,
+			"cost_per_1m_tokens": { "input": 0.5, "output": 1.5 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 4096
+		}
+	],
+	"azure-openai": [
+		{
+			"id": "o3-mini",
+			"swe_score": 0.493,
+			"cost_per_1m_tokens": { "input": 1.1, "output": 4.4 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000
+		},
+		{
+			"id": "gpt-4o",
+			"swe_score": 0.332,
+			"cost_per_1m_tokens": { "input": 2.5, "output": 10.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
+			"id": "gpt-4o-mini",
+			"swe_score": 0.3,
+			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
+			"id": "gpt-35-turbo",
+			"swe_score": 0.2,
+			"cost_per_1m_tokens": { "input": 0.5, "output": 1.5 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 4096
+		}
+	],
 	"openai": [
 		{
 			"id": "gpt-4o",
