@@ -10,7 +10,10 @@ jspm_packages/
 .env.production.local
 
 # Cursor configuration -- might have ENV variables. Included by default
-# .cursor/mcp.json
+.cursor/mcp.json
+
+# Task Master configuration (may contain user-specific settings)
+.taskmasterconfig
 
 # Logs
 logs
@@ -64,3 +67,19 @@ dev-debug.log
 
 # NPMRC
 .npmrc
+
+# Added by Claude Task Master
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/ 
+.cursor/mcp.json
+.cursor/mcp.json

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "node",
+      "args": ["./mcp-server/server.js"],
+      "cwd": "/path/to/your/claude-task-master",
+      "env": {
+        "DEBUG": "1",
+        "TASKMASTER_LOG_LEVEL": "debug",
+        "OPENAI_API_KEY": "your_openai_api_key_here",
+        "ANTHROPIC_API_KEY": "your_anthropic_api_key_here",
+        "PERPLEXITY_API_KEY": "your_perplexity_api_key_here",
+        "GOOGLE_API_KEY": "your_google_api_key_here",
+        "XAI_API_KEY": "your_xai_api_key_here",
+        "OPENROUTER_API_KEY": "your_openrouter_api_key_here",
+        "MISTRAL_API_KEY": "your_mistral_api_key_here",
+        "AZURE_OPENAI_API_KEY": "your_azure_openai_api_key_here",
+        "AZURE_OPENAI_ENDPOINT": "https://your-resource-name.openai.azure.com/",
+        "AZURE_OPENAI_API_VERSION": "2024-06-01",
+        "OLLAMA_API_KEY": "your_ollama_api_key_here",
+        "OLLAMA_BASE_URL": "http://localhost:11434/api"
+      }
+    }
+  }
+} 

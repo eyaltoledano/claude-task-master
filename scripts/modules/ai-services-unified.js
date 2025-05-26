@@ -27,6 +27,8 @@ import * as anthropic from '../../src/ai-providers/anthropic.js';
 import * as perplexity from '../../src/ai-providers/perplexity.js';
 import * as google from '../../src/ai-providers/google.js';
 import * as openai from '../../src/ai-providers/openai.js';
+import * as azure from '../../src/ai-providers/azure.js';
+import * as azureOpenAI from '../../src/ai-providers/azure-openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
 import * as ollama from '../../src/ai-providers/ollama.js';
@@ -86,6 +88,18 @@ const PROVIDER_FUNCTIONS = {
 		generateText: openai.generateOpenAIText,
 		streamText: openai.streamOpenAIText,
 		generateObject: openai.generateOpenAIObject
+	},
+	azure: {
+		// ADD: Azure OpenAI entry
+		generateText: azure.generateAzureText,
+		streamText: azure.streamAzureText,
+		generateObject: azure.generateAzureObject
+	},
+	'azure-openai': {
+		// ADD: Alternative Azure OpenAI entry using openai package
+		generateText: azureOpenAI.generateAzureOpenAIText,
+		streamText: azureOpenAI.streamAzureOpenAIText,
+		generateObject: azureOpenAI.generateAzureOpenAIObject
 	},
 	xai: {
 		// ADD: xAI entry
@@ -189,6 +203,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		perplexity: 'PERPLEXITY_API_KEY',
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
+		'azure-openai': 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY'
@@ -480,6 +495,27 @@ async function _unifiedServiceRunner(serviceType, params) {
 				...(serviceType === 'generateObject' && { schema, objectName }),
 				...restApiParams
 			};
+
+			// Add Azure-specific parameters if using Azure provider
+			if (providerName?.toLowerCase() === 'azure' || providerName?.toLowerCase() === 'azure-openai') {
+				// Extract endpoint and API version from environment
+				const azureEndpoint = resolveEnvVariable('AZURE_OPENAI_ENDPOINT', session, effectiveProjectRoot);
+				const azureApiVersion = resolveEnvVariable('AZURE_OPENAI_API_VERSION', session, effectiveProjectRoot) || '2025-01-01-preview';
+				
+				if (azureEndpoint) {
+					callParams.endpoint = azureEndpoint;
+					callParams.apiVersion = azureApiVersion;
+					
+					// For the original azure provider, extract resource name
+					if (providerName?.toLowerCase() === 'azure') {
+						        // Extract resource name from URL like https://your-resource-name.openai.azure.com/
+						const match = azureEndpoint.match(/https:\/\/([^.]+)\.openai\.azure\.com/);
+						if (match) {
+							callParams.resourceName = match[1];
+						}
+					}
+				}
+			}
 
 			providerResponse = await _attemptProviderCallWithRetries(
 				providerApiFn,
