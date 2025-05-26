@@ -1,0 +1,14 @@
+Project: Build a Chat Application
+
+Features:
+- User login and registration
+- Real-time messaging
+- Message notifications
+- Group chat support
+- User profile management
+
+Requirements:
+- Support for desktop and mobile
+- Secure authentication
+- Message history stored on server
+- Responsive design
