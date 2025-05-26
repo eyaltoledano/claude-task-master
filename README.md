@@ -23,8 +23,11 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
+- **Claude Code CLI** (flat subscription, no API key needed)
 
 Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
+
+> 💡 **New**: Taskmaster now supports Claude Code CLI! If you have a Claude Code subscription, you can use it for all AI operations without any API costs. See [Claude Code Integration](docs/claude-code-integration.md) for details.
 
 ## Quick Start
 

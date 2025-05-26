@@ -423,5 +423,21 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 32768
 		}
+	],
+	"claude-code": [
+		{
+			"id": "default",
+			"name": "Claude Code CLI (Subscription)",
+			"swe_score": 0.727,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0,
+				"currency": "USD",
+				"note": "Flat subscription pricing"
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 120000,
+			"description": "Uses your Claude Code CLI subscription for all API calls"
+		}
 	]
 }

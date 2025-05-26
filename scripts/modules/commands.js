@@ -12,6 +12,8 @@ import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 import { log, readJSON } from './utils.js';
 import {
@@ -245,6 +247,11 @@ async function runInteractiveSetup(projectRoot) {
 			value: '__CUSTOM_OLLAMA__'
 		};
 
+		const claudeCodeOption = {
+			name: '⚡ Claude Code CLI (Subscription)', // Symbol updated
+			value: '__CLAUDE_CODE__'
+		};
+
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
 
@@ -289,6 +296,7 @@ async function runInteractiveSetup(projectRoot) {
 			commonPrefix.push(noChangeOption);
 		}
 		commonPrefix.push(cancelOption);
+		commonPrefix.push(claudeCodeOption);
 		commonPrefix.push(customOpenRouterOption);
 		commonPrefix.push(customOllamaOption);
 
@@ -457,6 +465,31 @@ async function runInteractiveSetup(projectRoot) {
 				console.log(
 					chalk.yellow(
 						`You can check available models with: curl ${ollamaBaseUrl}/tags`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+		} else if (selectedValue === '__CLAUDE_CODE__') {
+			// Claude Code CLI selected
+			modelIdToSet = 'default';
+			providerHint = 'claude-code';
+			console.log(
+				chalk.green(
+					'✓ Claude Code CLI selected. This will use your Claude Code subscription for all API calls.'
+				)
+			);
+			// Check if Claude Code CLI is installed
+			const execAsync = promisify(exec);
+			try {
+				await execAsync('claude --version');
+				console.log(
+					chalk.green('✓ Claude Code CLI is installed and available.')
+				);
+			} catch (error) {
+				console.error(
+					chalk.red(
+						'Error: Claude Code CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code'
 					)
 				);
 				setupSuccess = false;

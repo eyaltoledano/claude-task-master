@@ -30,6 +30,7 @@ import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
 import * as ollama from '../../src/ai-providers/ollama.js';
+import * as claudeCode from '../../src/ai-providers/claude-code.js';
 // TODO: Import other provider modules when implemented (ollama, etc.)
 
 // Helper function to get cost for a specific model
@@ -103,6 +104,11 @@ const PROVIDER_FUNCTIONS = {
 		generateText: ollama.generateOllamaText,
 		streamText: ollama.streamOllamaText,
 		generateObject: ollama.generateOllamaObject
+	},
+	'claude-code': {
+		generateText: claudeCode.generateClaudeCodeText,
+		streamText: claudeCode.streamClaudeCodeText,
+		generateObject: claudeCode.generateClaudeCodeObject
 	}
 	// TODO: Add entries for ollama, etc. when implemented
 };
@@ -191,7 +197,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY'
+		ollama: 'OLLAMA_API_KEY',
+		'claude-code': 'CLAUDE_CODE_API_KEY' // Not actually used, but for consistency
 	};
 
 	const envVarName = keyMap[providerName];
@@ -203,8 +210,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
-	// Special handling for Ollama - API key is optional
-	if (providerName === 'ollama') {
+	// Special handling for Ollama and Claude Code - API key is optional
+	if (providerName === 'ollama' || providerName === 'claude-code') {
 		return apiKey || null;
 	}
 
