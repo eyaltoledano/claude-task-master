@@ -60,8 +60,7 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 
 // --- Project Root Finding Utility ---
 /**
- * Finds the project root directory by searching upwards from a given starting point
- * for a marker file or directory (e.g., 'package.json', '.git').
+ * Finds the project root directory by searching for marker files/directories.
  * @param {string} [startPath=process.cwd()] - The directory to start searching from.
  * @param {string[]} [markers=['package.json', '.git', '.taskmasterconfig']] - Marker files/dirs to look for.
  * @returns {string|null} The path to the project root directory, or null if not found.
@@ -71,27 +70,35 @@ function findProjectRoot(
 	markers = ['package.json', '.git', '.taskmasterconfig']
 ) {
 	let currentPath = path.resolve(startPath);
-	while (true) {
-		for (const marker of markers) {
-			if (fs.existsSync(path.join(currentPath, marker))) {
-				return currentPath;
-			}
+	const rootPath = path.parse(currentPath).root;
+
+	while (currentPath !== rootPath) {
+		// Check if any marker exists in the current directory
+		const hasMarker = markers.some((marker) => {
+			const markerPath = path.join(currentPath, marker);
+			return fs.existsSync(markerPath);
+		});
+
+		if (hasMarker) {
+			return currentPath;
 		}
-		const parentPath = path.dirname(currentPath);
-		if (parentPath === currentPath) {
-			// Reached the filesystem root
-			return null;
-		}
-		currentPath = parentPath;
+
+		// Move up one directory
+		currentPath = path.dirname(currentPath);
 	}
+
+	// Check the root directory as well
+	const hasMarkerInRoot = markers.some((marker) => {
+		const markerPath = path.join(rootPath, marker);
+		return fs.existsSync(markerPath);
+	});
+
+	return hasMarkerInRoot ? rootPath : null;
 }
 
 // --- Dynamic Configuration Function --- (REMOVED)
-/*
-function getConfig(session = null) {
-    // ... implementation removed ...
-}
-*/
+
+// --- Logging and Utility Functions ---
 
 // Set up logging based on log level
 const LOG_LEVELS = {
