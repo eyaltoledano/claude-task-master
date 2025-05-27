@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
-import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);

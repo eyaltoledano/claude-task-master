@@ -13,7 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON } from './utils.js';
+import { log, readJSON, findProjectRoot } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -76,7 +76,6 @@ import {
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
-import { findProjectRoot } from './utils.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
@@ -2307,8 +2306,11 @@ Examples:
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
-
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 			// Validate flags: cannot use both --openrouter and --ollama simultaneously
 			if (options.openrouter && options.ollama) {
 				console.error(

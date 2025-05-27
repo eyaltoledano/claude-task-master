@@ -21,7 +21,7 @@ import {
 	getBaseUrlForRole,
 	isApiKeySet
 } from './config-manager.js';
-import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
 import * as anthropic from '../../src/ai-providers/anthropic.js';
 import * as perplexity from '../../src/ai-providers/perplexity.js';
