@@ -32,7 +32,8 @@ import {
 	XAIProvider,
 	OpenRouterAIProvider,
 	OllamaAIProvider,
-	BedrockAIProvider
+	BedrockAIProvider,
+	AzureOpenAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -44,7 +45,8 @@ const PROVIDERS = {
 	xai: new XAIProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
-	bedrock: new BedrockAIProvider()
+	bedrock: new BedrockAIProvider(),
+	azure: new AzureOpenAIProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -322,7 +324,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			apiKey,
 			roleParams,
 			provider,
-			baseUrl,
+			baseURL,
 			providerResponse,
 			telemetryData = null;
 
@@ -390,8 +392,11 @@ async function _unifiedServiceRunner(serviceType, params) {
 				}
 			}
 
+			// Get base URL if configured (optional for most providers)
+			baseURL = getBaseUrlForRole(currentRole, effectiveProjectRoot);
+
+			// Get AI parameters for the current role
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
-			baseUrl = getBaseUrlForRole(currentRole, effectiveProjectRoot);
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
@@ -433,7 +438,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 				maxTokens: roleParams.maxTokens,
 				temperature: roleParams.temperature,
 				messages,
-				baseUrl,
+				...(baseURL && { baseURL }),
 				...(serviceType === 'generateObject' && { schema, objectName }),
 				...restApiParams
 			};

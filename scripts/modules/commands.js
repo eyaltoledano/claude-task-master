@@ -156,11 +156,11 @@ async function runInteractiveSetup(projectRoot) {
 	}
 
 	// Helper function to fetch Ollama models (duplicated for CLI context)
-	function fetchOllamaModelsCLI(baseUrl = 'http://localhost:11434/api') {
+	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
 		return new Promise((resolve) => {
 			try {
 				// Parse the base URL to extract hostname, port, and base path
-				const url = new URL(baseUrl);
+				const url = new URL(baseURL);
 				const isHttps = url.protocol === 'https:';
 				const port = url.port || (isHttps ? 443 : 80);
 				const basePath = url.pathname.endsWith('/')
@@ -296,7 +296,6 @@ async function runInteractiveSetup(projectRoot) {
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
 		commonPrefix.push(customOllamaOption);
-		commonPrefix.push(customXAIOption);
 		commonPrefix.push(customBedrockOption);
 
 		let prefixLength = commonPrefix.length; // Initial prefix length
@@ -444,13 +443,13 @@ async function runInteractiveSetup(projectRoot) {
 			modelIdToSet = customId;
 			providerHint = 'ollama';
 			// Get the Ollama base URL from config for this role
-			const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
+			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
 			// Validate against live Ollama list
-			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseUrl);
+			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseURL);
 			if (ollamaModels === null) {
 				console.error(
 					chalk.red(
-						`Error: Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+						`Error: Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 					)
 				);
 				setupSuccess = false;
@@ -463,7 +462,7 @@ async function runInteractiveSetup(projectRoot) {
 				);
 				console.log(
 					chalk.yellow(
-						`You can check available models with: curl ${ollamaBaseUrl}/tags`
+						`You can check available models with: curl ${ollamaBaseURL}/tags`
 					)
 				);
 				setupSuccess = false;
@@ -2336,7 +2335,6 @@ function registerCommands(programInstance) {
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
-		.option('--xai', 'Allow setting a custom XAI model ID (use with --set-*) ')
 		.option(
 			'--bedrock',
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
@@ -2350,7 +2348,6 @@ Examples:
   $ task-master models --set-research sonar-pro       # Set research model
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
-  $ task-master models --set-main custom-model --xai  # Set custom XAI model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
   $ task-master models --setup                            # Run interactive setup`

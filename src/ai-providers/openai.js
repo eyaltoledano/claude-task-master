@@ -16,13 +16,13 @@ export class OpenAIProvider extends BaseAIProvider {
 	 * Creates and returns an OpenAI client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - OpenAI API key
-	 * @param {string} [params.baseUrl] - Optional custom API endpoint
+	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} OpenAI client function
 	 * @throws {Error} If API key is missing or initialization fails
 	 */
 	async getClient(params) {
 		try {
-			const { apiKey, baseUrl } = params;
+			const { apiKey, baseURL } = params;
 
 			if (!apiKey) {
 				throw new Error('OpenAI API key is required.');
@@ -30,7 +30,7 @@ export class OpenAIProvider extends BaseAIProvider {
 
 			return createOpenAI({
 				apiKey,
-				...(baseUrl && { baseURL: baseUrl })
+				...(baseURL && { baseURL })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

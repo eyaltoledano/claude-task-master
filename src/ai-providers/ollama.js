@@ -16,7 +16,7 @@ export class OllamaAIProvider extends BaseAIProvider {
 	 * Override auth validation - Ollama doesn't require API keys
 	 * @param {object} params - Parameters to validate
 	 */
-	validateAuth(params) {
+	validateAuth(_params) {
 		// Ollama runs locally and doesn't require API keys
 		// No authentication validation needed
 	}
@@ -24,16 +24,16 @@ export class OllamaAIProvider extends BaseAIProvider {
 	/**
 	 * Creates and returns an Ollama client instance.
 	 * @param {object} params - Parameters for client initialization
-	 * @param {string} [params.baseUrl] - Optional Ollama base URL (defaults to http://localhost:11434)
+	 * @param {string} [params.baseURL] - Optional Ollama base URL (defaults to http://localhost:11434)
 	 * @returns {Function} Ollama client function
 	 * @throws {Error} If initialization fails
 	 */
 	async getClient(params) {
 		try {
-			const { baseUrl } = params;
+			const { baseURL } = params;
 
 			return createOllama({
-				baseUrl: baseUrl || undefined
+				...(baseURL && { baseURL })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

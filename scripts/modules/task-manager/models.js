@@ -72,14 +72,14 @@ function fetchOpenRouterModels() {
 
 /**
  * Fetches the list of models from Ollama instance.
- * @param {string} baseUrl - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
+ * @param {string} baseURL - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
  * @returns {Promise<Array|null>} A promise that resolves with the list of model objects or null if fetch fails.
  */
-function fetchOllamaModels(baseUrl = 'http://localhost:11434/api') {
+function fetchOllamaModels(baseURL = 'http://localhost:11434/api') {
 	return new Promise((resolve) => {
 		try {
 			// Parse the base URL to extract hostname, port, and base path
-			const url = new URL(baseUrl);
+			const url = new URL(baseURL);
 			const isHttps = url.protocol === 'https:';
 			const port = url.port || (isHttps ? 443 : 80);
 			const basePath = url.pathname.endsWith('/')
@@ -484,13 +484,13 @@ async function setModel(role, modelId, options = {}) {
 					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
 
 					// Get the Ollama base URL from config
-					const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
-					const ollamaModels = await fetchOllamaModels(ollamaBaseUrl);
+					const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
+					const ollamaModels = await fetchOllamaModels(ollamaBaseURL);
 
 					if (ollamaModels === null) {
 						// Connection failed - server probably not running
 						throw new Error(
-							`Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+							`Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 						);
 					} else if (ollamaModels.some((m) => m.model === modelId)) {
 						determinedProvider = 'ollama';
@@ -498,7 +498,7 @@ async function setModel(role, modelId, options = {}) {
 						report('warn', warningMessage);
 					} else {
 						// Server is running but model not found
-						const tagsUrl = `${ollamaBaseUrl}/tags`;
+						const tagsUrl = `${ollamaBaseURL}/tags`;
 						throw new Error(
 							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
 						);

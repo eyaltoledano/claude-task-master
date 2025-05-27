@@ -16,14 +16,14 @@ Taskmaster uses two primary methods for configuration:
       			"modelId": "claude-3-7-sonnet-20250219",
       			"maxTokens": 64000,
       			"temperature": 0.2,
-      			"baseUrl": "https://api.anthropic.com/v1"
+      			"baseURL": "https://api.anthropic.com/v1"
       		},
       		"research": {
       			"provider": "perplexity",
       			"modelId": "sonar-pro",
       			"maxTokens": 8700,
       			"temperature": 0.1,
-      			"baseUrl": "https://api.perplexity.ai/v1"
+      			"baseURL": "https://api.perplexity.ai/v1"
       		},
       		"fallback": {
       			"provider": "anthropic",
@@ -38,8 +38,8 @@ Taskmaster uses two primary methods for configuration:
       		"defaultSubtasks": 5,
       		"defaultPriority": "medium",
       		"projectName": "Your Project Name",
-      		"ollamaBaseUrl": "http://localhost:11434/api",
-      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+      		"ollamaBaseURL": "http://localhost:11434/api",
+      		"azureOpenaiBaseURL": "https://your-endpoint.openai.azure.com/"
       	}
       }
       ```
@@ -59,8 +59,8 @@ Taskmaster uses two primary methods for configuration:
       - `OPENROUTER_API_KEY`: Your OpenRouter API key.
       - `XAI_API_KEY`: Your X-AI API key.
     - **Optional Endpoint Overrides:**
-      - **Per-role `baseUrl` in `.taskmasterconfig`:** You can add a `baseUrl` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
-      - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseUrl` for the Azure model role).
+      - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
+      - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
       - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmasterconfig`**, not environment variables.
