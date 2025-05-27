@@ -1,7 +1,7 @@
 # Task ID: 93
 # Title: Implement Google Vertex AI Provider Integration
 # Status: pending
-# Dependencies: 19, 92
+# Dependencies: 19, 94
 # Priority: medium
 # Description: Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.
 # Details:
