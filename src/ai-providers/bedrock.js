@@ -19,7 +19,7 @@ export class BedrockAIProvider extends BaseAIProvider {
 	 * See https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 	 * for AWS SDK environment variables and configuration options.
 	 */
-	async getClient(params) {
+	getClient(params) {
 		try {
 			const {
 				profile = process.env.AWS_PROFILE || 'default',

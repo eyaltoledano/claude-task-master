@@ -37,7 +37,7 @@ export class AzureProvider extends BaseAIProvider {
 	 * @returns {Function} Azure OpenAI client function
 	 * @throws {Error} If required parameters are missing or initialization fails
 	 */
-	async getClient(params) {
+	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
 

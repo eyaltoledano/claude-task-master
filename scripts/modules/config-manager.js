@@ -372,6 +372,26 @@ function getAzureBaseURL(explicitRoot = null) {
 }
 
 /**
+ * Gets the Google Cloud project ID for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string|null} The project ID or null if not configured
+ */
+function getVertexProjectId(explicitRoot = null) {
+	// Return value from config
+	return getGlobalConfig(explicitRoot).vertexProjectId;
+}
+
+/**
+ * Gets the Google Cloud location for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The location or default value of "us-central1"
+ */
+function getVertexLocation(explicitRoot = null) {
+	// Return value from config or default
+	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
+}
+
+/**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
  * @param {string} role - The role ('main', 'research', 'fallback').
@@ -455,7 +475,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
 
@@ -546,6 +567,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'azure':
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
+				break;
+			case 'vertex':
+				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
+				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
 				break;
 			default:
 				return false; // Unknown provider
@@ -762,5 +787,7 @@ export {
 	getMcpApiKeyStatus,
 
 	// ADD: Function to get all provider names
-	getAllProviders
+	getAllProviders,
+	getVertexProjectId,
+	getVertexLocation
 };

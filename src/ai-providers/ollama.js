@@ -28,7 +28,7 @@ export class OllamaAIProvider extends BaseAIProvider {
 	 * @returns {Function} Ollama client function
 	 * @throws {Error} If initialization fails
 	 */
-	async getClient(params) {
+	getClient(params) {
 		try {
 			const { baseURL } = params;
 

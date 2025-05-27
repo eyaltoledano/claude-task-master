@@ -5473,7 +5473,7 @@
       "description": "Create a comprehensive Azure OpenAI provider implementation that integrates with the existing AI provider system, enabling users to leverage Azure-hosted OpenAI models through proper authentication and configuration.",
       "details": "Implement the Azure OpenAI provider following the established provider pattern:\n\n1. **Create Azure Provider Class** (`src/ai-providers/azure.js`):\n   - Extend BaseAIProvider class following the same pattern as openai.js and google.js\n   - Import and use `createAzureOpenAI` from `@ai-sdk/azure` package\n   - Implement required interface methods: `getClient()`, `validateConfig()`, and any other abstract methods\n   - Handle Azure-specific configuration: endpoint URL, API key, and deployment name\n   - Add proper error handling for missing or invalid Azure configuration\n\n2. **Configuration Management**:\n   - Support environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n   - Validate that both endpoint and API key are provided\n   - Provide clear error messages for configuration issues\n   - Follow the same configuration pattern as other providers\n\n3. **Integration Updates**:\n   - Update `src/ai-providers/index.js` to export the new AzureProvider\n   - Add 'azure' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`\n   - Ensure the provider is properly registered and accessible through the unified AI services\n\n4. **Error Handling**:\n   - Implement Azure-specific error handling for authentication failures\n   - Handle endpoint connectivity issues with helpful error messages\n   - Validate deployment name and provide guidance for common configuration mistakes\n   - Follow the established error handling patterns from Task 19\n\n5. **Documentation Updates**:\n   - Update any provider documentation to include Azure OpenAI setup instructions\n   - Add configuration examples for Azure OpenAI environment variables\n   - Include troubleshooting guidance for common Azure-specific issues\n\nThe implementation should maintain consistency with existing provider implementations while handling Azure's unique authentication and endpoint requirements.",
       "testStrategy": "Verify the Azure OpenAI provider implementation through comprehensive testing:\n\n1. **Unit Testing**:\n   - Test provider class instantiation and configuration validation\n   - Verify getClient() method returns properly configured Azure OpenAI client\n   - Test error handling for missing/invalid configuration parameters\n   - Validate that the provider correctly extends BaseAIProvider\n\n2. **Integration Testing**:\n   - Test provider registration in the unified AI services system\n   - Verify the provider appears in the PROVIDERS object and is accessible\n   - Test end-to-end functionality with valid Azure OpenAI credentials\n   - Validate that the provider works with existing AI operation workflows\n\n3. **Configuration Testing**:\n   - Test with various environment variable combinations\n   - Verify proper error messages for missing endpoint or API key\n   - Test with invalid endpoint URLs and ensure graceful error handling\n   - Validate deployment name handling and error reporting\n\n4. **Manual Verification**:\n   - Set up test Azure OpenAI credentials and verify successful connection\n   - Test actual AI operations (like task expansion) using the Azure provider\n   - Verify that the provider selection works correctly in the CLI\n   - Confirm that error messages are helpful and actionable for users\n\n5. **Documentation Verification**:\n   - Ensure all configuration examples work as documented\n   - Verify that setup instructions are complete and accurate\n   - Test troubleshooting guidance with common error scenarios",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         19,
         26
@@ -5486,7 +5486,7 @@
           "description": "Implement the AzureProvider class that extends BaseAIProvider to handle Azure OpenAI integration",
           "dependencies": [],
           "details": "Create the AzureProvider class in src/ai-providers/azure.js that extends BaseAIProvider. Import createAzureOpenAI from @ai-sdk/azure package. Implement required interface methods including getClient() and validateConfig(). Handle Azure-specific configuration parameters: endpoint URL, API key, and deployment name. Follow the established pattern in openai.js and google.js. Ensure proper error handling for missing or invalid configuration.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Create unit tests that verify the AzureProvider class correctly initializes with valid configuration and throws appropriate errors with invalid configuration. Test the getClient() method returns a properly configured client instance."
         },
         {
@@ -5497,7 +5497,7 @@
             1
           ],
           "details": "Implement configuration management for Azure OpenAI provider that supports environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT. Add validation logic to ensure both endpoint and API key are provided. Create clear error messages for configuration issues. Follow the same configuration pattern as implemented in other providers. Ensure the validateConfig() method properly checks all required Azure configuration parameters.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test configuration validation with various combinations of missing or invalid parameters. Verify environment variables are correctly loaded and applied to the provider configuration."
         },
         {
@@ -5509,7 +5509,7 @@
             2
           ],
           "details": "Update src/ai-providers/index.js to export the new AzureProvider class. Add 'azure' entry to the PROVIDERS object in scripts/modules/ai-services-unified.js. Ensure the provider is properly registered and accessible through the unified AI services. Test that the provider can be instantiated and used through the provider selection mechanism. Follow the same integration pattern used for existing providers.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Create integration tests that verify the Azure provider is correctly registered and can be selected through the provider system. Test that the provider is properly initialized when selected."
         },
         {
@@ -5521,7 +5521,7 @@
             2
           ],
           "details": "Implement Azure-specific error handling for authentication failures, endpoint connectivity issues, and deployment name validation. Provide helpful error messages that guide users to resolve common configuration mistakes. Follow the established error handling patterns from Task 19. Create custom error classes if needed for Azure-specific errors. Ensure errors are properly propagated and formatted for user display.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test error handling by simulating various failure scenarios including authentication failures, invalid endpoints, and missing deployment names. Verify appropriate error messages are generated."
         },
         {
@@ -5535,7 +5535,7 @@
             4
           ],
           "details": "Update provider documentation to include Azure OpenAI setup instructions. Add configuration examples for Azure OpenAI environment variables. Include troubleshooting guidance for common Azure-specific issues. Document the required Azure resource creation process with references to Microsoft's documentation. Provide examples of valid configuration settings and explain each required parameter. Include information about Azure OpenAI model deployment requirements.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation."
         }
       ]
@@ -5552,7 +5552,61 @@
         92
       ],
       "priority": "medium",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Google Vertex AI Provider Class",
+          "description": "Develop a new provider class in `src/ai-providers/google-vertex.js` that extends the BaseAIProvider, following the structure of existing providers.",
+          "dependencies": [],
+          "details": "Ensure the new class is consistent with the architecture of other providers such as google.js and openai.js, and is ready to integrate with the AI SDK.",
+          "status": "pending",
+          "testStrategy": "Verify the class structure matches other providers and can be instantiated without errors."
+        },
+        {
+          "id": 2,
+          "title": "Integrate Vercel AI SDK Google Vertex Package",
+          "description": "Integrate the `@ai-sdk/google-vertex` package, supporting both the default provider and custom configuration via `createVertex`.",
+          "dependencies": [
+            1
+          ],
+          "details": "Allow for standard usage with the default `vertex` provider and advanced scenarios using `createVertex` for custom project ID, location, and credentials as per SDK documentation.",
+          "status": "pending",
+          "testStrategy": "Write unit tests to ensure both default and custom provider instances can be created and configured."
+        },
+        {
+          "id": 3,
+          "title": "Implement Provider Interface Methods",
+          "description": "Implement all required interface methods (e.g., `getClient`, `generateText`) to ensure compatibility with the provider system.",
+          "dependencies": [
+            2
+          ],
+          "details": "Reference implementation patterns from other providers to maintain consistency and ensure all required methods are present and functional.",
+          "status": "pending",
+          "testStrategy": "Run integration tests to confirm the provider responds correctly to all interface method calls."
+        },
+        {
+          "id": 4,
+          "title": "Handle Vertex AI Configuration and Authentication",
+          "description": "Implement support for Vertex AI-specific configuration, including project ID, location, and authentication via environment variables or explicit service account credentials.",
+          "dependencies": [
+            3
+          ],
+          "details": "Support both environment-based authentication and explicit credentials using `googleAuthOptions`, following Google Cloud and Vertex AI setup best practices.",
+          "status": "pending",
+          "testStrategy": "Test with both environment variable-based and explicit service account authentication to ensure both methods work as expected."
+        },
+        {
+          "id": 5,
+          "title": "Update Exports, Documentation, and Error Handling",
+          "description": "Export the new provider, update the PROVIDERS object, and document setup instructions, including robust error handling for Vertex-specific issues.",
+          "dependencies": [
+            4
+          ],
+          "details": "Update `src/ai-providers/index.js` and `scripts/modules/ai-services-unified.js`, and provide clear documentation for setup, configuration, and error handling patterns.",
+          "status": "pending",
+          "testStrategy": "Verify the provider is available for import, documentation is accurate, and error handling works by simulating common failure scenarios."
+        }
+      ]
     }
   ]
 }

@@ -43,6 +43,7 @@
 		"@ai-sdk/anthropic": "^1.2.10",
 		"@ai-sdk/azure": "^1.3.17",
 		"@ai-sdk/google": "^1.2.13",
+		"@ai-sdk/google-vertex": "^2.2.23",
 		"@ai-sdk/mistral": "^1.2.7",
 		"@ai-sdk/openai": "^1.3.20",
 		"@ai-sdk/perplexity": "^1.1.7",

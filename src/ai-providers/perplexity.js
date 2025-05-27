@@ -20,7 +20,7 @@ export class PerplexityAIProvider extends BaseAIProvider {
 	 * @returns {Function} Perplexity client function
 	 * @throws {Error} If API key is missing or initialization fails
 	 */
-	async getClient(params) {
+	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
 

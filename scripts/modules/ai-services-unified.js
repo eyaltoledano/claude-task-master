@@ -21,7 +21,9 @@ import {
 	getBaseUrlForRole,
 	isApiKeySet,
 	getOllamaBaseURL,
-	getAzureBaseURL
+	getAzureBaseURL,
+	getVertexProjectId,
+	getVertexLocation
 } from './config-manager.js';
 import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
@@ -35,7 +37,8 @@ import {
 	OpenRouterAIProvider,
 	OllamaAIProvider,
 	BedrockAIProvider,
-	AzureProvider
+	AzureProvider,
+	VertexAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -48,7 +51,8 @@ const PROVIDERS = {
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
-	azure: new AzureProvider()
+	azure: new AzureProvider(),
+	vertex: new VertexAIProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -166,7 +170,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
-		bedrock: 'AWS_ACCESS_KEY_ID'
+		bedrock: 'AWS_ACCESS_KEY_ID',
+		vertex: 'GOOGLE_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
@@ -415,6 +420,49 @@ async function _unifiedServiceRunner(serviceType, params) {
 				effectiveProjectRoot
 			);
 
+			// Prepare provider-specific configuration
+			let providerSpecificParams = {};
+
+			// Handle Vertex AI specific configuration
+			if (providerName?.toLowerCase() === 'vertex') {
+				// Get Vertex project ID and location
+				const projectId =
+					getVertexProjectId(effectiveProjectRoot) ||
+					resolveEnvVariable(
+						'VERTEX_PROJECT_ID',
+						session,
+						effectiveProjectRoot
+					);
+
+				const location =
+					getVertexLocation(effectiveProjectRoot) ||
+					resolveEnvVariable(
+						'VERTEX_LOCATION',
+						session,
+						effectiveProjectRoot
+					) ||
+					'us-central1';
+
+				// Get credentials path if available
+				const credentialsPath = resolveEnvVariable(
+					'GOOGLE_APPLICATION_CREDENTIALS',
+					session,
+					effectiveProjectRoot
+				);
+
+				// Add Vertex-specific parameters
+				providerSpecificParams = {
+					projectId,
+					location,
+					...(credentialsPath && { credentials: { credentialsFromEnv: true } })
+				};
+
+				log(
+					'debug',
+					`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
+				);
+			}
+
 			const messages = [];
 			if (systemPrompt) {
 				messages.push({ role: 'system', content: systemPrompt });
@@ -452,6 +500,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 				messages,
 				...(baseURL && { baseURL }),
 				...(serviceType === 'generateObject' && { schema, objectName }),
+				...providerSpecificParams,
 				...restApiParams
 			};
 
