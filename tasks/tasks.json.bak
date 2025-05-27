@@ -5479,66 +5479,7 @@
         26
       ],
       "priority": "medium",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Create Azure Provider Class",
-          "description": "Implement the AzureProvider class that extends BaseAIProvider to handle Azure OpenAI integration",
-          "dependencies": [],
-          "details": "Create the AzureProvider class in src/ai-providers/azure.js that extends BaseAIProvider. Import createAzureOpenAI from @ai-sdk/azure package. Implement required interface methods including getClient() and validateConfig(). Handle Azure-specific configuration parameters: endpoint URL, API key, and deployment name. Follow the established pattern in openai.js and google.js. Ensure proper error handling for missing or invalid configuration.",
-          "status": "pending",
-          "testStrategy": "Create unit tests that verify the AzureProvider class correctly initializes with valid configuration and throws appropriate errors with invalid configuration. Test the getClient() method returns a properly configured client instance."
-        },
-        {
-          "id": 2,
-          "title": "Implement Configuration Management",
-          "description": "Add support for Azure OpenAI environment variables and configuration validation",
-          "dependencies": [
-            1
-          ],
-          "details": "Implement configuration management for Azure OpenAI provider that supports environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT. Add validation logic to ensure both endpoint and API key are provided. Create clear error messages for configuration issues. Follow the same configuration pattern as implemented in other providers. Ensure the validateConfig() method properly checks all required Azure configuration parameters.",
-          "status": "pending",
-          "testStrategy": "Test configuration validation with various combinations of missing or invalid parameters. Verify environment variables are correctly loaded and applied to the provider configuration."
-        },
-        {
-          "id": 3,
-          "title": "Update Provider Integration",
-          "description": "Integrate the Azure provider into the existing AI provider system",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "Update src/ai-providers/index.js to export the new AzureProvider class. Add 'azure' entry to the PROVIDERS object in scripts/modules/ai-services-unified.js. Ensure the provider is properly registered and accessible through the unified AI services. Test that the provider can be instantiated and used through the provider selection mechanism. Follow the same integration pattern used for existing providers.",
-          "status": "pending",
-          "testStrategy": "Create integration tests that verify the Azure provider is correctly registered and can be selected through the provider system. Test that the provider is properly initialized when selected."
-        },
-        {
-          "id": 4,
-          "title": "Implement Azure-Specific Error Handling",
-          "description": "Add specialized error handling for Azure OpenAI-specific issues",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "Implement Azure-specific error handling for authentication failures, endpoint connectivity issues, and deployment name validation. Provide helpful error messages that guide users to resolve common configuration mistakes. Follow the established error handling patterns from Task 19. Create custom error classes if needed for Azure-specific errors. Ensure errors are properly propagated and formatted for user display.",
-          "status": "pending",
-          "testStrategy": "Test error handling by simulating various failure scenarios including authentication failures, invalid endpoints, and missing deployment names. Verify appropriate error messages are generated."
-        },
-        {
-          "id": 5,
-          "title": "Update Documentation",
-          "description": "Create comprehensive documentation for the Azure OpenAI provider integration",
-          "dependencies": [
-            1,
-            2,
-            3,
-            4
-          ],
-          "details": "Update provider documentation to include Azure OpenAI setup instructions. Add configuration examples for Azure OpenAI environment variables. Include troubleshooting guidance for common Azure-specific issues. Document the required Azure resource creation process with references to Microsoft's documentation. Provide examples of valid configuration settings and explain each required parameter. Include information about Azure OpenAI model deployment requirements.",
-          "status": "pending",
-          "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation."
-        }
-      ]
+      "subtasks": []
     },
     {
       "id": 93,

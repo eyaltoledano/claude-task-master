@@ -1,0 +1,23 @@
+# Task ID: 93
+# Title: Implement Google Vertex AI Provider Integration
+# Status: pending
+# Dependencies: 19, 92
+# Priority: medium
+# Description: Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.
+# Details:
+1. Create a new provider class in `src/ai-providers/google-vertex.js` that extends the existing BaseAIProvider, following the established structure used by other providers (e.g., google.js, openai.js).
+2. Integrate the Vercel AI SDK's `@ai-sdk/google-vertex` package. Use the default `vertex` provider for standard usage, and allow for custom configuration via `createVertex` for advanced scenarios (e.g., specifying project ID, location, and credentials).
+3. Implement all required interface methods (such as `getClient`, `generateText`, etc.) to ensure compatibility with the provider system. Reference the implementation patterns from other providers for consistency.
+4. Handle Vertex AI-specific configuration, including project ID, location, and Google Cloud authentication. Support both environment-based authentication and explicit service account credentials via `googleAuthOptions`.
+5. Implement robust error handling for Vertex-specific issues, including authentication failures and API errors, leveraging the system-wide error handling patterns.
+6. Update `src/ai-providers/index.js` to export the new provider, and add the 'vertex' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`.
+7. Update documentation to provide clear setup instructions for Google Vertex AI, including required environment variables, service account setup, and configuration examples.
+8. Ensure the implementation is modular and maintainable, supporting future expansion for additional Vertex AI features or models.
+
+# Test Strategy:
+- Write unit tests for the new provider class, covering all interface methods and configuration scenarios (default, custom, error cases).
+- Verify that the provider can successfully authenticate using both environment-based and explicit service account credentials.
+- Test integration with the provider system by selecting 'vertex' as the provider and generating text using supported Vertex AI models (e.g., Gemini).
+- Simulate authentication and API errors to confirm robust error handling and user feedback.
+- Confirm that the provider is correctly exported and available in the PROVIDERS object.
+- Review and validate the updated documentation for accuracy and completeness.

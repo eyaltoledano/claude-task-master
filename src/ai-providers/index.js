@@ -11,3 +11,4 @@ export { XAIProvider } from './xai.js';
 export { OpenRouterAIProvider } from './openrouter.js';
 export { OllamaAIProvider } from './ollama.js';
 export { BedrockAIProvider } from './bedrock.js';
+export { AzureProvider } from './azure.js';

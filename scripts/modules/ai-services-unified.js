@@ -33,7 +33,7 @@ import {
 	OpenRouterAIProvider,
 	OllamaAIProvider,
 	BedrockAIProvider,
-	AzureOpenAIProvider
+	AzureProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -46,7 +46,7 @@ const PROVIDERS = {
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
-	azure: new AzureOpenAIProvider()
+	azure: new AzureProvider()
 };
 
 // Helper function to get cost for a specific model
