@@ -366,6 +366,11 @@ function getOllamaBaseURL(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).ollamaBaseURL;
 }
 
+function getAzureBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).azureBaseURL;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -749,6 +754,7 @@ export {
 	getDefaultPriority,
 	getProjectName,
 	getOllamaBaseURL,
+	getAzureBaseURL,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

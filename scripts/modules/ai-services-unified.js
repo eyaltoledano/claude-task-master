@@ -19,7 +19,9 @@ import {
 	MODEL_MAP,
 	getDebugFlag,
 	getBaseUrlForRole,
-	isApiKeySet
+	isApiKeySet,
+	getOllamaBaseURL,
+	getAzureBaseURL
 } from './config-manager.js';
 import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
 
@@ -394,6 +396,16 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Get base URL if configured (optional for most providers)
 			baseURL = getBaseUrlForRole(currentRole, effectiveProjectRoot);
+
+			// For Azure, use the global Azure base URL if role-specific URL is not configured
+			if (providerName?.toLowerCase() === 'azure' && !baseURL) {
+				baseURL = getAzureBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Azure base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'ollama' && !baseURL) {
+				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
+				baseURL = getOllamaBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Ollama base URL: ${baseURL}`);
+			}
 
 			// Get AI parameters for the current role
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);

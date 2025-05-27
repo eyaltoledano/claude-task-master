@@ -3,7 +3,7 @@
  * AI provider implementation for Perplexity models using Vercel AI SDK.
  */
 
-import { createPerplexityAI } from '@ai-sdk/perplexity';
+import { createPerplexity } from '@ai-sdk/perplexity';
 import { BaseAIProvider } from './base-provider.js';
 
 export class PerplexityAIProvider extends BaseAIProvider {
@@ -28,7 +28,7 @@ export class PerplexityAIProvider extends BaseAIProvider {
 				throw new Error('Perplexity API key is required.');
 			}
 
-			return createPerplexityAI({
+			return createPerplexity({
 				apiKey,
 				baseURL: baseURL || 'https://api.perplexity.ai'
 			});

@@ -3,7 +3,7 @@
  * AI provider implementation for xAI models using Vercel AI SDK.
  */
 
-import { createXAI } from '@ai-sdk/xai';
+import { createXai } from '@ai-sdk/xai';
 import { BaseAIProvider } from './base-provider.js';
 
 export class XAIProvider extends BaseAIProvider {
@@ -28,7 +28,7 @@ export class XAIProvider extends BaseAIProvider {
 				throw new Error('xAI API key is required.');
 			}
 
-			return createXAI({
+			return createXai({
 				apiKey,
 				baseURL: baseURL || 'https://api.x.ai/v1'
 			});
