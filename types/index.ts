@@ -7,11 +7,6 @@
 
 // Re-export all model types
 export * from './models/task.js';
-export * from './models/project.js';
-export * from './models/ai.js';
 
 // Re-export utility types
 export * from './utils/helpers.js';
-
-// Re-export API types
-export * from './api/responses.js';

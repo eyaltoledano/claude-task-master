@@ -38,6 +38,7 @@
     "src/**/*",
     "scripts/**/*",
     "mcp-server/**/*",
+    "types/**/*",
     "index.js",
     "bin/**/*"
   ],

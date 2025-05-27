@@ -3,10 +3,11 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   // Entry points - start with a few, expand as we migrate
   entry: [
-    'src/index.ts',
-    'scripts/init.ts',
-    'scripts/dev.ts',
-    'mcp-server/server.ts'
+    // These will be added as we migrate files to TypeScript
+    // 'src/index.ts',
+    // 'scripts/init.ts', 
+    // 'scripts/dev.ts',
+    // 'mcp-server/server.ts'
   ],
   
   // Output format
