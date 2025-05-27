@@ -22,6 +22,7 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @param {number} [args.from] - Starting task ID in a range to analyze
  * @param {number} [args.to] - Ending task ID in a range to analyze
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.complexityMode] - Complexity analysis mode ('standard', 'balanced', 'advanced')
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
  * @param {Object} [context.session] - MCP session object
@@ -35,6 +36,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		threshold,
 		research,
 		projectRoot,
+		complexityMode,
 		ids,
 		from,
 		to
@@ -89,6 +91,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			threshold: threshold,
 			research: research === true, // Ensure boolean
 			projectRoot: projectRoot, // Pass projectRoot here
+			complexityMode: complexityMode, // Pass complexity mode
 			id: ids, // Pass the ids parameter to the core function as 'id'
 			from: from, // Pass from parameter
 			to: to // Pass to parameter

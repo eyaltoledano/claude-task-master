@@ -159,6 +159,17 @@ task-master analyze-complexity --file=custom-tasks.json
 
 # Use Perplexity AI for research-backed complexity analysis
 task-master analyze-complexity --research
+
+# Use a specific complexity mode (overrides config)
+task-master analyze-complexity --complexity-mode=standard  # Ultra-compressed (783 chars)
+task-master analyze-complexity --complexity-mode=balanced  # Middle-ground (2,100 chars)
+task-master analyze-complexity --complexity-mode=advanced  # Full enhanced (5,711 chars)
+
+# Analyze specific task IDs
+task-master analyze-complexity --id=1,3,5
+
+# Analyze a range of tasks
+task-master analyze-complexity --from=10 --to=20
 ```
 
 ## View Complexity Report

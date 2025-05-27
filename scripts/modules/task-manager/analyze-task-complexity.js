@@ -13,36 +13,14 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getProjectName,
+	getComplexityMode
+} from '../config-manager.js';
 
-/**
- * Generates the prompt for complexity analysis.
- * (Moved from ai-services.js and simplified)
- * @param {Object} tasksData - The tasks data object.
- * @returns {string} The generated prompt.
- */
-function generateInternalComplexityAnalysisPrompt(tasksData) {
-	const tasksString = JSON.stringify(tasksData.tasks, null, 2);
-	return `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
+import { generateComplexityAnalysisPrompt } from '../../../src/prompts/index.js';
 
-Tasks:
-${tasksString}
-
-Respond ONLY with a valid JSON array matching the schema:
-[
-  {
-    "taskId": <number>,
-    "taskTitle": "<string>",
-    "complexityScore": <number 1-10>,
-    "recommendedSubtasks": <number>,
-    "expansionPrompt": "<string>",
-    "reasoning": "<string>"
-  },
-  ...
-]
-
-Do not include any explanatory text, markdown formatting, or code block markers before or after the JSON array.`;
-}
 
 /**
  * Analyzes task complexity and generates expansion recommendations
@@ -52,6 +30,7 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {string|number} [options.threshold] - Complexity threshold
  * @param {boolean} [options.research] - Use research role
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
+ * @param {string} [options.complexityMode] - Complexity mode ('standard', 'balanced', 'advanced')
  * @param {string} [options.id] - Comma-separated list of task IDs to analyze specifically
  * @param {number} [options.from] - Starting task ID in a range to analyze
  * @param {number} [options.to] - Ending task ID in a range to analyze
@@ -338,7 +317,12 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		// Continue with regular analysis path
-		const prompt = generateInternalComplexityAnalysisPrompt(tasksData);
+		const complexityMode =
+			options.complexityMode || getComplexityMode(projectRoot);
+		const prompt = generateComplexityAnalysisPrompt(
+			tasksData,
+			complexityMode
+		);
 		const systemPrompt =
 			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
@@ -378,9 +362,28 @@ async function analyzeTaskComplexity(options, context = {}) {
 			}
 
 			reportLog(`Parsing complexity analysis from text response...`, 'info');
+			let cleanedResponse;
 			try {
-				let cleanedResponse = aiServiceResponse.mainResult;
+				cleanedResponse = aiServiceResponse.mainResult;
 				cleanedResponse = cleanedResponse.trim();
+
+				// Debug: Log original response length and preview
+				reportLog(
+					`Original response length: ${cleanedResponse.length}`,
+					'info'
+				);
+				if (outputFormat === 'text') {
+					console.log(
+						chalk.gray(
+							`Original response preview (first 200 chars): ${cleanedResponse.substring(0, 200)}`
+						)
+					);
+					console.log(
+						chalk.gray(
+							`Original response preview (last 200 chars): ${cleanedResponse.substring(cleanedResponse.length - 200)}`
+						)
+					);
+				}
 
 				const codeBlockMatch = cleanedResponse.match(
 					/```(?:json)?\s*([\s\S]*?)\s*```/
@@ -403,8 +406,41 @@ async function analyzeTaskComplexity(options, context = {}) {
 					}
 				}
 
+				// Clean up common JSON issues from AI responses
+				// Simple approach: Fix basic JSON issues
+
+				// 1. Fix literal newlines and control characters first
+				// Note: Only escape newlines WITHIN string values, not the JSON structure itself
+				cleanedResponse = cleanedResponse.replace(/\n/g, ' '); // Replace with spaces instead of escaping
+				cleanedResponse = cleanedResponse.replace(/\r/g, ' ');
+				cleanedResponse = cleanedResponse.replace(/\t/g, ' ');
+
+				// 2. Fix unescaped quotes in reasoning field specifically
+				// Match reasoning field and escape quotes within its value
+				cleanedResponse = cleanedResponse.replace(
+					/("reasoning"\s*:\s*")(.*?)("(?:\s*[,}]))/gs,
+					(_match, prefix, content, suffix) => {
+						// Simple escape: replace any quote with escaped quote
+						const escapedContent = content.replace(/"/g, '\\"');
+						return prefix + escapedContent + suffix;
+					}
+				);
+
+				// 3. Remove trailing commas
+				cleanedResponse = cleanedResponse.replace(/,(\s*[}\]])/g, '$1');
+
+				// Always log cleaned response for debugging JSON issues
+				console.log(chalk.gray('Attempting to parse cleaned JSON...'));
+				console.log(chalk.gray('Cleaned response (first 200 chars):'));
+				console.log(
+					chalk.gray(JSON.stringify(cleanedResponse.substring(0, 200)))
+				);
+				console.log(chalk.gray('Cleaned response around position 214:'));
+				const start = Math.max(0, 214 - 50);
+				const end = Math.min(cleanedResponse.length, 214 + 50);
+				console.log(chalk.gray(cleanedResponse.substring(start, end)));
+
 				if (outputFormat === 'text' && getDebugFlag(session)) {
-					console.log(chalk.gray('Attempting to parse cleaned JSON...'));
 					console.log(chalk.gray('Cleaned response (first 100 chars):'));
 					console.log(chalk.gray(cleanedResponse.substring(0, 100)));
 					console.log(chalk.gray('Last 100 chars:'));
@@ -416,6 +452,29 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis = JSON.parse(cleanedResponse);
 			} catch (parseError) {
 				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+
+				// Log the problematic content around the error position for debugging
+				if (parseError.message.includes('position')) {
+					const match = parseError.message.match(/position (\d+)/);
+					if (match) {
+						const position = parseInt(match[1]);
+						const start = Math.max(0, position - 20);
+						const end = Math.min(cleanedResponse.length, position + 20);
+						const problemArea = cleanedResponse.substring(start, end);
+						reportLog(
+							`JSON parse error at position ${position}. Context: "${problemArea}"`,
+							'error'
+						);
+						if (outputFormat === 'text') {
+							console.error(
+								chalk.red(
+									`JSON parse error at position ${position}. Context: "${problemArea}"`
+								)
+							);
+						}
+					}
+				}
+
 				reportLog(
 					`Error parsing complexity analysis JSON: ${parseError.message}`,
 					'error'
@@ -503,7 +562,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 					analysisCount: finalComplexityAnalysis.length,
 					thresholdScore: thresholdScore,
 					projectName: getProjectName(session),
-					usedResearch: useResearch
+					usedResearch: useResearch,
+					complexityMode: complexityMode
 				},
 				complexityAnalysis: finalComplexityAnalysis
 			};

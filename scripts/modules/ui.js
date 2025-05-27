@@ -1588,6 +1588,19 @@ async function displayComplexityReport(reportPath) {
 		]
 	);
 
+	// Add complexity mode if present
+	if (report.meta.complexityMode) {
+		const modeDisplay = {
+			standard: 'Standard (Ultra-compressed)',
+			balanced: 'Balanced (Recommended)',
+			advanced: 'Advanced (Full detail)'
+		};
+		metaTable.push([
+			chalk.cyan.bold('Complexity Mode:'),
+			modeDisplay[report.meta.complexityMode] || report.meta.complexityMode
+		]);
+	}
+
 	console.log(metaTable.toString());
 
 	// Sort tasks by complexity score (highest first)

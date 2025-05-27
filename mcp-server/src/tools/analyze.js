@@ -13,6 +13,7 @@ import {
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { COMPLEXITY_MODE_OPTIONS } from '../../../src/constants/complexity-modes.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -67,6 +68,10 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.positive()
 				.optional()
 				.describe('Ending task ID in a range to analyze.'),
+			complexityMode: z
+				.enum(COMPLEXITY_MODE_OPTIONS)
+				.optional()
+				.describe('Complexity analysis mode (defaults to config setting).'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -126,6 +131,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						threshold: args.threshold,
 						research: args.research,
 						projectRoot: args.projectRoot,
+						complexityMode: args.complexityMode,
 						ids: args.ids,
 						from: args.from,
 						to: args.to

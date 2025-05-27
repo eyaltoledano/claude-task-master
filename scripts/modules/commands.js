@@ -53,6 +53,8 @@ import {
 	getBaseUrlForRole
 } from './config-manager.js';
 
+import { COMPLEXITY_MODE_OPTIONS } from '../../src/constants/complexity-modes.js';
+
 import {
 	displayBanner,
 	displayHelp,
@@ -1343,6 +1345,18 @@ function registerCommands(programInstance) {
 		)
 		.option('--from <id>', 'Starting task ID in a range to analyze')
 		.option('--to <id>', 'Ending task ID in a range to analyze')
+		.option(
+			'--complexity-mode <mode>',
+			`Complexity analysis mode: ${COMPLEXITY_MODE_OPTIONS.join(', ')} (defaults to config)`,
+			(value) => {
+				if (!COMPLEXITY_MODE_OPTIONS.includes(value)) {
+					throw new Error(
+						`Invalid complexity mode: ${value}. Must be one of: ${COMPLEXITY_MODE_OPTIONS.join(', ')}`
+					);
+				}
+				return value;
+			}
+		)
 		.action(async (options) => {
 			const tasksPath = options.file || 'tasks/tasks.json';
 			const outputPath = options.output;

@@ -39,7 +39,8 @@ Taskmaster uses two primary methods for configuration:
       		"defaultPriority": "medium",
       		"projectName": "Your Project Name",
       		"ollamaBaseUrl": "http://localhost:11434/api",
-      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/",
+      		"complexityMode": "balanced"
       	}
       }
       ```
@@ -64,6 +65,21 @@ Taskmaster uses two primary methods for configuration:
       - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmasterconfig`**, not environment variables.
+
+### Global Settings in `.taskmasterconfig`
+
+The `global` section contains project-wide settings:
+
+- **`logLevel`** (string): Logging verbosity - "debug", "info", "warn", "error" (default: "info")
+- **`debug`** (boolean): Enable debug mode for verbose output (default: false)
+- **`defaultSubtasks`** (number): Default number of subtasks when expanding tasks (default: 5)
+- **`defaultPriority`** (string): Default priority for new tasks - "low", "medium", "high" (default: "medium")
+- **`projectName`** (string): Your project name, used in reports and displays
+- **`ollamaBaseUrl`** (string): Base URL for Ollama API if using local models
+- **`complexityMode`** (string): Complexity analysis mode - "standard", "balanced", "advanced" (default: "balanced")
+  - **standard**: Ultra-compressed prompt (783 chars) for quick, cost-effective analysis
+  - **balanced**: Middle-ground compression (2,100 chars) for optimal quality/cost ratio
+  - **advanced**: Full enhanced prompt (5,711 chars) for detailed, comprehensive analysis
 
 ## Example `.env` File (for API Keys)
 

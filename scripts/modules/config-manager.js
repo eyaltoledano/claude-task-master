@@ -3,6 +3,11 @@ import path from 'path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { 
+	COMPLEXITY_MODE_OPTIONS, 
+	DEFAULT_COMPLEXITY_MODE,
+	getValidComplexityMode
+} from '../../src/constants/complexity-modes.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -61,7 +66,8 @@ const DEFAULTS = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseUrl: 'http://localhost:11434/api',
+		complexityMode: DEFAULT_COMPLEXITY_MODE
 	}
 };
 
@@ -364,6 +370,18 @@ function getProjectName(explicitRoot = null) {
 function getOllamaBaseUrl(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).ollamaBaseUrl;
+}
+
+function getComplexityMode(explicitRoot = null) {
+	// Directly return value from config, default to 'balanced' if not set
+	const mode = getGlobalConfig(explicitRoot).complexityMode;
+
+	const validMode = getValidComplexityMode(mode);
+	if (validMode !== mode) {
+		log('warn', `Invalid complexity mode: ${mode}. Using default '${DEFAULT_COMPLEXITY_MODE}'.`);
+	}
+
+	return validMode;
 }
 
 /**
@@ -749,6 +767,7 @@ export {
 	getDefaultPriority,
 	getProjectName,
 	getOllamaBaseUrl,
+	getComplexityMode,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
