@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    // Target modern JavaScript
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2020"],
+    
+    // Enable ES modules
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    
+    // Output configuration
+    "outDir": "./dist",
+    "rootDir": "./",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    
+    // Type checking - start permissive, tighten later
+    "strict": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    
+    // Allow JavaScript during migration
+    "allowJs": true,
+    "checkJs": false,
+    
+    // Other options
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": false,
+    "incremental": true
+  },
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "mcp-server/**/*",
+    "index.js",
+    "bin/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "tests"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}
