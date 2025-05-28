@@ -31,6 +31,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		numTasks: numTasksArg,
 		force,
 		append,
+		research,
 		projectRoot
 	} = args;
 
@@ -114,8 +115,14 @@ export async function parsePRDDirect(args, log, context = {}) {
 		}
 	}
 
+	if (research) {
+		logWrapper.info(
+			'Research mode enabled. Using Perplexity AI for enhanced PRD analysis.'
+		);
+	}
+
 	logWrapper.info(
-		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${force}, Append: ${append}, ProjectRoot: ${projectRoot}`
+		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${force}, Append: ${append}, Research: ${research}, ProjectRoot: ${projectRoot}`
 	);
 
 	const wasSilent = isSilentMode();
@@ -135,6 +142,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				projectRoot,
 				force,
 				append,
+				research,
 				commandName: 'parse-prd',
 				outputType: 'mcp'
 			},

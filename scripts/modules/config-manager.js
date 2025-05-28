@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
-import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -61,7 +61,7 @@ const DEFAULTS = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseURL: 'http://localhost:11434/api'
 	}
 };
 
@@ -361,9 +361,34 @@ function getProjectName(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).projectName;
 }
 
-function getOllamaBaseUrl(explicitRoot = null) {
+function getOllamaBaseURL(explicitRoot = null) {
 	// Directly return value from config
-	return getGlobalConfig(explicitRoot).ollamaBaseUrl;
+	return getGlobalConfig(explicitRoot).ollamaBaseURL;
+}
+
+function getAzureBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).azureBaseURL;
+}
+
+/**
+ * Gets the Google Cloud project ID for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string|null} The project ID or null if not configured
+ */
+function getVertexProjectId(explicitRoot = null) {
+	// Return value from config
+	return getGlobalConfig(explicitRoot).vertexProjectId;
+}
+
+/**
+ * Gets the Google Cloud location for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The location or default value of "us-central1"
+ */
+function getVertexLocation(explicitRoot = null) {
+	// Return value from config or default
+	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
 }
 
 /**
@@ -450,7 +475,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
 
@@ -541,6 +567,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'azure':
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
+				break;
+			case 'vertex':
+				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
+				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
 				break;
 			default:
 				return false; // Unknown provider
@@ -707,8 +737,8 @@ function getAllProviders() {
 
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseUrl === 'string'
-		? roleConfig.baseUrl
+	return roleConfig && typeof roleConfig.baseURL === 'string'
+		? roleConfig.baseURL
 		: undefined;
 }
 
@@ -745,12 +775,15 @@ export {
 	getDefaultSubtasks,
 	getDefaultPriority,
 	getProjectName,
-	getOllamaBaseUrl,
+	getOllamaBaseURL,
+	getAzureBaseURL,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
 	// ADD: Function to get all provider names
-	getAllProviders
+	getAllProviders,
+	getVertexProjectId,
+	getVertexLocation
 };

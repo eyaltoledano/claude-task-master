@@ -1,5 +1,179 @@
 # task-master-ai
 
+## 0.15.0
+
+### Minor Changes
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`09add37`](https://github.com/eyaltoledano/claude-task-master/commit/09add37423d70b809d5c28f3cde9fccd5a7e64e7) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Added comprehensive Ollama model validation and interactive setup support
+
+  - **Interactive Setup Enhancement**: Added "Custom Ollama model" option to `task-master models --setup`, matching the existing OpenRouter functionality
+  - **Live Model Validation**: When setting Ollama models, Taskmaster now validates against the local Ollama instance by querying `/api/tags` endpoint
+  - **Configurable Endpoints**: Uses the `ollamaBaseUrl` from `.taskmasterconfig` (with role-specific `baseUrl` overrides supported)
+  - **Robust Error Handling**:
+    - Detects when Ollama server is not running and provides clear error messages
+    - Validates model existence and lists available alternatives when model not found
+    - Graceful fallback behavior for connection issues
+  - **Full Platform Support**: Both MCP server tools and CLI commands support the new validation
+  - **Improved User Experience**: Clear feedback during model validation with informative success/error messages
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`4c83526`](https://github.com/eyaltoledano/claude-task-master/commit/4c835264ac6c1f74896cddabc3b3c69a5c435417) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds and updates supported AI models with costs:
+
+  - Added new OpenRouter models: GPT-4.1 series, O3, Codex Mini, Llama 4 Maverick, Llama 4 Scout, Qwen3-235b
+  - Added Mistral models: Devstral Small, Mistral Nemo
+  - Updated Ollama models with latest variants: Devstral, Qwen3, Mistral-small3.1, Llama3.3
+  - Updated Gemini model to latest 2.5 Flash preview version
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`70f4054`](https://github.com/eyaltoledano/claude-task-master/commit/70f4054f268f9f8257870e64c24070263d4e2966) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add `--research` flag to parse-prd command, enabling enhanced task generation from PRD files. When used, Taskmaster leverages the research model to:
+
+  - Research current technologies and best practices relevant to the project
+  - Identify technical challenges and security concerns not explicitly mentioned in the PRD
+  - Include specific library recommendations with version numbers
+  - Provide more detailed implementation guidance based on industry standards
+  - Create more accurate dependency relationships between tasks
+
+  This results in higher quality, more actionable tasks with minimal additional effort.
+
+  _NOTE_ That this is an experimental feature. Research models don't typically do great at structured output. You may find some failures when using research mode, so please share your feedback so we can improve this.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`5e9bc28`](https://github.com/eyaltoledano/claude-task-master/commit/5e9bc28abea36ec7cd25489af7fcc6cbea51038b) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - This change significantly enhances the `add-task` command's intelligence. When you add a new task, Taskmaster now automatically: - Analyzes your existing tasks to find those most relevant to your new task's description. - Provides the AI with detailed context from these relevant tasks.
+
+  This results in newly created tasks being more accurately placed within your project's dependency structure, saving you time and any need to update tasks just for dependencies, all without significantly increasing AI costs. You'll get smarter, more connected tasks right from the start.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`34c769b`](https://github.com/eyaltoledano/claude-task-master/commit/34c769bcd0faf65ddec3b95de2ba152a8be3ec5c) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhance analyze-complexity to support analyzing specific task IDs. - You can now analyze individual tasks or selected task groups by using the new `--id` option with comma-separated IDs, or `--from` and `--to` options to specify a range of tasks. - The feature intelligently merges analysis results with existing reports, allowing incremental analysis while preserving previous results.
+
+- [#558](https://github.com/eyaltoledano/claude-task-master/pull/558) [`86d8f00`](https://github.com/eyaltoledano/claude-task-master/commit/86d8f00af809887ee0ba0ba7157cc555e0d07c38) Thanks [@ShreyPaharia](https://github.com/ShreyPaharia)! - Add next task to set task status response
+  Status: DONE
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`04af16d`](https://github.com/eyaltoledano/claude-task-master/commit/04af16de27295452e134b17b3c7d0f44bbb84c29) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add move command to enable moving tasks and subtasks within the task hierarchy. This new command supports moving standalone tasks to become subtasks, subtasks to become standalone tasks, and moving subtasks between different parents. The implementation handles circular dependencies, validation, and proper updating of parent-child relationships.
+
+  **Usage:**
+
+  - CLI command: `task-master move --from=<id> --to=<id>`
+  - MCP tool: `move_task` with parameters:
+    - `from`: ID of task/subtask to move (e.g., "5" or "5.2")
+    - `to`: ID of destination (e.g., "7" or "7.3")
+    - `file` (optional): Custom path to tasks.json
+
+  **Example scenarios:**
+
+  - Move task to become subtask: `--from="5" --to="7"`
+  - Move subtask to standalone task: `--from="5.2" --to="7"`
+  - Move subtask to different parent: `--from="5.2" --to="7.3"`
+  - Reorder subtask within same parent: `--from="5.2" --to="5.4"`
+  - Move multiple tasks at once: `--from="10,11,12" --to="16,17,18"`
+  - Move task to new ID: `--from="5" --to="25"` (creates a new task with ID 25)
+
+  **Multiple Task Support:**
+  The command supports moving multiple tasks simultaneously by providing comma-separated lists for both `--from` and `--to` parameters. The number of source and destination IDs must match. This is particularly useful for resolving merge conflicts in task files when multiple team members have created tasks on different branches.
+
+  **Validation Features:**
+
+  - Allows moving tasks to new, non-existent IDs (automatically creates placeholders)
+  - Prevents moving to existing task IDs that already contain content (to avoid overwriting)
+  - Validates source tasks exist before attempting to move them
+  - Ensures proper parent-child relationships are maintained
+
+### Patch Changes
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`231e569`](https://github.com/eyaltoledano/claude-task-master/commit/231e569e84804a2e5ba1f9da1a985d0851b7e949) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adjusts default main model model to Claude Sonnet 4. Adjusts default fallback to Claude Sonney 3.7"
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`b371808`](https://github.com/eyaltoledano/claude-task-master/commit/b371808524f2c2986f4940d78fcef32c125d01f2) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds llms-install.md to the root to enable AI agents to programmatically install the Taskmaster MCP server. This is specifically being introduced for the Cline MCP marketplace and will be adjusted over time for other MCP clients as needed.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`a59dd03`](https://github.com/eyaltoledano/claude-task-master/commit/a59dd037cfebb46d38bc44dd216c7c23933be641) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds AGENTS.md to power Claude Code integration more natively based on Anthropic's best practice and Claude-specific MCP client behaviours. Also adds in advanced workflows that tie Taskmaster commands together into one Claude workflow."
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`e0e1155`](https://github.com/eyaltoledano/claude-task-master/commit/e0e115526089bf41d5d60929956edf5601ff3e23) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes issue with force/append flag combinations for parse-prd.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`34df2c8`](https://github.com/eyaltoledano/claude-task-master/commit/34df2c8bbddc0e157c981d32502bbe6b9468202e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - You can now add tasks to a newly initialized project without having to parse a prd. This will automatically create the missing tasks.json file and create the first task. Lets you vibe if you want to vibe."
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`d2e6431`](https://github.com/eyaltoledano/claude-task-master/commit/d2e64318e2f4bfc3457792e310cc4ff9210bba30) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes an issue where the research fallback would attempt to make API calls without checking for a valid API key first. This ensures proper error handling when the main task generation and first fallback both fail. Closes #421 #519.
+
+## 0.15.0-rc.0
+
+### Minor Changes
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`09add37`](https://github.com/eyaltoledano/claude-task-master/commit/09add37423d70b809d5c28f3cde9fccd5a7e64e7) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Added comprehensive Ollama model validation and interactive setup support
+
+  - **Interactive Setup Enhancement**: Added "Custom Ollama model" option to `task-master models --setup`, matching the existing OpenRouter functionality
+  - **Live Model Validation**: When setting Ollama models, Taskmaster now validates against the local Ollama instance by querying `/api/tags` endpoint
+  - **Configurable Endpoints**: Uses the `ollamaBaseUrl` from `.taskmasterconfig` (with role-specific `baseUrl` overrides supported)
+  - **Robust Error Handling**:
+    - Detects when Ollama server is not running and provides clear error messages
+    - Validates model existence and lists available alternatives when model not found
+    - Graceful fallback behavior for connection issues
+  - **Full Platform Support**: Both MCP server tools and CLI commands support the new validation
+  - **Improved User Experience**: Clear feedback during model validation with informative success/error messages
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`4c83526`](https://github.com/eyaltoledano/claude-task-master/commit/4c835264ac6c1f74896cddabc3b3c69a5c435417) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds and updates supported AI models with costs:
+
+  - Added new OpenRouter models: GPT-4.1 series, O3, Codex Mini, Llama 4 Maverick, Llama 4 Scout, Qwen3-235b
+  - Added Mistral models: Devstral Small, Mistral Nemo
+  - Updated Ollama models with latest variants: Devstral, Qwen3, Mistral-small3.1, Llama3.3
+  - Updated Gemini model to latest 2.5 Flash preview version
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`70f4054`](https://github.com/eyaltoledano/claude-task-master/commit/70f4054f268f9f8257870e64c24070263d4e2966) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add `--research` flag to parse-prd command, enabling enhanced task generation from PRD files. When used, Taskmaster leverages the research model to:
+
+  - Research current technologies and best practices relevant to the project
+  - Identify technical challenges and security concerns not explicitly mentioned in the PRD
+  - Include specific library recommendations with version numbers
+  - Provide more detailed implementation guidance based on industry standards
+  - Create more accurate dependency relationships between tasks
+
+  This results in higher quality, more actionable tasks with minimal additional effort.
+
+  _NOTE_ That this is an experimental feature. Research models don't typically do great at structured output. You may find some failures when using research mode, so please share your feedback so we can improve this.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`5e9bc28`](https://github.com/eyaltoledano/claude-task-master/commit/5e9bc28abea36ec7cd25489af7fcc6cbea51038b) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - This change significantly enhances the `add-task` command's intelligence. When you add a new task, Taskmaster now automatically: - Analyzes your existing tasks to find those most relevant to your new task's description. - Provides the AI with detailed context from these relevant tasks.
+
+  This results in newly created tasks being more accurately placed within your project's dependency structure, saving you time and any need to update tasks just for dependencies, all without significantly increasing AI costs. You'll get smarter, more connected tasks right from the start.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`34c769b`](https://github.com/eyaltoledano/claude-task-master/commit/34c769bcd0faf65ddec3b95de2ba152a8be3ec5c) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhance analyze-complexity to support analyzing specific task IDs. - You can now analyze individual tasks or selected task groups by using the new `--id` option with comma-separated IDs, or `--from` and `--to` options to specify a range of tasks. - The feature intelligently merges analysis results with existing reports, allowing incremental analysis while preserving previous results.
+
+- [#558](https://github.com/eyaltoledano/claude-task-master/pull/558) [`86d8f00`](https://github.com/eyaltoledano/claude-task-master/commit/86d8f00af809887ee0ba0ba7157cc555e0d07c38) Thanks [@ShreyPaharia](https://github.com/ShreyPaharia)! - Add next task to set task status response
+  Status: DONE
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`04af16d`](https://github.com/eyaltoledano/claude-task-master/commit/04af16de27295452e134b17b3c7d0f44bbb84c29) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add move command to enable moving tasks and subtasks within the task hierarchy. This new command supports moving standalone tasks to become subtasks, subtasks to become standalone tasks, and moving subtasks between different parents. The implementation handles circular dependencies, validation, and proper updating of parent-child relationships.
+
+  **Usage:**
+
+  - CLI command: `task-master move --from=<id> --to=<id>`
+  - MCP tool: `move_task` with parameters:
+    - `from`: ID of task/subtask to move (e.g., "5" or "5.2")
+    - `to`: ID of destination (e.g., "7" or "7.3")
+    - `file` (optional): Custom path to tasks.json
+
+  **Example scenarios:**
+
+  - Move task to become subtask: `--from="5" --to="7"`
+  - Move subtask to standalone task: `--from="5.2" --to="7"`
+  - Move subtask to different parent: `--from="5.2" --to="7.3"`
+  - Reorder subtask within same parent: `--from="5.2" --to="5.4"`
+  - Move multiple tasks at once: `--from="10,11,12" --to="16,17,18"`
+  - Move task to new ID: `--from="5" --to="25"` (creates a new task with ID 25)
+
+  **Multiple Task Support:**
+  The command supports moving multiple tasks simultaneously by providing comma-separated lists for both `--from` and `--to` parameters. The number of source and destination IDs must match. This is particularly useful for resolving merge conflicts in task files when multiple team members have created tasks on different branches.
+
+  **Validation Features:**
+
+  - Allows moving tasks to new, non-existent IDs (automatically creates placeholders)
+  - Prevents moving to existing task IDs that already contain content (to avoid overwriting)
+  - Validates source tasks exist before attempting to move them
+  - Ensures proper parent-child relationships are maintained
+
+### Patch Changes
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`231e569`](https://github.com/eyaltoledano/claude-task-master/commit/231e569e84804a2e5ba1f9da1a985d0851b7e949) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adjusts default main model model to Claude Sonnet 4. Adjusts default fallback to Claude Sonney 3.7"
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`b371808`](https://github.com/eyaltoledano/claude-task-master/commit/b371808524f2c2986f4940d78fcef32c125d01f2) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds llms-install.md to the root to enable AI agents to programmatically install the Taskmaster MCP server. This is specifically being introduced for the Cline MCP marketplace and will be adjusted over time for other MCP clients as needed.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`a59dd03`](https://github.com/eyaltoledano/claude-task-master/commit/a59dd037cfebb46d38bc44dd216c7c23933be641) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds AGENTS.md to power Claude Code integration more natively based on Anthropic's best practice and Claude-specific MCP client behaviours. Also adds in advanced workflows that tie Taskmaster commands together into one Claude workflow."
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`e0e1155`](https://github.com/eyaltoledano/claude-task-master/commit/e0e115526089bf41d5d60929956edf5601ff3e23) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes issue with force/append flag combinations for parse-prd.
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`34df2c8`](https://github.com/eyaltoledano/claude-task-master/commit/34df2c8bbddc0e157c981d32502bbe6b9468202e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - You can now add tasks to a newly initialized project without having to parse a prd. This will automatically create the missing tasks.json file and create the first task. Lets you vibe if you want to vibe."
+
+- [#567](https://github.com/eyaltoledano/claude-task-master/pull/567) [`d2e6431`](https://github.com/eyaltoledano/claude-task-master/commit/d2e64318e2f4bfc3457792e310cc4ff9210bba30) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes an issue where the research fallback would attempt to make API calls without checking for a valid API key first. This ensures proper error handling when the main task generation and first fallback both fail. Closes #421 #519.
+
 ## 0.14.0
 
 ### Minor Changes

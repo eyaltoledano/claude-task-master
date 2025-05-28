@@ -1,10 +1,12 @@
 {
 	"meta": {
-		"generatedAt": "2025-05-17T22:29:22.179Z",
-		"tasksAnalyzed": 40,
+		"generatedAt": "2025-05-22T05:48:33.026Z",
+		"tasksAnalyzed": 6,
+		"totalTasks": 88,
+		"analysisCount": 43,
 		"thresholdScore": 5,
 		"projectName": "Taskmaster",
-		"usedResearch": false
+		"usedResearch": true
 	},
 	"complexityAnalysis": [
 		{
@@ -216,22 +218,6 @@
 			"reasoning": "This task involves a relatively simple modification to allow task creation without requiring a PRD document. The complexity is low as it primarily involves creating a form interface and saving functionality. The 2 existing subtasks cover the main implementation areas of UI design and data saving."
 		},
 		{
-			"taskId": 69,
-			"taskTitle": "Enhance Analyze Complexity for Specific Task IDs",
-			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "The current 4 subtasks for enhancing the analyze-complexity feature appear well-structured. Consider if any additional subtasks are needed for performance optimization with large task sets or visualization improvements.",
-			"reasoning": "This task involves modifying the existing analyze-complexity feature to support analyzing specific task IDs and updating reports. The complexity is moderate as it requires careful handling of report merging and filtering logic. The 4 existing subtasks cover the main implementation areas from core logic to testing."
-		},
-		{
-			"taskId": 70,
-			"taskTitle": "Implement 'diagram' command for Mermaid diagram generation",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "The current 4 subtasks for implementing the 'diagram' command appear well-structured. Consider if any additional subtasks are needed for handling large dependency graphs, additional output formats, or integration with existing visualization tools.",
-			"reasoning": "This task involves creating a new command that generates Mermaid diagrams to visualize task dependencies. The complexity is moderate as it requires parsing task relationships, generating proper Mermaid syntax, and handling various output options. The 4 existing subtasks cover the main implementation areas from interface design to documentation."
-		},
-		{
 			"taskId": 72,
 			"taskTitle": "Implement PDF Generation for Project Progress and Dependency Overview",
 			"complexityScore": 7,
@@ -304,28 +290,68 @@
 			"reasoning": "This task involves creating a utility function to count tokens for different AI models. The complexity is moderate as it requires integration with the tiktoken library and handling different tokenization schemes. No subtasks are necessary as the task is well-defined and focused."
 		},
 		{
+			"taskId": 69,
+			"taskTitle": "Enhance Analyze Complexity for Specific Task IDs",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the task 'Enhance Analyze Complexity for Specific Task IDs' into 6 subtasks focusing on: 1) Core logic modification to accept ID parameters, 2) Report merging functionality, 3) CLI interface updates, 4) MCP tool integration, 5) Documentation updates, and 6) Comprehensive testing across all components.",
+			"reasoning": "This task involves modifying existing functionality across multiple components (core logic, CLI, MCP) with complex logic for filtering tasks and merging reports. The implementation requires careful handling of different parameter combinations and edge cases. The task has interdependent components that need to work together seamlessly, and the report merging functionality adds significant complexity."
+		},
+		{
+			"taskId": 70,
+			"taskTitle": "Implement 'diagram' command for Mermaid diagram generation",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the 'diagram' command implementation into 5 subtasks: 1) Command interface and parameter handling, 2) Task data extraction and transformation to Mermaid syntax, 3) Diagram rendering with status color coding, 4) Output formatting and file export functionality, and 5) Error handling and edge case management.",
+			"reasoning": "This task requires implementing a new feature rather than modifying existing code, which reduces complexity from integration challenges. However, it involves working with visualization logic, dependency mapping, and multiple output formats. The color coding based on status and handling of dependency relationships adds moderate complexity. The task is well-defined but requires careful attention to diagram formatting and error handling."
+		},
+		{
 			"taskId": 85,
 			"taskTitle": "Update ai-services-unified.js for dynamic token limits",
-			"complexityScore": 6,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "This task appears well-defined enough to be implemented without further subtasks. Focus on implementing dynamic token limit adjustment based on input length and model capabilities.",
-			"reasoning": "This task involves modifying the AI service runner to use the new token counting utility and dynamically adjust output token limits. The complexity is moderate to high as it requires careful integration with existing code and handling various edge cases. No subtasks are necessary as the task is well-defined and focused."
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the update of ai-services-unified.js for dynamic token limits into subtasks such as: (1) Import and integrate the token counting utility, (2) Refactor _unifiedServiceRunner to calculate and enforce dynamic token limits, (3) Update error handling for token limit violations, (4) Add and verify logging for token usage, (5) Write and execute tests for various prompt and model scenarios.",
+			"reasoning": "This task involves significant code changes to a core function, integration of a new utility, dynamic logic for multiple models, and robust error handling. It also requires comprehensive testing for edge cases and integration, making it moderately complex and best managed by splitting into focused subtasks."
 		},
 		{
 			"taskId": 86,
 			"taskTitle": "Update .taskmasterconfig schema and user guide",
-			"complexityScore": 4,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "This task appears straightforward enough to be implemented without further subtasks. Focus on creating clear migration guidance and updating documentation.",
-			"reasoning": "This task involves creating a migration guide for users to update their configuration files and documenting the new token limit options. The complexity is relatively low as it primarily involves documentation and schema validation. No subtasks are necessary as the task is well-defined and focused."
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand this task into subtasks: (1) Draft a migration guide for users, (2) Update user documentation to explain new config fields, (3) Modify schema validation logic in config-manager.js, (4) Test and validate backward compatibility and error messaging.",
+			"reasoning": "The task spans documentation, schema changes, migration guidance, and validation logic. While not algorithmically complex, it requires careful coordination and thorough testing to ensure a smooth user transition and robust validation."
 		},
 		{
 			"taskId": 87,
 			"taskTitle": "Implement validation and error handling",
 			"complexityScore": 5,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "This task appears well-defined enough to be implemented without further subtasks. Focus on comprehensive validation and helpful error messages throughout the system.",
-			"reasoning": "This task involves adding validation and error handling for token limits throughout the system. The complexity is moderate as it requires careful integration with multiple components and creating helpful error messages. No subtasks are necessary as the task is well-defined and focused."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose this task into: (1) Add validation logic for model and config loading, (2) Implement error handling and fallback mechanisms, (3) Enhance logging and reporting for token usage, (4) Develop helper functions for configuration suggestions and improvements.",
+			"reasoning": "This task is primarily about adding validation, error handling, and logging. While important for robustness, the logic is straightforward and can be modularized into a few clear subtasks."
+		},
+		{
+			"taskId": 89,
+			"taskTitle": "Introduce Prioritize Command with Enhanced Priority Levels",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand this task into: (1) Implement the prioritize command with all required flags and shorthands, (2) Update CLI output and help documentation for new priority levels, (3) Ensure backward compatibility with existing commands, (4) Add error handling for invalid inputs, (5) Write and run tests for all command scenarios.",
+			"reasoning": "This CLI feature requires command parsing, updating internal logic for new priority levels, documentation, and robust error handling. The complexity is moderate due to the need for backward compatibility and comprehensive testing."
+		},
+		{
+			"taskId": 90,
+			"taskTitle": "Implement Subtask Progress Analyzer and Reporting System",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the analyzer implementation into: (1) Design and implement progress tracking logic, (2) Develop status validation and issue detection, (3) Build the reporting system with multiple output formats, (4) Integrate analyzer with the existing task management system, (5) Optimize for performance and scalability, (6) Write unit, integration, and performance tests.",
+			"reasoning": "This is a complex, multi-faceted feature involving data analysis, reporting, integration, and performance optimization. It touches many parts of the system and requires careful design, making it one of the most complex tasks in the list."
+		},
+		{
+			"taskId": 91,
+			"taskTitle": "Implement Move Command for Tasks and Subtasks",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand this task into: (1) Implement move logic for tasks and subtasks, (2) Handle edge cases (invalid ids, non-existent parents, circular dependencies), (3) Update CLI to support move command with flags, (4) Ensure data integrity and update relationships, (5) Write and execute tests for various move scenarios.",
+			"reasoning": "Moving tasks and subtasks requires careful handling of hierarchical data, edge cases, and data integrity. The command must be robust and user-friendly, necessitating multiple focused subtasks for safe implementation."
 		}
 	]
 }
