@@ -1,11 +1,11 @@
 # Task ID: 51
-# Title: Implement Perplexity Research Command
+# Title: Implement Interactive 'Explore' Command REPL
 # Status: pending
 # Dependencies: None
 # Priority: medium
-# Description: Create an interactive REPL-style chat interface for AI-powered research that maintains conversation context, integrates project information, and provides session management capabilities.
+# Description: Create an interactive 'explore' command that launches a REPL-style chat interface for AI-powered research and project exploration with conversation context and session management.
 # Details:
-Develop an interactive REPL-style chat interface for AI-powered research that allows users to have ongoing research conversations with context awareness. The system should:
+Develop an interactive 'explore' command that provides a REPL-style chat interface for AI-powered research and project exploration. The system should:
 
 1. Create an interactive REPL using inquirer that:
    - Maintains conversation history and context
@@ -31,6 +31,7 @@ Develop an interactive REPL-style chat interface for AI-powered research that al
    - `/copy` - Copy last response to clipboard
    - `/summary` - Generate summary of conversation
    - `/detail` - Adjust research depth level
+   - `/context` - Show current context information
 
 5. Create session management capabilities:
    - Generate and track unique session IDs
@@ -44,13 +45,19 @@ Develop an interactive REPL-style chat interface for AI-powered research that al
    - Progressive display of AI responses
    - Clear visual hierarchy and readability
 
-7. Follow the "taskmaster way":
+7. Command specification:
+   - Command name: `task-master explore` or `tm explore`
+   - Accept optional parameters: --tasks, --files, --session
+   - Generate project file tree for system context
+   - Launch interactive REPL session
+
+8. Follow the "taskmaster way":
    - Create something new and exciting
    - Focus on usefulness and practicality
    - Avoid over-engineering
    - Maintain consistency with existing patterns
 
-The REPL should feel like a natural conversation while providing powerful research capabilities that integrate seamlessly with the rest of the system.
+The explore command should feel like a natural conversation while providing powerful research capabilities that integrate seamlessly with the rest of the system.
 
 # Test Strategy:
 1. Unit tests:
@@ -66,7 +73,7 @@ The REPL should feel like a natural conversation while providing powerful resear
    - Verify context switching between different tasks and files
 
 3. User acceptance testing:
-   - Have team members use the REPL for real research needs
+   - Have team members use the explore command for real research needs
    - Test the conversation flow and command usability
    - Verify the UI is intuitive and responsive
    - Test with various terminal sizes and environments
@@ -83,6 +90,7 @@ The REPL should feel like a natural conversation while providing powerful resear
    - Verify export features create properly formatted files
    - Test session recovery from simulated crashes
    - Validate handling of special characters and unicode
+   - Test command line parameter parsing for --tasks, --files, --session
 
 # Subtasks:
 ## 1. Create Perplexity API Client Service [cancelled]
@@ -162,31 +170,30 @@ REFACTORED IMPLEMENTATION:
 This approach leverages our existing sophisticated search logic rather than rebuilding from scratch, while making it more flexible and reusable across the application.
 </info added on 2025-05-23T21:11:44.560Z>
 
-## 3. Build Research Command CLI Interface [pending]
-### Dependencies: 51.1, 51.2
-### Description: Implement the Commander.js command structure for the 'research' command with all required options and parameters.
+## 3. Build Explore Command CLI Interface [pending]
+### Dependencies: 51.2
+### Description: Implement the Commander.js command structure for the 'explore' command with all required options and parameters to launch the interactive REPL.
 ### Details:
 Implementation details:
-1. Create a new command file `commands/research.js`
+1. Create a new command file `commands/explore.js`
 2. Set up the Commander.js command structure with the following options:
-   - Required search query parameter
-   - `--task` or `-t` option for task/subtask ID
-   - `--prompt` or `-p` option for custom research prompt
-   - `--save` or `-s` option to save results to a file
-   - `--copy` or `-c` option to copy results to clipboard
-   - `--summary` or `-m` option to generate a summary
-   - `--detail` or `-d` option to set research depth (default: medium)
-3. Implement command validation logic
-4. Connect the command to the Perplexity service created in subtask 1
-5. Integrate the context extraction logic from subtask 2
+   - `--tasks` or `-t` option for task/subtask IDs (comma-separated)
+   - `--files` or `-f` option for file paths (comma-separated)
+   - `--session` or `-s` option to resume a previous session
+   - `--context` or `-c` option for custom initial context
+3. Implement command validation logic for parameters
+4. Create entry point that launches the interactive REPL
+5. Integrate context initialization from command line parameters
 6. Register the command in the main CLI application
-7. Add help text and examples
+7. Add help text and usage examples
+8. Implement parameter parsing for task IDs and file paths
 
 Testing approach:
 - Test command registration and option parsing
 - Verify command validation logic works correctly
 - Test with various combinations of options
 - Ensure proper error messages for invalid inputs
+- Test parameter parsing for complex task ID formats
 <info added on 2025-05-23T21:09:08.478Z>
 Implementation details:
 1. Create a new module `repl/research-chat.js` for the interactive research experience
@@ -222,30 +229,45 @@ Testing approach:
 - Validate UI consistency across different terminal environments
 </info added on 2025-05-23T21:09:08.478Z>
 
-## 4. Implement Results Processing and Output Formatting [pending]
-### Dependencies: 51.1, 51.3
-### Description: Create functionality to process, format, and display research results in the terminal with options for saving, copying, and summarizing.
+## 4. Implement Chat Formatting and Display System [pending]
+### Dependencies: 51.3
+### Description: Create functionality to format and display conversational research interactions in the terminal with streaming responses and markdown support.
 ### Details:
 Implementation details:
-1. Create a new module `utils/researchFormatter.js`
-2. Implement terminal output formatting with:
-   - Color-coded sections for better readability
-   - Proper text wrapping for terminal width
-   - Highlighting of key points
-3. Add functionality to save results to a file:
-   - Create a `research-results` directory if it doesn't exist
-   - Save results with timestamp and query in filename
-   - Support multiple formats (text, markdown, JSON)
-4. Implement clipboard copying using a library like `clipboardy`
-5. Create a summarization function that extracts key points from research results
-6. Add progress indicators during API calls
-7. Implement pagination for long results
+1. Create a new module `utils/chatFormatter.js` for REPL interface formatting
+2. Implement terminal output formatting for conversational display:
+   - Color-coded messages distinguishing user inputs and AI responses
+   - Proper text wrapping and indentation for readability
+   - Support for markdown rendering in terminal
+   - Visual indicators for system messages and status updates
+3. Implement streaming/progressive display of AI responses:
+   - Character-by-character or chunk-by-chunk display
+   - Cursor animations during response generation
+   - Ability to interrupt long responses
+4. Design chat history visualization:
+   - Scrollable history with clear message boundaries
+   - Timestamp display options
+   - Session identification
+5. Create specialized formatters for different content types:
+   - Code blocks with syntax highlighting
+   - Bulleted and numbered lists
+   - Tables and structured data
+   - Citations and references
+6. Implement export functionality:
+   - Save conversations to markdown or text files
+   - Export individual responses
+   - Copy responses to clipboard
+7. Adapt existing ui.js patterns for conversational context:
+   - Maintain consistent styling while supporting chat flow
+   - Handle multi-turn context appropriately
 
 Testing approach:
-- Test output formatting with various result lengths and content types
-- Verify file saving functionality creates proper files with correct content
-- Test clipboard functionality
-- Verify summarization produces useful results
+- Test streaming display with various response lengths and speeds
+- Verify markdown rendering accuracy for complex formatting
+- Test history navigation and scrolling functionality
+- Verify export features create properly formatted files
+- Test display on various terminal sizes and configurations
+- Verify handling of special characters and unicode
 <info added on 2025-05-23T21:10:00.181Z>
 Implementation details:
 1. Create a new module `utils/chatFormatter.js` for REPL interface formatting
@@ -383,7 +405,7 @@ Testing approach:
 
 ## 7. Create REPL Command System [pending]
 ### Dependencies: 51.3
-### Description: Implement a flexible command system for the research REPL that allows users to control the conversation flow, manage sessions, and access additional functionality.
+### Description: Implement a flexible command system for the explore REPL that allows users to control the conversation flow, manage sessions, and access additional functionality.
 ### Details:
 Implementation details:
 1. Create a new module `repl/commands.js` for REPL command handling
@@ -407,6 +429,7 @@ Implementation details:
    - `/clear` - Clear conversation
    - `/project` - Refresh project context
    - `/session <id|new>` - Switch/create session
+   - `/context` - Show current context information
 5. Add command completion and suggestions
 6. Implement error handling for invalid commands
 7. Create a help system with examples
@@ -420,22 +443,23 @@ Testing approach:
 
 ## 8. Integrate with AI Services Unified [pending]
 ### Dependencies: 51.3, 51.4
-### Description: Integrate the research REPL with the existing ai-services-unified.js to leverage the unified AI service architecture with research mode.
+### Description: Integrate the explore REPL with the existing ai-services-unified.js to leverage the unified AI service architecture with research mode.
 ### Details:
 Implementation details:
 1. Update `repl/research-chat.js` to integrate with ai-services-unified.js
 2. Configure research mode in AI service:
-   - Set appropriate system prompts
+   - Set appropriate system prompts for exploration and research
    - Configure temperature and other parameters
    - Enable streaming responses
 3. Implement context management:
    - Format conversation history for AI context
    - Include task and project context
    - Handle context window limitations
-4. Add support for different research styles:
+4. Add support for different exploration styles:
    - Exploratory research with broader context
    - Focused research with specific questions
    - Comparative analysis between concepts
+   - Code exploration and analysis
 5. Implement response handling:
    - Process streaming chunks
    - Format and display responses
@@ -448,5 +472,44 @@ Testing approach:
 - Verify context formatting and management
 - Test streaming response handling
 - Verify error handling and recovery
-- Test with various research styles and queries
+- Test with various exploration styles and queries
+
+## 9. Implement Session Management System [pending]
+### Dependencies: 51.4, 51.7
+### Description: Create a comprehensive session management system for the explore REPL that handles session persistence, recovery, and switching between multiple exploration sessions.
+### Details:
+Implementation details:
+1. Create a session management system for the explore REPL:
+   - Generate and track unique session IDs
+   - Store conversation history with timestamps
+   - Maintain context and state between interactions
+2. Implement session persistence:
+   - Save sessions to disk automatically
+   - Load previous sessions on startup
+   - Handle graceful recovery from crashes
+3. Build session browser and selector:
+   - List available sessions with preview
+   - Filter sessions by date, topic, or content
+   - Enable quick switching between sessions
+4. Implement conversation state serialization:
+   - Capture full conversation context
+   - Preserve user preferences per session
+   - Handle state migration during updates
+5. Add session sharing capabilities:
+   - Export sessions to portable formats
+   - Import sessions from files
+   - Generate shareable session summaries
+6. Create session management commands:
+   - Create new sessions
+   - Clone existing sessions
+   - Archive or delete old sessions
+7. Integrate with command line --session parameter
+
+Testing approach:
+- Verify session persistence across application restarts
+- Test session recovery from simulated crashes
+- Validate state serialization with complex conversations
+- Ensure session switching maintains proper context
+- Test session import/export functionality
+- Verify performance with large conversation histories
 

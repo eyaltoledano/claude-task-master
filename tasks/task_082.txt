@@ -1,34 +1,23 @@
 # Task ID: 82
-# Title: Update supported-models.json with token limit fields
+# Title: Introduce Prioritize Command with Enhanced Priority Levels
 # Status: pending
 # Dependencies: None
-# Priority: high
-# Description: Modify the supported-models.json file to include contextWindowTokens and maxOutputTokens fields for each model, replacing the ambiguous max_tokens field.
+# Priority: medium
+# Description: Implement a prioritize command with --up/--down/--priority/--id flags and shorthand equivalents (-u/-d/-p/-i). Add 'lowest' and 'highest' priority levels, updating CLI output accordingly.
 # Details:
-For each model entry in supported-models.json:
-1. Add `contextWindowTokens` field representing the total context window (input + output tokens)
-2. Add `maxOutputTokens` field representing the maximum tokens the model can generate
-3. Remove or deprecate the ambiguous `max_tokens` field if present
+The new prioritize command should allow users to adjust task priorities using the specified flags. The --up and --down flags will modify the priority relative to the current level, while --priority sets an absolute priority. The --id flag specifies which task to prioritize. Shorthand equivalents (-u/-d/-p/-i) should be supported for user convenience.
 
-Research and populate accurate values for each model from official documentation:
-- For OpenAI models (e.g., gpt-4o): contextWindowTokens=128000, maxOutputTokens=16384
-- For Anthropic models (e.g., Claude 3.7): contextWindowTokens=200000, maxOutputTokens=8192
-- For other providers, find official documentation or use reasonable defaults
+The priority levels should now include 'lowest', 'low', 'medium', 'high', and 'highest'. The CLI output should be updated to reflect these new priority levels accurately.
 
-Example entry:
-```json
-{
-  "id": "claude-3-7-sonnet-20250219",
-  "swe_score": 0.623,
-  "cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
-  "allowed_roles": ["main", "fallback"],
-  "contextWindowTokens": 200000,
-  "maxOutputTokens": 8192
-}
-```
+Considerations:
+- Ensure backward compatibility with existing commands and configurations.
+- Update the help documentation to include the new command and its usage.
+- Implement proper error handling for invalid priority levels or missing flags.
 
 # Test Strategy:
-1. Validate JSON syntax after changes
-2. Verify all models have the new fields with reasonable values
-3. Check that the values align with official documentation from each provider
-4. Ensure backward compatibility by maintaining any fields other systems might depend on
+To verify task completion, perform the following tests:
+1. Test each flag (--up, --down, --priority, --id) individually and in combination to ensure they function as expected.
+2. Verify that shorthand equivalents (-u, -d, -p, -i) work correctly.
+3. Check that the new priority levels ('lowest' and 'highest') are recognized and displayed properly in CLI output.
+4. Test error handling for invalid inputs (e.g., non-existent task IDs, invalid priority levels).
+5. Ensure that the help command displays accurate information about the new prioritize command.

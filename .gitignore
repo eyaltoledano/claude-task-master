@@ -19,12 +19,25 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-tests/e2e/_runs/
-tests/e2e/log/
 
 # Coverage directory used by tools like istanbul
-coverage
+coverage/
 *.lcov
+
+# Jest cache
+.jest/
+
+# Test temporary files and directories
+tests/temp/
+tests/e2e/_runs/
+tests/e2e/log/
+tests/**/*.log
+tests/**/coverage/
+
+# Test database files (if any)
+tests/**/*.db
+tests/**/*.sqlite
+tests/**/*.sqlite3
 
 # Optional npm cache directory
 .npm

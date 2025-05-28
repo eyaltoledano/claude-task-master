@@ -46,7 +46,7 @@ alwaysApply: false
 - **Location**:
     - **Core CLI Utilities**: Place utilities used primarily by the core `task-master` CLI logic and command modules (`scripts/modules/*`) into [`scripts/modules/utils.js`](mdc:scripts/modules/utils.js).
     - **MCP Server Utilities**: Place utilities specifically designed to support the MCP server implementation into the appropriate subdirectories within `mcp-server/src/`.
-        - Path/Core Logic Helpers: [`mcp-server/src/core/utils/`](mdc:mcp-server/src/core/utils/) (e.g., `path-utils.js`).
+        - Path/Core Logic Helpers: [`mcp-server/src/core/utils/`](mdc:mcp-server/src/core/utils) (e.g., `path-utils.js`).
         - Tool Execution/Response Helpers: [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js).
 
 ## Documentation Standards
@@ -110,7 +110,7 @@ Taskmaster configuration (excluding API keys) is primarily managed through the `
   - ✅ DO: Use appropriate icons for different log levels
   - ✅ DO: Respect the configured log level
   - ❌ DON'T: Add direct console.log calls outside the logging utility
-  - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
+  - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](mdc:...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
 
 - **Logger Wrapper Pattern**: 
   - ✅ DO: Use the logger wrapper pattern when passing loggers to prevent `mcpLog[level] is not a function` errors:
@@ -548,4 +548,56 @@ export {
 };
 ```
 
-Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) and [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for more context on MCP server architecture and integration. 
+## Context Gathering Utilities
+
+### **ContextGatherer** (`scripts/modules/utils/contextGatherer.js`)
+
+- **Multi-Source Context Extraction**:
+  - ✅ DO: Use for AI-powered commands that need project context
+  - ✅ DO: Support tasks, files, custom text, and project tree context
+  - ✅ DO: Implement detailed token counting with `gpt-tokens` library
+  - ✅ DO: Provide multiple output formats (research, chat, system-prompt)
+
+  ```javascript
+  // ✅ DO: Use ContextGatherer for consistent context extraction
+  import { ContextGatherer } from '../utils/contextGatherer.js';
+  
+  const gatherer = new ContextGatherer(projectRoot, tasksPath);
+  const result = await gatherer.gather({
+    tasks: ['15', '16.2'],
+    files: ['src/api.js'],
+    customContext: 'Additional context',
+    includeProjectTree: true,
+    format: 'research',
+    includeTokenCounts: true
+  });
+  ```
+
+### **FuzzyTaskSearch** (`scripts/modules/utils/fuzzyTaskSearch.js`)
+
+- **Intelligent Task Discovery**:
+  - ✅ DO: Use for automatic task relevance detection
+  - ✅ DO: Configure search parameters based on use case context
+  - ✅ DO: Implement purpose-based categorization for better matching
+  - ✅ DO: Sort results by relevance score and task ID
+
+  ```javascript
+  // ✅ DO: Use FuzzyTaskSearch for intelligent task discovery
+  import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+  
+  const fuzzySearch = new FuzzyTaskSearch(tasksData.tasks, 'research');
+  const searchResults = fuzzySearch.findRelevantTasks(query, {
+    maxResults: 8,
+    includeRecent: true,
+    includeCategoryMatches: true
+  });
+  const taskIds = fuzzySearch.getTaskIds(searchResults);
+  ```
+
+- **Integration Guidelines**:
+  - ✅ DO: Use fuzzy search to supplement user-provided task IDs
+  - ✅ DO: Display discovered task IDs to users for transparency
+  - ✅ DO: Sort discovered task IDs numerically for better readability
+  - ❌ DON'T: Replace explicit user task selections with fuzzy results
+
+Refer to [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc) for detailed implementation patterns, [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) and [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for more context on MCP server architecture and integration. 

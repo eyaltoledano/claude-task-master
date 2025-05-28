@@ -29,6 +29,7 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
+import { registerResearchTool } from './research.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -74,6 +75,9 @@ export function registerTaskMasterTools(server) {
 		registerRemoveDependencyTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
+
+		// Group 7: AI-Powered Features
+		registerResearchTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;

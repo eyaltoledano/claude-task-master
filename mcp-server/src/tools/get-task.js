@@ -44,7 +44,11 @@ export function registerShowTaskTool(server) {
 		name: 'get_task',
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
-			id: z.string().describe('Task ID to get'),
+			id: z
+				.string()
+				.describe(
+					'Task ID(s) to get (can be comma-separated for multiple tasks)'
+				),
 			status: z
 				.string()
 				.optional()
@@ -66,7 +70,7 @@ export function registerShowTaskTool(server) {
 					'Absolute path to the project root directory (Optional, usually from session)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const { id, file, status, projectRoot } = args;
 
 			try {
@@ -110,7 +114,8 @@ export function registerShowTaskTool(server) {
 						status: status,
 						projectRoot: projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {

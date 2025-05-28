@@ -41,83 +41,20 @@ export function registerMoveTaskTool(server) {
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				// Find tasks.json path if not provided
-				let tasksJsonPath = args.file;
+				// Let the core logic handle comma-separated IDs and validation
+				const result = await moveTaskDirect(
+					{
+						sourceId: args.from,
+						destinationId: args.to,
+						file: args.file,
+						projectRoot: args.projectRoot,
+						generateFiles: true // Always generate files for MCP operations
+					},
+					log,
+					{ session }
+				);
 
-				if (!tasksJsonPath) {
-					tasksJsonPath = findTasksJsonPath(args, log);
-				}
-
-				// Parse comma-separated IDs
-				const fromIds = args.from.split(',').map((id) => id.trim());
-				const toIds = args.to.split(',').map((id) => id.trim());
-
-				// Validate matching IDs count
-				if (fromIds.length !== toIds.length) {
-					return createErrorResponse(
-						'The number of source and destination IDs must match',
-						'MISMATCHED_ID_COUNT'
-					);
-				}
-
-				// If moving multiple tasks
-				if (fromIds.length > 1) {
-					const results = [];
-					// Move tasks one by one, only generate files on the last move
-					for (let i = 0; i < fromIds.length; i++) {
-						const fromId = fromIds[i];
-						const toId = toIds[i];
-
-						// Skip if source and destination are the same
-						if (fromId === toId) {
-							log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
-							continue;
-						}
-
-						const shouldGenerateFiles = i === fromIds.length - 1;
-						const result = await moveTaskDirect(
-							{
-								sourceId: fromId,
-								destinationId: toId,
-								tasksJsonPath,
-								projectRoot: args.projectRoot
-							},
-							log,
-							{ session }
-						);
-
-						if (!result.success) {
-							log.error(
-								`Failed to move ${fromId} to ${toId}: ${result.error.message}`
-							);
-						} else {
-							results.push(result.data);
-						}
-					}
-
-					return {
-						success: true,
-						data: {
-							moves: results,
-							message: `Successfully moved ${results.length} tasks`
-						}
-					};
-				} else {
-					// Moving a single task
-					return handleApiResult(
-						await moveTaskDirect(
-							{
-								sourceId: args.from,
-								destinationId: args.to,
-								tasksJsonPath,
-								projectRoot: args.projectRoot
-							},
-							log,
-							{ session }
-						),
-						log
-					);
-				}
+				return handleApiResult(result, log);
 			} catch (error) {
 				return createErrorResponse(
 					`Failed to move task: ${error.message}`,

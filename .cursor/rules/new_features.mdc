@@ -24,17 +24,22 @@ alwaysApply: false
 The standard pattern for adding a feature follows this workflow:
 
 1. **Core Logic**: Implement the business logic in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
-2. **AI Integration (If Applicable)**: 
+2. **Context Gathering (If Applicable)**: 
+   - For AI-powered commands that benefit from project context, use the standardized context gathering patterns from [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc).
+   - Import `ContextGatherer` and `FuzzyTaskSearch` utilities for reusable context extraction.
+   - Support multiple context types: tasks, files, custom text, project tree.
+   - Implement detailed token breakdown display for transparency.
+3. **AI Integration (If Applicable)**: 
    - Import necessary service functions (e.g., `generateTextService`, `streamTextService`) from [`ai-services-unified.js`](mdc:scripts/modules/ai-services-unified.js).
    - Prepare parameters (`role`, `session`, `systemPrompt`, `prompt`).
    - Call the service function.
    - Handle the response (direct text or stream object).
    - **Important**: Prefer `generateTextService` for calls sending large context (like stringified JSON) where incremental display is not needed. See [`ai_services.mdc`](mdc:.cursor/rules/ai_services.mdc) for detailed usage patterns and cautions.
-3. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
-4. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
-5. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
-6. **Configuration**: Update configuration settings or add new ones in [`config-manager.js`](mdc:scripts/modules/config-manager.js) and ensure getters/setters are appropriate. Update documentation in [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc). Update the `.taskmasterconfig` structure if needed.
-7. **Documentation**: Update help text and documentation in [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
+4. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc). Consider enhanced formatting with syntax highlighting for code blocks.
+5. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
+6. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
+7. **Configuration**: Update configuration settings or add new ones in [`config-manager.js`](mdc:scripts/modules/config-manager.js) and ensure getters/setters are appropriate. Update documentation in [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc). Update the `.taskmasterconfig` structure if needed.
+8. **Documentation**: Update help text and documentation in [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
 
 ## Critical Checklist for New Features
 

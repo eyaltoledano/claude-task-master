@@ -1,0 +1,525 @@
+# Task ID: 81
+# Title: Implement Separate Context Window and Output Token Limits
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Replace the ambiguous MAX_TOKENS configuration with separate contextWindowTokens and maxOutputTokens fields to properly handle model token limits and enable dynamic token allocation.
+# Details:
+Currently, the MAX_TOKENS configuration entry is ambiguous and doesn't properly differentiate between:
+1. Context window tokens (total input + output capacity)
+2. Maximum output tokens (generation limit)
+
+This causes issues where:
+- The system can't properly validate prompt lengths against model capabilities
+- Output token allocation is not optimized based on input length
+- Different models with different token architectures are handled inconsistently
+
+This epic will implement a comprehensive solution that:
+- Updates supported-models.json with accurate contextWindowTokens and maxOutputTokens for each model
+- Modifies config-manager.js to use separate maxInputTokens and maxOutputTokens in role configurations
+- Implements a token counting utility for accurate prompt measurement
+- Updates ai-services-unified.js to dynamically calculate available output tokens
+- Provides migration guidance and validation for existing configurations
+- Adds comprehensive error handling and validation throughout the system
+
+The end result will be more precise token management, better cost control, and reduced likelihood of hitting model context limits.
+
+# Test Strategy:
+1. Verify all models have accurate token limit data from official documentation
+2. Test dynamic token allocation with various prompt lengths
+3. Ensure backward compatibility with existing .taskmasterconfig files
+4. Validate error messages are clear and actionable
+5. Test with multiple AI providers to ensure consistent behavior
+6. Performance test token counting utility with large prompts
+
+# Subtasks:
+## 1. Update supported-models.json with token limit fields [pending]
+### Dependencies: None
+### Description: Modify the supported-models.json file to include contextWindowTokens and maxOutputTokens fields for each model, replacing the ambiguous max_tokens field.
+### Details:
+For each model entry in supported-models.json:
+1. Add `contextWindowTokens` field representing the total context window (input + output tokens)
+2. Add `maxOutputTokens` field representing the maximum tokens the model can generate
+3. Remove or deprecate the ambiguous `max_tokens` field if present
+
+Research and populate accurate values for each model from official documentation:
+- For OpenAI models (e.g., gpt-4o): contextWindowTokens=128000, maxOutputTokens=16384
+- For Anthropic models (e.g., Claude 3.7): contextWindowTokens=200000, maxOutputTokens=8192
+- For other providers, find official documentation or use reasonable defaults
+
+Example entry:
+```json
+{
+  "id": "claude-3-7-sonnet-20250219",
+  "swe_score": 0.623,
+  "cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
+  "allowed_roles": ["main", "fallback"],
+  "contextWindowTokens": 200000,
+  "maxOutputTokens": 8192
+}
+```
+
+## 2. Update config-manager.js defaults and getters [pending]
+### Dependencies: None
+### Description: Modify the config-manager.js module to replace maxTokens with maxInputTokens and maxOutputTokens in the DEFAULTS object and update related getter functions.
+### Details:
+1. Update the `DEFAULTS` object in config-manager.js:
+```javascript
+const DEFAULTS = {
+  // ... existing defaults
+  main: {
+    // Replace maxTokens with these two fields
+    maxInputTokens: 16000, // Example default
+    maxOutputTokens: 4000, // Example default
+    temperature: 0.7
+    // ... other fields
+  },
+  research: {
+    maxInputTokens: 16000,
+    maxOutputTokens: 4000,
+    temperature: 0.7
+    // ... other fields
+  },
+  fallback: {
+    maxInputTokens: 8000,
+    maxOutputTokens: 2000,
+    temperature: 0.7
+    // ... other fields
+  }
+  // ... rest of DEFAULTS
+};
+```
+
+2. Update `getParametersForRole` function to return the new fields:
+```javascript
+function getParametersForRole(role, explicitRoot = null) {
+  const config = _getConfig(explicitRoot);
+  return {
+    maxInputTokens: config[role]?.maxInputTokens,
+    maxOutputTokens: config[role]?.maxOutputTokens,
+    temperature: config[role]?.temperature
+    // ... any other parameters
+  };
+}
+```
+
+3. Add a new function to get model capabilities:
+```javascript
+function getModelCapabilities(providerName, modelId) {
+  const models = MODEL_MAP[providerName?.toLowerCase()];
+  const model = models?.find(m => m.id === modelId);
+  return {
+    contextWindowTokens: model?.contextWindowTokens,
+    maxOutputTokens: model?.maxOutputTokens
+  };
+}
+```
+
+4. Deprecate or update the role-specific maxTokens getters:
+```javascript
+// Either remove these or update them to return maxInputTokens
+function getMainMaxTokens(explicitRoot = null) {
+  console.warn('getMainMaxTokens is deprecated. Use getParametersForRole("main") instead.');
+  return getParametersForRole("main", explicitRoot).maxInputTokens;
+}
+// Same for getResearchMaxTokens and getFallbackMaxTokens
+```
+
+5. Export the new functions:
+```javascript
+module.exports = {
+  // ... existing exports
+  getParametersForRole,
+  getModelCapabilities
+};
+```
+
+## 3. Implement token counting utility [pending]
+### Dependencies: None
+### Description: Create a utility function to count tokens for prompts based on the model being used, primarily using tiktoken for OpenAI and Anthropic models with character-based fallbacks for other providers.
+### Details:
+1. Install the tiktoken package:
+```bash
+npm install tiktoken
+```
+
+2. Create a new file `scripts/modules/token-counter.js`:
+```javascript
+const tiktoken = require('tiktoken');
+
+/**
+ * Count tokens for a given text and model
+ * @param {string} text - The text to count tokens for
+ * @param {string} provider - The AI provider (e.g., 'openai', 'anthropic')
+ * @param {string} modelId - The model ID
+ * @returns {number} - Estimated token count
+ */
+function countTokens(text, provider, modelId) {
+  if (!text) return 0;
+  
+  // Convert to lowercase for case-insensitive matching
+  const providerLower = provider?.toLowerCase();
+  
+  try {
+    // OpenAI models
+    if (providerLower === 'openai') {
+      // Most OpenAI chat models use cl100k_base encoding
+      const encoding = tiktoken.encoding_for_model(modelId) || tiktoken.get_encoding('cl100k_base');
+      return encoding.encode(text).length;
+    }
+    
+    // Anthropic models - can use cl100k_base as an approximation
+    // or follow Anthropic's guidance
+    if (providerLower === 'anthropic') {
+      try {
+        // Try to use cl100k_base as a reasonable approximation
+        const encoding = tiktoken.get_encoding('cl100k_base');
+        return encoding.encode(text).length;
+      } catch (e) {
+        // Fallback to Anthropic's character-based estimation
+        return Math.ceil(text.length / 3.5); // ~3.5 chars per token for English
+      }
+    }
+    
+    // For other providers, use character-based estimation as fallback
+    // Different providers may have different tokenization schemes
+    return Math.ceil(text.length / 4); // General fallback estimate
+  } catch (error) {
+    console.warn(`Token counting error: ${error.message}. Using character-based estimate.`);
+    return Math.ceil(text.length / 4); // Fallback if tiktoken fails
+  }
+}
+
+module.exports = { countTokens };
+```
+
+3. Add tests for the token counter in `tests/token-counter.test.js`:
+```javascript
+const { countTokens } = require('../scripts/modules/token-counter');
+
+describe('Token Counter', () => {
+  test('counts tokens for OpenAI models', () => {
+    const text = 'Hello, world! This is a test.';
+    const count = countTokens(text, 'openai', 'gpt-4');
+    expect(count).toBeGreaterThan(0);
+    expect(typeof count).toBe('number');
+  });
+  
+  test('counts tokens for Anthropic models', () => {
+    const text = 'Hello, world! This is a test.';
+    const count = countTokens(text, 'anthropic', 'claude-3-7-sonnet-20250219');
+    expect(count).toBeGreaterThan(0);
+    expect(typeof count).toBe('number');
+  });
+  
+  test('handles empty text', () => {
+    expect(countTokens('', 'openai', 'gpt-4')).toBe(0);
+    expect(countTokens(null, 'openai', 'gpt-4')).toBe(0);
+  });
+});
+```
+
+## 4. Update ai-services-unified.js for dynamic token limits [pending]
+### Dependencies: None
+### Description: Modify the _unifiedServiceRunner function in ai-services-unified.js to use the new token counting utility and dynamically adjust output token limits based on input length.
+### Details:
+1. Import the token counter in `ai-services-unified.js`:
+```javascript
+const { countTokens } = require('./token-counter');
+const { getParametersForRole, getModelCapabilities } = require('./config-manager');
+```
+
+2. Update the `_unifiedServiceRunner` function to implement dynamic token limit adjustment:
+```javascript
+async function _unifiedServiceRunner({
+  serviceType,
+  provider,
+  modelId,
+  systemPrompt,
+  prompt,
+  temperature,
+  currentRole,
+  effectiveProjectRoot,
+  // ... other parameters
+}) {
+  // Get role parameters with new token limits
+  const roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
+  
+  // Get model capabilities
+  const modelCapabilities = getModelCapabilities(provider, modelId);
+  
+  // Count tokens in the prompts
+  const systemPromptTokens = countTokens(systemPrompt, provider, modelId);
+  const userPromptTokens = countTokens(prompt, provider, modelId);
+  const totalPromptTokens = systemPromptTokens + userPromptTokens;
+  
+  // Validate against input token limits
+  if (totalPromptTokens > roleParams.maxInputTokens) {
+    throw new Error(
+      `Prompt (${totalPromptTokens} tokens) exceeds configured max input tokens (${roleParams.maxInputTokens}) for role '${currentRole}'.`
+    );
+  }
+  
+  // Validate against model's absolute context window
+  if (modelCapabilities.contextWindowTokens && totalPromptTokens > modelCapabilities.contextWindowTokens) {
+    throw new Error(
+      `Prompt (${totalPromptTokens} tokens) exceeds model's context window (${modelCapabilities.contextWindowTokens}) for ${modelId}.`
+    );
+  }
+  
+  // Calculate available output tokens
+  // If model has a combined context window, we need to subtract input tokens
+  let availableOutputTokens = roleParams.maxOutputTokens;
+  
+  // If model has a context window constraint, ensure we don't exceed it
+  if (modelCapabilities.contextWindowTokens) {
+    const remainingContextTokens = modelCapabilities.contextWindowTokens - totalPromptTokens;
+    availableOutputTokens = Math.min(availableOutputTokens, remainingContextTokens);
+  }
+  
+  // Also respect the model's absolute max output limit
+  if (modelCapabilities.maxOutputTokens) {
+    availableOutputTokens = Math.min(availableOutputTokens, modelCapabilities.maxOutputTokens);
+  }
+  
+  // Prepare API call parameters
+  const callParams = {
+    apiKey,
+    modelId,
+    maxTokens: availableOutputTokens, // Use dynamically calculated output limit
+    temperature: roleParams.temperature,
+    messages,
+    baseUrl,
+    ...(serviceType === 'generateObject' && { schema, objectName }),
+    ...restApiParams
+  };
+  
+  // Log token usage information
+  console.debug(`Token usage: ${totalPromptTokens} input tokens, ${availableOutputTokens} max output tokens`);
+  
+  // Rest of the function remains the same...
+}
+```
+
+3. Update the error handling to provide clear messages about token limits:
+```javascript
+try {
+  // Existing code...
+} catch (error) {
+  if (error.message.includes('tokens')) {
+    // Token-related errors should be clearly identified
+    console.error(`Token limit error: ${error.message}`);
+  }
+  throw error;
+}
+```
+
+## 5. Update .taskmasterconfig schema and user guide [pending]
+### Dependencies: None
+### Description: Create a migration guide for users to update their .taskmasterconfig files and document the new token limit configuration options.
+### Details:
+1. Create a migration script or guide for users to update their existing `.taskmasterconfig` files:
+
+```javascript
+// Example migration snippet for .taskmasterconfig
+{
+  "main": {
+    // Before:
+    // "maxTokens": 16000,
+    
+    // After:
+    "maxInputTokens": 16000,
+    "maxOutputTokens": 4000,
+    "temperature": 0.7
+  },
+  "research": {
+    "maxInputTokens": 16000,
+    "maxOutputTokens": 4000,
+    "temperature": 0.7
+  },
+  "fallback": {
+    "maxInputTokens": 8000,
+    "maxOutputTokens": 2000,
+    "temperature": 0.7
+  }
+}
+```
+
+2. Update the user documentation to explain the new token limit fields:
+
+```markdown
+# Token Limit Configuration
+
+Task Master now provides more granular control over token limits with separate settings for input and output tokens:
+
+- `maxInputTokens`: Maximum number of tokens allowed in the input prompt (system prompt + user prompt)
+- `maxOutputTokens`: Maximum number of tokens the model should generate in its response
+
+## Benefits
+
+- More precise control over token usage
+- Better cost management
+- Reduced likelihood of hitting model context limits
+- Dynamic adjustment to maximize output space based on input length
+
+## Migration from Previous Versions
+
+If you're upgrading from a previous version, you'll need to update your `.taskmasterconfig` file:
+
+1. Replace the single `maxTokens` field with separate `maxInputTokens` and `maxOutputTokens` fields
+2. Recommended starting values:
+   - Set `maxInputTokens` to your previous `maxTokens` value
+   - Set `maxOutputTokens` to approximately 1/4 of your model's context window
+
+## Example Configuration
+
+```json
+{
+  "main": {
+    "maxInputTokens": 16000,
+    "maxOutputTokens": 4000,
+    "temperature": 0.7
+  }
+}
+```
+```
+
+3. Update the schema validation in `config-manager.js` to validate the new fields:
+
+```javascript
+function _validateConfig(config) {
+  // ... existing validation
+  
+  // Validate token limits for each role
+  ['main', 'research', 'fallback'].forEach(role => {
+    if (config[role]) {
+      // Check if old maxTokens is present and warn about migration
+      if (config[role].maxTokens !== undefined) {
+        console.warn(`Warning: 'maxTokens' in ${role} role is deprecated. Please use 'maxInputTokens' and 'maxOutputTokens' instead.`);
+      }
+      
+      // Validate new token limit fields
+      if (config[role].maxInputTokens !== undefined && (!Number.isInteger(config[role].maxInputTokens) || config[role].maxInputTokens <= 0)) {
+        throw new Error(`Invalid maxInputTokens for ${role} role: must be a positive integer`);
+      }
+      
+      if (config[role].maxOutputTokens !== undefined && (!Number.isInteger(config[role].maxOutputTokens) || config[role].maxOutputTokens <= 0)) {
+        throw new Error(`Invalid maxOutputTokens for ${role} role: must be a positive integer`);
+      }
+    }
+  });
+  
+  return config;
+}
+```
+
+## 6. Implement validation and error handling [pending]
+### Dependencies: None
+### Description: Add comprehensive validation and error handling for token limits throughout the system, including helpful error messages and graceful fallbacks.
+### Details:
+1. Add validation when loading models in `config-manager.js`:
+```javascript
+function _validateModelMap(modelMap) {
+  // Validate each provider's models
+  Object.entries(modelMap).forEach(([provider, models]) => {
+    models.forEach(model => {
+      // Check for required token limit fields
+      if (!model.contextWindowTokens) {
+        console.warn(`Warning: Model ${model.id} from ${provider} is missing contextWindowTokens field`);
+      }
+      if (!model.maxOutputTokens) {
+        console.warn(`Warning: Model ${model.id} from ${provider} is missing maxOutputTokens field`);
+      }
+    });
+  });
+  return modelMap;
+}
+```
+
+2. Add validation when setting up a model in the CLI:
+```javascript
+function validateModelConfig(modelConfig, modelCapabilities) {
+  const issues = [];
+  
+  // Check if input tokens exceed model's context window
+  if (modelConfig.maxInputTokens > modelCapabilities.contextWindowTokens) {
+    issues.push(`maxInputTokens (${modelConfig.maxInputTokens}) exceeds model's context window (${modelCapabilities.contextWindowTokens})`);
+  }
+  
+  // Check if output tokens exceed model's maximum
+  if (modelConfig.maxOutputTokens > modelCapabilities.maxOutputTokens) {
+    issues.push(`maxOutputTokens (${modelConfig.maxOutputTokens}) exceeds model's maximum output tokens (${modelCapabilities.maxOutputTokens})`);
+  }
+  
+  // Check if combined tokens exceed context window
+  if (modelConfig.maxInputTokens + modelConfig.maxOutputTokens > modelCapabilities.contextWindowTokens) {
+    issues.push(`Combined maxInputTokens and maxOutputTokens (${modelConfig.maxInputTokens + modelConfig.maxOutputTokens}) exceeds model's context window (${modelCapabilities.contextWindowTokens})`);
+  }
+  
+  return issues;
+}
+```
+
+3. Add graceful fallbacks in `ai-services-unified.js`:
+```javascript
+// Fallback for missing token limits
+if (!roleParams.maxInputTokens) {
+  console.warn(`Warning: maxInputTokens not specified for role '${currentRole}'. Using default value.`);
+  roleParams.maxInputTokens = 8000; // Reasonable default
+}
+
+if (!roleParams.maxOutputTokens) {
+  console.warn(`Warning: maxOutputTokens not specified for role '${currentRole}'. Using default value.`);
+  roleParams.maxOutputTokens = 2000; // Reasonable default
+}
+
+// Fallback for missing model capabilities
+if (!modelCapabilities.contextWindowTokens) {
+  console.warn(`Warning: contextWindowTokens not specified for model ${modelId}. Using conservative estimate.`);
+  modelCapabilities.contextWindowTokens = roleParams.maxInputTokens + roleParams.maxOutputTokens;
+}
+
+if (!modelCapabilities.maxOutputTokens) {
+  console.warn(`Warning: maxOutputTokens not specified for model ${modelId}. Using role configuration.`);
+  modelCapabilities.maxOutputTokens = roleParams.maxOutputTokens;
+}
+```
+
+4. Add detailed logging for token usage:
+```javascript
+function logTokenUsage(provider, modelId, inputTokens, outputTokens, role) {
+  const inputCost = calculateTokenCost(provider, modelId, 'input', inputTokens);
+  const outputCost = calculateTokenCost(provider, modelId, 'output', outputTokens);
+  
+  console.info(`Token usage for ${role} role with ${provider}/${modelId}:`);
+  console.info(`- Input: ${inputTokens.toLocaleString()} tokens ($${inputCost.toFixed(6)})`);
+  console.info(`- Output: ${outputTokens.toLocaleString()} tokens ($${outputCost.toFixed(6)})`);
+  console.info(`- Total cost: $${(inputCost + outputCost).toFixed(6)}`);
+  console.info(`- Available output tokens: ${availableOutputTokens.toLocaleString()}`);
+}
+```
+
+5. Add a helper function to suggest configuration improvements:
+```javascript
+function suggestTokenConfigImprovements(roleParams, modelCapabilities, promptTokens) {
+  const suggestions = [];
+  
+  // If prompt is using less than 50% of allowed input
+  if (promptTokens < roleParams.maxInputTokens * 0.5) {
+    suggestions.push(`Consider reducing maxInputTokens from ${roleParams.maxInputTokens} to save on potential costs`);
+  }
+  
+  // If output tokens are very limited due to large input
+  const availableOutput = Math.min(
+    roleParams.maxOutputTokens,
+    modelCapabilities.contextWindowTokens - promptTokens
+  );
+  
+  if (availableOutput < roleParams.maxOutputTokens * 0.5) {
+    suggestions.push(`Available output tokens (${availableOutput}) are significantly less than configured maxOutputTokens (${roleParams.maxOutputTokens}) due to large input`);
+  }
+  
+  return suggestions;
+}
+```
+

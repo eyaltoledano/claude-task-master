@@ -1,104 +1,1304 @@
 # Task ID: 85
-# Title: Update ai-services-unified.js for dynamic token limits
+# Title: Implement Dynamic Help Menu Generation from CLI Commands
 # Status: pending
-# Dependencies: 83, 84
+# Dependencies: 2, 4
 # Priority: medium
-# Description: Modify the _unifiedServiceRunner function in ai-services-unified.js to use the new token counting utility and dynamically adjust output token limits based on input length.
+# Description: Transform the static help menu in ui.js into a dynamic system that automatically generates help content by introspecting the actual CLI commands, options, and flags defined in commands.js. This ensures the help menu stays synchronized with command implementations and reduces maintenance overhead.
 # Details:
-1. Import the token counter in `ai-services-unified.js`:
+## Core Problem Statement
+
+The current help menu in `displayHelp()` function (ui.js:434-734) is hardcoded with static command information that can become outdated when:
+
+1. **Command Changes**: New options/flags are added to existing commands
+2. **New Commands**: New commands are added to commands.js but not reflected in help
+3. **Command Removal**: Commands are removed but help text remains
+4. **Inconsistent Documentation**: Help text doesn't match actual command behavior
+5. **Maintenance Burden**: Developers must remember to update help when modifying commands
+
+## Technical Implementation Requirements
+
+### 1. Command Introspection System
+- **Extract Command Metadata**: Parse Commander.js program instance to extract:
+  - Command names and aliases
+  - Command descriptions
+  - All options/flags with their descriptions and default values
+  - Required vs optional parameters
+  - Argument specifications
+- **Command Categorization**: Implement intelligent categorization based on:
+  - Command name patterns (e.g., 'add-*', 'remove-*', 'set-*')
+  - Command descriptions containing keywords
+  - Manual category overrides for edge cases
+- **Validation**: Ensure all registered commands are captured and categorized
+
+### 2. Dynamic Help Generation Engine
+- **Template System**: Create flexible templates for:
+  - Category headers with consistent styling
+  - Command entries with proper formatting
+  - Option/flag documentation with type information
+  - Example usage generation
+- **Formatting Logic**: Implement dynamic column width calculation based on:
+  - Terminal width detection
+  - Content length analysis
+  - Responsive layout adjustments
+- **Content Optimization**: Handle text wrapping, truncation, and spacing automatically
+
+### 3. Enhanced Command Documentation
+- **Auto-Generated Examples**: Create realistic usage examples by:
+  - Combining command names with common option patterns
+  - Using project-specific values (task IDs, file paths)
+  - Showing both simple and complex usage scenarios
+- **Option Details**: Display comprehensive option information:
+  - Short and long flag variants (-f, --file)
+  - Data types and format requirements
+  - Default values and behavior
+  - Required vs optional indicators
+- **Cross-References**: Add intelligent linking between related commands
+
+### 4. Integration Points
+- **Commands.js Integration**: 
+  - Access the programInstance after all commands are registered
+  - Extract metadata without affecting command functionality
+  - Handle edge cases like hidden commands or aliases
+- **UI.js Refactoring**:
+  - Replace static commandCategories array with dynamic generation
+  - Maintain existing visual styling and layout
+  - Preserve terminal width responsiveness
+  - Keep configuration and quick start sections
+
+### 5. Category Classification Logic
+Implement smart categorization rules:
 ```javascript
-const { countTokens } = require('./token-counter');
-const { getParametersForRole, getModelCapabilities } = require('./config-manager');
+const categoryRules = {
+  'Project Setup & Configuration': ['init', 'models'],
+  'Task Generation': ['parse-prd', 'generate'],
+  'Task Management': ['list', 'set-status', 'update', 'add-task', 'remove-task'],
+  'Subtask Management': ['add-subtask', 'remove-subtask', 'clear-subtasks'],
+  'Task Analysis & Breakdown': ['analyze-complexity', 'complexity-report', 'expand', 'research'],
+  'Task Navigation & Viewing': ['next', 'show'],
+  'Dependency Management': ['add-dependency', 'remove-dependency', 'validate-dependencies', 'fix-dependencies']
+};
 ```
 
-2. Update the `_unifiedServiceRunner` function to implement dynamic token limit adjustment:
-```javascript
-async function _unifiedServiceRunner({
-  serviceType,
-  provider,
-  modelId,
-  systemPrompt,
-  prompt,
-  temperature,
-  currentRole,
-  effectiveProjectRoot,
-  // ... other parameters
-}) {
-  // Get role parameters with new token limits
-  const roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
-  
-  // Get model capabilities
-  const modelCapabilities = getModelCapabilities(provider, modelId);
-  
-  // Count tokens in the prompts
-  const systemPromptTokens = countTokens(systemPrompt, provider, modelId);
-  const userPromptTokens = countTokens(prompt, provider, modelId);
-  const totalPromptTokens = systemPromptTokens + userPromptTokens;
-  
-  // Validate against input token limits
-  if (totalPromptTokens > roleParams.maxInputTokens) {
-    throw new Error(
-      `Prompt (${totalPromptTokens} tokens) exceeds configured max input tokens (${roleParams.maxInputTokens}) for role '${currentRole}'.`
-    );
-  }
-  
-  // Validate against model's absolute context window
-  if (modelCapabilities.contextWindowTokens && totalPromptTokens > modelCapabilities.contextWindowTokens) {
-    throw new Error(
-      `Prompt (${totalPromptTokens} tokens) exceeds model's context window (${modelCapabilities.contextWindowTokens}) for ${modelId}.`
-    );
-  }
-  
-  // Calculate available output tokens
-  // If model has a combined context window, we need to subtract input tokens
-  let availableOutputTokens = roleParams.maxOutputTokens;
-  
-  // If model has a context window constraint, ensure we don't exceed it
-  if (modelCapabilities.contextWindowTokens) {
-    const remainingContextTokens = modelCapabilities.contextWindowTokens - totalPromptTokens;
-    availableOutputTokens = Math.min(availableOutputTokens, remainingContextTokens);
-  }
-  
-  // Also respect the model's absolute max output limit
-  if (modelCapabilities.maxOutputTokens) {
-    availableOutputTokens = Math.min(availableOutputTokens, modelCapabilities.maxOutputTokens);
-  }
-  
-  // Prepare API call parameters
-  const callParams = {
-    apiKey,
-    modelId,
-    maxTokens: availableOutputTokens, // Use dynamically calculated output limit
-    temperature: roleParams.temperature,
-    messages,
-    baseUrl,
-    ...(serviceType === 'generateObject' && { schema, objectName }),
-    ...restApiParams
-  };
-  
-  // Log token usage information
-  console.debug(`Token usage: ${totalPromptTokens} input tokens, ${availableOutputTokens} max output tokens`);
-  
-  // Rest of the function remains the same...
-}
-```
+### 6. Error Handling and Fallbacks
+- **Graceful Degradation**: Fall back to static help if introspection fails
+- **Missing Information**: Handle commands with incomplete metadata
+- **Performance Considerations**: Cache generated help content when possible
+- **Debug Mode**: Provide verbose output for troubleshooting categorization
 
-3. Update the error handling to provide clear messages about token limits:
-```javascript
-try {
-  // Existing code...
-} catch (error) {
-  if (error.message.includes('tokens')) {
-    // Token-related errors should be clearly identified
-    console.error(`Token limit error: ${error.message}`);
-  }
-  throw error;
-}
-```
+## Implementation Architecture
+
+### Core Functions to Implement:
+1. **`extractCommandMetadata(programInstance)`**
+   - Parse Commander.js instance
+   - Extract all command and option information
+   - Return structured metadata object
+
+2. **`categorizeCommands(commandMetadata)`**
+   - Apply categorization rules
+   - Handle special cases and overrides
+   - Return categorized command structure
+
+3. **`generateDynamicHelp(categorizedCommands)`**
+   - Create formatted help content
+   - Apply consistent styling
+   - Handle responsive layout
+
+4. **`displayDynamicHelp(programInstance)`**
+   - Replace current displayHelp() function
+   - Integrate with existing banner and footer content
+   - Maintain backward compatibility
+
+### File Structure Changes:
+- **ui.js**: Replace static help with dynamic generation
+- **commands.js**: Ensure all commands have proper descriptions and option documentation
+- **New utility functions**: Add command introspection helpers
+
+## Testing Requirements
+
+### Unit Tests:
+- Command metadata extraction accuracy
+- Categorization logic correctness
+- Help content generation formatting
+- Terminal width responsiveness
+
+### Integration Tests:
+- Full help menu generation from actual commands
+- Consistency between help and actual command behavior
+- Performance with large numbers of commands
+
+### Manual Testing:
+- Visual verification of help output
+- Terminal width adaptation testing
+- Comparison with current static help for completeness
+
+## Benefits
+
+1. **Automatic Synchronization**: Help always reflects actual command state
+2. **Reduced Maintenance**: No manual help updates needed for command changes
+3. **Consistency**: Guaranteed alignment between help and implementation
+4. **Extensibility**: Easy to add new categorization rules or formatting
+5. **Accuracy**: Eliminates human error in help documentation
+6. **Developer Experience**: Faster development with automatic documentation
+
+## Migration Strategy
+
+1. **Phase 1**: Implement introspection system alongside existing static help
+2. **Phase 2**: Add categorization and dynamic generation
+3. **Phase 3**: Replace static help with dynamic system
+4. **Phase 4**: Remove static command definitions and add validation tests
+
+This implementation will create a self-documenting CLI that maintains accuracy and reduces the burden on developers to manually maintain help documentation.
 
 # Test Strategy:
-1. Test with prompts of various lengths to verify dynamic adjustment
-2. Test with different models to ensure model-specific limits are respected
-3. Verify error messages are clear when limits are exceeded
-4. Test edge cases: very short prompts, prompts near the limit
-5. Integration test with actual API calls to verify the calculated limits work in practice
+
+
+# Subtasks:
+## 1. Implement Command Metadata Extraction System [pending]
+### Dependencies: None
+### Description: Create the core introspection system to extract command metadata from Commander.js program instance
+### Details:
+## Implementation Requirements
+
+### Core Function: `extractCommandMetadata(programInstance)`
+
+**Location**: Add to `ui.js` or create new `help-utils.js` module
+
+**Functionality**:
+1. **Command Discovery**:
+   - Iterate through `programInstance.commands` array
+   - Extract command names, aliases, and descriptions
+   - Handle subcommands and nested command structures
+   - Filter out hidden or internal commands
+
+2. **Option Extraction**:
+   - Parse `command.options` array for each command
+   - Extract short flags (-f), long flags (--file), descriptions
+   - Identify required vs optional parameters
+   - Capture default values and data types
+   - Handle boolean flags vs value-accepting options
+
+3. **Argument Processing**:
+   - Extract positional arguments and their descriptions
+   - Identify required vs optional arguments
+   - Handle variadic arguments (e.g., [files...])
+
+4. **Metadata Structure**:
+```javascript
+{
+  commandName: {
+    name: 'command-name',
+    aliases: ['alias1', 'alias2'],
+    description: 'Command description',
+    usage: 'command-name [options] <args>',
+    options: [
+      {
+        flags: '-f, --file <path>',
+        description: 'File path description',
+        required: false,
+        defaultValue: 'default.json',
+        type: 'string'
+      }
+    ],
+    arguments: [
+      {
+        name: 'id',
+        description: 'Task ID',
+        required: true,
+        variadic: false
+      }
+    ]
+  }
+}
+```
+
+### Technical Implementation:
+1. **Commander.js API Usage**:
+   - Access `command._name`, `command._description`
+   - Parse `command.options` for option metadata
+   - Handle `command._args` for positional arguments
+   - Use `command._aliases` for command aliases
+
+2. **Option Parsing Logic**:
+   - Parse option flags using regex to separate short/long forms
+   - Detect required parameters using `<>` vs optional `[]`
+   - Extract default values from option configurations
+   - Identify boolean flags vs value-accepting options
+
+3. **Error Handling**:
+   - Handle commands with missing descriptions
+   - Deal with malformed option definitions
+   - Provide fallbacks for incomplete metadata
+   - Log warnings for problematic command definitions
+
+### Testing Requirements:
+- Unit tests for metadata extraction accuracy
+- Test with various command configurations
+- Verify handling of edge cases (missing descriptions, complex options)
+- Performance testing with large command sets
+
+## 2. Create Intelligent Command Categorization System [pending]
+### Dependencies: 85.1
+### Description: Implement smart categorization logic to group commands into logical categories for the help menu
+### Details:
+## Implementation Requirements
+
+### Core Function: `categorizeCommands(commandMetadata)`
+
+**Location**: Add to `ui.js` or `help-utils.js` module
+
+**Functionality**:
+1. **Category Definition System**:
+   - Define category rules with command name patterns
+   - Support keyword-based categorization from descriptions
+   - Allow manual overrides for edge cases
+   - Maintain existing category structure for consistency
+
+2. **Categorization Rules**:
+```javascript
+const categoryRules = {
+  'Project Setup & Configuration': {
+    commands: ['init', 'models'],
+    patterns: [/^models/, /^init/],
+    keywords: ['setup', 'configure', 'initialization'],
+    color: 'blue'
+  },
+  'Task Generation': {
+    commands: ['parse-prd', 'generate'],
+    patterns: [/^parse/, /^generate/],
+    keywords: ['create', 'generate', 'parse'],
+    color: 'cyan'
+  },
+  'Task Management': {
+    commands: ['list', 'set-status', 'update', 'add-task', 'remove-task'],
+    patterns: [/^(list|set-|update|add-|remove-)/, /status$/],
+    keywords: ['manage', 'update', 'modify', 'status'],
+    color: 'green'
+  },
+  'Subtask Management': {
+    commands: ['add-subtask', 'remove-subtask', 'clear-subtasks'],
+    patterns: [/subtask/],
+    keywords: ['subtask', 'sub-task'],
+    color: 'yellow'
+  },
+  'Task Analysis & Breakdown': {
+    commands: ['analyze-complexity', 'complexity-report', 'expand', 'research'],
+    patterns: [/^(analyze|complexity|expand|research)/],
+    keywords: ['analyze', 'complexity', 'expand', 'research', 'breakdown'],
+    color: 'magenta'
+  },
+  'Task Navigation & Viewing': {
+    commands: ['next', 'show'],
+    patterns: [/^(next|show|view|display)/],
+    keywords: ['view', 'show', 'display', 'navigate'],
+    color: 'cyan'
+  },
+  'Dependency Management': {
+    commands: ['add-dependency', 'remove-dependency', 'validate-dependencies', 'fix-dependencies'],
+    patterns: [/dependency|dependencies/],
+    keywords: ['dependency', 'dependencies', 'depend'],
+    color: 'blue'
+  }
+};
+```
+
+3. **Categorization Algorithm**:
+   - **Exact Match**: Check if command name is in category's command list
+   - **Pattern Matching**: Test command name against regex patterns
+   - **Keyword Analysis**: Search command description for category keywords
+   - **Fallback Category**: Create "Other Commands" for uncategorized commands
+   - **Priority System**: Handle commands that match multiple categories
+
+4. **Category Validation**:
+   - Ensure all commands are categorized
+   - Detect and warn about duplicate categorizations
+   - Validate category color assignments
+   - Check for empty categories
+
+### Technical Implementation:
+1. **Categorization Logic**:
+```javascript
+function categorizeCommands(commandMetadata) {
+  const categorizedCommands = {};
+  const uncategorized = [];
+  
+  // Initialize categories
+  Object.keys(categoryRules).forEach(categoryName => {
+    categorizedCommands[categoryName] = {
+      ...categoryRules[categoryName],
+      commands: []
+    };
+  });
+  
+  // Categorize each command
+  Object.values(commandMetadata).forEach(command => {
+    const category = findBestCategory(command);
+    if (category) {
+      categorizedCommands[category].commands.push(command);
+    } else {
+      uncategorized.push(command);
+    }
+  });
+  
+  // Handle uncategorized commands
+  if (uncategorized.length > 0) {
+    categorizedCommands['Other Commands'] = {
+      color: 'gray',
+      commands: uncategorized
+    };
+  }
+  
+  return categorizedCommands;
+}
+```
+
+2. **Best Category Detection**:
+   - Score each category based on match strength
+   - Prefer exact command name matches over patterns
+   - Weight keyword matches by frequency and relevance
+   - Return highest-scoring category
+
+3. **Dynamic Category Creation**:
+   - Support adding new categories without code changes
+   - Allow category rules to be loaded from configuration
+   - Handle category inheritance and hierarchies
+
+### Testing Requirements:
+- Test categorization accuracy for all existing commands
+- Verify handling of new commands not in predefined lists
+- Test pattern matching and keyword detection
+- Validate category completeness and no duplicates
+
+## 3. Build Dynamic Help Content Generator [pending]
+### Dependencies: 85.2
+### Description: Create the core help content generation system that formats command metadata into user-friendly help text
+### Details:
+## Implementation Requirements
+
+### Core Function: `generateHelpContent(categorizedCommands)`
+
+**Location**: Replace existing `displayHelp()` logic in `ui.js`
+
+**Functionality**:
+1. **Help Section Generation**:
+   - Generate header with tool name and version
+   - Create usage section with basic syntax
+   - Build categorized command sections
+   - Add footer with additional resources
+
+2. **Command Formatting Logic**:
+```javascript
+function formatCommand(command) {
+  const { name, description, options, arguments: args, aliases } = command;
+  
+  // Build usage line
+  let usage = `task-master ${name}`;
+  
+  // Add arguments
+  if (args && args.length > 0) {
+    args.forEach(arg => {
+      if (arg.required) {
+        usage += ` <${arg.name}>`;
+      } else {
+        usage += ` [${arg.name}]`;
+      }
+    });
+  }
+  
+  // Add options indicator
+  if (options && options.length > 0) {
+    usage += ' [options]';
+  }
+  
+  // Format aliases
+  const aliasText = aliases && aliases.length > 0 
+    ? ` (aliases: ${aliases.join(', ')})` 
+    : '';
+  
+  return {
+    usage,
+    description: description || 'No description available',
+    aliasText,
+    options: formatOptions(options)
+  };
+}
+```
+
+3. **Option Formatting**:
+   - Format flags with proper spacing and alignment
+   - Include descriptions and default values
+   - Highlight required vs optional parameters
+   - Group related options together
+
+4. **Category Section Generation**:
+```javascript
+function generateCategorySection(categoryName, categoryData) {
+  const { color, commands } = categoryData;
+  
+  let section = `\n${chalk[color].bold(categoryName)}:\n`;
+  
+  commands.forEach(command => {
+    const formatted = formatCommand(command);
+    section += `  ${chalk.cyan(formatted.usage)}${formatted.aliasText}\n`;
+    section += `    ${formatted.description}\n`;
+    
+    if (formatted.options.length > 0) {
+      section += `    Options:\n`;
+      formatted.options.forEach(option => {
+        section += `      ${option.flags.padEnd(20)} ${option.description}\n`;
+      });
+    }
+    section += '\n';
+  });
+  
+  return section;
+}
+```
+
+5. **Responsive Formatting**:
+   - Detect terminal width for optimal formatting
+   - Adjust column widths based on content length
+   - Handle long descriptions with proper wrapping
+   - Maintain consistent indentation and spacing
+
+### Technical Implementation:
+1. **Content Assembly**:
+   - Build help content in logical sections
+   - Apply consistent styling and colors
+   - Handle empty categories gracefully
+   - Support different output formats (terminal, plain text)
+
+2. **Performance Optimization**:
+   - Cache generated help content
+   - Lazy-load command metadata only when needed
+   - Minimize string concatenation overhead
+   - Support incremental updates
+
+3. **Accessibility Features**:
+   - Support no-color output for accessibility
+   - Provide plain text fallbacks
+   - Ensure proper screen reader compatibility
+   - Support different terminal capabilities
+
+4. **Customization Options**:
+   - Allow filtering by category
+   - Support command-specific help
+   - Enable verbose vs compact modes
+   - Provide search functionality
+
+### Integration Points:
+1. **Replace Existing displayHelp()**:
+   - Maintain same function signature
+   - Preserve existing color scheme
+   - Keep backward compatibility
+   - Update all call sites
+
+2. **Add New Help Variants**:
+   - `displayHelp(category)` - Show specific category
+   - `displayCommandHelp(commandName)` - Detailed command help
+   - `displayHelpSearch(query)` - Search-based help
+
+### Testing Requirements:
+- Test help generation for all command categories
+- Verify formatting consistency across different terminals
+- Test with various terminal widths and capabilities
+- Validate color output and no-color fallbacks
+- Performance testing with large command sets
+
+## 4. Integrate Dynamic Help System with Existing CLI [pending]
+### Dependencies: 85.3
+### Description: Replace the static help system with the new dynamic help generation and ensure seamless integration
+### Details:
+## Implementation Requirements
+
+### Core Integration Tasks:
+
+1. **Replace displayHelp() Function**:
+   - **Location**: `ui.js` lines 434-734
+   - **Action**: Replace static help content with dynamic generation
+   - **Preserve**: Existing function signature and color scheme
+   - **Enhance**: Add new parameters for filtering and customization
+
+2. **Update Function Signature**:
+```javascript
+// Current: displayHelp()
+// New: displayHelp(options = {})
+function displayHelp(options = {}) {
+  const {
+    category = null,        // Filter by specific category
+    command = null,         // Show help for specific command
+    search = null,          // Search query for commands
+    verbose = false,        // Show detailed help
+    noColor = false         // Disable colors for accessibility
+  } = options;
+  
+  // Dynamic help generation logic
+}
+```
+
+3. **Integration with commands.js**:
+   - **Access Program Instance**: Get reference to Commander.js program
+   - **Timing**: Ensure commands are fully registered before help generation
+   - **Caching**: Cache command metadata to avoid repeated parsing
+
+4. **Update Help Command Registration**:
+```javascript
+// In commands.js, update help command
+program
+  .command('help [command]')
+  .description('Display help information')
+  .option('-c, --category <category>', 'Show help for specific category')
+  .option('-s, --search <query>', 'Search commands by keyword')
+  .option('-v, --verbose', 'Show detailed help information')
+  .option('--no-color', 'Disable colored output')
+  .action(async (command, options) => {
+    displayHelp({
+      command,
+      category: options.category,
+      search: options.search,
+      verbose: options.verbose,
+      noColor: !options.color
+    });
+  });
+```
+
+5. **Fallback and Error Handling**:
+   - **Graceful Degradation**: Fall back to static help if dynamic generation fails
+   - **Error Recovery**: Handle malformed command definitions
+   - **Performance**: Ensure help generation doesn't slow down CLI startup
+
+### Technical Implementation:
+
+1. **Program Instance Access**:
+```javascript
+// Method 1: Pass program instance to displayHelp
+function displayHelp(options = {}, programInstance = null) {
+  if (!programInstance) {
+    // Fallback to static help or error
+    console.warn('Dynamic help unavailable, using static fallback');
+    return displayStaticHelp();
+  }
+  
+  const commandMetadata = extractCommandMetadata(programInstance);
+  const categorizedCommands = categorizeCommands(commandMetadata);
+  return generateHelpContent(categorizedCommands, options);
+}
+
+// Method 2: Global program reference
+let globalProgramInstance = null;
+export function setProgramInstance(program) {
+  globalProgramInstance = program;
+}
+```
+
+2. **Initialization Sequence**:
+   - Commands are registered in `commands.js`
+   - Program instance is made available to help system
+   - Help system caches command metadata on first use
+   - Subsequent help calls use cached data
+
+3. **Backward Compatibility**:
+   - Maintain existing `displayHelp()` calls without parameters
+   - Preserve existing color scheme and formatting style
+   - Keep same output structure for scripts that parse help output
+
+4. **Performance Optimization**:
+   - Cache command metadata after first extraction
+   - Lazy-load help content generation
+   - Minimize impact on CLI startup time
+   - Support incremental cache updates
+
+### Integration Points:
+
+1. **Update All Help Call Sites**:
+   - Search codebase for `displayHelp()` calls
+   - Update calls to pass program instance or use global reference
+   - Test all help invocation paths
+
+2. **Enhanced Help Commands**:
+   - `task-master help` - General help (existing behavior)
+   - `task-master help <command>` - Command-specific help
+   - `task-master help --category <cat>` - Category-specific help
+   - `task-master help --search <query>` - Search-based help
+
+3. **Error Handling Integration**:
+   - Update error messages to suggest relevant help commands
+   - Provide contextual help suggestions based on failed commands
+   - Integrate with existing error reporting system
+
+### Testing Requirements:
+
+1. **Integration Testing**:
+   - Test help system with all existing commands
+   - Verify backward compatibility with existing help calls
+   - Test new help command options and parameters
+
+2. **Performance Testing**:
+   - Measure help generation time with full command set
+   - Test CLI startup time impact
+   - Verify caching effectiveness
+
+3. **Compatibility Testing**:
+   - Test with different terminal types and capabilities
+   - Verify color output and no-color modes
+   - Test with various screen sizes and widths
+
+4. **Error Scenario Testing**:
+   - Test behavior with malformed command definitions
+   - Verify fallback to static help when needed
+   - Test graceful handling of missing metadata
+
+### Migration Strategy:
+
+1. **Phase 1**: Implement dynamic help system alongside existing static help
+2. **Phase 2**: Update help command to use dynamic system with fallback
+3. **Phase 3**: Replace all displayHelp() calls with dynamic version
+4. **Phase 4**: Remove static help content and cleanup old code
+5. **Phase 5**: Add enhanced help features (search, filtering, etc.)
+
+## 5. Add Enhanced Help Features and Search Functionality [pending]
+### Dependencies: 85.4
+### Description: Implement advanced help features including command search, category filtering, and contextual help suggestions
+### Details:
+## Implementation Requirements
+
+### Enhanced Help Features:
+
+1. **Command Search Functionality**:
+```javascript
+function searchCommands(query, commandMetadata) {
+  const results = [];
+  const searchTerms = query.toLowerCase().split(' ');
+  
+  Object.values(commandMetadata).forEach(command => {
+    let score = 0;
+    
+    // Search in command name (highest weight)
+    if (command.name.toLowerCase().includes(query.toLowerCase())) {
+      score += 10;
+    }
+    
+    // Search in description (medium weight)
+    if (command.description && command.description.toLowerCase().includes(query.toLowerCase())) {
+      score += 5;
+    }
+    
+    // Search in option descriptions (lower weight)
+    command.options?.forEach(option => {
+      if (option.description.toLowerCase().includes(query.toLowerCase())) {
+        score += 2;
+      }
+    });
+    
+    // Fuzzy matching for command names
+    if (fuzzyMatch(command.name, query)) {
+      score += 3;
+    }
+    
+    if (score > 0) {
+      results.push({ command, score });
+    }
+  });
+  
+  return results.sort((a, b) => b.score - a.score);
+}
+```
+
+2. **Category Filtering**:
+   - Allow users to view help for specific categories only
+   - Support partial category name matching
+   - Provide category list when invalid category specified
+   - Enable multiple category selection
+
+3. **Contextual Help Suggestions**:
+```javascript
+function suggestRelatedCommands(commandName, commandMetadata) {
+  const suggestions = [];
+  const command = commandMetadata[commandName];
+  
+  if (!command) return suggestions;
+  
+  // Find commands in same category
+  const category = findCommandCategory(commandName);
+  if (category) {
+    suggestions.push(...getCategoryCommands(category));
+  }
+  
+  // Find commands with similar names
+  Object.keys(commandMetadata).forEach(name => {
+    if (name !== commandName && similarity(name, commandName) > 0.6) {
+      suggestions.push(commandMetadata[name]);
+    }
+  });
+  
+  // Find commands with related functionality
+  const keywords = extractKeywords(command.description);
+  keywords.forEach(keyword => {
+    const related = findCommandsByKeyword(keyword, commandMetadata);
+    suggestions.push(...related);
+  });
+  
+  return deduplicateAndScore(suggestions);
+}
+```
+
+4. **Interactive Help Mode**:
+   - Implement step-by-step help wizard
+   - Guide users through command selection
+   - Provide examples and use cases
+   - Support help history and bookmarks
+
+### Advanced Features:
+
+1. **Help Caching and Performance**:
+```javascript
+class HelpCache {
+  constructor() {
+    this.cache = new Map();
+    this.lastUpdate = null;
+    this.commandMetadata = null;
+  }
+  
+  getHelp(key, generator) {
+    if (this.cache.has(key) && !this.isStale()) {
+      return this.cache.get(key);
+    }
+    
+    const content = generator();
+    this.cache.set(key, content);
+    return content;
+  }
+  
+  invalidate() {
+    this.cache.clear();
+    this.lastUpdate = Date.now();
+  }
+  
+  isStale() {
+    return Date.now() - this.lastUpdate > 300000; // 5 minutes
+  }
+}
+```
+
+2. **Help Export and Documentation**:
+   - Export help content to markdown format
+   - Generate man pages from command metadata
+   - Create HTML documentation
+   - Support JSON export for API documentation
+
+3. **Accessibility Enhancements**:
+   - Screen reader friendly output
+   - High contrast mode support
+   - Keyboard navigation for interactive help
+   - Alternative text descriptions for visual elements
+
+4. **Internationalization Support**:
+   - Support for multiple languages
+   - Localized command descriptions
+   - Cultural formatting preferences
+   - RTL language support
+
+### Command-Specific Help Features:
+
+1. **Detailed Command Help**:
+```javascript
+function displayCommandHelp(commandName, commandMetadata) {
+  const command = commandMetadata[commandName];
+  if (!command) {
+    console.error(`Command '${commandName}' not found.`);
+    suggestSimilarCommands(commandName, commandMetadata);
+    return;
+  }
+  
+  console.log(chalk.cyan.bold(`\\n${command.name.toUpperCase()} COMMAND HELP\\n`));
+  console.log(`Description: ${command.description}\\n`);
+  
+  // Usage examples
+  if (command.examples) {
+    console.log(chalk.yellow.bold('Examples:'));
+    command.examples.forEach(example => {
+      console.log(`  ${chalk.green(example.command)}`);
+      console.log(`    ${example.description}\\n`);
+    });
+  }
+  
+  // Detailed options
+  if (command.options && command.options.length > 0) {
+    console.log(chalk.yellow.bold('Options:'));
+    command.options.forEach(option => {
+      console.log(`  ${chalk.cyan(option.flags.padEnd(20))} ${option.description}`);
+      if (option.defaultValue) {
+        console.log(`${' '.repeat(22)}Default: ${option.defaultValue}`);
+      }
+      if (option.examples) {
+        console.log(`${' '.repeat(22)}Example: ${option.examples[0]}`);
+      }
+    });
+  }
+  
+  // Related commands
+  const related = suggestRelatedCommands(commandName, commandMetadata);
+  if (related.length > 0) {
+    console.log(chalk.yellow.bold('\\nRelated Commands:'));
+    related.slice(0, 5).forEach(cmd => {
+      console.log(`  ${chalk.cyan(cmd.name)} - ${cmd.description}`);
+    });
+  }
+}
+```
+
+2. **Usage Examples Generation**:
+   - Auto-generate common usage patterns
+   - Include real-world scenarios
+   - Show before/after examples
+   - Provide troubleshooting tips
+
+### Error Integration:
+
+1. **Smart Error Messages**:
+```javascript
+function enhanceErrorWithHelp(error, commandName, commandMetadata) {
+  console.error(chalk.red(error.message));
+  
+  // Suggest correct usage
+  if (commandMetadata[commandName]) {
+    console.log(chalk.yellow('\\nCorrect usage:'));
+    console.log(`  ${formatCommandUsage(commandMetadata[commandName])}`);
+  }
+  
+  // Suggest similar commands
+  const suggestions = findSimilarCommands(commandName, commandMetadata);
+  if (suggestions.length > 0) {
+    console.log(chalk.yellow('\\nDid you mean:'));
+    suggestions.slice(0, 3).forEach(cmd => {
+      console.log(`  ${chalk.cyan(cmd.name)} - ${cmd.description}`);
+    });
+  }
+  
+  // Provide help command
+  console.log(chalk.gray(`\\nFor more help: task-master help ${commandName}`));
+}
+```
+
+### Testing Requirements:
+
+1. **Search Functionality Testing**:
+   - Test search accuracy with various queries
+   - Verify fuzzy matching and scoring
+   - Test performance with large command sets
+   - Validate search result ranking
+
+2. **Feature Integration Testing**:
+   - Test all new help command options
+   - Verify category filtering accuracy
+   - Test contextual suggestions relevance
+   - Validate caching behavior
+
+3. **Accessibility Testing**:
+   - Test with screen readers
+   - Verify keyboard navigation
+   - Test color contrast and no-color modes
+   - Validate output formatting
+
+4. **Performance Testing**:
+   - Measure search response times
+   - Test caching effectiveness
+   - Verify memory usage with large datasets
+   - Test concurrent help requests
+
+### Documentation Updates:
+
+1. **Update README**:
+   - Document new help features
+   - Provide usage examples
+   - Update command reference
+   - Add troubleshooting section
+
+2. **Create Help Documentation**:
+   - Comprehensive help system guide
+   - Advanced usage patterns
+   - Customization options
+   - Integration examples
+
+## 6. Create Comprehensive Testing Suite and Documentation [pending]
+### Dependencies: 85.5
+### Description: Implement thorough testing for the dynamic help system and update all relevant documentation
+### Details:
+## Implementation Requirements
+
+### Testing Strategy:
+
+1. **Unit Tests for Core Functions**:
+```javascript
+// tests/unit/help-system.test.js
+describe('Dynamic Help System', () => {
+  describe('extractCommandMetadata', () => {
+    test('should extract basic command information', () => {
+      const mockProgram = createMockProgram();
+      const metadata = extractCommandMetadata(mockProgram);
+      
+      expect(metadata).toHaveProperty('init');
+      expect(metadata.init.name).toBe('init');
+      expect(metadata.init.description).toBeDefined();
+      expect(metadata.init.options).toBeArray();
+    });
+    
+    test('should handle commands with complex options', () => {
+      const mockProgram = createComplexMockProgram();
+      const metadata = extractCommandMetadata(mockProgram);
+      
+      expect(metadata.parseRrd.options).toHaveLength(5);
+      expect(metadata.parseRrd.options[0]).toHaveProperty('flags');
+      expect(metadata.parseRrd.options[0]).toHaveProperty('description');
+    });
+    
+    test('should handle missing descriptions gracefully', () => {
+      const mockProgram = createIncompleteProgram();
+      const metadata = extractCommandMetadata(mockProgram);
+      
+      expect(metadata.undocumented.description).toBe('No description available');
+    });
+  });
+  
+  describe('categorizeCommands', () => {
+    test('should categorize commands correctly', () => {
+      const mockMetadata = createMockMetadata();
+      const categorized = categorizeCommands(mockMetadata);
+      
+      expect(categorized).toHaveProperty('Project Setup & Configuration');
+      expect(categorized['Project Setup & Configuration'].commands).toContainEqual(
+        expect.objectContaining({ name: 'init' })
+      );
+    });
+    
+    test('should handle uncategorized commands', () => {
+      const mockMetadata = { unknownCommand: { name: 'unknown', description: 'test' } };
+      const categorized = categorizeCommands(mockMetadata);
+      
+      expect(categorized).toHaveProperty('Other Commands');
+      expect(categorized['Other Commands'].commands).toHaveLength(1);
+    });
+  });
+  
+  describe('generateHelpContent', () => {
+    test('should generate properly formatted help content', () => {
+      const mockCategorized = createMockCategorizedCommands();
+      const content = generateHelpContent(mockCategorized);
+      
+      expect(content).toContain('Task Master CLI');
+      expect(content).toContain('Project Setup & Configuration');
+      expect(content).toContain('task-master init');
+    });
+    
+    test('should handle empty categories', () => {
+      const emptyCategorized = { 'Empty Category': { commands: [] } };
+      const content = generateHelpContent(emptyCategorized);
+      
+      expect(content).not.toContain('Empty Category');
+    });
+  });
+});
+```
+
+2. **Integration Tests**:
+```javascript
+// tests/integration/help-integration.test.js
+describe('Help System Integration', () => {
+  test('should integrate with actual CLI commands', async () => {
+    const { program } = await import('../../scripts/modules/commands.js');
+    const metadata = extractCommandMetadata(program);
+    
+    // Verify all expected commands are present
+    const expectedCommands = ['init', 'parse-prd', 'list', 'add-task', 'expand'];
+    expectedCommands.forEach(cmd => {
+      expect(metadata).toHaveProperty(cmd);
+    });
+  });
+  
+  test('should maintain backward compatibility', () => {
+    const originalHelp = captureConsoleOutput(() => {
+      displayHelp(); // Original function call
+    });
+    
+    expect(originalHelp).toContain('Task Master CLI');
+    expect(originalHelp).toContain('Available Commands');
+  });
+  
+  test('should handle help command with options', () => {
+    const categoryHelp = captureConsoleOutput(() => {
+      displayHelp({ category: 'Task Management' });
+    });
+    
+    expect(categoryHelp).toContain('Task Management');
+    expect(categoryHelp).toContain('list');
+    expect(categoryHelp).not.toContain('init'); // Should not contain other categories
+  });
+});
+```
+
+3. **Performance Tests**:
+```javascript
+// tests/performance/help-performance.test.js
+describe('Help System Performance', () => {
+  test('should extract metadata within acceptable time', () => {
+    const start = performance.now();
+    const metadata = extractCommandMetadata(largeMockProgram);
+    const end = performance.now();
+    
+    expect(end - start).toBeLessThan(100); // Should complete in under 100ms
+  });
+  
+  test('should cache help content effectively', () => {
+    const cache = new HelpCache();
+    
+    const start1 = performance.now();
+    const content1 = cache.getHelp('main', () => generateHelpContent(mockData));
+    const end1 = performance.now();
+    
+    const start2 = performance.now();
+    const content2 = cache.getHelp('main', () => generateHelpContent(mockData));
+    const end2 = performance.now();
+    
+    expect(content1).toBe(content2);
+    expect(end2 - start2).toBeLessThan((end1 - start1) / 10); // Cached should be 10x faster
+  });
+});
+```
+
+4. **Accessibility Tests**:
+```javascript
+// tests/accessibility/help-accessibility.test.js
+describe('Help System Accessibility', () => {
+  test('should provide no-color output', () => {
+    const noColorHelp = captureConsoleOutput(() => {
+      displayHelp({ noColor: true });
+    });
+    
+    // Should not contain ANSI color codes
+    expect(noColorHelp).not.toMatch(/\u001b\[[0-9;]*m/);
+  });
+  
+  test('should format content for screen readers', () => {
+    const accessibleHelp = generateAccessibleHelp(mockMetadata);
+    
+    expect(accessibleHelp).toContain('Heading level 1: Task Master CLI');
+    expect(accessibleHelp).toContain('List item: init command');
+  });
+});
+```
+
+### Mock Data and Utilities:
+
+1. **Mock Program Creation**:
+```javascript
+// tests/utils/mock-program.js
+export function createMockProgram() {
+  return {
+    commands: [
+      {
+        _name: 'init',
+        _description: 'Initialize a new Task Master project',
+        _aliases: [],
+        options: [
+          {
+            flags: '-y, --yes',
+            description: 'Skip prompts and use defaults',
+            required: false,
+            defaultValue: false
+          }
+        ],
+        _args: []
+      },
+      {
+        _name: 'list',
+        _description: 'List all tasks',
+        _aliases: ['ls'],
+        options: [
+          {
+            flags: '-s, --status <status>',
+            description: 'Filter by status',
+            required: false
+          }
+        ],
+        _args: []
+      }
+    ]
+  };
+}
+```
+
+2. **Test Utilities**:
+```javascript
+// tests/utils/test-helpers.js
+export function captureConsoleOutput(fn) {
+  const originalLog = console.log;
+  let output = '';
+  
+  console.log = (...args) => {
+    output += args.join(' ') + '\n';
+  };
+  
+  try {
+    fn();
+    return output;
+  } finally {
+    console.log = originalLog;
+  }
+}
+
+export function stripAnsiColors(text) {
+  return text.replace(/\u001b\[[0-9;]*m/g, '');
+}
+```
+
+### Documentation Updates:
+
+1. **README.md Updates**:
+```markdown
+## Enhanced Help System
+
+Task Master now features a dynamic help system that automatically generates help content from your CLI commands.
+
+### Basic Help
+```bash
+task-master help
+```
+
+### Category-Specific Help
+```bash
+task-master help --category "Task Management"
+```
+
+### Command Search
+```bash
+task-master help --search "dependency"
+```
+
+### Command-Specific Help
+```bash
+task-master help add-task
+```
+
+### Advanced Options
+- `--verbose`: Show detailed help with examples
+- `--no-color`: Disable colored output for accessibility
+- `--search <query>`: Search commands by keyword
+- `--category <name>`: Filter by command category
+```
+
+2. **API Documentation**:
+```markdown
+## Help System API
+
+### Core Functions
+
+#### `extractCommandMetadata(programInstance)`
+Extracts command metadata from a Commander.js program instance.
+
+**Parameters:**
+- `programInstance` (Object): Commander.js program instance
+
+**Returns:**
+- Object containing command metadata
+
+#### `categorizeCommands(commandMetadata)`
+Categorizes commands into logical groups.
+
+**Parameters:**
+- `commandMetadata` (Object): Command metadata from extractCommandMetadata
+
+**Returns:**
+- Object with categorized commands
+
+#### `generateHelpContent(categorizedCommands, options)`
+Generates formatted help content.
+
+**Parameters:**
+- `categorizedCommands` (Object): Categorized command data
+- `options` (Object): Formatting options
+
+**Returns:**
+- String containing formatted help content
+```
+
+3. **Developer Guide**:
+```markdown
+## Extending the Help System
+
+### Adding New Categories
+To add a new command category, update the `categoryRules` object:
+
+```javascript
+const categoryRules = {
+  'Your New Category': {
+    commands: ['command1', 'command2'],
+    patterns: [/^pattern/],
+    keywords: ['keyword1', 'keyword2'],
+    color: 'blue'
+  }
+};
+```
+
+### Custom Help Formatters
+Create custom help formatters for specific use cases:
+
+```javascript
+function customHelpFormatter(command) {
+  // Your custom formatting logic
+  return formattedContent;
+}
+```
+```
+
+### Continuous Integration:
+
+1. **GitHub Actions Workflow**:
+```yaml
+# .github/workflows/help-system-tests.yml
+name: Help System Tests
+
+on: [push, pull_request]
+
+jobs:
+  test-help-system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm ci
+      - run: npm run test:help-system
+      - run: npm run test:help-accessibility
+      - run: npm run test:help-performance
+```
+
+2. **Test Scripts in package.json**:
+```json
+{
+  "scripts": {
+    "test:help-system": "jest tests/unit/help-system.test.js tests/integration/help-integration.test.js",
+    "test:help-accessibility": "jest tests/accessibility/help-accessibility.test.js",
+    "test:help-performance": "jest tests/performance/help-performance.test.js",
+    "test:help-all": "npm run test:help-system && npm run test:help-accessibility && npm run test:help-performance"
+  }
+}
+```
+
+### Quality Assurance:
+
+1. **Code Coverage Requirements**:
+   - Minimum 90% coverage for help system functions
+   - 100% coverage for critical path functions
+   - Integration test coverage for all CLI commands
+
+2. **Performance Benchmarks**:
+   - Help generation: < 100ms for full help
+   - Command search: < 50ms for typical queries
+   - Cache hit ratio: > 95% for repeated requests
+
+3. **Accessibility Standards**:
+   - WCAG 2.1 AA compliance for terminal output
+   - Screen reader compatibility testing
+   - High contrast mode support
+   - Keyboard navigation support
+

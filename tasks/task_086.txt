@@ -1,107 +1,161 @@
 # Task ID: 86
-# Title: Update .taskmasterconfig schema and user guide
+# Title: Implement GitHub Issue Export Feature
 # Status: pending
-# Dependencies: 83
-# Priority: medium
-# Description: Create a migration guide for users to update their .taskmasterconfig files and document the new token limit configuration options.
+# Dependencies: 45
+# Priority: high
+# Description: Create a comprehensive 'export_task' command that enables exporting Task Master tasks to GitHub Issues, providing bidirectional integration with the existing import functionality.
 # Details:
-1. Create a migration script or guide for users to update their existing `.taskmasterconfig` files:
+Implement a robust 'export_task' command with the following components:
 
-```javascript
-// Example migration snippet for .taskmasterconfig
-{
-  "main": {
-    // Before:
-    // "maxTokens": 16000,
-    
-    // After:
-    "maxInputTokens": 16000,
-    "maxOutputTokens": 4000,
-    "temperature": 0.7
-  },
-  "research": {
-    "maxInputTokens": 16000,
-    "maxOutputTokens": 4000,
-    "temperature": 0.7
-  },
-  "fallback": {
-    "maxInputTokens": 8000,
-    "maxOutputTokens": 2000,
-    "temperature": 0.7
-  }
-}
-```
+1. **Command Structure**:
+   - Create a new 'export_task' command with destination-specific subcommands
+   - Initial implementation should focus on GitHub integration
+   - Command syntax: `taskmaster export_task github [options] <task_id>`
+   - Support options for repository selection, issue type, and export configuration
 
-2. Update the user documentation to explain the new token limit fields:
+2. **GitHub Issue Creation**:
+   - Convert Task Master tasks into properly formatted GitHub issues
+   - Map task title and description to GitHub issue fields
+   - Convert implementation details and test strategy into well-structured issue body sections
+   - Transform subtasks into GitHub task lists or optionally create separate linked issues
+   - Map Task Master priorities, tags, and assignees to GitHub labels and assignees
+   - Add Task Master metadata as hidden comments for bidirectional linking
 
-```markdown
-# Token Limit Configuration
+3. **GitHub API Integration**:
+   - Implement GitHub API client for issue creation and management
+   - Support authentication via GITHUB_API_KEY environment variable
+   - Handle repository access for both public and private repositories
+   - Implement proper error handling for API failures
+   - Add rate limiting support to prevent API abuse
+   - Support milestone assignment if applicable
 
-Task Master now provides more granular control over token limits with separate settings for input and output tokens:
+4. **Bidirectional Linking**:
+   - Store GitHub issue URL and ID in task metadata
+   - Use consistent metadata schema compatible with the import feature
+   - Implement checks to prevent duplicate exports
+   - Support updating existing GitHub issues if task has been modified
+   - Enable round-trip workflows (export → modify in GitHub → re-import)
 
-- `maxInputTokens`: Maximum number of tokens allowed in the input prompt (system prompt + user prompt)
-- `maxOutputTokens`: Maximum number of tokens the model should generate in its response
+5. **Extensible Architecture**:
+   - Design the export system to be platform-agnostic
+   - Create adapter interfaces for different export destinations
+   - Implement the GitHub adapter as the first concrete implementation
+   - Allow for custom export templates and formatting rules
+   - Document extension points for future platforms (GitLab, Linear, Jira, etc.)
 
-## Benefits
+6. **Content Formatting**:
+   - Implement smart content conversion from Task Master format to GitHub-optimized format
+   - Handle markdown conversion appropriately
+   - Format code blocks, tables, and other structured content
+   - Add appropriate GitHub-specific references and formatting
+   - Ensure proper rendering of task relationships and dependencies
 
-- More precise control over token usage
-- Better cost management
-- Reduced likelihood of hitting model context limits
-- Dynamic adjustment to maximize output space based on input length
+7. **Configuration and Settings**:
+   - Add export-related configuration to Task Master settings
+   - Support default repositories and export preferences
+   - Allow customization of export templates and formatting
+   - Implement export history tracking
 
-## Migration from Previous Versions
-
-If you're upgrading from a previous version, you'll need to update your `.taskmasterconfig` file:
-
-1. Replace the single `maxTokens` field with separate `maxInputTokens` and `maxOutputTokens` fields
-2. Recommended starting values:
-   - Set `maxInputTokens` to your previous `maxTokens` value
-   - Set `maxOutputTokens` to approximately 1/4 of your model's context window
-
-## Example Configuration
-
-```json
-{
-  "main": {
-    "maxInputTokens": 16000,
-    "maxOutputTokens": 4000,
-    "temperature": 0.7
-  }
-}
-```
-```
-
-3. Update the schema validation in `config-manager.js` to validate the new fields:
-
-```javascript
-function _validateConfig(config) {
-  // ... existing validation
-  
-  // Validate token limits for each role
-  ['main', 'research', 'fallback'].forEach(role => {
-    if (config[role]) {
-      // Check if old maxTokens is present and warn about migration
-      if (config[role].maxTokens !== undefined) {
-        console.warn(`Warning: 'maxTokens' in ${role} role is deprecated. Please use 'maxInputTokens' and 'maxOutputTokens' instead.`);
-      }
-      
-      // Validate new token limit fields
-      if (config[role].maxInputTokens !== undefined && (!Number.isInteger(config[role].maxInputTokens) || config[role].maxInputTokens <= 0)) {
-        throw new Error(`Invalid maxInputTokens for ${role} role: must be a positive integer`);
-      }
-      
-      if (config[role].maxOutputTokens !== undefined && (!Number.isInteger(config[role].maxOutputTokens) || config[role].maxOutputTokens <= 0)) {
-        throw new Error(`Invalid maxOutputTokens for ${role} role: must be a positive integer`);
-      }
-    }
-  });
-  
-  return config;
-}
-```
+8. **Documentation**:
+   - Create comprehensive documentation for the export feature
+   - Include examples and best practices
+   - Document the bidirectional workflow with import feature
 
 # Test Strategy:
-1. Verify documentation is clear and provides migration steps
-2. Test the validation logic with various config formats
-3. Test backward compatibility with old config format
-4. Ensure error messages are helpful when validation fails
+1. **Unit Tests**:
+   - Create unit tests for each component of the export system
+   - Test GitHub API client with mock responses
+   - Verify correct task-to-issue conversion logic
+   - Test bidirectional linking metadata handling
+   - Validate error handling and edge cases
+
+2. **Integration Tests**:
+   - Test end-to-end export workflow with test GitHub repository
+   - Verify created GitHub issues match expected format and content
+   - Test round-trip workflow (export → import) to ensure data integrity
+   - Validate behavior with various task types and structures
+   - Test with both simple and complex tasks with subtasks
+
+3. **Manual Testing Checklist**:
+   - Export a simple task and verify all fields are correctly mapped
+   - Export a complex task with subtasks and verify correct representation
+   - Test exporting to different repositories and with different user permissions
+   - Verify error messages are clear and helpful
+   - Test updating an already-exported task
+   - Verify bidirectional linking works correctly
+   - Test the round-trip workflow with modifications in GitHub
+
+4. **Edge Case Testing**:
+   - Test with missing GitHub credentials
+   - Test with invalid repository names
+   - Test with rate-limited API responses
+   - Test with very large tasks and content
+   - Test with special characters and formatting in task content
+   - Verify behavior when GitHub is unreachable
+
+5. **Performance Testing**:
+   - Measure export time for different task sizes
+   - Test batch export of multiple tasks
+   - Verify system handles GitHub API rate limits appropriately
+
+# Subtasks:
+## 1. Design CLI Command Structure [pending]
+### Dependencies: None
+### Description: Define the command-line interface structure for the GitHub Issue Export Feature
+### Details:
+Create a comprehensive CLI design including command syntax, argument parsing, help documentation, and user feedback mechanisms. Define flags for filtering issues by state, labels, assignees, and date ranges. Include options for output format selection (JSON, CSV, XLSX) and destination path configuration.
+
+## 2. Develop GitHub API Client [pending]
+### Dependencies: None
+### Description: Create a robust client for interacting with GitHub's REST and GraphQL APIs
+### Details:
+Implement a client library that handles API rate limiting, pagination, and response parsing. Support both REST and GraphQL endpoints for optimal performance. Include methods for fetching issues, comments, labels, milestones, and user data with appropriate caching mechanisms to minimize API calls.
+
+## 3. Implement Authentication System [pending]
+### Dependencies: 86.2
+### Description: Build a secure authentication system for GitHub API access
+### Details:
+Develop authentication flows supporting personal access tokens, OAuth, and GitHub Apps. Implement secure credential storage with appropriate encryption. Create comprehensive error handling for authentication failures, token expiration, and permission issues with clear user feedback.
+
+## 4. Create Task-to-Issue Mapping Logic [pending]
+### Dependencies: 86.2, 86.3
+### Description: Develop the core logic for mapping GitHub issues to task structures
+### Details:
+Implement data models and transformation logic to convert GitHub issues into structured task objects. Handle relationships between issues including parent-child relationships, dependencies, and linked issues. Support task lists within issue bodies and map them to subtasks with appropriate status tracking.
+
+## 5. Build Content Formatting Engine [pending]
+### Dependencies: 86.4
+### Description: Create a system for formatting and converting issue content
+### Details:
+Develop a markdown processing engine that handles GitHub Flavored Markdown. Implement converters for transforming content to various formats (plain text, HTML, etc.). Create utilities for handling embedded images, code blocks, and other rich content elements while preserving formatting integrity.
+
+## 6. Implement Bidirectional Linking System [pending]
+### Dependencies: 86.4, 86.5
+### Description: Develop mechanisms for maintaining bidirectional links between exported data and GitHub
+### Details:
+Create a reference system that maintains links between exported tasks and their source GitHub issues. Implement metadata preservation to enable round-trip workflows. Design a change tracking system to support future synchronization capabilities between exported data and GitHub.
+
+## 7. Design Extensible Architecture [pending]
+### Dependencies: 86.4, 86.5, 86.6
+### Description: Create an adapter-based architecture for supporting multiple export formats and destinations
+### Details:
+Implement a plugin architecture with adapter interfaces for different output formats (JSON, CSV, XLSX) and destinations (file system, cloud storage, third-party tools). Create a registry system for dynamically loading adapters. Design clean separation between core logic and format-specific implementations.
+
+## 8. Develop Configuration Management [pending]
+### Dependencies: 86.1, 86.7
+### Description: Build a robust system for managing user configurations and preferences
+### Details:
+Implement configuration file handling with support for multiple locations (global, project-specific). Create a settings management system with validation and defaults. Support environment variable overrides and command-line parameter precedence. Include migration paths for configuration format changes.
+
+## 9. Create Comprehensive Documentation [pending]
+### Dependencies: 86.1, 86.7, 86.8
+### Description: Develop detailed documentation for users and contributors
+### Details:
+Write user-facing documentation including installation guides, command references, and usage examples. Create developer documentation covering architecture, extension points, and contribution guidelines. Implement automated documentation generation from code comments. Prepare tutorials for common use cases and integration scenarios.
+
+## 10. Implement Testing Framework [pending]
+### Dependencies: 86.1, 86.2, 86.3, 86.4, 86.5, 86.6, 86.7, 86.8
+### Description: Develop a comprehensive testing strategy and implementation
+### Details:
+Create unit tests for all core components with high coverage targets. Implement integration tests for GitHub API interactions using mocks and fixtures. Design end-to-end tests for complete workflows. Develop performance tests for large repositories and stress testing. Create a test suite for edge cases including rate limiting, network failures, and malformed data.
+

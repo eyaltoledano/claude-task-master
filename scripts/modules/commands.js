@@ -66,7 +66,8 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	displayMultipleTasksSummary
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -1414,6 +1415,244 @@ function registerCommands(programInstance) {
 			await analyzeTaskComplexity(options);
 		});
 
+	// research command
+	programInstance
+		.command('research')
+		.description('Perform AI-powered research queries with project context')
+		.argument('<prompt>', 'Research prompt to investigate')
+		.option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to include as context (e.g., "15,16.2")'
+		)
+		.option(
+			'-f, --files <paths>',
+			'Comma-separated file paths to include as context'
+		)
+		.option(
+			'-c, --context <text>',
+			'Additional custom context to include in the research prompt'
+		)
+		.option(
+			'-t, --tree',
+			'Include project file tree structure in the research context'
+		)
+		.option(
+			'-s, --save <file>',
+			'Save research results to the specified task/subtask(s)'
+		)
+		.option(
+			'-d, --detail <level>',
+			'Output detail level: low, medium, high',
+			'medium'
+		)
+		.action(async (prompt, options) => {
+			// Parameter validation
+			if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+				console.error(
+					chalk.red('Error: Research prompt is required and cannot be empty')
+				);
+				process.exit(1);
+			}
+
+			// Validate detail level
+			const validDetailLevels = ['low', 'medium', 'high'];
+			if (
+				options.detail &&
+				!validDetailLevels.includes(options.detail.toLowerCase())
+			) {
+				console.error(
+					chalk.red(
+						`Error: Detail level must be one of: ${validDetailLevels.join(', ')}`
+					)
+				);
+				process.exit(1);
+			}
+
+			// Validate and parse task IDs if provided
+			let taskIds = [];
+			if (options.id) {
+				try {
+					taskIds = options.id.split(',').map((id) => {
+						const trimmedId = id.trim();
+						// Support both task IDs (e.g., "15") and subtask IDs (e.g., "15.2")
+						if (!/^\d+(\.\d+)?$/.test(trimmedId)) {
+							throw new Error(
+								`Invalid task ID format: "${trimmedId}". Expected format: "15" or "15.2"`
+							);
+						}
+						return trimmedId;
+					});
+				} catch (error) {
+					console.error(chalk.red(`Error parsing task IDs: ${error.message}`));
+					process.exit(1);
+				}
+			}
+
+			// Validate and parse file paths if provided
+			let filePaths = [];
+			if (options.files) {
+				try {
+					filePaths = options.files.split(',').map((filePath) => {
+						const trimmedPath = filePath.trim();
+						if (trimmedPath.length === 0) {
+							throw new Error('Empty file path provided');
+						}
+						return trimmedPath;
+					});
+				} catch (error) {
+					console.error(
+						chalk.red(`Error parsing file paths: ${error.message}`)
+					);
+					process.exit(1);
+				}
+			}
+
+			// Validate save option if provided
+			if (options.save) {
+				const saveTarget = options.save.trim();
+				if (saveTarget.length === 0) {
+					console.error(chalk.red('Error: Save target cannot be empty'));
+					process.exit(1);
+				}
+				// Check if it's a valid file path (basic validation)
+				if (saveTarget.includes('..') || saveTarget.startsWith('/')) {
+					console.error(
+						chalk.red(
+							'Error: Save path must be relative and cannot contain ".."'
+						)
+					);
+					process.exit(1);
+				}
+			}
+
+			// Determine project root and tasks file path
+			const projectRoot = findProjectRoot() || '.';
+			const tasksPath =
+				options.file || path.join(projectRoot, 'tasks', 'tasks.json');
+
+			// Validate tasks file exists if task IDs are specified
+			if (taskIds.length > 0) {
+				try {
+					const tasksData = readJSON(tasksPath);
+					if (!tasksData || !tasksData.tasks) {
+						console.error(
+							chalk.red(`Error: No valid tasks found in ${tasksPath}`)
+						);
+						process.exit(1);
+					}
+				} catch (error) {
+					console.error(
+						chalk.red(`Error reading tasks file: ${error.message}`)
+					);
+					process.exit(1);
+				}
+			}
+
+			// Validate file paths exist if specified
+			if (filePaths.length > 0) {
+				for (const filePath of filePaths) {
+					const fullPath = path.isAbsolute(filePath)
+						? filePath
+						: path.join(projectRoot, filePath);
+					if (!fs.existsSync(fullPath)) {
+						console.error(chalk.red(`Error: File not found: ${filePath}`));
+						process.exit(1);
+					}
+				}
+			}
+
+			// Create validated parameters object
+			const validatedParams = {
+				prompt: prompt.trim(),
+				taskIds: taskIds,
+				filePaths: filePaths,
+				customContext: options.context ? options.context.trim() : null,
+				includeProjectTree: !!options.tree,
+				saveTarget: options.save ? options.save.trim() : null,
+				detailLevel: options.detail ? options.detail.toLowerCase() : 'medium',
+				tasksPath: tasksPath,
+				projectRoot: projectRoot
+			};
+
+			// Display what we're about to do
+			console.log(chalk.blue(`Researching: "${validatedParams.prompt}"`));
+
+			if (validatedParams.taskIds.length > 0) {
+				console.log(
+					chalk.gray(`Task context: ${validatedParams.taskIds.join(', ')}`)
+				);
+			}
+
+			if (validatedParams.filePaths.length > 0) {
+				console.log(
+					chalk.gray(`File context: ${validatedParams.filePaths.join(', ')}`)
+				);
+			}
+
+			if (validatedParams.customContext) {
+				console.log(
+					chalk.gray(
+						`Custom context: ${validatedParams.customContext.substring(0, 50)}${validatedParams.customContext.length > 50 ? '...' : ''}`
+					)
+				);
+			}
+
+			if (validatedParams.includeProjectTree) {
+				console.log(chalk.gray('Including project file tree'));
+			}
+
+			console.log(chalk.gray(`Detail level: ${validatedParams.detailLevel}`));
+
+			try {
+				// Import the research function
+				const { performResearch } = await import('./task-manager/research.js');
+
+				// Prepare research options
+				const researchOptions = {
+					taskIds: validatedParams.taskIds,
+					filePaths: validatedParams.filePaths,
+					customContext: validatedParams.customContext || '',
+					includeProjectTree: validatedParams.includeProjectTree,
+					detailLevel: validatedParams.detailLevel,
+					projectRoot: validatedParams.projectRoot
+				};
+
+				// Execute research
+				const result = await performResearch(
+					validatedParams.prompt,
+					researchOptions,
+					{
+						commandName: 'research',
+						outputType: 'cli'
+					},
+					'text'
+				);
+
+				// Save results if requested
+				if (validatedParams.saveTarget) {
+					const saveContent = `# Research Query: ${validatedParams.prompt}
+
+**Detail Level:** ${result.detailLevel}
+**Context Size:** ${result.contextSize} characters
+**Timestamp:** ${new Date().toISOString()}
+
+## Results
+
+${result.result}
+`;
+
+					fs.writeFileSync(validatedParams.saveTarget, saveContent, 'utf-8');
+					console.log(
+						chalk.green(`\n💾 Results saved to: ${validatedParams.saveTarget}`)
+					);
+				}
+			} catch (error) {
+				console.error(chalk.red(`\n❌ Research failed: ${error.message}`));
+				process.exit(1);
+			}
+		});
+
 	// clear-subtasks command
 	programInstance
 		.command('clear-subtasks')
@@ -1587,11 +1826,14 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('show')
 		.description(
-			`Display detailed information about a specific task${chalk.reset('')}`
+			`Display detailed information about one or more tasks${chalk.reset('')}`
 		)
-		.argument('[id]', 'Task ID to show')
-		.option('-i, --id <id>', 'Task ID to show')
-		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
+		.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to show (comma-separated for multiple)'
+		)
+		.option('-s, --status <status>', 'Filter subtasks by status')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-r, --report <report>',
@@ -1600,7 +1842,7 @@ function registerCommands(programInstance) {
 		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
-			const statusFilter = options.status; // ADDED: Capture status filter
+			const statusFilter = options.status;
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -1609,8 +1851,25 @@ function registerCommands(programInstance) {
 
 			const tasksPath = options.file;
 			const reportPath = options.report;
-			// PASS statusFilter to the display function
-			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
+
+			// Check if multiple IDs are provided (comma-separated)
+			const taskIds = idArg
+				.split(',')
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0);
+
+			if (taskIds.length > 1) {
+				// Multiple tasks - use compact summary view with interactive drill-down
+				await displayMultipleTasksSummary(
+					tasksPath,
+					taskIds,
+					reportPath,
+					statusFilter
+				);
+			} else {
+				// Single task - use detailed view
+				await displayTaskById(tasksPath, taskIds[0], reportPath, statusFilter);
+			}
 		});
 
 	// add-dependency command

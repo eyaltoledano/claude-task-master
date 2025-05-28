@@ -112,9 +112,10 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **CLI Command:** `task-master show [id] [options]`
 *   **Description:** `Display detailed information for a specific Taskmaster task or subtask by its ID.`
 *   **Key Parameters/Options:**
-    *   `id`: `Required. The ID of the Taskmaster task, e.g., '15', or subtask, e.g., '15.2', you want to view.` (CLI: `[id]` positional or `-i, --id <id>`)
+    *   `id`: `Required. The ID of the Taskmaster task, e.g., '15', or subtask, e.g., '15.2', you want to view.` (CLI: `[id]. Supports comma-separated list of tasks to get multiple tasks at once.` positional or `-i, --id <id>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Understand the full details, implementation notes, and test strategy for a specific task before starting work.
+*   **CRITICAL INFORMATION** If you need to collect information from multiple tasks, use comma-separated IDs (i.e. 1,2,3) to receive an array of tasks. Do not needlessly get tasks one at a time if you need to get many as that is wasteful.
 
 ---
 
@@ -363,6 +364,43 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Key Parameters/Options:**
     *   `file`: `Path to the complexity report (default: 'scripts/task-complexity-report.json').` (CLI: `-f, --file <file>`)
 *   **Usage:** Review and understand the complexity analysis results after running analyze-complexity.
+
+---
+
+## AI-Powered Research
+
+### 25. Research (`research`)
+
+*   **MCP Tool:** `research`
+*   **CLI Command:** `task-master research [options]`
+*   **Description:** `Perform AI-powered research queries with project context to get fresh, up-to-date information beyond the AI's knowledge cutoff.`
+*   **Key Parameters/Options:**
+    *   `query`: `Required. Research query/prompt (e.g., "What are the latest best practices for React Query v5?").` (CLI: `[query]` positional or `-q, --query <text>`)
+    *   `taskIds`: `Comma-separated list of task/subtask IDs for context (e.g., "15,16.2,17").` (CLI: `-i, --id <ids>`)
+    *   `filePaths`: `Comma-separated list of file paths for context (e.g., "src/api.js,docs/readme.md").` (CLI: `-f, --files <paths>`)
+    *   `customContext`: `Additional custom context text to include in the research.` (CLI: `-c, --context <text>`)
+    *   `includeProjectTree`: `Include project file tree structure in context (default: false).` (CLI: `--tree`)
+    *   `detailLevel`: `Detail level for the research response: 'low', 'medium', 'high' (default: medium).` (CLI: `--detail <level>`)
+    *   `projectRoot`: `The directory of the project. Must be an absolute path.` (CLI: Determined automatically)
+*   **Usage:** **This is a POWERFUL tool that agents should use FREQUENTLY** to:
+    *   Get fresh information beyond knowledge cutoff dates
+    *   Research latest best practices, library updates, security patches
+    *   Find implementation examples for specific technologies
+    *   Validate approaches against current industry standards
+    *   Get contextual advice based on project files and tasks
+*   **When to Consider Using Research:**
+    *   **Before implementing any task** - Research current best practices
+    *   **When encountering new technologies** - Get up-to-date implementation guidance (libraries, apis, etc)
+    *   **For security-related tasks** - Find latest security recommendations
+    *   **When updating dependencies** - Research breaking changes and migration guides
+    *   **For performance optimization** - Get current performance best practices
+    *   **When debugging complex issues** - Research known solutions and workarounds
+*   **Research + Action Pattern:**
+    *   Use `research` to gather fresh information
+    *   Use `update_subtask` to commit findings with timestamps
+    *   Use `update_task` to incorporate research into task details
+    *   Use `add_task` with research flag for informed task creation
+*   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. The research provides FRESH data beyond the AI's training cutoff, making it invaluable for current best practices and recent developments.
 
 ---
 

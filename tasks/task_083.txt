@@ -1,95 +1,288 @@
 # Task ID: 83
-# Title: Update config-manager.js defaults and getters
+# Title: Implement Git Workflow Integration
 # Status: pending
-# Dependencies: 82
+# Dependencies: None
 # Priority: high
-# Description: Modify the config-manager.js module to replace maxTokens with maxInputTokens and maxOutputTokens in the DEFAULTS object and update related getter functions.
+# Description: Add `task-master git` command suite to automate git workflows based on established patterns from Task 4, eliminating manual overhead and ensuring 100% consistency
 # Details:
-1. Update the `DEFAULTS` object in config-manager.js:
-```javascript
-const DEFAULTS = {
-  // ... existing defaults
-  main: {
-    // Replace maxTokens with these two fields
-    maxInputTokens: 16000, // Example default
-    maxOutputTokens: 4000, // Example default
-    temperature: 0.7
-    // ... other fields
-  },
-  research: {
-    maxInputTokens: 16000,
-    maxOutputTokens: 4000,
-    temperature: 0.7
-    // ... other fields
-  },
-  fallback: {
-    maxInputTokens: 8000,
-    maxOutputTokens: 2000,
-    temperature: 0.7
-    // ... other fields
-  }
-  // ... rest of DEFAULTS
-};
-```
+Create a comprehensive git workflow automation system that integrates deeply with TaskMaster's task management. The feature will:
 
-2. Update `getParametersForRole` function to return the new fields:
-```javascript
-function getParametersForRole(role, explicitRoot = null) {
-  const config = _getConfig(explicitRoot);
-  return {
-    maxInputTokens: config[role]?.maxInputTokens,
-    maxOutputTokens: config[role]?.maxOutputTokens,
-    temperature: config[role]?.temperature
-    // ... any other parameters
-  };
-}
-```
+1. **Automated Branch Management**:
+   - Create branches following `task-{id}` naming convention
+   - Validate branch names and prevent conflicts
+   - Handle branch switching with uncommitted changes
+   - Clean up local and remote branches post-merge
 
-3. Add a new function to get model capabilities:
-```javascript
-function getModelCapabilities(providerName, modelId) {
-  const models = MODEL_MAP[providerName?.toLowerCase()];
-  const model = models?.find(m => m.id === modelId);
-  return {
-    contextWindowTokens: model?.contextWindowTokens,
-    maxOutputTokens: model?.maxOutputTokens
-  };
-}
-```
+2. **Intelligent Commit Generation**:
+   - Auto-detect commit type (feat/fix/test/refactor/docs) from file changes
+   - Generate standardized commit messages with task context
+   - Support subtask-specific commits with proper references
+   - Include coverage delta in test commits
 
-4. Deprecate or update the role-specific maxTokens getters:
-```javascript
-// Either remove these or update them to return maxInputTokens
-function getMainMaxTokens(explicitRoot = null) {
-  console.warn('getMainMaxTokens is deprecated. Use getParametersForRole("main") instead.');
-  return getParametersForRole("main", explicitRoot).maxInputTokens;
-}
-// Same for getResearchMaxTokens and getFallbackMaxTokens
-```
+3. **PR Automation**:
+   - Generate comprehensive PR descriptions from task/subtask data
+   - Include implementation details, test coverage, breaking changes
+   - Format using GitHub markdown with task hierarchy
+   - Auto-populate PR template with relevant metadata
 
-5. Export the new functions:
-```javascript
-module.exports = {
-  // ... existing exports
-  getParametersForRole,
-  getModelCapabilities
-};
-```
+4. **Workflow State Management**:
+   - Track current task branch and status
+   - Validate task readiness before PR creation
+   - Ensure all subtasks completed before finishing
+   - Handle merge conflicts gracefully
+
+5. **Integration Points**:
+   - Seamless integration with existing task commands
+   - MCP server support for IDE integrations
+   - GitHub CLI (`gh`) authentication support
+   - Coverage report parsing and display
+
+**Technical Architecture**:
+- Modular command structure in `scripts/modules/task-manager/git-*`
+- Git operations wrapper using simple-git or native child_process
+- Template engine for commit/PR generation in `scripts/modules/`
+- State persistence in `.taskmaster/git-state.json`
+- Error recovery and rollback mechanisms
+
+**Key Files to Create**:
+- `scripts/modules/task-manager/git-start.js` - Branch creation and task status update
+- `scripts/modules/task-manager/git-commit.js` - Intelligent commit message generation
+- `scripts/modules/task-manager/git-pr.js` - PR creation with auto-generated description
+- `scripts/modules/task-manager/git-finish.js` - Post-merge cleanup and status update
+- `scripts/modules/task-manager/git-status.js` - Current git workflow state display
+- `scripts/modules/git-operations.js` - Core git functionality wrapper
+- `scripts/modules/commit-analyzer.js` - File change analysis for commit types
+- `scripts/modules/pr-description-generator.js` - PR description template generator
+
+**MCP Integration Files**:
+- `mcp-server/src/core/direct-functions/git-start.js`
+- `mcp-server/src/core/direct-functions/git-commit.js`
+- `mcp-server/src/core/direct-functions/git-pr.js`
+- `mcp-server/src/core/direct-functions/git-finish.js`
+- `mcp-server/src/core/direct-functions/git-status.js`
+- `mcp-server/src/tools/git-start.js`
+- `mcp-server/src/tools/git-commit.js`
+- `mcp-server/src/tools/git-pr.js`
+- `mcp-server/src/tools/git-finish.js`
+- `mcp-server/src/tools/git-status.js`
+
+**Configuration**:
+- Add git workflow settings to `.taskmasterconfig`
+- Support for custom commit prefixes and PR templates
+- Branch naming pattern customization
+- Remote repository detection and validation
 
 # Test Strategy:
-1. Unit test the updated getParametersForRole function with various configurations
-2. Verify the new getModelCapabilities function returns correct values
-3. Test with both default and custom configurations
-4. Ensure backward compatibility by checking that existing code using the old getters still works (with warnings)
+Implement comprehensive test suite following Task 4's TDD approach:
+
+1. **Unit Tests** (target: 95%+ coverage):
+   - Git operations wrapper with mocked git commands
+   - Commit type detection with various file change scenarios
+   - PR description generation with different task structures
+   - Branch name validation and generation
+   - State management and persistence
+
+2. **Integration Tests**:
+   - Full workflow simulation in test repository
+   - Error handling for git conflicts and failures
+   - Multi-task workflow scenarios
+   - Coverage integration with real test runs
+   - GitHub API interaction (mocked)
+
+3. **E2E Tests**:
+   - Complete task lifecycle from start to finish
+   - Multiple developer workflow simulation
+   - Merge conflict resolution scenarios
+   - Branch protection and validation
+
+4. **Test Implementation Details**:
+   - Use Jest with git repository fixtures
+   - Mock simple-git for isolated unit tests
+   - Create test tasks.json scenarios
+   - Validate all error messages and edge cases
+   - Test rollback and recovery mechanisms
+
+5. **Coverage Requirements**:
+   - Minimum 90% overall coverage
+   - 100% coverage for critical paths (branch creation, PR generation)
+   - All error scenarios must be tested
+   - Performance tests for large task hierarchies
 
 # Subtasks:
-## 1. Update config-manager.js with specific token limit fields [pending]
+## 1. Design and implement core git operations wrapper [pending]
 ### Dependencies: None
-### Description: Modify the DEFAULTS object in config-manager.js to replace maxTokens with more specific token limit fields (maxInputTokens, maxOutputTokens, maxTotalTokens) and update related getter functions while maintaining backward compatibility.
+### Description: Create a robust git operations layer that handles all git commands with proper error handling and state management
 ### Details:
-1. Replace maxTokens in the DEFAULTS object with maxInputTokens, maxOutputTokens, and maxTotalTokens
-2. Update any getter functions that reference maxTokens to handle both old and new configurations
-3. Ensure backward compatibility so existing code using maxTokens continues to work
-4. Update any related documentation or comments to reflect the new token limit fields
-5. Test the changes to verify both new specific token limits and legacy maxTokens usage work correctly
+Create `scripts/modules/git-operations.js` with methods for:
+- Branch creation/deletion (local and remote)
+- Commit operations with message formatting
+- Status checking and conflict detection
+- Remote operations (fetch, push, pull)
+- Repository validation and setup
+
+Use simple-git library or child_process for git commands. Implement comprehensive error handling with specific error types for different git failures. Include retry logic for network operations.
+
+## 2. Implement git start command [pending]
+### Dependencies: None
+### Description: Create the entry point for task-based git workflows with automated branch creation and task status updates
+### Details:
+Implement `scripts/modules/task-manager/git-start.js` with functionality to:
+- Validate task exists and is ready to start
+- Check for clean working directory
+- Create branch with `task-{id}` naming
+- Update task status to 'in-progress'
+- Store workflow state in `.taskmaster/git-state.json`
+- Handle existing branch scenarios
+- Support --force flag for branch recreation
+
+Integrate with existing task-master commands and ensure MCP compatibility.
+
+## 3. Build intelligent commit analyzer and generator [pending]
+### Dependencies: None
+### Description: Create a system that analyzes file changes to auto-detect commit types and generate standardized commit messages
+### Details:
+Develop `scripts/modules/commit-analyzer.js` with:
+- File change detection and categorization
+- Commit type inference rules:
+  - feat: new files in scripts/, new functions
+  - fix: changes to existing logic
+  - test: changes in tests/ directory
+  - docs: markdown and comment changes
+  - refactor: file moves, renames, cleanup
+- Smart message generation with task context
+- Support for custom commit templates
+- Subtask reference inclusion
+
+Create `scripts/modules/task-manager/git-commit.js` that uses the analyzer to generate commits with proper formatting.
+
+## 4. Create PR description generator and command [pending]
+### Dependencies: None
+### Description: Build a comprehensive PR description generator that creates detailed, formatted descriptions from task data
+### Details:
+Implement `scripts/modules/pr-description-generator.js` to generate:
+- Task overview with full context
+- Subtask completion checklist
+- Implementation details summary
+- Test coverage metrics integration
+- Breaking changes section
+- Related tasks and dependencies
+
+Create `scripts/modules/task-manager/git-pr.js` to:
+- Validate all subtasks are complete
+- Generate PR title and description
+- Use GitHub CLI for PR creation
+- Handle draft PR scenarios
+- Support custom PR templates
+- Include labels based on task metadata
+
+## 5. Implement git finish command with cleanup [pending]
+### Dependencies: None
+### Description: Create the workflow completion command that handles post-merge cleanup and task status updates
+### Details:
+Build `scripts/modules/task-manager/git-finish.js` with:
+- PR merge verification via GitHub API
+- Local branch cleanup
+- Remote branch deletion (with confirmation)
+- Task status update to 'done'
+- Workflow state cleanup
+- Switch back to main branch
+- Pull latest changes
+
+Handle scenarios where PR isn't merged yet or merge failed. Include --skip-cleanup flag for manual branch management.
+
+## 6. Add git status command for workflow visibility [pending]
+### Dependencies: None
+### Description: Create a status command that shows current git workflow state with task context
+### Details:
+Implement `scripts/modules/task-manager/git-status.js` to display:
+- Current task and branch information
+- Subtask completion status
+- Uncommitted changes summary
+- PR status if exists
+- Coverage metrics comparison
+- Suggested next actions
+
+Integrate with existing task status displays and provide actionable guidance based on workflow state.
+
+## 7. Integrate with Commander.js and add command routing [pending]
+### Dependencies: None
+### Description: Add the git command suite to TaskMaster's CLI with proper help text and option handling
+### Details:
+Update `scripts/modules/commands.js` to:
+- Add 'git' command with subcommands
+- Implement option parsing for all git commands
+- Add comprehensive help text
+- Ensure proper error handling and display
+- Validate command prerequisites
+
+Create proper command structure:
+- `task-master git start [taskId] [options]`
+- `task-master git commit [options]`
+- `task-master git pr [options]`
+- `task-master git finish [options]`
+- `task-master git status [options]`
+
+## 8. Add MCP server integration for git commands [pending]
+### Dependencies: None
+### Description: Implement MCP tools and direct functions for git workflow commands to enable IDE integration
+### Details:
+Create MCP integration in:
+- `mcp-server/src/core/direct-functions/git-start.js`
+- `mcp-server/src/core/direct-functions/git-commit.js`
+- `mcp-server/src/core/direct-functions/git-pr.js`
+- `mcp-server/src/core/direct-functions/git-finish.js`
+- `mcp-server/src/core/direct-functions/git-status.js`
+- `mcp-server/src/tools/git-start.js`
+- `mcp-server/src/tools/git-commit.js`
+- `mcp-server/src/tools/git-pr.js`
+- `mcp-server/src/tools/git-finish.js`
+- `mcp-server/src/tools/git-status.js`
+
+Implement tools for:
+- git_start_task
+- git_commit_task
+- git_create_pr
+- git_finish_task
+- git_workflow_status
+
+Ensure proper error handling, logging, and response formatting. Include telemetry data for git operations.
+
+## 9. Create comprehensive test suite [pending]
+### Dependencies: None
+### Description: Implement full test coverage following Task 4's high standards with unit, integration, and E2E tests
+### Details:
+Create test files:
+- `tests/unit/git/` - Unit tests for all git components
+- `tests/integration/git-workflow.test.js` - Full workflow tests
+- `tests/e2e/git-automation.test.js` - End-to-end scenarios
+
+Implement:
+- Git repository fixtures and mocks
+- Coverage tracking and reporting
+- Performance benchmarks
+- Error scenario coverage
+- Multi-developer workflow simulations
+
+Target 95%+ coverage with focus on critical paths.
+
+## 10. Add configuration and documentation [pending]
+### Dependencies: None
+### Description: Create configuration options and comprehensive documentation for the git workflow feature
+### Details:
+Configuration tasks:
+- Add git workflow settings to `.taskmasterconfig`
+- Support environment variables for GitHub tokens
+- Create default PR and commit templates
+- Add branch naming customization
+
+Documentation tasks:
+- Update README with git workflow section
+- Create `docs/git-workflow.md` guide
+- Add examples for common scenarios
+- Document configuration options
+- Create troubleshooting guide
+
+Update rule files:
+- Create `.cursor/rules/git_workflow.mdc`
+- Update existing workflow rules
 
