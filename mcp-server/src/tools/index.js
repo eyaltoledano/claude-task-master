@@ -29,6 +29,8 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
+import { registerBulkAddDependenciesTool } from './bulk-add-dependencies.js';
+import { registerBulkRemoveDependenciesTool } from './bulk-remove-dependencies.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -72,6 +74,8 @@ export function registerTaskMasterTools(server) {
 		// Group 6: Dependency Management
 		registerAddDependencyTool(server);
 		registerRemoveDependencyTool(server);
+		registerBulkAddDependenciesTool(server);
+		registerBulkRemoveDependenciesTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
 	} catch (error) {
