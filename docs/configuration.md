@@ -16,14 +16,14 @@ Taskmaster uses two primary methods for configuration:
       			"modelId": "claude-3-7-sonnet-20250219",
       			"maxTokens": 64000,
       			"temperature": 0.2,
-      			"baseUrl": "https://api.anthropic.com/v1"
+      			"baseURL": "https://api.anthropic.com/v1"
       		},
       		"research": {
       			"provider": "perplexity",
       			"modelId": "sonar-pro",
       			"maxTokens": 8700,
       			"temperature": 0.1,
-      			"baseUrl": "https://api.perplexity.ai/v1"
+      			"baseURL": "https://api.perplexity.ai/v1"
       		},
       		"fallback": {
       			"provider": "anthropic",
@@ -38,8 +38,10 @@ Taskmaster uses two primary methods for configuration:
       		"defaultSubtasks": 5,
       		"defaultPriority": "medium",
       		"projectName": "Your Project Name",
-      		"ollamaBaseUrl": "http://localhost:11434/api",
-      		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+      		"ollamaBaseURL": "http://localhost:11434/api",
+      		"azureBaseURL": "https://your-endpoint.azure.com/",
+      		"vertexProjectId": "your-gcp-project-id",
+      		"vertexLocation": "us-central1"
       	}
       }
       ```
@@ -53,15 +55,18 @@ Taskmaster uses two primary methods for configuration:
       - `ANTHROPIC_API_KEY`: Your Anthropic API key.
       - `PERPLEXITY_API_KEY`: Your Perplexity API key.
       - `OPENAI_API_KEY`: Your OpenAI API key.
-      - `GOOGLE_API_KEY`: Your Google API key.
+      - `GOOGLE_API_KEY`: Your Google API key (also used for Vertex AI provider).
       - `MISTRAL_API_KEY`: Your Mistral API key.
       - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
       - `OPENROUTER_API_KEY`: Your OpenRouter API key.
       - `XAI_API_KEY`: Your X-AI API key.
     - **Optional Endpoint Overrides:**
-      - **Per-role `baseUrl` in `.taskmasterconfig`:** You can add a `baseUrl` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
-      - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseUrl` for the Azure model role).
+      - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
+      - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
       - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
+      - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
+      - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
+      - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmasterconfig`**, not environment variables.
 
@@ -78,6 +83,11 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # Optional Endpoint Overrides
 # AZURE_OPENAI_ENDPOINT=https://your-azure-endpoint.openai.azure.com/
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
+
+# Google Vertex AI Configuration (Required if using 'vertex' provider)
+# VERTEX_PROJECT_ID=your-gcp-project-id
+# VERTEX_LOCATION=us-central1
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-credentials.json
 ```
 
 ## Troubleshooting
@@ -102,3 +112,45 @@ git clone https://github.com/eyaltoledano/claude-task-master.git
 cd claude-task-master
 node scripts/init.js
 ```
+
+## Provider-Specific Configuration
+
+### Google Vertex AI Configuration
+
+Google Vertex AI is Google Cloud's enterprise AI platform and requires specific configuration:
+
+1. **Prerequisites**:
+   - A Google Cloud account with Vertex AI API enabled
+   - Either a Google API key with Vertex AI permissions OR a service account with appropriate roles
+   - A Google Cloud project ID
+2. **Authentication Options**:
+   - **API Key**: Set the `GOOGLE_API_KEY` environment variable
+   - **Service Account**: Set `GOOGLE_APPLICATION_CREDENTIALS` to point to your service account JSON file
+3. **Required Configuration**:
+   - Set `VERTEX_PROJECT_ID` to your Google Cloud project ID
+   - Set `VERTEX_LOCATION` to your preferred Google Cloud region (default: us-central1)
+4. **Example Setup**:
+
+   ```bash
+   # In .env file
+   GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX
+   VERTEX_PROJECT_ID=my-gcp-project-123
+   VERTEX_LOCATION=us-central1
+   ```
+
+   Or using service account:
+
+   ```bash
+   # In .env file
+   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+   VERTEX_PROJECT_ID=my-gcp-project-123
+   VERTEX_LOCATION=us-central1
+   ```
+
+5. **In .taskmasterconfig**:
+   ```json
+   "global": {
+     "vertexProjectId": "my-gcp-project-123",
+     "vertexLocation": "us-central1"
+   }
+   ```

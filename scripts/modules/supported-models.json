@@ -5,14 +5,14 @@
 			"swe_score": 0.727,
 			"cost_per_1m_tokens": { "input": 3.0, "output": 15.0 },
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 120000
+			"max_tokens": 64000
 		},
 		{
 			"id": "claude-opus-4-20250514",
 			"swe_score": 0.725,
 			"cost_per_1m_tokens": { "input": 15.0, "output": 75.0 },
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 120000
+			"max_tokens": 32000
 		},
 		{
 			"id": "claude-3-7-sonnet-20250219",
