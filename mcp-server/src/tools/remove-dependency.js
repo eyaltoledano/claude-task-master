@@ -20,7 +20,8 @@ import { resolveTag } from '../../../scripts/modules/utils.js';
 export function registerRemoveDependencyTool(server) {
 	server.addTool({
 		name: 'remove_dependency',
-		description: 'Remove a dependency from a task',
+		description:
+			'Remove a dependency from a task. For multiple tasks, use bulk_remove_dependencies instead.',
 		parameters: z.object({
 			id: z.string().describe('Task ID to remove dependency from'),
 			dependsOn: z.string().describe('Task ID to remove as a dependency'),

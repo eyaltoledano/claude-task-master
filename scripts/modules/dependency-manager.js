@@ -1838,6 +1838,714 @@ function canMoveWithDependencies(taskId, sourceTag, targetTag, allTasks) {
 	};
 }
 
+/**
+ * Parse bulk task ID specification (ranges and comma-separated lists)
+ * Supports formats like "7-10", "11,12,15-16", "1.2-1.5", etc.
+ * @param {string} taskSpec - Task specification string
+ * @returns {Array} Array of task IDs (numbers or strings for subtasks)
+ */
+function parseBulkTaskIds(taskSpec) {
+	if (!taskSpec || typeof taskSpec !== 'string') {
+		throw new Error('Task specification must be a non-empty string');
+	}
+
+	const taskIds = [];
+	const parts = taskSpec.split(',').map((part) => part.trim());
+
+	for (const part of parts) {
+		if (part.includes('-')) {
+			// Handle range (e.g., "7-10" or "1.2-1.5")
+			const [start, end] = part.split('-').map((p) => p.trim());
+
+			if (!start || !end) {
+				throw new Error(
+					`Invalid range format: "${part}". Expected format: "start-end"`
+				);
+			}
+
+			// Check if this is a subtask range (contains dots)
+			if (start.includes('.') || end.includes('.')) {
+				// Subtask range handling
+				if (!start.includes('.') || !end.includes('.')) {
+					throw new Error(
+						`Mixed task/subtask range not supported: "${part}". Both start and end must be subtasks.`
+					);
+				}
+
+				const [startParent, startSub] = start.split('.').map(Number);
+				const [endParent, endSub] = end.split('.').map(Number);
+
+				if (startParent !== endParent) {
+					throw new Error(
+						`Subtask ranges must be within the same parent task: "${part}"`
+					);
+				}
+
+				if (isNaN(startParent) || isNaN(startSub) || isNaN(endSub)) {
+					throw new Error(
+						`Invalid subtask range: "${part}". Expected format: "parent.start-parent.end"`
+					);
+				}
+
+				for (let i = startSub; i <= endSub; i++) {
+					taskIds.push(`${startParent}.${i}`);
+				}
+			} else {
+				// Regular task range
+				const startNum = parseInt(start, 10);
+				const endNum = parseInt(end, 10);
+
+				if (isNaN(startNum) || isNaN(endNum)) {
+					throw new Error(
+						`Invalid task range: "${part}". Both start and end must be numbers.`
+					);
+				}
+
+				if (startNum > endNum) {
+					throw new Error(
+						`Invalid range: "${part}". Start must be less than or equal to end.`
+					);
+				}
+
+				for (let i = startNum; i <= endNum; i++) {
+					taskIds.push(i);
+				}
+			}
+		} else {
+			// Single task ID
+			if (part.includes('.')) {
+				// Subtask ID
+				const [parent, sub] = part.split('.').map(Number);
+				if (isNaN(parent) || isNaN(sub)) {
+					throw new Error(
+						`Invalid subtask ID: "${part}". Expected format: "parent.subtask"`
+					);
+				}
+				taskIds.push(part);
+			} else {
+				// Regular task ID
+				const taskId = parseInt(part, 10);
+				if (isNaN(taskId)) {
+					throw new Error(`Invalid task ID: "${part}". Must be a number.`);
+				}
+				taskIds.push(taskId);
+			}
+		}
+	}
+
+	// Remove duplicates while preserving order
+	const uniqueTaskIds = [...new Set(taskIds.map((id) => String(id)))].map(
+		(id) => {
+			return id.includes('.') ? id : parseInt(id, 10);
+		}
+	);
+
+	return uniqueTaskIds;
+}
+
+/**
+ * Add dependencies to multiple tasks in bulk
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} taskSpec - Task specification (e.g., "7-10", "11,12,15-16")
+ * @param {string} dependencySpec - Dependency specification (e.g., "1-5", "8,9")
+ * @param {Object} options - Options object
+ * @param {boolean} options.dryRun - If true, only validate and show what would be done
+ * @param {boolean} options.silent - If true, suppress console output
+ * @returns {Object} Result object with success status and operation details
+ */
+async function bulkAddDependencies(
+	tasksPath,
+	taskSpec,
+	dependencySpec,
+	options = {}
+) {
+	const { dryRun = false, silent = false } = options;
+
+	try {
+		if (!silent) {
+			log('info', `Starting bulk dependency addition...`);
+		}
+
+		// Parse task and dependency specifications
+		const taskIds = parseBulkTaskIds(taskSpec);
+		const dependencyIds = parseBulkTaskIds(dependencySpec);
+
+		if (!silent) {
+			log(
+				'info',
+				`Parsed ${taskIds.length} tasks and ${dependencyIds.length} dependencies`
+			);
+		}
+
+		// Read tasks data
+		const data = readJSON(tasksPath);
+		if (!data || !data.tasks) {
+			throw new Error('No valid tasks found in tasks.json');
+		}
+
+		// Validation phase
+		const validationErrors = [];
+		const operations = [];
+
+		// Validate all tasks exist
+		for (const taskId of taskIds) {
+			if (!taskExists(data.tasks, taskId)) {
+				validationErrors.push(`Task ${taskId} does not exist`);
+				continue;
+			}
+
+			// Find the target task/subtask
+			let targetTask = null;
+			let taskPath = [];
+
+			if (typeof taskId === 'string' && taskId.includes('.')) {
+				const [parentId, subtaskId] = taskId.split('.').map(Number);
+				const parentTask = data.tasks.find((t) => t.id === parentId);
+				if (parentTask && parentTask.subtasks) {
+					targetTask = parentTask.subtasks.find((s) => s.id === subtaskId);
+					taskPath = [
+						'tasks',
+						data.tasks.indexOf(parentTask),
+						'subtasks',
+						parentTask.subtasks.indexOf(targetTask)
+					];
+				}
+			} else {
+				targetTask = data.tasks.find((t) => t.id === taskId);
+				taskPath = ['tasks', data.tasks.indexOf(targetTask)];
+			}
+
+			if (!targetTask) {
+				validationErrors.push(`Cannot find task object for ${taskId}`);
+				continue;
+			}
+
+			// Check each dependency
+			for (const dependencyId of dependencyIds) {
+				// Validate dependency exists
+				if (!taskExists(data.tasks, dependencyId)) {
+					validationErrors.push(`Dependency ${dependencyId} does not exist`);
+					continue;
+				}
+
+				// Check for self-dependency
+				if (String(taskId) === String(dependencyId)) {
+					validationErrors.push(`Task ${taskId} cannot depend on itself`);
+					continue;
+				}
+
+				// Check if dependency already exists
+				if (
+					targetTask.dependencies &&
+					targetTask.dependencies.some(
+						(d) => String(d) === String(dependencyId)
+					)
+				) {
+					if (!silent) {
+						log(
+							'warn',
+							`Dependency ${dependencyId} already exists for task ${taskId}, skipping`
+						);
+					}
+					continue;
+				}
+
+				// Check for circular dependencies (simulate adding the dependency)
+				const tempData = JSON.parse(JSON.stringify(data));
+				const tempTargetTask = getTaskFromPath(tempData, taskPath);
+				if (!tempTargetTask.dependencies) tempTargetTask.dependencies = [];
+				tempTargetTask.dependencies.push(dependencyId);
+
+				if (isCircularDependency(tempData.tasks, dependencyId, [taskId])) {
+					validationErrors.push(
+						`Adding dependency ${dependencyId} to task ${taskId} would create a circular dependency`
+					);
+					continue;
+				}
+
+				// Operation is valid, add to operations list
+				operations.push({
+					taskId,
+					dependencyId,
+					taskPath
+				});
+			}
+		}
+
+		// Report validation results
+		const totalPossibleOperations = taskIds.length * dependencyIds.length;
+		const validOperations = operations.length;
+
+		if (!silent) {
+			log(
+				'info',
+				`Validation complete: ${validOperations}/${totalPossibleOperations} operations are valid`
+			);
+
+			if (validationErrors.length > 0) {
+				log('warn', `Found ${validationErrors.length} validation errors:`);
+				validationErrors.forEach((error) => log('warn', `  - ${error}`));
+			}
+		}
+
+		// If there are validation errors and we're not in dry-run mode, decide whether to continue
+		if (validationErrors.length > 0 && !dryRun) {
+			const errorRatio = validationErrors.length / totalPossibleOperations;
+			if (errorRatio > 0.5) {
+				throw new Error(
+					`Too many validation errors (${validationErrors.length}/${totalPossibleOperations}). Aborting bulk operation.`
+				);
+			}
+		}
+
+		// Dry-run mode: just report what would be done
+		if (dryRun) {
+			const report = {
+				success: true,
+				dryRun: true,
+				summary: {
+					totalTasks: taskIds.length,
+					totalDependencies: dependencyIds.length,
+					validOperations: validOperations,
+					errors: validationErrors.length
+				},
+				operations: operations.map((op) => ({
+					task: op.taskId,
+					dependency: op.dependencyId
+				})),
+				errors: validationErrors
+			};
+
+			if (!silent && !isSilentMode()) {
+				console.log(
+					boxen(
+						chalk.blue(`Bulk Dependency Addition - DRY RUN\n\n`) +
+							`${chalk.cyan('Tasks:')} ${taskIds.join(', ')}\n` +
+							`${chalk.cyan('Dependencies:')} ${dependencyIds.join(', ')}\n\n` +
+							`${chalk.cyan('Valid operations:')} ${validOperations}\n` +
+							`${chalk.cyan('Validation errors:')} ${validationErrors.length}\n\n` +
+							`${chalk.yellow('Use --confirm to apply changes')}`,
+						{
+							padding: 1,
+							borderColor: 'blue',
+							borderStyle: 'round',
+							margin: { top: 1 }
+						}
+					)
+				);
+			}
+
+			return report;
+		}
+
+		// Execute operations atomically
+		if (validOperations === 0) {
+			if (!silent) {
+				log('info', 'No valid operations to perform');
+			}
+			return {
+				success: true,
+				summary: {
+					operationsPerformed: 0,
+					errors: validationErrors.length
+				},
+				errors: validationErrors
+			};
+		}
+
+		// Create a backup of the original data for rollback
+		const originalData = JSON.parse(JSON.stringify(data));
+
+		try {
+			// Apply all operations
+			for (const operation of operations) {
+				const targetTask = getTaskFromPath(data, operation.taskPath);
+				if (!targetTask.dependencies) {
+					targetTask.dependencies = [];
+				}
+				targetTask.dependencies.push(operation.dependencyId);
+
+				// Sort dependencies
+				targetTask.dependencies.sort((a, b) => {
+					if (typeof a === 'number' && typeof b === 'number') {
+						return a - b;
+					} else if (typeof a === 'string' && typeof b === 'string') {
+						const [aParent, aChild] = a.split('.').map(Number);
+						const [bParent, bChild] = b.split('.').map(Number);
+						return aParent !== bParent ? aParent - bParent : aChild - bChild;
+					} else if (typeof a === 'number') {
+						return -1;
+					} else {
+						return 1;
+					}
+				});
+			}
+
+			// Save changes
+			writeJSON(tasksPath, data);
+
+			// Generate updated task files
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+
+			if (!silent) {
+				log(
+					'success',
+					`Successfully added ${validOperations} dependency relationships`
+				);
+
+				if (!isSilentMode()) {
+					console.log(
+						boxen(
+							chalk.green(`Bulk Dependencies Added Successfully\n\n`) +
+								`${chalk.cyan('Operations performed:')} ${validOperations}\n` +
+								`${chalk.cyan('Tasks affected:')} ${[...new Set(operations.map((op) => op.taskId))].length}\n` +
+								`${chalk.cyan('Dependencies added:')} ${[...new Set(operations.map((op) => op.dependencyId))].length}`,
+							{
+								padding: 1,
+								borderColor: 'green',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
+						)
+					);
+				}
+			}
+
+			return {
+				success: true,
+				summary: {
+					operationsPerformed: validOperations,
+					tasksAffected: [...new Set(operations.map((op) => op.taskId))].length,
+					dependenciesAdded: [
+						...new Set(operations.map((op) => op.dependencyId))
+					].length,
+					errors: validationErrors.length
+				},
+				operations: operations.map((op) => ({
+					task: op.taskId,
+					dependency: op.dependencyId
+				})),
+				errors: validationErrors
+			};
+		} catch (error) {
+			// Rollback on error
+			writeJSON(tasksPath, originalData);
+			throw new Error(
+				`Bulk operation failed and was rolled back: ${error.message}`
+			);
+		}
+	} catch (error) {
+		if (!silent) {
+			log('error', `Bulk add dependencies failed: ${error.message}`);
+		}
+		return {
+			success: false,
+			error: error.message
+		};
+	}
+}
+
+/**
+ * Helper function to get a task/subtask object from a data structure using a path
+ * @param {Object} data - The data structure
+ * @param {Array} path - Array representing the path to the object
+ * @returns {Object} The target task/subtask object
+ */
+function getTaskFromPath(data, path) {
+	let current = data;
+	for (const segment of path) {
+		current = current[segment];
+	}
+	return current;
+}
+
+/**
+ * Remove dependencies from multiple tasks in bulk
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} taskSpec - Task specification (e.g., "7-10", "11,12,15-16")
+ * @param {string} dependencySpec - Dependency specification (e.g., "1-5", "8,9")
+ * @param {Object} options - Options object
+ * @param {boolean} options.dryRun - If true, only validate and show what would be done
+ * @param {boolean} options.silent - If true, suppress console output
+ * @returns {Object} Result object with success status and operation details
+ */
+async function bulkRemoveDependencies(
+	tasksPath,
+	taskSpec,
+	dependencySpec,
+	options = {}
+) {
+	const { dryRun = false, silent = false } = options;
+
+	try {
+		if (!silent) {
+			log('info', `Starting bulk dependency removal...`);
+		}
+
+		// Parse task and dependency specifications
+		const taskIds = parseBulkTaskIds(taskSpec);
+		const dependencyIds = parseBulkTaskIds(dependencySpec);
+
+		if (!silent) {
+			log(
+				'info',
+				`Parsed ${taskIds.length} tasks and ${dependencyIds.length} dependencies`
+			);
+		}
+
+		// Read tasks data
+		const data = readJSON(tasksPath);
+		if (!data || !data.tasks) {
+			throw new Error('No valid tasks found in tasks.json');
+		}
+
+		// Validation phase
+		const validationErrors = [];
+		const operations = [];
+
+		// Validate all tasks exist and find dependencies to remove
+		for (const taskId of taskIds) {
+			if (!taskExists(data.tasks, taskId)) {
+				validationErrors.push(`Task ${taskId} does not exist`);
+				continue;
+			}
+
+			// Find the target task/subtask
+			let targetTask = null;
+			let taskPath = [];
+
+			if (typeof taskId === 'string' && taskId.includes('.')) {
+				const [parentId, subtaskId] = taskId.split('.').map(Number);
+				const parentTask = data.tasks.find((t) => t.id === parentId);
+				if (parentTask && parentTask.subtasks) {
+					targetTask = parentTask.subtasks.find((s) => s.id === subtaskId);
+					taskPath = [
+						'tasks',
+						data.tasks.indexOf(parentTask),
+						'subtasks',
+						parentTask.subtasks.indexOf(targetTask)
+					];
+				}
+			} else {
+				targetTask = data.tasks.find((t) => t.id === taskId);
+				taskPath = ['tasks', data.tasks.indexOf(targetTask)];
+			}
+
+			if (!targetTask) {
+				validationErrors.push(`Cannot find task object for ${taskId}`);
+				continue;
+			}
+
+			// Check if task has any dependencies
+			if (!targetTask.dependencies || targetTask.dependencies.length === 0) {
+				if (!silent) {
+					log('warn', `Task ${taskId} has no dependencies to remove`);
+				}
+				continue;
+			}
+
+			// Check each dependency to remove
+			for (const dependencyId of dependencyIds) {
+				// Check if dependency exists in this task
+				const dependencyIndex = targetTask.dependencies.findIndex((dep) => {
+					if (typeof dependencyId === 'string' && dependencyId.includes('.')) {
+						// String dependency (subtask)
+						return String(dep) === String(dependencyId);
+					} else {
+						// Numeric dependency - handle potential format differences
+						return String(dep) === String(dependencyId);
+					}
+				});
+
+				if (dependencyIndex === -1) {
+					if (!silent) {
+						log(
+							'warn',
+							`Task ${taskId} does not depend on ${dependencyId}, skipping`
+						);
+					}
+					continue;
+				}
+
+				// Operation is valid, add to operations list
+				operations.push({
+					taskId,
+					dependencyId,
+					taskPath,
+					dependencyIndex
+				});
+			}
+		}
+
+		// Report validation results
+		const totalPossibleOperations = taskIds.length * dependencyIds.length;
+		const validOperations = operations.length;
+
+		if (!silent) {
+			log(
+				'info',
+				`Validation complete: ${validOperations}/${totalPossibleOperations} operations are valid`
+			);
+
+			if (validationErrors.length > 0) {
+				log('warn', `Found ${validationErrors.length} validation errors:`);
+				validationErrors.forEach((error) => log('warn', `  - ${error}`));
+			}
+		}
+
+		// Dry-run mode: just report what would be done
+		if (dryRun) {
+			const report = {
+				success: true,
+				dryRun: true,
+				summary: {
+					totalTasks: taskIds.length,
+					totalDependencies: dependencyIds.length,
+					validOperations: validOperations,
+					errors: validationErrors.length
+				},
+				operations: operations.map((op) => ({
+					task: op.taskId,
+					dependency: op.dependencyId
+				})),
+				errors: validationErrors
+			};
+
+			if (!silent && !isSilentMode()) {
+				console.log(
+					boxen(
+						chalk.blue(`Bulk Dependency Removal - DRY RUN\n\n`) +
+							`${chalk.cyan('Tasks:')} ${taskIds.join(', ')}\n` +
+							`${chalk.cyan('Dependencies to remove:')} ${dependencyIds.join(', ')}\n\n` +
+							`${chalk.cyan('Valid operations:')} ${validOperations}\n` +
+							`${chalk.cyan('Validation errors:')} ${validationErrors.length}\n\n` +
+							`${chalk.yellow('Use --confirm to apply changes')}`,
+						{
+							padding: 1,
+							borderColor: 'blue',
+							borderStyle: 'round',
+							margin: { top: 1 }
+						}
+					)
+				);
+			}
+
+			return report;
+		}
+
+		// Execute operations atomically
+		if (validOperations === 0) {
+			if (!silent) {
+				log('info', 'No valid operations to perform');
+			}
+			return {
+				success: true,
+				summary: {
+					operationsPerformed: 0,
+					errors: validationErrors.length
+				},
+				errors: validationErrors
+			};
+		}
+
+		// Create a backup of the original data for rollback
+		const originalData = JSON.parse(JSON.stringify(data));
+
+		try {
+			// Group operations by task to handle multiple dependency removals efficiently
+			const operationsByTask = {};
+			operations.forEach((op) => {
+				if (!operationsByTask[op.taskId]) {
+					operationsByTask[op.taskId] = [];
+				}
+				operationsByTask[op.taskId].push(op);
+			});
+
+			// Apply all operations, removing dependencies
+			for (const [taskId, taskOperations] of Object.entries(operationsByTask)) {
+				const targetTask = getTaskFromPath(data, taskOperations[0].taskPath);
+
+				// Remove dependencies (sort indices in descending order to avoid index shifting issues)
+				const dependenciesToRemove = taskOperations
+					.map((op) => op.dependencyId)
+					.sort() // Sort for consistent removal order
+					.reverse(); // Reverse to remove from end first
+
+				// Remove each dependency
+				dependenciesToRemove.forEach((depId) => {
+					const index = targetTask.dependencies.findIndex(
+						(dep) => String(dep) === String(depId)
+					);
+					if (index !== -1) {
+						targetTask.dependencies.splice(index, 1);
+					}
+				});
+			}
+
+			// Save changes
+			writeJSON(tasksPath, data);
+
+			// Generate updated task files
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+
+			if (!silent) {
+				log(
+					'success',
+					`Successfully removed ${validOperations} dependency relationships`
+				);
+
+				if (!isSilentMode()) {
+					console.log(
+						boxen(
+							chalk.green(`Bulk Dependencies Removed Successfully\n\n`) +
+								`${chalk.cyan('Operations performed:')} ${validOperations}\n` +
+								`${chalk.cyan('Tasks affected:')} ${[...new Set(operations.map((op) => op.taskId))].length}\n` +
+								`${chalk.cyan('Dependencies removed:')} ${[...new Set(operations.map((op) => op.dependencyId))].length}`,
+							{
+								padding: 1,
+								borderColor: 'green',
+								borderStyle: 'round',
+								margin: { top: 1 }
+							}
+						)
+					);
+				}
+			}
+
+			return {
+				success: true,
+				summary: {
+					operationsPerformed: validOperations,
+					tasksAffected: [...new Set(operations.map((op) => op.taskId))].length,
+					dependenciesRemoved: [
+						...new Set(operations.map((op) => op.dependencyId))
+					].length,
+					errors: validationErrors.length
+				},
+				operations: operations.map((op) => ({
+					task: op.taskId,
+					dependency: op.dependencyId
+				})),
+				errors: validationErrors
+			};
+		} catch (error) {
+			// Rollback on error
+			writeJSON(tasksPath, originalData);
+			throw new Error(
+				`Bulk operation failed and was rolled back: ${error.message}`
+			);
+		}
+	} catch (error) {
+		if (!silent) {
+			log('error', `Bulk remove dependencies failed: ${error.message}`);
+		}
+		return {
+			success: false,
+			error: error.message
+		};
+	}
+}
+
 export {
 	addDependency,
 	removeDependency,
@@ -1858,5 +2566,8 @@ export {
 	canMoveWithDependencies,
 	findAllDependenciesRecursively,
 	DependencyError,
-	DEPENDENCY_ERROR_CODES
+	DEPENDENCY_ERROR_CODES,
+	parseBulkTaskIds,
+	bulkAddDependencies,
+	bulkRemoveDependencies
 };

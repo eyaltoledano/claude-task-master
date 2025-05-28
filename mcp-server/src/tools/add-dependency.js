@@ -20,7 +20,8 @@ import { resolveTag } from '../../../scripts/modules/utils.js';
 export function registerAddDependencyTool(server) {
 	server.addTool({
 		name: 'add_dependency',
-		description: 'Add a dependency relationship between two tasks',
+		description:
+			'Add a dependency relationship between two tasks. For multiple tasks, use bulk_add_dependencies instead.',
 		parameters: z.object({
 			id: z.string().describe('ID of task that will depend on another task'),
 			dependsOn: z

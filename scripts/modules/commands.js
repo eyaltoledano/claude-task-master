@@ -61,7 +61,9 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand
+	fixDependenciesCommand,
+	bulkAddDependencies,
+	bulkRemoveDependencies
 } from './dependency-manager.js';
 
 import {
@@ -2604,6 +2606,116 @@ ${result.result}
 					tag
 				}
 			);
+		});
+
+	// bulk-add-dependencies command
+	programInstance
+		.command('bulk-add-dependencies')
+		.description('Add dependencies to multiple tasks in bulk')
+		.option(
+			'-i, --id <tasks>',
+			'Task specification (e.g., "7-10", "11,12,15-16")'
+		)
+		.option(
+			'-d, --depends-on <dependencies>',
+			'Dependency specification (e.g., "1-5", "8,9")'
+		)
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('--dry-run', 'Preview changes without applying them')
+		.action(async (options) => {
+			const tasksPath = options.file;
+			const taskSpec = options.id;
+			const dependencySpec = options.dependsOn;
+
+			if (!taskSpec || !dependencySpec) {
+				console.error(
+					chalk.red('Error: Both --id and --depends-on are required')
+				);
+				console.error(
+					chalk.yellow(
+						'Example: task-master bulk-add-dependencies --id="7-10" --depends-on="1-5"'
+					)
+				);
+				process.exit(1);
+			}
+
+			try {
+				const result = await bulkAddDependencies(
+					tasksPath,
+					taskSpec,
+					dependencySpec,
+					{
+						dryRun: options.dryRun || false
+					}
+				);
+
+				if (!result.success) {
+					console.error(
+						chalk.red(`Bulk add dependencies failed: ${result.error}`)
+					);
+					process.exit(1);
+				}
+			} catch (error) {
+				console.error(
+					chalk.red(`Error in bulk add dependencies: ${error.message}`)
+				);
+				process.exit(1);
+			}
+		});
+
+	// bulk-remove-dependencies command
+	programInstance
+		.command('bulk-remove-dependencies')
+		.description('Remove dependencies from multiple tasks in bulk')
+		.option(
+			'-i, --id <tasks>',
+			'Task specification (e.g., "7-10", "11,12,15-16")'
+		)
+		.option(
+			'-d, --depends-on <dependencies>',
+			'Dependency specification (e.g., "1-5", "8,9")'
+		)
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('--dry-run', 'Preview changes without applying them')
+		.action(async (options) => {
+			const tasksPath = options.file;
+			const taskSpec = options.id;
+			const dependencySpec = options.dependsOn;
+
+			if (!taskSpec || !dependencySpec) {
+				console.error(
+					chalk.red('Error: Both --id and --depends-on are required')
+				);
+				console.error(
+					chalk.yellow(
+						'Example: task-master bulk-remove-dependencies --id="7-10" --depends-on="1-5"'
+					)
+				);
+				process.exit(1);
+			}
+
+			try {
+				const result = await bulkRemoveDependencies(
+					tasksPath,
+					taskSpec,
+					dependencySpec,
+					{
+						dryRun: options.dryRun || false
+					}
+				);
+
+				if (!result.success) {
+					console.error(
+						chalk.red(`Bulk remove dependencies failed: ${result.error}`)
+					);
+					process.exit(1);
+				}
+			} catch (error) {
+				console.error(
+					chalk.red(`Error in bulk remove dependencies: ${error.message}`)
+				);
+				process.exit(1);
+			}
 		});
 
 	// validate-dependencies command
