@@ -1,0 +1,40 @@
+name: Update models.md from supported-models.json
+
+on:
+  push:
+    branches:
+      - main
+      - next
+    paths:
+      - 'scripts/modules/supported-models.json'
+      - 'docs/scripts/models-json-to-markdown.js'
+
+jobs:
+  update_markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run transformation script
+        run: node docs/scripts/models-json-to-markdown.js
+
+      - name: Format Markdown with Prettier
+        run: npx prettier --write docs/models.md
+
+      - name: Stage docs/models.md
+        run: git add docs/models.md
+
+      - name: Commit & Push docs/models.md
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+          message: 'docs: Auto-update and format models.md'
+          author_name: 'github-actions[bot]'
+          author_email: 'github-actions[bot]@users.noreply.github.com'
