@@ -1,6 +1,6 @@
 # Task ID: 66
 # Title: Support Status Filtering in Show Command for Subtasks
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Enhance the 'show' command to accept a status parameter that filters subtasks by their current status, allowing users to view only subtasks matching a specific status.

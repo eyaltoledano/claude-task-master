@@ -9,10 +9,11 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';
 import https from 'https';
+import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON } from './utils.js';
+import { log, readJSON, findProjectRoot } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -30,7 +31,8 @@ import {
 	updateSubtaskById,
 	removeTask,
 	findTaskById,
-	taskExists
+	taskExists,
+	moveTask
 } from './task-manager.js';
 
 import {
@@ -47,7 +49,8 @@ import {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-	getAvailableModels
+	getAvailableModels,
+	getBaseUrlForRole
 } from './config-manager.js';
 
 import {
@@ -62,7 +65,8 @@ import {
 	stopLoadingIndicator,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayApiKeyStatus
+	displayApiKeyStatus,
+	displayAiUsageSummary
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -72,8 +76,11 @@ import {
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
-import { findProjectRoot } from './utils.js';
-
+import {
+	isValidTaskStatus,
+	TASK_STATUS_OPTIONS
+} from '../../src/constants/task-status.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -147,6 +154,64 @@ async function runInteractiveSetup(projectRoot) {
 		});
 	}
 
+	// Helper function to fetch Ollama models (duplicated for CLI context)
+	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
+		return new Promise((resolve) => {
+			try {
+				// Parse the base URL to extract hostname, port, and base path
+				const url = new URL(baseURL);
+				const isHttps = url.protocol === 'https:';
+				const port = url.port || (isHttps ? 443 : 80);
+				const basePath = url.pathname.endsWith('/')
+					? url.pathname.slice(0, -1)
+					: url.pathname;
+
+				const options = {
+					hostname: url.hostname,
+					port: parseInt(port, 10),
+					path: `${basePath}/tags`,
+					method: 'GET',
+					headers: {
+						Accept: 'application/json'
+					}
+				};
+
+				const requestLib = isHttps ? https : http;
+				const req = requestLib.request(options, (res) => {
+					let data = '';
+					res.on('data', (chunk) => {
+						data += chunk;
+					});
+					res.on('end', () => {
+						if (res.statusCode === 200) {
+							try {
+								const parsedData = JSON.parse(data);
+								resolve(parsedData.models || []); // Return the array of models
+							} catch (e) {
+								console.error('Error parsing Ollama response:', e);
+								resolve(null); // Indicate failure
+							}
+						} else {
+							console.error(
+								`Ollama API request failed with status code: ${res.statusCode}`
+							);
+							resolve(null); // Indicate failure
+						}
+					});
+				});
+
+				req.on('error', (e) => {
+					console.error('Error fetching Ollama models:', e);
+					resolve(null); // Indicate failure
+				});
+				req.end();
+			} catch (e) {
+				console.error('Error parsing Ollama base URL:', e);
+				resolve(null); // Indicate failure
+			}
+		});
+	}
+
 	// Helper to get choices and default index for a role
 	const getPromptData = (role, allowNone = false) => {
 		const currentModel = currentModels[role]; // Use the fetched data
@@ -172,6 +237,16 @@ async function runInteractiveSetup(projectRoot) {
 		const customOpenRouterOption = {
 			name: '* Custom OpenRouter model', // Symbol updated
 			value: '__CUSTOM_OPENROUTER__'
+		};
+
+		const customOllamaOption = {
+			name: '* Custom Ollama model', // Symbol updated
+			value: '__CUSTOM_OLLAMA__'
+		};
+
+		const customBedrockOption = {
+			name: '* Custom Bedrock model', // Add Bedrock custom option
+			value: '__CUSTOM_BEDROCK__'
 		};
 
 		let choices = [];
@@ -219,6 +294,8 @@ async function runInteractiveSetup(projectRoot) {
 		}
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
+		commonPrefix.push(customOllamaOption);
+		commonPrefix.push(customBedrockOption);
 
 		let prefixLength = commonPrefix.length; // Initial prefix length
 
@@ -349,6 +426,82 @@ async function runInteractiveSetup(projectRoot) {
 				setupSuccess = false;
 				return true; // Continue setup, but mark as failed
 			}
+		} else if (selectedValue === '__CUSTOM_OLLAMA__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Ollama Model ID for the ${role} role:`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'ollama';
+			// Get the Ollama base URL from config for this role
+			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
+			// Validate against live Ollama list
+			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseURL);
+			if (ollamaModels === null) {
+				console.error(
+					chalk.red(
+						`Error: Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			} else if (!ollamaModels.some((m) => m.model === modelIdToSet)) {
+				console.error(
+					chalk.red(
+						`Error: Model ID "${modelIdToSet}" not found in the Ollama instance. Please verify the model is pulled and available.`
+					)
+				);
+				console.log(
+					chalk.yellow(
+						`You can check available models with: curl ${ollamaBaseURL}/tags`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+		} else if (selectedValue === '__CUSTOM_BEDROCK__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Bedrock Model ID for the ${role} role (e.g., anthropic.claude-3-sonnet-20240229-v1:0):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'bedrock';
+
+			// Check if AWS environment variables exist
+			if (
+				!process.env.AWS_ACCESS_KEY_ID ||
+				!process.env.AWS_SECRET_ACCESS_KEY
+			) {
+				console.error(
+					chalk.red(
+						`Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
 		} else if (
 			selectedValue &&
 			typeof selectedValue === 'object' &&
@@ -486,11 +639,6 @@ function registerCommands(programInstance) {
 		process.exit(1);
 	});
 
-	// Default help
-	programInstance.on('--help', function () {
-		displayHelp();
-	});
-
 	// parse-prd command
 	programInstance
 		.command('parse-prd')
@@ -507,6 +655,10 @@ function registerCommands(programInstance) {
 			'--append',
 			'Append new tasks to existing tasks.json instead of overwriting'
 		)
+		.option(
+			'-r, --research',
+			'Use Perplexity AI for research-backed task generation, providing more comprehensive and accurate task breakdown'
+		)
 		.action(async (file, options) => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
@@ -515,8 +667,9 @@ function registerCommands(programInstance) {
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
-			let useForce = false;
-			let useAppend = false;
+			const research = options.research || false;
+			let useForce = force;
+			let useAppend = append;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
@@ -544,10 +697,11 @@ function registerCommands(programInstance) {
 						if (!(await confirmOverwriteIfNeeded())) return;
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-						spinner = ora('Parsing PRD and generating tasks...').start();
+						spinner = ora('Parsing PRD and generating tasks...\n').start();
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
-							useAppend,
-							useForce
+							append: useAppend, // Changed key from useAppend to append
+							force: useForce, // Changed key from useForce to force
+							research: research
 						});
 						spinner.succeed('Tasks generated successfully!');
 						return;
@@ -571,13 +725,15 @@ function registerCommands(programInstance) {
 								'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
 								'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
 								'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
-								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n\n' +
+								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n' +
+								'  -r, --research           Use Perplexity AI for research-backed task generation\n\n' +
 								chalk.cyan('Example:') +
 								'\n' +
 								'  task-master parse-prd requirements.txt --num-tasks 15\n' +
 								'  task-master parse-prd --input=requirements.txt\n' +
 								'  task-master parse-prd --force\n' +
-								'  task-master parse-prd requirements_v2.txt --append\n\n' +
+								'  task-master parse-prd requirements_v2.txt --append\n' +
+								'  task-master parse-prd requirements.txt --research\n\n' +
 								chalk.yellow('Note: This command will:') +
 								'\n' +
 								'  1. Look for a PRD file at scripts/prd.txt by default\n' +
@@ -605,11 +761,19 @@ function registerCommands(programInstance) {
 				if (append) {
 					console.log(chalk.blue('Appending to existing tasks...'));
 				}
+				if (research) {
+					console.log(
+						chalk.blue(
+							'Using Perplexity AI for research-backed task generation'
+						)
+					);
+				}
 
-				spinner = ora('Parsing PRD and generating tasks...').start();
+				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
-					force: useForce
+					force: useForce,
+					research: research
 				});
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
@@ -1031,6 +1195,8 @@ function registerCommands(programInstance) {
 	// set-status command
 	programInstance
 		.command('set-status')
+		.alias('mark')
+		.alias('set')
 		.description('Set the status of a task')
 		.option(
 			'-i, --id <id>',
@@ -1038,7 +1204,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-s, --status <status>',
-			'New status (todo, in-progress, review, done)'
+			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.action(async (options) => {
@@ -1048,6 +1214,16 @@ function registerCommands(programInstance) {
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
+				process.exit(1);
+			}
+
+			if (!isValidTaskStatus(status)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
+					)
+				);
+
 				process.exit(1);
 			}
 
@@ -1063,10 +1239,16 @@ function registerCommands(programInstance) {
 		.command('list')
 		.description('List all tasks')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 
@@ -1078,7 +1260,7 @@ function registerCommands(programInstance) {
 				console.log(chalk.blue('Including subtasks in listing'));
 			}
 
-			await listTasks(tasksPath, statusFilter, withSubtasks);
+			await listTasks(tasksPath, statusFilter, reportPath, withSubtasks);
 		});
 
 	// expand command
@@ -1128,12 +1310,6 @@ function registerCommands(programInstance) {
 						{} // Pass empty context for CLI calls
 						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
-					// Optional: Display summary from result
-					console.log(chalk.green(`Expansion Summary:`));
-					console.log(chalk.green(` - Attempted: ${result.tasksToExpand}`));
-					console.log(chalk.green(` - Expanded:  ${result.expandedCount}`));
-					console.log(chalk.yellow(` - Skipped:   ${result.skippedCount}`));
-					console.log(chalk.red(` - Failed:    ${result.failedCount}`));
 				} catch (error) {
 					console.error(
 						chalk.red(`Error expanding all tasks: ${error.message}`)
@@ -1201,6 +1377,12 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed complexity analysis'
 		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated list of specific task IDs to analyze (e.g., "1,3,5")'
+		)
+		.option('--from <id>', 'Starting task ID in a range to analyze')
+		.option('--to <id>', 'Ending task ID in a range to analyze')
 		.action(async (options) => {
 			const tasksPath = options.file || 'tasks/tasks.json';
 			const outputPath = options.output;
@@ -1210,6 +1392,16 @@ function registerCommands(programInstance) {
 
 			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
 			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
+
+			if (options.id) {
+				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));
+			} else if (options.from || options.to) {
+				const fromStr = options.from ? options.from : 'first';
+				const toStr = options.to ? options.to : 'last';
+				console.log(
+					chalk.blue(`Analyzing tasks in range: ${fromStr} to ${toStr}`)
+				);
+			}
 
 			if (useResearch) {
 				console.log(
@@ -1263,7 +1455,7 @@ function registerCommands(programInstance) {
 	// add-task command
 	programInstance
 		.command('add-task')
-		.description('Add a new task using AI or manual input')
+		.description('Add a new task using AI, optionally providing manual details')
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-p, --prompt <prompt>',
@@ -1277,10 +1469,6 @@ function registerCommands(programInstance) {
 		.option(
 			'--details <details>',
 			'Implementation details (for manual task creation)'
-		)
-		.option(
-			'--test-strategy <testStrategy>',
-			'Test strategy (for manual task creation)'
 		)
 		.option(
 			'--dependencies <dependencies>',
@@ -1308,74 +1496,70 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
+			const tasksPath =
+				options.file ||
+				path.join(findProjectRoot() || '.', 'tasks', 'tasks.json') || // Ensure tasksPath is also relative to a found root or current dir
+				'tasks/tasks.json';
+
+			// Correctly determine projectRoot
+			const projectRoot = findProjectRoot();
+
+			let manualTaskData = null;
+			if (isManualCreation) {
+				manualTaskData = {
+					title: options.title,
+					description: options.description,
+					details: options.details || '',
+					testStrategy: options.testStrategy || ''
+				};
+				// Restore specific logging for manual creation
+				console.log(
+					chalk.blue(`Creating task manually with title: "${options.title}"`)
+				);
+			} else {
+				// Restore specific logging for AI creation
+				console.log(
+					chalk.blue(`Creating task with AI using prompt: "${options.prompt}"`)
+				);
+			}
+
+			// Log dependencies and priority if provided (restored)
+			const dependenciesArray = options.dependencies
+				? options.dependencies.split(',').map((id) => id.trim())
+				: [];
+			if (dependenciesArray.length > 0) {
+				console.log(
+					chalk.blue(`Dependencies: [${dependenciesArray.join(', ')}]`)
+				);
+			}
+			if (options.priority) {
+				console.log(chalk.blue(`Priority: ${options.priority}`));
+			}
+
+			const context = {
+				projectRoot,
+				commandName: 'add-task',
+				outputType: 'cli'
+			};
+
 			try {
-				// Prepare dependencies if provided
-				let dependencies = [];
-				if (options.dependencies) {
-					dependencies = options.dependencies
-						.split(',')
-						.map((id) => parseInt(id.trim(), 10));
-				}
-
-				// Create manual task data if title and description are provided
-				let manualTaskData = null;
-				if (isManualCreation) {
-					manualTaskData = {
-						title: options.title,
-						description: options.description,
-						details: options.details || '',
-						testStrategy: options.testStrategy || ''
-					};
-
-					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
-					console.log(
-						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
-						)
-					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				}
-
-				// Pass mcpLog and session for MCP mode
-				const newTaskId = await addTask(
-					options.file,
-					options.prompt, // Pass prompt (will be null/undefined if not provided)
-					dependencies,
+				const { newTaskId, telemetryData } = await addTask(
+					tasksPath,
+					options.prompt,
+					dependenciesArray,
 					options.priority,
-					{
-						// For CLI, session context isn't directly available like MCP
-						// We don't need to pass session here for CLI API key resolution
-						// as dotenv loads .env, and utils.resolveEnvVariable checks process.env
-					},
-					'text', // outputFormat
-					manualTaskData, // Pass the potentially created manualTaskData object
-					options.research || false // Pass the research flag value
+					context,
+					'text',
+					manualTaskData,
+					options.research
 				);
 
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
-				console.log(chalk.gray('Next: Complete this task or add more tasks'));
+				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
+				// No need to call displayAiUsageSummary here anymore.
 			} catch (error) {
 				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.stack && getDebugFlag()) {
-					console.error(error.stack);
+				if (error.details) {
+					console.error(chalk.red(error.details));
 				}
 				process.exit(1);
 			}
@@ -1388,9 +1572,15 @@ function registerCommands(programInstance) {
 			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (options) => {
 			const tasksPath = options.file;
-			await displayNextTask(tasksPath);
+			const reportPath = options.report;
+			await displayNextTask(tasksPath, reportPath);
 		});
 
 	// show command
@@ -1403,6 +1593,11 @@ function registerCommands(programInstance) {
 		.option('-i, --id <id>', 'Task ID to show')
 		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-r, --report <report>',
+			'Path to the complexity report file',
+			'scripts/task-complexity-report.json'
+		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
 			const statusFilter = options.status; // ADDED: Capture status filter
@@ -1413,8 +1608,9 @@ function registerCommands(programInstance) {
 			}
 
 			const tasksPath = options.file;
+			const reportPath = options.report;
 			// PASS statusFilter to the display function
-			await displayTaskById(tasksPath, idArg, statusFilter);
+			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
 		});
 
 	// add-dependency command
@@ -1663,6 +1859,7 @@ function registerCommands(programInstance) {
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
+				showAddSubtaskHelp();
 				process.exit(1);
 			}
 		})
@@ -2069,7 +2266,7 @@ function registerCommands(programInstance) {
 					);
 
 					// Exit with error if any removals failed
-					if (successfulRemovals.length === 0) {
+					if (result.removedTasks.length === 0) {
 						process.exit(1);
 					}
 				}
@@ -2137,6 +2334,10 @@ function registerCommands(programInstance) {
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
+		.option(
+			'--bedrock',
+			'Allow setting a custom Bedrock model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2146,17 +2347,26 @@ Examples:
   $ task-master models --set-research sonar-pro       # Set research model
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
+  $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
-
-			// Validate flags: cannot use both --openrouter and --ollama simultaneously
-			if (options.openrouter && options.ollama) {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+			// Validate flags: cannot use multiple provider flags simultaneously
+			const providerFlags = [
+				options.openrouter,
+				options.ollama,
+				options.bedrock
+			].filter(Boolean).length;
+			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use both --openrouter and --ollama flags simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -2196,7 +2406,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2216,7 +2428,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2238,7 +2452,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2334,6 +2550,135 @@ Examples:
 			return; // Stop execution here
 		});
 
+	// move-task command
+	programInstance
+		.command('move')
+		.description('Move a task or subtask to a new position')
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'--from <id>',
+			'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
+		)
+		.option(
+			'--to <id>',
+			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
+		)
+		.action(async (options) => {
+			const tasksPath = options.file;
+			const sourceId = options.from;
+			const destinationId = options.to;
+
+			if (!sourceId || !destinationId) {
+				console.error(
+					chalk.red('Error: Both --from and --to parameters are required')
+				);
+				console.log(
+					chalk.yellow(
+						'Usage: task-master move --from=<sourceId> --to=<destinationId>'
+					)
+				);
+				process.exit(1);
+			}
+
+			// Check if we're moving multiple tasks (comma-separated IDs)
+			const sourceIds = sourceId.split(',').map((id) => id.trim());
+			const destinationIds = destinationId.split(',').map((id) => id.trim());
+
+			// Validate that the number of source and destination IDs match
+			if (sourceIds.length !== destinationIds.length) {
+				console.error(
+					chalk.red(
+						'Error: The number of source and destination IDs must match'
+					)
+				);
+				console.log(
+					chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
+				);
+				process.exit(1);
+			}
+
+			// If moving multiple tasks
+			if (sourceIds.length > 1) {
+				console.log(
+					chalk.blue(
+						`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+					)
+				);
+
+				try {
+					// Read tasks data once to validate destination IDs
+					const tasksData = readJSON(tasksPath);
+					if (!tasksData || !tasksData.tasks) {
+						console.error(
+							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
+						);
+						process.exit(1);
+					}
+
+					// Move tasks one by one
+					for (let i = 0; i < sourceIds.length; i++) {
+						const fromId = sourceIds[i];
+						const toId = destinationIds[i];
+
+						// Skip if source and destination are the same
+						if (fromId === toId) {
+							console.log(
+								chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`)
+							);
+							continue;
+						}
+
+						console.log(
+							chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`)
+						);
+						try {
+							await moveTask(
+								tasksPath,
+								fromId,
+								toId,
+								i === sourceIds.length - 1
+							);
+							console.log(
+								chalk.green(
+									`✓ Successfully moved task/subtask ${fromId} to ${toId}`
+								)
+							);
+						} catch (error) {
+							console.error(
+								chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`)
+							);
+							// Continue with the next task rather than exiting
+						}
+					}
+				} catch (error) {
+					console.error(chalk.red(`Error: ${error.message}`));
+					process.exit(1);
+				}
+			} else {
+				// Moving a single task (existing logic)
+				console.log(
+					chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
+				);
+
+				try {
+					const result = await moveTask(
+						tasksPath,
+						sourceId,
+						destinationId,
+						true
+					);
+					console.log(
+						chalk.green(
+							`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`
+						)
+					);
+				} catch (error) {
+					console.error(chalk.red(`Error: ${error.message}`));
+					process.exit(1);
+				}
+			}
+		});
+
 	return programInstance;
 }
 
@@ -2366,14 +2711,7 @@ function setupCLI() {
 			return 'unknown'; // Default fallback if package.json fails
 		})
 		.helpOption('-h, --help', 'Display help')
-		.addHelpCommand(false) // Disable default help command
-		.on('--help', () => {
-			displayHelp(); // Use your custom help display instead
-		})
-		.on('-h', () => {
-			displayHelp();
-			process.exit(0);
-		});
+		.addHelpCommand(false); // Disable default help command
 
 	// Modify the help option to use your custom display
 	programInstance.helpInformation = () => {
@@ -2393,28 +2731,7 @@ function setupCLI() {
  */
 async function checkForUpdate() {
 	// Get current version from package.json ONLY
-	let currentVersion = 'unknown'; // Initialize with a default
-	try {
-		// Try to get the version from the installed package (if applicable) or current dir
-		let packageJsonPath = path.join(
-			process.cwd(),
-			'node_modules',
-			'task-master-ai',
-			'package.json'
-		);
-		// Fallback to current directory package.json if not found in node_modules
-		if (!fs.existsSync(packageJsonPath)) {
-			packageJsonPath = path.join(process.cwd(), 'package.json');
-		}
-
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			currentVersion = packageJson.version;
-		}
-	} catch (error) {
-		// Silently fail and use default
-		log('debug', `Error reading current package version: ${error.message}`);
-	}
+	const currentVersion = getTaskMasterVersion();
 
 	return new Promise((resolve) => {
 		// Get the latest version from npm registry

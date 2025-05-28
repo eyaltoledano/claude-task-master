@@ -60,8 +60,7 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 
 // --- Project Root Finding Utility ---
 /**
- * Finds the project root directory by searching upwards from a given starting point
- * for a marker file or directory (e.g., 'package.json', '.git').
+ * Finds the project root directory by searching for marker files/directories.
  * @param {string} [startPath=process.cwd()] - The directory to start searching from.
  * @param {string[]} [markers=['package.json', '.git', '.taskmasterconfig']] - Marker files/dirs to look for.
  * @returns {string|null} The path to the project root directory, or null if not found.
@@ -71,27 +70,35 @@ function findProjectRoot(
 	markers = ['package.json', '.git', '.taskmasterconfig']
 ) {
 	let currentPath = path.resolve(startPath);
-	while (true) {
-		for (const marker of markers) {
-			if (fs.existsSync(path.join(currentPath, marker))) {
-				return currentPath;
-			}
+	const rootPath = path.parse(currentPath).root;
+
+	while (currentPath !== rootPath) {
+		// Check if any marker exists in the current directory
+		const hasMarker = markers.some((marker) => {
+			const markerPath = path.join(currentPath, marker);
+			return fs.existsSync(markerPath);
+		});
+
+		if (hasMarker) {
+			return currentPath;
 		}
-		const parentPath = path.dirname(currentPath);
-		if (parentPath === currentPath) {
-			// Reached the filesystem root
-			return null;
-		}
-		currentPath = parentPath;
+
+		// Move up one directory
+		currentPath = path.dirname(currentPath);
 	}
+
+	// Check the root directory as well
+	const hasMarkerInRoot = markers.some((marker) => {
+		const markerPath = path.join(rootPath, marker);
+		return fs.existsSync(markerPath);
+	});
+
+	return hasMarkerInRoot ? rootPath : null;
 }
 
 // --- Dynamic Configuration Function --- (REMOVED)
-/*
-function getConfig(session = null) {
-    // ... implementation removed ...
-}
-*/
+
+// --- Logging and Utility Functions ---
 
 // Set up logging based on log level
 const LOG_LEVELS = {
@@ -275,6 +282,22 @@ function findTaskInComplexityReport(report, taskId) {
 	return report.complexityAnalysis.find((task) => task.taskId === taskId);
 }
 
+function addComplexityToTask(task, complexityReport) {
+	let taskId;
+	if (task.isSubtask) {
+		taskId = task.parentTask.id;
+	} else if (task.parentId) {
+		taskId = task.parentId;
+	} else {
+		taskId = task.id;
+	}
+
+	const taskAnalysis = findTaskInComplexityReport(complexityReport, taskId);
+	if (taskAnalysis) {
+		task.complexityScore = taskAnalysis.complexityScore;
+	}
+}
+
 /**
  * Checks if a task exists in the tasks array
  * @param {Array} tasks - The tasks array
@@ -325,10 +348,17 @@ function formatTaskId(id) {
  * Finds a task by ID in the tasks array. Optionally filters subtasks by status.
  * @param {Array} tasks - The tasks array
  * @param {string|number} taskId - The task ID to find
+ * @param {Object|null} complexityReport - Optional pre-loaded complexity report
+ * @returns {Object|null} The task object or null if not found
  * @param {string} [statusFilter] - Optional status to filter subtasks by
  * @returns {{task: Object|null, originalSubtaskCount: number|null}} The task object (potentially with filtered subtasks) and the original subtask count if filtered, or nulls if not found.
  */
-function findTaskById(tasks, taskId, statusFilter = null) {
+function findTaskById(
+	tasks,
+	taskId,
+	complexityReport = null,
+	statusFilter = null
+) {
 	if (!taskId || !tasks || !Array.isArray(tasks)) {
 		return { task: null, originalSubtaskCount: null };
 	}
@@ -356,9 +386,16 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 			subtask.isSubtask = true;
 		}
 
-		// Return the found subtask (or null) and null for originalSubtaskCount
+		// If we found a task, check for complexity data
+		if (subtask && complexityReport) {
+			addComplexityToTask(subtask, complexityReport);
+		}
+
 		return { task: subtask || null, originalSubtaskCount: null };
 	}
+
+	let taskResult = null;
+	let originalSubtaskCount = null;
 
 	// Find the main task
 	const id = parseInt(taskId, 10);
@@ -368,6 +405,8 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 	if (!task) {
 		return { task: null, originalSubtaskCount: null };
 	}
+
+	taskResult = task;
 
 	// If task found and statusFilter provided, filter its subtasks
 	if (statusFilter && task.subtasks && Array.isArray(task.subtasks)) {
@@ -379,12 +418,18 @@ function findTaskById(tasks, taskId, statusFilter = null) {
 				subtask.status &&
 				subtask.status.toLowerCase() === statusFilter.toLowerCase()
 		);
-		// Return the filtered task and the original count
-		return { task: filteredTask, originalSubtaskCount: originalSubtaskCount };
+
+		taskResult = filteredTask;
+		originalSubtaskCount = originalSubtaskCount;
 	}
 
-	// Return original task and null count if no filter or no subtasks
-	return { task: task, originalSubtaskCount: null };
+	// If task found and complexityReport provided, add complexity data
+	if (taskResult && complexityReport) {
+		addComplexityToTask(taskResult, complexityReport);
+	}
+
+	// Return the found task and original subtask count
+	return { task: taskResult, originalSubtaskCount };
 }
 
 /**
@@ -508,6 +553,61 @@ function detectCamelCaseFlags(args) {
 	return camelCaseFlags;
 }
 
+/**
+ * Aggregates an array of telemetry objects into a single summary object.
+ * @param {Array<Object>} telemetryArray - Array of telemetryData objects.
+ * @param {string} overallCommandName - The name for the aggregated command.
+ * @returns {Object|null} Aggregated telemetry object or null if input is empty.
+ */
+function aggregateTelemetry(telemetryArray, overallCommandName) {
+	if (!telemetryArray || telemetryArray.length === 0) {
+		return null;
+	}
+
+	const aggregated = {
+		timestamp: new Date().toISOString(), // Use current time for aggregation time
+		userId: telemetryArray[0].userId, // Assume userId is consistent
+		commandName: overallCommandName,
+		modelUsed: 'Multiple', // Default if models vary
+		providerName: 'Multiple', // Default if providers vary
+		inputTokens: 0,
+		outputTokens: 0,
+		totalTokens: 0,
+		totalCost: 0,
+		currency: telemetryArray[0].currency || 'USD' // Assume consistent currency or default
+	};
+
+	const uniqueModels = new Set();
+	const uniqueProviders = new Set();
+	const uniqueCurrencies = new Set();
+
+	telemetryArray.forEach((item) => {
+		aggregated.inputTokens += item.inputTokens || 0;
+		aggregated.outputTokens += item.outputTokens || 0;
+		aggregated.totalCost += item.totalCost || 0;
+		uniqueModels.add(item.modelUsed);
+		uniqueProviders.add(item.providerName);
+		uniqueCurrencies.add(item.currency || 'USD');
+	});
+
+	aggregated.totalTokens = aggregated.inputTokens + aggregated.outputTokens;
+	aggregated.totalCost = parseFloat(aggregated.totalCost.toFixed(6)); // Fix precision
+
+	if (uniqueModels.size === 1) {
+		aggregated.modelUsed = [...uniqueModels][0];
+	}
+	if (uniqueProviders.size === 1) {
+		aggregated.providerName = [...uniqueProviders][0];
+	}
+	if (uniqueCurrencies.size > 1) {
+		aggregated.currency = 'Multiple'; // Mark if currencies actually differ
+	} else if (uniqueCurrencies.size === 1) {
+		aggregated.currency = [...uniqueCurrencies][0];
+	}
+
+	return aggregated;
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -524,10 +624,12 @@ export {
 	findCycles,
 	toKebabCase,
 	detectCamelCaseFlags,
-	enableSilentMode,
 	disableSilentMode,
-	isSilentMode,
-	resolveEnvVariable,
+	enableSilentMode,
 	getTaskManager,
-	findProjectRoot
+	isSilentMode,
+	addComplexityToTask,
+	resolveEnvVariable,
+	findProjectRoot,
+	aggregateTelemetry
 };

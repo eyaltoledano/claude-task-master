@@ -9,3 +9,29 @@
 
 # Test Strategy:
 1. Configure a Google model (e.g., gemini-1.5-flash-latest) as the 'research' model in `.taskmasterconfig`.\n2. Run a command with the `--research` flag (e.g., `task-master add-task --prompt='Latest news on AI SDK 4.2' --research`).\n3. Verify logs show 'Enabling Google Search Grounding'.\n4. Check if the task output incorporates recent information.\n5. Configure the same Google model as the 'main' model.\n6. Run a command *without* the `--research` flag.\n7. Verify logs *do not* show grounding being enabled.\n8. Add unit tests to `ai-services-unified.test.js` to verify the conditional logic for adding `providerOptions`. Ensure mocks correctly simulate different roles and providers.
+
+# Subtasks:
+## 1. Modify AI service layer to support Google Search Grounding [pending]
+### Dependencies: None
+### Description: Update the AI service layer to include the capability to integrate with Google Search Grounding API for research-related queries.
+### Details:
+Extend the existing AI service layer by adding new methods and interfaces to handle Google Search Grounding API calls. This includes creating authentication mechanisms, request formatters, and response parsers specific to the Google Search API. Ensure proper error handling and retry logic for API failures.
+
+## 2. Implement conditional logic for research role detection [pending]
+### Dependencies: 75.1
+### Description: Create logic to detect when a conversation is in 'research mode' and should trigger the Google Search Grounding functionality.
+### Details:
+Develop heuristics or machine learning-based detection to identify when a user's query requires research capabilities. Implement a decision tree that determines when to activate Google Search Grounding based on conversation context, explicit user requests for research, or specific keywords. Include configuration options to adjust sensitivity of the detection mechanism.
+
+## 3. Update supported models configuration [pending]
+### Dependencies: 75.1
+### Description: Modify the model configuration to specify which AI models can utilize the Google Search Grounding capability.
+### Details:
+Update the model configuration files to include flags for Google Search Grounding compatibility. Create a registry of supported models with their specific parameters for optimal integration with the search API. Implement version checking to ensure compatibility between model versions and the Google Search Grounding API version.
+
+## 4. Create end-to-end testing suite for research functionality [pending]
+### Dependencies: 75.1, 75.2, 75.3
+### Description: Develop comprehensive tests to verify the correct operation of the Google Search Grounding integration in research contexts.
+### Details:
+Build automated test cases that cover various research scenarios, including edge cases. Create mock responses for the Google Search API to enable testing without actual API calls. Implement integration tests that verify the entire flow from user query to research-enhanced response. Include performance benchmarks to ensure the integration doesn't significantly impact response times.
+

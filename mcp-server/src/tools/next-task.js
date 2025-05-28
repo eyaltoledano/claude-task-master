@@ -10,7 +10,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	findTasksJsonPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 
 /**
  * Register the next-task tool with the MCP server
@@ -23,6 +26,12 @@ export function registerNextTaskTool(server) {
 			'Find the next task to work on based on dependencies and status',
 		parameters: z.object({
 			file: z.string().optional().describe('Absolute path to the tasks file'),
+			complexityReport: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the complexity report file (relative to project root or absolute)'
+				),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -45,9 +54,21 @@ export function registerNextTaskTool(server) {
 					);
 				}
 
+				// Resolve the path to complexity report
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						args.projectRoot,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
 				const result = await nextTaskDirect(
 					{
-						tasksJsonPath: tasksJsonPath
+						tasksJsonPath: tasksJsonPath,
+						reportPath: complexityReportPath
 					},
 					log
 				);

@@ -18,6 +18,9 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
+ * @param {string} [args.ids] - Comma-separated list of task IDs to analyze
+ * @param {number} [args.from] - Starting task ID in a range to analyze
+ * @param {number} [args.to] - Ending task ID in a range to analyze
  * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
@@ -26,7 +29,16 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 	const { session } = context;
-	const { tasksJsonPath, outputPath, threshold, research, projectRoot } = args;
+	const {
+		tasksJsonPath,
+		outputPath,
+		threshold,
+		research,
+		projectRoot,
+		ids,
+		from,
+		to
+	} = args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -58,6 +70,14 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		log.info(`Analyzing task complexity from: ${tasksPath}`);
 		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
 
+		if (ids) {
+			log.info(`Analyzing specific task IDs: ${ids}`);
+		} else if (from || to) {
+			const fromStr = from !== undefined ? from : 'first';
+			const toStr = to !== undefined ? to : 'last';
+			log.info(`Analyzing tasks in range: ${fromStr} to ${toStr}`);
+		}
+
 		if (research) {
 			log.info('Using research role for complexity analysis');
 		}
@@ -68,7 +88,10 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			output: outputPath,
 			threshold: threshold,
 			research: research === true, // Ensure boolean
-			projectRoot: projectRoot // Pass projectRoot here
+			projectRoot: projectRoot, // Pass projectRoot here
+			id: ids, // Pass the ids parameter to the core function as 'id'
+			from: from, // Pass from parameter
+			to: to // Pass to parameter
 		};
 		// --- End Initial Checks ---
 
@@ -79,17 +102,19 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		}
 
 		let report;
+		let coreResult;
 
 		try {
 			// --- Call Core Function (Pass context separately) ---
 			// Pass coreOptions as the first argument
 			// Pass context object { session, mcpLog } as the second argument
-			report = await analyzeTaskComplexity(
-				coreOptions, // Pass options object
-				{ session, mcpLog: logWrapper } // Pass context object
-				// Removed the explicit 'json' format argument, assuming context handling is sufficient
-				// If issues persist, we might need to add an explicit format param to analyzeTaskComplexity
-			);
+			coreResult = await analyzeTaskComplexity(coreOptions, {
+				session,
+				mcpLog: logWrapper,
+				commandName: 'analyze-complexity',
+				outputType: 'mcp'
+			});
+			report = coreResult.report;
 		} catch (error) {
 			log.error(
 				`Error in analyzeTaskComplexity core function: ${error.message}`
@@ -125,8 +150,11 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			};
 		}
 
-		// Added a check to ensure report is defined before accessing its properties
-		if (!report || typeof report !== 'object') {
+		if (
+			!coreResult ||
+			!coreResult.report ||
+			typeof coreResult.report !== 'object'
+		) {
 			log.error(
 				'Core analysis function returned an invalid or undefined response.'
 			);
@@ -141,8 +169,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 
 		try {
 			// Ensure complexityAnalysis exists and is an array
-			const analysisArray = Array.isArray(report.complexityAnalysis)
-				? report.complexityAnalysis
+			const analysisArray = Array.isArray(coreResult.report.complexityAnalysis)
+				? coreResult.report.complexityAnalysis
 				: [];
 
 			// Count tasks by complexity (remains the same)
@@ -159,15 +187,16 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${outputPath}`, // Use outputPath from args
-					reportPath: outputPath, // Use outputPath from args
+					message: `Task complexity analysis complete. Report saved to ${outputPath}`,
+					reportPath: outputPath,
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,
 						mediumComplexityTasks,
 						lowComplexityTasks
 					},
-					fullReport: report // Now includes the full report
+					fullReport: coreResult.report,
+					telemetryData: coreResult.telemetryData
 				}
 			};
 		} catch (parseError) {

@@ -10,7 +10,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	findTasksJsonPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -50,6 +53,12 @@ export function registerShowTaskTool(server) {
 				.string()
 				.optional()
 				.describe('Path to the tasks file relative to project root'),
+			complexityReport: z
+				.string()
+				.optional()
+				.describe(
+					'Path to the complexity report file (relative to project root or absolute)'
+				),
 			projectRoot: z
 				.string()
 				.optional()
@@ -81,9 +90,22 @@ export function registerShowTaskTool(server) {
 				}
 
 				// Call the direct function, passing the normalized projectRoot
+				// Resolve the path to complexity report
+				let complexityReportPath;
+				try {
+					complexityReportPath = findComplexityReportPath(
+						projectRoot,
+						args.complexityReport,
+						log
+					);
+				} catch (error) {
+					log.error(`Error finding complexity report: ${error.message}`);
+				}
 				const result = await showTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
+						reportPath: complexityReportPath,
+						// Pass other relevant args
 						id: id,
 						status: status,
 						projectRoot: projectRoot

@@ -14,57 +14,76 @@ import {
 	getResearchModelId,
 	getFallbackProvider,
 	getFallbackModelId,
-	getParametersForRole
+	getParametersForRole,
+	getUserId,
+	MODEL_MAP,
+	getDebugFlag,
+	getBaseUrlForRole,
+	isApiKeySet,
+	getOllamaBaseURL,
+	getAzureBaseURL,
+	getVertexProjectId,
+	getVertexLocation
 } from './config-manager.js';
-import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
-import * as anthropic from '../../src/ai-providers/anthropic.js';
-import * as perplexity from '../../src/ai-providers/perplexity.js';
-import * as google from '../../src/ai-providers/google.js';
-import * as openai from '../../src/ai-providers/openai.js';
-import * as xai from '../../src/ai-providers/xai.js';
-import * as openrouter from '../../src/ai-providers/openrouter.js';
-// TODO: Import other provider modules when implemented (ollama, etc.)
+// Import provider classes
+import {
+	AnthropicAIProvider,
+	PerplexityAIProvider,
+	GoogleAIProvider,
+	OpenAIProvider,
+	XAIProvider,
+	OpenRouterAIProvider,
+	OllamaAIProvider,
+	BedrockAIProvider,
+	AzureProvider,
+	VertexAIProvider
+} from '../../src/ai-providers/index.js';
 
-// --- Provider Function Map ---
-// Maps provider names (lowercase) to their respective service functions
-const PROVIDER_FUNCTIONS = {
-	anthropic: {
-		generateText: anthropic.generateAnthropicText,
-		streamText: anthropic.streamAnthropicText,
-		generateObject: anthropic.generateAnthropicObject
-	},
-	perplexity: {
-		generateText: perplexity.generatePerplexityText,
-		streamText: perplexity.streamPerplexityText,
-		generateObject: perplexity.generatePerplexityObject
-	},
-	google: {
-		// Add Google entry
-		generateText: google.generateGoogleText,
-		streamText: google.streamGoogleText,
-		generateObject: google.generateGoogleObject
-	},
-	openai: {
-		// ADD: OpenAI entry
-		generateText: openai.generateOpenAIText,
-		streamText: openai.streamOpenAIText,
-		generateObject: openai.generateOpenAIObject
-	},
-	xai: {
-		// ADD: xAI entry
-		generateText: xai.generateXaiText,
-		streamText: xai.streamXaiText,
-		generateObject: xai.generateXaiObject // Note: Object generation might be unsupported
-	},
-	openrouter: {
-		// ADD: OpenRouter entry
-		generateText: openrouter.generateOpenRouterText,
-		streamText: openrouter.streamOpenRouterText,
-		generateObject: openrouter.generateOpenRouterObject
-	}
-	// TODO: Add entries for ollama, etc. when implemented
+// Create provider instances
+const PROVIDERS = {
+	anthropic: new AnthropicAIProvider(),
+	perplexity: new PerplexityAIProvider(),
+	google: new GoogleAIProvider(),
+	openai: new OpenAIProvider(),
+	xai: new XAIProvider(),
+	openrouter: new OpenRouterAIProvider(),
+	ollama: new OllamaAIProvider(),
+	bedrock: new BedrockAIProvider(),
+	azure: new AzureProvider(),
+	vertex: new VertexAIProvider()
 };
+
+// Helper function to get cost for a specific model
+function _getCostForModel(providerName, modelId) {
+	if (!MODEL_MAP || !MODEL_MAP[providerName]) {
+		log(
+			'warn',
+			`Provider "${providerName}" not found in MODEL_MAP. Cannot determine cost for model ${modelId}.`
+		);
+		return { inputCost: 0, outputCost: 0, currency: 'USD' }; // Default to zero cost
+	}
+
+	const modelData = MODEL_MAP[providerName].find((m) => m.id === modelId);
+
+	if (!modelData || !modelData.cost_per_1m_tokens) {
+		log(
+			'debug',
+			`Cost data not found for model "${modelId}" under provider "${providerName}". Assuming zero cost.`
+		);
+		return { inputCost: 0, outputCost: 0, currency: 'USD' }; // Default to zero cost
+	}
+
+	// Ensure currency is part of the returned object, defaulting if not present
+	const currency = modelData.cost_per_1m_tokens.currency || 'USD';
+
+	return {
+		inputCost: modelData.cost_per_1m_tokens.input || 0,
+		outputCost: modelData.cost_per_1m_tokens.output || 0,
+		currency: currency
+	};
+}
 
 // --- Configuration for Retries ---
 const MAX_RETRIES = 2;
@@ -149,13 +168,11 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		ollama: 'OLLAMA_API_KEY',
+		bedrock: 'AWS_ACCESS_KEY_ID',
+		vertex: 'GOOGLE_API_KEY'
 	};
-
-	// Double check this -- I have had to use an api key for ollama in the past
-	// if (providerName === 'ollama') {
-	// 	return null; // Ollama typically doesn't require an API key for basic setup
-	// }
 
 	const envVarName = keyMap[providerName];
 	if (!envVarName) {
@@ -165,6 +182,12 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	}
 
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
+
+	// Special handling for providers that can use alternative auth
+	if (providerName === 'ollama' || providerName === 'bedrock') {
+		return apiKey || null;
+	}
+
 	if (!apiKey) {
 		throw new Error(
 			`Required API key ${envVarName} for provider '${providerName}' is not set in environment, session, or .env file.`
@@ -185,29 +208,34 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
  * @throws {Error} If the call fails after all retries.
  */
 async function _attemptProviderCallWithRetries(
-	providerApiFn,
+	provider,
+	serviceType,
 	callParams,
 	providerName,
 	modelId,
 	attemptRole
 ) {
 	let retries = 0;
-	const fnName = providerApiFn.name;
+	const fnName = serviceType;
 
 	while (retries <= MAX_RETRIES) {
 		try {
-			log(
-				'info',
-				`Attempt ${retries + 1}/${MAX_RETRIES + 1} calling ${fnName} (Provider: ${providerName}, Model: ${modelId}, Role: ${attemptRole})`
-			);
+			if (getDebugFlag()) {
+				log(
+					'info',
+					`Attempt ${retries + 1}/${MAX_RETRIES + 1} calling ${fnName} (Provider: ${providerName}, Model: ${modelId}, Role: ${attemptRole})`
+				);
+			}
 
-			// Call the specific provider function directly
-			const result = await providerApiFn(callParams);
+			// Call the appropriate method on the provider instance
+			const result = await provider[serviceType](callParams);
 
-			log(
-				'info',
-				`${fnName} succeeded for role ${attemptRole} (Provider: ${providerName}) on attempt ${retries + 1}`
-			);
+			if (getDebugFlag()) {
+				log(
+					'info',
+					`${fnName} succeeded for role ${attemptRole} (Provider: ${providerName}) on attempt ${retries + 1}`
+				);
+			}
 			return result;
 		} catch (error) {
 			log(
@@ -220,13 +248,13 @@ async function _attemptProviderCallWithRetries(
 				const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retries - 1);
 				log(
 					'info',
-					`Retryable error detected. Retrying in ${delay / 1000}s...`
+					`Something went wrong on the provider side. Retrying in ${delay / 1000}s...`
 				);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			} else {
 				log(
 					'error',
-					`Non-retryable error or max retries reached for role ${attemptRole} (${fnName} / ${providerName}).`
+					`Something went wrong on the provider side. Max retries reached for role ${attemptRole} (${fnName} / ${providerName}).`
 				);
 				throw error;
 			}
@@ -242,7 +270,15 @@ async function _attemptProviderCallWithRetries(
  * Base logic for unified service functions.
  * @param {string} serviceType - Type of service ('generateText', 'streamText', 'generateObject').
  * @param {object} params - Original parameters passed to the service function.
+ * @param {string} params.role - The initial client role.
+ * @param {object} [params.session=null] - Optional MCP session object.
  * @param {string} [params.projectRoot] - Optional project root path.
+ * @param {string} params.commandName - Name of the command invoking the service.
+ * @param {string} params.outputType - 'cli' or 'mcp'.
+ * @param {string} [params.systemPrompt] - Optional system prompt.
+ * @param {string} [params.prompt] - The prompt for the AI.
+ * @param {string} [params.schema] - The Zod schema for the expected object.
+ * @param {string} [params.objectName] - Name for object/tool.
  * @returns {Promise<any>} Result from the underlying provider call.
  */
 async function _unifiedServiceRunner(serviceType, params) {
@@ -254,15 +290,21 @@ async function _unifiedServiceRunner(serviceType, params) {
 		prompt,
 		schema,
 		objectName,
+		commandName,
+		outputType,
 		...restApiParams
 	} = params;
-	log('info', `${serviceType}Service called`, {
-		role: initialRole,
-		projectRoot
-	});
+	if (getDebugFlag()) {
+		log('info', `${serviceType}Service called`, {
+			role: initialRole,
+			commandName,
+			outputType,
+			projectRoot
+		});
+	}
 
-	// Determine the effective project root (passed in or detected)
 	const effectiveProjectRoot = projectRoot || findProjectRoot();
+	const userId = getUserId(effectiveProjectRoot);
 
 	let sequence;
 	if (initialRole === 'main') {
@@ -284,13 +326,18 @@ async function _unifiedServiceRunner(serviceType, params) {
 		'AI service call failed for all configured roles.';
 
 	for (const currentRole of sequence) {
-		let providerName, modelId, apiKey, roleParams, providerFnSet, providerApiFn;
+		let providerName,
+			modelId,
+			apiKey,
+			roleParams,
+			provider,
+			baseURL,
+			providerResponse,
+			telemetryData = null;
 
 		try {
 			log('info', `New AI service call with role: ${currentRole}`);
 
-			// 1. Get Config: Provider, Model, Parameters for the current role
-			// Pass effectiveProjectRoot to config getters
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
 				modelId = getMainModelId(effectiveProjectRoot);
@@ -323,15 +370,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Pass effectiveProjectRoot to getParametersForRole
-			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
-
-			// 2. Get Provider Function Set
-			providerFnSet = PROVIDER_FUNCTIONS[providerName?.toLowerCase()];
-			if (!providerFnSet) {
+			// Get provider instance
+			provider = PROVIDERS[providerName?.toLowerCase()];
+			if (!provider) {
 				log(
 					'warn',
-					`Skipping role '${currentRole}': Provider '${providerName}' not supported or map entry missing.`
+					`Skipping role '${currentRole}': Provider '${providerName}' not supported.`
 				);
 				lastError =
 					lastError ||
@@ -339,30 +383,86 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
-			// Use the original service type to get the function
-			providerApiFn = providerFnSet[serviceType];
-			if (typeof providerApiFn !== 'function') {
-				log(
-					'warn',
-					`Skipping role '${currentRole}': Service type '${serviceType}' not implemented for provider '${providerName}'.`
-				);
-				lastError =
-					lastError ||
-					new Error(
-						`Service '${serviceType}' not implemented for provider ${providerName}`
+			// Check API key if needed
+			if (providerName?.toLowerCase() !== 'ollama') {
+				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
+					log(
+						'warn',
+						`Skipping role '${currentRole}' (Provider: ${providerName}): API key not set or invalid.`
 					);
-				continue;
+					lastError =
+						lastError ||
+						new Error(
+							`API key for provider '${providerName}' (role: ${currentRole}) is not set.`
+						);
+					continue; // Skip to the next role in the sequence
+				}
 			}
 
-			// 3. Resolve API Key (will throw if required and missing)
-			// Pass effectiveProjectRoot to _resolveApiKey
+			// Get base URL if configured (optional for most providers)
+			baseURL = getBaseUrlForRole(currentRole, effectiveProjectRoot);
+
+			// For Azure, use the global Azure base URL if role-specific URL is not configured
+			if (providerName?.toLowerCase() === 'azure' && !baseURL) {
+				baseURL = getAzureBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Azure base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'ollama' && !baseURL) {
+				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
+				baseURL = getOllamaBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Ollama base URL: ${baseURL}`);
+			}
+
+			// Get AI parameters for the current role
+			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
 				effectiveProjectRoot
 			);
 
-			// 4. Construct Messages Array
+			// Prepare provider-specific configuration
+			let providerSpecificParams = {};
+
+			// Handle Vertex AI specific configuration
+			if (providerName?.toLowerCase() === 'vertex') {
+				// Get Vertex project ID and location
+				const projectId =
+					getVertexProjectId(effectiveProjectRoot) ||
+					resolveEnvVariable(
+						'VERTEX_PROJECT_ID',
+						session,
+						effectiveProjectRoot
+					);
+
+				const location =
+					getVertexLocation(effectiveProjectRoot) ||
+					resolveEnvVariable(
+						'VERTEX_LOCATION',
+						session,
+						effectiveProjectRoot
+					) ||
+					'us-central1';
+
+				// Get credentials path if available
+				const credentialsPath = resolveEnvVariable(
+					'GOOGLE_APPLICATION_CREDENTIALS',
+					session,
+					effectiveProjectRoot
+				);
+
+				// Add Vertex-specific parameters
+				providerSpecificParams = {
+					projectId,
+					location,
+					...(credentialsPath && { credentials: { credentialsFromEnv: true } })
+				};
+
+				log(
+					'debug',
+					`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
+				);
+			}
+
 			const messages = [];
 			if (systemPrompt) {
 				messages.push({ role: 'system', content: systemPrompt });
@@ -387,36 +487,73 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// }
 
 			if (prompt) {
-				// Ensure prompt exists before adding
 				messages.push({ role: 'user', content: prompt });
 			} else {
-				// Throw an error if the prompt is missing, as it's essential
 				throw new Error('User prompt content is missing.');
 			}
 
-			// 5. Prepare call parameters (using messages array)
 			const callParams = {
 				apiKey,
 				modelId,
 				maxTokens: roleParams.maxTokens,
 				temperature: roleParams.temperature,
 				messages,
+				...(baseURL && { baseURL }),
 				...(serviceType === 'generateObject' && { schema, objectName }),
+				...providerSpecificParams,
 				...restApiParams
 			};
 
-			// 6. Attempt the call with retries
-			const result = await _attemptProviderCallWithRetries(
-				providerApiFn,
+			providerResponse = await _attemptProviderCallWithRetries(
+				provider,
+				serviceType,
 				callParams,
 				providerName,
 				modelId,
 				currentRole
 			);
 
-			log('info', `${serviceType}Service succeeded using role: ${currentRole}`);
+			if (userId && providerResponse && providerResponse.usage) {
+				try {
+					telemetryData = await logAiUsage({
+						userId,
+						commandName,
+						providerName,
+						modelId,
+						inputTokens: providerResponse.usage.inputTokens,
+						outputTokens: providerResponse.usage.outputTokens,
+						outputType
+					});
+				} catch (telemetryError) {
+					// logAiUsage already logs its own errors and returns null on failure
+					// No need to log again here, telemetryData will remain null
+				}
+			} else if (userId && providerResponse && !providerResponse.usage) {
+				log(
+					'warn',
+					`Cannot log telemetry for ${commandName} (${providerName}/${modelId}): AI result missing 'usage' data. (May be expected for streams)`
+				);
+			}
 
-			return result;
+			let finalMainResult;
+			if (serviceType === 'generateText') {
+				finalMainResult = providerResponse.text;
+			} else if (serviceType === 'generateObject') {
+				finalMainResult = providerResponse.object;
+			} else if (serviceType === 'streamText') {
+				finalMainResult = providerResponse;
+			} else {
+				log(
+					'error',
+					`Unknown serviceType in _unifiedServiceRunner: ${serviceType}`
+				);
+				finalMainResult = providerResponse;
+			}
+
+			return {
+				mainResult: finalMainResult,
+				telemetryData: telemetryData
+			};
 		} catch (error) {
 			const cleanMessage = _extractErrorMessage(error);
 			log(
@@ -445,9 +582,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		}
 	}
 
-	// If loop completes, all roles failed
 	log('error', `All roles in the sequence [${sequence.join(', ')}] failed.`);
-	// Throw a new error with the cleaner message from the last failure
 	throw new Error(lastCleanErrorMessage);
 }
 
@@ -461,11 +596,16 @@ async function _unifiedServiceRunner(serviceType, params) {
  * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
  * @param {string} params.prompt - The prompt for the AI.
  * @param {string} [params.systemPrompt] - Optional system prompt.
- * // Other specific generateText params can be included here.
- * @returns {Promise<string>} The generated text content.
+ * @param {string} params.commandName - Name of the command invoking the service.
+ * @param {string} [params.outputType='cli'] - 'cli' or 'mcp'.
+ * @returns {Promise<object>} Result object containing generated text and usage data.
  */
 async function generateTextService(params) {
-	return _unifiedServiceRunner('generateText', params);
+	// Ensure default outputType if not provided
+	const defaults = { outputType: 'cli' };
+	const combinedParams = { ...defaults, ...params };
+	// TODO: Validate commandName exists?
+	return _unifiedServiceRunner('generateText', combinedParams);
 }
 
 /**
@@ -478,11 +618,18 @@ async function generateTextService(params) {
  * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
  * @param {string} params.prompt - The prompt for the AI.
  * @param {string} [params.systemPrompt] - Optional system prompt.
- * // Other specific streamText params can be included here.
- * @returns {Promise<ReadableStream<string>>} A readable stream of text deltas.
+ * @param {string} params.commandName - Name of the command invoking the service.
+ * @param {string} [params.outputType='cli'] - 'cli' or 'mcp'.
+ * @returns {Promise<object>} Result object containing the stream and usage data.
  */
 async function streamTextService(params) {
-	return _unifiedServiceRunner('streamText', params);
+	const defaults = { outputType: 'cli' };
+	const combinedParams = { ...defaults, ...params };
+	// TODO: Validate commandName exists?
+	// NOTE: Telemetry for streaming might be tricky as usage data often comes at the end.
+	// The current implementation logs *after* the stream is returned.
+	// We might need to adjust how usage is captured/logged for streams.
+	return _unifiedServiceRunner('streamText', combinedParams);
 }
 
 /**
@@ -498,15 +645,89 @@ async function streamTextService(params) {
  * @param {string} [params.systemPrompt] - Optional system prompt.
  * @param {string} [params.objectName='generated_object'] - Name for object/tool.
  * @param {number} [params.maxRetries=3] - Max retries for object generation.
- * @returns {Promise<object>} The generated object matching the schema.
+ * @param {string} params.commandName - Name of the command invoking the service.
+ * @param {string} [params.outputType='cli'] - 'cli' or 'mcp'.
+ * @returns {Promise<object>} Result object containing the generated object and usage data.
  */
 async function generateObjectService(params) {
 	const defaults = {
 		objectName: 'generated_object',
-		maxRetries: 3
+		maxRetries: 3,
+		outputType: 'cli'
 	};
 	const combinedParams = { ...defaults, ...params };
+	// TODO: Validate commandName exists?
 	return _unifiedServiceRunner('generateObject', combinedParams);
 }
 
-export { generateTextService, streamTextService, generateObjectService };
+// --- Telemetry Function ---
+/**
+ * Logs AI usage telemetry data.
+ * For now, it just logs to the console. Sending will be implemented later.
+ * @param {object} params - Telemetry parameters.
+ * @param {string} params.userId - Unique user identifier.
+ * @param {string} params.commandName - The command that triggered the AI call.
+ * @param {string} params.providerName - The AI provider used (e.g., 'openai').
+ * @param {string} params.modelId - The specific AI model ID used.
+ * @param {number} params.inputTokens - Number of input tokens.
+ * @param {number} params.outputTokens - Number of output tokens.
+ */
+async function logAiUsage({
+	userId,
+	commandName,
+	providerName,
+	modelId,
+	inputTokens,
+	outputTokens,
+	outputType
+}) {
+	try {
+		const isMCP = outputType === 'mcp';
+		const timestamp = new Date().toISOString();
+		const totalTokens = (inputTokens || 0) + (outputTokens || 0);
+
+		// Destructure currency along with costs
+		const { inputCost, outputCost, currency } = _getCostForModel(
+			providerName,
+			modelId
+		);
+
+		const totalCost =
+			((inputTokens || 0) / 1_000_000) * inputCost +
+			((outputTokens || 0) / 1_000_000) * outputCost;
+
+		const telemetryData = {
+			timestamp,
+			userId,
+			commandName,
+			modelUsed: modelId, // Consistent field name from requirements
+			providerName, // Keep provider name for context
+			inputTokens: inputTokens || 0,
+			outputTokens: outputTokens || 0,
+			totalTokens,
+			totalCost: parseFloat(totalCost.toFixed(6)),
+			currency // Add currency to the telemetry data
+		};
+
+		if (getDebugFlag()) {
+			log('info', 'AI Usage Telemetry:', telemetryData);
+		}
+
+		// TODO (Subtask 77.2): Send telemetryData securely to the external endpoint.
+
+		return telemetryData;
+	} catch (error) {
+		log('error', `Failed to log AI usage telemetry: ${error.message}`, {
+			error
+		});
+		// Don't re-throw; telemetry failure shouldn't block core functionality.
+		return null;
+	}
+}
+
+export {
+	generateTextService,
+	streamTextService,
+	generateObjectService,
+	logAiUsage
+};
