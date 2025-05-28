@@ -308,7 +308,8 @@ function parseSubtasksFromText(
 			logger.error(
 				`Advanced extraction: Problematic JSON string for parse (first 500 chars): ${jsonToParse.substring(0, 500)}`
 			);
-			throw new Error( // Re-throw a more specific error if advanced also fails
+			throw new Error(
+				// Re-throw a more specific error if advanced also fails
 				`Failed to parse JSON response object after both simple and advanced attempts: ${parseError.message}`
 			);
 		}

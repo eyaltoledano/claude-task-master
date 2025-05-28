@@ -748,14 +748,12 @@ export {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
 	VALID_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
-
 	// Role-specific getters (No env var overrides)
 	getMainProvider,
 	getMainModelId,
@@ -770,7 +768,6 @@ export {
 	getFallbackMaxTokens,
 	getFallbackTemperature,
 	getBaseUrlForRole,
-
 	// Global setting getters (No env var overrides)
 	getLogLevel,
 	getDebugFlag,
@@ -785,7 +782,6 @@ export {
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
-
 	// ADD: Function to get all provider names
 	getAllProviders,
 	getVertexProjectId,
