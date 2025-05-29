@@ -21,10 +21,18 @@ export function registerRemoveDependencyTool(server) {
 	server.addTool({
 		name: 'remove_dependency',
 		description:
-			'Remove a dependency from a task. For multiple tasks, use bulk_remove_dependencies instead.',
+			'Remove dependencies from task(s). Supports ranges and comma-separated lists (e.g., id="7-10", dependsOn="1-5").',
 		parameters: z.object({
-			id: z.string().describe('Task ID to remove dependency from'),
-			dependsOn: z.string().describe('Task ID to remove as a dependency'),
+			id: z
+				.string()
+				.describe(
+					'Task ID(s) to remove dependencies from (e.g., "7", "7-10", "7,8,9")'
+				),
+			dependsOn: z
+				.string()
+				.describe(
+					'Task ID(s) to remove as dependencies (e.g., "1", "1-5", "1,3,5")'
+				),
 			file: z
 				.string()
 				.optional()

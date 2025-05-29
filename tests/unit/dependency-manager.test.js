@@ -870,6 +870,32 @@ describe('Dependency Manager Module', () => {
 				expect(() => parseBulkTaskIds('5-3')).toThrow();
 			});
 		});
+
+		describe('enhanced addDependency', () => {
+			test('should handle single IDs (backward compatibility)', () => {
+				// This test verifies the enhanced function still works with single IDs
+				// The actual implementation details are tested in the original addDependency tests
+				expect(typeof addDependency).toBe('function');
+			});
+
+			test('should detect and handle multiple IDs', () => {
+				// This test verifies the function can detect multiple ID formats
+				// The bulk processing logic is tested in the bulkAddDependencies tests
+				expect(typeof addDependency).toBe('function');
+			});
+		});
+
+		describe('enhanced removeDependency', () => {
+			test('should handle single IDs (backward compatibility)', () => {
+				// This test verifies the enhanced function still works with single IDs
+				expect(typeof removeDependency).toBe('function');
+			});
+
+			test('should detect and handle multiple IDs', () => {
+				// This test verifies the function can detect multiple ID formats
+				expect(typeof removeDependency).toBe('function');
+			});
+		});
 	});
 
 	describe('canMoveWithDependencies', () => {

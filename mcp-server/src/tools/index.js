@@ -40,8 +40,6 @@ import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
-import { registerBulkAddDependenciesTool } from './bulk-add-dependencies.js';
-import { registerBulkRemoveDependenciesTool } from './bulk-remove-dependencies.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -88,8 +86,6 @@ export function registerTaskMasterTools(server) {
 		// Group 6: Dependency Management
 		registerAddDependencyTool(server);
 		registerRemoveDependencyTool(server);
-		registerBulkAddDependenciesTool(server);
-		registerBulkRemoveDependenciesTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
 		registerResponseLanguageTool(server);
