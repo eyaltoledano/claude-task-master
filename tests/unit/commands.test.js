@@ -1082,3 +1082,55 @@ describe('Update check', () => {
 		expect(consoleLogSpy.mock.calls[0][0]).toContain('1.1.0');
 	});
 });
+
+// -----------------------------------------------------------------------------
+// Rules command tests (add/remove)
+// -----------------------------------------------------------------------------
+describe('rules command', () => {
+	let program;
+	let mockConsoleLog;
+	let mockConsoleError;
+	let mockExit;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		program = setupCLI();
+		mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
+		mockConsoleError = jest
+			.spyOn(console, 'error')
+			.mockImplementation(() => {});
+		mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+	});
+
+	test('should handle rules add <profile> command', async () => {
+		// Simulate: task-master rules add roo
+		await program.parseAsync(['rules', 'add', 'roo'], { from: 'user' });
+		// Expect some log output indicating success
+		expect(mockConsoleLog).toHaveBeenCalledWith(
+			expect.stringMatching(/adding rules for profile: roo/i)
+		);
+		expect(mockConsoleLog).toHaveBeenCalledWith(
+			expect.stringMatching(/completed adding rules for profile: roo/i)
+		);
+		// Should not exit with error
+		expect(mockExit).not.toHaveBeenCalledWith(1);
+	});
+
+	test('should handle rules remove <profile> command', async () => {
+		// Simulate: task-master rules remove roo --force
+		await program.parseAsync(['rules', 'remove', 'roo', '--force'], {
+			from: 'user'
+		});
+		// Expect some log output indicating removal
+		expect(mockConsoleLog).toHaveBeenCalledWith(
+			expect.stringMatching(/removing rules for profile: roo/i)
+		);
+		expect(mockConsoleLog).toHaveBeenCalledWith(
+			expect.stringMatching(
+				/Summary for roo: (Rules directory removed|Skipped \(default or protected files\))/i
+			)
+		);
+		// Should not exit with error
+		expect(mockExit).not.toHaveBeenCalledWith(1);
+	});
+});

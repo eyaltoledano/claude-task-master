@@ -4,16 +4,35 @@ import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
 
-describe('Roo Files Inclusion in Package', () => {
-	// This test verifies that the required Roo files are included in the final package
+describe('Rules Files Inclusion in Package', () => {
+	// This test verifies that the required rules files are included in the final package
 
-	test('package.json includes assets/** in the "files" array for Roo source files', () => {
+	test('package.json includes assets/** in the "files" array for rules source files', () => {
 		// Read the package.json file
 		const packageJsonPath = path.join(process.cwd(), 'package.json');
 		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-		// Check if assets/** is included in the files array (which contains Roo files)
+		// Check if assets/** is included in the files array (which contains rules files)
 		expect(packageJson.files).toContain('assets/**');
+	});
+
+	test('source rules files exist in assets/rules directory', () => {
+		// Verify that the actual rules files exist
+		const rulesDir = path.join(process.cwd(), 'assets', 'rules');
+		expect(fs.existsSync(rulesDir)).toBe(true);
+
+		// Check for the 4 files that currently exist
+		const expectedFiles = [
+			'dev_workflow.mdc',
+			'taskmaster.mdc',
+			'self_improve.mdc',
+			'cursor_rules.mdc'
+		];
+
+		expectedFiles.forEach((file) => {
+			const filePath = path.join(rulesDir, file);
+			expect(fs.existsSync(filePath)).toBe(true);
+		});
 	});
 
 	test('roo.js profile contains logic for Roo directory creation and file copying', () => {
