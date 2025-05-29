@@ -21,12 +21,18 @@ export function registerAddDependencyTool(server) {
 	server.addTool({
 		name: 'add_dependency',
 		description:
-			'Add a dependency relationship between two tasks. For multiple tasks, use bulk_add_dependencies instead.',
+			'Add dependencies to task(s). Supports ranges and comma-separated lists (e.g., id="7-10", dependsOn="1-5").',
 		parameters: z.object({
-			id: z.string().describe('ID of task that will depend on another task'),
+			id: z
+				.string()
+				.describe(
+					'Task ID(s) that will depend on others (e.g., "7", "7-10", "7,8,9")'
+				),
 			dependsOn: z
 				.string()
-				.describe('ID of task that will become a dependency'),
+				.describe(
+					'Task ID(s) that will become dependencies (e.g., "1", "1-5", "1,3,5")'
+				),
 			file: z
 				.string()
 				.optional()

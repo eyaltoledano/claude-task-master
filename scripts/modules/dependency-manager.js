@@ -22,12 +22,50 @@ import { displayBanner } from './ui.js';
 import { generateTaskFiles } from './task-manager.js';
 
 /**
- * Add a dependency to a task
+ * Add dependencies to task(s). Supports single IDs, ranges, and comma-separated lists.
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {number|string} taskId - ID of the task to add dependency to
- * @param {number|string} dependencyId - ID of the task to add as dependency
+ * @param {number|string} taskId - Task ID(s) (e.g., "7", "7-10", "7,8,9")
+ * @param {number|string} dependencyId - Dependency ID(s) (e.g., "1", "1-5", "1,3,5")
  */
 async function addDependency(tasksPath, taskId, dependencyId) {
+	// Check if we're dealing with multiple IDs by attempting to parse them
+	try {
+		const taskIds = parseBulkTaskIds(String(taskId));
+		const dependencyIds = parseBulkTaskIds(String(dependencyId));
+
+		// If either has multiple IDs, use bulk processing
+		if (taskIds.length > 1 || dependencyIds.length > 1) {
+			log(
+				'info',
+				`Adding dependencies in bulk: ${dependencyIds.join(', ')} to tasks ${taskIds.join(', ')}...`
+			);
+
+			const result = await bulkAddDependencies(
+				tasksPath,
+				String(taskId),
+				String(dependencyId),
+				{
+					silent: false
+				}
+			);
+
+			if (!result.success) {
+				log('error', `Bulk add dependencies failed: ${result.error}`);
+				process.exit(1);
+			}
+
+			return;
+		}
+
+		// Single IDs - use the original logic with first elements
+		taskId = taskIds[0];
+		dependencyId = dependencyIds[0];
+	} catch (error) {
+		// If parsing fails, treat as single IDs (original behavior)
+		// This maintains backward compatibility for non-bulk format IDs
+	}
+
+	// Original single-task logic
 	log('info', `Adding dependency ${dependencyId} to task ${taskId}...`);
 
 	const data = readJSON(tasksPath);
@@ -208,12 +246,50 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 }
 
 /**
- * Remove a dependency from a task
+ * Remove dependencies from task(s). Supports single IDs, ranges, and comma-separated lists.
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {number|string} taskId - ID of the task to remove dependency from
- * @param {number|string} dependencyId - ID of the task to remove as dependency
+ * @param {number|string} taskId - Task ID(s) (e.g., "7", "7-10", "7,8,9")
+ * @param {number|string} dependencyId - Dependency ID(s) (e.g., "1", "1-5", "1,3,5")
  */
 async function removeDependency(tasksPath, taskId, dependencyId) {
+	// Check if we're dealing with multiple IDs by attempting to parse them
+	try {
+		const taskIds = parseBulkTaskIds(String(taskId));
+		const dependencyIds = parseBulkTaskIds(String(dependencyId));
+
+		// If either has multiple IDs, use bulk processing
+		if (taskIds.length > 1 || dependencyIds.length > 1) {
+			log(
+				'info',
+				`Removing dependencies in bulk: ${dependencyIds.join(', ')} from tasks ${taskIds.join(', ')}...`
+			);
+
+			const result = await bulkRemoveDependencies(
+				tasksPath,
+				String(taskId),
+				String(dependencyId),
+				{
+					silent: false
+				}
+			);
+
+			if (!result.success) {
+				log('error', `Bulk remove dependencies failed: ${result.error}`);
+				process.exit(1);
+			}
+
+			return;
+		}
+
+		// Single IDs - use the original logic with first elements
+		taskId = taskIds[0];
+		dependencyId = dependencyIds[0];
+	} catch (error) {
+		// If parsing fails, treat as single IDs (original behavior)
+		// This maintains backward compatibility for non-bulk format IDs
+	}
+
+	// Original single-task logic
 	log('info', `Removing dependency ${dependencyId} from task ${taskId}...`);
 
 	// Read tasks file
