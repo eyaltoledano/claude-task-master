@@ -14,6 +14,7 @@ import { generateTextService } from '../ai-services-unified.js';
 
 import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 
 // --- Zod Schemas (Keep from previous step) ---
 const subtaskSchema = z
@@ -463,10 +464,7 @@ async function expandTask(
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const complexityReportPath = path.join(
-			projectRoot,
-			'scripts/task-complexity-report.json'
-		);
+		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
 		let taskAnalysis = null;
 
 		try {

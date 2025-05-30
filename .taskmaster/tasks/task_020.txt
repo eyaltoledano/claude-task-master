@@ -1,0 +1,50 @@
+# Task ID: 20
+# Title: Create Token Usage Tracking and Cost Management
+# Status: done
+# Dependencies: 5, 9, 17
+# Priority: medium
+# Description: Implement system for tracking API token usage and managing costs.
+# Details:
+Implement token tracking including:
+- Track token usage for all API calls
+- Implement configurable usage limits
+- Add reporting on token consumption
+- Create cost estimation features
+- Implement caching to reduce API calls
+- Add token optimization for prompts
+- Create usage alerts when approaching limits
+
+# Test Strategy:
+Track token usage across various operations and verify accuracy. Test that limits properly prevent excessive usage. Verify that caching reduces token consumption for repeated operations.
+
+# Subtasks:
+## 1. Implement Token Usage Tracking for API Calls [done]
+### Dependencies: 20.5
+### Description: Create a middleware or wrapper function that intercepts all API calls to OpenAI, Anthropic, and Perplexity. This function should count the number of tokens used in both the request and response, storing this information in a persistent data store (e.g., SQLite database). Implement a caching mechanism to reduce redundant API calls and token usage.
+### Details:
+
+
+## 2. Develop Configurable Usage Limits [done]
+### Dependencies: None
+### Description: Create a configuration system that allows setting token usage limits at the project, user, and API level. Implement a mechanism to enforce these limits by checking the current usage against the configured limits before making API calls. Add the ability to set different limit types (e.g., daily, weekly, monthly) and actions to take when limits are reached (e.g., block calls, send notifications).
+### Details:
+
+
+## 3. Implement Token Usage Reporting and Cost Estimation [done]
+### Dependencies: 20.1, 20.2
+### Description: Develop a reporting module that generates detailed token usage reports. Include breakdowns by API, user, and time period. Implement cost estimation features by integrating current pricing information for each API. Create both command-line and programmatic interfaces for generating reports and estimates.
+### Details:
+
+
+## 4. Optimize Token Usage in Prompts [done]
+### Dependencies: None
+### Description: Implement a prompt optimization system that analyzes and refines prompts to reduce token usage while maintaining effectiveness. Use techniques such as prompt compression, removing redundant information, and leveraging efficient prompting patterns. Integrate this system into the existing prompt generation and API call processes.
+### Details:
+
+
+## 5. Develop Token Usage Alert System [done]
+### Dependencies: 20.2, 20.3
+### Description: Create an alert system that monitors token usage in real-time and sends notifications when usage approaches or exceeds defined thresholds. Implement multiple notification channels (e.g., email, Slack, system logs) and allow for customizable alert rules. Integrate this system with the existing logging and reporting modules.
+### Details:
+
+

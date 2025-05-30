@@ -1,0 +1,40 @@
+# Task ID: 30
+# Title: Enhance parse-prd Command to Support Default PRD Path
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Modify the parse-prd command to automatically use a default PRD path when no path is explicitly provided, improving user experience by reducing the need for manual path specification.
+# Details:
+Currently, the parse-prd command requires users to explicitly specify the path to the PRD document. This enhancement should:
+
+1. Implement a default PRD path configuration that can be set in the application settings or configuration file.
+2. Update the parse-prd command to check for this default path when no path argument is provided.
+3. Add a configuration option that allows users to set/update the default PRD path through a command like `config set default-prd-path <path>`.
+4. Ensure backward compatibility by maintaining support for explicit path specification.
+5. Add appropriate error handling for cases where the default path is not set or the file doesn't exist.
+6. Update the command's help text to indicate that a default path will be used if none is specified.
+7. Consider implementing path validation to ensure the default path points to a valid PRD document.
+8. If multiple PRD formats are supported (Markdown, PDF, etc.), ensure the default path handling works with all supported formats.
+9. Add logging for default path usage to help with debugging and usage analytics.
+
+# Test Strategy:
+1. Unit tests:
+   - Test that the command correctly uses the default path when no path is provided
+   - Test that explicit paths override the default path
+   - Test error handling when default path is not set
+   - Test error handling when default path is set but file doesn't exist
+
+2. Integration tests:
+   - Test the full workflow of setting a default path and then using the parse-prd command without arguments
+   - Test with various file formats if multiple are supported
+
+3. Manual testing:
+   - Verify the command works in a real environment with actual PRD documents
+   - Test the user experience of setting and using default paths
+   - Verify help text correctly explains the default path behavior
+
+4. Edge cases to test:
+   - Relative vs. absolute paths for default path setting
+   - Path with special characters or spaces
+   - Very long paths approaching system limits
+   - Permissions issues with the default path location

@@ -1,0 +1,48 @@
+# Task ID: 36
+# Title: Add Ollama Support for AI Services as Claude Alternative
+# Status: deferred
+# Dependencies: None
+# Priority: medium
+# Description: Implement Ollama integration as an alternative to Claude for all main AI services, allowing users to run local language models instead of relying on cloud-based Claude API.
+# Details:
+This task involves creating a comprehensive Ollama integration that can replace Claude across all main AI services in the application. Implementation should include:
+
+1. Create an OllamaService class that implements the same interface as the ClaudeService to ensure compatibility
+2. Add configuration options to specify Ollama endpoint URL (default: http://localhost:11434)
+3. Implement model selection functionality to allow users to choose which Ollama model to use (e.g., llama3, mistral, etc.)
+4. Handle prompt formatting specific to Ollama models, ensuring proper system/user message separation
+5. Implement proper error handling for cases where Ollama server is unavailable or returns errors
+6. Add fallback mechanism to Claude when Ollama fails or isn't configured
+7. Update the AI service factory to conditionally create either Claude or Ollama service based on configuration
+8. Ensure token counting and rate limiting are appropriately handled for Ollama models
+9. Add documentation for users explaining how to set up and use Ollama with the application
+10. Optimize prompt templates specifically for Ollama models if needed
+
+The implementation should be toggled through a configuration option (useOllama: true/false) and should maintain all existing functionality currently provided by Claude.
+
+# Test Strategy:
+Testing should verify that Ollama integration works correctly as a drop-in replacement for Claude:
+
+1. Unit tests:
+   - Test OllamaService class methods in isolation with mocked responses
+   - Verify proper error handling when Ollama server is unavailable
+   - Test fallback mechanism to Claude when configured
+
+2. Integration tests:
+   - Test with actual Ollama server running locally with at least two different models
+   - Verify all AI service functions work correctly with Ollama
+   - Compare outputs between Claude and Ollama for quality assessment
+
+3. Configuration tests:
+   - Verify toggling between Claude and Ollama works as expected
+   - Test with various model configurations
+
+4. Performance tests:
+   - Measure and compare response times between Claude and Ollama
+   - Test with different load scenarios
+
+5. Manual testing:
+   - Verify all main AI features work correctly with Ollama
+   - Test edge cases like very long inputs or specialized tasks
+
+Create a test document comparing output quality between Claude and various Ollama models to help users understand the tradeoffs.

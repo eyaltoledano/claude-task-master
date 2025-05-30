@@ -1,0 +1,1209 @@
+# Task ID: 23
+# Title: Complete MCP Server Implementation for Task Master using FastMCP
+# Status: done
+# Dependencies: 22
+# Priority: medium
+# Description: Finalize the MCP server functionality for Task Master by leveraging FastMCP's capabilities, transitioning from CLI-based execution to direct function imports, and optimizing performance, authentication, and context management. Ensure the server integrates seamlessly with Cursor via `mcp.json` and supports proper tool registration, efficient context handling, and transport type handling (focusing on stdio). Additionally, ensure the server can be instantiated properly when installed via `npx` or `npm i -g`. Evaluate and address gaps in the current implementation, including function imports, context management, caching, tool registration, and adherence to FastMCP best practices.
+# Details:
+This task involves completing the Model Context Protocol (MCP) server implementation for Task Master using FastMCP. Key updates include:
+
+1. Transition from CLI-based execution (currently using `child_process.spawnSync`) to direct Task Master function imports for improved performance and reliability.
+2. Implement caching mechanisms for frequently accessed contexts to enhance performance, leveraging FastMCP's efficient transport mechanisms (e.g., stdio).
+3. Refactor context management to align with best practices for handling large context windows, metadata, and tagging.
+4. Refactor tool registration in `tools/index.js` to include clear descriptions and parameter definitions, leveraging FastMCP's decorator-based patterns for better integration.
+5. Enhance transport type handling to ensure proper stdio communication and compatibility with FastMCP.
+6. Ensure the MCP server can be instantiated and run correctly when installed globally via `npx` or `npm i -g`.
+7. Integrate the ModelContextProtocol SDK directly to streamline resource and tool registration, ensuring compatibility with FastMCP's transport mechanisms.
+8. Identify and address missing components or functionalities to meet FastMCP best practices, such as robust error handling, monitoring endpoints, and concurrency support.
+9. Update documentation to include examples of using the MCP server with FastMCP, detailed setup instructions, and client integration guides.
+10. Organize direct function implementations in a modular structure within the mcp-server/src/core/direct-functions/ directory for improved maintainability and organization.
+11. Follow consistent naming conventions: file names use kebab-case (like-this.js), direct functions use camelCase with Direct suffix (functionNameDirect), tool registration functions use camelCase with Tool suffix (registerToolNameTool), and MCP tool names exposed to clients use snake_case (tool_name).
+
+The implementation must ensure compatibility with existing MCP clients and follow RESTful API design principles, while supporting concurrent requests and maintaining robust error handling.
+
+# Test Strategy:
+Testing for the MCP server implementation will follow a comprehensive approach based on our established testing guidelines:
+
+## Test Organization
+
+1. **Unit Tests** (`tests/unit/mcp-server/`):
+   - Test individual MCP server components in isolation
+   - Mock all external dependencies including FastMCP SDK
+   - Test each tool implementation separately
+   - Test each direct function implementation in the direct-functions directory
+   - Verify direct function imports work correctly
+   - Test context management and caching mechanisms
+   - Example files: `context-manager.test.js`, `tool-registration.test.js`, `direct-functions/list-tasks.test.js`
+
+2. **Integration Tests** (`tests/integration/mcp-server/`):
+   - Test interactions between MCP server components
+   - Verify proper tool registration with FastMCP
+   - Test context flow between components
+   - Validate error handling across module boundaries
+   - Test the integration between direct functions and their corresponding MCP tools
+   - Example files: `server-tool-integration.test.js`, `context-flow.test.js`
+
+3. **End-to-End Tests** (`tests/e2e/mcp-server/`):
+   - Test complete MCP server workflows
+   - Verify server instantiation via different methods (direct, npx, global install)
+   - Test actual stdio communication with mock clients
+   - Example files: `server-startup.e2e.test.js`, `client-communication.e2e.test.js`
+
+4. **Test Fixtures** (`tests/fixtures/mcp-server/`):
+   - Sample context data
+   - Mock tool definitions
+   - Sample MCP requests and responses
+
+## Testing Approach
+
+### Module Mocking Strategy
+```javascript
+// Mock the FastMCP SDK
+jest.mock('@model-context-protocol/sdk', () => ({
+  MCPServer: jest.fn().mockImplementation(() => ({
+    registerTool: jest.fn(),
+    registerResource: jest.fn(),
+    start: jest.fn().mockResolvedValue(undefined),
+    stop: jest.fn().mockResolvedValue(undefined)
+  })),
+  MCPError: jest.fn().mockImplementation(function(message, code) {
+    this.message = message;
+    this.code = code;
+  })
+}));
+
+// Import modules after mocks
+import { MCPServer, MCPError } from '@model-context-protocol/sdk';
+import { initMCPServer } from '../../scripts/mcp-server.js';
+```
+
+### Direct Function Testing
+- Test each direct function in isolation
+- Verify proper error handling and return formats
+- Test with various input parameters and edge cases
+- Verify integration with the task-master-core.js export hub
+
+### Context Management Testing
+- Test context creation, retrieval, and manipulation
+- Verify caching mechanisms work correctly
+- Test context windowing and metadata handling
+- Validate context persistence across server restarts
+
+### Direct Function Import Testing
+- Verify Task Master functions are imported correctly
+- Test performance improvements compared to CLI execution
+- Validate error handling with direct imports
+
+### Tool Registration Testing
+- Verify tools are registered with proper descriptions and parameters
+- Test decorator-based registration patterns
+- Validate tool execution with different input types
+
+### Error Handling Testing
+- Test all error paths with appropriate MCPError types
+- Verify error propagation to clients
+- Test recovery from various error conditions
+
+### Performance Testing
+- Benchmark response times with and without caching
+- Test memory usage under load
+- Verify concurrent request handling
+
+## Test Quality Guidelines
+
+- Follow TDD approach when possible
+- Maintain test independence and isolation
+- Use descriptive test names explaining expected behavior
+- Aim for 80%+ code coverage, with critical paths at 100%
+- Follow the mock-first-then-import pattern for all Jest mocks
+- Avoid testing implementation details that might change
+- Ensure tests don't depend on execution order
+
+## Specific Test Cases
+
+1. **Server Initialization**
+   - Test server creation with various configuration options
+   - Verify proper tool and resource registration
+   - Test server startup and shutdown procedures
+
+2. **Context Operations**
+   - Test context creation, retrieval, update, and deletion
+   - Verify context windowing and truncation
+   - Test context metadata and tagging
+
+3. **Tool Execution**
+   - Test each tool with various input parameters
+   - Verify proper error handling for invalid inputs
+   - Test tool execution performance
+
+4. **MCP.json Integration**
+   - Test creation and updating of .cursor/mcp.json
+   - Verify proper server registration in mcp.json
+   - Test handling of existing mcp.json files
+
+5. **Transport Handling**
+   - Test stdio communication
+   - Verify proper message formatting
+   - Test error handling in transport layer
+
+6. **Direct Function Structure**
+   - Test the modular organization of direct functions
+   - Verify proper import/export through task-master-core.js
+   - Test utility functions in the utils directory
+
+All tests will be automated and integrated into the CI/CD pipeline to ensure consistent quality.
+
+# Subtasks:
+## 1. Create Core MCP Server Module and Basic Structure [done]
+### Dependencies: None
+### Description: Create the foundation for the MCP server implementation by setting up the core module structure, configuration, and server initialization.
+### Details:
+Implementation steps:
+1. Create a new module `mcp-server.js` with the basic server structure
+2. Implement configuration options to enable/disable the MCP server
+3. Set up Express.js routes for the required MCP endpoints (/context, /models, /execute)
+4. Create middleware for request validation and response formatting
+5. Implement basic error handling according to MCP specifications
+6. Add logging infrastructure for MCP operations
+7. Create initialization and shutdown procedures for the MCP server
+8. Set up integration with the main Task Master application
+
+Testing approach:
+- Unit tests for configuration loading and validation
+- Test server initialization and shutdown procedures
+- Verify that routes are properly registered
+- Test basic error handling with invalid requests
+
+## 2. Implement Context Management System [done]
+### Dependencies: 23.1
+### Description: Develop a robust context management system that can efficiently store, retrieve, and manipulate context data according to the MCP specification.
+### Details:
+Implementation steps:
+1. Design and implement data structures for context storage
+2. Create methods for context creation, retrieval, updating, and deletion
+3. Implement context windowing and truncation algorithms for handling size limits
+4. Add support for context metadata and tagging
+5. Create utilities for context serialization and deserialization
+6. Implement efficient indexing for quick context lookups
+7. Add support for context versioning and history
+8. Develop mechanisms for context persistence (in-memory, disk-based, or database)
+
+Testing approach:
+- Unit tests for all context operations (CRUD)
+- Performance tests for context retrieval with various sizes
+- Test context windowing and truncation with edge cases
+- Verify metadata handling and tagging functionality
+- Test persistence mechanisms with simulated failures
+
+## 3. Implement MCP Endpoints and API Handlers [done]
+### Dependencies: 23.1, 23.2
+### Description: Develop the complete API handlers for all required MCP endpoints, ensuring they follow the protocol specification and integrate with the context management system.
+### Details:
+Implementation steps:
+1. Implement the `/context` endpoint for:
+   - GET: retrieving existing context
+   - POST: creating new context
+   - PUT: updating existing context
+   - DELETE: removing context
+2. Implement the `/models` endpoint to list available models
+3. Develop the `/execute` endpoint for performing operations with context
+4. Create request validators for each endpoint
+5. Implement response formatters according to MCP specifications
+6. Add detailed error handling for each endpoint
+7. Set up proper HTTP status codes for different scenarios
+8. Implement pagination for endpoints that return lists
+
+Testing approach:
+- Unit tests for each endpoint handler
+- Integration tests with mock context data
+- Test various request formats and edge cases
+- Verify response formats match MCP specifications
+- Test error handling with invalid inputs
+- Benchmark endpoint performance
+
+## 6. Refactor MCP Server to Leverage ModelContextProtocol SDK [done]
+### Dependencies: 23.1, 23.2, 23.3
+### Description: Integrate the ModelContextProtocol SDK directly into the MCP server implementation to streamline tool registration and resource handling.
+### Details:
+Implementation steps:
+1. Replace manual tool registration with ModelContextProtocol SDK methods.
+2. Use SDK utilities to simplify resource and template management.
+3. Ensure compatibility with FastMCP's transport mechanisms.
+4. Update server initialization to include SDK-based configurations.
+
+Testing approach:
+- Verify SDK integration with all MCP endpoints.
+- Test resource and template registration using SDK methods.
+- Validate compatibility with existing MCP clients.
+- Benchmark performance improvements from SDK integration.
+
+<info added on 2025-03-31T18:49:14.439Z>
+The subtask is being cancelled because FastMCP already serves as a higher-level abstraction over the Model Context Protocol SDK. Direct integration with the MCP SDK would be redundant and potentially counterproductive since:
+
+1. FastMCP already encapsulates the necessary SDK functionality for tool registration and resource handling
+2. The existing FastMCP abstractions provide a more streamlined developer experience
+3. Adding another layer of SDK integration would increase complexity without clear benefits
+4. The transport mechanisms in FastMCP are already optimized for the current architecture
+
+Instead, we should focus on extending and enhancing the existing FastMCP abstractions where needed, rather than attempting to bypass them with direct SDK integration.
+</info added on 2025-03-31T18:49:14.439Z>
+
+## 8. Implement Direct Function Imports and Replace CLI-based Execution [done]
+### Dependencies: 23.13
+### Description: Refactor the MCP server implementation to use direct Task Master function imports instead of the current CLI-based execution using child_process.spawnSync. This will improve performance, reliability, and enable better error handling.
+### Details:
+
+
+<info added on 2025-03-30T00:14:10.040Z>
+```
+# Refactoring Strategy for Direct Function Imports
+
+## Core Approach
+1. Create a clear separation between data retrieval/processing and presentation logic
+2. Modify function signatures to accept `outputFormat` parameter ('cli'|'json', default: 'cli')
+3. Implement early returns for JSON format to bypass CLI-specific code
+
+## Implementation Details for `listTasks`
+```javascript
+function listTasks(tasksPath, statusFilter, withSubtasks = false, outputFormat = 'cli') {
+  try {
+    // Existing data retrieval logic
+    const filteredTasks = /* ... */;
+    
+    // Early return for JSON format
+    if (outputFormat === 'json') return filteredTasks;
+    
+    // Existing CLI output logic
+  } catch (error) {
+    if (outputFormat === 'json') {
+      throw {
+        code: 'TASK_LIST_ERROR',
+        message: error.message,
+        details: error.stack
+      };
+    } else {
+      console.error(error);
+      process.exit(1);
+    }
+  }
+}
+```
+
+## Testing Strategy
+- Create integration tests in `tests/integration/mcp-server/`
+- Use FastMCP InMemoryTransport for direct client-server testing
+- Test both JSON and CLI output formats
+- Verify structure consistency with schema validation
+
+## Additional Considerations
+- Update JSDoc comments to document new parameters and return types
+- Ensure backward compatibility with default CLI behavior
+- Add JSON schema validation for consistent output structure
+- Apply similar pattern to other core functions (expandTask, updateTaskById, etc.)
+
+## Error Handling Improvements
+- Standardize error format for JSON returns:
+```javascript
+{
+  code: 'ERROR_CODE',
+  message: 'Human-readable message',
+  details: {}, // Additional context when available
+  stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+}
+```
+- Enrich JSON errors with error codes and debug info
+- Ensure validation failures return proper objects in JSON mode
+```
+</info added on 2025-03-30T00:14:10.040Z>
+
+## 9. Implement Context Management and Caching Mechanisms [done]
+### Dependencies: 23.1
+### Description: Enhance the MCP server with proper context management and caching to improve performance and user experience, especially for frequently accessed data and contexts.
+### Details:
+1. Implement a context manager class that leverages FastMCP's Context object
+2. Add caching for frequently accessed task data with configurable TTL settings
+3. Implement context tagging for better organization of context data
+4. Add methods to efficiently handle large context windows
+5. Create helper functions for storing and retrieving context data
+6. Implement cache invalidation strategies for task updates
+7. Add cache statistics for monitoring performance
+8. Create unit tests for context management and caching functionality
+
+## 10. Enhance Tool Registration and Resource Management [done]
+### Dependencies: 23.1, 23.8
+### Description: Refactor tool registration to follow FastMCP best practices, using decorators and improving the overall structure. Implement proper resource management for task templates and other shared resources.
+### Details:
+1. Update registerTaskMasterTools function to use FastMCP's decorator pattern
+2. Implement @mcp.tool() decorators for all existing tools
+3. Add proper type annotations and documentation for all tools
+4. Create resource handlers for task templates using @mcp.resource()
+5. Implement resource templates for common task patterns
+6. Update the server initialization to properly register all tools and resources
+7. Add validation for tool inputs using FastMCP's built-in validation
+8. Create comprehensive tests for tool registration and resource access
+
+<info added on 2025-03-31T18:35:21.513Z>
+Here is additional information to enhance the subtask regarding resources and resource templates in FastMCP:
+
+Resources in FastMCP are used to expose static or dynamic data to LLM clients. For the Task Master MCP server, we should implement resources to provide:
+
+1. Task templates: Predefined task structures that can be used as starting points
+2. Workflow definitions: Reusable workflow patterns for common task sequences
+3. User preferences: Stored user settings for task management
+4. Project metadata: Information about active projects and their attributes
+
+Resource implementation should follow this structure:
+
+```python
+@mcp.resource("tasks://templates/{template_id}")
+def get_task_template(template_id: str) -> dict:
+    # Fetch and return the specified task template
+    ...
+
+@mcp.resource("workflows://definitions/{workflow_id}")
+def get_workflow_definition(workflow_id: str) -> dict:
+    # Fetch and return the specified workflow definition
+    ...
+
+@mcp.resource("users://{user_id}/preferences")
+def get_user_preferences(user_id: str) -> dict:
+    # Fetch and return user preferences
+    ...
+
+@mcp.resource("projects://metadata")
+def get_project_metadata() -> List[dict]:
+    # Fetch and return metadata for all active projects
+    ...
+```
+
+Resource templates in FastMCP allow for dynamic generation of resources based on patterns. For Task Master, we can implement:
+
+1. Dynamic task creation templates
+2. Customizable workflow templates
+3. User-specific resource views
+
+Example implementation:
+
+```python
+@mcp.resource("tasks://create/{task_type}")
+def get_task_creation_template(task_type: str) -> dict:
+    # Generate and return a task creation template based on task_type
+    ...
+
+@mcp.resource("workflows://custom/{user_id}/{workflow_name}")
+def get_custom_workflow_template(user_id: str, workflow_name: str) -> dict:
+    # Generate and return a custom workflow template for the user
+    ...
+
+@mcp.resource("users://{user_id}/dashboard")
+def get_user_dashboard(user_id: str) -> dict:
+    # Generate and return a personalized dashboard view for the user
+    ...
+```
+
+Best practices for integrating resources with Task Master functionality:
+
+1. Use resources to provide context and data for tools
+2. Implement caching for frequently accessed resources
+3. Ensure proper error handling and not-found cases for all resources
+4. Use resource templates to generate dynamic, personalized views of data
+5. Implement access control to ensure users only access authorized resources
+
+By properly implementing these resources and resource templates, we can provide rich, contextual data to LLM clients, enhancing the Task Master's capabilities and user experience.
+</info added on 2025-03-31T18:35:21.513Z>
+
+## 11. Implement Comprehensive Error Handling [done]
+### Dependencies: 23.1, 23.3
+### Description: Implement robust error handling using FastMCP's MCPError, including custom error types for different categories and standardized error responses.
+### Details:
+1. Create custom error types extending MCPError for different categories (validation, auth, etc.)\n2. Implement standardized error responses following MCP protocol\n3. Add error handling middleware for all MCP endpoints\n4. Ensure proper error propagation from tools to client\n5. Add debug mode with detailed error information\n6. Document error types and handling patterns
+
+## 12. Implement Structured Logging System [done]
+### Dependencies: 23.1, 23.3
+### Description: Implement a comprehensive logging system for the MCP server with different log levels, structured logging format, and request/response tracking.
+### Details:
+1. Design structured log format for consistent parsing\n2. Implement different log levels (debug, info, warn, error)\n3. Add request/response logging middleware\n4. Implement correlation IDs for request tracking\n5. Add performance metrics logging\n6. Configure log output destinations (console, file)\n7. Document logging patterns and usage
+
+## 13. Create Testing Framework and Test Suite [done]
+### Dependencies: 23.1, 23.3
+### Description: Implement a comprehensive testing framework for the MCP server, including unit tests, integration tests, and end-to-end tests.
+### Details:
+1. Set up Jest testing framework with proper configuration\n2. Create MCPTestClient for testing FastMCP server interaction\n3. Implement unit tests for individual tool functions\n4. Create integration tests for end-to-end request/response cycles\n5. Set up test fixtures and mock data\n6. Implement test coverage reporting\n7. Document testing guidelines and examples
+
+## 14. Add MCP.json to the Init Workflow [done]
+### Dependencies: 23.1, 23.3
+### Description: Implement functionality to create or update .cursor/mcp.json during project initialization, handling cases where: 1) If there's no mcp.json, create it with the appropriate configuration; 2) If there is an mcp.json, intelligently append to it without syntax errors like trailing commas
+### Details:
+1. Create functionality to detect if .cursor/mcp.json exists in the project\n2. Implement logic to create a new mcp.json file with proper structure if it doesn't exist\n3. Add functionality to read and parse existing mcp.json if it exists\n4. Create method to add a new taskmaster-ai server entry to the mcpServers object\n5. Implement intelligent JSON merging that avoids trailing commas and syntax errors\n6. Ensure proper formatting and indentation in the generated/updated JSON\n7. Add validation to verify the updated configuration is valid JSON\n8. Include this functionality in the init workflow\n9. Add error handling for file system operations and JSON parsing\n10. Document the mcp.json structure and integration process
+
+## 15. Implement SSE Support for Real-time Updates [done]
+### Dependencies: 23.1, 23.3, 23.11
+### Description: Add Server-Sent Events (SSE) capabilities to the MCP server to enable real-time updates and streaming of task execution progress, logs, and status changes to clients
+### Details:
+1. Research and implement SSE protocol for the MCP server\n2. Create dedicated SSE endpoints for event streaming\n3. Implement event emitter pattern for internal event management\n4. Add support for different event types (task status, logs, errors)\n5. Implement client connection management with proper keep-alive handling\n6. Add filtering capabilities to allow subscribing to specific event types\n7. Create in-memory event buffer for clients reconnecting\n8. Document SSE endpoint usage and client implementation examples\n9. Add robust error handling for dropped connections\n10. Implement rate limiting and backpressure mechanisms\n11. Add authentication for SSE connections
+
+## 16. Implement parse-prd MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for parsing PRD documents to generate tasks.
+### Details:
+Following MCP implementation standards:\n\n1. Create parsePRDDirect function in task-master-core.js:\n   - Import parsePRD from task-manager.js\n   - Handle file paths using findTasksJsonPath utility\n   - Process arguments: input file, output path, numTasks\n   - Validate inputs and handle errors with try/catch\n   - Return standardized { success, data/error } object\n   - Add to directFunctions map\n\n2. Create parse-prd.js MCP tool in mcp-server/src/tools/:\n   - Import z from zod for parameter schema\n   - Import executeMCPToolAction from ./utils.js\n   - Import parsePRDDirect from task-master-core.js\n   - Define parameters matching CLI options using zod schema\n   - Implement registerParsePRDTool(server) with server.addTool\n   - Use executeMCPToolAction in execute method\n\n3. Register in tools/index.js\n\n4. Add to .cursor/mcp.json with appropriate schema\n\n5. Write tests following testing guidelines:\n   - Unit test for parsePRDDirect\n   - Integration test for MCP tool
+
+## 17. Implement update MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for updating multiple tasks based on prompt.
+### Details:
+Following MCP implementation standards:\n\n1. Create updateTasksDirect function in task-master-core.js:\n   - Import updateTasks from task-manager.js\n   - Handle file paths using findTasksJsonPath utility\n   - Process arguments: fromId, prompt, useResearch\n   - Validate inputs and handle errors with try/catch\n   - Return standardized { success, data/error } object\n   - Add to directFunctions map\n\n2. Create update.js MCP tool in mcp-server/src/tools/:\n   - Import z from zod for parameter schema\n   - Import executeMCPToolAction from ./utils.js\n   - Import updateTasksDirect from task-master-core.js\n   - Define parameters matching CLI options using zod schema\n   - Implement registerUpdateTool(server) with server.addTool\n   - Use executeMCPToolAction in execute method\n\n3. Register in tools/index.js\n\n4. Add to .cursor/mcp.json with appropriate schema\n\n5. Write tests following testing guidelines:\n   - Unit test for updateTasksDirect\n   - Integration test for MCP tool
+
+## 18. Implement update-task MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for updating a single task by ID with new information.
+### Details:
+Following MCP implementation standards:
+
+1. Create updateTaskByIdDirect.js in mcp-server/src/core/direct-functions/:
+   - Import updateTaskById from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId, prompt, useResearch
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create update-task.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import updateTaskByIdDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerUpdateTaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for updateTaskByIdDirect.js
+   - Integration test for MCP tool
+
+## 19. Implement update-subtask MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for appending information to a specific subtask.
+### Details:
+Following MCP implementation standards:
+
+1. Create updateSubtaskByIdDirect.js in mcp-server/src/core/direct-functions/:
+   - Import updateSubtaskById from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: subtaskId, prompt, useResearch
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create update-subtask.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import updateSubtaskByIdDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerUpdateSubtaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for updateSubtaskByIdDirect.js
+   - Integration test for MCP tool
+
+## 20. Implement generate MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for generating task files from tasks.json.
+### Details:
+Following MCP implementation standards:
+
+1. Create generateTaskFilesDirect.js in mcp-server/src/core/direct-functions/:
+   - Import generateTaskFiles from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: tasksPath, outputDir
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create generate.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import generateTaskFilesDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerGenerateTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for generateTaskFilesDirect.js
+   - Integration test for MCP tool
+
+## 21. Implement set-status MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for setting task status.
+### Details:
+Following MCP implementation standards:
+
+1. Create setTaskStatusDirect.js in mcp-server/src/core/direct-functions/:
+   - Import setTaskStatus from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId, status
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create set-status.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import setTaskStatusDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerSetStatusTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for setTaskStatusDirect.js
+   - Integration test for MCP tool
+
+## 22. Implement show-task MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for showing task details.
+### Details:
+Following MCP implementation standards:
+
+1. Create showTaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import showTask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create show-task.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import showTaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerShowTaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'show_task'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for showTaskDirect.js
+   - Integration test for MCP tool
+
+## 23. Implement next-task MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for finding the next task to work on.
+### Details:
+Following MCP implementation standards:
+
+1. Create nextTaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import nextTask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments (no specific args needed except projectRoot/file)
+   - Handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create next-task.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import nextTaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerNextTaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'next_task'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for nextTaskDirect.js
+   - Integration test for MCP tool
+
+## 24. Implement expand-task MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for expanding a task into subtasks.
+### Details:
+Following MCP implementation standards:
+
+1. Create expandTaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import expandTask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId, prompt, num, force, research
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create expand-task.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import expandTaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerExpandTaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'expand_task'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for expandTaskDirect.js
+   - Integration test for MCP tool
+
+## 25. Implement add-task MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for adding new tasks.
+### Details:
+Following MCP implementation standards:
+
+1. Create addTaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import addTask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: prompt, priority, dependencies
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create add-task.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import addTaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerAddTaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'add_task'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for addTaskDirect.js
+   - Integration test for MCP tool
+
+## 26. Implement add-subtask MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for adding subtasks to existing tasks.
+### Details:
+Following MCP implementation standards:
+
+1. Create addSubtaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import addSubtask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: parentTaskId, title, description, details
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create add-subtask.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import addSubtaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerAddSubtaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'add_subtask'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for addSubtaskDirect.js
+   - Integration test for MCP tool
+
+## 27. Implement remove-subtask MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for removing subtasks from tasks.
+### Details:
+Following MCP implementation standards:
+
+1. Create removeSubtaskDirect.js in mcp-server/src/core/direct-functions/:
+   - Import removeSubtask from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: parentTaskId, subtaskId
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create remove-subtask.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import removeSubtaskDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerRemoveSubtaskTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'remove_subtask'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for removeSubtaskDirect.js
+   - Integration test for MCP tool
+
+## 28. Implement analyze MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for analyzing task complexity.
+### Details:
+Following MCP implementation standards:
+
+1. Create analyzeTaskComplexityDirect.js in mcp-server/src/core/direct-functions/:
+   - Import analyzeTaskComplexity from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create analyze.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import analyzeTaskComplexityDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerAnalyzeTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'analyze'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for analyzeTaskComplexityDirect.js
+   - Integration test for MCP tool
+
+## 29. Implement clear-subtasks MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for clearing subtasks from a parent task.
+### Details:
+Following MCP implementation standards:
+
+1. Create clearSubtasksDirect.js in mcp-server/src/core/direct-functions/:
+   - Import clearSubtasks from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: taskId
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create clear-subtasks.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import clearSubtasksDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerClearSubtasksTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'clear_subtasks'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for clearSubtasksDirect.js
+   - Integration test for MCP tool
+
+## 30. Implement expand-all MCP command [done]
+### Dependencies: None
+### Description: Create direct function wrapper and MCP tool for expanding all tasks into subtasks.
+### Details:
+Following MCP implementation standards:
+
+1. Create expandAllTasksDirect.js in mcp-server/src/core/direct-functions/:
+   - Import expandAllTasks from task-manager.js
+   - Handle file paths using findTasksJsonPath utility
+   - Process arguments: prompt, num, force, research
+   - Validate inputs and handle errors with try/catch
+   - Return standardized { success, data/error } object
+
+2. Export from task-master-core.js:
+   - Import the function from its file
+   - Add to directFunctions map
+
+3. Create expand-all.js MCP tool in mcp-server/src/tools/:
+   - Import z from zod for parameter schema
+   - Import executeMCPToolAction from ./utils.js
+   - Import expandAllTasksDirect from task-master-core.js
+   - Define parameters matching CLI options using zod schema
+   - Implement registerExpandAllTool(server) with server.addTool
+   - Use executeMCPToolAction in execute method
+
+4. Register in tools/index.js with tool name 'expand_all'
+
+5. Add to .cursor/mcp.json with appropriate schema
+
+6. Write tests following testing guidelines:
+   - Unit test for expandAllTasksDirect.js
+   - Integration test for MCP tool
+
+## 31. Create Core Direct Function Structure [done]
+### Dependencies: None
+### Description: Set up the modular directory structure for direct functions and update task-master-core.js to act as an import/export hub.
+### Details:
+1. Create the mcp-server/src/core/direct-functions/ directory structure
+2. Update task-master-core.js to import and re-export functions from individual files
+3. Create a utils directory for shared utility functions
+4. Implement a standard template for direct function files
+5. Create documentation for the new modular structure
+6. Update existing imports in MCP tools to use the new structure
+7. Create unit tests for the import/export hub functionality
+8. Ensure backward compatibility with any existing code using the old structure
+
+## 32. Refactor Existing Direct Functions to Modular Structure [done]
+### Dependencies: 23.31
+### Description: Move existing direct function implementations from task-master-core.js to individual files in the new directory structure.
+### Details:
+1. Identify all existing direct functions in task-master-core.js
+2. Create individual files for each function in mcp-server/src/core/direct-functions/
+3. Move the implementation to the new files, ensuring consistent error handling
+4. Update imports/exports in task-master-core.js
+5. Create unit tests for each individual function file
+6. Update documentation to reflect the new structure
+7. Ensure all MCP tools reference the functions through task-master-core.js
+8. Verify backward compatibility with existing code
+
+## 33. Implement Naming Convention Standards [done]
+### Dependencies: None
+### Description: Update all MCP server components to follow the standardized naming conventions for files, functions, and tools.
+### Details:
+1. Audit all existing MCP server files and update file names to use kebab-case (like-this.js)
+2. Refactor direct function names to use camelCase with Direct suffix (functionNameDirect)
+3. Update tool registration functions to use camelCase with Tool suffix (registerToolNameTool)
+4. Ensure all MCP tool names exposed to clients use snake_case (tool_name)
+5. Create a naming convention documentation file for future reference
+6. Update imports/exports in all files to reflect the new naming conventions
+7. Verify that all tools are properly registered with the correct naming pattern
+8. Update tests to reflect the new naming conventions
+9. Create a linting rule to enforce naming conventions in future development
+
+## 34. Review functionality of all MCP direct functions [done]
+### Dependencies: None
+### Description: Verify that all implemented MCP direct functions work correctly with edge cases
+### Details:
+Perform comprehensive testing of all MCP direct function implementations to ensure they handle various input scenarios correctly and return appropriate responses. Check edge cases, error handling, and parameter validation.
+
+## 35. Review commands.js to ensure all commands are available via MCP [done]
+### Dependencies: None
+### Description: Verify that all CLI commands have corresponding MCP implementations
+### Details:
+Compare the commands defined in scripts/modules/commands.js with the MCP tools implemented in mcp-server/src/tools/. Create a list of any commands missing MCP implementations and ensure all command options are properly represented in the MCP parameter schemas.
+
+## 36. Finish setting up addResearch in index.js [done]
+### Dependencies: None
+### Description: Complete the implementation of addResearch functionality in the MCP server
+### Details:
+Implement the addResearch function in the MCP server's index.js file to enable research-backed functionality. This should include proper integration with Perplexity AI and ensure that all MCP tools requiring research capabilities have access to this functionality.
+
+## 37. Finish setting up addTemplates in index.js [done]
+### Dependencies: None
+### Description: Complete the implementation of addTemplates functionality in the MCP server
+### Details:
+Implement the addTemplates function in the MCP server's index.js file to enable template-based generation. Configure proper loading of templates from the appropriate directory and ensure they're accessible to all MCP tools that need to generate formatted content.
+
+## 38. Implement robust project root handling for file paths [done]
+### Dependencies: None
+### Description: Create a consistent approach for handling project root paths across MCP tools
+### Details:
+Analyze and refactor the project root handling mechanism to ensure consistent file path resolution across all MCP direct functions. This should properly handle relative and absolute paths, respect the projectRoot parameter when provided, and have appropriate fallbacks when not specified. Document the approach in a comment within path-utils.js for future maintainers.
+
+<info added on 2025-04-01T02:21:57.137Z>
+Here's additional information addressing the request for research on npm package path handling:
+
+## Path Handling Best Practices for npm Packages
+
+### Distinguishing Package and Project Paths
+
+1. **Package Installation Path**: 
+   - Use `require.resolve()` to find paths relative to your package
+   - For global installs, use `process.execPath` to locate the Node.js executable
+
+2. **Project Path**:
+   - Use `process.cwd()` as a starting point
+   - Search upwards for `package.json` or `.git` to find project root
+   - Consider using packages like `find-up` or `pkg-dir` for robust root detection
+
+### Standard Approaches
+
+1. **Detecting Project Root**:
+   - Recursive search for `package.json` or `.git` directory
+   - Use `path.resolve()` to handle relative paths
+   - Fall back to `process.cwd()` if no root markers found
+
+2. **Accessing Package Files**:
+   - Use `__dirname` for paths relative to current script
+   - For files in `node_modules`, use `require.resolve('package-name/path/to/file')`
+
+3. **Separating Package and Project Files**:
+   - Store package-specific files in a dedicated directory (e.g., `.task-master`)
+   - Use environment variables to override default paths
+
+### Cross-Platform Compatibility
+
+1. Use `path.join()` and `path.resolve()` for cross-platform path handling
+2. Avoid hardcoded forward/backslashes in paths
+3. Use `os.homedir()` for user home directory references
+
+### Best Practices for Path Resolution
+
+1. **Absolute vs Relative Paths**:
+   - Always convert relative paths to absolute using `path.resolve()`
+   - Use `path.isAbsolute()` to check if a path is already absolute
+
+2. **Handling Different Installation Scenarios**:
+   - Local dev: Use `process.cwd()` as fallback project root
+   - Local dependency: Resolve paths relative to consuming project
+   - Global install: Use `process.execPath` to locate global `node_modules`
+
+3. **Configuration Options**:
+   - Allow users to specify custom project root via CLI option or config file
+   - Implement a clear precedence order for path resolution (e.g., CLI option > config file > auto-detection)
+
+4. **Error Handling**:
+   - Provide clear error messages when critical paths cannot be resolved
+   - Implement retry logic with alternative methods if primary path detection fails
+
+5. **Documentation**:
+   - Clearly document path handling behavior in README and inline comments
+   - Provide examples for common scenarios and edge cases
+
+By implementing these practices, the MCP tools can achieve consistent and robust path handling across various npm installation and usage scenarios.
+</info added on 2025-04-01T02:21:57.137Z>
+
+<info added on 2025-04-01T02:25:01.463Z>
+Here's additional information addressing the request for clarification on path handling challenges for npm packages:
+
+## Advanced Path Handling Challenges and Solutions
+
+### Challenges to Avoid
+
+1. **Relying solely on process.cwd()**:
+   - Global installs: process.cwd() could be any directory
+   - Local installs as dependency: points to parent project's root
+   - Users may run commands from subdirectories
+
+2. **Dual Path Requirements**:
+   - Package Path: Where task-master code is installed
+   - Project Path: Where user's tasks.json resides
+
+3. **Specific Edge Cases**:
+   - Non-project directory execution
+   - Deeply nested project structures
+   - Yarn/pnpm workspaces
+   - Monorepos with multiple tasks.json files
+   - Commands invoked from scripts in different directories
+
+### Advanced Solutions
+
+1. **Project Marker Detection**:
+   - Implement recursive search for package.json or .git
+   - Use `find-up` package for efficient directory traversal
+   ```javascript
+   const findUp = require('find-up');
+   const projectRoot = await findUp(dir => findUp.sync('package.json', { cwd: dir }));
+   ```
+
+2. **Package Path Resolution**:
+   - Leverage `import.meta.url` with `fileURLToPath`:
+   ```javascript
+   import { fileURLToPath } from 'url';
+   import path from 'path';
+   
+   const __filename = fileURLToPath(import.meta.url);
+   const __dirname = path.dirname(__filename);
+   const packageRoot = path.resolve(__dirname, '..');
+   ```
+
+3. **Workspace-Aware Resolution**:
+   - Detect Yarn/pnpm workspaces:
+   ```javascript
+   const findWorkspaceRoot = require('find-yarn-workspace-root');
+   const workspaceRoot = findWorkspaceRoot(process.cwd());
+   ```
+
+4. **Monorepo Handling**:
+   - Implement cascading configuration search
+   - Allow multiple tasks.json files with clear precedence rules
+
+5. **CLI Tool Inspiration**:
+   - ESLint: Uses `eslint-find-rule-files` for config discovery
+   - Jest: Implements `jest-resolve` for custom module resolution
+   - Next.js: Uses `find-up` to locate project directories
+
+6. **Robust Path Resolution Algorithm**:
+   ```javascript
+   function resolveProjectRoot(startDir) {
+     const projectMarkers = ['package.json', '.git', 'tasks.json'];
+     let currentDir = startDir;
+     while (currentDir !== path.parse(currentDir).root) {
+       if (projectMarkers.some(marker => fs.existsSync(path.join(currentDir, marker)))) {
+         return currentDir;
+       }
+       currentDir = path.dirname(currentDir);
+     }
+     return startDir; // Fallback to original directory
+   }
+   ```
+
+7. **Environment Variable Overrides**:
+   - Allow users to explicitly set paths:
+   ```javascript
+   const projectRoot = process.env.TASK_MASTER_PROJECT_ROOT || resolveProjectRoot(process.cwd());
+   ```
+
+By implementing these advanced techniques, task-master can achieve robust path handling across various npm scenarios without requiring manual specification.
+</info added on 2025-04-01T02:25:01.463Z>
+
+## 39. Implement add-dependency MCP command [done]
+### Dependencies: 23.31
+### Description: Create MCP tool implementation for the add-dependency command
+### Details:
+
+
+## 40. Implement remove-dependency MCP command [done]
+### Dependencies: 23.31
+### Description: Create MCP tool implementation for the remove-dependency command
+### Details:
+
+
+## 41. Implement validate-dependencies MCP command [done]
+### Dependencies: 23.31, 23.39, 23.40
+### Description: Create MCP tool implementation for the validate-dependencies command
+### Details:
+
+
+## 42. Implement fix-dependencies MCP command [done]
+### Dependencies: 23.31, 23.41
+### Description: Create MCP tool implementation for the fix-dependencies command
+### Details:
+
+
+## 43. Implement complexity-report MCP command [done]
+### Dependencies: 23.31
+### Description: Create MCP tool implementation for the complexity-report command
+### Details:
+
+
+## 44. Implement init MCP command [done]
+### Dependencies: None
+### Description: Create MCP tool implementation for the init command
+### Details:
+
+
+## 45. Support setting env variables through mcp server [done]
+### Dependencies: None
+### Description: currently we need to access the env variables through the env file present in the project (that we either create or find and append to). we could abstract this by allowing users to define the env vars in the mcp.json directly as folks currently do. mcp.json should then be in gitignore if thats the case. but for this i think in fastmcp all we need is to access ENV in a specific way. we need to find that way and then implement it
+### Details:
+
+
+<info added on 2025-04-01T01:57:24.160Z>
+To access environment variables defined in the mcp.json config file when using FastMCP, you can utilize the `Config` class from the `fastmcp` module. Here's how to implement this:
+
+1. Import the necessary module:
+```python
+from fastmcp import Config
+```
+
+2. Access environment variables:
+```python
+config = Config()
+env_var = config.env.get("VARIABLE_NAME")
+```
+
+This approach allows you to retrieve environment variables defined in the mcp.json file directly in your code. The `Config` class automatically loads the configuration, including environment variables, from the mcp.json file.
+
+For security, ensure that sensitive information in mcp.json is not committed to version control. You can add mcp.json to your .gitignore file to prevent accidental commits.
+
+If you need to access multiple environment variables, you can do so like this:
+```python
+db_url = config.env.get("DATABASE_URL")
+api_key = config.env.get("API_KEY")
+debug_mode = config.env.get("DEBUG_MODE", False)  # With a default value
+```
+
+This method provides a clean and consistent way to access environment variables defined in the mcp.json configuration file within your FastMCP project.
+</info added on 2025-04-01T01:57:24.160Z>
+
+<info added on 2025-04-01T01:57:49.848Z>
+To access environment variables defined in the mcp.json config file when using FastMCP in a JavaScript environment, you can use the `fastmcp` npm package. Here's how to implement this:
+
+1. Install the `fastmcp` package:
+```bash
+npm install fastmcp
+```
+
+2. Import the necessary module:
+```javascript
+const { Config } = require('fastmcp');
+```
+
+3. Access environment variables:
+```javascript
+const config = new Config();
+const envVar = config.env.get('VARIABLE_NAME');
+```
+
+This approach allows you to retrieve environment variables defined in the mcp.json file directly in your JavaScript code. The `Config` class automatically loads the configuration, including environment variables, from the mcp.json file.
+
+You can access multiple environment variables like this:
+```javascript
+const dbUrl = config.env.get('DATABASE_URL');
+const apiKey = config.env.get('API_KEY');
+const debugMode = config.env.get('DEBUG_MODE', false); // With a default value
+```
+
+This method provides a consistent way to access environment variables defined in the mcp.json configuration file within your FastMCP project in a JavaScript environment.
+</info added on 2025-04-01T01:57:49.848Z>
+
+## 46. adjust rules so it prioritizes mcp commands over script [done]
+### Dependencies: None
+### Description: 
+### Details:
+
+

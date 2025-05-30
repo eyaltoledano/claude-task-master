@@ -1,0 +1,18 @@
+# Task ID: 3
+# Title: Implement Basic Task Operations
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create core functionality for managing tasks including listing, creating, updating, and deleting tasks.
+# Details:
+Implement the following task operations:
+- List tasks with filtering options
+- Create new tasks with required fields
+- Update existing task properties
+- Delete tasks
+- Change task status (pending/done/deferred)
+- Handle dependencies between tasks
+- Manage task priorities
+
+# Test Strategy:
+Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file.

@@ -1,0 +1,90 @@
+# Task ID: 62
+# Title: Add --simple Flag to Update Commands for Direct Text Input
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Implement a --simple flag for update-task and update-subtask commands that allows users to add timestamped notes without AI processing, directly using the text from the prompt.
+# Details:
+This task involves modifying the update-task and update-subtask commands to accept a new --simple flag option. When this flag is present, the system should bypass the AI processing pipeline and directly use the text provided by the user as the update content. The implementation should:
+
+1. Update the command parsers for both update-task and update-subtask to recognize the --simple flag
+2. Modify the update logic to check for this flag and conditionally skip AI processing
+3. When the flag is present, format the user's input text with a timestamp in the same format as AI-processed updates
+4. Ensure the update is properly saved to the task or subtask's history
+5. Update the help documentation to include information about this new flag
+6. The timestamp format should match the existing format used for AI-generated updates
+7. The simple update should be visually distinguishable from AI updates in the display (consider adding a 'manual update' indicator)
+8. Maintain all existing functionality when the flag is not used
+
+# Test Strategy:
+Testing should verify both the functionality and user experience of the new feature:
+
+1. Unit tests:
+   - Test that the command parser correctly recognizes the --simple flag
+   - Verify that AI processing is bypassed when the flag is present
+   - Ensure timestamps are correctly formatted and added
+
+2. Integration tests:
+   - Update a task with --simple flag and verify the exact text is saved
+   - Update a subtask with --simple flag and verify the exact text is saved
+   - Compare the output format with AI-processed updates to ensure consistency
+
+3. User experience tests:
+   - Verify help documentation correctly explains the new flag
+   - Test with various input lengths to ensure proper formatting
+   - Ensure the update appears correctly when viewing task history
+
+4. Edge cases:
+   - Test with empty input text
+   - Test with very long input text
+   - Test with special characters and formatting in the input
+
+# Subtasks:
+## 1. Update command parsers to recognize --simple flag [pending]
+### Dependencies: None
+### Description: Modify the command parsers for both update-task and update-subtask commands to recognize and process the new --simple flag option.
+### Details:
+Add the --simple flag option to the command parser configurations in the CLI module. This should be implemented as a boolean flag that doesn't require any additional arguments. Update both the update-task and update-subtask command definitions to include this new option.
+
+## 2. Implement conditional logic to bypass AI processing [pending]
+### Dependencies: 62.1
+### Description: Modify the update logic to check for the --simple flag and conditionally skip the AI processing pipeline when the flag is present.
+### Details:
+In the update handlers for both commands, add a condition to check if the --simple flag is set. If it is, create a path that bypasses the normal AI processing flow. This will require modifying the update functions to accept the flag parameter and branch the execution flow accordingly.
+
+## 3. Format user input with timestamp for simple updates [pending]
+### Dependencies: 62.2
+### Description: Implement functionality to format the user's direct text input with a timestamp in the same format as AI-processed updates when the --simple flag is used.
+### Details:
+Create a utility function that takes the user's raw input text and prepends a timestamp in the same format used for AI-generated updates. This function should be called when the --simple flag is active. Ensure the timestamp format is consistent with the existing format used throughout the application.
+
+## 4. Add visual indicator for manual updates [pending]
+### Dependencies: 62.3
+### Description: Make simple updates visually distinguishable from AI-processed updates by adding a 'manual update' indicator or other visual differentiation.
+### Details:
+Modify the update formatting to include a visual indicator (such as '[Manual Update]' prefix or different styling) when displaying updates that were created using the --simple flag. This will help users distinguish between AI-processed and manually entered updates.
+
+## 5. Implement storage of simple updates in history [pending]
+### Dependencies: 62.3, 62.4
+### Description: Ensure that updates made with the --simple flag are properly saved to the task or subtask's history in the same way as AI-processed updates.
+### Details:
+Modify the storage logic to save the formatted simple updates to the task or subtask history. The storage format should be consistent with AI-processed updates, but include the manual indicator. Ensure that the update is properly associated with the correct task or subtask.
+
+## 6. Update help documentation for the new flag [pending]
+### Dependencies: 62.1
+### Description: Update the help documentation for both update-task and update-subtask commands to include information about the new --simple flag.
+### Details:
+Add clear descriptions of the --simple flag to the help text for both commands. The documentation should explain that the flag allows users to add timestamped notes without AI processing, directly using the text from the prompt. Include examples of how to use the flag.
+
+## 7. Implement integration tests for the simple update feature [pending]
+### Dependencies: 62.1, 62.2, 62.3, 62.4, 62.5
+### Description: Create comprehensive integration tests to verify that the --simple flag works correctly in both commands and integrates properly with the rest of the system.
+### Details:
+Develop integration tests that verify the entire flow of using the --simple flag with both update commands. Tests should confirm that updates are correctly formatted, stored, and displayed. Include edge cases such as empty input, very long input, and special characters.
+
+## 8. Perform final validation and documentation [pending]
+### Dependencies: 62.1, 62.2, 62.3, 62.4, 62.5, 62.6, 62.7
+### Description: Conduct final validation of the feature across all use cases and update the user documentation to include the new functionality.
+### Details:
+Perform end-to-end testing of the feature to ensure it works correctly in all scenarios. Update the user documentation with detailed information about the new --simple flag, including its purpose, how to use it, and examples. Ensure that the documentation clearly explains the difference between AI-processed updates and simple updates.
+

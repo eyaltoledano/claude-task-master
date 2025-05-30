@@ -1,0 +1,118 @@
+# Task ID: 25
+# Title: Implement 'add-subtask' Command for Task Hierarchy Management
+# Status: done
+# Dependencies: 3
+# Priority: medium
+# Description: Create a command-line interface command that allows users to manually add subtasks to existing tasks, establishing a parent-child relationship between tasks.
+# Details:
+Implement the 'add-subtask' command that enables users to create hierarchical relationships between tasks. The command should:
+
+1. Accept parameters for the parent task ID and either the details for a new subtask or the ID of an existing task to convert to a subtask
+2. Validate that the parent task exists before proceeding
+3. If creating a new subtask, collect all necessary task information (title, description, due date, etc.)
+4. If converting an existing task, ensure it's not already a subtask of another task
+5. Update the data model to support parent-child relationships between tasks
+6. Modify the task storage mechanism to persist these relationships
+7. Ensure that when a parent task is marked complete, there's appropriate handling of subtasks (prompt user or provide options)
+8. Update the task listing functionality to display subtasks with appropriate indentation or visual hierarchy
+9. Implement proper error handling for cases like circular dependencies (a task cannot be a subtask of its own subtask)
+10. Document the command syntax and options in the help system
+
+# Test Strategy:
+Testing should verify both the functionality and edge cases of the subtask implementation:
+
+1. Unit tests:
+   - Test adding a new subtask to an existing task
+   - Test converting an existing task to a subtask
+   - Test validation logic for parent task existence
+   - Test prevention of circular dependencies
+   - Test error handling for invalid inputs
+
+2. Integration tests:
+   - Verify subtask relationships are correctly persisted to storage
+   - Verify subtasks appear correctly in task listings
+   - Test the complete workflow from adding a subtask to viewing it in listings
+
+3. Edge cases:
+   - Attempt to add a subtask to a non-existent parent
+   - Attempt to make a task a subtask of itself
+   - Attempt to create circular dependencies (A → B → A)
+   - Test with a deep hierarchy of subtasks (A → B → C → D)
+   - Test handling of subtasks when parent tasks are deleted
+   - Verify behavior when marking parent tasks as complete
+
+4. Manual testing:
+   - Verify command usability and clarity of error messages
+   - Test the command with various parameter combinations
+
+# Subtasks:
+## 1. Update Data Model to Support Parent-Child Task Relationships [done]
+### Dependencies: None
+### Description: Modify the task data structure to support hierarchical relationships between tasks
+### Details:
+1. Examine the current task data structure in scripts/modules/task-manager.js
+2. Add a 'parentId' field to the task object schema to reference parent tasks
+3. Add a 'subtasks' array field to store references to child tasks
+4. Update any relevant validation functions to account for these new fields
+5. Ensure serialization and deserialization of tasks properly handles these new fields
+6. Update the storage mechanism to persist these relationships
+7. Test by manually creating tasks with parent-child relationships and verifying they're saved correctly
+8. Write unit tests to verify the updated data model works as expected
+
+## 2. Implement Core addSubtask Function in task-manager.js [done]
+### Dependencies: 25.1
+### Description: Create the core function that handles adding subtasks to parent tasks
+### Details:
+1. Create a new addSubtask function in scripts/modules/task-manager.js
+2. Implement logic to validate that the parent task exists
+3. Add functionality to handle both creating new subtasks and converting existing tasks
+4. For new subtasks: collect task information and create a new task with parentId set
+5. For existing tasks: validate it's not already a subtask and update its parentId
+6. Add validation to prevent circular dependencies (a task cannot be a subtask of its own subtask)
+7. Update the parent task's subtasks array
+8. Ensure proper error handling with descriptive error messages
+9. Export the function for use by the command handler
+10. Write unit tests to verify all scenarios (new subtask, converting task, error cases)
+
+## 3. Implement add-subtask Command in commands.js [done]
+### Dependencies: 25.2
+### Description: Create the command-line interface for the add-subtask functionality
+### Details:
+1. Add a new command registration in scripts/modules/commands.js following existing patterns
+2. Define command syntax: 'add-subtask <parentId> [--task-id=<taskId> | --title=<title>]'
+3. Implement command handler that calls the addSubtask function from task-manager.js
+4. Add interactive prompts to collect required information when not provided as arguments
+5. Implement validation for command arguments
+6. Add appropriate success and error messages
+7. Document the command syntax and options in the help system
+8. Test the command with various input combinations
+9. Ensure the command follows the same patterns as other commands like add-dependency
+
+## 4. Create Unit Test for add-subtask [done]
+### Dependencies: 25.2, 25.3
+### Description: Develop comprehensive unit tests for the add-subtask functionality
+### Details:
+1. Create a test file in tests/unit/ directory for the add-subtask functionality
+2. Write tests for the addSubtask function in task-manager.js
+3. Test all key scenarios: adding new subtasks, converting existing tasks to subtasks
+4. Test error cases: non-existent parent task, circular dependencies, invalid input
+5. Use Jest mocks to isolate the function from file system operations
+6. Test the command handler in isolation using mock functions
+7. Ensure test coverage for all branches and edge cases
+8. Document the testing approach for future reference
+
+## 5. Implement remove-subtask Command [done]
+### Dependencies: 25.2, 25.3
+### Description: Create functionality to remove a subtask from its parent, following the same approach as add-subtask
+### Details:
+1. Create a removeSubtask function in scripts/modules/task-manager.js
+2. Implement logic to validate the subtask exists and is actually a subtask
+3. Add options to either delete the subtask completely or convert it to a standalone task
+4. Update the parent task's subtasks array to remove the reference
+5. If converting to standalone task, clear the parentId reference
+6. Implement the remove-subtask command in scripts/modules/commands.js following patterns from add-subtask
+7. Add appropriate validation and error messages
+8. Document the command in the help system
+9. Export the function in task-manager.js
+10. Ensure proper error handling for all scenarios
+

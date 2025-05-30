@@ -1,0 +1,44 @@
+# Task ID: 33
+# Title: Create and Integrate Windsurf Rules Document from MDC Files
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Develop functionality to generate a .windsurfrules document by combining and refactoring content from three primary .mdc files used for Cursor Rules, ensuring it's properly integrated into the initialization pipeline.
+# Details:
+This task involves creating a mechanism to generate a Windsurf-specific rules document by combining three existing MDC (Markdown Content) files that are currently used for Cursor Rules. The implementation should:
+
+1. Identify and locate the three primary .mdc files used for Cursor Rules
+2. Extract content from these files and merge them into a single document
+3. Refactor the content to make it Windsurf-specific, replacing Cursor-specific terminology and adapting guidelines as needed
+4. Create a function that generates a .windsurfrules document from this content
+5. Integrate this function into the initialization pipeline
+6. Implement logic to check if a .windsurfrules document already exists:
+   - If it exists, append the new content to it
+   - If it doesn't exist, create a new document
+7. Ensure proper error handling for file operations
+8. Add appropriate logging to track the generation and modification of the .windsurfrules document
+
+The implementation should be modular and maintainable, with clear separation of concerns between content extraction, refactoring, and file operations.
+
+# Test Strategy:
+Testing should verify both the content generation and the integration with the initialization pipeline:
+
+1. Unit Tests:
+   - Test the content extraction function with mock .mdc files
+   - Test the content refactoring function to ensure Cursor-specific terms are properly replaced
+   - Test the file operation functions with mock filesystem
+
+2. Integration Tests:
+   - Test the creation of a new .windsurfrules document when none exists
+   - Test appending to an existing .windsurfrules document
+   - Test the complete initialization pipeline with the new functionality
+
+3. Manual Verification:
+   - Inspect the generated .windsurfrules document to ensure content is properly combined and refactored
+   - Verify that Cursor-specific terminology has been replaced with Windsurf-specific terminology
+   - Run the initialization process multiple times to verify idempotence (content isn't duplicated on multiple runs)
+
+4. Edge Cases:
+   - Test with missing or corrupted .mdc files
+   - Test with an existing but empty .windsurfrules document
+   - Test with an existing .windsurfrules document that already contains some of the content

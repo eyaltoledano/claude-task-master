@@ -1,0 +1,49 @@
+# Task ID: 37
+# Title: Add Gemini Support for Main AI Services as Claude Alternative
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Implement Google's Gemini API integration as an alternative to Claude for all main AI services, allowing users to switch between different LLM providers.
+# Details:
+This task involves integrating Google's Gemini API across all main AI services that currently use Claude:
+
+1. Create a new GeminiService class that implements the same interface as the existing ClaudeService
+2. Implement authentication and API key management for Gemini API
+3. Map our internal prompt formats to Gemini's expected input format
+4. Handle Gemini-specific parameters (temperature, top_p, etc.) and response parsing
+5. Update the AI service factory/provider to support selecting Gemini as an alternative
+6. Add configuration options in settings to allow users to select Gemini as their preferred provider
+7. Implement proper error handling for Gemini-specific API errors
+8. Ensure streaming responses are properly supported if Gemini offers this capability
+9. Update documentation to reflect the new Gemini option
+10. Consider implementing model selection if Gemini offers multiple models (e.g., Gemini Pro, Gemini Ultra)
+11. Ensure all existing AI capabilities (summarization, code generation, etc.) maintain feature parity when using Gemini
+
+The implementation should follow the same pattern as the recent Ollama integration (Task #36) to maintain consistency in how alternative AI providers are supported.
+
+# Test Strategy:
+Testing should verify Gemini integration works correctly across all AI services:
+
+1. Unit tests:
+   - Test GeminiService class methods with mocked API responses
+   - Verify proper error handling for common API errors
+   - Test configuration and model selection functionality
+
+2. Integration tests:
+   - Verify authentication and API connection with valid credentials
+   - Test each AI service with Gemini to ensure proper functionality
+   - Compare outputs between Claude and Gemini for the same inputs to verify quality
+
+3. End-to-end tests:
+   - Test the complete user flow of switching to Gemini and using various AI features
+   - Verify streaming responses work correctly if supported
+
+4. Performance tests:
+   - Measure and compare response times between Claude and Gemini
+   - Test with various input lengths to verify handling of context limits
+
+5. Manual testing:
+   - Verify the quality of Gemini responses across different use cases
+   - Test edge cases like very long inputs or specialized domain knowledge
+
+All tests should pass with Gemini selected as the provider, and the user experience should be consistent regardless of which provider is selected.

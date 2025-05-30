@@ -13,6 +13,7 @@ import {
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -41,7 +42,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Output file path relative to project root (default: scripts/task-complexity-report.json).'
+					`Output file path relative to project root (default: ${COMPLEXITY_REPORT_FILE}).`
 				),
 			file: z
 				.string()
@@ -94,11 +95,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 
 				const outputPath = args.output
 					? path.resolve(args.projectRoot, args.output)
-					: path.resolve(
-							args.projectRoot,
-							'scripts',
-							'task-complexity-report.json'
-						);
+					: path.resolve(args.projectRoot, COMPLEXITY_REPORT_FILE);
 
 				log.info(`${toolName}: Report output path: ${outputPath}`);
 

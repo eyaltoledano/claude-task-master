@@ -1,0 +1,33 @@
+# Task ID: 29
+# Title: Update Claude 3.7 Sonnet Integration with Beta Header for 128k Token Output
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Modify the ai-services.js file to include the beta header 'output-128k-2025-02-19' in Claude 3.7 Sonnet API requests to increase the maximum output token length to 128k tokens.
+# Details:
+The task involves updating the Claude 3.7 Sonnet integration in the ai-services.js file to take advantage of the new 128k token output capability. Specifically:
+
+1. Locate the Claude 3.7 Sonnet API request configuration in ai-services.js
+2. Add the beta header 'output-128k-2025-02-19' to the request headers
+3. Update any related configuration parameters that might need adjustment for the increased token limit
+4. Ensure that token counting and management logic is updated to account for the new 128k token output limit
+5. Update any documentation comments in the code to reflect the new capability
+6. Consider implementing a configuration option to enable/disable this feature, as it may be a beta feature subject to change
+7. Verify that the token management logic correctly handles the increased limit without causing unexpected behavior
+8. Ensure backward compatibility with existing code that might assume lower token limits
+
+The implementation should be clean and maintainable, with appropriate error handling for cases where the beta header might not be supported in the future.
+
+# Test Strategy:
+Testing should verify that the beta header is correctly included and that the system properly handles the increased token limit:
+
+1. Unit test: Verify that the API request to Claude 3.7 Sonnet includes the 'output-128k-2025-02-19' header
+2. Integration test: Make an actual API call to Claude 3.7 Sonnet with the beta header and confirm a successful response
+3. Test with a prompt designed to generate a very large response (>20k tokens but <128k tokens) and verify it completes successfully
+4. Test the token counting logic with mock responses of various sizes to ensure it correctly handles responses approaching the 128k limit
+5. Verify error handling by simulating API errors related to the beta header
+6. Test any configuration options for enabling/disabling the feature
+7. Performance test: Measure any impact on response time or system resources when handling very large responses
+8. Regression test: Ensure existing functionality using Claude 3.7 Sonnet continues to work as expected
+
+Document all test results, including any limitations or edge cases discovered during testing.

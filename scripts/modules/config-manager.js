@@ -77,6 +77,28 @@ class ConfigurationError extends Error {
 	}
 }
 
+/**
+ * Helper function to find configuration file in both new and legacy locations
+ * @param {string} rootPath - The project root path
+ * @returns {Object} - Object with path and isLegacy flag, or null if not found
+ */
+function findConfigFile(rootPath) {
+	// Check new location first: .taskmaster/config.json
+	const newConfigPath = path.join(rootPath, '.taskmaster', 'config.json');
+	if (fs.existsSync(newConfigPath)) {
+		return { path: newConfigPath, isLegacy: false };
+	}
+
+	// Check legacy location: .taskmasterconfig
+	const legacyConfigPath = path.join(rootPath, CONFIG_FILE_NAME);
+	if (fs.existsSync(legacyConfigPath)) {
+		return { path: legacyConfigPath, isLegacy: true };
+	}
+
+	// No config file found
+	return null;
+}
+
 function _loadAndValidateConfig(explicitRoot = null) {
 	const defaults = DEFAULTS; // Use the defined defaults
 	let rootToUse = explicitRoot;
@@ -96,13 +118,15 @@ function _loadAndValidateConfig(explicitRoot = null) {
 	}
 	// ---> End find project root logic <---
 
-	// --- Proceed with loading from the determined rootToUse ---
-	const configPath = path.join(rootToUse, CONFIG_FILE_NAME);
+	// --- Find configuration file in both new and legacy locations ---
+	const configFileInfo = findConfigFile(rootToUse);
 	let config = { ...defaults }; // Start with a deep copy of defaults
 	let configExists = false;
 
-	if (fs.existsSync(configPath)) {
+	if (configFileInfo) {
 		configExists = true;
+		const configPath = configFileInfo.path;
+
 		try {
 			const rawData = fs.readFileSync(configPath, 'utf-8');
 			const parsedConfig = JSON.parse(rawData);
@@ -124,6 +148,15 @@ function _loadAndValidateConfig(explicitRoot = null) {
 				global: { ...defaults.global, ...parsedConfig?.global }
 			};
 			configSource = `file (${configPath})`; // Update source info
+
+			// Issue deprecation warning if using legacy config file
+			if (configFileInfo.isLegacy) {
+				console.warn(
+					chalk.yellow(
+						`⚠️  DEPRECATION WARNING: Found configuration in legacy location '${configPath}'. Please migrate to .taskmaster/config.json. Run 'task-master migrate' to automatically migrate your project.`
+					)
+				);
+			}
 
 			// --- Validation (Warn if file content is invalid) ---
 			// Use log.warn for consistency
@@ -159,11 +192,11 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			// Use console.error for actual errors during parsing
 			console.error(
 				chalk.red(
-					`Error reading or parsing ${configPath}: ${error.message}. Using default configuration.`
+					`Error reading or parsing ${configFileInfo.path}: ${error.message}. Using default configuration.`
 				)
 			);
 			config = { ...defaults }; // Reset to defaults on parse error
-			configSource = `defaults (parse error at ${configPath})`;
+			configSource = `defaults (parse error at ${configFileInfo.path})`;
 		}
 	} else {
 		// Config file doesn't exist at the determined rootToUse.
@@ -171,19 +204,19 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			// Only warn if an explicit root was *expected*.
 			console.warn(
 				chalk.yellow(
-					`Warning: ${CONFIG_FILE_NAME} not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
+					`Warning: Configuration file not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
 				)
 			);
 		} else {
 			console.warn(
 				chalk.yellow(
-					`Warning: ${CONFIG_FILE_NAME} not found at derived root (${rootToUse}). Using defaults.`
+					`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
 				)
 			);
 		}
 		// Keep config as defaults
 		config = { ...defaults };
-		configSource = `defaults (file not found at ${configPath})`;
+		configSource = `defaults (no config file found at ${rootToUse})`;
 	}
 
 	return config;
@@ -342,13 +375,13 @@ function getDefaultSubtasks(explicitRoot = null) {
 	// Directly return value from config, ensure integer
 	const val = getGlobalConfig(explicitRoot).defaultSubtasks;
 	const parsedVal = parseInt(val, 10);
-	return isNaN(parsedVal) ? DEFAULTS.global.defaultSubtasks : parsedVal;
+	return Number.isNaN(parsedVal) ? DEFAULTS.global.defaultSubtasks : parsedVal;
 }
 
 function getDefaultNumTasks(explicitRoot = null) {
 	const val = getGlobalConfig(explicitRoot).defaultNumTasks;
 	const parsedVal = parseInt(val, 10);
-	return isNaN(parsedVal) ? DEFAULTS.global.defaultNumTasks : parsedVal;
+	return Number.isNaN(parsedVal) ? DEFAULTS.global.defaultNumTasks : parsedVal;
 }
 
 function getDefaultPriority(explicitRoot = null) {
@@ -658,12 +691,16 @@ function writeConfig(config, explicitRoot = null) {
 	}
 	// ---> End determine root path logic <---
 
-	const configPath =
-		path.basename(rootPath) === CONFIG_FILE_NAME
-			? rootPath
-			: path.join(rootPath, CONFIG_FILE_NAME);
+	// Use new config location: .taskmaster/config.json
+	const taskmasterDir = path.join(rootPath, '.taskmaster');
+	const configPath = path.join(taskmasterDir, 'config.json');
 
 	try {
+		// Ensure .taskmaster directory exists
+		if (!fs.existsSync(taskmasterDir)) {
+			fs.mkdirSync(taskmasterDir, { recursive: true });
+		}
+
 		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 		loadedConfig = config; // Update the cache after successful write
 		return true;
@@ -678,7 +715,7 @@ function writeConfig(config, explicitRoot = null) {
 }
 
 /**
- * Checks if the .taskmasterconfig file exists at the project root
+ * Checks if a configuration file exists at the project root (new or legacy location)
  * @param {string|null} explicitRoot - Optional explicit path to the project root
  * @returns {boolean} True if the file exists, false otherwise
  */
@@ -695,8 +732,9 @@ function isConfigFilePresent(explicitRoot = null) {
 	}
 	// ---> End determine root path logic <---
 
-	const configPath = path.join(rootPath, CONFIG_FILE_NAME);
-	return fs.existsSync(configPath);
+	// Check if config file exists in either new or legacy location
+	const configFileInfo = findConfigFile(rootPath);
+	return configFileInfo !== null;
 }
 
 /**

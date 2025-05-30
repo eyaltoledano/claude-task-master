@@ -1,0 +1,56 @@
+# Task ID: 38
+# Title: Implement Version Check System with Upgrade Notifications
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create a system that checks for newer package versions and displays upgrade notifications when users run any command, informing them to update to the latest version.
+# Details:
+Implement a version check mechanism that runs automatically with every command execution:
+
+1. Create a new module (e.g., `versionChecker.js`) that will:
+   - Fetch the latest version from npm registry using the npm registry API (https://registry.npmjs.org/task-master-ai/latest)
+   - Compare it with the current installed version (from package.json)
+   - Store the last check timestamp to avoid excessive API calls (check once per day)
+   - Cache the result to minimize network requests
+
+2. The notification should:
+   - Use colored text (e.g., yellow background with black text) to be noticeable
+   - Include the current version and latest version
+   - Show the exact upgrade command: 'npm i task-master-ai@latest'
+   - Be displayed at the beginning or end of command output, not interrupting the main content
+   - Include a small separator line to distinguish it from command output
+
+3. Implementation considerations:
+   - Handle network failures gracefully (don't block command execution if version check fails)
+   - Add a configuration option to disable update checks if needed
+   - Ensure the check is lightweight and doesn't significantly impact command performance
+   - Consider using a package like 'semver' for proper version comparison
+   - Implement a cooldown period (e.g., only check once per day) to avoid excessive API calls
+
+4. The version check should be integrated into the main command execution flow so it runs for all commands automatically.
+
+# Test Strategy:
+1. Manual testing:
+   - Install an older version of the package
+   - Run various commands and verify the update notification appears
+   - Update to the latest version and confirm the notification no longer appears
+   - Test with network disconnected to ensure graceful handling of failures
+
+2. Unit tests:
+   - Mock the npm registry response to test different scenarios:
+     - When a newer version exists
+     - When using the latest version
+     - When the registry is unavailable
+   - Test the version comparison logic with various version strings
+   - Test the cooldown/caching mechanism works correctly
+
+3. Integration tests:
+   - Create a test that runs a command and verifies the notification appears in the expected format
+   - Test that the notification appears for all commands
+   - Verify the notification doesn't interfere with normal command output
+
+4. Edge cases to test:
+   - Pre-release versions (alpha/beta)
+   - Very old versions
+   - When package.json is missing or malformed
+   - When npm registry returns unexpected data

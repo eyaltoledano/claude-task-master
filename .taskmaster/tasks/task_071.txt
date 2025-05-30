@@ -1,0 +1,23 @@
+# Task ID: 71
+# Title: Add Model-Specific maxTokens Override Configuration
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Implement functionality to allow specifying a maximum token limit for individual AI models within .taskmasterconfig, overriding the role-based maxTokens if the model-specific limit is lower.
+# Details:
+1. **Modify `.taskmasterconfig` Structure:** Add a new top-level section `modelOverrides` (e.g., `"modelOverrides": { "o3-mini": { "maxTokens": 100000 } }`).
+2. **Update `config-manager.js`:**
+   - Modify config loading to read the new `modelOverrides` section.
+   - Update `getParametersForRole(role)` logic: Fetch role defaults (roleMaxTokens, temperature). Get the modelId for the role. Look up `modelOverrides[modelId].maxTokens` (modelSpecificMaxTokens). Calculate `effectiveMaxTokens = Math.min(roleMaxTokens, modelSpecificMaxTokens ?? Infinity)`. Return `{ maxTokens: effectiveMaxTokens, temperature }`.
+3. **Update Documentation:** Add an example of `modelOverrides` to `.taskmasterconfig.example` or relevant documentation.
+
+# Test Strategy:
+1. **Unit Tests (`config-manager.js`):**
+   - Verify `getParametersForRole` returns role defaults when no override exists.
+   - Verify `getParametersForRole` returns the lower model-specific limit when an override exists and is lower.
+   - Verify `getParametersForRole` returns the role limit when an override exists but is higher.
+   - Verify handling of missing `modelOverrides` section.
+2. **Integration Tests (`ai-services-unified.js`):**
+   - Call an AI service (e.g., `generateTextService`) with a config having a model override.
+   - Mock the underlying provider function.
+   - Assert that the `maxTokens` value passed to the mocked provider function matches the expected (potentially overridden) minimum value.

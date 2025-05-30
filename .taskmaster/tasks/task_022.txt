@@ -1,0 +1,77 @@
+# Task ID: 22
+# Title: Create Comprehensive Test Suite for Task Master CLI
+# Status: done
+# Dependencies: 21
+# Priority: high
+# Description: Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.
+# Details:
+Implement a comprehensive test suite using Jest as the testing framework. The test suite should be organized into three main categories:
+
+1. Unit Tests:
+   - Create tests for all utility functions and core logic components
+   - Test task creation, parsing, and manipulation functions
+   - Test data storage and retrieval functions
+   - Test formatting and display functions
+
+2. Integration Tests:
+   - Test all CLI commands (create, expand, update, list, etc.)
+   - Verify command options and parameters work correctly
+   - Test interactions between different components
+   - Test configuration loading and application settings
+
+3. End-to-End Tests:
+   - Test complete workflows (e.g., creating a task, expanding it, updating status)
+   - Test error scenarios and recovery
+   - Test edge cases like handling large numbers of tasks
+
+Implement proper mocking for:
+- Claude API interactions (using Jest mock functions)
+- File system operations (using mock-fs or similar)
+- User input/output (using mock stdin/stdout)
+
+Ensure tests cover both successful operations and error handling paths. Set up continuous integration to run tests automatically. Create fixtures for common test data and scenarios. Include test coverage reporting to identify untested code paths.
+
+# Test Strategy:
+Verification will involve:
+
+1. Code Review:
+   - Verify test organization follows the unit/integration/end-to-end structure
+   - Check that all major functions have corresponding tests
+   - Verify mocks are properly implemented for external dependencies
+
+2. Test Coverage Analysis:
+   - Run test coverage tools to ensure at least 80% code coverage
+   - Verify critical paths have 100% coverage
+   - Identify any untested code paths
+
+3. Test Quality Verification:
+   - Manually review test cases to ensure they test meaningful behavior
+   - Verify both positive and negative test cases exist
+   - Check that tests are deterministic and don't have false positives/negatives
+
+4. CI Integration:
+   - Verify tests run successfully in the CI environment
+   - Ensure tests run in a reasonable amount of time
+   - Check that test failures provide clear, actionable information
+
+The task will be considered complete when all tests pass consistently, coverage meets targets, and the test suite can detect intentionally introduced bugs.
+
+# Subtasks:
+## 1. Set Up Jest Testing Environment [done]
+### Dependencies: None
+### Description: Configure Jest for the project, including setting up the jest.config.js file, adding necessary dependencies, and creating the initial test directory structure. Implement proper mocking for Claude API interactions, file system operations, and user input/output. Set up test coverage reporting and configure it to run in the CI pipeline.
+### Details:
+
+
+## 2. Implement Unit Tests for Core Components [done]
+### Dependencies: 22.1
+### Description: Create a comprehensive set of unit tests for all utility functions, core logic components, and individual modules of the Task Master CLI. This includes tests for task creation, parsing, manipulation, data storage, retrieval, and formatting functions. Ensure all edge cases and error scenarios are covered.
+### Details:
+
+
+## 3. Develop Integration and End-to-End Tests [deferred]
+### Dependencies: 22.1, 22.2
+### Description: Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.
+### Details:
+
+

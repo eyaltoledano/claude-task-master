@@ -1,0 +1,63 @@
+# Task ID: 58
+# Title: Implement Elegant Package Update Mechanism for Task-Master
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Create a robust update mechanism that handles package updates gracefully, ensuring all necessary files are updated when the global package is upgraded.
+# Details:
+Develop a comprehensive update system with these components:
+
+1. **Update Detection**: When task-master runs, check if the current version matches the installed version. If not, notify the user an update is available.
+
+2. **Update Command**: Implement a dedicated `task-master update` command that:
+   - Updates the global package (`npm -g task-master-ai@latest`)
+   - Automatically runs necessary initialization steps
+   - Preserves user configurations while updating system files
+
+3. **Smart File Management**:
+   - Create a manifest of core files with checksums
+   - During updates, compare existing files with the manifest
+   - Only overwrite files that have changed in the update
+   - Preserve user-modified files with an option to merge changes
+
+4. **Configuration Versioning**:
+   - Add version tracking to configuration files
+   - Implement migration paths for configuration changes between versions
+   - Provide backward compatibility for older configurations
+
+5. **Update Notifications**:
+   - Add a non-intrusive notification when updates are available
+   - Include a changelog summary of what's new
+
+This system should work seamlessly with the existing `task-master init` command but provide a more automated and user-friendly update experience.
+
+# Test Strategy:
+Test the update mechanism with these specific scenarios:
+
+1. **Version Detection Test**:
+   - Install an older version, then verify the system correctly detects when a newer version is available
+   - Test with minor and major version changes
+
+2. **Update Command Test**:
+   - Verify `task-master update` successfully updates the global package
+   - Confirm all necessary files are updated correctly
+   - Test with and without user-modified files present
+
+3. **File Preservation Test**:
+   - Modify configuration files, then update
+   - Verify user changes are preserved while system files are updated
+   - Test with conflicts between user changes and system updates
+
+4. **Rollback Test**:
+   - Implement and test a rollback mechanism if updates fail
+   - Verify system returns to previous working state
+
+5. **Integration Test**:
+   - Create a test project with the current version
+   - Run through the update process
+   - Verify all functionality continues to work after update
+
+6. **Edge Case Tests**:
+   - Test updating with insufficient permissions
+   - Test updating with network interruptions
+   - Test updating from very old versions to latest

@@ -1,0 +1,49 @@
+# Task ID: 14
+# Title: Develop Agent Workflow Guidelines
+# Status: done
+# Dependencies: 13
+# Priority: medium
+# Description: Create comprehensive guidelines for how AI agents should interact with the task system.
+# Details:
+Create agent workflow guidelines including:
+- Document task discovery workflow
+- Create task selection guidelines
+- Implement implementation guidance
+- Add verification procedures
+- Define how agents should prioritize work
+- Create guidelines for handling dependencies
+
+# Test Strategy:
+Review guidelines with actual AI agents to verify they can follow the procedures. Test various scenarios to ensure the guidelines cover all common workflows.
+
+# Subtasks:
+## 1. Document Task Discovery Workflow [done]
+### Dependencies: None
+### Description: Create a comprehensive document outlining how AI agents should discover and interpret new tasks within the system. This should include steps for parsing the tasks.json file, interpreting task metadata, and understanding the relationships between tasks and subtasks. Implement example code snippets in Node.js demonstrating how to traverse the task structure and extract relevant information.
+### Details:
+
+
+## 2. Implement Task Selection Algorithm [done]
+### Dependencies: 14.1
+### Description: Develop an algorithm for AI agents to select the most appropriate task to work on based on priority, dependencies, and current project status. This should include logic for evaluating task urgency, managing blocked tasks, and optimizing workflow efficiency. Implement the algorithm in JavaScript and integrate it with the existing task management system.
+### Details:
+
+
+## 3. Create Implementation Guidance Generator [done]
+### Dependencies: 14.5
+### Description: Develop a system that generates detailed implementation guidance for AI agents based on task descriptions and project context. This should leverage the Anthropic Claude API to create step-by-step instructions, suggest relevant libraries or tools, and provide code snippets or pseudocode where appropriate. Implement caching to reduce API calls and improve performance.
+### Details:
+
+
+## 4. Develop Verification Procedure Framework [done]
+### Dependencies: 14.1, 14.2
+### Description: Create a flexible framework for defining and executing verification procedures for completed tasks. This should include a DSL (Domain Specific Language) for specifying acceptance criteria, automated test generation where possible, and integration with popular testing frameworks. Implement hooks for both automated and manual verification steps.
+### Details:
+
+
+## 5. Implement Dynamic Task Prioritization System [done]
+### Dependencies: 14.1, 14.2, 14.3
+### Description: Develop a system that dynamically adjusts task priorities based on project progress, dependencies, and external factors. This should include an algorithm for recalculating priorities, a mechanism for propagating priority changes through dependency chains, and an API for external systems to influence priorities. Implement this as a background process that periodically updates the tasks.json file.
+### Details:
+
+

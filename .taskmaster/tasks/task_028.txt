@@ -1,0 +1,112 @@
+# Task ID: 28
+# Title: Implement Advanced ContextManager System
+# Status: pending
+# Dependencies: 26, 27
+# Priority: high
+# Description: Create a comprehensive ContextManager class to unify context handling with advanced features like context optimization, prioritization, and intelligent context selection.
+# Details:
+Building on Phase 1 and Phase 2 context implementations, develop Phase 3 advanced context management:
+
+1. Implement the ContextManager Class:
+   - Create a unified `ContextManager` class that encapsulates all context functionality
+   - Implement methods for gathering context from all supported sources
+   - Create a configurable context priority system to favor more relevant context types
+   - Add token management to ensure context fits within API limits
+   - Implement caching for frequently used context to improve performance
+
+2. Create Context Optimization Pipeline:
+   - Develop intelligent context optimization algorithms
+   - Implement type-based truncation strategies (code vs. text)
+   - Create relevance scoring to prioritize most useful context portions
+   - Add token budget allocation that divides available tokens among context types
+   - Implement dynamic optimization based on operation type
+
+3. Add Command Interface Enhancements:
+   - Create the `--context-all` flag to include all available context
+   - Add the `--context-max-tokens <tokens>` option to control token allocation
+   - Implement unified context options across all AI commands
+   - Add intelligent default values for different command types
+
+4. Integrate with AI Services:
+   - Update the AI service integration to use the ContextManager
+   - Create specialized context assembly for different AI operations
+   - Add post-processing to capture new context from AI responses
+   - Implement adaptive context selection based on operation success
+
+5. Add Performance Monitoring:
+   - Create context usage statistics tracking
+   - Implement logging for context selection decisions
+   - Add warnings for context token limits
+   - Create troubleshooting utilities for context-related issues
+
+The ContextManager system should provide a powerful but easy-to-use interface for both users and developers, maintaining backward compatibility with earlier phases while adding substantial new capabilities.
+
+# Test Strategy:
+Testing should verify both the functionality and performance of the advanced context management:
+
+1. Unit Testing:
+   - Test all ContextManager class methods with various inputs
+   - Verify optimization algorithms maintain critical information
+   - Test caching mechanisms for correctness and efficiency
+   - Verify token allocation and budgeting functions
+   - Test each context source integration separately
+
+2. Integration Testing:
+   - Verify ContextManager integration with AI services
+   - Test with all AI-related commands
+   - Verify backward compatibility with existing context options
+   - Test context prioritization across multiple context types
+   - Verify logging and error handling
+
+3. Performance Testing:
+   - Benchmark context gathering and optimization times
+   - Test with large and complex context sources
+   - Measure impact of caching on repeated operations
+   - Verify memory usage remains acceptable
+   - Test with token limits of different sizes
+
+4. Quality Assessment:
+   - Compare AI outputs using Phase 3 vs. earlier context handling
+   - Measure improvements in context relevance and quality
+   - Test complex scenarios requiring multiple context types
+   - Quantify the impact on token efficiency
+
+5. User Experience Testing:
+   - Verify CLI options are intuitive and well-documented
+   - Test error messages are helpful for troubleshooting
+   - Ensure log output provides useful insights
+   - Test all convenience options like `--context-all`
+
+Create automated test suites for regression testing of the complete context system.
+
+# Subtasks:
+## 1. Implement Core ContextManager Class Structure [pending]
+### Dependencies: None
+### Description: Create a unified ContextManager class that encapsulates all context functionality with methods for gathering context from supported sources
+### Details:
+
+
+## 2. Develop Context Optimization Pipeline [pending]
+### Dependencies: None
+### Description: Create intelligent algorithms for context optimization including type-based truncation, relevance scoring, and token budget allocation
+### Details:
+
+
+## 3. Create Command Interface Enhancements [pending]
+### Dependencies: None
+### Description: Add unified context options to all AI commands including --context-all flag and --context-max-tokens for controlling allocation
+### Details:
+
+
+## 4. Integrate ContextManager with AI Services [pending]
+### Dependencies: None
+### Description: Update AI service integration to use the ContextManager with specialized context assembly for different operations
+### Details:
+
+
+## 5. Implement Performance Monitoring and Metrics [pending]
+### Dependencies: None
+### Description: Create a system for tracking context usage statistics, logging selection decisions, and providing troubleshooting utilities
+### Details:
+
+

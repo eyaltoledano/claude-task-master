@@ -1,0 +1,49 @@
+# Task ID: 9
+# Title: Integrate Perplexity API
+# Status: done
+# Dependencies: 5
+# Priority: low
+# Description: Add integration with Perplexity API for research-backed task generation.
+# Details:
+Implement Perplexity integration including:
+- API authentication via OpenAI client
+- Create research-oriented prompt templates
+- Implement response handling for Perplexity
+- Add fallback to Claude when Perplexity is unavailable
+- Implement response quality comparison logic
+- Add configuration for model selection
+
+# Test Strategy:
+Test connectivity to Perplexity API. Verify research-oriented prompts return useful information. Test fallback mechanism by simulating Perplexity API unavailability.
+
+# Subtasks:
+## 1. Implement Perplexity API Authentication Module [done]
+### Dependencies: None
+### Description: Create a dedicated module for authenticating with the Perplexity API using the OpenAI client library. This module should handle API key management, connection setup, and basic error handling. Implement environment variable support for the PERPLEXITY_API_KEY and PERPLEXITY_MODEL variables with appropriate defaults as specified in the PRD. Include a connection test function to verify API access.
+### Details:
+
+
+## 2. Develop Research-Oriented Prompt Templates [done]
+### Dependencies: None
+### Description: Design and implement specialized prompt templates optimized for research tasks with Perplexity. Create a template system that can generate contextually relevant research prompts based on task information. These templates should be structured to leverage Perplexity's online search capabilities and should follow the Research-Backed Expansion Prompt Structure defined in the PRD. Include mechanisms to control prompt length and focus.
+### Details:
+
+
+## 3. Create Perplexity Response Handler [done]
+### Dependencies: None
+### Description: Implement a specialized response handler for Perplexity API responses. This should parse and process the JSON responses from Perplexity, extract relevant information, and transform it into the task data structure format. Include validation to ensure responses meet quality standards and contain the expected information. Implement streaming response handling if supported by the API client.
+### Details:
+
+
+## 4. Implement Claude Fallback Mechanism [done]
+### Dependencies: None
+### Description: Create a fallback system that automatically switches to the Claude API when Perplexity is unavailable or returns errors. This system should detect API failures, rate limiting, or quality issues with Perplexity responses and seamlessly transition to using Claude with appropriate prompt modifications. Implement retry logic with exponential backoff before falling back to Claude. Log all fallback events for monitoring.
+### Details:
+
+
+## 5. Develop Response Quality Comparison and Model Selection [done]
+### Dependencies: None
+### Description: Implement a system to compare response quality between Perplexity and Claude, and provide configuration options for model selection. Create metrics for evaluating response quality (e.g., specificity, relevance, actionability). Add configuration options that allow users to specify which model to use for different types of tasks. Implement a caching mechanism to reduce API calls and costs when appropriate.
+### Details:
+
+

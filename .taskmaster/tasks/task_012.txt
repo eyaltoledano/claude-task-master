@@ -1,0 +1,55 @@
+# Task ID: 12
+# Title: Develop Project Initialization System
+# Status: done
+# Dependencies: 1, 3, 4, 6
+# Priority: medium
+# Description: Create functionality for initializing new projects with task structure and configuration.
+# Details:
+Implement project initialization including:
+- Create project templating system
+- Implement interactive setup wizard
+- Add environment configuration generation
+- Create initial directory structure
+- Generate example tasks.json
+- Set up default configuration
+
+# Test Strategy:
+Test project initialization in empty directories. Verify that all required files and directories are created correctly. Test the interactive setup with various inputs.
+
+# Subtasks:
+## 1. Create Project Template Structure [done]
+### Dependencies: 12.4
+### Description: Design and implement a flexible project template system that will serve as the foundation for new project initialization. This should include creating a base directory structure, template files (e.g., default tasks.json, .env.example), and a configuration file to define customizable aspects of the template.
+### Details:
+
+
+## 2. Implement Interactive Setup Wizard [done]
+### Dependencies: 12.3
+### Description: Develop an interactive command-line wizard using a library like Inquirer.js to guide users through the project initialization process. The wizard should prompt for project name, description, initial task structure, and other configurable options defined in the template configuration.
+### Details:
+
+
+## 3. Generate Environment Configuration [done]
+### Dependencies: 12.2
+### Description: Create functionality to generate environment-specific configuration files based on user input and template defaults. This includes creating a .env file with necessary API keys and configuration values, and updating the tasks.json file with project-specific metadata.
+### Details:
+
+
+## 4. Implement Directory Structure Creation [done]
+### Dependencies: 12.1
+### Description: Develop the logic to create the initial directory structure for new projects based on the selected template and user inputs. This should include creating necessary subdirectories (e.g., tasks/, scripts/, .cursor/rules/) and copying template files to appropriate locations.
+### Details:
+
+
+## 5. Generate Example Tasks.json [done]
+### Dependencies: 12.6
+### Description: Create functionality to generate an initial tasks.json file with example tasks based on the project template and user inputs from the setup wizard. This should include creating a set of starter tasks that demonstrate the task structure and provide a starting point for the project.
+### Details:
+
+
+## 6. Implement Default Configuration Setup [done]
+### Dependencies: None
+### Description: Develop the system for setting up default configurations for the project, including initializing the .cursor/rules/ directory with dev_workflow.mdc, cursor_rules.mdc, and self_improve.mdc files. Also, create a default package.json with necessary dependencies and scripts for the project.
+### Details:
+
+

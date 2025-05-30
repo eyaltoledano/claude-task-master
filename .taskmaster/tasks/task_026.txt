@@ -1,0 +1,90 @@
+# Task ID: 26
+# Title: Implement Context Foundation for AI Operations
+# Status: pending
+# Dependencies: 5, 6, 7
+# Priority: high
+# Description: Implement the foundation for context integration in Task Master, enabling AI operations to leverage file-based context, cursor rules, and basic code context to improve generated outputs.
+# Details:
+Create a Phase 1 foundation for context integration in Task Master that provides immediate practical value:
+
+1. Add `--context-file` Flag to AI Commands:
+   - Add a consistent `--context-file <file>` option to all AI-related commands (expand, update, add-task, etc.)
+   - Implement file reading functionality that loads content from the specified file
+   - Add content integration into Claude API prompts with appropriate formatting
+   - Handle error conditions such as file not found gracefully
+   - Update help documentation to explain the new option
+
+2. Implement Cursor Rules Integration for Context:
+   - Create a `--context-rules <rules>` option for all AI commands
+   - Implement functionality to extract content from specified .cursor/rules/*.mdc files
+   - Support comma-separated lists of rule names and "all" option
+   - Add validation and error handling for non-existent rules
+   - Include helpful examples in command help output
+
+3. Implement Basic Context File Extraction Utility:
+   - Create utility functions in utils.js for reading context from files
+   - Add proper error handling and logging
+   - Implement content validation to ensure reasonable size limits
+   - Add content truncation if files exceed token limits
+   - Create helper functions for formatting context additions properly
+
+4. Update Command Handler Logic:
+   - Modify command handlers to support the new context options
+   - Update prompt construction to incorporate context content
+   - Ensure backwards compatibility with existing commands
+   - Add logging for context inclusion to aid troubleshooting
+
+The focus of this phase is to provide immediate value with straightforward implementations that enable users to include relevant context in their AI operations.
+
+# Test Strategy:
+Testing should verify that the context foundation works as expected and adds value:
+
+1. Functional Tests:
+   - Verify `--context-file` flag correctly reads and includes content from specified files
+   - Test that `--context-rules` correctly extracts and formats content from cursor rules
+   - Test with both existing and non-existent files/rules to verify error handling
+   - Verify content truncation works appropriately for large files
+
+2. Integration Tests:
+   - Test each AI-related command with context options
+   - Verify context is properly included in API calls to Claude
+   - Test combinations of multiple context options
+   - Verify help documentation includes the new options
+
+3. Usability Testing:
+   - Create test scenarios that show clear improvement in AI output quality with context
+   - Compare outputs with and without context to measure impact
+   - Document examples of effective context usage for the user documentation
+
+4. Error Handling:
+   - Test invalid file paths and rule names
+   - Test oversized context files
+   - Verify appropriate error messages guide users to correct usage
+
+The testing focus should be on proving immediate value to users while ensuring robust error handling.
+
+# Subtasks:
+## 1. Implement --context-file Flag for AI Commands [pending]
+### Dependencies: None
+### Description: Add the --context-file <file> option to all AI-related commands and implement file reading functionality
+### Details:
+1. Update the contextOptions array in commands.js to include the --context-file option\n2. Modify AI command action handlers to check for the context-file option\n3. Implement file reading functionality that loads content from the specified file\n4. Add content integration into Claude API prompts with appropriate formatting\n5. Add error handling for file not found or permission issues\n6. Update help documentation to explain the new option with examples
+
+## 2. Implement --context Flag for AI Commands [pending]
+### Dependencies: None
+### Description: Add support for directly passing context in the command line
+### Details:
+1. Update AI command options to include a --context option\n2. Modify action handlers to process context from command line\n3. Sanitize and truncate long context inputs\n4. Add content integration into Claude API prompts\n5. Update help documentation to explain the new option with examples
+
+## 3. Implement Cursor Rules Integration for Context [pending]
+### Dependencies: None
+### Description: Create a --context-rules option for all AI commands that extracts content from specified .cursor/rules/*.mdc files
+### Details:
+1. Add --context-rules <rules> option to all AI-related commands\n2. Implement functionality to extract content from specified .cursor/rules/*.mdc files\n3. Support comma-separated lists of rule names and 'all' option\n4. Add validation and error handling for non-existent rules\n5. Include helpful examples in command help output
+
+## 4. Implement Basic Context File Extraction Utility [pending]
+### Dependencies: None
+### Description: Create utility functions for reading context from files with error handling and content validation
+### Details:
+1. Create utility functions in utils.js for reading context from files\n2. Add proper error handling and logging for file access issues\n3. Implement content validation to ensure reasonable size limits\n4. Add content truncation if files exceed token limits\n5. Create helper functions for formatting context additions properly\n6. Document the utility functions with clear examples
+

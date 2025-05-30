@@ -1,0 +1,65 @@
+# Task ID: 4
+# Title: Create Task File Generation System
+# Status: done
+# Dependencies: 1, 3
+# Priority: medium
+# Description: Implement the system for generating individual task files from the tasks.json data structure.
+# Details:
+Build the task file generation system including:
+- Create task file templates
+- Implement generation of task files from tasks.json
+- Add bi-directional synchronization between task files and tasks.json
+- Implement proper file naming and organization
+- Handle updates to task files reflecting back to tasks.json
+
+# Test Strategy:
+Generate task files from sample tasks.json data and verify the content matches the expected format. Test synchronization by modifying task files and ensuring changes are reflected in tasks.json.
+
+# Subtasks:
+## 1. Design Task File Template Structure [done]
+### Dependencies: None
+### Description: Create the template structure for individual task files that will be generated from tasks.json. This includes defining the format with sections for task ID, title, status, dependencies, priority, description, details, test strategy, and subtasks. Implement a template engine or string formatting system that can populate these templates with task data. The template should follow the format specified in the PRD's Task File Format section.
+### Details:
+
+
+## 2. Implement Task File Generation Logic [done]
+### Dependencies: 4.1
+### Description: Develop the core functionality to generate individual task files from the tasks.json data structure. This includes reading the tasks.json file, iterating through each task, applying the template to each task's data, and writing the resulting content to appropriately named files in the tasks directory. Ensure proper error handling for file operations and data validation.
+### Details:
+
+
+## 3. Implement File Naming and Organization System [done]
+### Dependencies: 4.1
+### Description: Create a consistent system for naming and organizing task files. Implement a function that generates standardized filenames based on task IDs (e.g., task_001.txt for task ID 1). Design the directory structure for storing task files according to the PRD specification. Ensure the system handles task ID formatting consistently and prevents filename collisions.
+### Details:
+
+
+## 4. Implement Task File to JSON Synchronization [done]
+### Dependencies: 4.1, 4.3, 4.2
+### Description: Develop functionality to read modified task files and update the corresponding entries in tasks.json. This includes parsing the task file format, extracting structured data, validating the changes, and updating the tasks.json file accordingly. Ensure the system can handle concurrent modifications and resolve conflicts appropriately.
+### Details:
+
+
+## 5. Implement Change Detection and Update Handling [done]
+### Dependencies: 4.1, 4.3, 4.4, 4.2
+### Description: Create a system to detect changes in task files and tasks.json, and handle updates bidirectionally. This includes implementing file watching or comparison mechanisms, determining which version is newer, and applying changes in the appropriate direction. Ensure the system handles edge cases like deleted files, new tasks, and conflicting changes.
+### Details:
+
+
+<info added on 2025-05-01T21:59:10.551Z>
+{
+  "id": 5,
+  "title": "Implement Change Detection and Update Handling",
+  "description": "Create a system to detect changes in task files and tasks.json, and handle updates bidirectionally. This includes implementing file watching or comparison mechanisms, determining which version is newer, and applying changes in the appropriate direction. Ensure the system handles edge cases like deleted files, new tasks, and conflicting changes.",
+  "status": "done",
+  "dependencies": [
+    1,
+    3,
+    4,
+    2
+  ],
+  "acceptanceCriteria": "- Detects changes in both task files and tasks.json\n- Determines which version is newer based on modification timestamps or content\n- Applies changes in the appropriate direction (file to JSON or JSON to file)\n- Handles edge cases like deleted files, new tasks, and renamed tasks\n- Provides options for manual conflict resolution when necessary\n- Maintains data integrity during the synchronization process\n- Includes a command to force synchronization in either direction\n- Logs all synchronization activities for troubleshooting\n\nEach of these subtasks addresses a specific component of the task file generation system, following a logical progression from template design to bidirectional synchronization. The dependencies ensure that prerequisites are completed before dependent work begins, and the acceptance criteria provide clear guidelines for verifying each subtask's completion.",
+  "details": "[2025-05-01 21:59:07] Adding another note via MCP test."
+}
+</info added on 2025-05-01T21:59:10.551Z>
+

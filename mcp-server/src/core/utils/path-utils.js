@@ -12,13 +12,18 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths';
 
 // Store last found project root to improve performance on subsequent calls (primarily for CLI)
 export let lastFoundProjectRoot = null;
 
 // Project marker files that indicate a potential project root
 export const PROJECT_MARKERS = [
-	// Task Master specific
+	// Task Master specific - NEW structure (higher priority)
+	'.taskmaster',
+	'.taskmaster/tasks/tasks.json',
+
+	// Task Master specific - LEGACY structure (for backward compatibility)
 	'tasks.json',
 	'tasks/tasks.json',
 
@@ -128,7 +133,7 @@ export function findTasksJsonPath(args, log) {
 			return tasksPath; // Return if found in cached root
 		} catch (error) {
 			log.info(
-				`Task file not found in last known project root, continuing search.`
+				'Task file not found in last known project root, continuing search.'
 			);
 			// Continue with search if not found in cache
 		}
@@ -180,7 +185,10 @@ function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 		possiblePaths.push(path.resolve(dirPath, explicitFilePath));
 	}
 
-	// 2. Check the standard locations relative to dirPath
+	// 2. Check the NEW .taskmaster structure first (priority)
+	possiblePaths.push(path.join(dirPath, TASKMASTER_TASKS_FILE));
+
+	// 3. Check the legacy locations for backward compatibility
 	possiblePaths.push(
 		path.join(dirPath, 'tasks.json'),
 		path.join(dirPath, 'tasks', 'tasks.json')
@@ -198,6 +206,22 @@ function findTasksJsonInDirectory(dirPath, explicitFilePath, log) {
 			log.info(`Found tasks file at: ${p}`);
 			// Store the project root for future use
 			lastFoundProjectRoot = dirPath;
+
+			// Issue deprecation warning if using old paths
+			if (p.includes('tasks/tasks.json') && !p.includes('.taskmaster')) {
+				log.warn(
+					`⚠️  DEPRECATION WARNING: Found tasks.json in legacy location '${p}'. Please migrate to the new .taskmaster directory structure. Run 'task-master migrate' to automatically migrate your project.`
+				);
+			} else if (
+				p.endsWith('tasks.json') &&
+				!p.includes('.taskmaster') &&
+				!p.includes('tasks/')
+			) {
+				log.warn(
+					`⚠️  DEPRECATION WARNING: Found tasks.json in project root '${p}'. Please migrate to the new .taskmaster directory structure. Run 'task-master migrate' to automatically migrate your project.`
+				);
+			}
+
 			return p;
 		}
 	}
@@ -318,11 +342,18 @@ export function findPRDDocumentPath(projectRoot, explicitPath, log) {
 
 	// Common locations and file patterns for PRD documents
 	const commonLocations = [
-		'', // Project root
-		'scripts/'
+		'.taskmaster/docs/', // NEW location (priority)
+		'scripts/', // Legacy location
+		'' // Project root
 	];
 
-	const commonFileNames = ['PRD.md', 'prd.md', 'PRD.txt', 'prd.txt'];
+	const commonFileNames = [
+		'PRD.md',
+		'prd.md',
+		'PRD.txt',
+		'prd.txt',
+		'example_prd.txt'
+	];
 
 	// Check all possible combinations
 	for (const location of commonLocations) {
@@ -330,6 +361,14 @@ export function findPRDDocumentPath(projectRoot, explicitPath, log) {
 			const potentialPath = path.join(projectRoot, location, fileName);
 			if (fs.existsSync(potentialPath)) {
 				log.info(`Found PRD document at: ${potentialPath}`);
+
+				// Issue deprecation warning if using legacy paths
+				if (location === 'scripts/' || location === '') {
+					log.warn(
+						`⚠️  DEPRECATION WARNING: Found PRD file in legacy location '${potentialPath}'. Please migrate to .taskmaster/docs/ directory. Run 'task-master migrate' to automatically migrate your project.`
+					);
+				}
+
 				return potentialPath;
 			}
 		}
@@ -347,19 +386,20 @@ export function findComplexityReportPath(projectRoot, explicitPath, log) {
 			: path.resolve(projectRoot, explicitPath);
 
 		if (fs.existsSync(fullPath)) {
-			log.info(`Using provided PRD document path: ${fullPath}`);
+			log.info(`Using provided complexity report path: ${fullPath}`);
 			return fullPath;
 		} else {
 			log.warn(
-				`Provided PRD document path not found: ${fullPath}, will search for alternatives`
+				`Provided complexity report path not found: ${fullPath}, will search for alternatives`
 			);
 		}
 	}
 
-	// Common locations and file patterns for PRD documents
+	// Common locations and file patterns for complexity reports
 	const commonLocations = [
-		'', // Project root
-		'scripts/'
+		'.taskmaster/reports/', // NEW location (priority)
+		'scripts/', // Legacy location
+		'' // Project root
 	];
 
 	const commonFileNames = [
@@ -372,13 +412,23 @@ export function findComplexityReportPath(projectRoot, explicitPath, log) {
 		for (const fileName of commonFileNames) {
 			const potentialPath = path.join(projectRoot, location, fileName);
 			if (fs.existsSync(potentialPath)) {
-				log.info(`Found PRD document at: ${potentialPath}`);
+				log.info(`Found complexity report at: ${potentialPath}`);
+
+				// Issue deprecation warning if using legacy paths
+				if (location === 'scripts/' || location === '') {
+					log.warn(
+						`⚠️  DEPRECATION WARNING: Found complexity report in legacy location '${potentialPath}'. Please migrate to .taskmaster/reports/ directory. Run 'task-master migrate' to automatically migrate your project.`
+					);
+				}
+
 				return potentialPath;
 			}
 		}
 	}
 
-	log.warn(`No PRD document found in common locations within ${projectRoot}`);
+	log.warn(
+		`No complexity report found in common locations within ${projectRoot}`
+	);
 	return null;
 }
 
@@ -400,8 +450,13 @@ export function resolveTasksOutputPath(projectRoot, explicitPath, log) {
 		return outputPath;
 	}
 
-	// Default output path: tasks/tasks.json in the project root
-	const defaultPath = path.resolve(projectRoot, 'tasks', 'tasks.json');
+	// Default output path: .taskmaster/tasks/tasks.json in the project root (NEW structure)
+	const defaultPath = path.resolve(
+		projectRoot,
+		'.taskmaster',
+		'tasks',
+		'tasks.json'
+	);
 	log.info(`Using default tasks output path: ${defaultPath}`);
 
 	// Ensure the directory exists
@@ -433,4 +488,77 @@ export function resolveProjectPaths(projectRoot, args, log) {
 		tasksJsonPath
 		// Add additional path properties as needed
 	};
+}
+
+/**
+ * Find template files in the .taskmaster/templates directory
+ * @param {string} projectRoot - Project root directory
+ * @param {string} [templateName] - Optional specific template name to find
+ * @returns {Array|string|null} Array of template files or specific template path or null
+ */
+export function findTemplateFiles(projectRoot, templateName = null) {
+	const templatesDir = path.join(projectRoot, '.taskmaster', 'templates');
+
+	if (!fs.existsSync(templatesDir)) {
+		return templateName ? null : [];
+	}
+
+	try {
+		if (templateName) {
+			// Look for specific template (with or without extension)
+			const extensions = ['', '.txt', '.md', '.json'];
+			for (const ext of extensions) {
+				const templatePath = path.join(templatesDir, templateName + ext);
+				if (fs.existsSync(templatePath)) {
+					return templatePath;
+				}
+			}
+			return null;
+		} else {
+			// Return all template files
+			const files = fs
+				.readdirSync(templatesDir)
+				.filter((file) => {
+					const filePath = path.join(templatesDir, file);
+					return fs.statSync(filePath).isFile();
+				})
+				.map((file) => path.join(templatesDir, file));
+			return files;
+		}
+	} catch (error) {
+		return templateName ? null : [];
+	}
+}
+
+/**
+ * Read template content from .taskmaster/templates directory
+ * @param {string} projectRoot - Project root directory
+ * @param {string} templateName - Template name to read
+ * @returns {string|null} Template content or null if not found
+ */
+export function readTemplate(projectRoot, templateName) {
+	const templatePath = findTemplateFiles(projectRoot, templateName);
+	if (!templatePath) {
+		return null;
+	}
+
+	try {
+		return fs.readFileSync(templatePath, 'utf8');
+	} catch (error) {
+		return null;
+	}
+}
+
+/**
+ * List available templates in .taskmaster/templates directory
+ * @param {string} projectRoot - Project root directory
+ * @returns {Array} Array of template names (without extensions)
+ */
+export function listAvailableTemplates(projectRoot) {
+	const templateFiles = findTemplateFiles(projectRoot);
+	return templateFiles.map((filePath) => {
+		const fileName = path.basename(filePath);
+		const nameWithoutExt = path.parse(fileName).name;
+		return nameWithoutExt;
+	});
 }
