@@ -55,7 +55,10 @@ import fsMocked from 'fs';
 
 // --- Test Data (Keep as is, ensure DEFAULT_CONFIG is accurate) ---
 const MOCK_PROJECT_ROOT = '/mock/project';
-const MOCK_CONFIG_PATH = path.join(MOCK_PROJECT_ROOT, '.taskmasterconfig');
+const MOCK_CONFIG_PATH = path.join(
+	MOCK_PROJECT_ROOT,
+	'.taskmaster/config.json'
+);
 
 // Updated DEFAULT_CONFIG reflecting the implementation
 const DEFAULT_CONFIG = {
