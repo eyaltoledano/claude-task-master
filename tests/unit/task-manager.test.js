@@ -119,8 +119,13 @@ jest.mock('openai', () => {
 // ---> ADD IMPORTS HERE <---
 // Import the mocked service functions AFTER the mock is defined
 import { generateObjectService } from '../../scripts/modules/ai-services-unified.js';
-// Import the function to test AFTER mocks are defined
-import { updateTasks } from '../../scripts/modules/task-manager.js';
+// Import the functions to test AFTER mocks are defined
+import {
+	updateTasks,
+	addTask as actualAddTask,
+	findNextTask as actualFindNextTask,
+	setTaskStatus as actualSetTaskStatus
+} from '../../scripts/modules/task-manager.js';
 
 // Create a simplified version of parsePRD for testing
 const testParsePRD = async (prdPath, outputPath, numTasks, options = {}) => {
@@ -340,7 +345,8 @@ describe('Task Manager Module', () => {
 	});
 
 	describe('findNextTask function', () => {
-		test('should return the highest priority task with all dependencies satisfied', () => {
+		// Keep existing findNextTask tests and add new ones for checkpoints
+		test('EXISTING TEST: should return the highest priority task with all dependencies satisfied', () => {
 			const tasks = [
 				{
 					id: 1,
@@ -467,6 +473,150 @@ describe('Task Manager Module', () => {
 			const nextTask = findNextTask([]);
 
 			expect(nextTask).toBeNull();
+		});
+
+		test('should NOT return a task if its checkpoint dependency is pending', () => {
+			const tasks = [
+				{ id: 1, title: 'Checkpoint Task', status: 'pending', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done' },
+				{ id: 2, title: 'Dependent Task', status: 'pending', dependencies: [1], priority: 'high' }
+			];
+			const nextTask = actualFindNextTask(tasks);
+			expect(nextTask).toBeNull(); // Dependent task should not be eligible
+		});
+
+		test('should return a task if its checkpoint dependency is done', () => {
+			const tasks = [
+				{ id: 1, title: 'Checkpoint Task', status: 'done', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done' },
+				{ id: 2, title: 'Dependent Task', status: 'pending', dependencies: [1], priority: 'high' }
+			];
+			const nextTask = actualFindNextTask(tasks);
+			expect(nextTask).toBeDefined();
+			expect(nextTask.id).toBe(2); // Dependent task should now be eligible
+		});
+
+		test('should NOT return a task if ANY of its checkpoint dependencies are pending', () => {
+			const tasks = [
+				{ id: 1, title: 'Checkpoint A', status: 'done', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done A' },
+				{ id: 2, title: 'Checkpoint B', status: 'pending', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done B' },
+				{ id: 3, title: 'Dependent Task', status: 'pending', dependencies: [1, 2], priority: 'high' }
+			];
+			const nextTask = actualFindNextTask(tasks);
+			expect(nextTask).toBeNull();
+		});
+
+		test('should return a task if ALL of its multiple checkpoint dependencies are done', () => {
+			const tasks = [
+				{ id: 1, title: 'Checkpoint A', status: 'done', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done A' },
+				{ id: 2, title: 'Checkpoint B', status: 'done', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Done B' },
+				{ id: 3, title: 'Dependent Task', status: 'pending', dependencies: [1, 2], priority: 'high' }
+			];
+			const nextTask = actualFindNextTask(tasks);
+			expect(nextTask).toBeDefined();
+			expect(nextTask.id).toBe(3);
+		});
+
+		test('should consider a standard task dependent on a pending checkpoint as blocked', () => {
+			const tasks = [
+				{ id: 1, title: 'Normal Task', status: 'done', dependencies: [], priority: 'medium' },
+				{ id: 2, title: 'Checkpoint Task', status: 'pending', type: 'checkpoint', dependencies: [1], priority: 'high', acceptanceCriteria: 'Criteria' },
+				{ id: 3, title: 'Task After Checkpoint', status: 'pending', dependencies: [2], priority: 'medium' },
+				{ id: 4, title: 'Unrelated Pending Task', status: 'pending', dependencies: [1], priority: 'low'}
+			];
+			const nextTask = actualFindNextTask(tasks);
+			expect(nextTask).toBeDefined();
+			// Task 2 (Checkpoint) is pending, blocking Task 3.
+			// So, Task 4 should be next if its dependencies are met.
+			expect(nextTask.id).toBe(4);
+		});
+
+	});
+
+	describe('setTaskStatus function', () => {
+		const tasksPath = 'dummy/tasks.json';
+		let tasksData;
+
+		beforeEach(() => {
+			tasksData = {
+				meta: { projectRoot: '/dummy/project' },
+				tasks: [
+					{ id: 1, title: 'Standard Task', status: 'pending', type: 'standard', dependencies: [], priority: 'medium' },
+					{ id: 2, title: 'Checkpoint Task', status: 'pending', type: 'checkpoint', dependencies: [], priority: 'high', acceptanceCriteria: 'Criteria are met.' },
+					{ id: 3, title: 'Another Standard Task', status: 'in-progress', type: 'standard', dependencies: [], priority: 'low' }
+				]
+			};
+			mockReadJSON.mockReturnValue(JSON.parse(JSON.stringify(tasksData)));
+			mockWriteJSON.mockClear();
+			mockGenerateTaskFiles.mockClear();
+			mockPromptYesNo.mockClear();
+			mockValidateAndFixDependencies.mockClear(); // Assuming this is validateTaskDependencies from dependency-manager
+			// If validateTaskDependencies is directly from task-manager, mock it there.
+			// For now, assuming it's the one from dependency-manager.js
+		});
+
+		test('should set a standard task to done', async () => {
+			await actualSetTaskStatus(tasksPath, '1', 'done');
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const updatedTask = writtenData.tasks.find(t => t.id === 1);
+			expect(updatedTask.status).toBe('done');
+			expect(mockWriteJSON).toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).toHaveBeenCalled();
+		});
+
+		test('should set a checkpoint task to done if criteriaMet is true', async () => {
+			await actualSetTaskStatus(tasksPath, '2', 'done', { criteriaMet: true });
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const updatedTask = writtenData.tasks.find(t => t.id === 2);
+			expect(updatedTask.status).toBe('done');
+			expect(mockPromptYesNo).not.toHaveBeenCalled(); // Prompt should not be called
+		});
+
+		test('should set a checkpoint task to done if criteriaMet is false but CLI prompt is "yes"', async () => {
+			mockPromptYesNo.mockResolvedValue(true); // Simulate user saying "yes"
+
+			// We need to ensure options are passed correctly to simulate CLI mode (isMcpMode = false)
+			// actualSetTaskStatus internally determines isMcpMode based on options.mcpLog
+			// So, not passing mcpLog implies CLI mode.
+			await actualSetTaskStatus(tasksPath, '2', 'done', { criteriaMet: false });
+
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const updatedTask = writtenData.tasks.find(t => t.id === 2);
+
+			expect(mockPromptYesNo).toHaveBeenCalled();
+			expect(updatedTask.status).toBe('done');
+		});
+
+		test('should NOT set checkpoint to done and throw error if criteriaMet is false and CLI prompt is "no"', async () => {
+			mockPromptYesNo.mockResolvedValue(false); // Simulate user saying "no"
+
+			await expect(
+				actualSetTaskStatus(tasksPath, '2', 'done', { criteriaMet: false })
+			).rejects.toThrow('Acceptance criteria for checkpoint 2 must be met and confirmed before marking as done.');
+
+			expect(mockPromptYesNo).toHaveBeenCalled();
+			expect(mockWriteJSON).not.toHaveBeenCalled(); // Status change should be prevented
+			expect(mockGenerateTaskFiles).not.toHaveBeenCalled();
+		});
+
+		test('should NOT set checkpoint to done and throw error in non-interactive mode if criteriaMet is false', async () => {
+			// Simulate non-interactive (MCP) mode by passing mcpLog
+			// criteriaMet is false by default if not provided in options to actualSetTaskStatus
+			await expect(
+				actualSetTaskStatus(tasksPath, '2', 'done', { mcpLog: mockLog })
+			).rejects.toThrow('Acceptance criteria for checkpoint 2 must be met and confirmed before marking as done.');
+
+			expect(mockPromptYesNo).not.toHaveBeenCalled(); // Prompt should not be called in non-interactive mode
+			expect(mockWriteJSON).not.toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).not.toHaveBeenCalled();
+		});
+
+		test('should still set a checkpoint task to non-done status (e.g. pending) even if criteriaMet is false', async () => {
+			await actualSetTaskStatus(tasksPath, '2', 'pending', { criteriaMet: false });
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const updatedTask = writtenData.tasks.find(t => t.id === 2);
+
+			expect(updatedTask.status).toBe('pending');
+			expect(mockPromptYesNo).not.toHaveBeenCalled(); // Prompt only for "done" status
+			expect(mockWriteJSON).toHaveBeenCalled();
 		});
 	});
 
@@ -1494,7 +1644,115 @@ describe('Task Manager Module', () => {
 	});
 
 	describe('addTask function', () => {
-		test('should add a new task using AI', async () => {
+		const tasksPath = 'dummy/tasks.json';
+		let sampleTasksData;
+
+		beforeEach(() => {
+			// Reset and provide fresh sample data for each test
+			sampleTasksData = {
+				meta: { projectRoot: '/dummy/project' }, // Ensure meta.projectRoot is present
+				tasks: [
+					{ id: 1, title: 'Existing Task 1', status: 'pending', type: 'standard' }
+				]
+			};
+			mockReadJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasksData)));
+			mockWriteJSON.mockClear();
+			mockGenerateTaskFiles.mockClear();
+			generateObjectService.mockClear();
+			// Mock getTasksPath which might be called internally by addTask or its dependencies
+			// jest.spyOn(require('../../scripts/modules/config-manager.js'), 'getTasksPath').mockReturnValue('dummy/tasks');
+		});
+
+		test('should add a standard task when type is standard or undefined', async () => {
+			generateObjectService.mockResolvedValue({
+				title: 'New Standard Task',
+				description: 'A standard task description.',
+				details: 'Standard details.',
+				testStrategy: 'Standard tests.'
+			});
+
+			const newTaskId = await actualAddTask(tasksPath, 'Create a standard task');
+			const writtenData = mockWriteJSON.mock.calls[0][1]; // Get the data passed to writeJSON
+			const addedTask = writtenData.tasks.find(t => t.id === newTaskId);
+
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(newTaskId).toBeGreaterThan(1); // New ID
+			expect(addedTask.type).toBe('standard');
+			expect(addedTask.acceptanceCriteria).toBeUndefined();
+			expect(addedTask.title).toBe('New Standard Task');
+			expect(mockWriteJSON).toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).toHaveBeenCalled();
+		});
+
+		test('should add a checkpoint task with acceptanceCriteria', async () => {
+			generateObjectService.mockResolvedValue({
+				title: 'New Checkpoint Task',
+				description: 'A checkpoint task description.',
+				acceptanceCriteria: 'Criteria met.'
+				// details and testStrategy might be omitted by AI for checkpoints
+			});
+
+			const newTaskId = await actualAddTask(tasksPath, 'Create a checkpoint task', [], 'medium', {}, 'text', null, false, 'checkpoint');
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const addedTask = writtenData.tasks.find(t => t.id === newTaskId);
+
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(addedTask.type).toBe('checkpoint');
+			expect(addedTask.acceptanceCriteria).toBe('Criteria met.');
+			expect(addedTask.title).toBe('New Checkpoint Task');
+			expect(mockWriteJSON).toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).toHaveBeenCalled();
+		});
+
+		test('should throw error if adding an AI checkpoint task without acceptanceCriteria', async () => {
+			generateObjectService.mockResolvedValue({
+				title: 'Checkpoint without criteria',
+				description: 'This should fail.'
+				// No acceptanceCriteria
+			});
+
+			await expect(
+				actualAddTask(tasksPath, 'Create a checkpoint task missing criteria', [], 'medium', {}, 'text', null, false, 'checkpoint')
+			).rejects.toThrow('Acceptance criteria are mandatory for checkpoint tasks.');
+
+			expect(mockWriteJSON).not.toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).not.toHaveBeenCalled();
+		});
+
+		test('should add a manual checkpoint task with acceptanceCriteria', async () => {
+			const manualData = {
+				title: 'Manual Checkpoint',
+				description: 'Manual desc',
+				acceptanceCriteria: 'Manual criteria.'
+			};
+			// Prompt is null for manual creation
+			const newTaskId = await actualAddTask(tasksPath, null, [], 'medium', {}, 'text', manualData, false, 'checkpoint');
+			const writtenData = mockWriteJSON.mock.calls[0][1];
+			const addedTask = writtenData.tasks.find(t => t.id === newTaskId);
+
+			expect(addedTask.type).toBe('checkpoint');
+			expect(addedTask.acceptanceCriteria).toBe('Manual criteria.');
+			expect(addedTask.title).toBe('Manual Checkpoint');
+			expect(mockWriteJSON).toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).toHaveBeenCalled();
+		});
+
+		test('should throw error if adding a manual checkpoint task without acceptanceCriteria', async () => {
+			const manualData = {
+				title: 'Manual Checkpoint Fail',
+				description: 'Manual desc no criteria'
+				// acceptanceCriteria missing
+			};
+			await expect(
+				actualAddTask(tasksPath, null, [], 'medium', {}, 'text', manualData, false, 'checkpoint')
+			).rejects.toThrow('Manual checkpoint task data must include acceptanceCriteria.');
+
+			expect(mockWriteJSON).not.toHaveBeenCalled();
+			expect(mockGenerateTaskFiles).not.toHaveBeenCalled();
+		});
+
+		// This is the original test, can be removed or adapted if new tests cover its functionality
+		test('OLD TEST: should add a new task using AI', async () => {
 			// Arrange
 			const testTasksData = JSON.parse(JSON.stringify(sampleTasks));
 			const prompt = 'Create a new authentication system';
