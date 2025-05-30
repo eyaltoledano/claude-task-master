@@ -14,6 +14,8 @@ Tasks in tasks.json have the following structure:
   - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending)
   - This helps quickly identify which prerequisite tasks are blocking work
 - `priority`: Importance level of the task (Example: `"high"`, `"medium"`, `"low"`)
+- `type` (optional): Describes the nature of the task. Can be `"standard"` (default if omitted) or `"checkpoint"`. Checkpoints are tasks that block progress until specific, quantifiable acceptance criteria are met.
+- `acceptanceCriteria` (string): Mandatory if `type` is `"checkpoint"`. Describes the conditions that must be met for the checkpoint to be considered complete.
 - `details`: In-depth implementation instructions (Example: `"Use GitHub client ID/secret, handle callback, set session token."`)
 - `testStrategy`: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`)
 - `subtasks`: List of smaller, more specific tasks that make up the main task (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`)
@@ -28,6 +30,8 @@ Individual task files follow this format:
 # Status: <status>
 # Dependencies: <comma-separated list of dependency IDs>
 # Priority: <priority>
+# Type: <type>
+# Acceptance Criteria: <criteria>
 # Description: <brief description>
 # Details:
 <detailed implementation notes>
@@ -117,6 +121,31 @@ The `show` command:
 - For subtasks, shows parent task relationship
 - Provides contextual action suggestions based on the task's state
 - Works with both regular tasks and subtasks (using the format taskId.subtaskId)
+
+### Checkpoint Tasks
+
+Checkpoint tasks are a special type of task designed to ensure that key milestones are verifiably met before further work proceeds. They act as gates, blocking dependent tasks until their specific, quantifiable acceptance criteria are satisfied.
+
+**Purpose:**
+- **Block Progress:** Prevent work on dependent tasks until critical prerequisites are confirmed complete.
+- **Ensure Quality:** Guarantee that key project milestones meet defined standards before moving forward.
+- **Verifiable Milestones:** Provide clear, demonstrable proof that a certain stage of development or a specific functionality has been successfully achieved.
+
+**Defining `acceptanceCriteria`:**
+Acceptance criteria are crucial for checkpoint tasks and must be:
+- **Demonstrable:** It should be possible to clearly show that the criteria have been met (e.g., "User can successfully log in with valid credentials and is redirected to the dashboard").
+- **Quantifiable:** Where possible, criteria should be measurable (e.g., "API response time for endpoint X is less than 200ms for 99% of requests under normal load conditions").
+- **Specific:** Avoid vague language. Clearly state what constitutes successful completion.
+
+**Typical Workflow:**
+1. A checkpoint task is created with clear `acceptanceCriteria`.
+2. Work progresses on tasks that are prerequisites for the checkpoint.
+3. Once prerequisite tasks are done, the `acceptanceCriteria` for the checkpoint are actively verified (e.g., through testing, demonstration, or code review).
+4. Only after the `acceptanceCriteria` are confirmed to be met can the checkpoint task be marked as `done`.
+5. Tasks that depend on the checkpoint can now proceed.
+
+**Status Lifecycle:**
+Checkpoint tasks primarily use the `pending` and `done` statuses. Moving a checkpoint task to `done` (e.g., via `set-status --status=done --id=<task-id>`) implies that its `acceptanceCriteria` have been rigorously verified and met. The exact mechanism for this confirmation and potential links to automated testing or review processes will be detailed in future updates to the Task Master system.
 
 ## Best Practices for AI-Driven Development
 

@@ -26,7 +26,8 @@ const AiTaskDataSchema = z.object({
 		.describe('In-depth implementation details, considerations, and guidance'),
 	testStrategy: z
 		.string()
-		.describe('Detailed approach for verifying task completion')
+		.describe('Detailed approach for verifying task completion'),
+	acceptanceCriteria: z.string().optional().describe('Specific, demonstrable, and quantifiable criteria that must be met for a checkpoint task to be considered complete. This is mandatory if the task type is checkpoint.')
 });
 
 /**
@@ -41,7 +42,9 @@ const AiTaskDataSchema = z.object({
  * @param {string} outputFormat - Output format (text or json)
  * @param {Object} customEnv - Custom environment variables (optional) - Note: AI params override deprecated
  * @param {Object} manualTaskData - Manual task data (optional, for direct task creation without AI)
+ * @param {string} taskType - Type of task ('standard' or 'checkpoint')
  * @param {boolean} useResearch - Whether to use the research model (passed to unified service)
+ * @param {string} taskType - Type of task ('standard' or 'checkpoint')
  * @param {Object} context - Context object containing session and potentially projectRoot
  * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
  * @returns {number} The new task ID
@@ -54,7 +57,8 @@ async function addTask(
 	context = {},
 	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
-	useResearch = false
+	useResearch = false,
+	taskType = 'standard' // Add taskType parameter
 ) {
 	const { session, mcpLog, projectRoot } = context;
 	const isMCP = !!mcpLog;
@@ -74,7 +78,7 @@ async function addTask(
 	const effectivePriority = priority || getDefaultPriority(projectRoot);
 
 	logFn.info(
-		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
+		`Adding new task with prompt: "${prompt}", Type: ${taskType}, Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
 	);
 
 	let loadingIndicator = null;
@@ -166,6 +170,10 @@ async function addTask(
 					'Manual task data must include at least a title and description.'
 				);
 			}
+			// Add validation for manual checkpoint tasks
+			if (taskType === 'checkpoint' && (!manualTaskData.acceptanceCriteria || typeof manualTaskData.acceptanceCriteria !== 'string')) {
+				throw new Error('Manual checkpoint task data must include acceptanceCriteria.');
+			}
 		} else {
 			report('DEBUG: Taking AI task generation path.', 'debug');
 			// --- Refactored AI Interaction ---
@@ -196,13 +204,23 @@ async function addTask(
 				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema.";
 
 			// Task Structure Description (for user prompt)
-			const taskStructureDesc = `
+			let taskStructureDesc;
+			if (taskType === 'checkpoint') {
+				taskStructureDesc = `
+      {
+        "title": "Checkpoint title goes here",
+        "description": "A concise one or two sentence description of what the checkpoint signifies",
+        "acceptanceCriteria": "Specific, demonstrable, and quantifiable criteria that must be met for this checkpoint to be considered complete. This is mandatory."
+      }`;
+			} else {
+				taskStructureDesc = `
       {
         "title": "Task title goes here",
         "description": "A concise one or two sentence description of what the task involves",
         "details": "In-depth implementation details, considerations, and guidance.",
         "testStrategy": "Detailed approach for verifying task completion."
       }`;
+			}
 
 			// Add any manually provided details to the prompt for context
 			let contextFromArgs = '';
@@ -210,13 +228,36 @@ async function addTask(
 				contextFromArgs += `\n- Suggested Title: "${manualTaskData.title}"`;
 			if (manualTaskData?.description)
 				contextFromArgs += `\n- Suggested Description: "${manualTaskData.description}"`;
-			if (manualTaskData?.details)
-				contextFromArgs += `\n- Additional Details Context: "${manualTaskData.details}"`;
-			if (manualTaskData?.testStrategy)
-				contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
+
+			if (taskType === 'checkpoint') {
+				if (manualTaskData?.acceptanceCriteria)
+					contextFromArgs += `\n- Suggested Acceptance Criteria: "${manualTaskData.acceptanceCriteria}"`;
+			} else {
+				if (manualTaskData?.details)
+					contextFromArgs += `\n- Additional Details Context: "${manualTaskData.details}"`;
+				if (manualTaskData?.testStrategy)
+					contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
+			}
 
 			// User Prompt
-			const userPrompt = `Create a comprehensive new task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
+			let userPrompt;
+			if (taskType === 'checkpoint') {
+				userPrompt = `Create a new CHECKPOINT task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
+
+      This is a CHECKPOINT task. It signifies a key milestone.
+      Focus on generating clear, specific, demonstrable, and quantifiable 'acceptanceCriteria'.
+      The 'title' and 'description' should be concise and reflect the checkpoint's purpose.
+      'details' and 'testStrategy' are less critical for checkpoints if 'acceptanceCriteria' are thorough, but can be included if highly relevant.
+
+      ${contextTasks}
+      ${contextFromArgs ? `\nConsider these additional details provided by the user:${contextFromArgs}` : ''}
+
+      Return your answer as a single JSON object matching the schema precisely:
+      ${taskStructureDesc}
+
+      Ensure 'acceptanceCriteria' are well-defined.`;
+			} else {
+				userPrompt = `Create a comprehensive new STANDARD task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
       
       ${contextTasks}
       ${contextFromArgs ? `\nConsider these additional details provided by the user:${contextFromArgs}` : ''}
@@ -225,6 +266,7 @@ async function addTask(
       ${taskStructureDesc}
       
       Make sure the details and test strategy are thorough and specific.`;
+			}
 
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
@@ -272,13 +314,27 @@ async function addTask(
 			id: newTaskId,
 			title: taskData.title,
 			description: taskData.description,
-			details: taskData.details || '',
-			testStrategy: taskData.testStrategy || '',
+			type: taskType, // Set the task type
 			status: 'pending',
 			dependencies: numericDependencies, // Use validated numeric dependencies
 			priority: effectivePriority,
 			subtasks: [] // Initialize with empty subtasks array
 		};
+
+		if (taskType === 'checkpoint') {
+			if (!taskData.acceptanceCriteria || taskData.acceptanceCriteria.trim() === '') {
+				report('Acceptance criteria are mandatory for checkpoint tasks.', 'error');
+				throw new Error('Acceptance criteria are mandatory for checkpoint tasks.');
+			}
+			newTask.acceptanceCriteria = taskData.acceptanceCriteria;
+			// For checkpoints, details and testStrategy are optional
+			newTask.details = taskData.details || '';
+			newTask.testStrategy = taskData.testStrategy || '';
+		} else {
+			// For standard tasks, details and testStrategy are expected
+			newTask.details = taskData.details || '';
+			newTask.testStrategy = taskData.testStrategy || '';
+		}
 
 		// Add the task to the tasks array
 		data.tasks.push(newTask);

@@ -457,8 +457,8 @@ function displayHelp() {
 				},
 				{
 					name: 'set-status',
-					args: '--id=<id> --status=<status>',
-					desc: 'Update task status (done, pending, etc.)'
+					args: '--id=<id> --status=<status> [--criteria-met]',
+					desc: 'Update task status (use --criteria-met for checkpoints)'
 				},
 				{
 					name: 'update',
@@ -477,8 +477,8 @@ function displayHelp() {
 				},
 				{
 					name: 'add-task',
-					args: '--prompt="<text>" [--dependencies=<ids>] [--priority=<priority>]',
-					desc: 'Add a new task using AI'
+					args: '--prompt="<text>" [--type=standard|checkpoint] [...]',
+					desc: 'Add a new task (standard or checkpoint)'
 				},
 				{
 					name: 'remove-task',
@@ -718,10 +718,13 @@ function displayHelp() {
 				chalk.cyan('3. Parse PRD: ') +
 				chalk.white('task-master parse-prd --input=<prd-file>') +
 				'\n' +
-				chalk.cyan('4. List Tasks: ') +
+					chalk.cyan('4. Add Task: ') +
+					chalk.white('task-master add-task --prompt="New feature" [--type=checkpoint]') +
+					'\n' +
+					chalk.cyan('5. List Tasks: ') +
 				chalk.white('task-master list') +
 				'\n' +
-				chalk.cyan('5. Find Next Task: ') +
+					chalk.cyan('6. Find Next Task: ') +
 				chalk.white('task-master next'),
 			{
 				padding: 1,
@@ -791,8 +794,11 @@ async function displayNextTask(tasksPath) {
 	}
 
 	// Display the task in a nice format
+	const nextTaskTitle = nextTask.type === 'checkpoint'
+		? `(Checkpoint) Next Task: #${nextTask.id} - ${nextTask.title}`
+		: `Next Task: #${nextTask.id} - ${nextTask.title}`;
 	console.log(
-		boxen(chalk.white.bold(`Next Task: #${nextTask.id} - ${nextTask.title}`), {
+		boxen(chalk.white.bold(nextTaskTitle), {
 			padding: { top: 0, bottom: 0, left: 1, right: 1 },
 			borderColor: 'blue',
 			borderStyle: 'round',
@@ -839,9 +845,13 @@ async function displayNextTask(tasksPath) {
 		[
 			chalk.cyan.bold('Dependencies:'),
 			formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)
-		],
-		[chalk.cyan.bold('Description:'), nextTask.description]
+		]
 	);
+
+	if (nextTask.type === 'checkpoint' && nextTask.acceptanceCriteria) {
+		taskTable.push([chalk.magenta.bold('Acceptance Criteria:'), nextTask.acceptanceCriteria]);
+	}
+	taskTable.push([chalk.cyan.bold('Description:'), nextTask.description]);
 
 	console.log(taskTable.toString());
 
@@ -1120,8 +1130,11 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 	}
 
 	// --- Display Regular Task Details ---
+	const taskDisplayTitle = task.type === 'checkpoint'
+		? `(Checkpoint) Task: #${task.id} - ${task.title}`
+		: `Task: #${task.id} - ${task.title}`;
 	console.log(
-		boxen(chalk.white.bold(`Task: #${task.id} - ${task.title}`), {
+		boxen(chalk.white.bold(taskDisplayTitle), {
 			padding: { top: 0, bottom: 0, left: 1, right: 1 },
 			borderColor: 'blue',
 			borderStyle: 'round',
@@ -1159,11 +1172,19 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 		[
 			chalk.cyan.bold('Dependencies:'),
 			formatDependenciesWithStatus(task.dependencies, data.tasks, true)
-		],
-		[chalk.cyan.bold('Description:'), task.description]
+		]
 	);
+
+	if (task.type === 'checkpoint' && task.acceptanceCriteria) {
+		taskTable.push([chalk.magenta.bold('Acceptance Criteria:'), task.acceptanceCriteria]);
+	}
+	taskTable.push([chalk.cyan.bold('Description:'), task.description]);
+
 	console.log(taskTable.toString());
 
+	// For standard tasks, or checkpoints without acceptance criteria, show details and test strategy
+	// For checkpoints with acceptance criteria, these are less critical.
+	// We will still show them if they exist, but this logic could be adjusted to hide/de-emphasize.
 	if (task.details && task.details.trim().length > 0) {
 		console.log(
 			boxen(
@@ -1177,6 +1198,7 @@ async function displayTaskById(tasksPath, taskId, statusFilter = null) {
 			)
 		);
 	}
+
 	if (task.testStrategy && task.testStrategy.trim().length > 0) {
 		console.log(
 			boxen(chalk.white.bold('Test Strategy:') + '\n\n' + task.testStrategy, {

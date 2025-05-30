@@ -14,13 +14,14 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIdInput - Task ID(s) to update
  * @param {string} newStatus - New status
- * @param {Object} options - Additional options (mcpLog for MCP mode)
+ * @param {Object} options - Additional options (mcpLog for MCP mode, criteriaMet for checkpoints)
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
 async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 	try {
+		const { mcpLog, criteriaMet = false } = options;
 		// Determine if we're in MCP mode by checking for mcpLog
-		const isMcpMode = !!options?.mcpLog;
+		const isMcpMode = !!mcpLog;
 
 		// Only display UI elements if not in MCP mode
 		if (!isMcpMode) {
@@ -47,7 +48,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 
 		// Update each task
 		for (const id of taskIds) {
-			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode);
+			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode, criteriaMet);
 			updatedTasks.push(id);
 		}
 
@@ -61,7 +62,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		// Generate individual task files
 		log('info', 'Regenerating task files...');
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-			mcpLog: options.mcpLog
+			mcpLog: mcpLog // Use destructured mcpLog
 		});
 
 		// Display success message - only in CLI mode
@@ -94,11 +95,11 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		log('error', `Error setting task status: ${error.message}`);
 
 		// Only show error UI in CLI mode
-		if (!options?.mcpLog) {
+		if (!mcpLog) { // Use destructured mcpLog
 			console.error(chalk.red(`Error: ${error.message}`));
 
 			// Pass session to getDebugFlag
-			if (getDebugFlag(options?.session)) {
+			if (getDebugFlag(options?.session)) { // options.session is still valid if needed
 				// Use getter
 				console.error(error);
 			}

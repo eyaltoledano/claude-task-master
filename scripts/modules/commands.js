@@ -1042,21 +1042,29 @@ function registerCommands(programInstance) {
 			'New status (todo, in-progress, review, done)'
 		)
 		.option('-f, --file <file>', 'Path to the tasks file', path.join(getTasksPath(), 'tasks.json'))
+		.option('--criteria-met', 'Confirm acceptance criteria met for a checkpoint task before marking as done')
 		.action(async (options) => {
 			const tasksPath = options.file;
 			const taskId = options.id;
 			const status = options.status;
+			const criteriaMet = options.criteriaMet || false; // Default to false if not provided
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
+				console.log(chalk.yellow('Example: task-master set-status --id=1 --status=done [--criteria-met]'));
 				process.exit(1);
 			}
 
 			console.log(
 				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
 			);
+			if (criteriaMet && (status === 'done' || status === 'completed')) {
+				console.log(chalk.blue('Acceptance criteria confirmed as met for any checkpoint tasks.'));
+			}
 
-			await setTaskStatus(tasksPath, taskId, status);
+			// Pass criteriaMet in the options object to setTaskStatus
+			// Also ensure mcpLog is passed if it exists on options (though CLI usually won't have it)
+			await setTaskStatus(tasksPath, taskId, status, { criteriaMet, mcpLog: options.mcpLog });
 		});
 
 	// list command
@@ -1293,11 +1301,22 @@ function registerCommands(programInstance) {
 			'medium'
 		)
 		.option(
+			'--type <taskType>',
+			'Type of task (standard or checkpoint)',
+			'standard'
+		)
+		.option(
 			'-r, --research',
 			'Whether to use research capabilities for task creation'
 		)
 		.action(async (options) => {
 			const isManualCreation = options.title && options.description;
+			const taskType = options.type;
+
+			if (taskType && !['standard', 'checkpoint'].includes(taskType)) {
+				console.error(chalk.red('Error: Invalid task type. Must be "standard" or "checkpoint".'));
+				process.exit(1);
+			}
 
 			// Validate that either prompt or title+description are provided
 			if (!options.prompt && !isManualCreation) {
@@ -1325,34 +1344,33 @@ function registerCommands(programInstance) {
 						title: options.title,
 						description: options.description,
 						details: options.details || '',
-						testStrategy: options.testStrategy || ''
+						testStrategy: options.testStrategy || '',
+						// acceptanceCriteria will be handled by addTask if type is 'checkpoint'
+						// and it's a manual creation. For AI, it's generated.
+						// If manual and checkpoint, user might provide it via a new option or it's prompted.
+						// For now, assuming addTask handles prompting or errors if missing for checkpoint.
+						...(taskType === 'checkpoint' && options.acceptanceCriteria && { acceptanceCriteria: options.acceptanceCriteria })
 					};
 
 					console.log(
-						chalk.blue(`Creating task manually with title: "${options.title}"`)
+						chalk.blue(`Creating ${taskType} task manually with title: "${options.title}"`)
 					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
+					if (dependencies.length > 0) console.log(chalk.blue(`Dependencies: [${dependencies.join(', ')}]`));
+					if (options.priority) console.log(chalk.blue(`Priority: ${options.priority}`));
+					console.log(chalk.blue(`Type: ${taskType}`));
+					if (taskType === 'checkpoint' && manualTaskData.acceptanceCriteria) {
+						console.log(chalk.blue(`Acceptance Criteria: "${manualTaskData.acceptanceCriteria}"`));
 					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
-				} else {
+
+				} else { // AI Creation Path
 					console.log(
 						chalk.blue(
-							`Creating task with AI using prompt: "${options.prompt}"`
+							`Creating ${taskType} task with AI using prompt: "${options.prompt}"`
 						)
 					);
-					if (dependencies.length > 0) {
-						console.log(
-							chalk.blue(`Dependencies: [${dependencies.join(', ')}]`)
-						);
-					}
-					if (options.priority) {
-						console.log(chalk.blue(`Priority: ${options.priority}`));
-					}
+					if (dependencies.length > 0) console.log(chalk.blue(`Dependencies: [${dependencies.join(', ')}]`));
+					if (options.priority) console.log(chalk.blue(`Priority: ${options.priority}`));
+					console.log(chalk.blue(`Type: ${taskType}`));
 				}
 
 				// Pass mcpLog and session for MCP mode
@@ -1365,13 +1383,15 @@ function registerCommands(programInstance) {
 						// For CLI, session context isn't directly available like MCP
 						// We don't need to pass session here for CLI API key resolution
 						// as dotenv loads .env, and utils.resolveEnvVariable checks process.env
+						mcpLog: options.mcpLog // Pass mcpLog if available from higher up
 					},
 					'text', // outputFormat
 					manualTaskData, // Pass the potentially created manualTaskData object
-					options.research || false // Pass the research flag value
+					options.research || false, // Pass the research flag value
+					taskType // Pass the taskType
 				);
 
-				console.log(chalk.green(`✓ Added new task #${newTaskId}`));
+				console.log(chalk.green(`✓ Added new ${taskType} task #${newTaskId}`));
 				console.log(chalk.gray('Next: Complete this task or add more tasks'));
 			} catch (error) {
 				console.error(chalk.red(`Error adding task: ${error.message}`));
