@@ -57,8 +57,7 @@ import {
 import {
 	COMPLEXITY_REPORT_FILE,
 	PRD_FILE,
-	TASKMASTER_TASKS_FILE,
-	LEGACY_TASKS_FILE
+	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
 
 import {
@@ -1514,10 +1513,14 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			const tasksPath =
-				options.file ||
-				path.join(findProjectRoot() || '.', 'tasks', 'tasks.json') || // Ensure tasksPath is also relative to a found root or current dir
-				'tasks/tasks.json';
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					`❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file at ${TASKMASTER_TASKS_FILE}`
+				);
+				process.exit(1);
+			}
 
 			// Correctly determine projectRoot
 			const projectRoot = findProjectRoot();

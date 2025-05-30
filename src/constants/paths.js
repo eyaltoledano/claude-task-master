@@ -32,3 +32,17 @@ export const LEGACY_TASKS_FILE = 'tasks/tasks.json';
 // Task file naming pattern
 export const TASK_FILE_PREFIX = 'task_';
 export const TASK_FILE_EXTENSION = '.txt';
+
+/**
+ * Project markers used to identify a task-master project root
+ * These files/directories indicate that a directory is a Task Master project
+ */
+export const PROJECT_MARKERS = [
+	'.taskmaster', // New taskmaster directory
+	LEGACY_CONFIG_FILE, // .taskmasterconfig
+	'tasks.json', // Generic tasks file
+	LEGACY_TASKS_FILE, // tasks/tasks.json (legacy location)
+	TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json (new location)
+	'.git', // Git repository
+	'.svn' // SVN repository
+];

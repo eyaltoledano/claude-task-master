@@ -14,7 +14,7 @@ import {
 	nextTaskDirect
 } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
+	findTasksPath,
 	findComplexityReportPath
 } from '../core/utils/path-utils.js';
 import { TASK_STATUS_OPTIONS } from '../../../src/constants/task-status.js';
@@ -56,7 +56,7 @@ export function registerSetTaskStatusTool(server) {
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -70,8 +70,10 @@ export function registerSetTaskStatusTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						args.projectRoot,
-						args.complexityReport,
+						{
+							projectRoot: args.projectRoot,
+							complexityReport: args.complexityReport
+						},
 						log
 					);
 				} catch (error) {

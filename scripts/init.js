@@ -390,7 +390,7 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun);
+		createProjectStructure(addAliases, dryRun, options);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -446,7 +446,7 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(addAliasesPrompted, dryRun);
+			createProjectStructure(addAliasesPrompted, dryRun, options);
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -465,7 +465,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun) {
+function createProjectStructure(addAliases, dryRun, options) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
@@ -564,7 +564,7 @@ function createProjectStructure(addAliases, dryRun) {
 	}
 
 	// Copy example_prd.txt to NEW location
-	copyTemplateFile(EXAMPLE_PRD_FILE, path.join(targetDir, EXAMPLE_PRD_FILE));
+	copyTemplateFile('example_prd.txt', path.join(targetDir, EXAMPLE_PRD_FILE));
 
 	// Initialize git repository if git is available
 	try {
@@ -601,7 +601,7 @@ function createProjectStructure(addAliases, dryRun) {
 	}
 
 	// === Add Model Configuration Step ===
-	if (!isSilentMode() && !dryRun) {
+	if (!isSilentMode() && !dryRun && !options?.yes) {
 		console.log(
 			boxen(chalk.cyan('Configuring AI Models...'), {
 				padding: 0.5,
@@ -632,6 +632,12 @@ function createProjectStructure(addAliases, dryRun) {
 		);
 	} else if (dryRun) {
 		log('info', 'DRY RUN: Skipping interactive model setup.');
+	} else if (options?.yes) {
+		log('info', 'Skipping interactive model setup due to --yes flag.');
+		log(
+			'info',
+			'You can configure AI models later using "task-master models --setup" or "task-master models --set-..." commands.'
+		);
 	}
 	// ====================================
 
