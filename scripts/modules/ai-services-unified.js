@@ -30,7 +30,8 @@ import * as openai from '../../src/ai-providers/openai.js';
 import * as xai from '../../src/ai-providers/xai.js';
 import * as openrouter from '../../src/ai-providers/openrouter.js';
 import * as ollama from '../../src/ai-providers/ollama.js';
-// TODO: Import other provider modules when implemented (ollama, etc.)
+import * as bedrock from '../../src/ai-providers/bedrock.js';
+// TODO: Import other provider modules when implemented
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
@@ -103,8 +104,13 @@ const PROVIDER_FUNCTIONS = {
 		generateText: ollama.generateOllamaText,
 		streamText: ollama.streamOllamaText,
 		generateObject: ollama.generateOllamaObject
+	},
+	bedrock: {
+		generateText: bedrock.generateBedrockText,
+		streamText: bedrock.streamBedrockText,
+		generateObject: bedrock.generateBedrockObject
 	}
-	// TODO: Add entries for ollama, etc. when implemented
+	// TODO: Add entries for other providers when implemented
 };
 
 // --- Configuration for Retries ---
@@ -191,7 +197,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY'
+		ollama: 'OLLAMA_API_KEY',
+		bedrock: 'AWS_ACCESS_KEY_ID' // AWS Bedrock uses AWS credentials
 	};
 
 	const envVarName = keyMap[providerName];
@@ -470,16 +477,53 @@ async function _unifiedServiceRunner(serviceType, params) {
 				throw new Error('User prompt content is missing.');
 			}
 
-			const callParams = {
-				apiKey,
-				modelId,
-				maxTokens: roleParams.maxTokens,
-				temperature: roleParams.temperature,
-				messages,
-				baseUrl,
-				...(serviceType === 'generateObject' && { schema, objectName }),
-				...restApiParams
-			};
+			let callParams;
+			
+			// Special handling for AWS Bedrock provider
+			if (providerName?.toLowerCase() === 'bedrock') {
+				// For Bedrock, we need AWS credentials instead of a single API key
+				const accessKeyId = resolveEnvVariable('AWS_ACCESS_KEY_ID', session, effectiveProjectRoot);
+				const secretAccessKey = resolveEnvVariable('AWS_SECRET_ACCESS_KEY', session, effectiveProjectRoot);
+				const region = resolveEnvVariable('AWS_REGION', session, effectiveProjectRoot) || 'us-east-1';
+				const sessionToken = resolveEnvVariable('AWS_SESSION_TOKEN', session, effectiveProjectRoot);
+				const credentialProvider = resolveEnvVariable('AWS_CREDENTIAL_PROVIDER', session, effectiveProjectRoot);
+				
+				callParams = {
+					modelId,
+					maxTokens: roleParams.maxTokens,
+					temperature: roleParams.temperature,
+					messages,
+					...(serviceType === 'generateObject' && { schema, objectName }),
+					...restApiParams
+				};
+				
+				// Add AWS credentials - either static credentials or credential provider
+				if (credentialProvider) {
+					callParams.credentialProvider = credentialProvider;
+					callParams.region = region;
+				} else if (accessKeyId && secretAccessKey) {
+					callParams.accessKeyId = accessKeyId;
+					callParams.secretAccessKey = secretAccessKey;
+					callParams.region = region;
+					if (sessionToken) {
+						callParams.sessionToken = sessionToken;
+					}
+				} else {
+					throw new Error('AWS Bedrock requires either accessKeyId/secretAccessKey or credentialProvider');
+				}
+			} else {
+				// Standard parameter construction for other providers
+				callParams = {
+					apiKey,
+					modelId,
+					maxTokens: roleParams.maxTokens,
+					temperature: roleParams.temperature,
+					messages,
+					baseUrl,
+					...(serviceType === 'generateObject' && { schema, objectName }),
+					...restApiParams
+				};
+			}
 
 			providerResponse = await _attemptProviderCallWithRetries(
 				providerApiFn,

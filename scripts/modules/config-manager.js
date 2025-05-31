@@ -442,6 +442,16 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		return true; // Indicate key status is effectively "OK"
 	}
 
+	// Special handling for AWS Bedrock - check for AWS credentials OR credential provider
+	if (providerName?.toLowerCase() === 'bedrock') {
+		const accessKeyId = resolveEnvVariable('AWS_ACCESS_KEY_ID', session, projectRoot);
+		const secretAccessKey = resolveEnvVariable('AWS_SECRET_ACCESS_KEY', session, projectRoot);
+		const credentialProvider = resolveEnvVariable('AWS_CREDENTIAL_PROVIDER', session, projectRoot);
+		
+		// Return true if we have static credentials OR a credential provider
+		return (accessKeyId && secretAccessKey) || !!credentialProvider;
+	}
+
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -542,6 +552,15 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
 				break;
+			case 'bedrock':
+				// For Bedrock, check for AWS credentials
+				const accessKeyId = mcpEnv.AWS_ACCESS_KEY_ID;
+				const secretAccessKey = mcpEnv.AWS_SECRET_ACCESS_KEY;
+				const credentialProvider = mcpEnv.AWS_CREDENTIAL_PROVIDER;
+				// Return true if we have static credentials OR a credential provider
+				return (accessKeyId && secretAccessKey && 
+						!accessKeyId.includes('KEY_HERE') && 
+						!secretAccessKey.includes('KEY_HERE')) || !!credentialProvider;
 			default:
 				return false; // Unknown provider
 		}
