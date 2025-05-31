@@ -1,6 +1,6 @@
 {
 	"name": "@delorenj/taskmaster",
-	"version": "1.13.3",
+	"version": "1.13.4",
 	"description": "A fork of task-master-ai with various improvements that make it more configurable and robust.",
 	"main": "index.js",
 	"type": "module",

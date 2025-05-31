@@ -508,6 +508,27 @@ function detectCamelCaseFlags(args) {
 	return camelCaseFlags;
 }
 
+/**
+ * Prompt the user with a yes/no question
+ * @param {string} question - The question to ask
+ * @returns {Promise<boolean>} True if user answered yes, false otherwise
+ */
+async function promptYesNo(question) {
+	const readline = await import('readline');
+	const rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout
+	});
+
+	const answer = await new Promise((resolve) => {
+		rl.question(question + ' (yes/no): ', resolve);
+	});
+	rl.close();
+
+	const lowerAnswer = answer.toLowerCase().trim();
+	return lowerAnswer === 'yes' || lowerAnswer === 'y';
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -529,5 +550,6 @@ export {
 	isSilentMode,
 	resolveEnvVariable,
 	getTaskManager,
-	findProjectRoot
+	findProjectRoot,
+	promptYesNo
 };
