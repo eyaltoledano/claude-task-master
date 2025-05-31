@@ -29,7 +29,6 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
-import { registerMigrateTool } from './migrate.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -43,7 +42,6 @@ export function registerTaskMasterTools(server) {
 		registerInitializeProjectTool(server);
 		registerModelsTool(server);
 		registerParsePRDTool(server);
-		registerMigrateTool(server);
 
 		// Group 2: Task Listing & Viewing
 		registerListTasksTool(server);
