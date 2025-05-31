@@ -382,10 +382,14 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 
 	for (const configPath of possiblePaths) {
 		if (fs.existsSync(configPath)) {
-			logger.info?.(`Found config file at: ${configPath}`);
+			try {
+				logger.info?.(`Found config file at: ${configPath}`);
+			} catch (error) {
+				// Silently handle logging errors during testing
+			}
 
 			// Issue deprecation warning for legacy paths
-			if (configPath.endsWith(LEGACY_CONFIG_FILE)) {
+			if (configPath?.endsWith(LEGACY_CONFIG_FILE)) {
 				logger.warn?.(
 					`⚠️  DEPRECATION WARNING: Found configuration in legacy location '${configPath}'. Please migrate to .taskmaster/config.json. Run 'task-master migrate' to automatically migrate your project.`
 				);
