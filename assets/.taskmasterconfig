@@ -25,7 +25,7 @@
 		"defaultSubtasks": 5,
 		"defaultPriority": "medium",
 		"projectName": "Taskmaster",
-		"ollamaBaseUrl": "http://localhost:11434/api",
-		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
+		"ollamaBaseURL": "http://localhost:11434/api",
+		"azureOpenaiBaseURL": "https://your-endpoint.openai.azure.com/"
 	}
 }

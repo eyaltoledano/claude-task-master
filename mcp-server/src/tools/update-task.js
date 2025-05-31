@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the update-task tool with the MCP server
@@ -48,7 +48,7 @@ export function registerUpdateTaskTool(server) {
 
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);

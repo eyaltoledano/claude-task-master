@@ -852,30 +852,32 @@ async function addTask(
 					: 0;
 			}
 
-			// Add a visual transition to show we're moving to AI generation
-			console.log(
-				boxen(
-					chalk.white.bold('AI Task Generation') +
-						`\n\n${chalk.gray('Analyzing context and generating task details using AI...')}` +
-						`\n${chalk.cyan('Context size: ')}${chalk.yellow(contextTasks.length.toLocaleString())} characters` +
-						`\n${chalk.cyan('Dependency detection: ')}${chalk.yellow(numericDependencies.length > 0 ? 'Explicit dependencies' : 'Auto-discovery mode')}` +
-						`\n${chalk.cyan('Detailed tasks: ')}${chalk.yellow(
-							numericDependencies.length > 0
-								? dependentTasks.length // Use length of tasks from explicit dependency path
-								: uniqueDetailedTasks.length // Use length of tasks from fuzzy search path
-						)}` +
-						(promptCategory
-							? `\n${chalk.cyan('Category detected: ')}${chalk.yellow(promptCategory.label)}`
-							: ''),
-					{
-						padding: { top: 0, bottom: 1, left: 1, right: 1 },
-						margin: { top: 1, bottom: 0 },
-						borderColor: 'white',
-						borderStyle: 'round'
-					}
-				)
-			);
-			console.log(); // Add spacing
+			// Add a visual transition to show we're moving to AI generation - only for CLI
+			if (outputFormat === 'text') {
+				console.log(
+					boxen(
+						chalk.white.bold('AI Task Generation') +
+							`\n\n${chalk.gray('Analyzing context and generating task details using AI...')}` +
+							`\n${chalk.cyan('Context size: ')}${chalk.yellow(contextTasks.length.toLocaleString())} characters` +
+							`\n${chalk.cyan('Dependency detection: ')}${chalk.yellow(numericDependencies.length > 0 ? 'Explicit dependencies' : 'Auto-discovery mode')}` +
+							`\n${chalk.cyan('Detailed tasks: ')}${chalk.yellow(
+								numericDependencies.length > 0
+									? dependentTasks.length // Use length of tasks from explicit dependency path
+									: uniqueDetailedTasks.length // Use length of tasks from fuzzy search path
+							)}` +
+							(promptCategory
+								? `\n${chalk.cyan('Category detected: ')}${chalk.yellow(promptCategory.label)}`
+								: ''),
+						{
+							padding: { top: 0, bottom: 1, left: 1, right: 1 },
+							margin: { top: 1, bottom: 0 },
+							borderColor: 'white',
+							borderStyle: 'round'
+						}
+					)
+				);
+				console.log(); // Add spacing
+			}
 
 			// System Prompt - Enhanced for dependency awareness
 			const systemPrompt =

@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { moveTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the moveTask tool with the MCP server
@@ -45,7 +45,7 @@ export function registerMoveTaskTool(server) {
 				let tasksJsonPath = args.file;
 
 				if (!tasksJsonPath) {
-					tasksJsonPath = findTasksJsonPath(args, log);
+					tasksJsonPath = findTasksPath(args, log);
 				}
 
 				// Parse comma-separated IDs

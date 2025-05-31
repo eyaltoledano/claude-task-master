@@ -13,7 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON } from './utils.js';
+import { log, readJSON, findProjectRoot } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -32,7 +32,8 @@ import {
 	removeTask,
 	findTaskById,
 	taskExists,
-	moveTask
+	moveTask,
+	migrateProject
 } from './task-manager.js';
 
 import {
@@ -54,6 +55,12 @@ import {
 } from './config-manager.js';
 
 import {
+	COMPLEXITY_REPORT_FILE,
+	PRD_FILE,
+	TASKMASTER_TASKS_FILE
+} from '../../src/constants/paths.js';
+
+import {
 	displayBanner,
 	displayHelp,
 	displayNextTask,
@@ -65,8 +72,7 @@ import {
 	stopLoadingIndicator,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayApiKeyStatus,
-	displayAiUsageSummary
+	displayApiKeyStatus
 } from './ui.js';
 
 import { initializeProject } from '../init.js';
@@ -76,12 +82,12 @@ import {
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
-import { findProjectRoot } from './utils.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
+
 /**
  * Runs the interactive setup process for model configuration.
  * @param {string|null} projectRoot - The resolved project root directory.
@@ -156,11 +162,11 @@ async function runInteractiveSetup(projectRoot) {
 	}
 
 	// Helper function to fetch Ollama models (duplicated for CLI context)
-	function fetchOllamaModelsCLI(baseUrl = 'http://localhost:11434/api') {
+	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
 		return new Promise((resolve) => {
 			try {
 				// Parse the base URL to extract hostname, port, and base path
-				const url = new URL(baseUrl);
+				const url = new URL(baseURL);
 				const isHttps = url.protocol === 'https:';
 				const port = url.port || (isHttps ? 443 : 80);
 				const basePath = url.pathname.endsWith('/')
@@ -245,6 +251,11 @@ async function runInteractiveSetup(projectRoot) {
 			value: '__CUSTOM_OLLAMA__'
 		};
 
+		const customBedrockOption = {
+			name: '* Custom Bedrock model', // Add Bedrock custom option
+			value: '__CUSTOM_BEDROCK__'
+		};
+
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
 
@@ -291,8 +302,9 @@ async function runInteractiveSetup(projectRoot) {
 		commonPrefix.push(cancelOption);
 		commonPrefix.push(customOpenRouterOption);
 		commonPrefix.push(customOllamaOption);
+		commonPrefix.push(customBedrockOption);
 
-		let prefixLength = commonPrefix.length; // Initial prefix length
+		const prefixLength = commonPrefix.length; // Initial prefix length
 
 		if (allowNone) {
 			choices = [
@@ -437,13 +449,13 @@ async function runInteractiveSetup(projectRoot) {
 			modelIdToSet = customId;
 			providerHint = 'ollama';
 			// Get the Ollama base URL from config for this role
-			const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
+			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
 			// Validate against live Ollama list
-			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseUrl);
+			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseURL);
 			if (ollamaModels === null) {
 				console.error(
 					chalk.red(
-						`Error: Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+						`Error: Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 					)
 				);
 				setupSuccess = false;
@@ -456,12 +468,47 @@ async function runInteractiveSetup(projectRoot) {
 				);
 				console.log(
 					chalk.yellow(
-						`You can check available models with: curl ${ollamaBaseUrl}/tags`
+						`You can check available models with: curl ${ollamaBaseURL}/tags`
 					)
 				);
 				setupSuccess = false;
 				return true; // Continue setup, but mark as failed
 			}
+		} else if (selectedValue === '__CUSTOM_BEDROCK__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Bedrock Model ID for the ${role} role (e.g., anthropic.claude-3-sonnet-20240229-v1:0):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = 'bedrock';
+
+			// Check if AWS environment variables exist
+			if (
+				!process.env.AWS_ACCESS_KEY_ID ||
+				!process.env.AWS_SECRET_ACCESS_KEY
+			) {
+				console.error(
+					chalk.red(
+						'Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.'
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
 		} else if (
 			selectedValue &&
 			typeof selectedValue === 'object' &&
@@ -608,7 +655,7 @@ function registerCommands(programInstance) {
 			'-i, --input <file>',
 			'Path to the PRD file (alternative to positional argument)'
 		)
-		.option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
+		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
 		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
 		.option(
@@ -622,14 +669,14 @@ function registerCommands(programInstance) {
 		.action(async (file, options) => {
 			// Use input option if file argument not provided
 			const inputFile = file || options.input;
-			const defaultPrdPath = 'scripts/prd.txt';
+			const defaultPrdPath = PRD_FILE;
 			const numTasks = parseInt(options.numTasks, 10);
 			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
 			const research = options.research || false;
 			let useForce = force;
-			let useAppend = append;
+			const useAppend = append;
 
 			// Helper function to check if tasks.json exists and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
@@ -669,38 +716,12 @@ function registerCommands(programInstance) {
 
 					console.log(
 						chalk.yellow(
-							'No PRD file specified and default PRD file not found at scripts/prd.txt.'
+							`No PRD file specified and default PRD file not found at ${PRD_FILE}.`
 						)
 					);
 					console.log(
 						boxen(
-							chalk.white.bold('Parse PRD Help') +
-								'\n\n' +
-								chalk.cyan('Usage:') +
-								'\n' +
-								`  task-master parse-prd <prd-file.txt> [options]\n\n` +
-								chalk.cyan('Options:') +
-								'\n' +
-								'  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n' +
-								'  -o, --output <file>      Output file path (default: "tasks/tasks.json")\n' +
-								'  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n' +
-								'  -f, --force              Skip confirmation when overwriting existing tasks\n' +
-								'  --append                 Append new tasks to existing tasks.json instead of overwriting\n' +
-								'  -r, --research           Use Perplexity AI for research-backed task generation\n\n' +
-								chalk.cyan('Example:') +
-								'\n' +
-								'  task-master parse-prd requirements.txt --num-tasks 15\n' +
-								'  task-master parse-prd --input=requirements.txt\n' +
-								'  task-master parse-prd --force\n' +
-								'  task-master parse-prd requirements_v2.txt --append\n' +
-								'  task-master parse-prd requirements.txt --research\n\n' +
-								chalk.yellow('Note: This command will:') +
-								'\n' +
-								'  1. Look for a PRD file at scripts/prd.txt by default\n' +
-								'  2. Use the file specified by --input or positional argument if provided\n' +
-								'  3. Generate tasks from the PRD and either:\n' +
-								'     - Overwrite any existing tasks.json file (default)\n' +
-								'     - Append to existing tasks.json if --append is used',
+							`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${PRD_FILE} by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
 							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 						)
 					);
@@ -752,7 +773,11 @@ function registerCommands(programInstance) {
 		.description(
 			'Update multiple tasks with ID >= "from" based on new information or implementation changes'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'--from <id>',
 			'Task ID to start updating from (tasks with ID >= this value will be updated)',
@@ -767,7 +792,7 @@ function registerCommands(programInstance) {
 			'Use Perplexity AI for research-backed task updates'
 		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
@@ -833,7 +858,11 @@ function registerCommands(programInstance) {
 		.description(
 			'Update a single specific task by ID with new information (use --id parameter)'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-i, --id <id>', 'Task ID to update (required)')
 		.option(
 			'-p, --prompt <text>',
@@ -845,7 +874,7 @@ function registerCommands(programInstance) {
 		)
 		.action(async (options) => {
 			try {
-				const tasksPath = options.file;
+				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 
 				// Validate required parameters
 				if (!options.id) {
@@ -860,7 +889,7 @@ function registerCommands(programInstance) {
 
 				// Parse the task ID and validate it's a number
 				const taskId = parseInt(options.id, 10);
-				if (isNaN(taskId) || taskId <= 0) {
+				if (Number.isNaN(taskId) || taskId <= 0) {
 					console.error(
 						chalk.red(
 							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`
@@ -896,7 +925,7 @@ function registerCommands(programInstance) {
 					console.error(
 						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
 					);
-					if (tasksPath === 'tasks/tasks.json') {
+					if (tasksPath === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
 								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
@@ -986,7 +1015,11 @@ function registerCommands(programInstance) {
 		.description(
 			'Update a subtask by appending additional timestamped information'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-i, --id <id>',
 			'Subtask ID to update in format "parentId.subtaskId" (required)'
@@ -998,7 +1031,7 @@ function registerCommands(programInstance) {
 		.option('-r, --research', 'Use Perplexity AI for research-backed updates')
 		.action(async (options) => {
 			try {
-				const tasksPath = options.file;
+				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 
 				// Validate required parameters
 				if (!options.id) {
@@ -1049,7 +1082,7 @@ function registerCommands(programInstance) {
 					console.error(
 						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
 					);
-					if (tasksPath === 'tasks/tasks.json') {
+					if (tasksPath === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
 								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
@@ -1140,10 +1173,14 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('generate')
 		.description('Generate task files from tasks.json')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-o, --output <dir>', 'Output directory', 'tasks')
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const outputDir = options.output;
 
 			console.log(chalk.blue(`Generating task files from: ${tasksPath}`));
@@ -1166,9 +1203,13 @@ function registerCommands(programInstance) {
 			'-s, --status <status>',
 			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const status = options.status;
 
@@ -1198,16 +1239,20 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('list')
 		.description('List all tasks')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-r, --report <report>',
 			'Path to the complexity report file',
-			'scripts/task-complexity-report.json'
+			COMPLEXITY_REPORT_FILE
 		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
@@ -1246,7 +1291,7 @@ function registerCommands(programInstance) {
 		.option(
 			'--file <file>',
 			'Path to the tasks file (relative to project root)',
-			'tasks/tasks.json'
+			TASKMASTER_TASKS_FILE // Allow file override
 		) // Allow file override
 		.action(async (options) => {
 			const projectRoot = findProjectRoot();
@@ -1321,7 +1366,7 @@ function registerCommands(programInstance) {
 		.option(
 			'-o, --output <file>',
 			'Output file path for the report',
-			'scripts/task-complexity-report.json'
+			COMPLEXITY_REPORT_FILE
 		)
 		.option(
 			'-m, --model <model>',
@@ -1332,7 +1377,11 @@ function registerCommands(programInstance) {
 			'Minimum complexity score to recommend expansion (1-10)',
 			'5'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-r, --research',
 			'Use Perplexity AI for research-backed complexity analysis'
@@ -1344,7 +1393,7 @@ function registerCommands(programInstance) {
 		.option('--from <id>', 'Starting task ID in a range to analyze')
 		.option('--to <id>', 'Ending task ID in a range to analyze')
 		.action(async (options) => {
-			const tasksPath = options.file || 'tasks/tasks.json';
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const outputPath = options.output;
 			const modelOverride = options.model;
 			const thresholdScore = parseFloat(options.threshold);
@@ -1378,14 +1427,18 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('clear-subtasks')
 		.description('Clear subtasks from specified tasks')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-i, --id <ids>',
 			'Task IDs (comma-separated) to clear subtasks from'
 		)
 		.option('--all', 'Clear subtasks from all tasks')
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIds = options.id;
 			const all = options.all;
 
@@ -1416,7 +1469,11 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('add-task')
 		.description('Add a new task using AI, optionally providing manual details')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-p, --prompt <prompt>',
 			'Description of the task to add (required if not using manual fields)'
@@ -1456,10 +1513,14 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			const tasksPath =
-				options.file ||
-				path.join(findProjectRoot() || '.', 'tasks', 'tasks.json') || // Ensure tasksPath is also relative to a found root or current dir
-				'tasks/tasks.json';
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					`❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file at ${TASKMASTER_TASKS_FILE}`
+				);
+				process.exit(1);
+			}
 
 			// Correctly determine projectRoot
 			const projectRoot = findProjectRoot();
@@ -1531,15 +1592,20 @@ function registerCommands(programInstance) {
 		.description(
 			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-r, --report <report>',
 			'Path to the complexity report file',
-			'scripts/task-complexity-report.json'
+			COMPLEXITY_REPORT_FILE
 		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
+
 			await displayNextTask(tasksPath, reportPath);
 		});
 
@@ -1552,11 +1618,15 @@ function registerCommands(programInstance) {
 		.argument('[id]', 'Task ID to show')
 		.option('-i, --id <id>', 'Task ID to show')
 		.option('-s, --status <status>', 'Filter subtasks by status') // ADDED status option
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-r, --report <report>',
 			'Path to the complexity report file',
-			'scripts/task-complexity-report.json'
+			COMPLEXITY_REPORT_FILE
 		)
 		.action(async (taskId, options) => {
 			const idArg = taskId || options.id;
@@ -1567,7 +1637,7 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const reportPath = options.report;
 			// PASS statusFilter to the display function
 			await displayTaskById(tasksPath, idArg, reportPath, statusFilter);
@@ -1579,9 +1649,13 @@ function registerCommands(programInstance) {
 		.description('Add a dependency to a task')
 		.option('-i, --id <id>', 'Task ID to add dependency to')
 		.option('-d, --depends-on <id>', 'Task ID that will become a dependency')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
@@ -1610,9 +1684,13 @@ function registerCommands(programInstance) {
 		.description('Remove a dependency from a task')
 		.option('-i, --id <id>', 'Task ID to remove dependency from')
 		.option('-d, --depends-on <id>', 'Task ID to remove as a dependency')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
@@ -1641,18 +1719,26 @@ function registerCommands(programInstance) {
 		.description(
 			`Identify invalid dependencies without fixing them${chalk.reset('')}`
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.action(async (options) => {
-			await validateDependenciesCommand(options.file);
+			await validateDependenciesCommand(options.file || TASKMASTER_TASKS_FILE);
 		});
 
 	// fix-dependencies command
 	programInstance
 		.command('fix-dependencies')
 		.description(`Fix invalid dependencies automatically${chalk.reset('')}`)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.action(async (options) => {
-			await fixDependenciesCommand(options.file);
+			await fixDependenciesCommand(options.file || TASKMASTER_TASKS_FILE);
 		});
 
 	// complexity-report command
@@ -1662,17 +1748,21 @@ function registerCommands(programInstance) {
 		.option(
 			'-f, --file <file>',
 			'Path to the report file',
-			'scripts/task-complexity-report.json'
+			COMPLEXITY_REPORT_FILE
 		)
 		.action(async (options) => {
-			await displayComplexityReport(options.file);
+			await displayComplexityReport(options.file || COMPLEXITY_REPORT_FILE);
 		});
 
 	// add-subtask command
 	programInstance
 		.command('add-subtask')
 		.description('Add a subtask to an existing task')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-p, --parent <id>', 'Parent task ID (required)')
 		.option('-i, --task-id <id>', 'Existing task ID to convert to subtask')
 		.option(
@@ -1688,7 +1778,7 @@ function registerCommands(programInstance) {
 		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
 		.option('--skip-generate', 'Skip regenerating task files')
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const parentId = options.parent;
 			const existingTaskId = options.taskId;
 			const generateFiles = !options.skipGenerate;
@@ -1833,26 +1923,7 @@ function registerCommands(programInstance) {
 	function showAddSubtaskHelp() {
 		console.log(
 			boxen(
-				chalk.white.bold('Add Subtask Command Help') +
-					'\n\n' +
-					chalk.cyan('Usage:') +
-					'\n' +
-					`  task-master add-subtask --parent=<id> [options]\n\n` +
-					chalk.cyan('Options:') +
-					'\n' +
-					'  -p, --parent <id>         Parent task ID (required)\n' +
-					'  -i, --task-id <id>        Existing task ID to convert to subtask\n' +
-					'  -t, --title <title>       Title for the new subtask\n' +
-					'  -d, --description <text>  Description for the new subtask\n' +
-					'  --details <text>          Implementation details for the new subtask\n' +
-					'  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
-					'  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
-					'  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
-					'  --skip-generate           Skip regenerating task files\n\n' +
-					chalk.cyan('Examples:') +
-					'\n' +
-					'  task-master add-subtask --parent=5 --task-id=8\n' +
-					'  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"',
+				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --skip-generate           Skip regenerating task files\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`,
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -1862,7 +1933,11 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('remove-subtask')
 		.description('Remove a subtask from its parent task')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'-i, --id <id>',
 			'Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated for multiple subtasks)'
@@ -1873,7 +1948,7 @@ function registerCommands(programInstance) {
 		)
 		.option('--skip-generate', 'Skip regenerating task files')
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
 			const generateFiles = !options.skipGenerate;
@@ -1993,7 +2068,9 @@ function registerCommands(programInstance) {
 					'\n' +
 					'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
 					'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
-					'  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
+					'  -f, --file <file>   Path to the tasks file (default: "' +
+					TASKMASTER_TASKS_FILE +
+					'")\n' +
 					'  --skip-generate     Skip regenerating task files\n\n' +
 					chalk.cyan('Examples:') +
 					'\n' +
@@ -2014,10 +2091,14 @@ function registerCommands(programInstance) {
 			'-i, --id <ids>',
 			'ID(s) of the task(s) or subtask(s) to remove (e.g., "5", "5.2", or "5,6.1,7")'
 		)
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIdsString = options.id;
 
 			if (!taskIdsString) {
@@ -2294,6 +2375,10 @@ function registerCommands(programInstance) {
 			'--ollama',
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
+		.option(
+			'--bedrock',
+			'Allow setting a custom Bedrock model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2303,17 +2388,26 @@ Examples:
   $ task-master models --set-research sonar-pro       # Set research model
   $ task-master models --set-fallback claude-3-5-sonnet-20241022 # Set fallback
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
+  $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
-
-			// Validate flags: cannot use both --openrouter and --ollama simultaneously
-			if (options.openrouter && options.ollama) {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+			// Validate flags: cannot use multiple provider flags simultaneously
+			const providerFlags = [
+				options.openrouter,
+				options.ollama,
+				options.bedrock
+			].filter(Boolean).length;
+			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use both --openrouter and --ollama flags simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -2353,7 +2447,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2373,7 +2469,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2395,7 +2493,9 @@ Examples:
 							? 'openrouter'
 							: options.ollama
 								? 'ollama'
-								: undefined
+								: options.bedrock
+									? 'bedrock'
+									: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2495,7 +2595,11 @@ Examples:
 	programInstance
 		.command('move')
 		.description('Move a task or subtask to a new position')
-		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
 		.option(
 			'--from <id>',
 			'ID of the task/subtask to move (e.g., "5" or "5.2"). Can be comma-separated to move multiple tasks (e.g., "5,6,7")'
@@ -2505,7 +2609,7 @@ Examples:
 			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
 		)
 		.action(async (options) => {
-			const tasksPath = options.file;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const sourceId = options.from;
 			const destinationId = options.to;
 
@@ -2617,6 +2721,39 @@ Examples:
 					console.error(chalk.red(`Error: ${error.message}`));
 					process.exit(1);
 				}
+			}
+		});
+
+	programInstance
+		.command('migrate')
+		.description(
+			'Migrate existing project to use the new .taskmaster directory structure'
+		)
+		.option(
+			'-f, --force',
+			'Force migration even if .taskmaster directory already exists'
+		)
+		.option(
+			'--backup',
+			'Create backup of old files before migration (default: false)',
+			false
+		)
+		.option(
+			'--cleanup',
+			'Remove old files after successful migration (default: true)',
+			true
+		)
+		.option('-y, --yes', 'Skip confirmation prompts')
+		.option(
+			'--dry-run',
+			'Show what would be migrated without actually moving files'
+		)
+		.action(async (options) => {
+			try {
+				await migrateProject(options);
+			} catch (error) {
+				console.error(chalk.red('Error during migration:'), error.message);
+				process.exit(1);
 			}
 		});
 
@@ -2804,7 +2941,7 @@ async function runCLI(argv = process.argv) {
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
-		// This means the ConfigurationError might be thrown here if .taskmasterconfig is missing.
+		// This means the ConfigurationError might be thrown here if configuration file is missing.
 		const programInstance = setupCLI();
 		await programInstance.parseAsync(argv);
 
@@ -2823,10 +2960,10 @@ async function runCLI(argv = process.argv) {
 				boxen(
 					chalk.red.bold('Configuration Update Required!') +
 						'\n\n' +
-						chalk.white('Taskmaster now uses the ') +
-						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.white('Taskmaster now uses a ') +
+						chalk.yellow.bold('configuration file') +
 						chalk.white(
-							' file in your project root for AI model choices and settings.\n\n' +
+							' in your project for AI model choices and settings.\n\n' +
 								'This file appears to be '
 						) +
 						chalk.red.bold('missing') +
@@ -2838,7 +2975,7 @@ async function runCLI(argv = process.argv) {
 						chalk.white.bold('Key Points:') +
 						'\n' +
 						chalk.white('*   ') +
-						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.yellow.bold('Configuration file') +
 						chalk.white(
 							': Stores your AI model settings (do not manually edit)\n'
 						) +

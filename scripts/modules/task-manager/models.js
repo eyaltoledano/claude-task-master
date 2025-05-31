@@ -3,8 +3,6 @@
  * Core functionality for managing AI model configurations
  */
 
-import path from 'path';
-import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import {
@@ -23,6 +21,8 @@ import {
 	getAllProviders,
 	getBaseUrlForRole
 } from '../config-manager.js';
+import { findConfigPath } from '../../../src/utils/path-utils.js';
+import { log } from '../utils.js';
 
 /**
  * Fetches the list of models from OpenRouter API.
@@ -72,14 +72,14 @@ function fetchOpenRouterModels() {
 
 /**
  * Fetches the list of models from Ollama instance.
- * @param {string} baseUrl - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
+ * @param {string} baseURL - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
  * @returns {Promise<Array|null>} A promise that resolves with the list of model objects or null if fetch fails.
  */
-function fetchOllamaModels(baseUrl = 'http://localhost:11434/api') {
+function fetchOllamaModels(baseURL = 'http://localhost:11434/api') {
 	return new Promise((resolve) => {
 		try {
 			// Parse the base URL to extract hostname, port, and base path
-			const url = new URL(baseUrl);
+			const url = new URL(baseURL);
 			const isHttps = url.protocol === 'https:';
 			const port = url.port || (isHttps ? 443 : 80);
 			const basePath = url.pathname.endsWith('/')
@@ -149,34 +149,27 @@ async function getModelConfiguration(options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(
+			'The configuration file is missing. Run "task-master models --setup" to create it.'
+		);
 	}
 
 	try {
@@ -286,34 +279,27 @@ async function getAvailableModelsList(options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(
+			'The configuration file is missing. Run "task-master models --setup" to create it.'
+		);
 	}
 
 	try {
@@ -386,34 +372,27 @@ async function setModel(role, modelId, options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(
+			'The configuration file is missing. Run "task-master models --setup" to create it.'
+		);
 	}
 
 	// Validate role
@@ -445,7 +424,7 @@ async function setModel(role, modelId, options = {}) {
 		let warningMessage = null;
 
 		// Find the model data in internal list initially to see if it exists at all
-		let modelData = availableModels.find((m) => m.id === modelId);
+		const modelData = availableModels.find((m) => m.id === modelId);
 
 		// --- Revised Logic: Prioritize providerHint --- //
 
@@ -484,13 +463,13 @@ async function setModel(role, modelId, options = {}) {
 					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
 
 					// Get the Ollama base URL from config
-					const ollamaBaseUrl = getBaseUrlForRole(role, projectRoot);
-					const ollamaModels = await fetchOllamaModels(ollamaBaseUrl);
+					const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
+					const ollamaModels = await fetchOllamaModels(ollamaBaseURL);
 
 					if (ollamaModels === null) {
 						// Connection failed - server probably not running
 						throw new Error(
-							`Unable to connect to Ollama server at ${ollamaBaseUrl}. Please ensure Ollama is running and try again.`
+							`Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 						);
 					} else if (ollamaModels.some((m) => m.model === modelId)) {
 						determinedProvider = 'ollama';
@@ -498,7 +477,7 @@ async function setModel(role, modelId, options = {}) {
 						report('warn', warningMessage);
 					} else {
 						// Server is running but model not found
-						const tagsUrl = `${ollamaBaseUrl}/tags`;
+						const tagsUrl = `${ollamaBaseURL}/tags`;
 						throw new Error(
 							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
 						);
@@ -556,8 +535,8 @@ async function setModel(role, modelId, options = {}) {
 			return {
 				success: false,
 				error: {
-					code: 'WRITE_ERROR',
-					message: 'Error writing updated configuration to .taskmasterconfig'
+					code: 'CONFIG_WRITE_ERROR',
+					message: 'Error writing updated configuration to configuration file'
 				}
 			};
 		}

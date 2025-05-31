@@ -22,7 +22,7 @@ import {
  */
 function getProjectRoot(projectRootRaw, log) {
 	// PRECEDENCE ORDER:
-	// 1. Environment variable override
+	// 1. Environment variable override (TASK_MASTER_PROJECT_ROOT)
 	// 2. Explicitly provided projectRoot in args
 	// 3. Previously found/cached project root
 	// 4. Current directory if it has project markers
@@ -578,6 +578,7 @@ function getRawProjectRootFromSession(session, log) {
 /**
  * Higher-order function to wrap MCP tool execute methods.
  * Ensures args.projectRoot is present and normalized before execution.
+ * Uses TASK_MASTER_PROJECT_ROOT environment variable with proper precedence.
  * @param {Function} executeFn - The original async execute(args, context) function.
  * @returns {Function} The wrapped async execute function.
  */
@@ -588,31 +589,52 @@ function withNormalizedProjectRoot(executeFn) {
 		let rootSource = 'unknown';
 
 		try {
-			// Determine raw root: prioritize args, then session
-			let rawRoot = args.projectRoot;
-			if (!rawRoot) {
-				rawRoot = getRawProjectRootFromSession(session, log);
-				rootSource = 'session';
-			} else {
-				rootSource = 'args';
-			}
+			// PRECEDENCE ORDER:
+			// 1. TASK_MASTER_PROJECT_ROOT environment variable (from process.env or session)
+			// 2. args.projectRoot (explicitly provided)
+			// 3. Session-based project root resolution
+			// 4. Current directory fallback
 
-			if (!rawRoot) {
-				log.error('Could not determine project root from args or session.');
-				return createErrorResponse(
-					'Could not determine project root. Please provide projectRoot argument or ensure session contains root info.'
-				);
+			// 1. Check for TASK_MASTER_PROJECT_ROOT environment variable first
+			if (process.env.TASK_MASTER_PROJECT_ROOT) {
+				const envRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+				normalizedRoot = path.isAbsolute(envRoot)
+					? envRoot
+					: path.resolve(process.cwd(), envRoot);
+				rootSource = 'TASK_MASTER_PROJECT_ROOT environment variable';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
 			}
-
-			// Normalize the determined raw root
-			normalizedRoot = normalizeProjectRoot(rawRoot, log);
+			// Also check session environment variables for TASK_MASTER_PROJECT_ROOT
+			else if (session?.env?.TASK_MASTER_PROJECT_ROOT) {
+				const envRoot = session.env.TASK_MASTER_PROJECT_ROOT;
+				normalizedRoot = path.isAbsolute(envRoot)
+					? envRoot
+					: path.resolve(process.cwd(), envRoot);
+				rootSource = 'TASK_MASTER_PROJECT_ROOT session environment variable';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+			}
+			// 2. If no environment variable, try args.projectRoot
+			else if (args.projectRoot) {
+				normalizedRoot = normalizeProjectRoot(args.projectRoot, log);
+				rootSource = 'args.projectRoot';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+			}
+			// 3. If no args.projectRoot, try session-based resolution
+			else {
+				const sessionRoot = getProjectRootFromSession(session, log);
+				if (sessionRoot) {
+					normalizedRoot = sessionRoot; // getProjectRootFromSession already normalizes
+					rootSource = 'session';
+					log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+				}
+			}
 
 			if (!normalizedRoot) {
 				log.error(
-					`Failed to normalize project root obtained from ${rootSource}: ${rawRoot}`
+					'Could not determine project root from environment, args, or session.'
 				);
 				return createErrorResponse(
-					`Invalid project root provided or derived from ${rootSource}: ${rawRoot}`
+					'Could not determine project root. Please provide projectRoot argument or ensure TASK_MASTER_PROJECT_ROOT environment variable is set.'
 				);
 			}
 

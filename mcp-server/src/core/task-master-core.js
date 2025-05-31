@@ -33,7 +33,7 @@ import { modelsDirect } from './direct-functions/models.js';
 import { moveTaskDirect } from './direct-functions/move-task.js';
 
 // Re-export utility functions
-export { findTasksJsonPath } from './utils/path-utils.js';
+export { findTasksPath } from './utils/path-utils.js';
 
 // Use Map for potential future enhancements like introspection or dynamic dispatch
 export const directFunctions = new Map([

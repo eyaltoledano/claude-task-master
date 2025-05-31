@@ -3,8 +3,62 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
+
+// Mock modules first before any imports
+jest.mock('fs', () => ({
+	existsSync: jest.fn((filePath) => {
+		// Prevent Jest internal file access
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return false;
+		}
+		return false; // Default to false for config discovery prevention
+	}),
+	readFileSync: jest.fn(() => '{}'),
+	writeFileSync: jest.fn(),
+	mkdirSync: jest.fn()
+}));
+
+jest.mock('path', () => ({
+	join: jest.fn((dir, file) => `${dir}/${file}`),
+	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
+	resolve: jest.fn((...paths) => paths.join('/')),
+	basename: jest.fn((filePath) => filePath.split('/').pop())
+}));
+
+jest.mock('chalk', () => ({
+	red: jest.fn((text) => text),
+	blue: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	yellow: jest.fn((text) => text),
+	white: jest.fn((text) => ({
+		bold: jest.fn((text) => text)
+	})),
+	reset: jest.fn((text) => text),
+	dim: jest.fn((text) => text) // Add dim function to prevent chalk errors
+}));
+
+// Mock console to prevent Jest internal access
+const mockConsole = {
+	log: jest.fn(),
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn()
+};
+global.console = mockConsole;
+
+// Mock path-utils to prevent file system discovery issues
+jest.mock('../../src/utils/path-utils.js', () => ({
+	__esModule: true,
+	findProjectRoot: jest.fn(() => '/mock/project'),
+	findConfigPath: jest.fn(() => null), // Always return null to prevent config discovery
+	findTasksPath: jest.fn(() => '/mock/tasks.json'),
+	findComplexityReportPath: jest.fn(() => null),
+	resolveTasksOutputPath: jest.fn(() => '/mock/tasks.json'),
+	resolveComplexityReportOutputPath: jest.fn(() => '/mock/report.json')
+}));
 
 // Import the actual module to test
 import {
@@ -21,10 +75,16 @@ import {
 	toKebabCase
 } from '../../scripts/modules/utils.js';
 
+// Import the mocked modules for use in tests
+import fs from 'fs';
+import path from 'path';
+
 // Mock config-manager to provide config values
 const mockGetLogLevel = jest.fn(() => 'info'); // Default log level for tests
+const mockGetDebugFlag = jest.fn(() => false); // Default debug flag for tests
 jest.mock('../../scripts/modules/config-manager.js', () => ({
-	getLogLevel: mockGetLogLevel
+	getLogLevel: mockGetLogLevel,
+	getDebugFlag: mockGetDebugFlag
 	// Mock other getters if needed by utils.js functions under test
 }));
 
@@ -56,29 +116,9 @@ function testDetectCamelCaseFlags(args) {
 }
 
 describe('Utils Module', () => {
-	// Setup fs mocks for each test
-	let fsReadFileSyncSpy;
-	let fsWriteFileSyncSpy;
-	let fsExistsSyncSpy;
-	let pathJoinSpy;
-
 	beforeEach(() => {
-		// Setup fs spy functions for each test
-		fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation();
-		fsWriteFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
-		fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation();
-		pathJoinSpy = jest.spyOn(path, 'join').mockImplementation();
-
 		// Clear all mocks before each test
 		jest.clearAllMocks();
-	});
-
-	afterEach(() => {
-		// Restore all mocked functions
-		fsReadFileSyncSpy.mockRestore();
-		fsWriteFileSyncSpy.mockRestore();
-		fsExistsSyncSpy.mockRestore();
-		pathJoinSpy.mockRestore();
 	});
 
 	describe('truncate function', () => {
@@ -340,14 +380,16 @@ describe('Utils Module', () => {
 				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
 			};
 
-			fsExistsSyncSpy.mockReturnValue(true);
-			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
-			pathJoinSpy.mockReturnValue('/path/to/report.json');
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue(JSON.stringify(testReport));
+			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
 
 			const result = readComplexityReport();
 
-			expect(fsExistsSyncSpy).toHaveBeenCalled();
-			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(
+			expect(fs.existsSync).toHaveBeenCalled();
+			expect(fs.readFileSync).toHaveBeenCalledWith(
 				'/path/to/report.json',
 				'utf8'
 			);
@@ -355,13 +397,13 @@ describe('Utils Module', () => {
 		});
 
 		test('should handle missing report file', () => {
-			fsExistsSyncSpy.mockReturnValue(false);
-			pathJoinSpy.mockReturnValue('/path/to/report.json');
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
 
 			const result = readComplexityReport();
 
 			expect(result).toBeNull();
-			expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
+			expect(fs.readFileSync).not.toHaveBeenCalled();
 		});
 
 		test('should handle custom report path', () => {
@@ -370,14 +412,16 @@ describe('Utils Module', () => {
 				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
 			};
 
-			fsExistsSyncSpy.mockReturnValue(true);
-			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue(JSON.stringify(testReport));
 
 			const customPath = '/custom/path/report.json';
 			const result = readComplexityReport(customPath);
 
-			expect(fsExistsSyncSpy).toHaveBeenCalledWith(customPath);
-			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(customPath, 'utf8');
+			expect(fs.existsSync).toHaveBeenCalledWith(customPath);
+			expect(fs.readFileSync).toHaveBeenCalledWith(customPath, 'utf8');
 			expect(result).toEqual(testReport);
 		});
 	});

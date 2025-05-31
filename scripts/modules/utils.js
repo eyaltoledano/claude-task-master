@@ -9,6 +9,11 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
+import {
+	COMPLEXITY_REPORT_FILE,
+	LEGACY_COMPLEXITY_REPORT_FILE,
+	LEGACY_CONFIG_FILE
+} from '../../src/constants/paths.js';
 
 // Global silent mode flag
 let silentMode = false;
@@ -60,38 +65,45 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 
 // --- Project Root Finding Utility ---
 /**
- * Finds the project root directory by searching upwards from a given starting point
- * for a marker file or directory (e.g., 'package.json', '.git').
- * @param {string} [startPath=process.cwd()] - The directory to start searching from.
- * @param {string[]} [markers=['package.json', '.git', '.taskmasterconfig']] - Marker files/dirs to look for.
- * @returns {string|null} The path to the project root directory, or null if not found.
+ * Recursively searches upwards for project root starting from a given directory.
+ * @param {string} [startDir=process.cwd()] - The directory to start searching from.
+ * @param {string[]} [markers=['package.json', '.git', LEGACY_CONFIG_FILE]] - Marker files/dirs to look for.
+ * @returns {string|null} The path to the project root, or null if not found.
  */
 function findProjectRoot(
-	startPath = process.cwd(),
-	markers = ['package.json', '.git', '.taskmasterconfig']
+	startDir = process.cwd(),
+	markers = ['package.json', '.git', LEGACY_CONFIG_FILE]
 ) {
-	let currentPath = path.resolve(startPath);
-	while (true) {
-		for (const marker of markers) {
-			if (fs.existsSync(path.join(currentPath, marker))) {
-				return currentPath;
-			}
+	let currentPath = path.resolve(startDir);
+	const rootPath = path.parse(currentPath).root;
+
+	while (currentPath !== rootPath) {
+		// Check if any marker exists in the current directory
+		const hasMarker = markers.some((marker) => {
+			const markerPath = path.join(currentPath, marker);
+			return fs.existsSync(markerPath);
+		});
+
+		if (hasMarker) {
+			return currentPath;
 		}
-		const parentPath = path.dirname(currentPath);
-		if (parentPath === currentPath) {
-			// Reached the filesystem root
-			return null;
-		}
-		currentPath = parentPath;
+
+		// Move up one directory
+		currentPath = path.dirname(currentPath);
 	}
+
+	// Check the root directory as well
+	const hasMarkerInRoot = markers.some((marker) => {
+		const markerPath = path.join(rootPath, marker);
+		return fs.existsSync(markerPath);
+	});
+
+	return hasMarkerInRoot ? rootPath : null;
 }
 
 // --- Dynamic Configuration Function --- (REMOVED)
-/*
-function getConfig(session = null) {
-    // ... implementation removed ...
-}
-*/
+
+// --- Logging and Utility Functions ---
 
 // Set up logging based on log level
 const LOG_LEVELS = {
@@ -229,7 +241,7 @@ function sanitizePrompt(prompt) {
 }
 
 /**
- * Reads and parses the complexity report if it exists
+ * Reads the complexity report from file
  * @param {string} customPath - Optional custom path to the report
  * @returns {Object|null} The parsed complexity report or null if not found
  */
@@ -237,21 +249,35 @@ function readComplexityReport(customPath = null) {
 	// Get debug flag dynamically from config-manager
 	const isDebug = getDebugFlag();
 	try {
-		const reportPath =
-			customPath ||
-			path.join(process.cwd(), 'scripts', 'task-complexity-report.json');
+		let reportPath;
+		if (customPath) {
+			reportPath = customPath;
+		} else {
+			// Try new location first, then fall back to legacy
+			const newPath = path.join(process.cwd(), COMPLEXITY_REPORT_FILE);
+			const legacyPath = path.join(
+				process.cwd(),
+				LEGACY_COMPLEXITY_REPORT_FILE
+			);
+
+			reportPath = fs.existsSync(newPath) ? newPath : legacyPath;
+		}
+
 		if (!fs.existsSync(reportPath)) {
+			if (isDebug) {
+				log('debug', `Complexity report not found at ${reportPath}`);
+			}
 			return null;
 		}
 
-		const reportData = fs.readFileSync(reportPath, 'utf8');
-		return JSON.parse(reportData);
-	} catch (error) {
-		log('warn', `Could not read complexity report: ${error.message}`);
-		// Optionally log full error in debug mode
+		const reportData = readJSON(reportPath);
 		if (isDebug) {
-			// Use dynamic debug flag
-			log('error', 'Full error details:', error);
+			log('debug', `Successfully read complexity report from ${reportPath}`);
+		}
+		return reportData;
+	} catch (error) {
+		if (isDebug) {
+			log('error', `Error reading complexity report: ${error.message}`);
 		}
 		return null;
 	}
@@ -388,7 +414,7 @@ function findTaskById(
 	}
 
 	let taskResult = null;
-	let originalSubtaskCount = null;
+	const originalSubtaskCount = null;
 
 	// Find the main task
 	const id = parseInt(taskId, 10);
@@ -403,7 +429,6 @@ function findTaskById(
 
 	// If task found and statusFilter provided, filter its subtasks
 	if (statusFilter && task.subtasks && Array.isArray(task.subtasks)) {
-		const originalSubtaskCount = task.subtasks.length;
 		// Clone the task to avoid modifying the original array
 		const filteredTask = { ...task };
 		filteredTask.subtasks = task.subtasks.filter(
@@ -413,7 +438,6 @@ function findTaskById(
 		);
 
 		taskResult = filteredTask;
-		originalSubtaskCount = originalSubtaskCount;
 	}
 
 	// If task found and complexityReport provided, add complexity data
@@ -436,7 +460,7 @@ function truncate(text, maxLength) {
 		return text;
 	}
 
-	return text.slice(0, maxLength - 3) + '...';
+	return `${text.slice(0, maxLength - 3)}...`;
 }
 
 /**

@@ -8,14 +8,14 @@ import {
 	readComplexityReport,
 	readJSON
 } from '../../../../scripts/modules/utils.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
+import { findTasksPath } from '../utils/path-utils.js';
 
 /**
  * Direct function wrapper for getting task details.
  *
  * @param {Object} args - Command arguments.
  * @param {string} args.id - Task ID to show.
- * @param {string} [args.file] - Optional path to the tasks file (passed to findTasksJsonPath).
+ * @param {string} [args.file] - Optional path to the tasks file (passed to findTasksPath).
  * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {string} [args.status] - Optional status to filter subtasks by.
  * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
@@ -37,7 +37,7 @@ export async function showTaskDirect(args, log) {
 	let tasksJsonPath;
 	try {
 		// Use the projectRoot passed directly from args
-		tasksJsonPath = findTasksJsonPath(
+		tasksJsonPath = findTasksPath(
 			{ projectRoot: projectRoot, file: file },
 			log
 		);

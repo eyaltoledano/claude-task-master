@@ -24,6 +24,7 @@ import {
 } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import { TASKMASTER_TASKS_FILE } from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
@@ -1524,10 +1525,18 @@ async function displayComplexityReport(reportPath) {
 		if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 			// Call the analyze-complexity command
 			console.log(chalk.blue('Generating complexity report...'));
+			const tasksPath = TASKMASTER_TASKS_FILE;
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					'❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file.'
+				);
+				return null;
+			}
+
 			await analyzeTaskComplexity({
 				output: reportPath,
 				research: false, // Default to no research for speed
-				file: 'tasks/tasks.json'
+				file: tasksPath
 			});
 			// Read the newly generated report
 			return displayComplexityReport(reportPath);

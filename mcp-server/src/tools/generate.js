@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 import path from 'path';
 
 /**
@@ -39,7 +39,7 @@ export function registerGenerateTool(server) {
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);

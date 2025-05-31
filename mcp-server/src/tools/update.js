@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the update tool with the MCP server
@@ -56,7 +56,7 @@ export function registerUpdateTool(server) {
 
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath({ projectRoot, file }, log);
+					tasksJsonPath = findTasksPath({ projectRoot, file }, log);
 					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
 				} catch (error) {
 					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);

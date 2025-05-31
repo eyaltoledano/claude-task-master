@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { addSubtaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the addSubtask tool with the MCP server
@@ -67,7 +67,7 @@ export function registerAddSubtaskTool(server) {
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
