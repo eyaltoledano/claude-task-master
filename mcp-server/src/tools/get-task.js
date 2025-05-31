@@ -11,7 +11,7 @@ import {
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
+	findTasksPath,
 	findComplexityReportPath
 } from '../core/utils/path-utils.js';
 
@@ -77,7 +77,7 @@ export function registerShowTaskTool(server) {
 				// Resolve the path to tasks.json using the NORMALIZED projectRoot from args
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: projectRoot, file: file },
 						log
 					);
@@ -94,8 +94,10 @@ export function registerShowTaskTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						projectRoot,
-						args.complexityReport,
+						{
+							projectRoot: projectRoot,
+							complexityReport: args.complexityReport
+						},
 						log
 					);
 				} catch (error) {
