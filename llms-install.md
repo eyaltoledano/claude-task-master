@@ -1,4 +1,4 @@
-``# Taskmaster AI Installation Guide
+# Taskmaster AI Installation Guide
 
 This guide helps AI assistants install and configure Taskmaster for users in their development projects.
 
