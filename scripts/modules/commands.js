@@ -2376,6 +2376,10 @@ function registerCommands(programInstance) {
 			'Allow setting a custom Ollama model ID (use with --set-*) '
 		)
 		.option(
+			'--burncloud',
+			'Allow setting a custom Burncloud model ID (use with --set-*) '
+		)
+		.option(
 			'--bedrock',
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
 		)
@@ -2390,6 +2394,7 @@ Examples:
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main claude-3-7-sonnet-20250219 --burncloud # Set custom Burncloud model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -2402,6 +2407,7 @@ Examples:
 			const providerFlags = [
 				options.openrouter,
 				options.ollama,
+        options.burncloud,
 				options.bedrock
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
@@ -2439,6 +2445,14 @@ Examples:
 			if (isSetOperation) {
 				// Action 2: Perform Direct Set Operations
 				let updateOccurred = false; // Track if any update actually happened
+				// Determine provider hint from flags
+				const providerHint = options.openrouter 
+					? 'openrouter' 
+					: options.ollama 
+						? 'ollama' 
+						: options.burncloud 
+							? 'burncloud' 
+							: undefined;
 
 				if (options.setMain) {
 					const result = await setModel('main', options.setMain, {
@@ -2465,6 +2479,7 @@ Examples:
 				if (options.setResearch) {
 					const result = await setModel('research', options.setResearch, {
 						projectRoot,
+
 						providerHint: options.openrouter
 							? 'openrouter'
 							: options.ollama
@@ -2489,6 +2504,7 @@ Examples:
 				if (options.setFallback) {
 					const result = await setModel('fallback', options.setFallback, {
 						projectRoot,
+
 						providerHint: options.openrouter
 							? 'openrouter'
 							: options.ollama

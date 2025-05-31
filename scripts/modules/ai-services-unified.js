@@ -38,7 +38,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+  burncloud
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -84,6 +85,57 @@ function _getCostForModel(providerName, modelId) {
 		currency: currency
 	};
 }
+
+// --- Provider Function Map ---
+// Maps provider names (lowercase) to their respective service functions
+const PROVIDER_FUNCTIONS = {
+	anthropic: {
+		generateText: anthropic.generateAnthropicText,
+		streamText: anthropic.streamAnthropicText,
+		generateObject: anthropic.generateAnthropicObject
+	},
+	perplexity: {
+		generateText: perplexity.generatePerplexityText,
+		streamText: perplexity.streamPerplexityText,
+		generateObject: perplexity.generatePerplexityObject
+	},
+	google: {
+		// Add Google entry
+		generateText: google.generateGoogleText,
+		streamText: google.streamGoogleText,
+		generateObject: google.generateGoogleObject
+	},
+	openai: {
+		// ADD: OpenAI entry
+		generateText: openai.generateOpenAIText,
+		streamText: openai.streamOpenAIText,
+		generateObject: openai.generateOpenAIObject
+	},
+	xai: {
+		// ADD: xAI entry
+		generateText: xai.generateXaiText,
+		streamText: xai.streamXaiText,
+		generateObject: xai.generateXaiObject // Note: Object generation might be unsupported
+	},
+	openrouter: {
+		// ADD: OpenRouter entry
+		generateText: openrouter.generateOpenRouterText,
+		streamText: openrouter.streamOpenRouterText,
+		generateObject: openrouter.generateOpenRouterObject
+	},
+	ollama: {
+		generateText: ollama.generateOllamaText,
+		streamText: ollama.streamOllamaText,
+		generateObject: ollama.generateOllamaObject
+	},
+	burncloud: {
+		generateText: burncloud.generateBurncloudText,
+		streamText: burncloud.streamBurncloudText,
+		generateObject: burncloud.generateBurncloudObject
+	}
+	// TODO: Add entries for ollama, etc. when implemented
+};
+
 
 // --- Configuration for Retries ---
 const MAX_RETRIES = 2;
@@ -170,6 +222,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
+
+		burncloud: 'BURNCLOUD_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
 		vertex: 'GOOGLE_API_KEY'
 	};

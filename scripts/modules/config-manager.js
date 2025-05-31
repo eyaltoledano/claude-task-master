@@ -487,6 +487,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
+		burncloud: 'BURNCLOUD_API_KEY',
 		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
@@ -556,6 +557,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'openrouter':
 				apiKeyToCheck = mcpEnv.OPENROUTER_API_KEY;
 				placeholderValue = 'YOUR_OPENROUTER_API_KEY_HERE';
+				break;
+			case 'burncloud':
+				apiKeyToCheck = mcpEnv.BURNCLOUD_API_KEY;
+				placeholderValue = 'YOUR_BURNCLOUD_API_KEY_HERE';
 				break;
 			case 'google':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY;

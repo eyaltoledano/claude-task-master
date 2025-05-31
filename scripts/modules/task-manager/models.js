@@ -482,6 +482,11 @@ async function setModel(role, modelId, options = {}) {
 							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
 						);
 					}
+				} else if (providerHint === 'burncloud') {
+					// Hinted as Burncloud - set provider directly
+					determinedProvider = 'burncloud';
+					warningMessage = `Warning: Custom Burncloud model '${modelId}' set. Ensure your Burncloud API key is properly configured. Taskmaster cannot guarantee compatibility.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -502,7 +507,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter or --ollama.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, or --burncloud.`
 					}
 				};
 			}
