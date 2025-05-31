@@ -3,6 +3,8 @@ import path from 'path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
+import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
+import { findConfigPath } from '../../src/utils/path-utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -27,12 +29,10 @@ try {
 	process.exit(1); // Exit if models can't be loaded
 }
 
-const CONFIG_FILE_NAME = '.taskmasterconfig';
-
 // Define valid providers dynamically from the loaded MODEL_MAP
 const VALID_PROVIDERS = Object.keys(MODEL_MAP || {});
 
-// Default configuration values (used if .taskmasterconfig is missing or incomplete)
+// Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
 	models: {
 		main: {
@@ -77,28 +77,6 @@ class ConfigurationError extends Error {
 	}
 }
 
-/**
- * Helper function to find configuration file in both new and legacy locations
- * @param {string} rootPath - The project root path
- * @returns {Object} - Object with path and isLegacy flag, or null if not found
- */
-function findConfigFile(rootPath) {
-	// Check new location first: .taskmaster/config.json
-	const newConfigPath = path.join(rootPath, '.taskmaster', 'config.json');
-	if (fs.existsSync(newConfigPath)) {
-		return { path: newConfigPath, isLegacy: false };
-	}
-
-	// Check legacy location: .taskmasterconfig
-	const legacyConfigPath = path.join(rootPath, CONFIG_FILE_NAME);
-	if (fs.existsSync(legacyConfigPath)) {
-		return { path: legacyConfigPath, isLegacy: true };
-	}
-
-	// No config file found
-	return null;
-}
-
 function _loadAndValidateConfig(explicitRoot = null) {
 	const defaults = DEFAULTS; // Use the defined defaults
 	let rootToUse = explicitRoot;
@@ -118,14 +96,14 @@ function _loadAndValidateConfig(explicitRoot = null) {
 	}
 	// ---> End find project root logic <---
 
-	// --- Find configuration file in both new and legacy locations ---
-	const configFileInfo = findConfigFile(rootToUse);
+	// --- Find configuration file using centralized path utility ---
+	const configPath = findConfigPath(null, { projectRoot: rootToUse });
 	let config = { ...defaults }; // Start with a deep copy of defaults
 	let configExists = false;
 
-	if (configFileInfo) {
+	if (configPath) {
 		configExists = true;
-		const configPath = configFileInfo.path;
+		const isLegacy = configPath.endsWith(LEGACY_CONFIG_FILE);
 
 		try {
 			const rawData = fs.readFileSync(configPath, 'utf-8');
@@ -150,7 +128,7 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			configSource = `file (${configPath})`; // Update source info
 
 			// Issue deprecation warning if using legacy config file
-			if (configFileInfo.isLegacy) {
+			if (isLegacy) {
 				console.warn(
 					chalk.yellow(
 						`⚠️  DEPRECATION WARNING: Found configuration in legacy location '${configPath}'. Please migrate to .taskmaster/config.json. Run 'task-master migrate' to automatically migrate your project.`
@@ -192,11 +170,11 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			// Use console.error for actual errors during parsing
 			console.error(
 				chalk.red(
-					`Error reading or parsing ${configFileInfo.path}: ${error.message}. Using default configuration.`
+					`Error reading or parsing ${configPath}: ${error.message}. Using default configuration.`
 				)
 			);
 			config = { ...defaults }; // Reset to defaults on parse error
-			configSource = `defaults (parse error at ${configFileInfo.path})`;
+			configSource = `defaults (parse error at ${configPath})`;
 		}
 	} else {
 		// Config file doesn't exist at the determined rootToUse.
@@ -720,21 +698,7 @@ function writeConfig(config, explicitRoot = null) {
  * @returns {boolean} True if the file exists, false otherwise
  */
 function isConfigFilePresent(explicitRoot = null) {
-	// ---> Determine root path reliably <---
-	let rootPath = explicitRoot;
-	if (explicitRoot === null || explicitRoot === undefined) {
-		// Logic matching _loadAndValidateConfig
-		const foundRoot = findProjectRoot(); // *** Explicitly call findProjectRoot ***
-		if (!foundRoot) {
-			return false; // Cannot check if root doesn't exist
-		}
-		rootPath = foundRoot;
-	}
-	// ---> End determine root path logic <---
-
-	// Check if config file exists in either new or legacy location
-	const configFileInfo = findConfigFile(rootPath);
-	return configFileInfo !== null;
+	return findConfigPath(null, { projectRoot: explicitRoot }) !== null;
 }
 
 /**

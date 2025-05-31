@@ -2941,7 +2941,7 @@ async function runCLI(argv = process.argv) {
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
-		// This means the ConfigurationError might be thrown here if .taskmasterconfig is missing.
+		// This means the ConfigurationError might be thrown here if configuration file is missing.
 		const programInstance = setupCLI();
 		await programInstance.parseAsync(argv);
 
@@ -2960,10 +2960,10 @@ async function runCLI(argv = process.argv) {
 				boxen(
 					chalk.red.bold('Configuration Update Required!') +
 						'\n\n' +
-						chalk.white('Taskmaster now uses the ') +
-						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.white('Taskmaster now uses a ') +
+						chalk.yellow.bold('configuration file') +
 						chalk.white(
-							' file in your project root for AI model choices and settings.\n\n' +
+							' in your project for AI model choices and settings.\n\n' +
 								'This file appears to be '
 						) +
 						chalk.red.bold('missing') +
@@ -2975,7 +2975,7 @@ async function runCLI(argv = process.argv) {
 						chalk.white.bold('Key Points:') +
 						'\n' +
 						chalk.white('*   ') +
-						chalk.yellow.bold('.taskmasterconfig') +
+						chalk.yellow.bold('Configuration file') +
 						chalk.white(
 							': Stores your AI model settings (do not manually edit)\n'
 						) +

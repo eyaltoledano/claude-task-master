@@ -10,7 +10,9 @@ import {
 	LEGACY_TASKS_FILE,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
-	COMPLEXITY_REPORT_FILE
+	COMPLEXITY_REPORT_FILE,
+	TASKMASTER_CONFIG_FILE,
+	LEGACY_CONFIG_FILE
 } from '../constants/paths.js';
 
 /**
@@ -336,4 +338,63 @@ export function resolveComplexityReportOutputPath(
 	}
 
 	return defaultPath;
+}
+
+/**
+ * Find the configuration file path with fallback logic
+ * @param {string|null} explicitPath - Explicit path provided by user (highest priority)
+ * @param {Object|null} args - Args object for MCP context (optional)
+ * @param {Object|null} log - Logger object (optional)
+ * @returns {string|null} - Resolved config file path or null if not found
+ */
+export function findConfigPath(explicitPath = null, args = null, log = null) {
+	const logger = log || console;
+
+	// 1. If explicit path is provided, use it (highest priority)
+	if (explicitPath) {
+		const resolvedPath = path.isAbsolute(explicitPath)
+			? explicitPath
+			: path.resolve(process.cwd(), explicitPath);
+
+		if (fs.existsSync(resolvedPath)) {
+			logger.info?.(`Using explicit config path: ${resolvedPath}`);
+			return resolvedPath;
+		} else {
+			logger.warn?.(
+				`Explicit config path not found: ${resolvedPath}, trying fallbacks`
+			);
+		}
+	}
+
+	// 2. Try to get project root from args (MCP) or find it
+	const projectRoot = args?.projectRoot || findProjectRoot();
+
+	if (!projectRoot) {
+		logger.warn?.('Could not determine project root directory');
+		return null;
+	}
+
+	// 3. Check possible locations in order of preference
+	const possiblePaths = [
+		path.join(projectRoot, TASKMASTER_CONFIG_FILE), // NEW location
+		path.join(projectRoot, LEGACY_CONFIG_FILE) // LEGACY location
+	];
+
+	for (const configPath of possiblePaths) {
+		if (fs.existsSync(configPath)) {
+			logger.info?.(`Found config file at: ${configPath}`);
+
+			// Issue deprecation warning for legacy paths
+			if (configPath.endsWith(LEGACY_CONFIG_FILE)) {
+				logger.warn?.(
+					`⚠️  DEPRECATION WARNING: Found configuration in legacy location '${configPath}'. Please migrate to .taskmaster/config.json. Run 'task-master migrate' to automatically migrate your project.`
+				);
+			}
+
+			return configPath;
+		}
+	}
+
+	logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+	return null;
 }

@@ -9,10 +9,10 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
-import { execSync } from 'child_process';
 import {
 	COMPLEXITY_REPORT_FILE,
-	LEGACY_COMPLEXITY_REPORT_FILE
+	LEGACY_COMPLEXITY_REPORT_FILE,
+	LEGACY_CONFIG_FILE
 } from '../../src/constants/paths.js';
 
 // Global silent mode flag
@@ -65,16 +65,16 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 
 // --- Project Root Finding Utility ---
 /**
- * Finds the project root directory by searching for marker files/directories.
- * @param {string} [startPath=process.cwd()] - The directory to start searching from.
- * @param {string[]} [markers=['package.json', '.git', '.taskmasterconfig']] - Marker files/dirs to look for.
- * @returns {string|null} The path to the project root directory, or null if not found.
+ * Recursively searches upwards for project root starting from a given directory.
+ * @param {string} [startDir=process.cwd()] - The directory to start searching from.
+ * @param {string[]} [markers=['package.json', '.git', LEGACY_CONFIG_FILE]] - Marker files/dirs to look for.
+ * @returns {string|null} The path to the project root, or null if not found.
  */
 function findProjectRoot(
-	startPath = process.cwd(),
-	markers = ['package.json', '.git', '.taskmasterconfig']
+	startDir = process.cwd(),
+	markers = ['package.json', '.git', LEGACY_CONFIG_FILE]
 ) {
-	let currentPath = path.resolve(startPath);
+	let currentPath = path.resolve(startDir);
 	const rootPath = path.parse(currentPath).root;
 
 	while (currentPath !== rootPath) {

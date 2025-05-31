@@ -4,6 +4,10 @@ import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 import { createLogWrapper } from '../../mcp-server/src/tools/utils.js';
 import { findProjectRoot } from './utils.js';
+import {
+	LEGACY_CONFIG_FILE,
+	TASKMASTER_CONFIG_FILE
+} from '../../src/constants/paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,11 +169,11 @@ function analyzeMigrationNeeds(projectRoot) {
 	}
 
 	// Check for .taskmasterconfig
-	const oldConfig = path.join(projectRoot, '.taskmasterconfig');
+	const oldConfig = path.join(projectRoot, LEGACY_CONFIG_FILE);
 	if (fs.existsSync(oldConfig)) {
 		migrationPlan.push({
-			from: '.taskmasterconfig',
-			to: path.join('.taskmaster', 'config.json'),
+			from: LEGACY_CONFIG_FILE,
+			to: TASKMASTER_CONFIG_FILE,
 			type: 'config'
 		});
 	}
