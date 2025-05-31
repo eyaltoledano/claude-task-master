@@ -9,25 +9,31 @@ export const TASKMASTER_DOCS_DIR = '.taskmaster/docs';
 export const TASKMASTER_REPORTS_DIR = '.taskmaster/reports';
 export const TASKMASTER_TEMPLATES_DIR = '.taskmaster/templates';
 
-// Specific file paths
+// Task Master configuration files
 export const TASKMASTER_CONFIG_FILE = '.taskmaster/config.json';
 export const LEGACY_CONFIG_FILE = '.taskmasterconfig';
+
+// Task Master report files
 export const COMPLEXITY_REPORT_FILE =
 	'.taskmaster/reports/task-complexity-report.json';
 export const LEGACY_COMPLEXITY_REPORT_FILE =
 	'scripts/task-complexity-report.json';
 
-// PRD file paths
+// Task Master PRD file paths
 export const PRD_FILE = '.taskmaster/docs/prd.txt';
 export const LEGACY_PRD_FILE = 'scripts/prd.txt';
 
-// Template files
+// Task Master template files
 export const EXAMPLE_PRD_FILE = '.taskmaster/templates/example_prd.txt';
 export const LEGACY_EXAMPLE_PRD_FILE = 'scripts/example_prd.txt';
 
-// Task file paths
+// Task Master task file paths
 export const TASKMASTER_TASKS_FILE = '.taskmaster/tasks/tasks.json';
 export const LEGACY_TASKS_FILE = 'tasks/tasks.json';
+
+// General project files (not Task Master specific but commonly used)
+export const ENV_EXAMPLE_FILE = '.env.example';
+export const GITIGNORE_FILE = '.gitignore';
 
 // Task file naming pattern
 export const TASK_FILE_PREFIX = 'task_';

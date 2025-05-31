@@ -27,9 +27,14 @@ import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
 import {
 	EXAMPLE_PRD_FILE,
-	LEGACY_CONFIG_FILE,
 	TASKMASTER_CONFIG_FILE,
-	TASKMASTER_TEMPLATES_DIR
+	TASKMASTER_TEMPLATES_DIR,
+	TASKMASTER_DIR,
+	TASKMASTER_TASKS_DIR,
+	TASKMASTER_DOCS_DIR,
+	TASKMASTER_REPORTS_DIR,
+	ENV_EXAMPLE_FILE,
+	GITIGNORE_FILE
 } from '../src/constants/paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -469,29 +474,25 @@ function createProjectStructure(addAliases, dryRun, options) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
+	// Define Roo modes locally (external integration, not part of core Task Master)
+	const ROO_MODES = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
+
 	// Create directories
-	ensureDirectoryExists(path.join(targetDir, '.cursor', 'rules'));
+	ensureDirectoryExists(path.join(targetDir, '.cursor/rules'));
 
 	// Create Roo directories
 	ensureDirectoryExists(path.join(targetDir, '.roo'));
-	ensureDirectoryExists(path.join(targetDir, '.roo', 'rules'));
-	for (const mode of [
-		'architect',
-		'ask',
-		'boomerang',
-		'code',
-		'debug',
-		'test'
-	]) {
+	ensureDirectoryExists(path.join(targetDir, '.roo/rules'));
+	for (const mode of ROO_MODES) {
 		ensureDirectoryExists(path.join(targetDir, '.roo', `rules-${mode}`));
 	}
 
-	// Create NEW .taskmaster directory structure
-	ensureDirectoryExists(path.join(targetDir, '.taskmaster'));
-	ensureDirectoryExists(path.join(targetDir, '.taskmaster', 'tasks'));
-	ensureDirectoryExists(path.join(targetDir, '.taskmaster', 'docs'));
-	ensureDirectoryExists(path.join(targetDir, '.taskmaster', 'reports'));
-	ensureDirectoryExists(path.join(targetDir, '.taskmaster', 'templates'));
+	// Create NEW .taskmaster directory structure (using constants)
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_DIR));
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_TASKS_DIR));
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_DOCS_DIR));
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_REPORTS_DIR));
+	ensureDirectoryExists(path.join(targetDir, TASKMASTER_TEMPLATES_DIR));
 
 	// Setup MCP configuration for integration with Cursor
 	setupMCPConfiguration(targetDir);
@@ -504,44 +505,44 @@ function createProjectStructure(addAliases, dryRun, options) {
 	// Copy .env.example
 	copyTemplateFile(
 		'env.example',
-		path.join(targetDir, '.env.example'),
+		path.join(targetDir, ENV_EXAMPLE_FILE),
 		replacements
 	);
 
 	// Copy .taskmasterconfig with project name to NEW location
 	copyTemplateFile(
 		'.taskmasterconfig',
-		path.join(targetDir, '.taskmaster', 'config.json'),
+		path.join(targetDir, TASKMASTER_CONFIG_FILE),
 		{
 			...replacements
 		}
 	);
 
 	// Copy .gitignore
-	copyTemplateFile('gitignore', path.join(targetDir, '.gitignore'));
+	copyTemplateFile('gitignore', path.join(targetDir, GITIGNORE_FILE));
 
 	// Copy dev_workflow.mdc
 	copyTemplateFile(
 		'dev_workflow.mdc',
-		path.join(targetDir, '.cursor', 'rules', 'dev_workflow.mdc')
+		path.join(targetDir, '.cursor/rules/dev_workflow.mdc')
 	);
 
 	// Copy taskmaster.mdc
 	copyTemplateFile(
 		'taskmaster.mdc',
-		path.join(targetDir, '.cursor', 'rules', 'taskmaster.mdc')
+		path.join(targetDir, '.cursor/rules/taskmaster.mdc')
 	);
 
 	// Copy cursor_rules.mdc
 	copyTemplateFile(
 		'cursor_rules.mdc',
-		path.join(targetDir, '.cursor', 'rules', 'cursor_rules.mdc')
+		path.join(targetDir, '.cursor/rules/cursor_rules.mdc')
 	);
 
 	// Copy self_improve.mdc
 	copyTemplateFile(
 		'self_improve.mdc',
-		path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc')
+		path.join(targetDir, '.cursor/rules/self_improve.mdc')
 	);
 
 	// Generate Roo rules from Cursor rules
@@ -555,8 +556,7 @@ function createProjectStructure(addAliases, dryRun, options) {
 	copyTemplateFile('.roomodes', path.join(targetDir, '.roomodes'));
 
 	// Copy Roo rule files for each mode
-	const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
-	for (const mode of rooModes) {
+	for (const mode of ROO_MODES) {
 		copyTemplateFile(
 			`${mode}-rules`,
 			path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`)
