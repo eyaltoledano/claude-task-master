@@ -138,6 +138,20 @@ Use your AI assistant to:
 
 #### Installation
 
+**Via Homebrew (macOS):**
+
+```bash
+# Add the tap
+brew tap eyaltoledano/claude-task-master
+
+# Install the package
+brew install task-master
+
+# Verify installation
+task-master --version
+```
+
+**Via npm:**
 ```bash
 # Install globally
 npm install -g task-master-ai
