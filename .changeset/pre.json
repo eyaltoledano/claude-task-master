@@ -1,0 +1,18 @@
+{
+  "mode": "exit",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.15.0"
+  },
+  "changesets": [
+    "hungry-geese-work",
+    "itchy-taxes-sip",
+    "lemon-apes-sort",
+    "new-colts-flow",
+    "plain-bottles-stand",
+    "shaggy-rice-exist",
+    "sharp-flies-call",
+    "spotty-buttons-walk",
+    "tidy-seals-rule"
+  ]
+}
