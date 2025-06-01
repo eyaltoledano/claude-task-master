@@ -104,7 +104,7 @@ Task Master offers two primary ways to interact:
 
 Taskmaster configuration is managed through two main mechanisms:
 
-1.  **`.taskmasterconfig` File (Primary):**
+1.  **`.taskmaster/config.json` File (Primary):**
     *   Located in the project root directory.
     *   Stores most configuration settings: AI model selections (main, research, fallback), parameters (max tokens, temperature), logging level, default subtasks/priority, project name, etc.
     *   **Managed via `task-master models --setup` command.** Do not edit manually unless you know what you are doing.
