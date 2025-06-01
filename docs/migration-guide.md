@@ -2,7 +2,7 @@
 
 ## Overview
 
-Task Master v3.x introduces a new `.taskmaster/` directory structure to keep your project directories clean and organized. This guide explains the benefits of the new structure and how to migrate existing projects.
+Task Master v0.16.0 introduces a new `.taskmaster/` directory structure to keep your project directories clean and organized. This guide explains the benefits of the new structure and how to migrate existing projects.
 
 ## What's New
 
@@ -12,8 +12,8 @@ Task Master v3.x introduces a new `.taskmaster/` directory structure to keep you
 your-project/
 ├── tasks/                    # Task files
 │   ├── tasks.json
-│   ├── task-1.md
-│   └── task-2.md
+│   ├── task-1.txt
+│   └── task-2.txt
 ├── scripts/                  # PRD and reports
 │   ├── prd.txt
 │   ├── example_prd.txt
@@ -30,8 +30,8 @@ your-project/
 │   ├── config.json          # Configuration (was .taskmasterconfig)
 │   ├── tasks/               # Task files
 │   │   ├── tasks.json
-│   │   ├── task-1.md
-│   │   └── task-2.md
+│   │   ├── task-1.txt
+│   │   └── task-2.txt
 │   ├── docs/                # Project documentation
 │   │   └── prd.txt
 │   ├── reports/             # Generated reports
@@ -118,7 +118,7 @@ The migration process handles these file types:
 ### Tasks Directory → `.taskmaster/tasks/`
 
 - `tasks.json`
-- Individual task Markdown files (`.md`)
+- Individual task text files (`.txt`)
 
 ### Scripts Directory → Multiple Destinations
 
