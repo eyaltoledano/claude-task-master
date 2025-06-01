@@ -23,15 +23,27 @@ describe('Roo Files Inclusion in Package', () => {
 
 		// Check for Roo directory creation (using more flexible pattern matching)
 		const hasRooDir = initJsContent.includes(
-			"ensureDirectoryExists(path.join(targetDir, '.roo"
+			"ensureDirectoryExists(path.join(targetDir, '.roo'))"
 		);
 		expect(hasRooDir).toBe(true);
 
-		// Check for .roomodes file copying
-		const hasRoomodes = initJsContent.includes("copyTemplateFile('.roomodes'");
+		// Check for .roomodes file copying using hardcoded path
+		const hasRoomodes = initJsContent.includes(
+			"path.join(targetDir, '.roomodes')"
+		);
 		expect(hasRoomodes).toBe(true);
 
-		// Check for mode-specific patterns (using more flexible pattern matching)
+		// Check for local ROO_MODES definition and usage
+		const hasRooModes = initJsContent.includes('ROO_MODES');
+		expect(hasRooModes).toBe(true);
+
+		// Check for local ROO_MODES array definition
+		const hasLocalRooModes = initJsContent.includes(
+			"const ROO_MODES = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test']"
+		);
+		expect(hasLocalRooModes).toBe(true);
+
+		// Check for mode-specific patterns (these will still be present in the local array)
 		const hasArchitect = initJsContent.includes('architect');
 		const hasAsk = initJsContent.includes('ask');
 		const hasBoomerang = initJsContent.includes('boomerang');

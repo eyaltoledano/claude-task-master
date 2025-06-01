@@ -23,23 +23,21 @@ describe('Roo Initialization Functionality', () => {
 
 		// Check for the line that creates .roo/rules directory
 		const hasRooRulesDir = initJsContent.includes(
-			"ensureDirectoryExists(path.join(targetDir, '.roo', 'rules'))"
+			"ensureDirectoryExists(path.join(targetDir, '.roo/rules'))"
 		);
 		expect(hasRooRulesDir).toBe(true);
 
-		// Check for the for loop that creates mode-specific directories
-		const hasRooModeLoop =
-			initJsContent.includes(
-				"for (const mode of ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'])"
-			) ||
-			(initJsContent.includes('for (const mode of [') &&
-				initJsContent.includes('architect') &&
-				initJsContent.includes('ask') &&
-				initJsContent.includes('boomerang') &&
-				initJsContent.includes('code') &&
-				initJsContent.includes('debug') &&
-				initJsContent.includes('test'));
+		// Check for the for loop that creates mode-specific directories using local ROO_MODES array
+		const hasRooModeLoop = initJsContent.includes(
+			'for (const mode of ROO_MODES)'
+		);
 		expect(hasRooModeLoop).toBe(true);
+
+		// Check for local ROO_MODES definition
+		const hasLocalRooModes = initJsContent.includes(
+			"const ROO_MODES = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test']"
+		);
+		expect(hasLocalRooModes).toBe(true);
 	});
 
 	test('init.js copies Roo files from assets/roocode directory', () => {
