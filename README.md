@@ -115,12 +115,15 @@ In your editor's AI chat pane, say:
 Initialize taskmaster-ai in my project
 ```
 
-#### 5. Make sure you have a PRD
+#### 5. Make sure you have a PRD (Recommended)
 
 For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`  
 For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
 
 An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
+
+> [!NOTE]
+> While a PRD is recommended for complex projects, you can always create individual tasks by asking "Can you help me implement [description of what you want to do]?" in chat.
 
 **Always start with a detailed PRD.**
 

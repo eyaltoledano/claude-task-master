@@ -297,7 +297,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 			if (newLines.length > 0) {
 				// Add a comment to separate the original content from our additions
-				const updatedContent = `${existingContent.trim()}\n\n# Added by Claude Task Master\n${newLines.join('\n')}`;
+				const updatedContent = `${existingContent.trim()}\n\n# Added by Task Master AI\n${newLines.join('\n')}`;
 				fs.writeFileSync(targetPath, updatedContent);
 				log('success', `Updated ${targetPath} with additional entries`);
 			} else {
@@ -636,7 +636,7 @@ function createProjectStructure(addAliases, dryRun, options) {
 		log('info', 'Skipping interactive model setup due to --yes flag.');
 		log(
 			'info',
-			'You can configure AI models later using "task-master models --setup" or "task-master models --set-..." commands.'
+			'Default AI models will be used. You can configure different models later using "task-master models --setup" or "task-master models --set-..." commands.'
 		);
 	}
 	// ====================================
@@ -675,10 +675,12 @@ function createProjectStructure(addAliases, dryRun, options) {
 				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('analyze_project_complexity')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master analyze-complexity')}\n${chalk.white('5. ')}${chalk.yellow(
 					'Ask Cursor to expand all of your tasks using the complexity analysis'
 				)}\n${chalk.white('6. ')}${chalk.yellow('Ask Cursor to begin working on the next task')}\n${chalk.white('7. ')}${chalk.yellow(
-					'Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists.'
+					'Add new tasks anytime using the add-task command or MCP tool'
 				)}\n${chalk.white('8. ')}${chalk.yellow(
+					'Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists.'
+				)}\n${chalk.white('9. ')}${chalk.yellow(
 					'Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.'
-				)}\n${chalk.white('9. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+				)}\n${chalk.white('10. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
 					'* Review the README.md file to learn how to use other commands via Cursor Agent.'
 				)}\n${chalk.dim(
 					'* Use the task-master command without arguments to see all available commands.'
