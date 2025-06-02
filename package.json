@@ -67,6 +67,7 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
+		"task-master-ai": "^0.15.0",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
 	},
