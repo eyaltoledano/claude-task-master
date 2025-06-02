@@ -170,7 +170,7 @@ Example:
 
 ### Prerequisites
 
-- Node.js 14+
+- Node.js 18+
 - npm or yarn
 
 ### Environment Setup

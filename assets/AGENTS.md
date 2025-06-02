@@ -7,7 +7,7 @@
 ```bash
 # Project Setup
 task-master init                                    # Initialize Task Master in current project
-task-master parse-prd scripts/prd.txt             # Generate tasks from PRD document
+task-master parse-prd .taskmaster/docs/prd.txt      # Generate tasks from PRD document
 task-master models --setup                        # Configure AI models interactively
 
 # Daily Development Workflow
@@ -39,10 +39,10 @@ task-master generate                                         # Update task markd
 
 ### Core Files
 
-- `tasks/tasks.json` - Main task data file (auto-managed)
-- `.taskmasterconfig` - AI model configuration (use `task-master models` to modify)
-- `scripts/prd.txt` - Product Requirements Document for parsing
-- `tasks/*.txt` - Individual task files (auto-generated from tasks.json)
+- `.taskmaster/tasks/tasks.json` - Main task data file (auto-managed)
+- `.taskmaster/config.json` - AI model configuration (use `task-master models` to modify)
+- `.taskmaster/docs/prd.txt` - Product Requirements Document for parsing
+- `.taskmaster/tasks/*.txt` - Individual task files (auto-generated from tasks.json)
 - `.env` - API keys for CLI usage
 
 ### Claude Code Integration Files
@@ -56,20 +56,24 @@ task-master generate                                         # Update task markd
 
 ```
 project/
-├── tasks/
-│   ├── tasks.json           # Main task database
-│   ├── task-1.md           # Individual task files
-│   └── task-2.md
-├── scripts/
-│   ├── prd.txt             # Product requirements
-│   └── task-complexity-report.json
+├── .taskmaster/
+│   ├── tasks/              # Task files directory
+│   │   ├── tasks.json      # Main task database
+│   │   ├── task-1.md      # Individual task files
+│   │   └── task-2.md
+│   ├── docs/              # Documentation directory
+│   │   ├── prd.txt        # Product requirements
+│   ├── reports/           # Analysis reports directory
+│   │   └── task-complexity-report.json
+│   ├── templates/         # Template files
+│   │   └── example_prd.txt  # Example PRD template
+│   └── config.json        # AI models & settings
 ├── .claude/
-│   ├── settings.json        # Claude Code configuration
-│   └── commands/           # Custom slash commands
-├── .taskmasterconfig       # AI models & settings
-├── .env                    # API keys
-├── .mcp.json              # MCP configuration
-└── CLAUDE.md              # This file - auto-loaded by Claude Code
+│   ├── settings.json      # Claude Code configuration
+│   └── commands/         # Custom slash commands
+├── .env                  # API keys
+├── .mcp.json            # MCP configuration
+└── CLAUDE.md            # This file - auto-loaded by Claude Code
 ```
 
 ## MCP Integration
@@ -78,23 +82,23 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
 
 ```json
 {
-	"mcpServers": {
-		"task-master-ai": {
-			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
-			"env": {
-				"ANTHROPIC_API_KEY": "your_key_here",
-				"PERPLEXITY_API_KEY": "your_key_here",
-				"OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
-				"GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
-				"XAI_API_KEY": "XAI_API_KEY_HERE",
-				"OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
-				"MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
-				"OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
-			}
-		}
-	}
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "your_key_here",
+        "PERPLEXITY_API_KEY": "your_key_here",
+        "OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
+        "GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
+        "XAI_API_KEY": "XAI_API_KEY_HERE",
+        "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
+        "MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
+        "OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
+      }
+    }
+  }
 }
 ```
 
@@ -135,7 +139,7 @@ complexity_report; // = task-master complexity-report
 task-master init
 
 # Create or obtain PRD, then parse it
-task-master parse-prd scripts/prd.txt
+task-master parse-prd .taskmaster/docs/prd.txt
 
 # Analyze complexity and expand tasks
 task-master analyze-complexity --research
@@ -208,14 +212,14 @@ Add to `.claude/settings.json`:
 
 ```json
 {
-	"allowedTools": [
-		"Edit",
-		"Bash(task-master *)",
-		"Bash(git commit:*)",
-		"Bash(git add:*)",
-		"Bash(npm run *)",
-		"mcp__task_master_ai__*"
-	]
+  "allowedTools": [
+    "Edit",
+    "Bash(task-master *)",
+    "Bash(git commit:*)",
+    "Bash(git add:*)",
+    "Bash(npm run *)",
+    "mcp__task_master_ai__*"
+  ]
 }
 ```
 
@@ -268,15 +272,15 @@ task-master models --set-fallback gpt-4o-mini
 
 ```json
 {
-	"id": "1.2",
-	"title": "Implement user authentication",
-	"description": "Set up JWT-based auth system",
-	"status": "pending",
-	"priority": "high",
-	"dependencies": ["1.1"],
-	"details": "Use bcrypt for hashing, JWT for tokens...",
-	"testStrategy": "Unit tests for auth functions, integration tests for login flow",
-	"subtasks": []
+  "id": "1.2",
+  "title": "Implement user authentication",
+  "description": "Set up JWT-based auth system",
+  "status": "pending",
+  "priority": "high",
+  "dependencies": ["1.1"],
+  "details": "Use bcrypt for hashing, JWT for tokens...",
+  "testStrategy": "Unit tests for auth functions, integration tests for login flow",
+  "subtasks": []
 }
 ```
 
@@ -384,7 +388,7 @@ These commands make AI calls and may take up to a minute:
 ### File Management
 
 - Never manually edit `tasks.json` - use commands instead
-- Never manually edit `.taskmasterconfig` - use `task-master models`
+- Never manually edit `.taskmaster/config.json` - use `task-master models`
 - Task markdown files in `tasks/` are auto-generated
 - Run `task-master generate` after manual changes to tasks.json
 

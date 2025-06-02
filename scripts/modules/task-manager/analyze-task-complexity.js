@@ -14,6 +14,10 @@ import {
 import { generateTextService } from '../ai-services-unified.js';
 
 import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	COMPLEXITY_REPORT_FILE,
+	LEGACY_TASKS_FILE
+} from '../../../src/constants/paths.js';
 
 /**
  * Generates the prompt for complexity analysis.
@@ -64,8 +68,8 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  */
 async function analyzeTaskComplexity(options, context = {}) {
 	const { session, mcpLog } = context;
-	const tasksPath = options.file || 'tasks/tasks.json';
-	const outputPath = options.output || 'scripts/task-complexity-report.json';
+	const tasksPath = options.file || LEGACY_TASKS_FILE;
+	const outputPath = options.output || COMPLEXITY_REPORT_FILE;
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
@@ -74,7 +78,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		? options.id
 				.split(',')
 				.map((id) => parseInt(id.trim(), 10))
-				.filter((id) => !isNaN(id))
+				.filter((id) => !Number.isNaN(id))
 		: null;
 	const fromId = options.from !== undefined ? parseInt(options.from, 10) : null;
 	const toId = options.to !== undefined ? parseInt(options.to, 10) : null;
@@ -92,7 +96,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 	if (outputFormat === 'text') {
 		console.log(
 			chalk.blue(
-				`Analyzing task complexity and generating expansion recommendations...`
+				'Analyzing task complexity and generating expansion recommendations...'
 			)
 		);
 	}

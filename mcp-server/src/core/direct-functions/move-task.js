@@ -3,7 +3,7 @@
  */
 
 import { moveTask } from '../../../../scripts/modules/task-manager.js';
-import { findTasksJsonPath } from '../utils/path-utils.js';
+import { findTasksPath } from '../utils/path-utils.js';
 import {
 	enableSilentMode,
 	disableSilentMode
@@ -58,7 +58,7 @@ export async function moveTaskDirect(args, log, context = {}) {
 					}
 				};
 			}
-			tasksPath = findTasksJsonPath(args, log);
+			tasksPath = findTasksPath(args, log);
 		}
 
 		// Enable silent mode to prevent console output during MCP operation

@@ -5468,12 +5468,80 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
+      "title": "Implement Google Vertex AI Provider Integration",
+      "description": "Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.",
+      "details": "1. Create a new provider class in `src/ai-providers/google-vertex.js` that extends the existing BaseAIProvider, following the established structure used by other providers (e.g., google.js, openai.js).\n2. Integrate the Vercel AI SDK's `@ai-sdk/google-vertex` package. Use the default `vertex` provider for standard usage, and allow for custom configuration via `createVertex` for advanced scenarios (e.g., specifying project ID, location, and credentials).\n3. Implement all required interface methods (such as `getClient`, `generateText`, etc.) to ensure compatibility with the provider system. Reference the implementation patterns from other providers for consistency.\n4. Handle Vertex AI-specific configuration, including project ID, location, and Google Cloud authentication. Support both environment-based authentication and explicit service account credentials via `googleAuthOptions`.\n5. Implement robust error handling for Vertex-specific issues, including authentication failures and API errors, leveraging the system-wide error handling patterns.\n6. Update `src/ai-providers/index.js` to export the new provider, and add the 'vertex' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`.\n7. Update documentation to provide clear setup instructions for Google Vertex AI, including required environment variables, service account setup, and configuration examples.\n8. Ensure the implementation is modular and maintainable, supporting future expansion for additional Vertex AI features or models.",
+      "testStrategy": "- Write unit tests for the new provider class, covering all interface methods and configuration scenarios (default, custom, error cases).\n- Verify that the provider can successfully authenticate using both environment-based and explicit service account credentials.\n- Test integration with the provider system by selecting 'vertex' as the provider and generating text using supported Vertex AI models (e.g., Gemini).\n- Simulate authentication and API errors to confirm robust error handling and user feedback.\n- Confirm that the provider is correctly exported and available in the PROVIDERS object.\n- Review and validate the updated documentation for accuracy and completeness.",
+      "status": "pending",
+      "dependencies": [
+        19,
+        94
+      ],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Google Vertex AI Provider Class",
+          "description": "Develop a new provider class in `src/ai-providers/google-vertex.js` that extends the BaseAIProvider, following the structure of existing providers.",
+          "dependencies": [],
+          "details": "Ensure the new class is consistent with the architecture of other providers such as google.js and openai.js, and is ready to integrate with the AI SDK.",
+          "status": "pending",
+          "testStrategy": "Verify the class structure matches other providers and can be instantiated without errors."
+        },
+        {
+          "id": 2,
+          "title": "Integrate Vercel AI SDK Google Vertex Package",
+          "description": "Integrate the `@ai-sdk/google-vertex` package, supporting both the default provider and custom configuration via `createVertex`.",
+          "dependencies": [
+            1
+          ],
+          "details": "Allow for standard usage with the default `vertex` provider and advanced scenarios using `createVertex` for custom project ID, location, and credentials as per SDK documentation.",
+          "status": "pending",
+          "testStrategy": "Write unit tests to ensure both default and custom provider instances can be created and configured."
+        },
+        {
+          "id": 3,
+          "title": "Implement Provider Interface Methods",
+          "description": "Implement all required interface methods (e.g., `getClient`, `generateText`) to ensure compatibility with the provider system.",
+          "dependencies": [
+            2
+          ],
+          "details": "Reference implementation patterns from other providers to maintain consistency and ensure all required methods are present and functional.",
+          "status": "pending",
+          "testStrategy": "Run integration tests to confirm the provider responds correctly to all interface method calls."
+        },
+        {
+          "id": 4,
+          "title": "Handle Vertex AI Configuration and Authentication",
+          "description": "Implement support for Vertex AI-specific configuration, including project ID, location, and authentication via environment variables or explicit service account credentials.",
+          "dependencies": [
+            3
+          ],
+          "details": "Support both environment-based authentication and explicit credentials using `googleAuthOptions`, following Google Cloud and Vertex AI setup best practices.",
+          "status": "pending",
+          "testStrategy": "Test with both environment variable-based and explicit service account authentication to ensure both methods work as expected."
+        },
+        {
+          "id": 5,
+          "title": "Update Exports, Documentation, and Error Handling",
+          "description": "Export the new provider, update the PROVIDERS object, and document setup instructions, including robust error handling for Vertex-specific issues.",
+          "dependencies": [
+            4
+          ],
+          "details": "Update `src/ai-providers/index.js` and `scripts/modules/ai-services-unified.js`, and provide clear documentation for setup, configuration, and error handling patterns.",
+          "status": "pending",
+          "testStrategy": "Verify the provider is available for import, documentation is accurate, and error handling works by simulating common failure scenarios."
+        }
+      ]
+    },
+    {
+      "id": 94,
       "title": "Implement Azure OpenAI Provider Integration",
       "description": "Create a comprehensive Azure OpenAI provider implementation that integrates with the existing AI provider system, enabling users to leverage Azure-hosted OpenAI models through proper authentication and configuration.",
       "details": "Implement the Azure OpenAI provider following the established provider pattern:\n\n1. **Create Azure Provider Class** (`src/ai-providers/azure.js`):\n   - Extend BaseAIProvider class following the same pattern as openai.js and google.js\n   - Import and use `createAzureOpenAI` from `@ai-sdk/azure` package\n   - Implement required interface methods: `getClient()`, `validateConfig()`, and any other abstract methods\n   - Handle Azure-specific configuration: endpoint URL, API key, and deployment name\n   - Add proper error handling for missing or invalid Azure configuration\n\n2. **Configuration Management**:\n   - Support environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n   - Validate that both endpoint and API key are provided\n   - Provide clear error messages for configuration issues\n   - Follow the same configuration pattern as other providers\n\n3. **Integration Updates**:\n   - Update `src/ai-providers/index.js` to export the new AzureProvider\n   - Add 'azure' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`\n   - Ensure the provider is properly registered and accessible through the unified AI services\n\n4. **Error Handling**:\n   - Implement Azure-specific error handling for authentication failures\n   - Handle endpoint connectivity issues with helpful error messages\n   - Validate deployment name and provide guidance for common configuration mistakes\n   - Follow the established error handling patterns from Task 19\n\n5. **Documentation Updates**:\n   - Update any provider documentation to include Azure OpenAI setup instructions\n   - Add configuration examples for Azure OpenAI environment variables\n   - Include troubleshooting guidance for common Azure-specific issues\n\nThe implementation should maintain consistency with existing provider implementations while handling Azure's unique authentication and endpoint requirements.",
       "testStrategy": "Verify the Azure OpenAI provider implementation through comprehensive testing:\n\n1. **Unit Testing**:\n   - Test provider class instantiation and configuration validation\n   - Verify getClient() method returns properly configured Azure OpenAI client\n   - Test error handling for missing/invalid configuration parameters\n   - Validate that the provider correctly extends BaseAIProvider\n\n2. **Integration Testing**:\n   - Test provider registration in the unified AI services system\n   - Verify the provider appears in the PROVIDERS object and is accessible\n   - Test end-to-end functionality with valid Azure OpenAI credentials\n   - Validate that the provider works with existing AI operation workflows\n\n3. **Configuration Testing**:\n   - Test with various environment variable combinations\n   - Verify proper error messages for missing endpoint or API key\n   - Test with invalid endpoint URLs and ensure graceful error handling\n   - Validate deployment name handling and error reporting\n\n4. **Manual Verification**:\n   - Set up test Azure OpenAI credentials and verify successful connection\n   - Test actual AI operations (like task expansion) using the Azure provider\n   - Verify that the provider selection works correctly in the CLI\n   - Confirm that error messages are helpful and actionable for users\n\n5. **Documentation Verification**:\n   - Ensure all configuration examples work as documented\n   - Verify that setup instructions are complete and accurate\n   - Test troubleshooting guidance with common error scenarios",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         19,
         26
@@ -5486,8 +5554,9 @@
           "description": "Implement the AzureProvider class that extends BaseAIProvider to handle Azure OpenAI integration",
           "dependencies": [],
           "details": "Create the AzureProvider class in src/ai-providers/azure.js that extends BaseAIProvider. Import createAzureOpenAI from @ai-sdk/azure package. Implement required interface methods including getClient() and validateConfig(). Handle Azure-specific configuration parameters: endpoint URL, API key, and deployment name. Follow the established pattern in openai.js and google.js. Ensure proper error handling for missing or invalid configuration.",
-          "status": "pending",
-          "testStrategy": "Create unit tests that verify the AzureProvider class correctly initializes with valid configuration and throws appropriate errors with invalid configuration. Test the getClient() method returns a properly configured client instance."
+          "status": "done",
+          "testStrategy": "Create unit tests that verify the AzureProvider class correctly initializes with valid configuration and throws appropriate errors with invalid configuration. Test the getClient() method returns a properly configured client instance.",
+          "parentTaskId": 94
         },
         {
           "id": 2,
@@ -5497,8 +5566,9 @@
             1
           ],
           "details": "Implement configuration management for Azure OpenAI provider that supports environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT. Add validation logic to ensure both endpoint and API key are provided. Create clear error messages for configuration issues. Follow the same configuration pattern as implemented in other providers. Ensure the validateConfig() method properly checks all required Azure configuration parameters.",
-          "status": "pending",
-          "testStrategy": "Test configuration validation with various combinations of missing or invalid parameters. Verify environment variables are correctly loaded and applied to the provider configuration."
+          "status": "done",
+          "testStrategy": "Test configuration validation with various combinations of missing or invalid parameters. Verify environment variables are correctly loaded and applied to the provider configuration.",
+          "parentTaskId": 94
         },
         {
           "id": 3,
@@ -5509,8 +5579,9 @@
             2
           ],
           "details": "Update src/ai-providers/index.js to export the new AzureProvider class. Add 'azure' entry to the PROVIDERS object in scripts/modules/ai-services-unified.js. Ensure the provider is properly registered and accessible through the unified AI services. Test that the provider can be instantiated and used through the provider selection mechanism. Follow the same integration pattern used for existing providers.",
-          "status": "pending",
-          "testStrategy": "Create integration tests that verify the Azure provider is correctly registered and can be selected through the provider system. Test that the provider is properly initialized when selected."
+          "status": "done",
+          "testStrategy": "Create integration tests that verify the Azure provider is correctly registered and can be selected through the provider system. Test that the provider is properly initialized when selected.",
+          "parentTaskId": 94
         },
         {
           "id": 4,
@@ -5521,8 +5592,9 @@
             2
           ],
           "details": "Implement Azure-specific error handling for authentication failures, endpoint connectivity issues, and deployment name validation. Provide helpful error messages that guide users to resolve common configuration mistakes. Follow the established error handling patterns from Task 19. Create custom error classes if needed for Azure-specific errors. Ensure errors are properly propagated and formatted for user display.",
-          "status": "pending",
-          "testStrategy": "Test error handling by simulating various failure scenarios including authentication failures, invalid endpoints, and missing deployment names. Verify appropriate error messages are generated."
+          "status": "done",
+          "testStrategy": "Test error handling by simulating various failure scenarios including authentication failures, invalid endpoints, and missing deployment names. Verify appropriate error messages are generated.",
+          "parentTaskId": 94
         },
         {
           "id": 5,
@@ -5535,24 +5607,207 @@
             4
           ],
           "details": "Update provider documentation to include Azure OpenAI setup instructions. Add configuration examples for Azure OpenAI environment variables. Include troubleshooting guidance for common Azure-specific issues. Document the required Azure resource creation process with references to Microsoft's documentation. Provide examples of valid configuration settings and explain each required parameter. Include information about Azure OpenAI model deployment requirements.",
-          "status": "pending",
-          "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation."
+          "status": "done",
+          "testStrategy": "Review documentation for completeness, accuracy, and clarity. Ensure all configuration options are documented and examples are provided. Verify troubleshooting guidance addresses common issues identified during implementation.",
+          "parentTaskId": 94
         }
       ]
     },
     {
-      "id": 93,
-      "title": "Implement Google Vertex AI Provider Integration",
-      "description": "Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.",
-      "details": "1. Create a new provider class in `src/ai-providers/google-vertex.js` that extends the existing BaseAIProvider, following the established structure used by other providers (e.g., google.js, openai.js).\n2. Integrate the Vercel AI SDK's `@ai-sdk/google-vertex` package. Use the default `vertex` provider for standard usage, and allow for custom configuration via `createVertex` for advanced scenarios (e.g., specifying project ID, location, and credentials).\n3. Implement all required interface methods (such as `getClient`, `generateText`, etc.) to ensure compatibility with the provider system. Reference the implementation patterns from other providers for consistency.\n4. Handle Vertex AI-specific configuration, including project ID, location, and Google Cloud authentication. Support both environment-based authentication and explicit service account credentials via `googleAuthOptions`.\n5. Implement robust error handling for Vertex-specific issues, including authentication failures and API errors, leveraging the system-wide error handling patterns.\n6. Update `src/ai-providers/index.js` to export the new provider, and add the 'vertex' entry to the PROVIDERS object in `scripts/modules/ai-services-unified.js`.\n7. Update documentation to provide clear setup instructions for Google Vertex AI, including required environment variables, service account setup, and configuration examples.\n8. Ensure the implementation is modular and maintainable, supporting future expansion for additional Vertex AI features or models.",
-      "testStrategy": "- Write unit tests for the new provider class, covering all interface methods and configuration scenarios (default, custom, error cases).\n- Verify that the provider can successfully authenticate using both environment-based and explicit service account credentials.\n- Test integration with the provider system by selecting 'vertex' as the provider and generating text using supported Vertex AI models (e.g., Gemini).\n- Simulate authentication and API errors to confirm robust error handling and user feedback.\n- Confirm that the provider is correctly exported and available in the PROVIDERS object.\n- Review and validate the updated documentation for accuracy and completeness.",
-      "status": "pending",
+      "id": 92,
+      "title": "Implement Project Root Environment Variable Support in MCP Configuration",
+      "description": "Add support for a 'TASK_MASTER_PROJECT_ROOT' environment variable in MCP configuration, allowing it to be set in both mcp.json and .env, with precedence over other methods. This will define the root directory for the MCP server and take precedence over all other project root resolution methods. The implementation should be backward compatible with existing workflows that don't use this variable.",
+      "status": "in-progress",
       "dependencies": [
-        19,
-        92
+        1,
+        3,
+        17
       ],
       "priority": "medium",
-      "subtasks": []
+      "details": "Update the MCP server configuration system to support the TASK_MASTER_PROJECT_ROOT environment variable as the standard way to specify the project root directory. This provides better namespacing and avoids conflicts with other tools that might use a generic PROJECT_ROOT variable. Implement a clear precedence order for project root resolution:\n\n1. TASK_MASTER_PROJECT_ROOT environment variable (from shell or .env file)\n2. 'projectRoot' key in mcp_config.toml or mcp.json configuration files\n3. Existing resolution logic (CLI args, current working directory, etc.)\n\nModify the configuration loading logic to check for these sources in the specified order, ensuring backward compatibility. All MCP tools and components should use this standardized project root resolution logic. The TASK_MASTER_PROJECT_ROOT environment variable will be required because path resolution is delegated to the MCP client implementation, ensuring consistent behavior across different environments.\n\nImplementation steps:\n1. Identify all code locations where project root is determined (initialization, utility functions)\n2. Update configuration loaders to check for TASK_MASTER_PROJECT_ROOT in environment variables\n3. Add support for 'projectRoot' in configuration files as a fallback\n4. Refactor project root resolution logic to follow the new precedence rules\n5. Ensure all MCP tools and functions use the updated resolution logic\n6. Add comprehensive error handling for cases where TASK_MASTER_PROJECT_ROOT is not set or invalid\n7. Implement validation to ensure the specified directory exists and is accessible",
+      "testStrategy": "1. Write unit tests to verify that the config loader correctly reads project root from environment variables and configuration files with the expected precedence:\n   - Test TASK_MASTER_PROJECT_ROOT environment variable takes precedence when set\n   - Test 'projectRoot' in configuration files is used when environment variable is absent\n   - Test fallback to existing resolution logic when neither is specified\n\n2. Add integration tests to ensure that the MCP server and all tools use the correct project root:\n   - Test server startup with TASK_MASTER_PROJECT_ROOT set to various valid and invalid paths\n   - Test configuration file loading from the specified project root\n   - Test path resolution for resources relative to the project root\n\n3. Test backward compatibility:\n   - Verify existing workflows function correctly without the new variables\n   - Ensure no regression in projects not using the new configuration options\n\n4. Manual testing:\n   - Set TASK_MASTER_PROJECT_ROOT in shell environment and verify correct behavior\n   - Set TASK_MASTER_PROJECT_ROOT in .env file and verify it's properly loaded\n   - Configure 'projectRoot' in configuration files and test precedence\n   - Test with invalid or non-existent directories to verify error handling",
+      "subtasks": [
+        {
+          "id": 92.1,
+          "title": "Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable",
+          "description": "Modify the configuration loading system to check for the TASK_MASTER_PROJECT_ROOT environment variable as the primary source for project root directory. Ensure proper error handling if the variable is set but points to a non-existent or inaccessible directory.",
+          "status": "pending"
+        },
+        {
+          "id": 92.2,
+          "title": "Add support for 'projectRoot' in configuration files",
+          "description": "Implement support for a 'projectRoot' key in mcp_config.toml and mcp.json configuration files as a fallback when the environment variable is not set. Update the configuration parser to recognize and validate this field.",
+          "status": "pending"
+        },
+        {
+          "id": 92.3,
+          "title": "Refactor project root resolution logic with clear precedence rules",
+          "description": "Create a unified project root resolution function that follows the precedence order: 1) TASK_MASTER_PROJECT_ROOT environment variable, 2) 'projectRoot' in config files, 3) existing resolution methods. Ensure this function is used consistently throughout the codebase.",
+          "status": "pending"
+        },
+        {
+          "id": 92.4,
+          "title": "Update all MCP tools to use the new project root resolution",
+          "description": "Identify all MCP tools and components that need to access the project root and update them to use the new resolution logic. Ensure consistent behavior across all parts of the system.",
+          "status": "pending"
+        },
+        {
+          "id": 92.5,
+          "title": "Add comprehensive tests for the new project root resolution",
+          "description": "Create unit and integration tests to verify the correct behavior of the project root resolution logic under various configurations and edge cases.",
+          "status": "pending"
+        },
+        {
+          "id": 92.6,
+          "title": "Update documentation with new configuration options",
+          "description": "Update the project documentation to clearly explain the new TASK_MASTER_PROJECT_ROOT environment variable, the 'projectRoot' configuration option, and the precedence rules. Include examples of different configuration scenarios.",
+          "status": "pending"
+        },
+        {
+          "id": 92.7,
+          "title": "Implement validation for project root directory",
+          "description": "Add validation to ensure the specified project root directory exists and has the necessary permissions. Provide clear error messages when validation fails.",
+          "status": "pending"
+        },
+        {
+          "id": 92.8,
+          "title": "Implement support for loading environment variables from .env files",
+          "description": "Add functionality to load the TASK_MASTER_PROJECT_ROOT variable from .env files in the workspace, following best practices for environment variable management in MCP servers.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 95,
+      "title": "Implement .taskmaster Directory Structure",
+      "description": "Consolidate all Task Master-managed files in user projects into a clean, centralized .taskmaster/ directory structure to improve organization and keep user project directories clean, based on GitHub issue #275.",
+      "status": "in-progress",
+      "dependencies": [
+        1,
+        3,
+        4,
+        17
+      ],
+      "priority": "high",
+      "details": "This task involves restructuring how Task Master organizes files within user projects to improve maintainability and keep project directories clean:\n\n1. Create a new `.taskmaster/` directory structure in user projects:\n   - Move task files from `tasks/` to `.taskmaster/tasks/`\n   - Move PRD files from `scripts/` to `.taskmaster/docs/`\n   - Move analysis reports to `.taskmaster/reports/`\n   - Move configuration from `.taskmasterconfig` to `.taskmaster/config.json`\n   - Create `.taskmaster/templates/` for user templates\n\n2. Update all Task Master code that creates/reads user files:\n   - Modify task file generation to use `.taskmaster/tasks/`\n   - Update PRD file handling to use `.taskmaster/docs/`\n   - Adjust report generation to save to `.taskmaster/reports/`\n   - Update configuration loading to look for `.taskmaster/config.json`\n   - Modify any path resolution logic in Task Master's codebase\n\n3. Ensure backward compatibility during migration:\n   - Implement path fallback logic that checks both old and new locations\n   - Add deprecation warnings when old paths are detected\n   - Create a migration command to help users transition to the new structure\n   - Preserve existing user data during migration\n\n4. Update the project initialization process:\n   - Modify the init command to create the new `.taskmaster/` directory structure\n   - Update default file creation to use new paths\n\n5. Benefits of the new structure:\n   - Keeps user project directories clean and organized\n   - Clearly separates Task Master files from user project files\n   - Makes it easier to add Task Master to .gitignore if desired\n   - Provides logical grouping of different file types\n\n6. Test thoroughly to ensure all functionality works with the new structure:\n   - Verify all Task Master commands work with the new paths\n   - Ensure backward compatibility functions correctly\n   - Test migration process preserves all user data\n\n7. Update documentation:\n   - Update README.md to reflect the new user file structure\n   - Add migration guide for existing users\n   - Document the benefits of the cleaner organization",
+      "testStrategy": "1. Unit Testing:\n   - Create unit tests for path resolution that verify both new and old paths work\n   - Test configuration loading with both `.taskmasterconfig` and `.taskmaster/config.json`\n   - Verify the migration command correctly moves files and preserves content\n   - Test file creation in all new subdirectories\n\n2. Integration Testing:\n   - Run all existing integration tests with the new directory structure\n   - Verify that all Task Master commands function correctly with new paths\n   - Test backward compatibility by running commands with old file structure\n\n3. Migration Testing:\n   - Test the migration process on sample projects with existing tasks and files\n   - Verify all tasks, PRDs, reports, and configurations are correctly moved\n   - Ensure no data loss occurs during migration\n   - Test migration with partial existing structures (e.g., only tasks/ exists)\n\n4. User Workflow Testing:\n   - Test complete workflows: init → create tasks → generate reports → update PRDs\n   - Verify all generated files go to correct locations in `.taskmaster/`\n   - Test that user project directories remain clean\n\n5. Manual Testing:\n   - Perform end-to-end testing with the new structure\n   - Create, update, and delete tasks using the new structure\n   - Generate reports and verify they're saved to `.taskmaster/reports/`\n\n6. Documentation Verification:\n   - Review all documentation to ensure it accurately reflects the new user file structure\n   - Verify the migration guide provides clear instructions\n\n7. Regression Testing:\n   - Run the full test suite to ensure no regressions were introduced\n   - Verify existing user projects continue to work during transition period",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create .taskmaster directory structure",
+          "description": "Create the new .taskmaster directory and move existing files to their new locations",
+          "dependencies": [],
+          "details": "Create a new .taskmaster/ directory in the project root. Move the tasks/ directory to .taskmaster/tasks/. Move the scripts/ directory to .taskmaster/scripts/. Move the .taskmasterconfig file to .taskmaster/config.json. Ensure proper file permissions are maintained during the move.\n<info added on 2025-05-29T15:03:56.912Z>\nCreate the new .taskmaster/ directory structure in user projects with subdirectories for tasks/, docs/, reports/, and templates/. Move the existing .taskmasterconfig file to .taskmaster/config.json. Since this project is also a Task Master user, move this project's current user files (tasks.json, PRD files, etc.) to the new .taskmaster/ structure to test the implementation. This subtask focuses on user project directory structure, not Task Master source code relocation.\n</info added on 2025-05-29T15:03:56.912Z>",
+          "status": "done",
+          "testStrategy": "Verify all files have been moved correctly with their content intact. Check directory permissions match the original settings."
+        },
+        {
+          "id": 2,
+          "title": "Update Task Master code for new user file paths",
+          "description": "Modify all Task Master code that creates or reads user project files to use the new .taskmaster structure",
+          "dependencies": [
+            1
+          ],
+          "details": "Update Task Master's file handling code to use the new paths: tasks in .taskmaster/tasks/, PRD files in .taskmaster/docs/, reports in .taskmaster/reports/, and config in .taskmaster/config.json. Modify path resolution logic throughout the Task Master codebase to reference the new user file locations.",
+          "status": "done",
+          "testStrategy": "Run unit tests to ensure all Task Master modules can properly create and access user files in new locations. Test configuration loading with the new path structure."
+        },
+        {
+          "id": 3,
+          "title": "Update task file generation system",
+          "description": "Modify the task file generation system to use the new directory structure",
+          "dependencies": [
+            1
+          ],
+          "details": "Update the task file generation system to create and read task files from .taskmaster/tasks/ instead of tasks/. Ensure all template paths are updated. Modify any path resolution logic specific to task file handling.",
+          "status": "done",
+          "testStrategy": "Test creating new tasks and verify they're saved to the correct location. Verify existing tasks can be read from the new location."
+        },
+        {
+          "id": 4,
+          "title": "Implement backward compatibility logic",
+          "description": "Add fallback mechanisms to support both old and new file locations during transition",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Implement path fallback logic that checks both old and new locations when files aren't found. Add deprecation warnings when old paths are used, informing users about the new structure. Ensure error messages are clear about the transition.",
+          "status": "in-progress",
+          "testStrategy": "Test with both old and new directory structures to verify fallback works correctly. Verify deprecation warnings appear when using old paths."
+        },
+        {
+          "id": 5,
+          "title": "Create migration command for users",
+          "description": "Develop a Task Master command to help users transition their existing projects to the new structure",
+          "dependencies": [
+            1,
+            4
+          ],
+          "details": "Create a 'taskmaster migrate' command that automatically moves user files from old locations to the new .taskmaster structure. Move tasks/ to .taskmaster/tasks/, scripts/prd.txt to .taskmaster/docs/, reports to .taskmaster/reports/, and .taskmasterconfig to .taskmaster/config.json. Include backup functionality and validation to ensure migration completed successfully.",
+          "status": "done",
+          "testStrategy": "Test the migration command on various user project configurations. Verify it handles edge cases like missing directories or partial existing structures."
+        },
+        {
+          "id": 6,
+          "title": "Update project initialization process",
+          "description": "Modify the init command to create the new directory structure for new projects",
+          "dependencies": [
+            1
+          ],
+          "details": "Update the init command to create the .taskmaster directory and its subdirectories (tasks/, docs/, reports/, templates/). Modify default file creation to use the new paths. Ensure new projects are created with the correct structure from the start.",
+          "status": "done",
+          "testStrategy": "Test initializing new projects and verify the correct .taskmaster directory structure is created. Check that default configurations are properly set up in the new location."
+        },
+        {
+          "id": 7,
+          "title": "Update PRD and report file handling",
+          "description": "Modify PRD file creation and report generation to use the new directory structure",
+          "dependencies": [
+            2,
+            6
+          ],
+          "details": "Update PRD file handling to create and read files from .taskmaster/docs/ instead of scripts/. Modify report generation (like task-complexity-report.json) to save to .taskmaster/reports/. Ensure all file operations use the new paths consistently.",
+          "status": "done",
+          "testStrategy": "Test PRD file creation and updates in the new location. Verify reports are generated and saved to .taskmaster/reports/. Test reading existing PRD files from new location."
+        },
+        {
+          "id": 8,
+          "title": "Update documentation and create migration guide",
+          "description": "Update all documentation to reflect the new directory structure and provide migration guidance",
+          "dependencies": [
+            5,
+            6,
+            7
+          ],
+          "details": "Update README.md and other documentation to reflect the new .taskmaster structure for user projects. Create a comprehensive migration guide explaining the benefits of the new structure and how to migrate existing projects. Include examples of the new directory layout and explain how it keeps user project directories clean.",
+          "status": "done",
+          "testStrategy": "Review documentation for accuracy and completeness. Have users follow the migration guide to verify it's clear and effective."
+        },
+        {
+          "id": 9,
+          "title": "Add templates directory support",
+          "description": "Implement support for user templates in the .taskmaster/templates/ directory",
+          "dependencies": [
+            2,
+            6
+          ],
+          "details": "Create functionality to support user-defined templates in .taskmaster/templates/. Allow users to store custom task templates, PRD templates, or other reusable files. Update Task Master commands to recognize and use templates from this directory when available.",
+          "status": "done",
+          "testStrategy": "Test creating and using custom templates from .taskmaster/templates/. Verify template discovery and usage works correctly. Test that missing templates directory doesn't break functionality."
+        },
+        {
+          "id": 10,
+          "title": "Verify clean user project directories",
+          "description": "Ensure the new structure keeps user project root directories clean and organized",
+          "dependencies": [
+            8,
+            9
+          ],
+          "details": "Validate that after implementing the new structure, user project root directories only contain their actual project files plus the single .taskmaster/ directory. Verify that no Task Master files are created outside of .taskmaster/. Test that users can easily add .taskmaster/ to .gitignore if they choose to exclude Task Master files from version control.",
+          "status": "in-progress",
+          "testStrategy": "Test complete workflows and verify only .taskmaster/ directory is created in project root. Check that all Task Master operations respect the new file organization. Verify .gitignore compatibility."
+        }
+      ]
     }
   ]
 }

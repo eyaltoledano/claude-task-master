@@ -3,6 +3,62 @@ import path from 'path';
 import { jest } from '@jest/globals';
 import { fileURLToPath } from 'url';
 
+// Mock modules first before any imports
+jest.mock('fs', () => ({
+	existsSync: jest.fn((filePath) => {
+		// Prevent Jest internal file access
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return false;
+		}
+		return false; // Default to false for config discovery prevention
+	}),
+	readFileSync: jest.fn(() => '{}'),
+	writeFileSync: jest.fn(),
+	mkdirSync: jest.fn()
+}));
+
+jest.mock('path', () => ({
+	join: jest.fn((dir, file) => `${dir}/${file}`),
+	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
+	resolve: jest.fn((...paths) => paths.join('/')),
+	basename: jest.fn((filePath) => filePath.split('/').pop())
+}));
+
+jest.mock('chalk', () => ({
+	red: jest.fn((text) => text),
+	blue: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	yellow: jest.fn((text) => text),
+	white: jest.fn((text) => ({
+		bold: jest.fn((text) => text)
+	})),
+	reset: jest.fn((text) => text),
+	dim: jest.fn((text) => text) // Add dim function to prevent chalk errors
+}));
+
+// Mock console to prevent Jest internal access
+const mockConsole = {
+	log: jest.fn(),
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn()
+};
+global.console = mockConsole;
+
+// Mock path-utils to prevent config file path discovery and logging
+jest.mock('../../src/utils/path-utils.js', () => ({
+	__esModule: true,
+	findProjectRoot: jest.fn(() => '/mock/project'),
+	findConfigPath: jest.fn(() => null), // Always return null to prevent config discovery
+	findTasksPath: jest.fn(() => '/mock/tasks.json'),
+	findComplexityReportPath: jest.fn(() => null),
+	resolveTasksOutputPath: jest.fn(() => '/mock/tasks.json'),
+	resolveComplexityReportOutputPath: jest.fn(() => '/mock/report.json')
+}));
+
 // --- Read REAL supported-models.json data BEFORE mocks ---
 const __filename = fileURLToPath(import.meta.url); // Get current file path
 const __dirname = path.dirname(__filename); // Get current directory
@@ -34,9 +90,6 @@ const mockLog = jest.fn();
 
 // --- Mock Dependencies BEFORE importing the module under test ---
 
-// Mock the entire 'fs' module
-jest.mock('fs');
-
 // Mock the 'utils.js' module using a factory function
 jest.mock('../../scripts/modules/utils.js', () => ({
 	__esModule: true, // Indicate it's an ES module mock
@@ -46,8 +99,6 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	resolveEnvVariable: jest.fn() // Example if needed
 }));
 
-// DO NOT MOCK 'chalk'
-
 // --- Import the module under test AFTER mocks are defined ---
 import * as configManager from '../../scripts/modules/config-manager.js';
 // Import the mocked 'fs' module to allow spying on its functions
@@ -55,7 +106,10 @@ import fsMocked from 'fs';
 
 // --- Test Data (Keep as is, ensure DEFAULT_CONFIG is accurate) ---
 const MOCK_PROJECT_ROOT = '/mock/project';
-const MOCK_CONFIG_PATH = path.join(MOCK_PROJECT_ROOT, '.taskmasterconfig');
+const MOCK_CONFIG_PATH = path.join(
+	MOCK_PROJECT_ROOT,
+	'.taskmaster/config.json'
+);
 
 // Updated DEFAULT_CONFIG reflecting the implementation
 const DEFAULT_CONFIG = {
@@ -85,7 +139,8 @@ const DEFAULT_CONFIG = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseURL: 'http://localhost:11434/api'
+		ollamaBaseURL: 'http://localhost:11434/api',
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
 	}
 };
 
@@ -185,7 +240,15 @@ beforeEach(() => {
 			// Still mock the .taskmasterconfig reads
 			return JSON.stringify(DEFAULT_CONFIG); // Default behavior
 		}
-		// Throw for unexpected reads - helps catch errors
+		// For Jest internal files or other unexpected files, return empty string instead of throwing
+		// This prevents Jest's internal file operations from breaking tests
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return '{}'; // Return empty JSON for Jest internal files
+		}
+		// Throw for truly unexpected reads that should be caught in tests
 		throw new Error(`Unexpected fs.readFileSync call in test: ${filePath}`);
 	});
 
@@ -444,7 +507,7 @@ describe('getConfig Tests', () => {
 		// Assert
 		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining(`Permission denied. Using default configuration.`)
+			expect.stringContaining('Permission denied. Using default configuration.')
 		);
 	});
 
@@ -533,7 +596,7 @@ describe('writeConfig', () => {
 		expect(success).toBe(false);
 		expect(fsWriteFileSyncSpy).toHaveBeenCalled();
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining(`Disk full`)
+			expect.stringContaining('Disk full')
 		);
 	});
 
