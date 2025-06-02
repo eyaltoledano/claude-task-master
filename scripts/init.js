@@ -509,9 +509,9 @@ function createProjectStructure(addAliases, dryRun, options) {
 		replacements
 	);
 
-	// Copy .taskmasterconfig with project name to NEW location
+	// Copy config.json with project name to NEW location
 	copyTemplateFile(
-		'.taskmasterconfig',
+		'config.json',
 		path.join(targetDir, TASKMASTER_CONFIG_FILE),
 		{
 			...replacements

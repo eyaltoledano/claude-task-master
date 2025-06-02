@@ -139,7 +139,8 @@ const DEFAULT_CONFIG = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseURL: 'http://localhost:11434/api'
+		ollamaBaseURL: 'http://localhost:11434/api',
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
 	}
 };
 

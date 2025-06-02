@@ -14,6 +14,7 @@ import {
 	TASKMASTER_CONFIG_FILE,
 	LEGACY_CONFIG_FILE
 } from '../constants/paths.js';
+import { getLoggerOrDefault } from './logger-utils.js';
 
 /**
  * Find the project root directory by looking for project markers
@@ -59,7 +60,8 @@ export function findProjectRoot(startDir = process.cwd()) {
  * @returns {string|null} - Resolved tasks.json path or null if not found
  */
 export function findTasksPath(explicitPath = null, args = null, log = null) {
-	const logger = log || console;
+	// Use the passed logger if available, otherwise use the default logger
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
@@ -130,7 +132,7 @@ export function findTasksPath(explicitPath = null, args = null, log = null) {
  * @returns {string|null} - Resolved PRD document path or null if not found
  */
 export function findPRDPath(explicitPath = null, args = null, log = null) {
-	const logger = log || console;
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
@@ -199,7 +201,7 @@ export function findComplexityReportPath(
 	args = null,
 	log = null
 ) {
-	const logger = log || console;
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
@@ -268,7 +270,7 @@ export function resolveTasksOutputPath(
 	args = null,
 	log = null
 ) {
-	const logger = log || console;
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
@@ -309,7 +311,7 @@ export function resolveComplexityReportOutputPath(
 	args = null,
 	log = null
 ) {
-	const logger = log || console;
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
@@ -348,7 +350,7 @@ export function resolveComplexityReportOutputPath(
  * @returns {string|null} - Resolved config file path or null if not found
  */
 export function findConfigPath(explicitPath = null, args = null, log = null) {
-	const logger = log || console;
+	const logger = getLoggerOrDefault(log);
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {

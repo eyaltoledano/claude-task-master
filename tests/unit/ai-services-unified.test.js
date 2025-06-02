@@ -43,6 +43,7 @@ const mockGetBaseUrlForRole = jest.fn();
 const mockGetAllProviders = jest.fn();
 const mockGetOllamaBaseURL = jest.fn();
 const mockGetAzureBaseURL = jest.fn();
+const mockGetBedrockBaseURL = jest.fn();
 const mockGetVertexProjectId = jest.fn();
 const mockGetVertexLocation = jest.fn();
 const mockGetAvailableModels = jest.fn();
@@ -113,6 +114,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getAllProviders: mockGetAllProviders,
 	getOllamaBaseURL: mockGetOllamaBaseURL,
 	getAzureBaseURL: mockGetAzureBaseURL,
+	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
 	getMcpApiKeyStatus: mockGetMcpApiKeyStatus

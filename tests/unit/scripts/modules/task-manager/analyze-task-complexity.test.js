@@ -127,6 +127,7 @@ jest.unstable_mockModule(
 		getProjectName: jest.fn(() => 'Test Project'),
 		getOllamaBaseURL: jest.fn(() => 'http://localhost:11434/api'),
 		getAzureBaseURL: jest.fn(() => undefined),
+		getBedrockBaseURL: jest.fn(() => undefined),
 		getParametersForRole: jest.fn(() => ({
 			maxTokens: 4000,
 			temperature: 0.7

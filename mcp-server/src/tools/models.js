@@ -47,7 +47,6 @@ export function registerModelsTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe('The directory of the project. Must be an absolute path.'),
 			openrouter: z
 				.boolean()

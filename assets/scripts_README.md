@@ -20,7 +20,7 @@ In an AI-driven development process—particularly with tools like [Cursor](http
 
 Task Master configuration is now managed through two primary methods:
 
-1.  **`.taskmasterconfig` File (Project Root - Primary)**
+1.  **`.taskmaster/config.json` File (Project Root - Primary)**
 
     - Stores AI model selections (`main`, `research`, `fallback`), model parameters (`maxTokens`, `temperature`), `logLevel`, `defaultSubtasks`, `defaultPriority`, `projectName`, etc.
     - Managed using the `task-master models --setup` command or the `models` MCP tool.
@@ -192,7 +192,7 @@ Notes:
 ## AI Integration (Updated)
 
 - The script now uses a unified AI service layer (`ai-services-unified.js`).
-- Model selection (e.g., Claude vs. Perplexity for `--research`) is determined by the configuration in `.taskmasterconfig` based on the requested `role` (`main` or `research`).
+- Model selection (e.g., Claude vs. Perplexity for `--research`) is determined by the configuration in `.taskmaster/config.json` based on the requested `role` (`main` or `research`).
 - API keys are automatically resolved from your `.env` file (for CLI) or MCP session environment.
 - To use the research capabilities (e.g., `expand --research`), ensure you have:
   1.  Configured a model for the `research` role using `task-master models --setup` (Perplexity models are recommended).
@@ -357,25 +357,25 @@ The output report structure is:
 
 ```json
 {
-	"meta": {
-		"generatedAt": "2023-06-15T12:34:56.789Z",
-		"tasksAnalyzed": 20,
-		"thresholdScore": 5,
-		"projectName": "Your Project Name",
-		"usedResearch": true
-	},
-	"complexityAnalysis": [
-		{
-			"taskId": 8,
-			"taskTitle": "Develop Implementation Drift Handling",
-			"complexityScore": 9.5,
-			"recommendedSubtasks": 6,
-			"expansionPrompt": "Create subtasks that handle detecting...",
-			"reasoning": "This task requires sophisticated logic...",
-			"expansionCommand": "task-master expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
-		}
-		// More tasks sorted by complexity score (highest first)
-	]
+  "meta": {
+    "generatedAt": "2023-06-15T12:34:56.789Z",
+    "tasksAnalyzed": 20,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": true
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 8,
+      "taskTitle": "Develop Implementation Drift Handling",
+      "complexityScore": 9.5,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Create subtasks that handle detecting...",
+      "reasoning": "This task requires sophisticated logic...",
+      "expansionCommand": "task-master expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
+    }
+    // More tasks sorted by complexity score (highest first)
+  ]
 }
 ```
 
