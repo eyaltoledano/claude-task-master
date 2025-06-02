@@ -1,5 +1,19 @@
 # task-master-ai
 
+## 0.16.1
+
+### Patch Changes
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix bedrock issues
+
+- [#648](https://github.com/eyaltoledano/claude-task-master/pull/648) [`9b4168b`](https://github.com/eyaltoledano/claude-task-master/commit/9b4168bb4e4dfc2f4fb0cf6bd5f81a8565879176) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP tool calls logging errors
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Update rules for new directory structure
+
+- [#648](https://github.com/eyaltoledano/claude-task-master/pull/648) [`9b4168b`](https://github.com/eyaltoledano/claude-task-master/commit/9b4168bb4e4dfc2f4fb0cf6bd5f81a8565879176) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix bug in expand_all mcp tool
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP crashing after certain commands due to console logs
+
 ## 0.16.0
 
 ### Minor Changes
