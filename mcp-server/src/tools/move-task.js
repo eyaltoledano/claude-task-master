@@ -34,7 +34,6 @@ export function registerMoveTaskTool(server) {
 			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
 					'Root directory of the project (typically derived from session)'
 				)

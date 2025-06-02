@@ -495,9 +495,15 @@ function createContentResponse(content) {
 /**
  * Creates error response for tools
  * @param {string} errorMessage - Error message to include in response
+ * @param {Object} [versionInfo] - Optional version information object
  * @returns {Object} - Error content response object in FastMCP format
  */
 function createErrorResponse(errorMessage, versionInfo) {
+	// Provide fallback version info if not provided
+	if (!versionInfo) {
+		versionInfo = getVersionInfo();
+	}
+
 	return {
 		content: [
 			{
