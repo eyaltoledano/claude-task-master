@@ -27,7 +27,7 @@ export async function listTasksDirect(args, log) {
 			error: {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
-			},
+			}
 		};
 	}
 

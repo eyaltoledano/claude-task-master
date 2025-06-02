@@ -253,7 +253,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'FILE_NOT_FOUND_ERROR',
 						message: 'Tasks file not found'
-					},
+					}
 				};
 			}
 
@@ -287,7 +287,7 @@ describe('MCP Server Direct Functions', () => {
 								.length,
 							pending: tasksData.filter((t) => t.status === 'pending').length
 						}
-					},
+					}
 				};
 			}
 
@@ -303,7 +303,7 @@ describe('MCP Server Direct Functions', () => {
 							total: tasksData.length,
 							filtered: filteredTasks.length
 						}
-					},
+					}
 				};
 			}
 
@@ -317,7 +317,7 @@ describe('MCP Server Direct Functions', () => {
 						stats: {
 							total: tasksData.length
 						}
-					},
+					}
 				};
 			}
 
@@ -437,7 +437,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'INPUT_VALIDATION_ERROR',
 						message: 'Task ID is required'
-					},
+					}
 				};
 			}
 
@@ -449,7 +449,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'TASK_NOT_FOUND',
 						message: `Task with ID ${args.id} not found`
-					},
+					}
 				};
 			}
 
@@ -463,7 +463,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'TASK_COMPLETED',
 						message: `Task ${args.id} is already marked as done and cannot be expanded`
-					},
+					}
 				};
 			}
 
@@ -488,7 +488,7 @@ describe('MCP Server Direct Functions', () => {
 					task: expandedTask,
 					subtasksAdded: expandedTask.subtasks.length,
 					hasExistingSubtasks: false
-				},
+				}
 			};
 		}
 

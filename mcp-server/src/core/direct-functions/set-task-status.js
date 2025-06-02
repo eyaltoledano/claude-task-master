@@ -29,7 +29,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -40,7 +40,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage },
+				error: { code: 'MISSING_TASK_ID', message: errorMessage }
 			};
 		}
 
@@ -50,7 +50,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_STATUS', message: errorMessage },
+				error: { code: 'MISSING_STATUS', message: errorMessage }
 			};
 		}
 
@@ -79,7 +79,7 @@ export async function setTaskStatusDirect(args, log) {
 					taskId,
 					status: newStatus,
 					tasksPath: tasksPath // Return the path used
-				},
+				}
 			};
 
 			// If the task was completed, attempt to fetch the next task
@@ -122,7 +122,7 @@ export async function setTaskStatusDirect(args, log) {
 				error: {
 					code: 'SET_STATUS_ERROR',
 					message: error.message || 'Unknown error setting task status'
-				},
+				}
 			};
 		} finally {
 			// ALWAYS restore normal logging in finally block
@@ -140,7 +140,7 @@ export async function setTaskStatusDirect(args, log) {
 			error: {
 				code: 'SET_STATUS_ERROR',
 				message: error.message || 'Unknown error setting task status'
-			},
+			}
 		};
 	}
 }

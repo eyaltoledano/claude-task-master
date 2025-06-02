@@ -54,7 +54,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
-			},
+			}
 		};
 	}
 
@@ -72,7 +72,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'INPUT_VALIDATION_ERROR',
 				message: 'Task ID is required'
-			},
+			}
 		};
 	}
 
@@ -103,7 +103,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'INVALID_TASKS_FILE',
 					message: `No valid tasks found in ${tasksPath}. readJSON returned: ${JSON.stringify(data)}`
-				},
+				}
 			};
 		}
 
@@ -118,7 +118,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'TASK_NOT_FOUND',
 					message: `Task with ID ${taskId} not found`
-				},
+				}
 			};
 		}
 
@@ -129,7 +129,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'TASK_COMPLETED',
 					message: `Task ${taskId} is already marked as ${task.status} and cannot be expanded`
-				},
+				}
 			};
 		}
 
@@ -146,7 +146,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 					task,
 					subtasksAdded: 0,
 					hasExistingSubtasks
-				},
+				}
 			};
 		}
 
@@ -226,7 +226,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 					subtasksAdded,
 					hasExistingSubtasks,
 					telemetryData: coreResult.telemetryData
-				},
+				}
 			};
 		} catch (error) {
 			// Make sure to restore normal logging even if there's an error
@@ -238,7 +238,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'CORE_FUNCTION_ERROR',
 					message: error.message || 'Failed to expand task'
-				},
+				}
 			};
 		}
 	} catch (error) {
@@ -248,7 +248,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'CORE_FUNCTION_ERROR',
 				message: error.message || 'Failed to expand task'
-			},
+			}
 		};
 	}
 }

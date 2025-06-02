@@ -28,7 +28,7 @@ export async function complexityReportDirect(args, log) {
 			log.error('complexityReportDirect called without reportPath');
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: 'reportPath is required' },
+				error: { code: 'MISSING_ARGUMENT', message: 'reportPath is required' }
 			};
 		}
 
@@ -110,7 +110,7 @@ export async function complexityReportDirect(args, log) {
 			error: {
 				code: 'UNEXPECTED_ERROR',
 				message: error.message
-			},
+			}
 		};
 	}
 }
