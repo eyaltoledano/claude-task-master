@@ -22,6 +22,7 @@ import {
 	isApiKeySet,
 	getOllamaBaseURL,
 	getAzureBaseURL,
+	getBedrockBaseURL,
 	getVertexProjectId,
 	getVertexLocation
 } from './config-manager.js';
@@ -410,6 +411,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Ollama base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
+				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
+				baseURL = getBedrockBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Bedrock base URL: ${baseURL}`);
 			}
 
 			// Get AI parameters for the current role

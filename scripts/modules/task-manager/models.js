@@ -482,6 +482,11 @@ async function setModel(role, modelId, options = {}) {
 							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
 						);
 					}
+				} else if (providerHint === 'bedrock') {
+					// Set provider without model validation since Bedrock models are managed by AWS
+					determinedProvider = 'bedrock';
+					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);

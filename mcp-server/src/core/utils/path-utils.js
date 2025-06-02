@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import {
 	findTasksPath as coreFindTasksPath,
 	findPRDPath as coreFindPrdPath,
@@ -14,20 +13,20 @@ import { PROJECT_MARKERS } from '../../../../src/constants/paths.js';
  */
 
 /**
+ * Silent logger for MCP context to prevent console output
+ */
+const silentLogger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+	success: () => {}
+};
+
+/**
  * Cache for last found project root to improve performance
  */
 export const lastFoundProjectRoot = null;
-
-/**
- * Find tasks.json file with MCP support
- * @param {string} [explicitPath] - Explicit path to tasks.json (highest priority)
- * @param {Object} [args] - Arguments object for context
- * @param {Object} [log] - Logger object to prevent console logging
- * @returns {string|null} - Resolved path to tasks.json or null if not found
- */
-export function findTasksPathCore(explicitPath, args = null, log = null) {
-	return coreFindTasksPath(explicitPath, args, log);
-}
 
 /**
  * Find PRD file with MCP support
@@ -36,23 +35,8 @@ export function findTasksPathCore(explicitPath, args = null, log = null) {
  * @param {Object} [log] - Logger object to prevent console logging
  * @returns {string|null} - Resolved path to PRD file or null if not found
  */
-export function findPrdPath(explicitPath, args = null, log = null) {
+export function findPrdPath(explicitPath, args = null, log = silentLogger) {
 	return coreFindPrdPath(explicitPath, args, log);
-}
-
-/**
- * Find complexity report file with MCP support
- * @param {string} [explicitPath] - Explicit path to complexity report (highest priority)
- * @param {Object} [args] - Arguments object for context
- * @param {Object} [log] - Logger object to prevent console logging
- * @returns {string|null} - Resolved path to complexity report or null if not found
- */
-export function findComplexityReportPathCore(
-	explicitPath,
-	args = null,
-	log = null
-) {
-	return coreFindComplexityReportPath(explicitPath, args, log);
 }
 
 /**
@@ -62,7 +46,7 @@ export function findComplexityReportPathCore(
  * @param {Object} [log] - Logger object to prevent console logging
  * @returns {string|null} - Resolved path to tasks.json or null if not found
  */
-export function resolveTasksPath(args, log = null) {
+export function resolveTasksPath(args, log = silentLogger) {
 	// Get explicit path from args.file if provided
 	const explicitPath = args?.file;
 	const projectRoot = args?.projectRoot;
@@ -92,7 +76,7 @@ export function resolveTasksPath(args, log = null) {
  * @param {Object} [log] - Logger object to prevent console logging
  * @returns {string|null} - Resolved path to PRD file or null if not found
  */
-export function resolvePrdPath(args, log = null) {
+export function resolvePrdPath(args, log = silentLogger) {
 	// Get explicit path from args.input if provided
 	const explicitPath = args?.input;
 	const projectRoot = args?.projectRoot;
@@ -122,7 +106,7 @@ export function resolvePrdPath(args, log = null) {
  * @param {Object} [log] - Logger object to prevent console logging
  * @returns {string|null} - Resolved path to complexity report or null if not found
  */
-export function resolveComplexityReportPath(args, log = null) {
+export function resolveComplexityReportPath(args, log = silentLogger) {
 	// Get explicit path from args.complexityReport if provided
 	const explicitPath = args?.complexityReport;
 	const projectRoot = args?.projectRoot;
@@ -184,7 +168,7 @@ export function findProjectRoot(startDir) {
  * @param {Object} [log] - Log function to prevent console logging
  * @returns {string|null} - Resolved path to tasks.json or null if not found
  */
-export function findTasksPath(args, log = null) {
+export function findTasksPath(args, log = silentLogger) {
 	return resolveTasksPath(args, log);
 }
 
@@ -194,7 +178,7 @@ export function findTasksPath(args, log = null) {
  * @param {Object} [log] - Log function to prevent console logging
  * @returns {string|null} - Resolved path to complexity report or null if not found
  */
-export function findComplexityReportPath(args, log = null) {
+export function findComplexityReportPath(args, log = silentLogger) {
 	return resolveComplexityReportPath(args, log);
 }
 
@@ -205,7 +189,7 @@ export function findComplexityReportPath(args, log = null) {
  * @param {Object} [log] - Logger object to prevent console logging
  * @returns {string|null} - Resolved path to PRD file or null if not found
  */
-export function findPRDPath(explicitPath, args = null, log = null) {
+export function findPRDPath(explicitPath, args = null, log = silentLogger) {
 	return findPrdPath(explicitPath, args, log);
 }
 

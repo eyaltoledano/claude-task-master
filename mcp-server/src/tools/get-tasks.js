@@ -58,7 +58,7 @@ export function registerListTasksTool(server) {
 				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = resolveTasksPath(args, session);
+					tasksJsonPath = resolveTasksPath(args, log);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -87,7 +87,7 @@ export function registerListTasksTool(server) {
 				);
 
 				log.info(
-					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`
+					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
 				return handleApiResult(result, log, 'Error getting tasks');
 			} catch (error) {

@@ -56,20 +56,24 @@ task-master generate                                         # Update task markd
 
 ```
 project/
-├── tasks/
-│   ├── tasks.json           # Main task database
-│   ├── task-1.md           # Individual task files
-│   └── task-2.md
-├── scripts/
-│   ├── prd.txt             # Product requirements
-│   └── task-complexity-report.json
+├── .taskmaster/
+│   ├── tasks/              # Task files directory
+│   │   ├── tasks.json      # Main task database
+│   │   ├── task-1.md      # Individual task files
+│   │   └── task-2.md
+│   ├── docs/              # Documentation directory
+│   │   ├── prd.txt        # Product requirements
+│   ├── reports/           # Analysis reports directory
+│   │   └── task-complexity-report.json
+│   ├── templates/         # Template files
+│   │   └── example_prd.txt  # Example PRD template
+│   └── config.json        # AI models & settings
 ├── .claude/
-│   ├── settings.json        # Claude Code configuration
-│   └── commands/           # Custom slash commands
-├── .taskmasterconfig       # AI models & settings
-├── .env                    # API keys
-├── .mcp.json              # MCP configuration
-└── CLAUDE.md              # This file - auto-loaded by Claude Code
+│   ├── settings.json      # Claude Code configuration
+│   └── commands/         # Custom slash commands
+├── .env                  # API keys
+├── .mcp.json            # MCP configuration
+└── CLAUDE.md            # This file - auto-loaded by Claude Code
 ```
 
 ## MCP Integration
@@ -384,7 +388,7 @@ These commands make AI calls and may take up to a minute:
 ### File Management
 
 - Never manually edit `tasks.json` - use commands instead
-- Never manually edit `.taskmasterconfig` - use `task-master models`
+- Never manually edit `.taskmaster/config.json` - use `task-master models`
 - Task markdown files in `tasks/` are auto-generated
 - Run `task-master generate` after manual changes to tasks.json
 

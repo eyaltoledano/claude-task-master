@@ -19,7 +19,7 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function nextTaskDirect(args, log) {
 	// Destructure expected args
@@ -32,8 +32,7 @@ export async function nextTaskDirect(args, log) {
 			error: {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -121,7 +120,7 @@ export async function nextTaskDirect(args, log) {
 	// Use the caching utility
 	try {
 		const result = await coreNextTaskAction();
-		log.info(`nextTaskDirect completed.`);
+		log.info('nextTaskDirect completed.');
 		return result;
 	} catch (error) {
 		log.error(`Unexpected error during nextTask: ${error.message}`);
@@ -130,8 +129,7 @@ export async function nextTaskDirect(args, log) {
 			error: {
 				code: 'UNEXPECTED_ERROR',
 				message: error.message
-			},
-			fromCache: false
+			}
 		};
 	}
 }
