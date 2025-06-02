@@ -29,7 +29,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @param {Object} [context.session] - MCP Session object
- * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
@@ -55,7 +55,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
 			},
-			fromCache: false
 		};
 	}
 
@@ -74,7 +73,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 				code: 'INPUT_VALIDATION_ERROR',
 				message: 'Task ID is required'
 			},
-			fromCache: false
 		};
 	}
 
@@ -106,7 +104,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					code: 'INVALID_TASKS_FILE',
 					message: `No valid tasks found in ${tasksPath}. readJSON returned: ${JSON.stringify(data)}`
 				},
-				fromCache: false
 			};
 		}
 
@@ -122,7 +119,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					code: 'TASK_NOT_FOUND',
 					message: `Task with ID ${taskId} not found`
 				},
-				fromCache: false
 			};
 		}
 
@@ -134,7 +130,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					code: 'TASK_COMPLETED',
 					message: `Task ${taskId} is already marked as ${task.status} and cannot be expanded`
 				},
-				fromCache: false
 			};
 		}
 
@@ -152,7 +147,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					subtasksAdded: 0,
 					hasExistingSubtasks
 				},
-				fromCache: false
 			};
 		}
 
@@ -233,7 +227,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					hasExistingSubtasks,
 					telemetryData: coreResult.telemetryData
 				},
-				fromCache: false
 			};
 		} catch (error) {
 			// Make sure to restore normal logging even if there's an error
@@ -246,7 +239,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 					code: 'CORE_FUNCTION_ERROR',
 					message: error.message || 'Failed to expand task'
 				},
-				fromCache: false
 			};
 		}
 	} catch (error) {
@@ -257,7 +249,6 @@ export async function expandTaskDirect(args, log, context = {}) {
 				code: 'CORE_FUNCTION_ERROR',
 				message: error.message || 'Failed to expand task'
 			},
-			fromCache: false
 		};
 	}
 }

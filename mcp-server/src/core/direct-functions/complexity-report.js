@@ -29,7 +29,6 @@ export async function complexityReportDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: 'reportPath is required' },
-				fromCache: false
 			};
 		}
 
@@ -112,7 +111,6 @@ export async function complexityReportDirect(args, log) {
 				code: 'UNEXPECTED_ERROR',
 				message: error.message
 			},
-			fromCache: false
 		};
 	}
 }

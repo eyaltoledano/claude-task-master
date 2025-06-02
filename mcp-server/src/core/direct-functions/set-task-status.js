@@ -30,7 +30,6 @@ export async function setTaskStatusDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
 			};
 		}
 
@@ -42,7 +41,6 @@ export async function setTaskStatusDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_TASK_ID', message: errorMessage },
-				fromCache: false
 			};
 		}
 
@@ -53,7 +51,6 @@ export async function setTaskStatusDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_STATUS', message: errorMessage },
-				fromCache: false
 			};
 		}
 
@@ -83,7 +80,6 @@ export async function setTaskStatusDirect(args, log) {
 					status: newStatus,
 					tasksPath: tasksPath // Return the path used
 				},
-				fromCache: false // This operation always modifies state and should never be cached
 			};
 
 			// If the task was completed, attempt to fetch the next task
@@ -127,7 +123,6 @@ export async function setTaskStatusDirect(args, log) {
 					code: 'SET_STATUS_ERROR',
 					message: error.message || 'Unknown error setting task status'
 				},
-				fromCache: false
 			};
 		} finally {
 			// ALWAYS restore normal logging in finally block
@@ -146,7 +141,6 @@ export async function setTaskStatusDirect(args, log) {
 				code: 'SET_STATUS_ERROR',
 				message: error.message || 'Unknown error setting task status'
 			},
-			fromCache: false
 		};
 	}
 }

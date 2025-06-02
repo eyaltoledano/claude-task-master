@@ -41,8 +41,7 @@ export async function initializeProjectDirect(args, log, context = {}) {
 				code: 'INVALID_TARGET_DIRECTORY',
 				message: `Cannot initialize project: Invalid target directory '${targetDirectory}' received. Please ensure a valid workspace/folder is open or specified.`,
 				details: `Received args.projectRoot: ${args.projectRoot}` // Show what was received
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -97,8 +96,8 @@ export async function initializeProjectDirect(args, log, context = {}) {
 	}
 
 	if (success) {
-		return { success: true, data: resultData, fromCache: false };
+		return { success: true, data: resultData };
 	} else {
-		return { success: false, error: errorResult, fromCache: false };
+		return { success: false, error: errorResult };
 	}
 }

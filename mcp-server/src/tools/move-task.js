@@ -95,13 +95,16 @@ export function registerMoveTaskTool(server) {
 						}
 					}
 
-					return {
-						success: true,
-						data: {
-							moves: results,
-							message: `Successfully moved ${results.length} tasks`
-						}
-					};
+					return handleApiResult(
+						{
+							success: true,
+							data: {
+								moves: results,
+								message: `Successfully moved ${results.length} tasks`
+							}
+						},
+						log
+					);
 				} else {
 					// Moving a single task
 					return handleApiResult(

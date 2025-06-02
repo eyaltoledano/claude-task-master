@@ -51,9 +51,7 @@ export function registerComplexityReportTool(server) {
 				);
 
 				if (result.success) {
-					log.info(
-						`Successfully retrieved complexity report${result.fromCache ? ' (from cache)' : ''}`
-					);
+					log.info('Successfully retrieved complexity report');
 				} else {
 					log.error(
 						`Failed to retrieve complexity report: ${result.error.message}`

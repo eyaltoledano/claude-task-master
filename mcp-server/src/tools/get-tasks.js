@@ -87,7 +87,7 @@ export function registerListTasksTool(server) {
 				);
 
 				log.info(
-					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`
+					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
 				return handleApiResult(result, log, 'Error getting tasks');
 			} catch (error) {

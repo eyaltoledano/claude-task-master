@@ -29,7 +29,6 @@ export async function generateTaskFilesDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
 			};
 		}
 		if (!outputDir) {
@@ -38,7 +37,6 @@ export async function generateTaskFilesDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
 			};
 		}
 
@@ -66,7 +64,6 @@ export async function generateTaskFilesDirect(args, log) {
 			return {
 				success: false,
 				error: { code: 'GENERATE_FILES_ERROR', message: genError.message },
-				fromCache: false
 			};
 		}
 
@@ -80,7 +77,6 @@ export async function generateTaskFilesDirect(args, log) {
 				taskFiles:
 					'Individual task files have been generated in the output directory'
 			},
-			fromCache: false // This operation always modifies state and should never be cached
 		};
 	} catch (error) {
 		// Make sure to restore normal logging if an outer error occurs
@@ -93,7 +89,6 @@ export async function generateTaskFilesDirect(args, log) {
 				code: 'GENERATE_TASKS_ERROR',
 				message: error.message || 'Unknown error generating task files'
 			},
-			fromCache: false
 		};
 	}
 }

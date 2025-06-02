@@ -116,9 +116,7 @@ export function registerShowTaskTool(server) {
 				);
 
 				if (result.success) {
-					log.info(
-						`Successfully retrieved task details for ID: ${args.id}${result.fromCache ? ' (from cache)' : ''}`
-					);
+					log.info(`Successfully retrieved task details for ID: ${args.id}`);
 				} else {
 					log.error(`Failed to get task: ${result.error.message}`);
 				}

@@ -14,7 +14,7 @@ import {
  *
  * @param {Object} args - Command arguments (now expecting tasksJsonPath explicitly).
  * @param {Object} log - Logger object.
- * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }.
+ * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
 export async function listTasksDirect(args, log) {
 	// Destructure the explicit tasksJsonPath from args
@@ -28,7 +28,6 @@ export async function listTasksDirect(args, log) {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
 			},
-			fromCache: false
 		};
 	}
 
