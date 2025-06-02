@@ -21,7 +21,7 @@ import {
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID(s) of the task(s) or subtask(s) to remove (comma-separated for multiple).
  * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: false }
+ * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function removeTaskDirect(args, log) {
 	// Destructure expected args
@@ -35,8 +35,7 @@ export async function removeTaskDirect(args, log) {
 				error: {
 					code: 'MISSING_ARGUMENT',
 					message: 'tasksJsonPath is required'
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -48,8 +47,7 @@ export async function removeTaskDirect(args, log) {
 				error: {
 					code: 'INPUT_VALIDATION_ERROR',
 					message: 'Task ID is required'
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -68,8 +66,7 @@ export async function removeTaskDirect(args, log) {
 				error: {
 					code: 'INVALID_TASKS_FILE',
 					message: `No valid tasks found in ${tasksJsonPath}`
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -83,8 +80,7 @@ export async function removeTaskDirect(args, log) {
 				error: {
 					code: 'INVALID_TASK_ID',
 					message: `The following tasks were not found: ${invalidTasks.join(', ')}`
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -133,8 +129,7 @@ export async function removeTaskDirect(args, log) {
 					details: failedRemovals
 						.map((r) => `${r.taskId}: ${r.error}`)
 						.join('; ')
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -147,8 +142,7 @@ export async function removeTaskDirect(args, log) {
 				failed: failedRemovals.length,
 				results: results,
 				tasksPath: tasksJsonPath
-			},
-			fromCache: false
+			}
 		};
 	} catch (error) {
 		// Ensure silent mode is disabled even if an outer error occurs
@@ -161,8 +155,7 @@ export async function removeTaskDirect(args, log) {
 			error: {
 				code: 'UNEXPECTED_ERROR',
 				message: error.message
-			},
-			fromCache: false
+			}
 		};
 	}
 }

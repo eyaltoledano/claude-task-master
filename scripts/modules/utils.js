@@ -155,8 +155,17 @@ function log(level, ...args) {
 		return;
 	}
 
-	// Get log level dynamically from config-manager
-	const configLevel = getLogLevel() || 'info'; // Use getter
+	// GUARD: Prevent circular dependency during config loading
+	// Use a simple fallback log level instead of calling getLogLevel()
+	let configLevel = 'info'; // Default fallback
+	try {
+		// Only try to get config level if we're not in the middle of config loading
+		configLevel = getLogLevel() || 'info';
+	} catch (error) {
+		// If getLogLevel() fails (likely due to circular dependency),
+		// use default 'info' level and continue
+		configLevel = 'info';
+	}
 
 	// Use text prefixes instead of emojis
 	const prefixes = {
@@ -190,8 +199,17 @@ function log(level, ...args) {
  * @returns {Object|null} Parsed JSON data or null if error occurs
  */
 function readJSON(filepath) {
-	// Get debug flag dynamically from config-manager
-	const isDebug = getDebugFlag();
+	// GUARD: Prevent circular dependency during config loading
+	let isDebug = false; // Default fallback
+	try {
+		// Only try to get debug flag if we're not in the middle of config loading
+		isDebug = getDebugFlag();
+	} catch (error) {
+		// If getDebugFlag() fails (likely due to circular dependency),
+		// use default false and continue
+		isDebug = false;
+	}
+
 	try {
 		const rawData = fs.readFileSync(filepath, 'utf8');
 		return JSON.parse(rawData);
@@ -212,8 +230,17 @@ function readJSON(filepath) {
  * @param {Object} data - Data to write
  */
 function writeJSON(filepath, data) {
-	// Get debug flag dynamically from config-manager
-	const isDebug = getDebugFlag();
+	// GUARD: Prevent circular dependency during config loading
+	let isDebug = false; // Default fallback
+	try {
+		// Only try to get debug flag if we're not in the middle of config loading
+		isDebug = getDebugFlag();
+	} catch (error) {
+		// If getDebugFlag() fails (likely due to circular dependency),
+		// use default false and continue
+		isDebug = false;
+	}
+
 	try {
 		const dir = path.dirname(filepath);
 		if (!fs.existsSync(dir)) {
@@ -246,8 +273,17 @@ function sanitizePrompt(prompt) {
  * @returns {Object|null} The parsed complexity report or null if not found
  */
 function readComplexityReport(customPath = null) {
-	// Get debug flag dynamically from config-manager
-	const isDebug = getDebugFlag();
+	// GUARD: Prevent circular dependency during config loading
+	let isDebug = false; // Default fallback
+	try {
+		// Only try to get debug flag if we're not in the middle of config loading
+		isDebug = getDebugFlag();
+	} catch (error) {
+		// If getDebugFlag() fails (likely due to circular dependency),
+		// use default false and continue
+		isDebug = false;
+	}
+
 	try {
 		let reportPath;
 		if (customPath) {

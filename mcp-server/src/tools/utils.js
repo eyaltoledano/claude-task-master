@@ -7,12 +7,57 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
+import { fileURLToPath } from 'url';
 
 // Import path utilities to ensure consistent path resolution
 import {
 	lastFoundProjectRoot,
 	PROJECT_MARKERS
 } from '../core/utils/path-utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+
+// Cache for version info to avoid repeated file reads
+let cachedVersionInfo = null;
+
+/**
+ * Get version information from package.json
+ * @returns {Object} Version information
+ */
+function getVersionInfo() {
+	// Return cached version if available
+	if (cachedVersionInfo) {
+		return cachedVersionInfo;
+	}
+
+	try {
+		// Navigate to the project root from the tools directory
+		const packageJsonPath = path.join(
+			path.dirname(__filename),
+			'../../../package.json'
+		);
+		if (fs.existsSync(packageJsonPath)) {
+			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+			cachedVersionInfo = {
+				version: packageJson.version,
+				name: packageJson.name
+			};
+			return cachedVersionInfo;
+		}
+		cachedVersionInfo = {
+			version: 'unknown',
+			name: 'task-master-ai'
+		};
+		return cachedVersionInfo;
+	} catch (error) {
+		// Fallback version info if package.json can't be read
+		cachedVersionInfo = {
+			version: 'unknown',
+			name: 'task-master-ai'
+		};
+		return cachedVersionInfo;
+	}
+}
 
 /**
  * Get normalized project root path
@@ -199,17 +244,19 @@ function getProjectRootFromSession(session, log) {
  * @param {Function} processFunction - Optional function to process successful result data
  * @returns {Object} - Standardized MCP response object
  */
-function handleApiResult(
+async function handleApiResult(
 	result,
 	log,
 	errorPrefix = 'API error',
 	processFunction = processMCPResponseData
 ) {
+	// Get version info for every response
+	const versionInfo = getVersionInfo();
+
 	if (!result.success) {
 		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
-		// Include cache status in error logs
-		log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
-		return createErrorResponse(errorMsg);
+		log.error(`${errorPrefix}: ${errorMsg}`);
+		return createErrorResponse(errorMsg, versionInfo);
 	}
 
 	// Process the result data if needed
@@ -217,16 +264,14 @@ function handleApiResult(
 		? processFunction(result.data)
 		: result.data;
 
-	// Log success including cache status
-	log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+	log.info('Successfully completed operation');
 
-	// Create the response payload including the fromCache flag
+	// Create the response payload including version info
 	const responsePayload = {
-		fromCache: result.fromCache, // Get the flag from the original 'result'
-		data: processedData // Nest the processed data under a 'data' key
+		data: processedData,
+		version: versionInfo
 	};
 
-	// Pass this combined payload to createContentResponse
 	return createContentResponse(responsePayload);
 }
 
@@ -320,8 +365,8 @@ function executeTaskMasterCommand(
  * @param {Function} options.actionFn - The async function to execute if the cache misses.
  *                                      Should return an object like { success: boolean, data?: any, error?: { code: string, message: string } }.
  * @param {Object} options.log - The logger instance.
- * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
- *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - An object containing the result.
+ *                              Format: { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Check cache first
@@ -329,11 +374,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 
 	if (cachedResult !== undefined) {
 		log.info(`Cache hit for key: ${cacheKey}`);
-		// Return the cached data in the same structure as a fresh result
-		return {
-			...cachedResult, // Spread the cached result to maintain its structure
-			fromCache: true // Just add the fromCache flag
-		};
+		return cachedResult;
 	}
 
 	log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
@@ -341,12 +382,10 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Execute the action function if cache missed
 	const result = await actionFn();
 
-	// If the action was successful, cache the result (but without fromCache flag)
+	// If the action was successful, cache the result
 	if (result.success && result.data !== undefined) {
 		log.info(`Action successful. Caching result for key: ${cacheKey}`);
-		// Cache the entire result structure (minus the fromCache flag)
-		const { fromCache, ...resultToCache } = result;
-		contextManager.setCachedData(cacheKey, resultToCache);
+		contextManager.setCachedData(cacheKey, result);
 	} else if (!result.success) {
 		log.warn(
 			`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`
@@ -357,11 +396,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 		);
 	}
 
-	// Return the fresh result, indicating it wasn't from cache
-	return {
-		...result,
-		fromCache: false
-	};
+	return result;
 }
 
 /**
@@ -460,14 +495,22 @@ function createContentResponse(content) {
 /**
  * Creates error response for tools
  * @param {string} errorMessage - Error message to include in response
+ * @param {Object} [versionInfo] - Optional version information object
  * @returns {Object} - Error content response object in FastMCP format
  */
-function createErrorResponse(errorMessage) {
+function createErrorResponse(errorMessage, versionInfo) {
+	// Provide fallback version info if not provided
+	if (!versionInfo) {
+		versionInfo = getVersionInfo();
+	}
+
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `Error: ${errorMessage}`
+				text: `Error: ${errorMessage}
+Version: ${versionInfo.version}
+Name: ${versionInfo.name}`
 			}
 		],
 		isError: true
