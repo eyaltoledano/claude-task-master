@@ -23,7 +23,8 @@ import {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getOpenAIBaseURLEnv
 } from './config-manager.js';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
@@ -402,7 +403,18 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// Get base URL if configured (optional for most providers)
 			baseURL = getBaseUrlForRole(currentRole, effectiveProjectRoot);
 
+			if (!baseURL && providerName?.toLowerCase() === 'openai') {
+				const openaiEnvUrl = getOpenAIBaseURLEnv(effectiveProjectRoot);
+				if (openaiEnvUrl) {
+					baseURL = openaiEnvUrl;
+					if (getDebugFlag()) {
+						log('debug', `Using OPENAI_BASE_URL environment variable: ${baseURL}`);
+					}
+				}
+			}
+
 			// For Azure, use the global Azure base URL if role-specific URL is not configured
+			// AND if OpenAI specific URL was not already applied
 			if (providerName?.toLowerCase() === 'azure' && !baseURL) {
 				baseURL = getAzureBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Azure base URL: ${baseURL}`);

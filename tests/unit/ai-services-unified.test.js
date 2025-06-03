@@ -11,6 +11,7 @@ const mockGetParametersForRole = jest.fn();
 const mockGetUserId = jest.fn();
 const mockGetDebugFlag = jest.fn();
 const mockIsApiKeySet = jest.fn();
+const mockGetOpenAIBaseURLEnv = jest.fn(); // Added this line
 
 // --- Mock MODEL_MAP Data ---
 // Provide a simplified structure sufficient for cost calculation tests
@@ -115,7 +116,8 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getAzureBaseURL: mockGetAzureBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
-	getMcpApiKeyStatus: mockGetMcpApiKeyStatus
+	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
+	getOpenAIBaseURLEnv: mockGetOpenAIBaseURLEnv // Added this line
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -270,6 +272,7 @@ describe('Unified AI Services', () => {
 		mockGetUserId.mockReturnValue('test-user-id'); // Add default mock for getUserId
 		mockIsApiKeySet.mockReturnValue(true); // Default to true for most tests
 		mockGetBaseUrlForRole.mockReturnValue(null); // Default to no base URL
+		mockGetOpenAIBaseURLEnv.mockReturnValue(null); // Reset for each test
 	});
 
 	describe('generateTextService', () => {
@@ -684,6 +687,138 @@ describe('Unified AI Services', () => {
 
 			// Should have gotten the anthropic response
 			expect(result.mainResult).toBe('Anthropic response with session key');
+		});
+	});
+
+	describe('OPENAI_BASE_URL Logic', () => {
+		const openAIEnvUrl = 'http://custom.openai.env/v1';
+
+		test('should use OPENAI_BASE_URL when provider is "openai" and no role baseURL is set', async () => {
+			mockGetMainProvider.mockReturnValue('openai');
+			mockGetMainModelId.mockReturnValue('test-openai-model');
+			mockGetBaseUrlForRole.mockReturnValue(null);
+			mockGetOpenAIBaseURLEnv.mockReturnValue(openAIEnvUrl);
+			mockIsApiKeySet.mockReturnValue(true); // Ensure API key is set
+
+			mockOpenAIProvider.generateText.mockResolvedValue({
+				text: 'OpenAI response with env base URL',
+				usage: { inputTokens: 1, outputTokens: 1 }
+			});
+
+			await generateTextService({ role: 'main', prompt: 'Test OpenAI Env URL' });
+
+			expect(mockGetOpenAIBaseURLEnv).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockOpenAIProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: openAIEnvUrl
+				})
+			);
+		});
+
+		test('Role-specific baseURL should override OPENAI_BASE_URL for "openai" provider', async () => {
+			const roleSpecificUrl = 'http://role.specific.url/v1';
+			mockGetMainProvider.mockReturnValue('openai');
+			mockGetMainModelId.mockReturnValue('test-openai-model');
+			mockGetBaseUrlForRole.mockReturnValue(roleSpecificUrl);
+			mockGetOpenAIBaseURLEnv.mockReturnValue(openAIEnvUrl); // Should be ignored
+			mockIsApiKeySet.mockReturnValue(true);
+
+			mockOpenAIProvider.generateText.mockResolvedValue({
+				text: 'OpenAI response with role base URL',
+				usage: { inputTokens: 1, outputTokens: 1 }
+			});
+
+			await generateTextService({ role: 'main', prompt: 'Test Role URL override' });
+
+			// getOpenAIBaseURLEnv might be called depending on exact logic order,
+			// but its value should not be used for baseURL
+			expect(mockOpenAIProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: roleSpecificUrl
+				})
+			);
+			// To be more precise, we can check that if it was called, its return value wasn't the one used,
+			// or ensure it wasn't called if the logic short-circuits.
+			// Current implementation calls it, but the role-specific one takes precedence.
+		});
+
+		test('OPENAI_BASE_URL should NOT be used for non-"openai" providers', async () => {
+			mockGetMainProvider.mockReturnValue('anthropic'); // Non-OpenAI provider
+			mockGetMainModelId.mockReturnValue('test-main-model');
+			mockGetBaseUrlForRole.mockReturnValue(null);
+			mockGetOpenAIBaseURLEnv.mockReturnValue(openAIEnvUrl); // Should be ignored
+			mockIsApiKeySet.mockReturnValue(true);
+
+			mockAnthropicProvider.generateText.mockResolvedValue({
+				text: 'Anthropic response, OpenAI env URL ignored',
+				usage: { inputTokens: 1, outputTokens: 1 }
+			});
+
+			await generateTextService({ role: 'main', prompt: 'Test Non-OpenAI provider with OpenAI Env URL' });
+
+			expect(mockGetOpenAIBaseURLEnv).toHaveBeenCalledWith(fakeProjectRoot);
+			// Assert that the baseURL passed to anthropic is not the openAIEnvUrl
+			// It should be undefined if no other global URL (like Azure/Ollama) is configured for it.
+			expect(mockAnthropicProvider.generateText).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					baseURL: openAIEnvUrl
+				})
+			);
+		});
+
+		test('should use default OpenAI endpoint if no role baseURL and no OPENAI_BASE_URL is set', async () => {
+			mockGetMainProvider.mockReturnValue('openai');
+			mockGetMainModelId.mockReturnValue('test-openai-model');
+			mockGetBaseUrlForRole.mockReturnValue(null);
+			mockGetOpenAIBaseURLEnv.mockReturnValue(null); // No env URL
+			mockIsApiKeySet.mockReturnValue(true);
+
+			mockOpenAIProvider.generateText.mockResolvedValue({
+				text: 'OpenAI response with default base URL',
+				usage: { inputTokens: 1, outputTokens: 1 }
+			});
+
+			await generateTextService({ role: 'main', prompt: 'Test OpenAI default URL' });
+
+			expect(mockGetOpenAIBaseURLEnv).toHaveBeenCalledWith(fakeProjectRoot);
+			// Expect that baseURL is not explicitly set, so provider uses its default
+			expect(mockOpenAIProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: undefined // Or whatever the default behavior implies
+				})
+			);
+		});
+
+		// Test to ensure OPENAI_BASE_URL does not interfere with Azure global URL
+		test('OPENAI_BASE_URL should not interfere with Azure global URL when provider is azure', async () => {
+			const azureGlobalUrl = 'http://custom.azure.env/v1';
+			mockGetMainProvider.mockReturnValue('azure'); // Azure provider
+			mockGetMainModelId.mockReturnValue('test-azure-model');
+			mockGetBaseUrlForRole.mockReturnValue(null); // No role-specific
+			mockGetOpenAIBaseURLEnv.mockReturnValue(openAIEnvUrl); // OpenAI env URL set
+			mockGetAzureBaseURL.mockReturnValue(azureGlobalUrl); // Azure global URL set
+			mockIsApiKeySet.mockReturnValue(true);
+
+			// We need to mock the AzureProvider specifically for this test
+			const mockAzureProviderInstance = { generateText: jest.fn() };
+			jest.spyOn(global, 'jest') // This is a bit of a hack to get access to the mocked module
+				.requireActual('../../src/ai-providers/index.js')
+				.AzureProvider.mockImplementation(() => mockAzureProviderInstance);
+
+			mockAzureProviderInstance.generateText.mockResolvedValue({
+				text: 'Azure response with Azure global URL',
+				usage: { inputTokens: 1, outputTokens: 1 }
+			});
+
+			await generateTextService({ role: 'main', prompt: 'Test Azure with OpenAI Env URL' });
+
+			expect(mockGetOpenAIBaseURLEnv).not.toHaveBeenCalled(); // Should not be called for Azure
+			expect(mockGetAzureBaseURL).toHaveBeenCalledWith(fakeProjectRoot);
+			expect(mockAzureProviderInstance.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: azureGlobalUrl
+				})
+			);
 		});
 	});
 });

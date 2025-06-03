@@ -70,9 +70,10 @@ Taskmaster uses two primary methods for configuration:
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
 - **Optional Endpoint Overrides:**
-  - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
-  - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
-  - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
+  - **Per-role `baseURL` in `.taskmaster/config.json`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) in your `.taskmaster/config.json` file to override the default API endpoint for that provider. This setting takes the highest precedence for determining the base URL.
+  - `OPENAI_BASE_URL`: If you are using a provider configured as 'openai' (e.g., for custom OpenAI-compatible APIs) and have not set a specific `baseURL` for that model role in your `.taskmaster/config.json`, this environment variable allows you to specify a global base URL. The role-specific `baseURL` in `config.json` always takes precedence over this environment variable.
+  - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role, which would take precedence over this global setting).
+  - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`). This can also be set via `global.ollamaBaseURL` in `.taskmaster/config.json` or as a role-specific `baseURL` if Ollama is used for a specific role. The role-specific `baseURL` takes precedence, followed by `OPENAI_BASE_URL` (if provider is 'openai'), then `global.ollamaBaseURL`, then this environment variable.
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).

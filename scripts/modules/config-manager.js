@@ -737,6 +737,15 @@ function getAllProviders() {
 	return Object.keys(MODEL_MAP || {});
 }
 
+/**
+ * Gets the OpenAI Base URL from the OPENAI_BASE_URL environment variable.
+ * @param {string|null} projectRoot - Optional explicit path to the project root (for .env file resolution).
+ * @returns {string|undefined} The OpenAI Base URL or undefined if not set.
+ */
+function getOpenAIBaseURLEnv(projectRoot = null) {
+	return resolveEnvVariable('OPENAI_BASE_URL', null, projectRoot);
+}
+
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
 	return roleConfig && typeof roleConfig.baseURL === 'string'
@@ -787,5 +796,6 @@ export {
 	// ADD: Function to get all provider names
 	getAllProviders,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getOpenAIBaseURLEnv
 };
