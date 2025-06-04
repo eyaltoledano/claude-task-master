@@ -75,7 +75,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
-##### VS Code (`servers` + `type`)
+###### VS Code (`servers` + `type`)
 
 ```jsonc
 {
