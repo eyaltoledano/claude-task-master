@@ -20,22 +20,22 @@ npm i -g task-master-ai
 
 ```json
 {
-	"mcpServers": {
-		"taskmaster-ai": {
-			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
-			"env": {
-				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-			}
-		}
-	}
+  "mcpServers": {
+    "taskmaster-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+      }
+    }
+  }
 }
 ```
 
@@ -60,12 +60,12 @@ The AI will:
 - Set up initial configuration files
 - Guide you through the rest of the process
 
-5. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+5. Place your PRD document in the `.taskmaster/docs/` directory (e.g., `.taskmaster/docs/prd.txt`)
 
 6. **Use natural language commands** to interact with Task Master:
 
 ```
-Can you parse my PRD at scripts/prd.txt?
+Can you parse my PRD at .taskmaster/docs/prd.txt?
 What's the next task I should work on?
 Can you help me implement task 3?
 ```
@@ -132,7 +132,7 @@ If you're not using MCP, you can still set up Cursor integration:
 
 1. After initializing your project, open it in Cursor
 2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
-3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+3. Place your PRD document in the `.taskmaster/docs/` directory (e.g., `.taskmaster/docs/prd.txt`)
 4. Open Cursor's AI chat and switch to Agent mode
 
 ### Alternative MCP Setup in Cursor
@@ -155,13 +155,13 @@ Once configured, you can interact with Task Master's task management commands di
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at .taskmaster/docs/prd.txt.
 ```
 
 The agent will execute:
 
 ```bash
-task-master parse-prd scripts/prd.txt
+task-master parse-prd .taskmaster/docs/prd.txt
 ```
 
 This will:
@@ -268,7 +268,61 @@ task-master update --from=4 --prompt="Update to use MongoDB, researching best pr
 
 This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
 
-### 6. Breaking Down Complex Tasks
+### 6. Reorganizing Tasks
+
+If you need to reorganize your task structure:
+
+```
+I think subtask 5.2 would fit better as part of task 7 instead. Can you move it there?
+```
+
+The agent will execute:
+
+```bash
+task-master move --from=5.2 --to=7.3
+```
+
+You can reorganize tasks in various ways:
+
+- Moving a standalone task to become a subtask: `--from=5 --to=7`
+- Moving a subtask to become a standalone task: `--from=5.2 --to=7`
+- Moving a subtask to a different parent: `--from=5.2 --to=7.3`
+- Reordering subtasks within the same parent: `--from=5.2 --to=5.4`
+- Moving a task to a new ID position: `--from=5 --to=25` (even if task 25 doesn't exist yet)
+- Moving multiple tasks at once: `--from=10,11,12 --to=16,17,18` (must have same number of IDs, Taskmaster will look through each position)
+
+When moving tasks to new IDs:
+
+- The system automatically creates placeholder tasks for non-existent destination IDs
+- This prevents accidental data loss during reorganization
+- Any tasks that depend on moved tasks will have their dependencies updated
+- When moving a parent task, all its subtasks are automatically moved with it and renumbered
+
+This is particularly useful as your project understanding evolves and you need to refine your task structure.
+
+### 7. Resolving Merge Conflicts with Tasks
+
+When working with a team, you might encounter merge conflicts in your tasks.json file if multiple team members create tasks on different branches. The move command makes resolving these conflicts straightforward:
+
+```
+I just merged the main branch and there's a conflict with tasks.json. My teammates created tasks 10-15 while I created tasks 10-12 on my branch. Can you help me resolve this?
+```
+
+The agent will help you:
+
+1. Keep your teammates' tasks (10-15)
+2. Move your tasks to new positions to avoid conflicts:
+
+```bash
+# Move your tasks to new positions (e.g., 16-18)
+task-master move --from=10 --to=16
+task-master move --from=11 --to=17
+task-master move --from=12 --to=18
+```
+
+This approach preserves everyone's work while maintaining a clean task structure, making it much easier to handle task conflicts than trying to manually merge JSON files.
+
+### 8. Breaking Down Complex Tasks
 
 For complex tasks that need more granularity:
 
@@ -323,7 +377,7 @@ task-master expand --id=5 --research
 ### Starting a new project
 
 ```
-I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
+I've just initialized a new project with Claude Task Master. I have a PRD at .taskmaster/docs/prd.txt.
 Can you help me parse it and set up the initial tasks?
 ```
 

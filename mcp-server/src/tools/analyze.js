@@ -12,7 +12,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -41,7 +42,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Output file path relative to project root (default: scripts/task-complexity-report.json).'
+					`Output file path relative to project root (default: ${COMPLEXITY_REPORT_FILE}).`
 				),
 			file: z
 				.string()
@@ -49,6 +50,24 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe(
 					'Path to the tasks file relative to project root (default: tasks/tasks.json).'
 				),
+			ids: z
+				.string()
+				.optional()
+				.describe(
+					'Comma-separated list of task IDs to analyze specifically (e.g., "1,3,5").'
+				),
+			from: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.describe('Starting task ID in a range to analyze.'),
+			to: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.describe('Ending task ID in a range to analyze.'),
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
@@ -62,7 +81,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -76,11 +95,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 
 				const outputPath = args.output
 					? path.resolve(args.projectRoot, args.output)
-					: path.resolve(
-							args.projectRoot,
-							'scripts',
-							'task-complexity-report.json'
-						);
+					: path.resolve(args.projectRoot, COMPLEXITY_REPORT_FILE);
 
 				log.info(`${toolName}: Report output path: ${outputPath}`);
 
@@ -107,7 +122,10 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						outputPath: outputPath,
 						threshold: args.threshold,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						ids: args.ids,
+						from: args.from,
+						to: args.to
 					},
 					log,
 					{ session }

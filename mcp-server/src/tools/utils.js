@@ -7,12 +7,57 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
+import { fileURLToPath } from 'url';
 
 // Import path utilities to ensure consistent path resolution
 import {
 	lastFoundProjectRoot,
 	PROJECT_MARKERS
 } from '../core/utils/path-utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+
+// Cache for version info to avoid repeated file reads
+let cachedVersionInfo = null;
+
+/**
+ * Get version information from package.json
+ * @returns {Object} Version information
+ */
+function getVersionInfo() {
+	// Return cached version if available
+	if (cachedVersionInfo) {
+		return cachedVersionInfo;
+	}
+
+	try {
+		// Navigate to the project root from the tools directory
+		const packageJsonPath = path.join(
+			path.dirname(__filename),
+			'../../../package.json'
+		);
+		if (fs.existsSync(packageJsonPath)) {
+			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+			cachedVersionInfo = {
+				version: packageJson.version,
+				name: packageJson.name
+			};
+			return cachedVersionInfo;
+		}
+		cachedVersionInfo = {
+			version: 'unknown',
+			name: 'task-master-ai'
+		};
+		return cachedVersionInfo;
+	} catch (error) {
+		// Fallback version info if package.json can't be read
+		cachedVersionInfo = {
+			version: 'unknown',
+			name: 'task-master-ai'
+		};
+		return cachedVersionInfo;
+	}
+}
 
 /**
  * Get normalized project root path
@@ -22,7 +67,7 @@ import {
  */
 function getProjectRoot(projectRootRaw, log) {
 	// PRECEDENCE ORDER:
-	// 1. Environment variable override
+	// 1. Environment variable override (TASK_MASTER_PROJECT_ROOT)
 	// 2. Explicitly provided projectRoot in args
 	// 3. Previously found/cached project root
 	// 4. Current directory if it has project markers
@@ -199,17 +244,19 @@ function getProjectRootFromSession(session, log) {
  * @param {Function} processFunction - Optional function to process successful result data
  * @returns {Object} - Standardized MCP response object
  */
-function handleApiResult(
+async function handleApiResult(
 	result,
 	log,
 	errorPrefix = 'API error',
 	processFunction = processMCPResponseData
 ) {
+	// Get version info for every response
+	const versionInfo = getVersionInfo();
+
 	if (!result.success) {
 		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
-		// Include cache status in error logs
-		log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
-		return createErrorResponse(errorMsg);
+		log.error(`${errorPrefix}: ${errorMsg}`);
+		return createErrorResponse(errorMsg, versionInfo);
 	}
 
 	// Process the result data if needed
@@ -217,16 +264,14 @@ function handleApiResult(
 		? processFunction(result.data)
 		: result.data;
 
-	// Log success including cache status
-	log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+	log.info('Successfully completed operation');
 
-	// Create the response payload including the fromCache flag
+	// Create the response payload including version info
 	const responsePayload = {
-		fromCache: result.fromCache, // Get the flag from the original 'result'
-		data: processedData // Nest the processed data under a 'data' key
+		data: processedData,
+		version: versionInfo
 	};
 
-	// Pass this combined payload to createContentResponse
 	return createContentResponse(responsePayload);
 }
 
@@ -320,8 +365,8 @@ function executeTaskMasterCommand(
  * @param {Function} options.actionFn - The async function to execute if the cache misses.
  *                                      Should return an object like { success: boolean, data?: any, error?: { code: string, message: string } }.
  * @param {Object} options.log - The logger instance.
- * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
- *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - An object containing the result.
+ *                              Format: { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Check cache first
@@ -329,11 +374,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 
 	if (cachedResult !== undefined) {
 		log.info(`Cache hit for key: ${cacheKey}`);
-		// Return the cached data in the same structure as a fresh result
-		return {
-			...cachedResult, // Spread the cached result to maintain its structure
-			fromCache: true // Just add the fromCache flag
-		};
+		return cachedResult;
 	}
 
 	log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
@@ -341,12 +382,10 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Execute the action function if cache missed
 	const result = await actionFn();
 
-	// If the action was successful, cache the result (but without fromCache flag)
+	// If the action was successful, cache the result
 	if (result.success && result.data !== undefined) {
 		log.info(`Action successful. Caching result for key: ${cacheKey}`);
-		// Cache the entire result structure (minus the fromCache flag)
-		const { fromCache, ...resultToCache } = result;
-		contextManager.setCachedData(cacheKey, resultToCache);
+		contextManager.setCachedData(cacheKey, result);
 	} else if (!result.success) {
 		log.warn(
 			`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`
@@ -357,11 +396,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 		);
 	}
 
-	// Return the fresh result, indicating it wasn't from cache
-	return {
-		...result,
-		fromCache: false
-	};
+	return result;
 }
 
 /**
@@ -460,14 +495,22 @@ function createContentResponse(content) {
 /**
  * Creates error response for tools
  * @param {string} errorMessage - Error message to include in response
+ * @param {Object} [versionInfo] - Optional version information object
  * @returns {Object} - Error content response object in FastMCP format
  */
-function createErrorResponse(errorMessage) {
+function createErrorResponse(errorMessage, versionInfo) {
+	// Provide fallback version info if not provided
+	if (!versionInfo) {
+		versionInfo = getVersionInfo();
+	}
+
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `Error: ${errorMessage}`
+				text: `Error: ${errorMessage}
+Version: ${versionInfo.version}
+Name: ${versionInfo.name}`
 			}
 		],
 		isError: true
@@ -578,6 +621,7 @@ function getRawProjectRootFromSession(session, log) {
 /**
  * Higher-order function to wrap MCP tool execute methods.
  * Ensures args.projectRoot is present and normalized before execution.
+ * Uses TASK_MASTER_PROJECT_ROOT environment variable with proper precedence.
  * @param {Function} executeFn - The original async execute(args, context) function.
  * @returns {Function} The wrapped async execute function.
  */
@@ -588,31 +632,52 @@ function withNormalizedProjectRoot(executeFn) {
 		let rootSource = 'unknown';
 
 		try {
-			// Determine raw root: prioritize args, then session
-			let rawRoot = args.projectRoot;
-			if (!rawRoot) {
-				rawRoot = getRawProjectRootFromSession(session, log);
-				rootSource = 'session';
-			} else {
-				rootSource = 'args';
-			}
+			// PRECEDENCE ORDER:
+			// 1. TASK_MASTER_PROJECT_ROOT environment variable (from process.env or session)
+			// 2. args.projectRoot (explicitly provided)
+			// 3. Session-based project root resolution
+			// 4. Current directory fallback
 
-			if (!rawRoot) {
-				log.error('Could not determine project root from args or session.');
-				return createErrorResponse(
-					'Could not determine project root. Please provide projectRoot argument or ensure session contains root info.'
-				);
+			// 1. Check for TASK_MASTER_PROJECT_ROOT environment variable first
+			if (process.env.TASK_MASTER_PROJECT_ROOT) {
+				const envRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+				normalizedRoot = path.isAbsolute(envRoot)
+					? envRoot
+					: path.resolve(process.cwd(), envRoot);
+				rootSource = 'TASK_MASTER_PROJECT_ROOT environment variable';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
 			}
-
-			// Normalize the determined raw root
-			normalizedRoot = normalizeProjectRoot(rawRoot, log);
+			// Also check session environment variables for TASK_MASTER_PROJECT_ROOT
+			else if (session?.env?.TASK_MASTER_PROJECT_ROOT) {
+				const envRoot = session.env.TASK_MASTER_PROJECT_ROOT;
+				normalizedRoot = path.isAbsolute(envRoot)
+					? envRoot
+					: path.resolve(process.cwd(), envRoot);
+				rootSource = 'TASK_MASTER_PROJECT_ROOT session environment variable';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+			}
+			// 2. If no environment variable, try args.projectRoot
+			else if (args.projectRoot) {
+				normalizedRoot = normalizeProjectRoot(args.projectRoot, log);
+				rootSource = 'args.projectRoot';
+				log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+			}
+			// 3. If no args.projectRoot, try session-based resolution
+			else {
+				const sessionRoot = getProjectRootFromSession(session, log);
+				if (sessionRoot) {
+					normalizedRoot = sessionRoot; // getProjectRootFromSession already normalizes
+					rootSource = 'session';
+					log.info(`Using project root from ${rootSource}: ${normalizedRoot}`);
+				}
+			}
 
 			if (!normalizedRoot) {
 				log.error(
-					`Failed to normalize project root obtained from ${rootSource}: ${rawRoot}`
+					'Could not determine project root from environment, args, or session.'
 				);
 				return createErrorResponse(
-					`Invalid project root provided or derived from ${rootSource}: ${rawRoot}`
+					'Could not determine project root. Please provide projectRoot argument or ensure TASK_MASTER_PROJECT_ROOT environment variable is set.'
 				);
 			}
 

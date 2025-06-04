@@ -11,8 +11,8 @@ import {
 } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
-	findComplexityReportPath
+	resolveTasksPath,
+	resolveComplexityReportPath
 } from '../core/utils/path-utils.js';
 
 /**
@@ -55,13 +55,10 @@ export function registerListTasksTool(server) {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
+					tasksJsonPath = resolveTasksPath(args, log);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -72,14 +69,13 @@ export function registerListTasksTool(server) {
 				// Resolve the path to complexity report
 				let complexityReportPath;
 				try {
-					complexityReportPath = findComplexityReportPath(
-						args.projectRoot,
-						args.complexityReport,
-						log
-					);
+					complexityReportPath = resolveComplexityReportPath(args, session);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
+					// This is optional, so we don't fail the operation
+					complexityReportPath = null;
 				}
+
 				const result = await listTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -91,7 +87,7 @@ export function registerListTasksTool(server) {
 				);
 
 				log.info(
-					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`
+					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
 				return handleApiResult(result, log, 'Error getting tasks');
 			} catch (error) {

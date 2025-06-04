@@ -60,7 +60,8 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot }
+			{ session, mcpLog, projectRoot },
+			'json'
 		);
 
 		// Core function now returns a summary object including the *aggregated* telemetryData

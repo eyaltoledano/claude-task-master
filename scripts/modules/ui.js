@@ -24,6 +24,10 @@ import {
 } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import {
+	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_TASKS_FILE
+} from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
@@ -686,7 +690,7 @@ function displayHelp() {
 
 	configTable.push(
 		[
-			`${chalk.yellow('.taskmasterconfig')}${chalk.reset('')}`,
+			`${chalk.yellow(TASKMASTER_CONFIG_FILE)}${chalk.reset('')}`,
 			`${chalk.white('AI model configuration file (project root)')}${chalk.reset('')}`,
 			`${chalk.dim('Managed by models cmd')}${chalk.reset('')}`
 		],
@@ -1524,10 +1528,18 @@ async function displayComplexityReport(reportPath) {
 		if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 			// Call the analyze-complexity command
 			console.log(chalk.blue('Generating complexity report...'));
+			const tasksPath = TASKMASTER_TASKS_FILE;
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					'❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file.'
+				);
+				return null;
+			}
+
 			await analyzeTaskComplexity({
 				output: reportPath,
 				research: false, // Default to no research for speed
-				file: 'tasks/tasks.json'
+				file: tasksPath
 			});
 			// Read the newly generated report
 			return displayComplexityReport(reportPath);
@@ -1842,7 +1854,7 @@ function displayApiKeyStatus(statusReport) {
 	console.log(table.toString());
 	console.log(
 		chalk.gray(
-			'  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in .taskmasterconfig.'
+			`  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in ${TASKMASTER_CONFIG_FILE}.`
 		)
 	);
 }

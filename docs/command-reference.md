@@ -187,6 +187,32 @@ task-master validate-dependencies
 task-master fix-dependencies
 ```
 
+## Move Tasks
+
+```bash
+# Move a task or subtask to a new position
+task-master move --from=<id> --to=<id>
+
+# Examples:
+# Move task to become a subtask
+task-master move --from=5 --to=7
+
+# Move subtask to become a standalone task
+task-master move --from=5.2 --to=7
+
+# Move subtask to a different parent
+task-master move --from=5.2 --to=7.3
+
+# Reorder subtasks within the same parent
+task-master move --from=5.2 --to=5.4
+
+# Move a task to a new ID position (creates placeholder if doesn't exist)
+task-master move --from=5 --to=25
+
+# Move multiple tasks at once (must have the same number of IDs)
+task-master move --from=10,11,12 --to=16,17,18
+```
+
 ## Add a New Task
 
 ```bash

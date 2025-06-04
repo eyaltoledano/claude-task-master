@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { complexityReportDirect } from '../core/task-master-core.js';
-import path from 'path';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { findComplexityReportPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the complexityReport tool with the MCP server
@@ -25,7 +26,7 @@ export function registerComplexityReportTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Path to the report file (default: scripts/task-complexity-report.json)'
+					`Path to the report file (default: ${COMPLEXITY_REPORT_FILE})`
 				),
 			projectRoot: z
 				.string()
@@ -37,14 +38,18 @@ export function registerComplexityReportTool(server) {
 					`Getting complexity report with args: ${JSON.stringify(args)}`
 				);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				const reportPath = args.file
-					? path.resolve(args.projectRoot, args.file)
-					: path.resolve(
-							args.projectRoot,
-							'scripts',
-							'task-complexity-report.json'
-						);
+				const pathArgs = {
+					projectRoot: args.projectRoot,
+					complexityReport: args.file
+				};
+
+				const reportPath = findComplexityReportPath(pathArgs, log);
+
+				if (!reportPath) {
+					return createErrorResponse(
+						'No complexity report found. Run task-master analyze-complexity first.'
+					);
+				}
 
 				const result = await complexityReportDirect(
 					{
@@ -54,9 +59,7 @@ export function registerComplexityReportTool(server) {
 				);
 
 				if (result.success) {
-					log.info(
-						`Successfully retrieved complexity report${result.fromCache ? ' (from cache)' : ''}`
-					);
+					log.info('Successfully retrieved complexity report');
 				} else {
 					log.error(
 						`Failed to retrieve complexity report: ${result.error.message}`

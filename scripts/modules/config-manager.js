@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
-import { log, resolveEnvVariable, findProjectRoot } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
+import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
+import { findConfigPath } from '../../src/utils/path-utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -27,12 +29,10 @@ try {
 	process.exit(1); // Exit if models can't be loaded
 }
 
-const CONFIG_FILE_NAME = '.taskmasterconfig';
-
 // Define valid providers dynamically from the loaded MODEL_MAP
 const VALID_PROVIDERS = Object.keys(MODEL_MAP || {});
 
-// Default configuration values (used if .taskmasterconfig is missing or incomplete)
+// Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
 	models: {
 		main: {
@@ -61,7 +61,8 @@ const DEFAULTS = {
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseUrl: 'http://localhost:11434/api'
+		ollamaBaseURL: 'http://localhost:11434/api',
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
 	}
 };
 
@@ -96,13 +97,15 @@ function _loadAndValidateConfig(explicitRoot = null) {
 	}
 	// ---> End find project root logic <---
 
-	// --- Proceed with loading from the determined rootToUse ---
-	const configPath = path.join(rootToUse, CONFIG_FILE_NAME);
+	// --- Find configuration file using centralized path utility ---
+	const configPath = findConfigPath(null, { projectRoot: rootToUse });
 	let config = { ...defaults }; // Start with a deep copy of defaults
 	let configExists = false;
 
-	if (fs.existsSync(configPath)) {
+	if (configPath) {
 		configExists = true;
+		const isLegacy = configPath.endsWith(LEGACY_CONFIG_FILE);
+
 		try {
 			const rawData = fs.readFileSync(configPath, 'utf-8');
 			const parsedConfig = JSON.parse(rawData);
@@ -124,6 +127,15 @@ function _loadAndValidateConfig(explicitRoot = null) {
 				global: { ...defaults.global, ...parsedConfig?.global }
 			};
 			configSource = `file (${configPath})`; // Update source info
+
+			// Issue deprecation warning if using legacy config file
+			if (isLegacy) {
+				console.warn(
+					chalk.yellow(
+						`⚠️  DEPRECATION WARNING: Found configuration in legacy location '${configPath}'. Please migrate to .taskmaster/config.json. Run 'task-master migrate' to automatically migrate your project.`
+					)
+				);
+			}
 
 			// --- Validation (Warn if file content is invalid) ---
 			// Use log.warn for consistency
@@ -171,19 +183,19 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			// Only warn if an explicit root was *expected*.
 			console.warn(
 				chalk.yellow(
-					`Warning: ${CONFIG_FILE_NAME} not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
+					`Warning: Configuration file not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
 				)
 			);
 		} else {
 			console.warn(
 				chalk.yellow(
-					`Warning: ${CONFIG_FILE_NAME} not found at derived root (${rootToUse}). Using defaults.`
+					`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
 				)
 			);
 		}
 		// Keep config as defaults
 		config = { ...defaults };
-		configSource = `defaults (file not found at ${configPath})`;
+		configSource = `defaults (no config file found at ${rootToUse})`;
 	}
 
 	return config;
@@ -342,13 +354,13 @@ function getDefaultSubtasks(explicitRoot = null) {
 	// Directly return value from config, ensure integer
 	const val = getGlobalConfig(explicitRoot).defaultSubtasks;
 	const parsedVal = parseInt(val, 10);
-	return isNaN(parsedVal) ? DEFAULTS.global.defaultSubtasks : parsedVal;
+	return Number.isNaN(parsedVal) ? DEFAULTS.global.defaultSubtasks : parsedVal;
 }
 
 function getDefaultNumTasks(explicitRoot = null) {
 	const val = getGlobalConfig(explicitRoot).defaultNumTasks;
 	const parsedVal = parseInt(val, 10);
-	return isNaN(parsedVal) ? DEFAULTS.global.defaultNumTasks : parsedVal;
+	return Number.isNaN(parsedVal) ? DEFAULTS.global.defaultNumTasks : parsedVal;
 }
 
 function getDefaultPriority(explicitRoot = null) {
@@ -361,9 +373,39 @@ function getProjectName(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).projectName;
 }
 
-function getOllamaBaseUrl(explicitRoot = null) {
+function getOllamaBaseURL(explicitRoot = null) {
 	// Directly return value from config
-	return getGlobalConfig(explicitRoot).ollamaBaseUrl;
+	return getGlobalConfig(explicitRoot).ollamaBaseURL;
+}
+
+function getAzureBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).azureBaseURL;
+}
+
+function getBedrockBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).bedrockBaseURL;
+}
+
+/**
+ * Gets the Google Cloud project ID for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string|null} The project ID or null if not configured
+ */
+function getVertexProjectId(explicitRoot = null) {
+	// Return value from config
+	return getGlobalConfig(explicitRoot).vertexProjectId;
+}
+
+/**
+ * Gets the Google Cloud location for Vertex AI from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string} The location or default value of "us-central1"
+ */
+function getVertexLocation(explicitRoot = null) {
+	// Return value from config or default
+	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
 }
 
 /**
@@ -450,7 +492,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY'
+		xai: 'XAI_API_KEY',
+		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
 
@@ -542,6 +585,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
 				break;
+			case 'vertex':
+				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
+				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
+				break;
 			default:
 				return false; // Unknown provider
 		}
@@ -628,12 +675,16 @@ function writeConfig(config, explicitRoot = null) {
 	}
 	// ---> End determine root path logic <---
 
-	const configPath =
-		path.basename(rootPath) === CONFIG_FILE_NAME
-			? rootPath
-			: path.join(rootPath, CONFIG_FILE_NAME);
+	// Use new config location: .taskmaster/config.json
+	const taskmasterDir = path.join(rootPath, '.taskmaster');
+	const configPath = path.join(taskmasterDir, 'config.json');
 
 	try {
+		// Ensure .taskmaster directory exists
+		if (!fs.existsSync(taskmasterDir)) {
+			fs.mkdirSync(taskmasterDir, { recursive: true });
+		}
+
 		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 		loadedConfig = config; // Update the cache after successful write
 		return true;
@@ -648,25 +699,12 @@ function writeConfig(config, explicitRoot = null) {
 }
 
 /**
- * Checks if the .taskmasterconfig file exists at the project root
+ * Checks if a configuration file exists at the project root (new or legacy location)
  * @param {string|null} explicitRoot - Optional explicit path to the project root
  * @returns {boolean} True if the file exists, false otherwise
  */
 function isConfigFilePresent(explicitRoot = null) {
-	// ---> Determine root path reliably <---
-	let rootPath = explicitRoot;
-	if (explicitRoot === null || explicitRoot === undefined) {
-		// Logic matching _loadAndValidateConfig
-		const foundRoot = findProjectRoot(); // *** Explicitly call findProjectRoot ***
-		if (!foundRoot) {
-			return false; // Cannot check if root doesn't exist
-		}
-		rootPath = foundRoot;
-	}
-	// ---> End determine root path logic <---
-
-	const configPath = path.join(rootPath, CONFIG_FILE_NAME);
-	return fs.existsSync(configPath);
+	return findConfigPath(null, { projectRoot: explicitRoot }) !== null;
 }
 
 /**
@@ -707,8 +745,8 @@ function getAllProviders() {
 
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseUrl === 'string'
-		? roleConfig.baseUrl
+	return roleConfig && typeof roleConfig.baseURL === 'string'
+		? roleConfig.baseURL
 		: undefined;
 }
 
@@ -718,14 +756,12 @@ export {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
 	VALID_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
-
 	// Role-specific getters (No env var overrides)
 	getMainProvider,
 	getMainModelId,
@@ -740,7 +776,6 @@ export {
 	getFallbackMaxTokens,
 	getFallbackTemperature,
 	getBaseUrlForRole,
-
 	// Global setting getters (No env var overrides)
 	getLogLevel,
 	getDebugFlag,
@@ -748,13 +783,16 @@ export {
 	getDefaultSubtasks,
 	getDefaultPriority,
 	getProjectName,
-	getOllamaBaseUrl,
+	getOllamaBaseURL,
+	getAzureBaseURL,
+	getBedrockBaseURL,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
-
 	// ADD: Function to get all provider names
-	getAllProviders
+	getAllProviders,
+	getVertexProjectId,
+	getVertexLocation
 };

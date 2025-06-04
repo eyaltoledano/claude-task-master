@@ -13,6 +13,8 @@ import {
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
+import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
@@ -31,6 +33,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		numTasks: numTasksArg,
 		force,
 		append,
+		research,
 		projectRoot
 	} = args;
 
@@ -48,7 +51,20 @@ export async function parsePRDDirect(args, log, context = {}) {
 			}
 		};
 	}
-	if (!inputArg) {
+
+	// Resolve input path using path utilities
+	let inputPath;
+	if (inputArg) {
+		try {
+			inputPath = resolvePrdPath({ input: inputArg, projectRoot }, session);
+		} catch (error) {
+			logWrapper.error(`Error resolving PRD path: ${error.message}`);
+			return {
+				success: false,
+				error: { code: 'FILE_NOT_FOUND', message: error.message }
+			};
+		}
+	} else {
 		logWrapper.error('parsePRDDirect called without input path');
 		return {
 			success: false,
@@ -56,11 +72,13 @@ export async function parsePRDDirect(args, log, context = {}) {
 		};
 	}
 
-	// Resolve input and output paths relative to projectRoot
-	const inputPath = path.resolve(projectRoot, inputArg);
+	// Resolve output path - use new path utilities for default
 	const outputPath = outputArg
-		? path.resolve(projectRoot, outputArg)
-		: path.resolve(projectRoot, 'tasks', 'tasks.json'); // Default output path
+		? path.isAbsolute(outputArg)
+			? outputArg
+			: path.resolve(projectRoot, outputArg)
+		: resolveProjectPath(TASKMASTER_TASKS_FILE, args) ||
+			path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	// Check if input file exists
 	if (!fs.existsSync(inputPath)) {
@@ -78,17 +96,12 @@ export async function parsePRDDirect(args, log, context = {}) {
 			logWrapper.info(`Creating output directory: ${outputDir}`);
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
-	} catch (dirError) {
-		logWrapper.error(
-			`Failed to create output directory ${outputDir}: ${dirError.message}`
-		);
-		// Return an error response immediately if dir creation fails
+	} catch (error) {
+		const errorMsg = `Failed to create output directory ${outputDir}: ${error.message}`;
+		logWrapper.error(errorMsg);
 		return {
 			success: false,
-			error: {
-				code: 'DIRECTORY_CREATION_ERROR',
-				message: `Failed to create output directory: ${dirError.message}`
-			}
+			error: { code: 'DIRECTORY_CREATE_FAILED', message: errorMsg }
 		};
 	}
 
@@ -96,7 +109,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 	if (numTasksArg) {
 		numTasks =
 			typeof numTasksArg === 'string' ? parseInt(numTasksArg, 10) : numTasksArg;
-		if (isNaN(numTasks) || numTasks <= 0) {
+		if (Number.isNaN(numTasks) || numTasks <= 0) {
 			// Ensure positive number
 			numTasks = getDefaultNumTasks(projectRoot); // Fallback to default if parsing fails or invalid
 			logWrapper.warn(
@@ -114,8 +127,14 @@ export async function parsePRDDirect(args, log, context = {}) {
 		}
 	}
 
+	if (research) {
+		logWrapper.info(
+			'Research mode enabled. Using Perplexity AI for enhanced PRD analysis.'
+		);
+	}
+
 	logWrapper.info(
-		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${force}, Append: ${append}, ProjectRoot: ${projectRoot}`
+		`Parsing PRD via direct function. Input: ${inputPath}, Output: ${outputPath}, NumTasks: ${numTasks}, Force: ${force}, Append: ${append}, Research: ${research}, ProjectRoot: ${projectRoot}`
 	);
 
 	const wasSilent = isSilentMode();
@@ -135,6 +154,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				projectRoot,
 				force,
 				append,
+				research,
 				commandName: 'parse-prd',
 				outputType: 'mcp'
 			},

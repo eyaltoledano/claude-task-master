@@ -10,7 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -54,7 +54,7 @@ export function registerExpandTaskTool(server) {
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);

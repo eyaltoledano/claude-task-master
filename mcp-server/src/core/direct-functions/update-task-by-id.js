@@ -42,8 +42,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -54,8 +53,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_TASK_ID', message: errorMessage }
 			};
 		}
 
@@ -65,8 +63,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_PROMPT', message: errorMessage }
 			};
 		}
 
@@ -84,8 +81,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					logWrapper.error(errorMessage);
 					return {
 						success: false,
-						error: { code: 'INVALID_TASK_ID', message: errorMessage },
-						fromCache: false
+						error: { code: 'INVALID_TASK_ID', message: errorMessage }
 					};
 				}
 			}
@@ -137,8 +133,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 						taskId: taskId,
 						updated: false,
 						telemetryData: coreResult?.telemetryData
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -155,8 +150,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					updated: true,
 					updatedTask: coreResult.updatedTask,
 					telemetryData: coreResult.telemetryData
-				},
-				fromCache: false
+				}
 			};
 		} catch (error) {
 			logWrapper.error(`Error updating task by ID: ${error.message}`);
@@ -165,8 +159,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				error: {
 					code: 'UPDATE_TASK_CORE_ERROR',
 					message: error.message || 'Unknown error updating task'
-				},
-				fromCache: false
+				}
 			};
 		} finally {
 			if (!wasSilent && isSilentMode()) {
@@ -181,8 +174,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			error: {
 				code: 'DIRECT_FUNCTION_SETUP_ERROR',
 				message: error.message || 'Unknown setup error'
-			},
-			fromCache: false
+			}
 		};
 	}
 }

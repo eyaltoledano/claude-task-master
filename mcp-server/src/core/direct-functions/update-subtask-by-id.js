@@ -42,8 +42,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -54,8 +53,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INVALID_SUBTASK_ID', message: errorMessage },
-				fromCache: false
+				error: { code: 'INVALID_SUBTASK_ID', message: errorMessage }
 			};
 		}
 
@@ -65,8 +63,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_PROMPT', message: errorMessage }
 			};
 		}
 
@@ -77,8 +74,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_TYPE', message: errorMessage },
-				fromCache: false
+				error: { code: 'INVALID_SUBTASK_ID_TYPE', message: errorMessage }
 			};
 		}
 
@@ -88,8 +84,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_FORMAT', message: errorMessage },
-				fromCache: false
+				error: { code: 'INVALID_SUBTASK_ID_FORMAT', message: errorMessage }
 			};
 		}
 
@@ -128,8 +123,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				logWrapper.error(message);
 				return {
 					success: false,
-					error: { code: 'SUBTASK_NOT_FOUND', message: message },
-					fromCache: false
+					error: { code: 'SUBTASK_NOT_FOUND', message: message }
 				};
 			}
 
@@ -146,8 +140,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					tasksPath,
 					useResearch,
 					telemetryData: coreResult.telemetryData
-				},
-				fromCache: false
+				}
 			};
 		} catch (error) {
 			logWrapper.error(`Error updating subtask by ID: ${error.message}`);
@@ -156,8 +149,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				error: {
 					code: 'UPDATE_SUBTASK_CORE_ERROR',
 					message: error.message || 'Unknown error updating subtask'
-				},
-				fromCache: false
+				}
 			};
 		} finally {
 			if (!wasSilent && isSilentMode()) {
@@ -174,8 +166,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			error: {
 				code: 'DIRECT_FUNCTION_SETUP_ERROR',
 				message: error.message || 'Unknown setup error'
-			},
-			fromCache: false
+			}
 		};
 	}
 }
