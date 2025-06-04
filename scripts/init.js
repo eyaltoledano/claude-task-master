@@ -381,8 +381,6 @@ async function initializeProject(options = {}) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
 	// }
 
-	let resolvedStoreTasksInGit = options.storeTasksInGit;
-
 	if (skipPrompts) {
 		if (!isSilentMode()) {
 			console.log('SKIPPING PROMPTS - Using defaults or provided values');
@@ -410,7 +408,7 @@ async function initializeProject(options = {}) {
 		}
 
 		// Determine storeTasksInGit: use CLI option if provided, otherwise prompt
-		if (typeof resolvedStoreTasksInGit === 'undefined') {
+		if (typeof options.storeTasksInGit === 'undefined') {
 			const rl = readline.createInterface({
 				input: process.stdin,
 				output: process.stdout
@@ -424,12 +422,10 @@ async function initializeProject(options = {}) {
 					}
 				);
 			});
-			resolvedStoreTasksInGit =
+			options.storeTasksInGit =
 				storeTasksAnswer === 'y' || storeTasksAnswer === 'yes';
 		}
 
-		// Add resolved value back to options for consistency
-		options.storeTasksInGit = resolvedStoreTasksInGit;
 		createProjectStructure(addAliases, dryRun, options);
 	} else {
 		// Interactive logic
@@ -450,12 +446,12 @@ async function initializeProject(options = {}) {
 			const addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
 
 			// Prompt for storeTasksInGit if not provided
-			if (typeof resolvedStoreTasksInGit === 'undefined') {
+			if (typeof options.storeTasksInGit === 'undefined') {
 				const storeTasksAnswer = await promptQuestion(
 					rl,
 					'Would you like your tasks.json and task files stored in Git? (y/N): '
 				);
-				resolvedStoreTasksInGit =
+				options.storeTasksInGit =
 					storeTasksAnswer.trim().toLowerCase() === 'y' ||
 					storeTasksAnswer.trim().toLowerCase() === 'yes';
 			}
@@ -470,7 +466,7 @@ async function initializeProject(options = {}) {
 			);
 			console.log(
 				chalk.blue('Store tasks.json and task files in Git: '),
-				chalk.white(resolvedStoreTasksInGit ? 'Yes' : 'No')
+				chalk.white(options.storeTasksInGit ? 'Yes' : 'No')
 			);
 
 			const confirmInput = await promptQuestion(
@@ -501,8 +497,6 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			// Add resolved value back to options for consistency
-			options.storeTasksInGit = resolvedStoreTasksInGit;
 			createProjectStructure(addAliasesPrompted, dryRun, options);
 		} catch (error) {
 			rl.close();
