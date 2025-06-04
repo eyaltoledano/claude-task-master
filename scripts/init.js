@@ -449,7 +449,9 @@ async function initializeProject(options = {}) {
 			if (typeof options.storeTasksInGit === 'undefined') {
 				const storeTasksAnswer = await promptQuestion(
 					rl,
-					'Would you like your tasks.json and task files stored in Git? (y/N): '
+					chalk.cyan(
+						'Would you like your tasks.json and task files stored in Git? (y/N): '
+					)
 				);
 				options.storeTasksInGit =
 					storeTasksAnswer.trim().toLowerCase() === 'y' ||
