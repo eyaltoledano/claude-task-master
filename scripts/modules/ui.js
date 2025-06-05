@@ -432,6 +432,11 @@ function displayHelp() {
 					name: 'models --set-fallback',
 					args: '<model_id>',
 					desc: 'Set the fallback model (optional)'
+				},
+				{
+					name: 'instructions',
+					args: '[--set="text"] [--show] [--clear]',
+					desc: 'Manage custom AI instructions for consistent behavior'
 				}
 			]
 		},

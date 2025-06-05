@@ -51,7 +51,8 @@ import {
 	ConfigurationError,
 	isConfigFilePresent,
 	getAvailableModels,
-	getBaseUrlForRole
+	getBaseUrlForRole,
+	getCustomInstructions
 } from './config-manager.js';
 
 import {
@@ -2589,6 +2590,79 @@ Examples:
 			}
 			// --- IMPORTANT: Exit after displaying status ---
 			return; // Stop execution here
+		});
+
+	// instructions command
+	programInstance
+		.command('instructions')
+		.description('Manage custom AI instructions')
+		.option('--set <instructions>', 'Set custom instructions for AI interactions')
+		.option('--show', 'Display current custom instructions')
+		.option('--clear', 'Clear/remove custom instructions')
+		.addHelpText(
+			'after',
+			`
+Examples:
+  $ task-master instructions --show                                    # View current instructions
+  $ task-master instructions --set "Always use TypeScript for new files"  # Set instructions
+  $ task-master instructions --clear                                   # Remove instructions`
+		)
+		.action(async (options) => {
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
+
+			// Get current config
+			let config;
+			try {
+				config = getConfig(projectRoot);
+			} catch (error) {
+				console.error(chalk.red(`Error loading configuration: ${error.message}`));
+				process.exit(1);
+			}
+
+			// Handle different operations
+			if (options.set) {
+				// Set new instructions
+				if (!config.global) {
+					config.global = {};
+				}
+				config.global.customInstructions = options.set;
+				
+				if (writeConfig(config, projectRoot)) {
+					console.log(chalk.green('✅ Custom instructions updated successfully!'));
+					console.log(chalk.blue('Instructions:'), options.set);
+				} else {
+					console.error(chalk.red('❌ Failed to save custom instructions'));
+					process.exit(1);
+				}
+			} else if (options.clear) {
+				// Clear instructions
+				if (!config.global) {
+					config.global = {};
+				}
+				config.global.customInstructions = '';
+				
+				if (writeConfig(config, projectRoot)) {
+					console.log(chalk.green('✅ Custom instructions cleared successfully!'));
+				} else {
+					console.error(chalk.red('❌ Failed to clear custom instructions'));
+					process.exit(1);
+				}
+			} else {
+				// Show current instructions (default behavior)
+				const currentInstructions = getCustomInstructions(projectRoot);
+				
+				if (currentInstructions && currentInstructions.trim()) {
+					console.log(chalk.blue.bold('📋 Current Custom Instructions:'));
+					console.log(chalk.white(currentInstructions));
+				} else {
+					console.log(chalk.yellow('📋 No custom instructions are currently set.'));
+					console.log(chalk.gray('Use --set to add custom instructions that will be applied to all AI interactions.'));
+				}
+			}
 		});
 
 	// move-task command

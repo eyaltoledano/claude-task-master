@@ -24,7 +24,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getCustomInstructions
 } from './config-manager.js';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
@@ -469,8 +470,23 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			const messages = [];
-			if (systemPrompt) {
-				messages.push({ role: 'system', content: systemPrompt });
+			
+			// Get custom instructions and combine with system prompt
+			const customInstructions = getCustomInstructions(projectRoot);
+			let finalSystemPrompt = systemPrompt;
+			
+			if (customInstructions && customInstructions.trim()) {
+				if (systemPrompt) {
+					// Prepend custom instructions to existing system prompt
+					finalSystemPrompt = `${customInstructions.trim()}\n\n${systemPrompt}`;
+				} else {
+					// Use custom instructions as the only system prompt
+					finalSystemPrompt = customInstructions.trim();
+				}
+			}
+			
+			if (finalSystemPrompt) {
+				messages.push({ role: 'system', content: finalSystemPrompt });
 			}
 
 			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
