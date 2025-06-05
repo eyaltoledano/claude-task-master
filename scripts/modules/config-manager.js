@@ -62,7 +62,8 @@ const DEFAULTS = {
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		customInstructions: ''
 	}
 };
 
@@ -371,6 +372,11 @@ function getDefaultPriority(explicitRoot = null) {
 function getProjectName(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).projectName;
+}
+
+function getCustomInstructions(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).customInstructions || '';
 }
 
 function getOllamaBaseURL(explicitRoot = null) {
@@ -783,6 +789,7 @@ export {
 	getDefaultSubtasks,
 	getDefaultPriority,
 	getProjectName,
+	getCustomInstructions,
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
