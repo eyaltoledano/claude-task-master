@@ -395,7 +395,7 @@ Environment variables are used **only** for sensitive API keys related to AI pro
     *   `AZURE_OPENAI_API_KEY` (Requires `AZURE_OPENAI_ENDPOINT` too)
     *   `OPENROUTER_API_KEY`
     *   `XAI_API_KEY`
-    *   `OLLANA_API_KEY` (Requires `OLLAMA_BASE_URL` too)
+    *   `OLLAMA_API_KEY` (Requires `OLLAMA_BASE_URL` too)
 *   **Endpoints (Optional/Provider Specific inside .taskmaster/config.json):**
     *   `AZURE_OPENAI_ENDPOINT`
     *   `OLLAMA_BASE_URL` (Default: `http://localhost:11434/api`)
