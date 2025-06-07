@@ -493,6 +493,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
+		requesty: 'REQUESTY_API_KEY',
 		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
@@ -584,6 +585,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'azure':
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
+				break;
+			case 'requesty':
+				apiKeyToCheck = mcpEnv.REQUESTY_API_KEY;
+				placeholderValue = 'YOUR_REQUESTY_API_KEY_HERE';
 				break;
 			case 'vertex':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
