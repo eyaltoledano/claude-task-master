@@ -389,6 +389,13 @@
       "max_tokens": 24000
     },
     {
+      "id": "qwen/qwen3-235b-a22b:free",
+      "swe_score": 0,
+      "cost_per_1m_tokens": { "input": 0.14, "output": 2 },
+      "allowed_roles": ["main", "fallback"],
+      "max_tokens": 24000
+    },
+    {
       "id": "mistralai/mistral-small-3.1-24b-instruct:free",
       "swe_score": 0,
       "cost_per_1m_tokens": { "input": 0, "output": 0 },
