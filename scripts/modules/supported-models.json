@@ -128,14 +128,14 @@
 		},
 		{
 			"id": "gemini-2.5-flash-preview-04-17",
-			"swe_score": 0,
+			"swe_score": 0.604,
 			"cost_per_1m_tokens": null,
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.0-flash",
-			"swe_score": 0.754,
+			"swe_score": 0.518,
 			"cost_per_1m_tokens": { "input": 0.15, "output": 0.6 },
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 1048000
