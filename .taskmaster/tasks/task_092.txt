@@ -1,6 +1,6 @@
 # Task ID: 92
 # Title: Implement Project Root Environment Variable Support in MCP Configuration
-# Status: in-progress
+# Status: review
 # Dependencies: 1, 3, 17
 # Priority: medium
 # Description: Add support for a 'TASK_MASTER_PROJECT_ROOT' environment variable in MCP configuration, allowing it to be set in both mcp.json and .env, with precedence over other methods. This will define the root directory for the MCP server and take precedence over all other project root resolution methods. The implementation should be backward compatible with existing workflows that don't use this variable.
@@ -44,49 +44,49 @@ Implementation steps:
    - Test with invalid or non-existent directories to verify error handling
 
 # Subtasks:
-## 92.1. Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable [pending]
+## 1. Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable [pending]
 ### Dependencies: None
 ### Description: Modify the configuration loading system to check for the TASK_MASTER_PROJECT_ROOT environment variable as the primary source for project root directory. Ensure proper error handling if the variable is set but points to a non-existent or inaccessible directory.
 ### Details:
 
 
-## 92.2. Add support for 'projectRoot' in configuration files [pending]
+## 2. Add support for 'projectRoot' in configuration files [pending]
 ### Dependencies: None
 ### Description: Implement support for a 'projectRoot' key in mcp_config.toml and mcp.json configuration files as a fallback when the environment variable is not set. Update the configuration parser to recognize and validate this field.
 ### Details:
 
 
-## 92.3. Refactor project root resolution logic with clear precedence rules [pending]
+## 3. Refactor project root resolution logic with clear precedence rules [pending]
 ### Dependencies: None
 ### Description: Create a unified project root resolution function that follows the precedence order: 1) TASK_MASTER_PROJECT_ROOT environment variable, 2) 'projectRoot' in config files, 3) existing resolution methods. Ensure this function is used consistently throughout the codebase.
 ### Details:
 
 
-## 92.4. Update all MCP tools to use the new project root resolution [pending]
+## 4. Update all MCP tools to use the new project root resolution [pending]
 ### Dependencies: None
 ### Description: Identify all MCP tools and components that need to access the project root and update them to use the new resolution logic. Ensure consistent behavior across all parts of the system.
 ### Details:
 
 
-## 92.5. Add comprehensive tests for the new project root resolution [pending]
+## 5. Add comprehensive tests for the new project root resolution [pending]
 ### Dependencies: None
 ### Description: Create unit and integration tests to verify the correct behavior of the project root resolution logic under various configurations and edge cases.
 ### Details:
 
 
-## 92.6. Update documentation with new configuration options [pending]
+## 6. Update documentation with new configuration options [pending]
 ### Dependencies: None
 ### Description: Update the project documentation to clearly explain the new TASK_MASTER_PROJECT_ROOT environment variable, the 'projectRoot' configuration option, and the precedence rules. Include examples of different configuration scenarios.
 ### Details:
 
 
-## 92.7. Implement validation for project root directory [pending]
+## 7. Implement validation for project root directory [pending]
 ### Dependencies: None
 ### Description: Add validation to ensure the specified project root directory exists and has the necessary permissions. Provide clear error messages when validation fails.
 ### Details:
 
 
-## 92.8. Implement support for loading environment variables from .env files [pending]
+## 8. Implement support for loading environment variables from .env files [pending]
 ### Dependencies: None
 ### Description: Add functionality to load the TASK_MASTER_PROJECT_ROOT variable from .env files in the workspace, following best practices for environment variable management in MCP servers.
 ### Details:
