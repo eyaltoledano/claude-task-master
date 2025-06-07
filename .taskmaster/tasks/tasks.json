@@ -5681,7 +5681,7 @@
       "id": 95,
       "title": "Implement .taskmaster Directory Structure",
       "description": "Consolidate all Task Master-managed files in user projects into a clean, centralized .taskmaster/ directory structure to improve organization and keep user project directories clean, based on GitHub issue #275.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         1,
         3,
@@ -5732,7 +5732,7 @@
             3
           ],
           "details": "Implement path fallback logic that checks both old and new locations when files aren't found. Add deprecation warnings when old paths are used, informing users about the new structure. Ensure error messages are clear about the transition.",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Test with both old and new directory structures to verify fallback works correctly. Verify deprecation warnings appear when using old paths."
         },
         {
@@ -5804,7 +5804,7 @@
             9
           ],
           "details": "Validate that after implementing the new structure, user project root directories only contain their actual project files plus the single .taskmaster/ directory. Verify that no Task Master files are created outside of .taskmaster/. Test that users can easily add .taskmaster/ to .gitignore if they choose to exclude Task Master files from version control.",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Test complete workflows and verify only .taskmaster/ directory is created in project root. Check that all Task Master operations respect the new file organization. Verify .gitignore compatibility."
         }
       ]
