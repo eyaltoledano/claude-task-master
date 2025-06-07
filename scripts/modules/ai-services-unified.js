@@ -39,7 +39,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	ClaudeCliAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -53,7 +54,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-cli': new ClaudeCliAIProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -172,14 +174,20 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'claude-cli': null // Claude CLI doesn't need an API key
 	};
 
 	const envVarName = keyMap[providerName];
-	if (!envVarName) {
+	if (envVarName === undefined) {
 		throw new Error(
 			`Unknown provider '${providerName}' for API key resolution.`
 		);
+	}
+
+	// Special handling for providers that don't need API keys
+	if (envVarName === null) {
+		return null; // Claude CLI and similar providers
 	}
 
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
@@ -384,8 +392,31 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
+			const providerLower = providerName?.toLowerCase();
+
+			// Check if claude-cli is available (only when CLAUDE_CLI_COMMAND is set)
+			if (providerLower === 'claude-cli') {
+				const claudeCliCommand = resolveEnvVariable(
+					'CLAUDE_CLI_COMMAND',
+					session,
+					effectiveProjectRoot
+				);
+				if (!claudeCliCommand) {
+					log(
+						'warn',
+						`Skipping role '${currentRole}' (Provider: claude-cli): Claude CLI is not configured. Set CLAUDE_CLI_COMMAND to use.`
+					);
+					lastError =
+						lastError ||
+						new Error(
+							`Claude CLI provider is not configured. Set CLAUDE_CLI_COMMAND environment variable (e.g., CLAUDE_CLI_COMMAND=claude).`
+						);
+					continue; // Skip to the next role in the sequence
+				}
+			}
+
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (providerLower !== 'ollama' && providerLower !== 'claude-cli') {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
