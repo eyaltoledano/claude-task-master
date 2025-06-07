@@ -59,7 +59,7 @@
 		"cors": "^2.8.5",
 		"dotenv": "^16.3.1",
 		"express": "^4.21.2",
-		"fastmcp": "^1.20.5",
+		"fastmcp": "^2.2.2",
 		"figlet": "^1.8.0",
 		"fuse.js": "^7.1.0",
 		"gradient-string": "^3.0.0",
