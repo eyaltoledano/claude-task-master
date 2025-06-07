@@ -64,3 +64,7 @@ dev-debug.log
 
 # NPMRC
 .npmrc
+
+# Task files
+# tasks.json
+# tasks/
