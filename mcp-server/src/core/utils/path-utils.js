@@ -3,7 +3,8 @@ import {
 	findTasksPath as coreFindTasksPath,
 	findPRDPath as coreFindPrdPath,
 	findComplexityReportPath as coreFindComplexityReportPath,
-	findProjectRoot as coreFindProjectRoot
+	findProjectRoot as coreFindProjectRoot,
+	normalizeProjectRoot
 } from '../../../../src/utils/path-utils.js';
 import { PROJECT_MARKERS } from '../../../../src/constants/paths.js';
 
@@ -49,19 +50,24 @@ export function findPrdPath(explicitPath, args = null, log = silentLogger) {
 export function resolveTasksPath(args, log = silentLogger) {
 	// Get explicit path from args.file if provided
 	const explicitPath = args?.file;
-	const projectRoot = args?.projectRoot;
+	const rawProjectRoot = args?.projectRoot;
 
 	// If explicit path is provided and absolute, use it directly
 	if (explicitPath && path.isAbsolute(explicitPath)) {
 		return explicitPath;
 	}
 
-	// If explicit path is relative, resolve it relative to projectRoot
+	// Normalize project root if provided
+	const projectRoot = rawProjectRoot
+		? normalizeProjectRoot(rawProjectRoot)
+		: null;
+
+	// If explicit path is relative, resolve it relative to normalized projectRoot
 	if (explicitPath && projectRoot) {
 		return path.resolve(projectRoot, explicitPath);
 	}
 
-	// Use core findTasksPath with explicit path and projectRoot context
+	// Use core findTasksPath with explicit path and normalized projectRoot context
 	if (projectRoot) {
 		return coreFindTasksPath(explicitPath, { projectRoot }, log);
 	}
@@ -79,19 +85,24 @@ export function resolveTasksPath(args, log = silentLogger) {
 export function resolvePrdPath(args, log = silentLogger) {
 	// Get explicit path from args.input if provided
 	const explicitPath = args?.input;
-	const projectRoot = args?.projectRoot;
+	const rawProjectRoot = args?.projectRoot;
 
 	// If explicit path is provided and absolute, use it directly
 	if (explicitPath && path.isAbsolute(explicitPath)) {
 		return explicitPath;
 	}
 
-	// If explicit path is relative, resolve it relative to projectRoot
+	// Normalize project root if provided
+	const projectRoot = rawProjectRoot
+		? normalizeProjectRoot(rawProjectRoot)
+		: null;
+
+	// If explicit path is relative, resolve it relative to normalized projectRoot
 	if (explicitPath && projectRoot) {
 		return path.resolve(projectRoot, explicitPath);
 	}
 
-	// Use core findPRDPath with explicit path and projectRoot context
+	// Use core findPRDPath with explicit path and normalized projectRoot context
 	if (projectRoot) {
 		return coreFindPrdPath(explicitPath, { projectRoot }, log);
 	}
@@ -109,19 +120,24 @@ export function resolvePrdPath(args, log = silentLogger) {
 export function resolveComplexityReportPath(args, log = silentLogger) {
 	// Get explicit path from args.complexityReport if provided
 	const explicitPath = args?.complexityReport;
-	const projectRoot = args?.projectRoot;
+	const rawProjectRoot = args?.projectRoot;
 
 	// If explicit path is provided and absolute, use it directly
 	if (explicitPath && path.isAbsolute(explicitPath)) {
 		return explicitPath;
 	}
 
-	// If explicit path is relative, resolve it relative to projectRoot
+	// Normalize project root if provided
+	const projectRoot = rawProjectRoot
+		? normalizeProjectRoot(rawProjectRoot)
+		: null;
+
+	// If explicit path is relative, resolve it relative to normalized projectRoot
 	if (explicitPath && projectRoot) {
 		return path.resolve(projectRoot, explicitPath);
 	}
 
-	// Use core findComplexityReportPath with explicit path and projectRoot context
+	// Use core findComplexityReportPath with explicit path and normalized projectRoot context
 	if (projectRoot) {
 		return coreFindComplexityReportPath(explicitPath, { projectRoot }, log);
 	}
@@ -142,13 +158,16 @@ export function resolveProjectPath(relativePath, args) {
 		throw new Error('projectRoot is required in args to resolve project paths');
 	}
 
+	// Normalize the project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(args.projectRoot);
+
 	// If already absolute, return as-is
 	if (path.isAbsolute(relativePath)) {
 		return relativePath;
 	}
 
-	// Resolve relative to projectRoot
-	return path.resolve(args.projectRoot, relativePath);
+	// Resolve relative to normalized projectRoot
+	return path.resolve(projectRoot, relativePath);
 }
 
 /**
