@@ -21,7 +21,7 @@ import {
  */
 export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context;
-	const { from, prompt, research, file: fileArg, projectRoot } = args;
+	const { from, prompt, research, tasksJsonPath, projectRoot } = args;
 
 	// Create the standard logger wrapper
 	const logWrapper = createLogWrapper(log);
@@ -60,20 +60,15 @@ export async function updateTasksDirect(args, log, context = {}) {
 		};
 	}
 
-	// Resolve tasks file path
-	const tasksFile = fileArg
-		? path.resolve(projectRoot, fileArg)
-		: path.resolve(projectRoot, 'tasks', 'tasks.json');
-
 	logWrapper.info(
-		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksFile}, ProjectRoot: ${projectRoot}`
+		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksJsonPath}, ProjectRoot: ${projectRoot}`
 	);
 
 	enableSilentMode(); // Enable silent mode
 	try {
 		// Call the core updateTasks function
 		const result = await updateTasks(
-			tasksFile,
+			tasksJsonPath,
 			from,
 			prompt,
 			research,
@@ -93,7 +88,7 @@ export async function updateTasksDirect(args, log, context = {}) {
 				success: true,
 				data: {
 					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
-					tasksFile,
+					tasksPath: tasksJsonPath,
 					updatedCount: result.updatedTasks.length,
 					telemetryData: result.telemetryData
 				}
