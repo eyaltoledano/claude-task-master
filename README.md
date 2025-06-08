@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
 
-![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat&link=https%3A%2F%2Fnpm-stat.com%2Fcharts.html%3Fpackage%3Dtask-master-ai) ![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat&link=https%3A%2F%2Fnpm-stat.com%2Fcharts.html%3Fpackage%3Dtask-master-ai) ![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat&link=https%3A%2F%2Fnpm-stat.com%2Fcharts.html%3Fpackage%3Dtask-master-ai)
+[![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat)](https://npm-stat.com/charts.html?package=task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat)](https://npm-stat.com/charts.html?package=task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat)](https://npm-stat.com/charts.html?package=task-master-ai)
 
 ### By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou](https://x.com/jasonzhou1993)
 
@@ -253,7 +253,7 @@ See the [LICENSE](LICENSE) file for the complete license text and [licensing det
 
 <!-- TASKMASTER_EXPORT_START -->
 
-> 🎯 **Taskmaster Export** - 2025-06-08 02:02:35 UTC
+> 🎯 **Taskmaster Export** - 2025-06-08 03:03:22 UTC
 > 📋 Export: with subtasks • Status filter: none
 > 🔗 Powered by [Task Master](https://task-master.dev?utm_source=github-readme&utm_medium=readme-export&utm_campaign=claude-task-master&utm_content=task-export-link)
 
