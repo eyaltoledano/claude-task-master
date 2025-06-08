@@ -1,4 +1,4 @@
-# Available Models as of May 27, 2025
+# Available Models as of June 8, 2025
 
 ## Main Models
 
@@ -24,6 +24,7 @@
 | google     | gemini-2.5-flash-preview-04-17                 | —         | —          | —           |
 | google     | gemini-2.0-flash                               | 0.754     | 0.15       | 0.6         |
 | google     | gemini-2.0-flash-lite                          | —         | —          | —           |
+| perplexity | sonar-pro                                      | —         | 3          | 15          |
 | perplexity | sonar-reasoning-pro                            | 0.211     | 2          | 8           |
 | perplexity | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai        | grok-3                                         | —         | 3          | 15          |
@@ -70,6 +71,8 @@
 | perplexity | sonar-pro                  | —         | 3          | 15          |
 | perplexity | sonar                      | —         | 1          | 1           |
 | perplexity | deep-research              | 0.211     | 2          | 8           |
+| perplexity | sonar-reasoning-pro        | 0.211     | 2          | 8           |
+| perplexity | sonar-reasoning            | 0.211     | 1          | 5           |
 | xai        | grok-3                     | —         | 3          | 15          |
 | xai        | grok-3-fast                | —         | 5          | 25          |
 
