@@ -23,8 +23,9 @@ let silentMode = false;
  * Resolves an environment variable's value.
  * Precedence:
  * 1. session.env (if session provided)
- * 2. process.env
+ * 2. .env file at custom path (TASKMASTER_DOTENV from session.env or process.env)
  * 3. .env file at projectRoot (if projectRoot provided)
+ * 4. process.env
  * @param {string} key - The environment variable key.
  * @param {object|null} [session=null] - The MCP session object.
  * @param {string|null} [projectRoot=null] - The project root directory (for .env fallback).
@@ -36,21 +37,30 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 		return session.env[key];
 	}
 
-	// 2. Read .env file at projectRoot
-	if (projectRoot) {
-		const envPath = path.join(projectRoot, '.env');
-		if (fs.existsSync(envPath)) {
-			try {
-				const envFileContent = fs.readFileSync(envPath, 'utf-8');
-				const parsedEnv = dotenv.parse(envFileContent); // Use dotenv to parse
-				if (parsedEnv && parsedEnv[key]) {
-					// console.log(`DEBUG: Found key ${key} in ${envPath}`); // Optional debug log
-					return parsedEnv[key];
-				}
-			} catch (error) {
-				// Log error but don't crash, just proceed as if key wasn't found in file
-				log('warn', `Could not read or parse ${envPath}: ${error.message}`);
+	// 2. Read .env file - check TASKMASTER_DOTENV from session.env first, then process.env, then projectRoot
+	let envPath;
+	if (session?.env?.TASKMASTER_DOTENV && session.env.TASKMASTER_DOTENV.trim()) {
+		envPath = path.resolve(session.env.TASKMASTER_DOTENV);
+	} else if (
+		process.env.TASKMASTER_DOTENV &&
+		process.env.TASKMASTER_DOTENV.trim()
+	) {
+		envPath = path.resolve(process.env.TASKMASTER_DOTENV);
+	} else if (projectRoot) {
+		envPath = path.join(projectRoot, '.env');
+	}
+
+	if (envPath && fs.existsSync(envPath)) {
+		try {
+			const envFileContent = fs.readFileSync(envPath, 'utf-8');
+			const parsedEnv = dotenv.parse(envFileContent); // Use dotenv to parse
+			if (parsedEnv && parsedEnv[key]) {
+				// console.log(`DEBUG: Found key ${key} in ${envPath}`); // Optional debug log
+				return parsedEnv[key];
 			}
+		} catch (error) {
+			// Log error but don't crash, just proceed as if key wasn't found in file
+			log('warn', `Could not read or parse ${envPath}: ${error.message}`);
 		}
 	}
 

@@ -58,8 +58,9 @@ Taskmaster uses two primary methods for configuration:
 
 - Used **exclusively** for sensitive API keys and specific endpoint URLs.
 - **Location:**
-  - For CLI usage: Create a `.env` file in your project root.
-  - For MCP/Cursor usage: Configure keys in the `env` section of your `.cursor/mcp.json` file.
+  - For CLI usage: Create a `.env` file in your project root, or specify a custom path using `TASKMASTER_DOTENV` environment variable.
+  - For MCP/Cursor usage: Configure keys in the `env` section of your `.cursor/mcp.json` file. You can then set all of the API keys and other environment variables in the custom `.env` file instead of the MCP configuration.
+- **Custom .env path:** Set the `TASKMASTER_DOTENV` environment variable (either in your shell environment or in the MCP configuration `env` block) to specify a custom path to your `.env` file. This allows you to use dedicated credential files for TaskMaster that are separate from your project's environment configuration.
 - **Required API Keys (Depending on configured providers):**
   - `ANTHROPIC_API_KEY`: Your Anthropic API key.
   - `PERPLEXITY_API_KEY`: Your Perplexity API key.
@@ -98,6 +99,62 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # VERTEX_LOCATION=us-central1
 # GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-credentials.json
 ```
+
+## Custom .env File Location
+
+You can specify a custom location for your `.env` file using the `TASKMASTER_DOTENV` environment variable:
+
+### For CLI Usage
+
+```bash
+# Use a custom .env file location
+export TASKMASTER_DOTENV=/path/to/your/custom/.env
+task-master list
+
+# Or set it inline
+TASKMASTER_DOTENV=/home/user/.config/taskmaster/.env task-master init
+```
+
+### For MCP/Cursor Usage
+
+Configure `TASKMASTER_DOTENV` in your `.cursor/mcp.json` file:
+
+```jsonc
+{
+  "mcpServers": {
+    "taskmaster-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "TASKMASTER_DOTENV": "/path/to/your/custom/.env"
+      }
+    }
+  }
+}
+```
+
+Or, for VS Code, you can use the `servers` block in your `.vscode/mcp.json` file:
+
+```jsonc
+{
+  "servers": {
+    "taskmaster-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "TASKMASTER_DOTENV": "/path/to/your/custom/.env"
+      },
+      "type": "stdio"
+    }
+  }
+}
+```
+
+This is useful for:
+- Managing TaskMaster credentials separately from project environment variables
+- Using shared credential files across multiple projects
+- Keeping sensitive TaskMaster API keys in a secure location outside of project directories
+- Having different credential sets for different MCP sessions
 
 ## Troubleshooting
 
