@@ -1,5 +1,15 @@
 # task-master-ai
 
+## 0.16.2-rc.0
+
+### Patch Changes
+
+- [#655](https://github.com/eyaltoledano/claude-task-master/pull/655) [`edaa5fe`](https://github.com/eyaltoledano/claude-task-master/commit/edaa5fe0d56e0e4e7c4370670a7a388eebd922ac) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix double .taskmaster directory paths in file resolution utilities
+
+  - Closes #636
+
+- [#671](https://github.com/eyaltoledano/claude-task-master/pull/671) [`86ea6d1`](https://github.com/eyaltoledano/claude-task-master/commit/86ea6d1dbc03eeb39f524f565b50b7017b1d2c9c) Thanks [@joedanz](https://github.com/joedanz)! - Add one-click MCP server installation for Cursor
+
 ## 0.16.1
 
 ### Patch Changes

@@ -563,11 +563,6 @@ function cleanupSubtaskDependencies(tasksData) {
  * @param {string} tasksPath - Path to tasks.json
  */
 async function validateDependenciesCommand(tasksPath, options = {}) {
-	// Only display banner if not in silent mode
-	if (!isSilentMode()) {
-		displayBanner();
-	}
-
 	log('info', 'Checking for invalid dependencies in task files...');
 
 	// Read tasks data
@@ -691,11 +686,6 @@ function countAllDependencies(tasks) {
  * @param {Object} options - Options object
  */
 async function fixDependenciesCommand(tasksPath, options = {}) {
-	// Only display banner if not in silent mode
-	if (!isSilentMode()) {
-		displayBanner();
-	}
-
 	log('info', 'Checking for and fixing invalid dependencies in tasks.json...');
 
 	try {

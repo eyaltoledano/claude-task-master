@@ -22,6 +22,10 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	getStatusWithColor: jest.fn((status) => status),
 	startLoadingIndicator: jest.fn(),
 	stopLoadingIndicator: jest.fn(),
+	succeedLoadingIndicator: jest.fn(),
+	failLoadingIndicator: jest.fn(),
+	warnLoadingIndicator: jest.fn(),
+	infoLoadingIndicator: jest.fn(),
 	displayAiUsageSummary: jest.fn()
 }));
 

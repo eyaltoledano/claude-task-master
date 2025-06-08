@@ -10,6 +10,8 @@ import {
 	getStatusWithColor,
 	startLoadingIndicator,
 	stopLoadingIndicator,
+	succeedLoadingIndicator,
+	failLoadingIndicator,
 	displayAiUsageSummary
 } from '../ui.js';
 import { readJSON, writeJSON, log as consoleLog, truncate } from '../utils.js';
@@ -279,7 +281,7 @@ async function addTask(
 			// CLI-only feedback for the dependency analysis
 			if (outputFormat === 'text') {
 				console.log(
-					boxen(chalk.cyan.bold('Task Context Analysis') + '\n', {
+					boxen(chalk.cyan.bold('Task Context Analysis'), {
 						padding: { top: 0, bottom: 0, left: 1, right: 1 },
 						margin: { top: 0, bottom: 0 },
 						borderColor: 'cyan',
@@ -492,9 +494,9 @@ async function addTask(
 					includeScore: true, // Return match scores
 					threshold: 0.4, // Lower threshold = stricter matching (range 0-1)
 					keys: [
-						{ name: 'title', weight: 2 }, // Title is most important
-						{ name: 'description', weight: 1.5 }, // Description is next
-						{ name: 'details', weight: 0.8 }, // Details is less important
+						{ name: 'title', weight: 1.5 }, // Title is most important
+						{ name: 'description', weight: 2 }, // Description is very important
+						{ name: 'details', weight: 3 }, // Details is most important
 						// Search dependencies to find tasks that depend on similar things
 						{ name: 'dependencyTitles', weight: 0.5 }
 					],
@@ -502,8 +504,8 @@ async function addTask(
 					shouldSort: true,
 					// Allow searching in nested properties
 					useExtendedSearch: true,
-					// Return up to 15 matches
-					limit: 15
+					// Return up to 50 matches
+					limit: 50
 				};
 
 				// Prepare task data with dependencies expanded as titles for better semantic search
@@ -596,32 +598,6 @@ async function addTask(
 				// Get top N results for context
 				const relatedTasks = allRelevantTasks.slice(0, 8);
 
-				// Also look for tasks with similar purposes or categories
-				const purposeCategories = [
-					{ pattern: /(command|cli|flag)/i, label: 'CLI commands' },
-					{ pattern: /(task|subtask|add)/i, label: 'Task management' },
-					{ pattern: /(dependency|depend)/i, label: 'Dependency handling' },
-					{ pattern: /(AI|model|prompt)/i, label: 'AI integration' },
-					{ pattern: /(UI|display|show)/i, label: 'User interface' },
-					{ pattern: /(schedule|time|cron)/i, label: 'Scheduling' }, // Added scheduling category
-					{ pattern: /(config|setting|option)/i, label: 'Configuration' } // Added configuration category
-				];
-
-				promptCategory = purposeCategories.find((cat) =>
-					cat.pattern.test(prompt)
-				);
-				const categoryTasks = promptCategory
-					? data.tasks
-							.filter(
-								(t) =>
-									promptCategory.pattern.test(t.title) ||
-									promptCategory.pattern.test(t.description) ||
-									(t.details && promptCategory.pattern.test(t.details))
-							)
-							.filter((t) => !relatedTasks.some((rt) => rt.id === t.id))
-							.slice(0, 3)
-					: [];
-
 				// Format basic task overviews
 				if (relatedTasks.length > 0) {
 					contextTasks = `\nRelevant tasks identified by semantic similarity:\n${relatedTasks
@@ -629,12 +605,6 @@ async function addTask(
 							const relevanceMarker = i < highRelevance.length ? '⭐ ' : '';
 							return `- ${relevanceMarker}Task ${t.id}: ${t.title} - ${t.description}`;
 						})
-						.join('\n')}`;
-				}
-
-				if (categoryTasks.length > 0) {
-					contextTasks += `\n\nTasks related to ${promptCategory.label}:\n${categoryTasks
-						.map((t) => `- Task ${t.id}: ${t.title} - ${t.description}`)
 						.join('\n')}`;
 				}
 
@@ -650,13 +620,10 @@ async function addTask(
 				}
 
 				// Add detailed information about the most relevant tasks
-				const allDetailedTasks = [
-					...relatedTasks.slice(0, 5),
-					...categoryTasks.slice(0, 2)
-				];
+				const allDetailedTasks = [...relatedTasks.slice(0, 25)];
 				uniqueDetailedTasks = Array.from(
 					new Map(allDetailedTasks.map((t) => [t.id, t])).values()
-				).slice(0, 8);
+				).slice(0, 20);
 
 				if (uniqueDetailedTasks.length > 0) {
 					contextTasks += `\n\nDetailed information about relevant tasks:`;
@@ -715,18 +682,14 @@ async function addTask(
 				}
 
 				// Additional analysis of common patterns
-				const similarPurposeTasks = promptCategory
-					? data.tasks.filter(
-							(t) =>
-								promptCategory.pattern.test(t.title) ||
-								promptCategory.pattern.test(t.description)
-						)
-					: [];
+				const similarPurposeTasks = data.tasks.filter((t) =>
+					prompt.toLowerCase().includes(t.title.toLowerCase())
+				);
 
 				let commonDeps = []; // Initialize commonDeps
 
 				if (similarPurposeTasks.length > 0) {
-					contextTasks += `\n\nCommon patterns for ${promptCategory ? promptCategory.label : 'similar'} tasks:`;
+					contextTasks += `\n\nCommon patterns for similar tasks:`;
 
 					// Collect dependencies from similar purpose tasks
 					const similarDeps = similarPurposeTasks
@@ -743,7 +706,7 @@ async function addTask(
 					// Get most common dependencies for similar tasks
 					commonDeps = Object.entries(depCounts)
 						.sort((a, b) => b[1] - a[1])
-						.slice(0, 5);
+						.slice(0, 10);
 
 					if (commonDeps.length > 0) {
 						contextTasks += '\nMost common dependencies for similar tasks:';
@@ -760,7 +723,7 @@ async function addTask(
 				if (outputFormat === 'text') {
 					console.log(
 						chalk.gray(
-							`  Fuzzy search across ${data.tasks.length} tasks using full prompt and ${promptWords.length} keywords`
+							`  Context search across ${data.tasks.length} tasks using full prompt and ${promptWords.length} keywords`
 						)
 					);
 
@@ -768,7 +731,7 @@ async function addTask(
 						console.log(
 							chalk.gray(`\n  High relevance matches (score < 0.25):`)
 						);
-						highRelevance.slice(0, 5).forEach((t) => {
+						highRelevance.slice(0, 25).forEach((t) => {
 							console.log(
 								chalk.yellow(`  • ⭐ Task ${t.id}: ${truncate(t.title, 50)}`)
 							);
@@ -779,20 +742,9 @@ async function addTask(
 						console.log(
 							chalk.gray(`\n  Medium relevance matches (score < 0.4):`)
 						);
-						mediumRelevance.slice(0, 3).forEach((t) => {
+						mediumRelevance.slice(0, 10).forEach((t) => {
 							console.log(
 								chalk.green(`  • Task ${t.id}: ${truncate(t.title, 50)}`)
-							);
-						});
-					}
-
-					if (promptCategory && categoryTasks.length > 0) {
-						console.log(
-							chalk.gray(`\n  Tasks related to ${promptCategory.label}:`)
-						);
-						categoryTasks.forEach((t) => {
-							console.log(
-								chalk.magenta(`  • Task ${t.id}: ${truncate(t.title, 50)}`)
 							);
 						});
 					}
@@ -864,10 +816,7 @@ async function addTask(
 								numericDependencies.length > 0
 									? dependentTasks.length // Use length of tasks from explicit dependency path
 									: uniqueDetailedTasks.length // Use length of tasks from fuzzy search path
-							)}` +
-							(promptCategory
-								? `\n${chalk.cyan('Category detected: ')}${chalk.yellow(promptCategory.label)}`
-								: ''),
+							)}`,
 						{
 							padding: { top: 0, bottom: 1, left: 1, right: 1 },
 							margin: { top: 1, bottom: 0 },
@@ -931,7 +880,7 @@ async function addTask(
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
 				loadingIndicator = startLoadingIndicator(
-					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI...\n`
+					`Generating new task with ${useResearch ? 'Research' : 'Main'} AI... \n`
 				);
 			}
 
@@ -976,17 +925,33 @@ async function addTask(
 				}
 
 				report('Successfully generated task data from AI.', 'success');
+
+				// Success! Show checkmark
+				if (loadingIndicator) {
+					succeedLoadingIndicator(
+						loadingIndicator,
+						'Task generated successfully'
+					);
+					loadingIndicator = null; // Clear it
+				}
 			} catch (error) {
+				// Failure! Show X
+				if (loadingIndicator) {
+					failLoadingIndicator(loadingIndicator, 'AI generation failed');
+					loadingIndicator = null;
+				}
 				report(
 					`DEBUG: generateObjectService caught error: ${error.message}`,
 					'debug'
 				);
 				report(`Error generating task with AI: ${error.message}`, 'error');
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 				throw error; // Re-throw error after logging
 			} finally {
 				report('DEBUG: generateObjectService finally block reached.', 'debug');
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator); // Ensure indicator stops
+				// Clean up if somehow still running
+				if (loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator);
+				}
 			}
 			// --- End Refactored AI Interaction ---
 		}
@@ -1057,7 +1022,7 @@ async function addTask(
 				truncate(newTask.description, 47)
 			]);
 
-			console.log(chalk.green('✅ New task created successfully:'));
+			console.log(chalk.green('✓ New task created successfully:'));
 			console.log(table.toString());
 
 			// Helper to get priority color

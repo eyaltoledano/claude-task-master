@@ -189,7 +189,7 @@ export class BaseAIProvider {
 				model: client(params.modelId),
 				messages: params.messages,
 				schema: params.schema,
-				mode: 'tool',
+				mode: 'auto',
 				maxTokens: params.maxTokens,
 				temperature: params.temperature
 			});

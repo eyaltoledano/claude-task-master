@@ -89,11 +89,22 @@ export function findTasksPath(explicitPath = null, args = null, log = null) {
 	// Use the passed logger if available, otherwise use the default logger
 	const logger = getLoggerOrDefault(log);
 
-	// 1. If explicit path is provided, use it (highest priority)
+	// 1. First determine project root to use as base for all path resolution
+	const rawProjectRoot = args?.projectRoot || findProjectRoot();
+
+	if (!rawProjectRoot) {
+		logger.warn?.('Could not determine project root directory');
+		return null;
+	}
+
+	// 2. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 3. If explicit path is provided, resolve it relative to project root (highest priority)
 	if (explicitPath) {
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(projectRoot, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit tasks path: ${resolvedPath}`);
@@ -105,21 +116,9 @@ export function findTasksPath(explicitPath = null, args = null, log = null) {
 		}
 	}
 
-	// 2. Try to get project root from args (MCP) or find it
-	const rawProjectRoot = args?.projectRoot || findProjectRoot();
-
-	if (!rawProjectRoot) {
-		logger.warn?.('Could not determine project root directory');
-		return null;
-	}
-
-	// 3. Normalize project root to prevent double .taskmaster paths
-	const projectRoot = normalizeProjectRoot(rawProjectRoot);
-
 	// 4. Check possible locations in order of preference
 	const possiblePaths = [
 		path.join(projectRoot, TASKMASTER_TASKS_FILE), // .taskmaster/tasks/tasks.json (NEW)
-		path.join(projectRoot, 'tasks.json'), // tasks.json in root (LEGACY)
 		path.join(projectRoot, LEGACY_TASKS_FILE) // tasks/tasks.json (LEGACY)
 	];
 

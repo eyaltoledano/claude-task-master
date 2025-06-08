@@ -153,7 +153,7 @@
 			"id": "sonar-pro",
 			"swe_score": 0,
 			"cost_per_1m_tokens": { "input": 3, "output": 15 },
-			"allowed_roles": ["research"],
+			"allowed_roles": ["main", "research"],
 			"max_tokens": 8700
 		},
 		{
@@ -174,14 +174,14 @@
 			"id": "sonar-reasoning-pro",
 			"swe_score": 0.211,
 			"cost_per_1m_tokens": { "input": 2, "output": 8 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 8700
 		},
 		{
 			"id": "sonar-reasoning",
 			"swe_score": 0.211,
 			"cost_per_1m_tokens": { "input": 1, "output": 5 },
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 8700
 		}
 	],
