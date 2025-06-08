@@ -87,6 +87,7 @@ import {
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
+import { syncTasksToReadme } from './sync-readme.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -2753,6 +2754,54 @@ Examples:
 				await migrateProject(options);
 			} catch (error) {
 				console.error(chalk.red('Error during migration:'), error.message);
+				process.exit(1);
+			}
+		});
+
+	// sync-readme command
+	programInstance
+		.command('sync-readme')
+		.description('Sync the current task list to README.md in the project root')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option('--with-subtasks', 'Include subtasks in the README output')
+		.option(
+			'-s, --status <status>',
+			'Show only tasks matching this status (e.g., pending, done)'
+		)
+		.action(async (options) => {
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			const withSubtasks = options.withSubtasks || false;
+			const status = options.status || null;
+
+			// Find project root
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(
+					chalk.red(
+						'Error: Could not find project root. Make sure you are in a Task Master project directory.'
+					)
+				);
+				process.exit(1);
+			}
+
+			console.log(
+				chalk.blue(
+					`📝 Syncing tasks to README.md${withSubtasks ? ' (with subtasks)' : ''}${status ? ` (status: ${status})` : ''}...`
+				)
+			);
+
+			const success = await syncTasksToReadme(projectRoot, {
+				withSubtasks,
+				status,
+				tasksPath
+			});
+
+			if (!success) {
+				console.error(chalk.red('❌ Failed to sync tasks to README.md'));
 				process.exit(1);
 			}
 		});

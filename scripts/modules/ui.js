@@ -526,6 +526,11 @@ function displayHelp() {
 					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
 				},
 				{
+					name: 'sync-readme',
+					args: '[--with-subtasks] [--status=<status>]',
+					desc: 'Export tasks to README.md with professional formatting'
+				},
+				{
 					name: 'update',
 					args: '--from=<id> --prompt="<context>"',
 					desc: 'Update multiple tasks based on new requirements'
