@@ -4,11 +4,11 @@
 
 [![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai)
 
-### By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou1993](https://x.com/jasonzhou1993)
+## By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou1993](https://x.com/jasonzhou1993)
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano?style=flat)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom?style=flat)](https://x.com/RalphEcom)
-[![Twitter Follow](https://img.shields.io/twitter/follow/jasonzhou1993?style=flat)](https://x.com/jasonzhou1993)
+[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano)](https://x.com/eyaltoledano)
+[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom)](https://x.com/RalphEcom)
+[![Twitter Follow](https://img.shields.io/twitter/follow/jasonzhou1993)](https://x.com/jasonzhou1993)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
@@ -54,7 +54,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 ###### Cursor & Windsurf (`mcpServers`)
 
-```jsonc
+```json
 {
   "mcpServers": {
     "taskmaster-ai": {
@@ -63,16 +63,16 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
       "env": {
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
         "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE", 
         "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
         "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE",
-      },
-    },
-  },
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+      }
+    }
+  }
 }
 ```
 
@@ -80,7 +80,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 ###### VS Code (`servers` + `type`)
 
-```jsonc
+```json
 {
   "servers": {
     "taskmaster-ai": {
@@ -88,17 +88,17 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
       "args": ["-y", "--package=task-master-ai", "task-master-ai"],
       "env": {
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE", 
         "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
         "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
         "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
       },
-      "type": "stdio",
-    },
-  },
+      "type": "stdio"
+    }
+  }
 }
 ```
 
@@ -207,7 +207,7 @@ For more detailed information, check out the documentation in the `docs` directo
 
 ## Troubleshooting
 
-### If `task-master init` doesn't respond:
+### If `task-master init` doesn't respond
 
 Try running it with Node directly:
 
