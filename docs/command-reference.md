@@ -262,3 +262,18 @@ task-master models --setup
 ```
 
 Configuration is stored in `.taskmasterconfig` in your project root. API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+
+## Manage Custom Instructions
+
+```bash
+# View current custom instructions
+task-master instructions --show
+
+# Set custom instructions for all AI interactions
+task-master instructions --set "Always use TypeScript. Prefer functional programming patterns."
+
+# Clear custom instructions
+task-master instructions --clear
+```
+
+Custom instructions are automatically prepended to all AI prompts, ensuring consistent behavior across task generation, expansion, and analysis operations.

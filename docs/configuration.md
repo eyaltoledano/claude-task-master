@@ -42,7 +42,8 @@ Taskmaster uses two primary methods for configuration:
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/",
           "vertexProjectId": "your-gcp-project-id",
-          "vertexLocation": "us-central1"
+          "vertexLocation": "us-central1",
+          "customInstructions": "Custom instructions prepended to all AI prompts"
         }
       }
       ```
@@ -77,7 +78,7 @@ Taskmaster uses two primary methods for configuration:
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 
-**Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
+**Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, `projectName`, and `customInstructions` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
 ## Example `.env` File (for API Keys)
 
