@@ -19,4 +19,4 @@ Introduces a new `sync-readme` command that exports your task list to your proje
 - `task-master sync-readme --status=pending` - Only export pending tasks
 - `task-master sync-readme --status=done --with-subtasks` - Export completed tasks with subtasks
 
-Perfect for showcasing project progress on GitHub with professional presentation and traffic analytics.
+Perfect for showcasing project progress on GitHub. Experimental. Open to feedback.
