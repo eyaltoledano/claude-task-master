@@ -1,8 +1,8 @@
 {
   "models": {
     "main": {
-      "provider": "openrouter",
-      "modelId": "qwen/qwen3-235b-a22b:free",
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-20250514",
       "maxTokens": 50000,
       "temperature": 0.2
     },
