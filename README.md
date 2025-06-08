@@ -2,10 +2,13 @@
 
 [![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
 
-### By [@eyaltoledano](https://x.com/eyaltoledano) & [@RalphEcom](https://x.com/RalphEcom)
+[![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai)
+
+### By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou1993](https://x.com/jasonzhou1993)
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano?style=flat)](https://x.com/eyaltoledano)
 [![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom?style=flat)](https://x.com/RalphEcom)
+[![Twitter Follow](https://img.shields.io/twitter/follow/jasonzhou1993?style=flat)](https://x.com/jasonzhou1993)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
@@ -250,7 +253,8 @@ Task Master is licensed under the MIT License with Commons Clause. This means yo
 See the [LICENSE](LICENSE) file for the complete license text and [licensing details](docs/licensing.md) for more information.
 
 <!-- TASKMASTER_EXPORT_START -->
-> 🎯 **Taskmaster Export** - 2025-06-08 02:02:35 UTC
+
+> 🎯 **Taskmaster Export** - 2025-06-08 03:03:22 UTC
 > 📋 Export: with subtasks • Status filter: none
 > 🔗 Powered by [Task Master](https://task-master.dev?utm_source=github-readme&utm_medium=readme-export&utm_campaign=claude-task-master&utm_content=task-export-link)
 
@@ -1402,37 +1406,36 @@ See the [LICENSE](LICENSE) file for the complete license text and [licensing det
 ```
 
 ╭────────────────────────────────────────────── ⚡ RECOMMENDED NEXT TASK ⚡ ──────────────────────────────────────────────╮
-│                                                                                                                         │
-│  🔥 Next Task to Work On: #67 - Add CLI JSON output and Cursor keybindings integration                                  │
-│                                                                                                                         │
-│  Priority: high   Status: ○ pending                                                                                     │
-│  Dependencies: None                                                                                                     │
-│                                                                                                                         │
-│  Description: Enhance Taskmaster CLI with JSON output option and add a new command to install pre-configured Cursor keybindings     │
-│                                                                                                                         │
-│  Subtasks:                                                                                              │
-│  67.1 [pending] Implement Core JSON Output Logic for `next` and `show` Commands                                         │
-│  67.2 [pending] Extend JSON Output to All Relevant Commands and Ensure Schema Consistency                                         │
-│  67.3 [pending] Create `install-keybindings` Command Structure and OS Detection                                         │
-│  67.4 [pending] Implement Keybinding File Handling and Backup Logic                                         │
-│  67.5 [pending] Add Taskmaster Keybindings, Prevent Duplicates, and Support Customization                                         │
-│                                                                                                                         │
-│  Start working: task-master set-status --id=67 --status=in-progress                                                     │
-│  View details: task-master show 67                                                                      │
-│                                                                                                                         │
+│ │
+│ 🔥 Next Task to Work On: #67 - Add CLI JSON output and Cursor keybindings integration │
+│ │
+│ Priority: high Status: ○ pending │
+│ Dependencies: None │
+│ │
+│ Description: Enhance Taskmaster CLI with JSON output option and add a new command to install pre-configured Cursor keybindings │
+│ │
+│ Subtasks: │
+│ 67.1 [pending] Implement Core JSON Output Logic for `next` and `show` Commands │
+│ 67.2 [pending] Extend JSON Output to All Relevant Commands and Ensure Schema Consistency │
+│ 67.3 [pending] Create `install-keybindings` Command Structure and OS Detection │
+│ 67.4 [pending] Implement Keybinding File Handling and Backup Logic │
+│ 67.5 [pending] Add Taskmaster Keybindings, Prevent Duplicates, and Support Customization │
+│ │
+│ Start working: task-master set-status --id=67 --status=in-progress │
+│ View details: task-master show 67 │
+│ │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-
 ╭──────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                      │
-│   Suggested Next Steps:                                                              │
-│                                                                                      │
-│   1. Run task-master next to see what to work on next                                │
-│   2. Run task-master expand --id=<id> to break down a task into subtasks             │
-│   3. Run task-master set-status --id=<id> --status=done to mark a task as complete   │
-│                                                                                      │
+│ │
+│ Suggested Next Steps: │
+│ │
+│ 1. Run task-master next to see what to work on next │
+│ 2. Run task-master expand --id=<id> to break down a task into subtasks │
+│ 3. Run task-master set-status --id=<id> --status=done to mark a task as complete │
+│ │
 ╰──────────────────────────────────────────────────────────────────────────────────────╯
 
 > 📋 **End of Taskmaster Export** - Tasks are synced from your project using the `sync-readme` command.
-<!-- TASKMASTER_EXPORT_END -->
 
+<!-- TASKMASTER_EXPORT_END -->
