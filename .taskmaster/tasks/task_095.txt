@@ -1,6 +1,6 @@
 # Task ID: 95
 # Title: Implement .taskmaster Directory Structure
-# Status: in-progress
+# Status: done
 # Dependencies: 1, 3, 4, 17
 # Priority: high
 # Description: Consolidate all Task Master-managed files in user projects into a clean, centralized .taskmaster/ directory structure to improve organization and keep user project directories clean, based on GitHub issue #275.
@@ -105,7 +105,7 @@ Update Task Master's file handling code to use the new paths: tasks in .taskmast
 ### Details:
 Update the task file generation system to create and read task files from .taskmaster/tasks/ instead of tasks/. Ensure all template paths are updated. Modify any path resolution logic specific to task file handling.
 
-## 4. Implement backward compatibility logic [in-progress]
+## 4. Implement backward compatibility logic [done]
 ### Dependencies: 95.2, 95.3
 ### Description: Add fallback mechanisms to support both old and new file locations during transition
 ### Details:
@@ -141,7 +141,7 @@ Update README.md and other documentation to reflect the new .taskmaster structur
 ### Details:
 Create functionality to support user-defined templates in .taskmaster/templates/. Allow users to store custom task templates, PRD templates, or other reusable files. Update Task Master commands to recognize and use templates from this directory when available.
 
-## 10. Verify clean user project directories [in-progress]
+## 10. Verify clean user project directories [done]
 ### Dependencies: 95.8, 95.9
 ### Description: Ensure the new structure keeps user project root directories clean and organized
 ### Details:

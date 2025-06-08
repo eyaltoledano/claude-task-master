@@ -13,8 +13,6 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {string} taskIds - Task IDs to clear subtasks from
  */
 function clearSubtasks(tasksPath, taskIds) {
-	displayBanner();
-
 	log('info', `Reading tasks from ${tasksPath}...`);
 	const data = readJSON(tasksPath);
 	if (!data || !data.tasks) {

@@ -450,7 +450,14 @@ async function setModel(role, modelId, options = {}) {
 						openRouterModels.some((m) => m.id === modelId)
 					) {
 						determinedProvider = 'openrouter';
-						warningMessage = `Warning: Custom OpenRouter model '${modelId}' set. This model is not officially validated by Taskmaster and may not function as expected.`;
+
+						// Check if this is a free model (ends with :free)
+						if (modelId.endsWith(':free')) {
+							warningMessage = `Warning: OpenRouter free model '${modelId}' selected. Free models have significant limitations including lower context windows, reduced rate limits, and may not support advanced features like tool_use. Consider using the paid version '${modelId.replace(':free', '')}' for full functionality.`;
+						} else {
+							warningMessage = `Warning: Custom OpenRouter model '${modelId}' set. This model is not officially validated by Taskmaster and may not function as expected.`;
+						}
+
 						report('warn', warningMessage);
 					} else {
 						// Hinted as OpenRouter but not found in live check
