@@ -479,11 +479,9 @@ function getParametersForRole(role, explicitRoot = null) {
  * @returns {boolean} True if the API key is set, false otherwise.
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
-	// Define the expected environment variable name for each provider
 	if (providerName?.toLowerCase() === 'ollama') {
-		return true; // Indicate key status is effectively "OK"
+		return true;
 	}
-
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -493,26 +491,19 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
-		// Add other providers as needed
+		vertex: 'GOOGLE_API_KEY'
 	};
-
-	const providerKey = providerName?.toLowerCase();
-	if (!providerKey || !keyMap[providerKey]) {
-		log('warn', `Unknown provider name: ${providerName} in isApiKeySet check.`);
-		return false;
+	let envVarName = keyMap[providerName?.toLowerCase()];
+	if (!envVarName) {
+		envVarName = `${providerName?.toUpperCase()}_API_KEY`;
 	}
-
-	const envVarName = keyMap[providerKey];
 	const apiKeyValue = resolveEnvVariable(envVarName, session, projectRoot);
-
-	// Check if the key exists, is not empty, and is not a placeholder
 	return (
 		apiKeyValue &&
 		apiKeyValue.trim() !== '' &&
-		!/YOUR_.*_API_KEY_HERE/.test(apiKeyValue) && // General placeholder check
+		!/YOUR_.*_API_KEY_HERE/.test(apiKeyValue) &&
 		!apiKeyValue.includes('KEY_HERE')
-	); // Another common placeholder pattern
+	);
 }
 
 /**
@@ -523,76 +514,32 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
  * @returns {boolean} True if the key exists and is not a placeholder, false otherwise.
  */
 function getMcpApiKeyStatus(providerName, projectRoot = null) {
-	const rootDir = projectRoot || findProjectRoot(); // Use existing root finding
-	if (!rootDir) {
-		console.warn(
-			chalk.yellow('Warning: Could not find project root to check mcp.json.')
-		);
-		return false; // Cannot check without root
-	}
-	const mcpConfigPath = path.join(rootDir, '.cursor', 'mcp.json');
-
-	if (!fs.existsSync(mcpConfigPath)) {
-		// console.warn(chalk.yellow('Warning: .cursor/mcp.json not found.'));
-		return false; // File doesn't exist
-	}
-
+	const mcpConfigPath = path.join(findProjectRoot() || '.', '.cursor', 'mcp.json');
 	try {
 		const mcpConfigRaw = fs.readFileSync(mcpConfigPath, 'utf-8');
 		const mcpConfig = JSON.parse(mcpConfigRaw);
-
-		const mcpEnv = mcpConfig?.mcpServers?.['taskmaster-ai']?.env;
+		const mcpEnv = mcpConfig?.mcpServers?.['task-master-ai']?.env;
 		if (!mcpEnv) {
-			// console.warn(chalk.yellow('Warning: Could not find taskmaster-ai env in mcp.json.'));
-			return false; // Structure missing
+			return false;
 		}
-
-		let apiKeyToCheck = null;
-		let placeholderValue = null;
-
-		switch (providerName) {
-			case 'anthropic':
-				apiKeyToCheck = mcpEnv.ANTHROPIC_API_KEY;
-				placeholderValue = 'YOUR_ANTHROPIC_API_KEY_HERE';
-				break;
-			case 'openai':
-				apiKeyToCheck = mcpEnv.OPENAI_API_KEY;
-				placeholderValue = 'YOUR_OPENAI_API_KEY_HERE'; // Assuming placeholder matches OPENAI
-				break;
-			case 'openrouter':
-				apiKeyToCheck = mcpEnv.OPENROUTER_API_KEY;
-				placeholderValue = 'YOUR_OPENROUTER_API_KEY_HERE';
-				break;
-			case 'google':
-				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY;
-				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
-				break;
-			case 'perplexity':
-				apiKeyToCheck = mcpEnv.PERPLEXITY_API_KEY;
-				placeholderValue = 'YOUR_PERPLEXITY_API_KEY_HERE';
-				break;
-			case 'xai':
-				apiKeyToCheck = mcpEnv.XAI_API_KEY;
-				placeholderValue = 'YOUR_XAI_API_KEY_HERE';
-				break;
-			case 'ollama':
-				return true; // No key needed
-			case 'mistral':
-				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
-				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
-				break;
-			case 'azure':
-				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
-				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
-				break;
-			case 'vertex':
-				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
-				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
-				break;
-			default:
-				return false; // Unknown provider
+		let envVarName = null;
+		const keyMap = {
+			openai: 'OPENAI_API_KEY',
+			anthropic: 'ANTHROPIC_API_KEY',
+			google: 'GOOGLE_API_KEY',
+			perplexity: 'PERPLEXITY_API_KEY',
+			mistral: 'MISTRAL_API_KEY',
+			azure: 'AZURE_OPENAI_API_KEY',
+			openrouter: 'OPENROUTER_API_KEY',
+			xai: 'XAI_API_KEY',
+			ollama: 'OLLAMA_API_KEY',
+			vertex: 'GOOGLE_API_KEY'
+		};
+		envVarName = keyMap[providerName];
+		if (!envVarName) {
+			envVarName = `${providerName.toUpperCase()}_API_KEY`;
 		}
-
+		const apiKeyToCheck = mcpEnv[envVarName];
 		return !!apiKeyToCheck && !/KEY_HERE$/.test(apiKeyToCheck);
 	} catch (error) {
 		console.error(
@@ -745,9 +692,15 @@ function getAllProviders() {
 
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseURL === 'string'
-		? roleConfig.baseURL
-		: undefined;
+	if (roleConfig && typeof roleConfig.baseURL === 'string') {
+		return roleConfig.baseURL;
+	}
+	const provider = roleConfig?.provider;
+	if (provider) {
+		const envVarName = `${provider.toUpperCase()}_BASE_URL`;
+		return resolveEnvVariable(envVarName, null, explicitRoot);
+	}
+	return undefined;
 }
 
 export {
