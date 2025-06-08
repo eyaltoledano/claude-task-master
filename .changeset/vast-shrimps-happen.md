@@ -1,5 +1,5 @@
 ---
-"task-master-ai": minor
+"task-master-ai": patch
 ---
 
 Add sync-readme command for a task export to GitHub README
