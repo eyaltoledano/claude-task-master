@@ -17,6 +17,32 @@ import {
 import { getLoggerOrDefault } from './logger-utils.js';
 
 /**
+ * Normalize project root to ensure it doesn't end with .taskmaster
+ * This prevents double .taskmaster paths when using constants that include .taskmaster
+ * @param {string} projectRoot - The project root path to normalize
+ * @returns {string} - Normalized project root path
+ */
+export function normalizeProjectRoot(projectRoot) {
+	if (!projectRoot) return projectRoot;
+
+	// Split the path into segments
+	const segments = projectRoot.split(path.sep);
+
+	// Find the index of .taskmaster segment
+	const taskmasterIndex = segments.findIndex(
+		(segment) => segment === '.taskmaster'
+	);
+
+	if (taskmasterIndex !== -1) {
+		// If .taskmaster is found, return everything up to but not including .taskmaster
+		const normalizedSegments = segments.slice(0, taskmasterIndex);
+		return normalizedSegments.join(path.sep) || path.sep;
+	}
+
+	return projectRoot;
+}
+
+/**
  * Find the project root directory by looking for project markers
  * @param {string} startDir - Directory to start searching from
  * @returns {string|null} - Project root path or null if not found
@@ -63,11 +89,22 @@ export function findTasksPath(explicitPath = null, args = null, log = null) {
 	// Use the passed logger if available, otherwise use the default logger
 	const logger = getLoggerOrDefault(log);
 
-	// 1. If explicit path is provided, use it (highest priority)
+	// 1. First determine project root to use as base for all path resolution
+	const rawProjectRoot = args?.projectRoot || findProjectRoot();
+
+	if (!rawProjectRoot) {
+		logger.warn?.('Could not determine project root directory');
+		return null;
+	}
+
+	// 2. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 3. If explicit path is provided, resolve it relative to project root (highest priority)
 	if (explicitPath) {
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(projectRoot, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit tasks path: ${resolvedPath}`);
@@ -79,18 +116,9 @@ export function findTasksPath(explicitPath = null, args = null, log = null) {
 		}
 	}
 
-	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot();
-
-	if (!projectRoot) {
-		logger.warn?.('Could not determine project root directory');
-		return null;
-	}
-
-	// 3. Check possible locations in order of preference
+	// 4. Check possible locations in order of preference
 	const possiblePaths = [
 		path.join(projectRoot, TASKMASTER_TASKS_FILE), // .taskmaster/tasks/tasks.json (NEW)
-		path.join(projectRoot, 'tasks.json'), // tasks.json in root (LEGACY)
 		path.join(projectRoot, LEGACY_TASKS_FILE) // tasks/tasks.json (LEGACY)
 	];
 
@@ -151,14 +179,17 @@ export function findPRDPath(explicitPath = null, args = null, log = null) {
 	}
 
 	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot();
+	const rawProjectRoot = args?.projectRoot || findProjectRoot();
 
-	if (!projectRoot) {
+	if (!rawProjectRoot) {
 		logger.warn?.('Could not determine project root directory');
 		return null;
 	}
 
-	// 3. Check possible locations in order of preference
+	// 3. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 4. Check possible locations in order of preference
 	const locations = [
 		TASKMASTER_DOCS_DIR, // .taskmaster/docs/ (NEW)
 		'scripts/', // Legacy location
@@ -220,14 +251,17 @@ export function findComplexityReportPath(
 	}
 
 	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot();
+	const rawProjectRoot = args?.projectRoot || findProjectRoot();
 
-	if (!projectRoot) {
+	if (!rawProjectRoot) {
 		logger.warn?.('Could not determine project root directory');
 		return null;
 	}
 
-	// 3. Check possible locations in order of preference
+	// 3. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 4. Check possible locations in order of preference
 	const locations = [
 		TASKMASTER_REPORTS_DIR, // .taskmaster/reports/ (NEW)
 		'scripts/', // Legacy location
@@ -283,9 +317,13 @@ export function resolveTasksOutputPath(
 	}
 
 	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot() || process.cwd();
+	const rawProjectRoot =
+		args?.projectRoot || findProjectRoot() || process.cwd();
 
-	// 3. Use new .taskmaster structure by default
+	// 3. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 4. Use new .taskmaster structure by default
 	const defaultPath = path.join(projectRoot, TASKMASTER_TASKS_FILE);
 	logger.info?.(`Using default output path: ${defaultPath}`);
 
@@ -326,9 +364,13 @@ export function resolveComplexityReportOutputPath(
 	}
 
 	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot() || process.cwd();
+	const rawProjectRoot =
+		args?.projectRoot || findProjectRoot() || process.cwd();
 
-	// 3. Use new .taskmaster structure by default
+	// 3. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 4. Use new .taskmaster structure by default
 	const defaultPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
 	logger.info?.(`Using default complexity report output path: ${defaultPath}`);
 
@@ -369,14 +411,17 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 	}
 
 	// 2. Try to get project root from args (MCP) or find it
-	const projectRoot = args?.projectRoot || findProjectRoot();
+	const rawProjectRoot = args?.projectRoot || findProjectRoot();
 
-	if (!projectRoot) {
+	if (!rawProjectRoot) {
 		logger.warn?.('Could not determine project root directory');
 		return null;
 	}
 
-	// 3. Check possible locations in order of preference
+	// 3. Normalize project root to prevent double .taskmaster paths
+	const projectRoot = normalizeProjectRoot(rawProjectRoot);
+
+	// 4. Check possible locations in order of preference
 	const possiblePaths = [
 		path.join(projectRoot, TASKMASTER_CONFIG_FILE), // NEW location
 		path.join(projectRoot, LEGACY_CONFIG_FILE) // LEGACY location

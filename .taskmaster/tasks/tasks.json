@@ -5468,6 +5468,70 @@
       ]
     },
     {
+      "id": 92,
+      "title": "Implement Project Root Environment Variable Support in MCP Configuration",
+      "description": "Add support for a 'TASK_MASTER_PROJECT_ROOT' environment variable in MCP configuration, allowing it to be set in both mcp.json and .env, with precedence over other methods. This will define the root directory for the MCP server and take precedence over all other project root resolution methods. The implementation should be backward compatible with existing workflows that don't use this variable.",
+      "status": "review",
+      "dependencies": [
+        1,
+        3,
+        17
+      ],
+      "priority": "medium",
+      "details": "Update the MCP server configuration system to support the TASK_MASTER_PROJECT_ROOT environment variable as the standard way to specify the project root directory. This provides better namespacing and avoids conflicts with other tools that might use a generic PROJECT_ROOT variable. Implement a clear precedence order for project root resolution:\n\n1. TASK_MASTER_PROJECT_ROOT environment variable (from shell or .env file)\n2. 'projectRoot' key in mcp_config.toml or mcp.json configuration files\n3. Existing resolution logic (CLI args, current working directory, etc.)\n\nModify the configuration loading logic to check for these sources in the specified order, ensuring backward compatibility. All MCP tools and components should use this standardized project root resolution logic. The TASK_MASTER_PROJECT_ROOT environment variable will be required because path resolution is delegated to the MCP client implementation, ensuring consistent behavior across different environments.\n\nImplementation steps:\n1. Identify all code locations where project root is determined (initialization, utility functions)\n2. Update configuration loaders to check for TASK_MASTER_PROJECT_ROOT in environment variables\n3. Add support for 'projectRoot' in configuration files as a fallback\n4. Refactor project root resolution logic to follow the new precedence rules\n5. Ensure all MCP tools and functions use the updated resolution logic\n6. Add comprehensive error handling for cases where TASK_MASTER_PROJECT_ROOT is not set or invalid\n7. Implement validation to ensure the specified directory exists and is accessible",
+      "testStrategy": "1. Write unit tests to verify that the config loader correctly reads project root from environment variables and configuration files with the expected precedence:\n   - Test TASK_MASTER_PROJECT_ROOT environment variable takes precedence when set\n   - Test 'projectRoot' in configuration files is used when environment variable is absent\n   - Test fallback to existing resolution logic when neither is specified\n\n2. Add integration tests to ensure that the MCP server and all tools use the correct project root:\n   - Test server startup with TASK_MASTER_PROJECT_ROOT set to various valid and invalid paths\n   - Test configuration file loading from the specified project root\n   - Test path resolution for resources relative to the project root\n\n3. Test backward compatibility:\n   - Verify existing workflows function correctly without the new variables\n   - Ensure no regression in projects not using the new configuration options\n\n4. Manual testing:\n   - Set TASK_MASTER_PROJECT_ROOT in shell environment and verify correct behavior\n   - Set TASK_MASTER_PROJECT_ROOT in .env file and verify it's properly loaded\n   - Configure 'projectRoot' in configuration files and test precedence\n   - Test with invalid or non-existent directories to verify error handling",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable",
+          "description": "Modify the configuration loading system to check for the TASK_MASTER_PROJECT_ROOT environment variable as the primary source for project root directory. Ensure proper error handling if the variable is set but points to a non-existent or inaccessible directory.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Add support for 'projectRoot' in configuration files",
+          "description": "Implement support for a 'projectRoot' key in mcp_config.toml and mcp.json configuration files as a fallback when the environment variable is not set. Update the configuration parser to recognize and validate this field.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Refactor project root resolution logic with clear precedence rules",
+          "description": "Create a unified project root resolution function that follows the precedence order: 1) TASK_MASTER_PROJECT_ROOT environment variable, 2) 'projectRoot' in config files, 3) existing resolution methods. Ensure this function is used consistently throughout the codebase.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Update all MCP tools to use the new project root resolution",
+          "description": "Identify all MCP tools and components that need to access the project root and update them to use the new resolution logic. Ensure consistent behavior across all parts of the system.",
+          "status": "pending"
+        },
+        {
+          "id": 5,
+          "title": "Add comprehensive tests for the new project root resolution",
+          "description": "Create unit and integration tests to verify the correct behavior of the project root resolution logic under various configurations and edge cases.",
+          "status": "pending"
+        },
+        {
+          "id": 6,
+          "title": "Update documentation with new configuration options",
+          "description": "Update the project documentation to clearly explain the new TASK_MASTER_PROJECT_ROOT environment variable, the 'projectRoot' configuration option, and the precedence rules. Include examples of different configuration scenarios.",
+          "status": "pending"
+        },
+        {
+          "id": 7,
+          "title": "Implement validation for project root directory",
+          "description": "Add validation to ensure the specified project root directory exists and has the necessary permissions. Provide clear error messages when validation fails.",
+          "status": "pending"
+        },
+        {
+          "id": 8,
+          "title": "Implement support for loading environment variables from .env files",
+          "description": "Add functionality to load the TASK_MASTER_PROJECT_ROOT variable from .env files in the workspace, following best practices for environment variable management in MCP servers.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
       "id": 93,
       "title": "Implement Google Vertex AI Provider Integration",
       "description": "Develop a dedicated Google Vertex AI provider in the codebase, enabling users to leverage Vertex AI models with enterprise-grade configuration and authentication.",
@@ -5614,74 +5678,10 @@
       ]
     },
     {
-      "id": 92,
-      "title": "Implement Project Root Environment Variable Support in MCP Configuration",
-      "description": "Add support for a 'TASK_MASTER_PROJECT_ROOT' environment variable in MCP configuration, allowing it to be set in both mcp.json and .env, with precedence over other methods. This will define the root directory for the MCP server and take precedence over all other project root resolution methods. The implementation should be backward compatible with existing workflows that don't use this variable.",
-      "status": "in-progress",
-      "dependencies": [
-        1,
-        3,
-        17
-      ],
-      "priority": "medium",
-      "details": "Update the MCP server configuration system to support the TASK_MASTER_PROJECT_ROOT environment variable as the standard way to specify the project root directory. This provides better namespacing and avoids conflicts with other tools that might use a generic PROJECT_ROOT variable. Implement a clear precedence order for project root resolution:\n\n1. TASK_MASTER_PROJECT_ROOT environment variable (from shell or .env file)\n2. 'projectRoot' key in mcp_config.toml or mcp.json configuration files\n3. Existing resolution logic (CLI args, current working directory, etc.)\n\nModify the configuration loading logic to check for these sources in the specified order, ensuring backward compatibility. All MCP tools and components should use this standardized project root resolution logic. The TASK_MASTER_PROJECT_ROOT environment variable will be required because path resolution is delegated to the MCP client implementation, ensuring consistent behavior across different environments.\n\nImplementation steps:\n1. Identify all code locations where project root is determined (initialization, utility functions)\n2. Update configuration loaders to check for TASK_MASTER_PROJECT_ROOT in environment variables\n3. Add support for 'projectRoot' in configuration files as a fallback\n4. Refactor project root resolution logic to follow the new precedence rules\n5. Ensure all MCP tools and functions use the updated resolution logic\n6. Add comprehensive error handling for cases where TASK_MASTER_PROJECT_ROOT is not set or invalid\n7. Implement validation to ensure the specified directory exists and is accessible",
-      "testStrategy": "1. Write unit tests to verify that the config loader correctly reads project root from environment variables and configuration files with the expected precedence:\n   - Test TASK_MASTER_PROJECT_ROOT environment variable takes precedence when set\n   - Test 'projectRoot' in configuration files is used when environment variable is absent\n   - Test fallback to existing resolution logic when neither is specified\n\n2. Add integration tests to ensure that the MCP server and all tools use the correct project root:\n   - Test server startup with TASK_MASTER_PROJECT_ROOT set to various valid and invalid paths\n   - Test configuration file loading from the specified project root\n   - Test path resolution for resources relative to the project root\n\n3. Test backward compatibility:\n   - Verify existing workflows function correctly without the new variables\n   - Ensure no regression in projects not using the new configuration options\n\n4. Manual testing:\n   - Set TASK_MASTER_PROJECT_ROOT in shell environment and verify correct behavior\n   - Set TASK_MASTER_PROJECT_ROOT in .env file and verify it's properly loaded\n   - Configure 'projectRoot' in configuration files and test precedence\n   - Test with invalid or non-existent directories to verify error handling",
-      "subtasks": [
-        {
-          "id": 92.1,
-          "title": "Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable",
-          "description": "Modify the configuration loading system to check for the TASK_MASTER_PROJECT_ROOT environment variable as the primary source for project root directory. Ensure proper error handling if the variable is set but points to a non-existent or inaccessible directory.",
-          "status": "pending"
-        },
-        {
-          "id": 92.2,
-          "title": "Add support for 'projectRoot' in configuration files",
-          "description": "Implement support for a 'projectRoot' key in mcp_config.toml and mcp.json configuration files as a fallback when the environment variable is not set. Update the configuration parser to recognize and validate this field.",
-          "status": "pending"
-        },
-        {
-          "id": 92.3,
-          "title": "Refactor project root resolution logic with clear precedence rules",
-          "description": "Create a unified project root resolution function that follows the precedence order: 1) TASK_MASTER_PROJECT_ROOT environment variable, 2) 'projectRoot' in config files, 3) existing resolution methods. Ensure this function is used consistently throughout the codebase.",
-          "status": "pending"
-        },
-        {
-          "id": 92.4,
-          "title": "Update all MCP tools to use the new project root resolution",
-          "description": "Identify all MCP tools and components that need to access the project root and update them to use the new resolution logic. Ensure consistent behavior across all parts of the system.",
-          "status": "pending"
-        },
-        {
-          "id": 92.5,
-          "title": "Add comprehensive tests for the new project root resolution",
-          "description": "Create unit and integration tests to verify the correct behavior of the project root resolution logic under various configurations and edge cases.",
-          "status": "pending"
-        },
-        {
-          "id": 92.6,
-          "title": "Update documentation with new configuration options",
-          "description": "Update the project documentation to clearly explain the new TASK_MASTER_PROJECT_ROOT environment variable, the 'projectRoot' configuration option, and the precedence rules. Include examples of different configuration scenarios.",
-          "status": "pending"
-        },
-        {
-          "id": 92.7,
-          "title": "Implement validation for project root directory",
-          "description": "Add validation to ensure the specified project root directory exists and has the necessary permissions. Provide clear error messages when validation fails.",
-          "status": "pending"
-        },
-        {
-          "id": 92.8,
-          "title": "Implement support for loading environment variables from .env files",
-          "description": "Add functionality to load the TASK_MASTER_PROJECT_ROOT variable from .env files in the workspace, following best practices for environment variable management in MCP servers.",
-          "status": "pending"
-        }
-      ]
-    },
-    {
       "id": 95,
       "title": "Implement .taskmaster Directory Structure",
       "description": "Consolidate all Task Master-managed files in user projects into a clean, centralized .taskmaster/ directory structure to improve organization and keep user project directories clean, based on GitHub issue #275.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         1,
         3,
@@ -5732,7 +5732,7 @@
             3
           ],
           "details": "Implement path fallback logic that checks both old and new locations when files aren't found. Add deprecation warnings when old paths are used, informing users about the new structure. Ensure error messages are clear about the transition.",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Test with both old and new directory structures to verify fallback works correctly. Verify deprecation warnings appear when using old paths."
         },
         {
@@ -5804,8 +5804,71 @@
             9
           ],
           "details": "Validate that after implementing the new structure, user project root directories only contain their actual project files plus the single .taskmaster/ directory. Verify that no Task Master files are created outside of .taskmaster/. Test that users can easily add .taskmaster/ to .gitignore if they choose to exclude Task Master files from version control.",
-          "status": "in-progress",
+          "status": "done",
           "testStrategy": "Test complete workflows and verify only .taskmaster/ directory is created in project root. Check that all Task Master operations respect the new file organization. Verify .gitignore compatibility."
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "title": "Create Export Command for On-Demand Task File and PDF Generation",
+      "description": "Develop an 'export' CLI command that generates task files and comprehensive PDF exports on-demand, replacing automatic file generation and providing users with flexible export options.",
+      "details": "Implement a new 'export' command in the CLI that supports two primary modes: (1) generating individual task files on-demand (superseding the current automatic generation system), and (2) producing a comprehensive PDF export. The PDF should include: a first page with the output of 'tm list --with-subtasks', followed by individual pages for each task (using 'tm show <task_id>') and each subtask (using 'tm show <subtask_id>'). Integrate PDF generation using a robust library (e.g., pdfkit, Puppeteer, or jsPDF) to ensure high-quality output and proper pagination. Refactor or disable any existing automatic file generation logic to avoid performance overhead. Ensure the command supports flexible output paths and options for exporting only files, only PDF, or both. Update documentation and help output to reflect the new export capabilities. Consider concurrency and error handling for large projects. Ensure the export process is efficient and does not block the main CLI thread unnecessarily.",
+      "testStrategy": "1. Run the 'export' command with various options and verify that task files are generated only on-demand, not automatically. 2. Generate a PDF export and confirm that the first page contains the correct 'tm list --with-subtasks' output, and that each subsequent page accurately reflects the output of 'tm show <task_id>' and 'tm show <subtask_id>' for all tasks and subtasks. 3. Test exporting in projects with large numbers of tasks and subtasks to ensure performance and correctness. 4. Attempt exports with invalid paths or missing data to verify robust error handling. 5. Confirm that no automatic file generation occurs during normal task operations. 6. Review CLI help output and documentation for accuracy regarding the new export functionality.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        4,
+        95
+      ],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Remove Automatic Task File Generation from Task Operations",
+          "description": "Eliminate all calls to generateTaskFiles() from task operations such as add-task, remove-task, set-status, and similar commands to prevent unnecessary performance overhead.",
+          "dependencies": [],
+          "details": "Audit the codebase for any automatic invocations of generateTaskFiles() and remove or refactor them to ensure task files are not generated automatically during task operations.",
+          "status": "pending",
+          "testStrategy": "Verify that no task file generation occurs during any task operation by running the CLI and monitoring file system changes.",
+          "parentTaskId": 96
+        },
+        {
+          "id": 2,
+          "title": "Implement Export Command Infrastructure with On-Demand Task File Generation",
+          "description": "Develop the CLI 'export' command infrastructure, enabling users to generate task files on-demand by invoking the preserved generateTaskFiles function only when requested.",
+          "dependencies": [
+            1
+          ],
+          "details": "Create the export command with options for output paths and modes (files, PDF, or both). Ensure generateTaskFiles is only called within this command and not elsewhere.",
+          "status": "pending",
+          "testStrategy": "Test the export command to confirm task files are generated only when explicitly requested and that output paths and options function as intended.",
+          "parentTaskId": 96
+        },
+        {
+          "id": 3,
+          "title": "Implement Comprehensive PDF Export Functionality",
+          "description": "Add PDF export capability to the export command, generating a structured PDF with a first page listing all tasks and subtasks, followed by individual pages for each task and subtask, using a robust PDF library.",
+          "dependencies": [
+            2
+          ],
+          "details": "Integrate a PDF generation library (e.g., pdfkit, Puppeteer, or jsPDF). Ensure the PDF includes the output of 'tm list --with-subtasks' on the first page, and uses 'tm show <task_id>' and 'tm show <subtask_id>' for subsequent pages. Handle pagination, concurrency, and error handling for large projects.",
+          "status": "pending",
+          "testStrategy": "Generate PDFs for projects of varying sizes and verify layout, content accuracy, and performance. Test error handling and concurrency under load.",
+          "parentTaskId": 96
+        },
+        {
+          "id": 4,
+          "title": "Update Documentation, Tests, and CLI Help for Export Workflow",
+          "description": "Revise all relevant documentation, automated tests, and CLI help output to reflect the new export-based workflow and available options.",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Update user guides, README files, and CLI help text. Add or modify tests to cover the new export command and its options. Ensure all documentation accurately describes the new workflow and usage.",
+          "status": "pending",
+          "testStrategy": "Review documentation for completeness and accuracy. Run all tests to ensure coverage of the new export command and verify CLI help output.",
+          "parentTaskId": 96
         }
       ]
     }

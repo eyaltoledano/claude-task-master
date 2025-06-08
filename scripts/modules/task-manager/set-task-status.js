@@ -33,8 +33,6 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 
 		// Only display UI elements if not in MCP mode
 		if (!isMcpMode) {
-			displayBanner();
-
 			console.log(
 				boxen(chalk.white.bold(`Updating Task Status to: ${newStatus}`), {
 					padding: 1,
