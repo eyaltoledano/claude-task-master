@@ -562,10 +562,25 @@ async function parsePRDWithStreaming(
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 
 		// Final progress report - completion
+		// Use actual telemetry if available, otherwise fall back to estimates
+		const hasValidTelemetry =
+			aiServiceResponse.telemetryData &&
+			(aiServiceResponse.telemetryData.inputTokens > 0 ||
+				aiServiceResponse.telemetryData.outputTokens > 0);
+
+		let completionMessage;
+		if (hasValidTelemetry) {
+			// Use actual telemetry data
+			completionMessage = `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens}`;
+		} else {
+			// Use estimates and indicate they're estimates
+			completionMessage = `✅ Task Generation Completed | ~Tokens (I/O): ${estimatedInputTokens}/${estimatedOutputTokens}`;
+		}
+
 		await reportProgress({
 			progress: numTasks,
 			total: numTasks,
-			message: `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens} ($${aiServiceResponse.telemetryData.totalCost.toFixed(4)})`
+			message: completionMessage
 		});
 
 		// Return telemetry data
