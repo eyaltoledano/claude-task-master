@@ -48,6 +48,7 @@ const mockZod = {
 			authorName: {},
 			skipInstall: {},
 			addAliases: {},
+			storeTasksInGit: {},
 			yes: {}
 		})
 	}
@@ -91,9 +92,10 @@ const registerInitializeProjectTool = (server) => {
 				}
 				if (args.skipInstall) cliArgs.push('--skip-install');
 				if (args.addAliases) cliArgs.push('--aliases');
+				if (args.storeTasksInGit) cliArgs.push('--store-tasks-in-git');
 				if (args.yes) cliArgs.push('--yes');
 
-				command += ' ' + cliArgs.join(' ');
+				command += ` ${cliArgs.join(' ')}`;
 
 				log.info(`Constructed command: ${command}`);
 
@@ -182,6 +184,7 @@ describe('Initialize Project MCP Tool', () => {
 			authorName: 'Test Author',
 			skipInstall: true,
 			addAliases: true,
+			storeTasksInGit: true,
 			yes: true
 		};
 
@@ -203,6 +206,7 @@ describe('Initialize Project MCP Tool', () => {
 		expect(command).toContain('--author "Test Author"');
 		expect(command).toContain('--skip-install');
 		expect(command).toContain('--aliases');
+		expect(command).toContain('--store-tasks-in-git');
 		expect(command).toContain('--yes');
 	});
 
@@ -338,5 +342,89 @@ describe('Initialize Project MCP Tool', () => {
 		expect(mockLogger.error).toHaveBeenCalledWith(
 			expect.stringContaining('Some detailed error message')
 		);
+	});
+
+	test('includes --store-tasks-in-git flag when storeTasksInGit is true', async () => {
+		// Create arguments with storeTasksInGit enabled
+		const args = {
+			storeTasksInGit: true,
+			yes: true
+		};
+
+		// Execute the tool
+		await executeFunction(args, { log: mockLogger });
+
+		// Get the command that was executed
+		const command = mockExecSync.mock.calls[0][0];
+
+		// Verify the --store-tasks-in-git flag is included
+		expect(command).toContain('--store-tasks-in-git');
+		expect(command).toContain('--yes');
+	});
+
+	test('excludes --store-tasks-in-git flag when storeTasksInGit is false', async () => {
+		// Create arguments with storeTasksInGit disabled
+		const args = {
+			storeTasksInGit: false,
+			yes: true
+		};
+
+		// Execute the tool
+		await executeFunction(args, { log: mockLogger });
+
+		// Get the command that was executed
+		const command = mockExecSync.mock.calls[0][0];
+
+		// Verify the --store-tasks-in-git flag is NOT included
+		expect(command).not.toContain('--store-tasks-in-git');
+		expect(command).toContain('--yes');
+	});
+
+	test('excludes --store-tasks-in-git flag when storeTasksInGit is not provided', async () => {
+		// Create arguments without storeTasksInGit
+		const args = {
+			projectName: 'Test Project',
+			yes: true
+		};
+
+		// Execute the tool
+		await executeFunction(args, { log: mockLogger });
+
+		// Get the command that was executed
+		const command = mockExecSync.mock.calls[0][0];
+
+		// Verify the --store-tasks-in-git flag is NOT included
+		expect(command).not.toContain('--store-tasks-in-git');
+		expect(command).toContain('--name "Test Project"');
+		expect(command).toContain('--yes');
+	});
+
+	test('handles storeTasksInGit with other parameters correctly', async () => {
+		// Create arguments with storeTasksInGit and other parameters
+		const args = {
+			projectName: 'Git Storage Project',
+			projectDescription: 'A project with git-based task storage',
+			storeTasksInGit: true,
+			skipInstall: true,
+			yes: true
+		};
+
+		// Execute the tool
+		await executeFunction(args, { log: mockLogger });
+
+		// Get the command that was executed
+		const command = mockExecSync.mock.calls[0][0];
+
+		// Verify all flags are included correctly
+		expect(command).toContain('--name "Git Storage Project"');
+		expect(command).toContain(
+			'--description "A project with git-based task storage"'
+		);
+		expect(command).toContain('--store-tasks-in-git');
+		expect(command).toContain('--skip-install');
+		expect(command).toContain('--yes');
+
+		// Verify the command structure is correct
+		expect(command).toMatch(/^npx task-master init\s+/);
 	});
 });

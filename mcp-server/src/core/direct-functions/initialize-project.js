@@ -5,6 +5,9 @@ import {
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
 import os from 'os'; // Import os module for home directory check
+import fs from 'fs'; // Import fs for reading template file
+import path from 'path'; // Import path for joining paths
+import manageGitignoreFile from '../../../../src/utils/manage-gitignore.js'; // Import gitignore utility
 
 /**
  * Direct function wrapper for initializing a project.
@@ -70,6 +73,37 @@ export async function initializeProjectDirect(args, log, context = {}) {
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
 		const result = await initializeProject(options); // Call core logic
+
+		// Handle gitignore file with user's storage preferences
+		try {
+			const storeTasksInGit = args.storeTasksInGit === true; // Ensure boolean
+			log.info(`Managing .gitignore with storeTasksInGit=${storeTasksInGit}`);
+
+			// Read gitignore template from the assets directory
+			const templatePath = path.join(__dirname, '../../../../assets/gitignore');
+			if (fs.existsSync(templatePath)) {
+				const templateContent = fs.readFileSync(templatePath, 'utf8');
+				const gitignorePath = path.join(targetDirectory, '.gitignore');
+
+				// Use manageGitignoreFile utility to update/create .gitignore
+				manageGitignoreFile(
+					gitignorePath,
+					templateContent,
+					storeTasksInGit,
+					log
+				);
+				log.success(
+					`Updated .gitignore with tasks ${storeTasksInGit ? 'included in' : 'excluded from'} git`
+				);
+			} else {
+				log.warn(
+					`Gitignore template not found at ${templatePath}, skipping .gitignore management`
+				);
+			}
+		} catch (gitignoreError) {
+			log.error(`Failed to manage .gitignore file: ${gitignoreError.message}`);
+			// Continue with initialization - non-fatal error
+		}
 
 		resultData = {
 			message: 'Project initialized successfully.',
