@@ -3,7 +3,6 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { z } from 'zod';
-import { JSONParser } from '@streamparser/json';
 
 import {
 	log,
@@ -19,6 +18,10 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
+import {
+	parseStreamingJSON,
+	createTaskProgressCallback
+} from '../../../src/utils/stream-json-parser.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -352,159 +355,34 @@ async function parsePRDWithStreaming(
 			throw new Error('No text stream received from AI service');
 		}
 
-		// Parse streaming JSON and track task progress
-		const parsedTasks = [];
-		let accumulatedText = '';
-		let estimatedOutputTokens = 0;
+		// Parse streaming JSON using the reusable utility
+		const progressCallback = createTaskProgressCallback(
+			reportProgress,
+			numTasks
+		);
 
-		// Priority indicator mapping
-		const priorityMap = {
-			high: '🔴',
-			medium: '🟠',
-			low: '🟢'
-		};
+		const parseResult = await parseStreamingJSON(textStream, {
+			jsonPaths: ['$.tasks.*'],
+			onProgress: progressCallback,
+			onError: (error) => {
+				report(`JSON parsing error: ${error.message}`, 'warn');
+			},
+			estimateTokens,
+			expectedTotal: numTasks
+		});
 
-		const parser = new JSONParser({ paths: ['$.tasks.*'] });
+		const {
+			items: parsedTasks,
+			accumulatedText,
+			estimatedTokens: estimatedOutputTokens,
+			usedFallback
+		} = parseResult;
 
-		parser.onValue = (value, key, parent, stack) => {
-			// Extract the actual task object from the parser's nested structure
-			const task = value.value || value;
-
-			// Only report progress if we have a task with a title (complete task)
-			if (
-				task &&
-				task.title &&
-				typeof task.title === 'string' &&
-				task.title.trim()
-			) {
-				parsedTasks.push(task);
-				const currentProgress = parsedTasks.length;
-				const priority = task.priority || 'medium';
-				const priorityIndicator = priorityMap[priority];
-
-				// Re-estimate output tokens based on accumulated text so far
-				estimatedOutputTokens = estimateTokens(accumulatedText);
-
-				reportProgress({
-					progress: currentProgress,
-					total: numTasks,
-					message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
-				}).catch((error) => {
-					// Log progress errors but don't break the flow
-					report(`Progress reporting failed: ${error.message}`, 'warn');
-				});
-			}
-		};
-
-		parser.onError = (error) => {
-			report(`JSON parsing error: ${error.message}`, 'warn');
-			// Don't throw here - we'll handle this in the fallback logic
-		};
-
-		// Process the stream - handle different possible stream structures
-		try {
-			// Try textStream property first (most common)
-			if (
-				textStream.textStream &&
-				typeof textStream.textStream[Symbol.asyncIterator] === 'function'
-			) {
-				for await (const chunk of textStream.textStream) {
-					accumulatedText += chunk;
-					parser.write(chunk);
-				}
-			}
-			// Try fullStream property as fallback
-			else if (
-				textStream.fullStream &&
-				typeof textStream.fullStream[Symbol.asyncIterator] === 'function'
-			) {
-				for await (const chunk of textStream.fullStream) {
-					if (chunk.type === 'text-delta' && chunk.textDelta) {
-						accumulatedText += chunk.textDelta;
-						parser.write(chunk.textDelta);
-					}
-				}
-			}
-			// Try iterating the stream object directly
-			else if (typeof textStream[Symbol.asyncIterator] === 'function') {
-				for await (const chunk of textStream) {
-					accumulatedText += chunk;
-					parser.write(chunk);
-				}
-			} else {
-				throw new Error(
-					'Stream object is not iterable - no textStream, fullStream, or direct async iterator found'
-				);
-			}
-		} catch (streamError) {
-			report(`Stream processing error: ${streamError.message}`, 'error');
-			throw new Error(
-				`Failed to process AI text stream: ${streamError.message}`
+		if (usedFallback) {
+			report(
+				`Fallback parsing recovered ${parsedTasks.length - numTasks} additional tasks`,
+				'info'
 			);
-		}
-
-		parser.end();
-
-		// Wait a moment for final parsing
-		await new Promise((resolve) => setTimeout(resolve, 100));
-
-		// If streaming parser didn't get all tasks, try fallback parsing
-		if (parsedTasks.length < numTasks && accumulatedText) {
-			try {
-				report(
-					`Attempting fallback JSON parsing (got ${parsedTasks.length}/${numTasks} tasks from stream)`,
-					'info'
-				);
-				const fullResponse = JSON.parse(accumulatedText);
-				if (fullResponse.tasks && Array.isArray(fullResponse.tasks)) {
-					// Only add tasks we haven't already parsed AND report progress for each
-					const newTasks = fullResponse.tasks.slice(parsedTasks.length);
-					for (const task of newTasks) {
-						if (
-							task &&
-							task.title &&
-							typeof task.title === 'string' &&
-							task.title.trim()
-						) {
-							parsedTasks.push(task);
-							const currentProgress = parsedTasks.length;
-							const priority = task.priority || 'medium';
-							const priorityIndicator = priorityMap[priority];
-
-							// Re-estimate output tokens for fallback tasks
-							estimatedOutputTokens = estimateTokens(accumulatedText);
-
-							// Report progress for fallback-discovered tasks
-							await reportProgress({
-								progress: currentProgress,
-								total: numTasks,
-								message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
-							}).catch((error) => {
-								report(`Progress reporting failed: ${error.message}`, 'warn');
-							});
-						}
-					}
-
-					if (newTasks.length > 0) {
-						report(
-							`Fallback parsing recovered ${newTasks.length} additional tasks`,
-							'info'
-						);
-					}
-				}
-			} catch (parseError) {
-				// If we have some tasks from streaming, continue with those
-				if (parsedTasks.length > 0) {
-					report(
-						`Fallback JSON parsing failed, but continuing with ${parsedTasks.length} tasks from streaming`,
-						'warn'
-					);
-				} else {
-					throw new Error(
-						`Failed to parse AI response as JSON: ${parseError.message}`
-					);
-				}
-			}
 		}
 
 		if (parsedTasks.length === 0) {
