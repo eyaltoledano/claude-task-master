@@ -30,7 +30,11 @@ jest.unstable_mockModule(
 			mainResult: {
 				tasks: []
 			},
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		}),
 		streamTextService: jest.fn().mockResolvedValue({
 			mainResult: {
@@ -42,7 +46,11 @@ jest.unstable_mockModule(
 					}
 				}
 			},
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		})
 	})
 );
@@ -187,7 +195,11 @@ describe('parsePRD', () => {
 		path.default.dirname.mockReturnValue('tasks');
 		generateObjectService.mockResolvedValue({
 			mainResult: sampleClaudeResponse,
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		});
 		generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
@@ -246,7 +258,11 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		});
 
 		// Verify that the written data contains 2 tasks from sampleClaudeResponse
@@ -525,7 +541,11 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		});
 	});
 
@@ -560,7 +580,11 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		});
 	});
 
@@ -585,7 +609,11 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {
+				inputTokens: 2150,
+				outputTokens: 1847,
+				totalCost: 0.0423
+			}
 		});
 	});
 

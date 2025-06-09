@@ -147,18 +147,11 @@ describe('MCP progress reporting compliance', () => {
 
 		// Simulate the progress reporting pattern used in parsePRDWithStreaming
 		const simulateProgress = async (numTasks = 10) => {
-			// Initial progress
+			// Initial progress with input token count
 			await mockReportProgress({
 				progress: 0,
 				total: numTasks,
-				message: `Task 0/${numTasks} - Starting PRD analysis...`
-			});
-
-			// Setup phase (same progress, different message)
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - AI analysis in progress...`
+				message: `Starting PRD analysis (Input: 2150 tokens) with research...`
 			});
 
 			// Simulate task generation from streaming - partial parsing
@@ -168,15 +161,24 @@ describe('MCP progress reporting compliance', () => {
 				{ title: 'Task Three', description: 'Third task', priority: 'low' }
 			];
 
+			// Priority indicator mapping
+			const priorityMap = {
+				high: '🔴',
+				medium: '🟠',
+				low: '🟢'
+			};
+
 			for (let i = 0; i < streamingTasks.length; i++) {
 				const task = streamingTasks[i];
 				// Only report progress if task has a valid title
 				if (task.title && typeof task.title === 'string' && task.title.trim()) {
 					const priority = task.priority || 'medium';
+					const priorityIndicator = priorityMap[priority];
+					const estimatedOutputTokens = 340 + i * 340; // Simulate growing output tokens
 					await mockReportProgress({
 						progress: i + 1,
 						total: numTasks,
-						message: `Task ${i + 1}/${numTasks} - ${task.title} (${priority})`
+						message: `${priorityIndicator} Task ${i + 1}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
 					});
 				}
 			}
@@ -200,18 +202,20 @@ describe('MCP progress reporting compliance', () => {
 				const task = fallbackTasks[i];
 				const currentProgress = streamingTasks.length + i + 1;
 				const priority = task.priority || 'medium';
+				const priorityIndicator = priorityMap[priority];
+				const estimatedOutputTokens = 1360 + (i + 1) * 340; // Continue growing output tokens
 				await mockReportProgress({
 					progress: currentProgress,
 					total: numTasks,
-					message: `Task ${currentProgress}/${numTasks} - ${task.title} (${priority})`
+					message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
 				});
 			}
 
-			// Final completion
+			// Final completion with actual token counts
 			await mockReportProgress({
 				progress: numTasks,
 				total: numTasks,
-				message: `Task ${numTasks}/${numTasks} - ✅ Completed: Successfully generated ${streamingTasks.length + fallbackTasks.length} tasks`
+				message: `✅ Task Generation Completed | Tokens (I/O): 2150/1847 ($0.0423)`
 			});
 		};
 
@@ -239,18 +243,19 @@ describe('MCP progress reporting compliance', () => {
 			const finalReport = progressReports[progressReports.length - 1];
 			expect(finalReport.progress).toBe(finalReport.total);
 
-			// Verify that task generation messages contain task titles and priorities
+			// Verify that task generation messages contain task titles and token info
 			const taskMessages = progressReports.filter(
 				(r) =>
 					r.message.includes('Task ') &&
 					r.message.includes(' - ') &&
 					!r.message.includes('Starting') &&
-					!r.message.includes('AI analysis') &&
 					!r.message.includes('Completed')
 			);
 			taskMessages.forEach((report) => {
-				// Should contain priority in parentheses for task messages
-				expect(report.message).toMatch(/\([a-z]+\)$/); // Should end with "(priority)"
+				// Should contain priority indicator emoji and token info for task messages
+				expect(report.message).toMatch(
+					/^[🔴🟠🟢] Task \d+\/\d+ - .+ \| ~Output: \d+ tokens$/u
+				);
 			});
 		});
 	});
@@ -265,18 +270,11 @@ describe('MCP progress reporting compliance', () => {
 
 		// Simulate the streaming progress pattern used in parsePRDWithStreaming
 		const simulateStreamingProgress = async (numTasks = 3) => {
-			// Initial progress - starting analysis
+			// Initial progress with input token count
 			await mockReportProgress({
 				progress: 0,
 				total: numTasks,
-				message: `Task 0/${numTasks} - Starting PRD analysis...`
-			});
-
-			// AI analysis in progress
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - AI analysis in progress...`
+				message: `Starting PRD analysis (Input: 1850 tokens)...`
 			});
 
 			// Simulate tasks being parsed from streaming JSON
@@ -286,22 +284,31 @@ describe('MCP progress reporting compliance', () => {
 				{ title: 'Design database schema', priority: 'medium' }
 			];
 
+			// Priority indicator mapping
+			const priorityMap = {
+				high: '🔴',
+				medium: '🟠',
+				low: '🟢'
+			};
+
 			// Report progress for each task as it's parsed from the stream
 			for (let i = 0; i < mockTasks.length; i++) {
 				const task = mockTasks[i];
 				const currentProgress = i + 1;
+				const priorityIndicator = priorityMap[task.priority];
+				const estimatedOutputTokens = 280 + i * 280; // Simulate growing output tokens
 				await mockReportProgress({
 					progress: currentProgress,
 					total: numTasks,
-					message: `Task ${currentProgress}/${numTasks} - ${task.title} (${task.priority})`
+					message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
 				});
 			}
 
-			// Final completion message
+			// Final completion message with actual token counts
 			await mockReportProgress({
 				progress: numTasks,
 				total: numTasks,
-				message: `Task ${numTasks}/${numTasks} - ✅ Completed: Successfully generated ${mockTasks.length} tasks`
+				message: `✅ Task Generation Completed | Tokens (I/O): 1850/840 ($0.0287)`
 			});
 
 			return { success: true, tasksGenerated: mockTasks.length };
@@ -316,7 +323,7 @@ describe('MCP progress reporting compliance', () => {
 
 		// Verify progress reports were made
 		expect(progressReports.length).toBeGreaterThan(0);
-		expect(mockReportProgress).toHaveBeenCalledTimes(6); // 2 setup + 3 tasks + 1 completion
+		expect(mockReportProgress).toHaveBeenCalledTimes(5); // 1 setup + 3 tasks + 1 completion
 
 		// Verify MCP compliance - progress always increases or stays the same
 		for (let i = 1; i < progressReports.length; i++) {
@@ -328,15 +335,14 @@ describe('MCP progress reporting compliance', () => {
 		// Verify consistent total throughout
 		const totals = progressReports.map((r) => r.total);
 		expect(new Set(totals).size).toBe(1); // All totals should be the same
-		expect(totals[0]).toBe(3);
+		expect(totals[0]).toBe(3); // Should equal numTasks
 
-		// Verify we have the expected progress sequence
+		// Verify we have the expected progress sequence (updated for new format)
 		expect(progressReports[0].progress).toBe(0); // Starting
-		expect(progressReports[1].progress).toBe(0); // AI analysis
-		expect(progressReports[2].progress).toBe(1); // First task
-		expect(progressReports[3].progress).toBe(2); // Second task
-		expect(progressReports[4].progress).toBe(3); // Third task
-		expect(progressReports[5].progress).toBe(3); // Completion
+		expect(progressReports[1].progress).toBe(1); // First task
+		expect(progressReports[2].progress).toBe(2); // Second task
+		expect(progressReports[3].progress).toBe(3); // Third task
+		expect(progressReports[4].progress).toBe(3); // Completion
 
 		// Verify task messages have the correct format
 		const taskMessages = progressReports.filter(
@@ -350,28 +356,28 @@ describe('MCP progress reporting compliance', () => {
 
 		expect(taskMessages.length).toBe(3); // Should have 3 task progress messages
 
-		// Verify all task messages have the correct format: "Task X/Y - Title (priority)"
+		// Verify all task messages have the correct format with priority indicators and tokens
 		taskMessages.forEach((report) => {
-			expect(report.message).toMatch(/^Task \d+\/\d+ - .+ \([a-z]+\)$/);
+			expect(report.message).toMatch(
+				/^[🔴🟠🟢] Task \d+\/\d+ - .+ \| ~Output: \d+ tokens$/u
+			);
 		});
 
-		// Verify specific task titles and priorities are included
+		// Verify specific task titles and priority indicators are included
 		expect(taskMessages[0].message).toContain(
-			'Set up project structure (high)'
+			'🔴 Task 1/3 - Set up project structure | ~Output: 280 tokens'
 		);
 		expect(taskMessages[1].message).toContain(
-			'Implement user authentication (high)'
+			'🔴 Task 2/3 - Implement user authentication | ~Output: 560 tokens'
 		);
 		expect(taskMessages[2].message).toContain(
-			'Design database schema (medium)'
+			'🟠 Task 3/3 - Design database schema | ~Output: 840 tokens'
 		);
 
 		// Verify final completion message
 		const completionMessage = progressReports[progressReports.length - 1];
-		expect(completionMessage.message).toContain('✅ Completed');
-		expect(completionMessage.message).toContain(
-			'Successfully generated 3 tasks'
-		);
+		expect(completionMessage.message).toContain('✅ Task Generation Completed');
+		expect(completionMessage.message).toContain('Tokens (I/O): 1850/840');
 		expect(completionMessage.progress).toBe(completionMessage.total);
 	});
 

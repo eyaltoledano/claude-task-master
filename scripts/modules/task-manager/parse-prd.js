@@ -44,6 +44,16 @@ const prdResponseSchema = z.object({
 });
 
 /**
+ * Estimate token count from text
+ * @param {string} text - Text to estimate tokens for
+ * @returns {number} Estimated token count
+ */
+function estimateTokens(text) {
+	// Common approximation: ~4 characters per token for English
+	return Math.ceil(text.length / 4);
+}
+
+/**
  * Build system prompt for PRD parsing
  * @param {boolean} research - Whether to use research mode
  * @param {number} numTasks - Number of tasks to generate
@@ -309,11 +319,14 @@ async function parsePRDWithStreaming(
 			research
 		);
 
-		// Report initial progress
+		// Estimate input tokens
+		const estimatedInputTokens = estimateTokens(systemPrompt + userPrompt);
+
+		// Report initial progress with input token count
 		await reportProgress({
 			progress: 0,
 			total: numTasks,
-			message: `Task 0/${numTasks} - Starting PRD analysis${research ? ' with research' : ''}...`
+			message: `Starting PRD analysis (Input: ${estimatedInputTokens} tokens)${research ? ' with research' : ''}...`
 		});
 
 		// Call streaming AI service
@@ -321,12 +334,6 @@ async function parsePRDWithStreaming(
 			`Calling streaming AI service to generate tasks from PRD${research ? ' with research-backed analysis' : ''}...`,
 			'info'
 		);
-
-		await reportProgress({
-			progress: 0,
-			total: numTasks,
-			message: `Task 0/${numTasks} - AI analysis in progress...`
-		});
 
 		// Dynamic import to avoid Jest module resolution issues
 		const { streamTextService } = await import('../ai-services-unified.js');
@@ -348,6 +355,14 @@ async function parsePRDWithStreaming(
 		// Parse streaming JSON and track task progress
 		const parsedTasks = [];
 		let accumulatedText = '';
+		let estimatedOutputTokens = 0;
+
+		// Priority indicator mapping
+		const priorityMap = {
+			high: '🔴',
+			medium: '🟠',
+			low: '🟢'
+		};
 
 		const parser = new JSONParser({ paths: ['$.tasks.*'] });
 
@@ -365,11 +380,15 @@ async function parsePRDWithStreaming(
 				parsedTasks.push(task);
 				const currentProgress = parsedTasks.length;
 				const priority = task.priority || 'medium';
+				const priorityIndicator = priorityMap[priority];
+
+				// Re-estimate output tokens based on accumulated text so far
+				estimatedOutputTokens = estimateTokens(accumulatedText);
 
 				reportProgress({
 					progress: currentProgress,
 					total: numTasks,
-					message: `Task ${currentProgress}/${numTasks} - ${task.title} (${priority})`
+					message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
 				}).catch((error) => {
 					// Log progress errors but don't break the flow
 					report(`Progress reporting failed: ${error.message}`, 'warn');
@@ -450,12 +469,16 @@ async function parsePRDWithStreaming(
 							parsedTasks.push(task);
 							const currentProgress = parsedTasks.length;
 							const priority = task.priority || 'medium';
+							const priorityIndicator = priorityMap[priority];
+
+							// Re-estimate output tokens for fallback tasks
+							estimatedOutputTokens = estimateTokens(accumulatedText);
 
 							// Report progress for fallback-discovered tasks
 							await reportProgress({
 								progress: currentProgress,
 								total: numTasks,
-								message: `Task ${currentProgress}/${numTasks} - ${task.title} (${priority})`
+								message: `${priorityIndicator} Task ${currentProgress}/${numTasks} - ${task.title} | ~Output: ${estimatedOutputTokens} tokens`
 							}).catch((error) => {
 								report(`Progress reporting failed: ${error.message}`, 'warn');
 							});
@@ -542,7 +565,7 @@ async function parsePRDWithStreaming(
 		await reportProgress({
 			progress: numTasks,
 			total: numTasks,
-			message: `Task ${numTasks}/${numTasks} - ✅ Completed: Successfully generated ${processedNewTasks.length} tasks`
+			message: `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens} ($${aiServiceResponse.telemetryData.totalCost.toFixed(4)})`
 		});
 
 		// Return telemetry data
