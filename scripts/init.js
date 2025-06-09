@@ -22,7 +22,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
-import updateGitignore from '../src/utils/updateGitignore.js';
+import manageGitignoreFile from '../src/utils/manage-gitignore.js';
 import { isSilentMode } from './modules/utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
@@ -189,7 +189,7 @@ function copyTemplateFile(
 	templateName,
 	targetPath,
 	replacements = {},
-	storeTasksInGit
+	storeTasksInGit = false
 ) {
 	// Get the file content from the appropriate source directory
 	let sourcePath;
@@ -288,35 +288,13 @@ function copyTemplateFile(
 
 	// Special handling for .gitignore: adjust last two lines and merge
 	if (path.basename(targetPath) === '.gitignore') {
-		updateGitignore(targetPath, content, storeTasksInGit, log);
+		manageGitignoreFile(targetPath, content, storeTasksInGit, log);
 		return;
 	}
 
 	// Handle special files that should be merged instead of overwritten
 	if (fs.existsSync(targetPath)) {
 		const filename = path.basename(targetPath);
-
-		// Handle .gitignore - append lines that don't exist
-		if (filename === '.gitignore') {
-			log('info', `${targetPath} already exists, merging content...`);
-			const existingContent = fs.readFileSync(targetPath, 'utf8');
-			const existingLines = new Set(
-				existingContent.split('\n').map((line) => line.trim())
-			);
-			const newLines = content
-				.split('\n')
-				.filter((line) => !existingLines.has(line.trim()));
-
-			if (newLines.length > 0) {
-				// Add a comment to separate the original content from our additions
-				const updatedContent = `${existingContent.trim()}\n\n# Added by Task Master AI\n${newLines.join('\n')}`;
-				fs.writeFileSync(targetPath, updatedContent);
-				log('success', `Updated ${targetPath} with additional entries`);
-			} else {
-				log('info', `No new content to add to ${targetPath}`);
-			}
-			return;
-		}
 
 		// Handle .windsurfrules - append the entire content
 		if (filename === '.windsurfrules') {
