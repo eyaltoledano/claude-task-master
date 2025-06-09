@@ -23,7 +23,7 @@ import {
 export function registerParsePRDTool(server) {
 	server.addTool({
 		name: 'parse_prd',
-		description: `Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's ${TASKMASTER_DOCS_DIR} directory.`,
+		description: `Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's ${TASKMASTER_DOCS_DIR} directory. This operation supports progress reporting for streaming task generation.`,
 		parameters: z.object({
 			input: z
 				.string()
@@ -61,14 +61,27 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('Append generated tasks to existing file.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				const result = await parsePRDDirect(args, log, { session });
-				return handleApiResult(result, log);
-			} catch (error) {
-				log.error(`Error in parse_prd: ${error.message}`);
-				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
+				try {
+					// Validate that reportProgress is available for long-running operations
+					if (typeof reportProgress !== 'function') {
+						log.warn(
+							'reportProgress not available - operation will run without progress updates'
+						);
+					}
+
+					const result = await parsePRDDirect(args, log, {
+						session,
+						reportProgress:
+							typeof reportProgress === 'function' ? reportProgress : undefined
+					});
+					return handleApiResult(result, log);
+				} catch (error) {
+					log.error(`Error in parse_prd: ${error.message}`);
+					return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+				}
 			}
-		})
+		)
 	});
 }
