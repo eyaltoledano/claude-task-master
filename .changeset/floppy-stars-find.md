@@ -1,5 +1,5 @@
 ---
-"task-master-ai": minor
+"task-master-ai": patch
 ---
 
 Add real-time progress tracking for MCP parse-prd tool
