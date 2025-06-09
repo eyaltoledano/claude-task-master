@@ -2,4 +2,4 @@
 "task-master-ai": patch
 ---
 
-Replace external Cursor install button with local image to prevent GitHub proxy issues
+Fix Cursor deeplink installation by providing copy-paste instructions for GitHub compatibility
