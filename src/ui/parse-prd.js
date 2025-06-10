@@ -53,8 +53,8 @@ function displayParsePrdStart({
 		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
 	}
 
-	// Create the message content with all information
-	let message =
+	// Create the main message content (without append/force notices)
+	const message =
 		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
 		'\n' +
 		chalk.dim(modelLine) +
@@ -65,43 +65,44 @@ function displayParsePrdStart({
 		'\n' +
 		chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`);
 
-	// Add mode indicators at the bottom with line break
-	if (append || force) {
-		message += '\n'; // Add line break before notices
+	// Display the main boxen
+	console.log(
+		boxen(message, {
+			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			margin: { top: 0, bottom: 0 },
+			borderColor: 'blue',
+			borderStyle: 'round'
+		})
+	);
 
+	// Display append/force notices beneath the boxen if either flag is set
+	if (append || force) {
 		// Add append mode details if enabled
 		if (append) {
-			message +=
-				'\n' +
+			console.log(
 				chalk.yellow.bold('📝 Append mode') +
-				` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`;
+				` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`
+			);
 		}
 
 		// Add force mode details if enabled
 		if (force) {
 			if (append) {
-				message +=
-					'\n' +
+				console.log(
 					chalk.red.bold('⚠️  Force flag enabled') +
-					` - Will overwrite if conflicts occur`;
+					` - Will overwrite if conflicts occur`
+				);
 			} else {
-				message +=
-					'\n' +
+				console.log(
 					chalk.red.bold('⚠️  Force flag enabled') +
-					` - Overwriting existing tasks`;
+					` - Overwriting existing tasks`
+				);
 			}
 		}
-	}
 
-	// Display everything in a single boxen
-	console.log(
-		boxen(message, {
-			padding: { top: 1, bottom: 1, left: 2, right: 2 },
-			margin: { top: 0, bottom: 1 },
-			borderColor: 'blue',
-			borderStyle: 'round'
-		})
-	);
+		// Add a blank line after notices for spacing
+		console.log();
+	}
 }
 
 /**
