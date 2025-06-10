@@ -355,12 +355,12 @@ async function parsePRDWithStreaming(
 				// Force overwrite is true
 				report(
 					`Force flag enabled. Overwriting existing file: ${tasksPath}`,
-					'info'
+					'debug'
 				);
 			}
 		}
 
-		report(`Reading PRD content from ${prdPath}`, 'info');
+		report(`Reading PRD content from ${prdPath}`, 'debug');
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 		if (!prdContent) {
 			throw new Error(`Input file ${prdPath} is empty or could not be read.`);
@@ -391,7 +391,7 @@ async function parsePRDWithStreaming(
 		// Call streaming AI service
 		report(
 			`Calling streaming AI service to generate tasks from PRD${research ? ' with research-backed analysis' : ''}...`,
-			'info'
+			'debug'
 		);
 
 		aiServiceResponse = await streamTextService({
@@ -673,12 +673,12 @@ async function parsePRDWithoutStreaming(
 			} else {
 				report(
 					`Force flag enabled. Overwriting existing file: ${tasksPath}`,
-					'info'
+					'debug'
 				);
 			}
 		}
 
-		report(`Reading PRD content from ${prdPath}`, 'info');
+		report(`Reading PRD content from ${prdPath}`, 'debug');
 		const prdContent = fs.readFileSync(prdPath, 'utf8');
 		if (!prdContent) {
 			throw new Error(`Input file ${prdPath} is empty or could not be read.`);
