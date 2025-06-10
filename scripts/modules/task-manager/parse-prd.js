@@ -14,14 +14,24 @@ import {
 	findTaskById
 } from '../utils.js';
 
-import { generateObjectService } from '../ai-services-unified.js';
+import {
+	generateObjectService,
+	streamTextService
+} from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
 import {
-	parseStreamingJSON,
-	createTaskProgressCallback
-} from '../../../src/utils/stream-json-parser.js';
+	displayParsePrdStart,
+	displayParsePrdSummary
+} from '../../../src/ui/parse-prd.js';
+import {
+	getParametersForRole,
+	getMainModelId,
+	getResearchModelId
+} from '../config-manager.js';
+import { parseStreamingJSON } from '../../../src/utils/stream-json-parser.js';
+import { createPrdParseTracker } from '../../../src/progress/prd-parse-tracker.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -113,12 +123,15 @@ Guidelines:
 /**
  * Create logging functions for PRD parsing
  * @param {Object} mcpLog - MCP logger object (optional)
+ * @param {Function} reportProgress - Progress reporting function (optional)
  * @returns {Object} Object with logFn and report functions
  */
-function createLoggingFunctions(mcpLog) {
+function createLoggingFunctions(mcpLog, reportProgress) {
 	const isMCP = !!mcpLog;
-	// Only use json format for MCP mode, let tests run in their intended mode
-	const outputFormat = isMCP ? 'json' : 'text';
+	// MCP without reportProgress → 'json' (structured response)
+	// MCP with reportProgress → 'text' (streaming with progress UI)
+	// CLI → 'text' (streaming with progress UI, may fall back but keeps text UI)
+	const outputFormat = isMCP && !reportProgress ? 'json' : 'text';
 
 	const logFn = mcpLog || {
 		info: (...args) => log('info', ...args),
@@ -188,9 +201,11 @@ function buildUserPrompt(prdContent, numTasks, nextId, prdPath, research) {
  */
 async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	const { reportProgress, mcpLog } = options;
+	const { outputFormat } = createLoggingFunctions(mcpLog, reportProgress);
 
-	// Auto-detect streaming based on whether reportProgress is provided by FastMCP
-	const useStreaming = typeof reportProgress === 'function';
+	// Use streaming if reportProgress is provided (MCP) OR if outputFormat is 'text' (CLI)
+	const useStreaming =
+		typeof reportProgress === 'function' || outputFormat === 'text';
 
 	if (useStreaming) {
 		try {
@@ -250,11 +265,43 @@ async function parsePRDWithStreaming(
 		append = false,
 		research = false
 	} = options;
-	const { logFn, report, outputFormat, isMCP } = createLoggingFunctions(mcpLog);
+	const { logFn, report, outputFormat, isMCP } = createLoggingFunctions(
+		mcpLog,
+		reportProgress
+	);
 
 	report(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
 	);
+
+	// Initialize progress tracker for CLI mode only
+	let progressTracker = null;
+	if (outputFormat === 'text') {
+		progressTracker = createPrdParseTracker({
+			numTasks,
+			append
+		});
+
+		// Get actual AI configuration for display
+		const aiRole = research ? 'research' : 'main';
+		const modelId = research ? getResearchModelId() : getMainModelId();
+		const parameters = getParametersForRole(aiRole);
+
+		displayParsePrdStart({
+			prdFilePath: prdPath,
+			outputPath: tasksPath,
+			numTasks,
+			append,
+			research,
+			force,
+			existingTasks: [], // Will be populated below
+			nextId: 1, // Will be updated below
+			model: modelId || 'Default',
+			temperature: parameters?.temperature || 0.7
+		});
+
+		progressTracker.start();
+	}
 
 	let existingTasks = [];
 	let nextId = 1;
@@ -291,11 +338,13 @@ async function parsePRDWithStreaming(
 					`Output file ${tasksPath} already exists. Use --force to overwrite or --append.`
 				);
 				report(overwriteError.message, 'error');
-				if (outputFormat === 'text') {
+				if (isMCP) {
+					// MCP context should always throw, never exit
+					throw overwriteError;
+				} else {
+					// CLI context should show error and exit
 					console.error(chalk.red(overwriteError.message));
 					process.exit(1);
-				} else {
-					throw overwriteError;
 				}
 			} else {
 				// Force overwrite is true
@@ -326,11 +375,13 @@ async function parsePRDWithStreaming(
 		const estimatedInputTokens = estimateTokens(systemPrompt + userPrompt);
 
 		// Report initial progress with input token count
-		await reportProgress({
-			progress: 0,
-			total: numTasks,
-			message: `Starting PRD analysis (Input: ${estimatedInputTokens} tokens)${research ? ' with research' : ''}...`
-		});
+		if (reportProgress) {
+			await reportProgress({
+				progress: 0,
+				total: numTasks,
+				message: `Starting PRD analysis (Input: ${estimatedInputTokens} tokens)${research ? ' with research' : ''}...`
+			});
+		}
 
 		// Call streaming AI service
 		report(
@@ -338,8 +389,6 @@ async function parsePRDWithStreaming(
 			'info'
 		);
 
-		// Dynamic import to avoid Jest module resolution issues
-		const { streamTextService } = await import('../ai-services-unified.js');
 		aiServiceResponse = await streamTextService({
 			role: research ? 'research' : 'main',
 			session: session,
@@ -355,15 +404,38 @@ async function parsePRDWithStreaming(
 			throw new Error('No text stream received from AI service');
 		}
 
-		// Parse streaming JSON using the reusable utility
-		const progressCallback = createTaskProgressCallback(
-			reportProgress,
-			numTasks
-		);
+		// Create a simple progress callback that handles both CLI and MCP progress
+		const onProgress = async (task, metadata) => {
+			const { currentCount, estimatedTokens } = metadata;
+			const priority = task.priority || 'medium';
+
+			// CLI progress tracker (if available)
+			if (progressTracker) {
+				progressTracker.addTaskLine(currentCount, task.title, priority);
+
+				// Update tokens display if available
+				if (estimatedTokens) {
+					progressTracker.updateTokens(estimatedInputTokens, estimatedTokens);
+				}
+			}
+
+			// MCP progress reporting (if available) - direct call like original working version
+			if (reportProgress) {
+				try {
+					await reportProgress({
+						progress: currentCount,
+						total: numTasks,
+						message: `Task ${currentCount}/${numTasks} - ${task.title} (${priority})`
+					});
+				} catch (error) {
+					report(`Progress reporting failed: ${error.message}`, 'warn');
+				}
+			}
+		};
 
 		const parseResult = await parseStreamingJSON(textStream, {
 			jsonPaths: ['$.tasks.*'],
-			onProgress: progressCallback,
+			onProgress: onProgress,
 			onError: (error) => {
 				report(`JSON parsing error: ${error.message}`, 'warn');
 			},
@@ -455,11 +527,49 @@ async function parsePRDWithStreaming(
 			completionMessage = `✅ Task Generation Completed | ~Tokens (I/O): ${estimatedInputTokens}/${estimatedOutputTokens}`;
 		}
 
-		await reportProgress({
-			progress: numTasks,
-			total: numTasks,
-			message: completionMessage
-		});
+		if (reportProgress) {
+			await reportProgress({
+				progress: numTasks,
+				total: numTasks,
+				message: completionMessage
+			});
+		}
+
+		// Complete and stop progress tracker for CLI mode
+		if (progressTracker) {
+			// Get summary before stopping
+			const summary = progressTracker.getSummary();
+
+			progressTracker.stop();
+
+			// Display summary
+			const taskFilesGenerated = (() => {
+				if (
+					!Array.isArray(processedNewTasks) ||
+					processedNewTasks.length === 0
+				) {
+					return `task_${String(nextId).padStart(3, '0')}.txt`;
+				}
+				const firstNewTaskId = processedNewTasks[0].id;
+				const lastNewTaskId =
+					processedNewTasks[processedNewTasks.length - 1].id;
+				if (processedNewTasks.length === 1) {
+					return `task_${String(firstNewTaskId).padStart(3, '0')}.txt`;
+				}
+				return `task_${String(firstNewTaskId).padStart(3, '0')}.txt -> task_${String(lastNewTaskId).padStart(3, '0')}.txt`;
+			})();
+
+			displayParsePrdSummary({
+				totalTasks: processedNewTasks.length,
+				taskPriorities: summary.taskPriorities,
+				prdFilePath: prdPath,
+				outputPath: tasksPath,
+				elapsedTime: summary.elapsedTime,
+				usedFallback,
+				taskFilesGenerated,
+				actionVerb: summary.actionVerb
+			});
+		}
 
 		// Return telemetry data
 		return {
@@ -468,6 +578,10 @@ async function parsePRDWithStreaming(
 			telemetryData: aiServiceResponse?.telemetryData
 		};
 	} catch (error) {
+		// Stop progress tracker on error
+		if (progressTracker) {
+			progressTracker.stop();
+		}
 		report(`Error parsing PRD: ${error.message}`, 'error');
 		throw error;
 	}
@@ -488,9 +602,13 @@ async function parsePRDWithoutStreaming(
 		projectRoot,
 		force = false,
 		append = false,
-		research = false
+		research = false,
+		reportProgress
 	} = options;
-	const { logFn, report, outputFormat, isMCP } = createLoggingFunctions(mcpLog);
+	const { logFn, report, outputFormat, isMCP } = createLoggingFunctions(
+		mcpLog,
+		reportProgress
+	);
 
 	report(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
@@ -530,11 +648,13 @@ async function parsePRDWithoutStreaming(
 					`Output file ${tasksPath} already exists. Use --force to overwrite or --append.`
 				);
 				report(overwriteError.message, 'error');
-				if (outputFormat === 'text') {
+				if (isMCP) {
+					// MCP context should always throw, never exit
+					throw overwriteError;
+				} else {
+					// CLI context should show error and exit
 					console.error(chalk.red(overwriteError.message));
 					process.exit(1);
-				} else {
-					throw overwriteError;
 				}
 			} else {
 				report(
@@ -703,8 +823,12 @@ async function parsePRDWithoutStreaming(
 	} catch (error) {
 		report(`Error parsing PRD: ${error.message}`, 'error');
 
-		// Only show error UI for text output (CLI)
-		if (outputFormat === 'text') {
+		// Only show error UI for CLI context
+		if (isMCP) {
+			// MCP context should always throw, never exit
+			throw error;
+		} else {
+			// CLI context should show error and exit
 			console.error(chalk.red(`Error: ${error.message}`));
 
 			if (getDebugFlag(projectRoot)) {
@@ -713,8 +837,6 @@ async function parsePRDWithoutStreaming(
 			}
 
 			process.exit(1);
-		} else {
-			throw error; // Re-throw for JSON output
 		}
 	}
 }
