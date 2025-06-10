@@ -146,12 +146,7 @@ jest.unstable_mockModule(
 				taskPriorities: { high: 0, medium: 0, low: 0 },
 				elapsedTime: 0,
 				actionVerb: 'generated'
-			}),
-			updateAnalyzing: jest.fn(),
-			updateGenerating: jest.fn(),
-			completeGenerating: jest.fn(),
-			updateFinalizing: jest.fn(),
-			completeFinalizing: jest.fn()
+			})
 		})
 	})
 );
