@@ -13,7 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import ora from 'ora'; // Import ora
 
-import { log, readJSON, findProjectRoot } from './utils.js';
+import { log, readJSON, findProjectRoot, isSilentMode } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -694,6 +694,8 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
+			// Check if we should use progress tracking instead of spinner
+			const shouldUseProgressTracker = !isSilentMode() && process.stdout.isTTY;
 			let spinner;
 
 			try {
@@ -705,13 +707,21 @@ function registerCommands(programInstance) {
 						if (!(await confirmOverwriteIfNeeded())) return;
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-						spinner = ora('Parsing PRD and generating tasks...\n').start();
+
+						if (!shouldUseProgressTracker) {
+							spinner = ora('Parsing PRD and generating tasks...\n').start();
+						}
+
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
 							append: useAppend, // Changed key from useAppend to append
 							force: useForce, // Changed key from useForce to force
-							research: research
+							research: research,
+							progressTracker: shouldUseProgressTracker
 						});
-						spinner.succeed('Tasks generated successfully!');
+
+						if (spinner) {
+							spinner.succeed('Tasks generated successfully!');
+						}
 						return;
 					}
 
@@ -751,13 +761,20 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...\n').start();
+				if (!shouldUseProgressTracker) {
+					spinner = ora('Parsing PRD and generating tasks...\n').start();
+				}
+
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
-					research: research
+					research: research,
+					progressTracker: shouldUseProgressTracker
 				});
-				spinner.succeed('Tasks generated successfully!');
+
+				if (spinner) {
+					spinner.succeed('Tasks generated successfully!');
+				}
 			} catch (error) {
 				if (spinner) {
 					spinner.fail(`Error parsing PRD: ${error.message}`);
