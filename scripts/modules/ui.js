@@ -2150,21 +2150,54 @@ function displayPRDParsingStart({
 	numTasks,
 	model = 'Default',
 	temperature = 0.7,
-	append = false
+	append = false,
+	research = false,
+	force = false,
+	existingTasks = [],
+	nextId = 1
 }) {
 	// Determine the action verb based on append flag
 	const actionVerb = append ? 'Appending' : 'Generating';
+	
+	// Create the model line with research indicator
+	let modelLine = `Model: ${model} | Temperature: ${temperature}`;
+	if (research) {
+		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
+	}
+	
 	// Create the message content with all information
 	let message =
 		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
 		'\n' +
-		chalk.dim(`Model: ${model} | Temperature: ${temperature}`) +
+		chalk.dim(modelLine) +
 		'\n\n' +
 		chalk.blue(`Input: ${prdFilePath}`) +
 		'\n' +
 		chalk.blue(`Output: ${outputPath}`) +
 		'\n' +
-		chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`);
+			chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`);
+
+	// Add mode indicators at the bottom with line break
+	if (append || force) {
+		message += '\n'; // Add line break before notices
+		
+		// Add append mode details if enabled
+		if (append) {
+			message += '\n' + chalk.yellow.bold('❇️ Append mode enabled') + 
+				` - Found ${existingTasks.length} existing tasks. Next ID will be ${nextId}.`;
+		}
+
+		// Add force mode details if enabled
+		if (force) {
+			if (append) {
+				message += '\n' + chalk.red.bold('⚠️  Force flag enabled') + 
+					` - Will overwrite if conflicts occur`;
+			} else {
+				message += '\n' + chalk.red.bold('⚠️  Force flag enabled') + 
+					` - Overwriting existing tasks`;
+			}
+		}
+	}
 
 	// Display everything in a single boxen
 	console.log(
