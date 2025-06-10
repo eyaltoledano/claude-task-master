@@ -43,7 +43,15 @@ jest.unstable_mockModule(
 // Mock the config manager using unstable_mockModule
 jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getConfig: mockGetConfig,
-	getDebugFlag: mockGetDebugFlag
+	getDebugFlag: mockGetDebugFlag,
+	getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+	getResearchModelId: jest.fn(() => 'claude-3-5-sonnet'),
+	getParametersForRole: jest.fn(() => ({
+		provider: 'anthropic',
+		modelId: 'claude-3-5-sonnet',
+		maxTokens: 4000,
+		temperature: 0.7
+	}))
 }));
 
 // Mock the utils module

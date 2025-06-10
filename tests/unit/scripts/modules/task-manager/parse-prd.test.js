@@ -57,7 +57,15 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getResearchModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getParametersForRole: jest.fn(() => ({
+			provider: 'anthropic',
+			modelId: 'claude-3-5-sonnet',
+			maxTokens: 4000,
+			temperature: 0.7
+		}))
 	})
 );
 
@@ -108,6 +116,47 @@ jest.unstable_mockModule('@streamparser/json', () => ({
 	}))
 }));
 
+// Mock stream-json-parser functions
+jest.unstable_mockModule('../../../../../src/utils/stream-json-parser.js', () => ({
+	parseStreamingJSON: jest.fn().mockResolvedValue({
+		items: [
+			{ id: 1, title: 'Test Task', priority: 'high' }
+		],
+		accumulatedText: '{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+		estimatedTokens: 50,
+		usedFallback: false
+	}),
+	createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+	createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
+}));
+
+// Mock progress tracker to prevent intervals
+jest.unstable_mockModule('../../../../../src/progress/prdParseTracker.js', () => ({
+	createPrdParseTracker: jest.fn().mockReturnValue({
+		start: jest.fn(),
+		stop: jest.fn(),
+		updateTokens: jest.fn(),
+		addTaskLine: jest.fn(),
+		trackTaskPriority: jest.fn(),
+		getSummary: jest.fn().mockReturnValue({
+			taskPriorities: { high: 0, medium: 0, low: 0 },
+			elapsedTime: 0,
+			actionVerb: 'generated'
+		}),
+		updateAnalyzing: jest.fn(),
+		updateGenerating: jest.fn(),
+		completeGenerating: jest.fn(),
+		updateFinalizing: jest.fn(),
+		completeFinalizing: jest.fn()
+	})
+}));
+
+// Mock UI functions to prevent any display delays
+jest.unstable_mockModule('../../../../../src/ui/parse-prd.js', () => ({
+	displayParsePrdStart: jest.fn(),
+	displayParsePrdSummary: jest.fn()
+}));
+
 // Import the mocked modules
 const { readJSON, writeJSON, log, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
@@ -123,6 +172,18 @@ const generateTaskFiles = (
 ).default;
 
 const { JSONParser } = await import('@streamparser/json');
+
+const { parseStreamingJSON, createTaskProgressCallback } = await import(
+	'../../../../../src/utils/stream-json-parser.js'
+);
+
+const { createPrdParseTracker } = await import(
+	'../../../../../src/progress/prdParseTracker.js'
+);
+
+const { displayParsePrdStart, displayParsePrdSummary } = await import(
+	'../../../../../src/ui/parse-prd.js'
+);
 
 const fs = await import('fs');
 const path = await import('path');
@@ -189,6 +250,18 @@ describe('parsePRD', () => {
 			mainResult: sampleClaudeResponse,
 			telemetryData: {}
 		});
+		streamTextService.mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '{"tasks":[';
+						yield '{"id":1,"title":"Test Task","priority":"high"}';
+						yield ']}';
+					}
+				}
+			},
+			telemetryData: {}
+		});
 		generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
 
@@ -214,8 +287,16 @@ describe('parsePRD', () => {
 		fs.default.readFileSync.mockReturnValue(samplePRDContent);
 		fs.default.promises.readFile.mockResolvedValue(samplePRDContent);
 
-		// Call the function
-		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify fs.readFileSync was called with the correct arguments
 		expect(fs.default.readFileSync).toHaveBeenCalledWith(
@@ -239,7 +320,7 @@ describe('parsePRD', () => {
 		expect(generateTaskFiles).toHaveBeenCalledWith(
 			'tasks/tasks.json',
 			'tasks',
-			{ mcpLog: undefined }
+			expect.objectContaining({ mcpLog: expect.any(Object) })
 		);
 
 		// Verify result
@@ -263,8 +344,16 @@ describe('parsePRD', () => {
 			return true; // Default for other paths
 		});
 
-		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify mkdir was called
 		expect(fs.default.mkdirSync).toHaveBeenCalledWith('tasks', {
@@ -306,14 +395,22 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify generateTaskFiles was called
 		expect(generateTaskFiles).toHaveBeenCalledWith(
 			'tasks/tasks.json',
 			'tasks',
-			{ mcpLog: undefined }
+			expect.objectContaining({ mcpLog: expect.any(Object) })
 		);
 	});
 
@@ -325,8 +422,17 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function with force=true to allow overwrite
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { force: true });
+		// Call the function with force=true to allow overwrite and mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { 
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify prompt was NOT called (confirmation happens at CLI level, not in core function)
 		expect(promptYesNo).not.toHaveBeenCalled();
@@ -404,8 +510,16 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify prompt was NOT called
 		expect(promptYesNo).not.toHaveBeenCalled();
@@ -434,9 +548,16 @@ describe('parsePRD', () => {
 			telemetryData: {}
 		});
 
-		// Call the function with append option
+		// Call the function with append option and mcpLog to force non-streaming mode
 		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
-			append: true
+			append: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
 		});
 
 		// Verify prompt was NOT called (no confirmation needed for append)
@@ -518,8 +639,8 @@ describe('parsePRD', () => {
 		// Verify progress reporting was called
 		expect(mockReportProgress).toHaveBeenCalled();
 
-		// Verify JSONParser was instantiated for streaming
-		expect(JSONParser).toHaveBeenCalled();
+		// Verify parseStreamingJSON was called for streaming
+		expect(parseStreamingJSON).toHaveBeenCalled();
 
 		// Verify result structure
 		expect(result).toEqual({
@@ -572,8 +693,16 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function without reportProgress (non-streaming path)
-		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function without reportProgress but with mcpLog to force non-streaming path
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify generateObjectService was called (non-streaming path)
 		expect(generateObjectService).toHaveBeenCalled();
@@ -735,8 +864,17 @@ describe('parsePRD', () => {
 				return false;
 			});
 
-			// Call without reportProgress (non-streaming) + force
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { force: true });
+			// Call without reportProgress but with mcpLog (non-streaming) + force
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { 
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
 
 			// Verify non-streaming path was used
 			expect(generateObjectService).toHaveBeenCalled();
@@ -763,9 +901,16 @@ describe('parsePRD', () => {
 				telemetryData: {}
 			});
 
-			// Call without reportProgress (non-streaming) + append
+			// Call without reportProgress but with mcpLog (non-streaming) + append
 			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
-				append: true
+				append: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
 			});
 
 			// Verify non-streaming path was used
@@ -785,9 +930,16 @@ describe('parsePRD', () => {
 				return false;
 			});
 
-			// Call without reportProgress (non-streaming) + research
+			// Call without reportProgress but with mcpLog (non-streaming) + research
 			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
-				research: true
+				research: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
 			});
 
 			// Verify non-streaming path was used with research role
@@ -878,11 +1030,20 @@ describe('parsePRD', () => {
 				return false;
 			});
 
-			// Call with .md file and non-streaming
+			// Call with .md file and non-streaming (force with mcpLog)
 			const result = await parsePRD(
 				'path/to/requirements.md',
 				'tasks/tasks.json',
-				3
+				3,
+				{
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				}
 			);
 
 			// Verify non-streaming path was used
@@ -935,11 +1096,20 @@ describe('parsePRD', () => {
 				return false;
 			});
 
-			// Test non-streaming mode
+			// Test non-streaming mode (force with mcpLog)
 			const nonStreamingResult = await parsePRD(
 				'path/to/prd',
 				'tasks/tasks.json',
-				3
+				3,
+				{
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				}
 			);
 
 			expect(nonStreamingResult.success).toBe(true);
