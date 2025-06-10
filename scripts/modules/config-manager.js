@@ -493,6 +493,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
+		burncloud: 'BURNCLOUD_API_KEY',
 		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
 		// Add other providers as needed
 	};
@@ -589,6 +590,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
 				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
 				break;
+			case 'burncloud':
+				apiKeyToCheck = mcpEnv.BURNCLOUD_API_KEY;
+				placeholderValue = 'BURNCLOUD_API_KEY_HERE';
+				break;
 			default:
 				return false; // Unknown provider
 		}
@@ -604,9 +609,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 
 /**
  * Gets a list of available models based on the MODEL_MAP.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
  * @returns {Array<{id: string, name: string, provider: string, swe_score: number|null, cost_per_1m_tokens: {input: number|null, output: number|null}|null, allowed_roles: string[]}>}
  */
-function getAvailableModels() {
+function getAvailableModels(explicitRoot = null) {
 	const available = [];
 	for (const [provider, models] of Object.entries(MODEL_MAP)) {
 		if (models.length > 0) {
@@ -636,7 +642,8 @@ function getAvailableModels() {
 					provider: provider,
 					swe_score: sweScore,
 					cost_per_1m_tokens: cost,
-					allowed_roles: allowedRoles
+					allowed_roles: allowedRoles,
+					max_tokens: modelObj.max_tokens
 				});
 			});
 		} else {
