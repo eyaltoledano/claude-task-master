@@ -3,6 +3,11 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { z } from 'zod';
+import {
+	TASK_PRIORITY_OPTIONS,
+	DEFAULT_TASK_PRIORITY
+} from '../../../src/constants/task-priorities.js';
+import { getPriorityIndicators } from '../../../src/ui/priority-indicators.js';
 
 import {
 	log,
@@ -40,7 +45,7 @@ const prdSingleTaskSchema = z.object({
 	description: z.string().min(1),
 	details: z.string().optional().default(''),
 	testStrategy: z.string().optional().default(''),
-	priority: z.enum(['high', 'medium', 'low']).default('medium'),
+	priority: z.enum(TASK_PRIORITY_OPTIONS).default(DEFAULT_TASK_PRIORITY),
 	dependencies: z.array(z.number().int().positive()).optional().default([]),
 	status: z.string().optional().default('pending')
 });
@@ -91,7 +96,7 @@ Your task breakdown should incorporate this research, resulting in more detailed
 Analyze the provided PRD content and generate approximately ${numTasks} top-level development tasks. If the complexity or the level of detail of the PRD is high, generate more tasks relative to the complexity of the PRD
 Each task should represent a logical unit of work needed to implement the requirements and focus on the most direct and effective way to implement the requirements without unnecessary complexity or overengineering. Include pseudo-code, implementation details, and test strategy for each task. Find the most up to date information to implement each task.
 Assign sequential IDs starting from ${nextId}. Infer title, description, details, and test strategy for each task based *only* on the PRD content.
-Set status to 'pending', dependencies to an empty array [], and priority to 'medium' initially for all tasks.
+Set status to 'pending', dependencies to an empty array [], and priority to '${DEFAULT_TASK_PRIORITY}' initially for all tasks.
 Respond ONLY with a valid JSON object containing a single key "tasks", where the value is an array of task objects adhering to the provided Zod schema. Do not include any explanation or markdown formatting.
 
 Each task should follow this JSON structure:
@@ -274,9 +279,9 @@ async function parsePRDWithStreaming(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
 	);
 
-	// Initialize progress tracker for CLI mode only
+	// Initialize progress tracker for CLI mode only (not MCP)
 	let progressTracker = null;
-	if (outputFormat === 'text') {
+	if (outputFormat === 'text' && !isMCP) {
 		progressTracker = createPrdParseTracker({
 			numTasks,
 			append
@@ -404,10 +409,13 @@ async function parsePRDWithStreaming(
 			throw new Error('No text stream received from AI service');
 		}
 
+		// Get priority indicators based on context (MCP vs CLI)
+		const priorityMap = getPriorityIndicators(!!reportProgress);
+
 		// Create a simple progress callback that handles both CLI and MCP progress
 		const onProgress = async (task, metadata) => {
-			const { currentCount, estimatedTokens } = metadata;
-			const priority = task.priority || 'medium';
+			const { currentCount, estimatedTokens, priorityIndicator } = metadata;
+			const priority = task.priority || DEFAULT_TASK_PRIORITY;
 
 			// CLI progress tracker (if available)
 			if (progressTracker) {
@@ -419,13 +427,18 @@ async function parsePRDWithStreaming(
 				}
 			}
 
-			// MCP progress reporting (if available) - direct call like original working version
+			// MCP progress reporting (if available) - use the priorityIndicator from parser
 			if (reportProgress) {
 				try {
+					// Estimate output tokens for this task
+					const outputTokens = estimatedTokens
+						? Math.floor(estimatedTokens / numTasks)
+						: 0;
+
 					await reportProgress({
 						progress: currentCount,
 						total: numTasks,
-						message: `Task ${currentCount}/${numTasks} - ${task.title} (${priority})`
+						message: `${priorityIndicator} Task ${currentCount}/${numTasks} - ${task.title} | ~Output: ${outputTokens} tokens`
 					});
 				} catch (error) {
 					report(`Progress reporting failed: ${error.message}`, 'warn');
@@ -440,6 +453,7 @@ async function parsePRDWithStreaming(
 				report(`JSON parsing error: ${error.message}`, 'warn');
 			},
 			estimateTokens,
+			priorityMap,
 			expectedTotal: numTasks
 		});
 
@@ -471,7 +485,7 @@ async function parsePRDWithStreaming(
 				...task,
 				id: newId,
 				status: 'pending',
-				priority: task.priority || 'medium',
+				priority: task.priority || DEFAULT_TASK_PRIORITY,
 				dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
 				subtasks: []
 			};
@@ -749,7 +763,7 @@ async function parsePRDWithoutStreaming(
 				...task,
 				id: newId,
 				status: 'pending',
-				priority: task.priority || 'medium',
+				priority: task.priority || DEFAULT_TASK_PRIORITY,
 				dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
 				subtasks: []
 			};

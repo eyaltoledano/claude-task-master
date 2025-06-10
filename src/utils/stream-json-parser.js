@@ -42,11 +42,7 @@ export async function parseStreamingJSON(textStream, config = {}) {
 		onProgress,
 		onError,
 		estimateTokens = (text) => Math.ceil(text.length / 4),
-		priorityMap = {
-			high: '🔴',
-			medium: '🟠',
-			low: '🟢'
-		},
+		priorityMap = {}, // No default - must be provided by caller
 		expectedTotal = 0,
 		progressMessageTemplate = '{indicator} Item {current}/{total} - {title} | ~Output: {tokens} tokens'
 	} = config;

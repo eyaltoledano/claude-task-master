@@ -383,10 +383,12 @@ Build a simple task management web application with user authentication and real
 		expect(taskProgress.length).toBeGreaterThan(0);
 
 		// Verify task progress messages have the correct MCP format
-		// MCP format: "Task X/Y - Title (priority)"
+		// MCP format: "🔴 Task X/Y - Title | ~Output: N tokens"
 		// Note: This test uses reportProgress callback, so it tests MCP mode format
 		taskProgress.forEach((progress) => {
-			expect(progress.message).toMatch(/^Task \d+\/\d+ - .+ \([a-z]+\)$/);
+			expect(progress.message).toMatch(
+				/^(🔴|🟠|🟢) Task \d+\/\d+ - .+ \| ~Output: \d+ tokens$/
+			);
 		});
 
 		const finalProgress = progressHistory[progressHistory.length - 1];
