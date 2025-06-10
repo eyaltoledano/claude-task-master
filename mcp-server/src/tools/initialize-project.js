@@ -19,11 +19,20 @@ export function registerInitializeProjectTool(server) {
 				.describe(
 					'Skip installing dependencies automatically. Never do this unless you are sure the project is already installed.'
 				),
-			addAliases: z
+			aliases: z
 				.boolean()
 				.optional()
-				.default(false)
-				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+				.default(true)
+				.describe(
+					'Control shell aliases creation. When true, adds aliases (tm, taskmaster); when false, skips aliases; defaults to true.'
+				),
+			git: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe(
+					'Control Git repository initialization. When true, initializes Git; when false, skips Git; defaults to true.'
+				),
 			yes: z
 				.boolean()
 				.optional()
