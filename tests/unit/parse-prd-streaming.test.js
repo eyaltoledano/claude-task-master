@@ -382,11 +382,11 @@ Build a simple task management web application with user authentication and real
 		);
 		expect(taskProgress.length).toBeGreaterThan(0);
 
-		// Verify task progress has priority indicators and token tracking
+		// Verify task progress messages have the correct MCP format
+		// MCP format: "Task X/Y - Title (priority)"
+		// Note: This test uses reportProgress callback, so it tests MCP mode format
 		taskProgress.forEach((progress) => {
-			expect(progress.message).toMatch(
-				/^[🔴🟠🟢] Task \d+\/\d+ - .+ \| ~Output: \d+ tokens$/u
-			);
+			expect(progress.message).toMatch(/^Task \d+\/\d+ - .+ \([a-z]+\)$/);
 		});
 
 		const finalProgress = progressHistory[progressHistory.length - 1];
@@ -509,6 +509,35 @@ Build a simple task management web application with user authentication and real
 
 		// Verify AI service was called
 		expect(mockStreamTextService).toHaveBeenCalledTimes(1);
+	});
+
+	test('should handle CLI mode with streaming (no reportProgress)', async () => {
+		// Setup mocks
+		const mockStreamingResponse = createMockStreamingResponse(4);
+		mockStreamTextService.mockResolvedValue(mockStreamingResponse);
+
+		const result = await parsePRD(testPRDPath, streamingTasksPath, 4, {
+			force: true,
+			append: false,
+			research: false,
+			// No reportProgress AND no mcpLog provided - this triggers CLI mode
+			// (outputFormat === 'text' which enables streaming)
+			projectRoot: __dirname
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.tasksPath).toBe(streamingTasksPath);
+		expect(result.telemetryData).toBeDefined();
+
+		// Verify file was created (via writeJSON mock)
+		expect(mockWriteJSON).toHaveBeenCalled();
+
+		// Verify AI service was called with streaming (CLI mode uses streaming when outputFormat === 'text')
+		expect(mockStreamTextService).toHaveBeenCalledTimes(1);
+
+		// Note: In CLI mode, progress goes through progressTracker.addTaskLine()
+		// which doesn't use reportProgress, so we can't test the progress format
+		// the same way. The progress tracker would handle its own display format.
 	});
 
 	test('should validate input parameters', async () => {

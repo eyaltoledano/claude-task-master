@@ -81,7 +81,7 @@ function displayParsePrdStart({
 		if (append) {
 			console.log(
 				chalk.yellow.bold('📝 Append mode') +
-				` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`
+					` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`
 			);
 		}
 
@@ -90,12 +90,12 @@ function displayParsePrdStart({
 			if (append) {
 				console.log(
 					chalk.red.bold('⚠️  Force flag enabled') +
-					` - Will overwrite if conflicts occur`
+						` - Will overwrite if conflicts occur`
 				);
 			} else {
 				console.log(
 					chalk.red.bold('⚠️  Force flag enabled') +
-					` - Overwriting existing tasks`
+						` - Overwriting existing tasks`
 				);
 			}
 		}
