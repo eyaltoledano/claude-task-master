@@ -30,11 +30,7 @@ jest.unstable_mockModule(
 			mainResult: {
 				tasks: []
 			},
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		}),
 		streamTextService: jest.fn().mockResolvedValue({
 			mainResult: {
@@ -46,11 +42,7 @@ jest.unstable_mockModule(
 					}
 				}
 			},
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		})
 	})
 );
@@ -195,11 +187,7 @@ describe('parsePRD', () => {
 		path.default.dirname.mockReturnValue('tasks');
 		generateObjectService.mockResolvedValue({
 			mainResult: sampleClaudeResponse,
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		});
 		generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
@@ -258,11 +246,7 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		});
 
 		// Verify that the written data contains 2 tasks from sampleClaudeResponse
@@ -541,11 +525,7 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		});
 	});
 
@@ -580,11 +560,7 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		});
 	});
 
@@ -609,11 +585,7 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {
-				inputTokens: 2150,
-				outputTokens: 1847,
-				totalCost: 0.0423
-			}
+			telemetryData: {}
 		});
 	});
 
