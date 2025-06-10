@@ -22,7 +22,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
-import { isSilentMode } from './modules/utils.js';
+import { isSilentMode, insideGitRepo } from './modules/utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { execSync } from 'child_process';
 import {
@@ -568,9 +568,14 @@ function createProjectStructure(addAliases, dryRun, options) {
 
 	// Initialize git repository if git is available
 	try {
-		if (!fs.existsSync(path.join(targetDir, '.git'))) {
-			log('info', 'Initializing git repository...');
-			execSync('git init', { stdio: 'ignore' });
+		if (insideGitRepo()) {
+			log('info', 'Existing Git repository detected – skipping git init.');
+		} else {
+			log(
+				'info',
+				'No Git repository detected. Initializing one in project root...'
+			);
+			execSync('git init', { cwd: targetDir, stdio: 'ignore' });
 			log('success', 'Git repository initialized');
 		}
 	} catch (error) {
