@@ -117,39 +117,44 @@ jest.unstable_mockModule('@streamparser/json', () => ({
 }));
 
 // Mock stream-json-parser functions
-jest.unstable_mockModule('../../../../../src/utils/stream-json-parser.js', () => ({
-	parseStreamingJSON: jest.fn().mockResolvedValue({
-		items: [
-			{ id: 1, title: 'Test Task', priority: 'high' }
-		],
-		accumulatedText: '{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
-		estimatedTokens: 50,
-		usedFallback: false
-	}),
-	createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
-	createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
-}));
+jest.unstable_mockModule(
+	'../../../../../src/utils/stream-json-parser.js',
+	() => ({
+		parseStreamingJSON: jest.fn().mockResolvedValue({
+			items: [{ id: 1, title: 'Test Task', priority: 'high' }],
+			accumulatedText:
+				'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+			estimatedTokens: 50,
+			usedFallback: false
+		}),
+		createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+		createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
+	})
+);
 
 // Mock progress tracker to prevent intervals
-jest.unstable_mockModule('../../../../../src/progress/prdParseTracker.js', () => ({
-	createPrdParseTracker: jest.fn().mockReturnValue({
-		start: jest.fn(),
-		stop: jest.fn(),
-		updateTokens: jest.fn(),
-		addTaskLine: jest.fn(),
-		trackTaskPriority: jest.fn(),
-		getSummary: jest.fn().mockReturnValue({
-			taskPriorities: { high: 0, medium: 0, low: 0 },
-			elapsedTime: 0,
-			actionVerb: 'generated'
-		}),
-		updateAnalyzing: jest.fn(),
-		updateGenerating: jest.fn(),
-		completeGenerating: jest.fn(),
-		updateFinalizing: jest.fn(),
-		completeFinalizing: jest.fn()
+jest.unstable_mockModule(
+	'../../../../../src/progress/prdParseTracker.js',
+	() => ({
+		createPrdParseTracker: jest.fn().mockReturnValue({
+			start: jest.fn(),
+			stop: jest.fn(),
+			updateTokens: jest.fn(),
+			addTaskLine: jest.fn(),
+			trackTaskPriority: jest.fn(),
+			getSummary: jest.fn().mockReturnValue({
+				taskPriorities: { high: 0, medium: 0, low: 0 },
+				elapsedTime: 0,
+				actionVerb: 'generated'
+			}),
+			updateAnalyzing: jest.fn(),
+			updateGenerating: jest.fn(),
+			completeGenerating: jest.fn(),
+			updateFinalizing: jest.fn(),
+			completeFinalizing: jest.fn()
+		})
 	})
-}));
+);
 
 // Mock UI functions to prevent any display delays
 jest.unstable_mockModule('../../../../../src/ui/parse-prd.js', () => ({
@@ -423,7 +428,7 @@ describe('parsePRD', () => {
 		});
 
 		// Call the function with force=true to allow overwrite and mcpLog to force non-streaming mode
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { 
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
 			force: true,
 			mcpLog: {
 				info: jest.fn(),
@@ -865,7 +870,7 @@ describe('parsePRD', () => {
 			});
 
 			// Call without reportProgress but with mcpLog (non-streaming) + force
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { 
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
 				force: true,
 				mcpLog: {
 					info: jest.fn(),

@@ -46,13 +46,13 @@ function displayParsePrdStart({
 }) {
 	// Determine the action verb based on append flag
 	const actionVerb = append ? 'Appending' : 'Generating';
-	
+
 	// Create the model line with research indicator
 	let modelLine = `Model: ${model} | Temperature: ${temperature}`;
 	if (research) {
 		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
 	}
-	
+
 	// Create the message content with all information
 	let message =
 		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
@@ -68,20 +68,26 @@ function displayParsePrdStart({
 	// Add mode indicators at the bottom with line break
 	if (append || force) {
 		message += '\n'; // Add line break before notices
-		
+
 		// Add append mode details if enabled
 		if (append) {
-			message += '\n' + chalk.yellow.bold('📝 Append mode') +
+			message +=
+				'\n' +
+				chalk.yellow.bold('📝 Append mode') +
 				` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`;
 		}
 
 		// Add force mode details if enabled
 		if (force) {
 			if (append) {
-				message += '\n' + chalk.red.bold('⚠️  Force flag enabled') + 
+				message +=
+					'\n' +
+					chalk.red.bold('⚠️  Force flag enabled') +
 					` - Will overwrite if conflicts occur`;
 			} else {
-				message += '\n' + chalk.red.bold('⚠️  Force flag enabled') + 
+				message +=
+					'\n' +
+					chalk.red.bold('⚠️  Force flag enabled') +
 					` - Overwriting existing tasks`;
 			}
 		}
@@ -311,8 +317,4 @@ function displayParsePrdSummary(summary) {
 	);
 }
 
-export {
-	displayParsePrdStart,
-	displayParsePrdSummary,
-	formatElapsedTime
-}; 
+export { displayParsePrdStart, displayParsePrdSummary, formatElapsedTime };

@@ -2134,12 +2134,6 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	);
 }
 
-
-
-
-
-
-
 // Export UI functions
 export {
 	displayBanner,
