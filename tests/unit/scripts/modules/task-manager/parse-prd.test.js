@@ -134,7 +134,7 @@ jest.unstable_mockModule(
 
 // Mock progress tracker to prevent intervals
 jest.unstable_mockModule(
-	'../../../../../src/progress/prdParseTracker.js',
+	'../../../../../src/progress/prd-parse-tracker.js',
 	() => ({
 		createPrdParseTracker: jest.fn().mockReturnValue({
 			start: jest.fn(),
@@ -178,7 +178,7 @@ const { parseStreamingJSON, createTaskProgressCallback } = await import(
 );
 
 const { createPrdParseTracker } = await import(
-	'../../../../../src/progress/prdParseTracker.js'
+	'../../../../../src/progress/prd-parse-tracker.js'
 );
 
 const { displayParsePrdStart, displayParsePrdSummary } = await import(
