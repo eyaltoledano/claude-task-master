@@ -166,7 +166,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		});
 
 		log(
-			'success',
+			'debug',
 			`All ${data.tasks.length} tasks have been generated into '${outputDir}'.`
 		);
 

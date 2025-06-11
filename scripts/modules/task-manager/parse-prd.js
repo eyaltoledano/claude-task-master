@@ -276,7 +276,8 @@ async function parsePRDWithStreaming(
 	);
 
 	report(
-		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
+		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`,
+		'debug'
 	);
 
 	// Initialize progress tracker for CLI mode only (not MCP)
@@ -450,7 +451,7 @@ async function parsePRDWithStreaming(
 			jsonPaths: ['$.tasks.*'],
 			onProgress: onProgress,
 			onError: (error) => {
-				report(`JSON parsing error: ${error.message}`, 'warn');
+				report(`JSON parsing error: ${error.message}`, 'debug');
 			},
 			estimateTokens,
 			priorityMap,
@@ -519,7 +520,7 @@ async function parsePRDWithStreaming(
 		writeJSON(tasksPath, outputData);
 		report(
 			`Successfully ${append ? 'appended' : 'generated'} ${processedNewTasks.length} tasks in ${tasksPath}${research ? ' with research-backed analysis' : ''}`,
-			'success'
+			'debug'
 		);
 
 		// Generate markdown task files after writing tasks.json
@@ -625,7 +626,8 @@ async function parsePRDWithoutStreaming(
 	);
 
 	report(
-		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
+		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`,
+		'debug'
 	);
 
 	let existingTasks = [];
@@ -791,7 +793,7 @@ async function parsePRDWithoutStreaming(
 		writeJSON(tasksPath, outputData);
 		report(
 			`Successfully ${append ? 'appended' : 'generated'} ${processedNewTasks.length} tasks in ${tasksPath}${research ? ' with research-backed analysis' : ''}`,
-			'success'
+			'debug'
 		);
 
 		// Generate markdown task files after writing tasks.json
