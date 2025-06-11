@@ -213,8 +213,6 @@ function createTestConfig() {
 	return configPath;
 }
 
-
-
 /**
  * Test MCP streaming with proper MCP context
  */
@@ -250,7 +248,9 @@ async function testMCPStreaming(numTasks = 10) {
 		const endTime = Date.now();
 		const duration = endTime - startTime;
 
-		console.log(chalk.green(`\n✅ MCP streaming test completed in ${duration}ms`));
+		console.log(
+			chalk.green(`\n✅ MCP streaming test completed in ${duration}ms`)
+		);
 
 		// Print progress summary
 		progressReporter.printSummary();
@@ -259,23 +259,28 @@ async function testMCPStreaming(numTasks = 10) {
 		console.log(chalk.cyan('\n=== MCP Logs ==='));
 		const logs = mcpLogger.getLogs();
 		logs.forEach((log, index) => {
-			const color = {
-				info: chalk.blue,
-				warn: chalk.yellow,
-				error: chalk.red,
-				debug: chalk.gray,
-				success: chalk.green
-			}[log.level] || chalk.white;
-			console.log(`${index + 1}. ${color(`[${log.level.toUpperCase()}]`)} ${log.message}`);
+			const color =
+				{
+					info: chalk.blue,
+					warn: chalk.yellow,
+					error: chalk.red,
+					debug: chalk.gray,
+					success: chalk.green
+				}[log.level] || chalk.white;
+			console.log(
+				`${index + 1}. ${color(`[${log.level.toUpperCase()}]`)} ${log.message}`
+			);
 		});
 
 		// Verify MCP-specific message formats (should use emoji indicators)
-		const hasEmojiIndicators = progressReporter.getProgressHistory().some(entry =>
-			/[🔴🟠🟢]/.test(entry.message)
-		);
+		const hasEmojiIndicators = progressReporter
+			.getProgressHistory()
+			.some((entry) => /[🔴🟠🟢]/.test(entry.message));
 
 		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
-		console.log(`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`);
+		console.log(
+			`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`
+		);
 
 		// Verify results
 		if (fs.existsSync(testTasksPath)) {
@@ -546,7 +551,9 @@ async function main() {
 
 			case 'both':
 				console.log(
-					chalk.yellow('Running both MCP streaming and non-streaming tests...\n')
+					chalk.yellow(
+						'Running both MCP streaming and non-streaming tests...\n'
+					)
 				);
 				const mcpStreamingResult = await testMCPStreaming(numTasks);
 				console.log('\n' + '='.repeat(60) + '\n');
@@ -566,7 +573,9 @@ async function main() {
 				console.log(
 					`MCP Streaming: ${mcpResult.success ? '✅ PASS' : '❌ FAIL'} ${mcpResult.hasEmojiIndicators ? '(✅ Emojis)' : '(❌ No Emojis)'}`
 				);
-				console.log(`CLI Streaming: ${cliResult.success ? '✅ PASS' : '❌ FAIL'}`);
+				console.log(
+					`CLI Streaming: ${cliResult.success ? '✅ PASS' : '❌ FAIL'}`
+				);
 				console.log(
 					`Non-streaming: ${nonStreamResult.success ? '✅ PASS' : '❌ FAIL'}`
 				);

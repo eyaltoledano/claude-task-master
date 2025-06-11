@@ -155,7 +155,9 @@ function getPRDPathForComplexity(complexity = 'medium') {
  */
 async function testStreamingComplexity() {
 	console.log(
-		chalk.cyan('🧪 Testing Streaming with Different Task Generation Complexities\n')
+		chalk.cyan(
+			'🧪 Testing Streaming with Different Task Generation Complexities\n'
+		)
 	);
 
 	const complexities = ['simple', 'medium', 'complex'];
@@ -204,7 +206,9 @@ async function testStreamingComplexity() {
 				analysis: progressReporter.getAnalysis()
 			});
 		} catch (error) {
-			console.error(chalk.red(`❌ ${complexity} complexity failed: ${error.message}`));
+			console.error(
+				chalk.red(`❌ ${complexity} complexity failed: ${error.message}`)
+			);
 			results.push({
 				complexity,
 				error: error.message
