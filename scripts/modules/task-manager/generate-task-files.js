@@ -58,7 +58,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			// Delete orphaned files
 			if (orphanedFiles.length > 0) {
 				log(
-					'info',
+					'debug',
 					`Found ${orphanedFiles.length} orphaned task files to remove`
 				);
 
