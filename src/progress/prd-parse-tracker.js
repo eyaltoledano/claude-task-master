@@ -1,7 +1,14 @@
-import { newMultiBar } from './cli-progress-factory.js';
 import chalk from 'chalk';
+import { newMultiBar } from './cli-progress-factory.js';
+import {
+	getCliPriorityIndicators,
+	getPriorityIndicator
+} from '../ui/priority-indicators.js';
 
-// Priority display dots and colors
+// Get centralized priority indicators
+const PRIORITY_INDICATORS = getCliPriorityIndicators();
+
+// Priority display dots for status bar (simplified single character versions)
 const PRIORITY_DOTS = {
 	high: chalk.red('⋮'),
 	medium: chalk.hex('#FF8800')(':'),
@@ -132,14 +139,14 @@ export class PrdParseTracker {
 			title && title.length > 60
 				? title.substring(0, 57) + '...'
 				: title || `Task ${taskNumber}`;
-		const priorityColor = PRIORITY_COLORS[normalizedPriority];
+		const priorityIndicator = getPriorityIndicator(normalizedPriority, false); // false = CLI context
 
 		const taskBar = this.multibar.create(
 			1,
 			1,
 			{},
 			{
-				format: `${priorityColor('●●●')} Task ${taskNumber}/${this.numTasks}: {title}`,
+				format: `${priorityIndicator} Task ${taskNumber}/${this.numTasks}: {title}`,
 				barsize: 1
 			}
 		);
