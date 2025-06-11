@@ -36,6 +36,12 @@ export class PrdParseTracker {
 		// State flags
 		this.isStarted = false;
 		this.isFinished = false;
+
+		// Time tracking for stable estimates
+		this.lastTaskTime = null;
+		this.bestAvgTimePerTask = null;
+		this.lastEstimateTime = null;
+		this.lastEstimateSeconds = 0;
 	}
 
 	start() {
@@ -105,6 +111,26 @@ export class PrdParseTracker {
 		this.taskPriorities[normalizedPriority]++;
 		this.completedTasks = taskNumber;
 
+		// Track timing for better estimates
+		const now = Date.now();
+		if (this.completedTasks > 0) {
+			const elapsed = (now - this.startTime) / 1000;
+			const currentAvgTimePerTask = elapsed / this.completedTasks;
+
+			// Use the best (most recent) average we've seen to avoid degrading estimates
+			if (
+				this.bestAvgTimePerTask === null ||
+				currentAvgTimePerTask < this.bestAvgTimePerTask
+			) {
+				this.bestAvgTimePerTask = currentAvgTimePerTask;
+			}
+		}
+		this.lastTaskTime = now;
+
+		// Reset estimate timing for fresh calculation
+		this.lastEstimateTime = null;
+		this.lastEstimateSeconds = 0;
+
 		// Update progress bar
 		this.progressBar.update(this.completedTasks, {
 			tasks: `${this.completedTasks}/${this.numTasks}`
@@ -163,13 +189,58 @@ export class PrdParseTracker {
 	_estimateRemainingTime() {
 		if (!this.startTime || this.completedTasks === 0) return '~0m 00s';
 
-		const elapsed = (Date.now() - this.startTime) / 1000;
-		const avgTimePerTask = elapsed / this.completedTasks;
 		const remainingTasks = Math.max(0, this.numTasks - this.completedTasks);
-		const estimatedSeconds = Math.floor(avgTimePerTask * remainingTasks);
 
-		const minutes = Math.floor(estimatedSeconds / 60);
-		const seconds = estimatedSeconds % 60;
+		// If we're done, show completion
+		if (remainingTasks === 0) {
+			return '~0m 00s';
+		}
+
+		const now = Date.now();
+
+		// If we have a previous estimate and it's recent, count down from it
+		if (this.lastEstimateTime !== null && this.lastEstimateSeconds > 0) {
+			const secondsSinceEstimate = Math.floor(
+				(now - this.lastEstimateTime) / 1000
+			);
+			const countdownSeconds = Math.max(
+				0,
+				this.lastEstimateSeconds - secondsSinceEstimate
+			);
+
+			if (countdownSeconds > 0) {
+				const minutes = Math.floor(countdownSeconds / 60);
+				const seconds = countdownSeconds % 60;
+				return `~${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+			}
+		}
+
+		// Calculate fresh estimate (either first time or countdown reached 0)
+		let avgTimePerTask;
+		if (this.bestAvgTimePerTask !== null) {
+			avgTimePerTask = this.bestAvgTimePerTask;
+		} else {
+			// Fallback to current calculation
+			const elapsed = (now - this.startTime) / 1000;
+			avgTimePerTask = elapsed / this.completedTasks;
+		}
+
+		const estimatedRemainingSeconds = Math.max(
+			0,
+			Math.floor(avgTimePerTask * remainingTasks)
+		);
+
+		// Store this estimate for countdown
+		this.lastEstimateTime = now;
+		this.lastEstimateSeconds = estimatedRemainingSeconds;
+
+		// If estimate is 0, show completion
+		if (estimatedRemainingSeconds === 0) {
+			return '~0m 00s';
+		}
+
+		const minutes = Math.floor(estimatedRemainingSeconds / 60);
+		const seconds = estimatedRemainingSeconds % 60;
 		return `~${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 	}
 
