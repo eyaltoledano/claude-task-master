@@ -50,11 +50,7 @@ export class PrdParseTracker {
 		this.isStarted = true;
 		this.startTime = Date.now();
 
-		this.multibar = newMultiBar({
-			clearOnComplete: false,
-			hideCursor: true,
-			stopOnComplete: false
-		});
+		this.multibar = newMultiBar();
 
 		// Time/tokens/priority status bar
 		this.timeTokensBar = this.multibar.create(
@@ -77,12 +73,7 @@ export class PrdParseTracker {
 			{
 				format: 'Tasks {tasks} |{bar}| {percentage}%',
 				barCompleteChar: '\u2588',
-				barIncompleteChar: '\u2591',
-				hideCursor: true,
-				clearOnComplete: false,
-				barsize: 40,
-				forceRedraw: true,
-				noSpinner: true
+				barIncompleteChar: '\u2591'
 			}
 		);
 
@@ -149,10 +140,7 @@ export class PrdParseTracker {
 			{},
 			{
 				format: `${priorityColor('●●●')} Task ${taskNumber}/${this.numTasks}: {title}`,
-				barsize: 1,
-				hideCursor: true,
-				clearOnComplete: false,
-				forceRedraw: true
+				barsize: 1
 			}
 		);
 
@@ -262,7 +250,6 @@ export class PrdParseTracker {
 
 		if (this.multibar && this.isStarted) {
 			this._updateTimeTokensBar();
-			this.multibar.stop();
 			this.multibar = null;
 			this.timeTokensBar = null;
 			this.progressBar = null;
