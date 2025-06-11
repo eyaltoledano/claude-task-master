@@ -529,17 +529,19 @@ async function parsePRDWithStreaming(
 		// Final progress report - completion
 		// Use actual telemetry if available, otherwise fall back to estimates
 		const hasValidTelemetry =
-			aiServiceResponse.telemetryData &&
+			aiServiceResponse?.telemetryData &&
 			(aiServiceResponse.telemetryData.inputTokens > 0 ||
 				aiServiceResponse.telemetryData.outputTokens > 0);
 
 		let completionMessage;
 		if (hasValidTelemetry) {
-			// Use actual telemetry data
-			completionMessage = `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens}`;
+			// Use actual telemetry data with cost
+			const cost = aiServiceResponse.telemetryData.totalCost || 0;
+			const currency = aiServiceResponse.telemetryData.currency || 'USD';
+			completionMessage = `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens} | Cost: ${currency === 'USD' ? '$' : currency}${cost.toFixed(4)}`;
 		} else {
 			// Use estimates and indicate they're estimates
-			completionMessage = `✅ Task Generation Completed | ~Tokens (I/O): ${estimatedInputTokens}/${estimatedOutputTokens}`;
+			completionMessage = `✅ Task Generation Completed | ~Tokens (I/O): ${estimatedInputTokens}/${estimatedOutputTokens} | Cost: ~$0.00`;
 		}
 
 		if (reportProgress) {
@@ -584,6 +586,26 @@ async function parsePRDWithStreaming(
 				taskFilesGenerated,
 				actionVerb: summary.actionVerb
 			});
+
+			// Display telemetry data (may be estimates for streaming calls)
+			if (aiServiceResponse && aiServiceResponse.telemetryData) {
+				// For streaming, wait briefly to allow usage data to be captured
+				if (
+					aiServiceResponse.mainResult &&
+					aiServiceResponse.mainResult.usage
+				) {
+					try {
+						// Give the usage promise a short time to resolve
+						await Promise.race([
+							aiServiceResponse.mainResult.usage,
+							new Promise((resolve) => setTimeout(resolve, 1000)) // 1 second timeout
+						]);
+					} catch (e) {
+						// Ignore timeout or usage errors, just display what we have
+					}
+				}
+				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+			}
 		}
 
 		// Return telemetry data
@@ -696,6 +718,9 @@ async function parsePRDWithoutStreaming(
 			research
 		);
 
+		// Estimate input tokens
+		const estimatedInputTokens = estimateTokens(systemPrompt + userPrompt);
+
 		// Call the unified AI service
 		report(
 			`Calling AI service to generate tasks from PRD${research ? ' with research-backed analysis' : ''}...`,
@@ -799,7 +824,7 @@ async function parsePRDWithoutStreaming(
 		// Generate markdown task files after writing tasks.json
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 
-		// Handle CLI output (e.g., success message)
+		// Handle CLI output for non-streaming mode
 		if (outputFormat === 'text') {
 			console.log(
 				boxen(
@@ -825,9 +850,36 @@ async function parsePRDWithoutStreaming(
 				)
 			);
 
+			// Display telemetry data
 			if (aiServiceResponse && aiServiceResponse.telemetryData) {
 				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
 			}
+		}
+
+		// Handle MCP progress reporting
+		if (reportProgress) {
+			// Use actual telemetry if available, otherwise fall back to estimates
+			const hasValidTelemetry =
+				aiServiceResponse?.telemetryData &&
+				(aiServiceResponse.telemetryData.inputTokens > 0 ||
+					aiServiceResponse.telemetryData.outputTokens > 0);
+
+			let completionMessage;
+			if (hasValidTelemetry) {
+				// Use actual telemetry data with cost
+				const cost = aiServiceResponse.telemetryData.totalCost || 0;
+				const currency = aiServiceResponse.telemetryData.currency || 'USD';
+				completionMessage = `✅ Task Generation Completed | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens} | Cost: ${currency === 'USD' ? '$' : currency}${cost.toFixed(4)}`;
+			} else {
+				// Use estimates and indicate they're estimates
+				completionMessage = `✅ Task Generation Completed | ~Tokens (I/O): ${estimatedInputTokens}/unknown | Cost: ~$0.00`;
+			}
+
+			await reportProgress({
+				progress: numTasks,
+				total: numTasks,
+				message: completionMessage
+			});
 		}
 
 		// Return telemetry data
