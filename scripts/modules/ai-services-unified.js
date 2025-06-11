@@ -86,6 +86,21 @@ function _getCostForModel(providerName, modelId) {
 	};
 }
 
+/**
+ * Calculate cost from token counts and cost per million
+ * @param {number} inputTokens - Number of input tokens
+ * @param {number} outputTokens - Number of output tokens
+ * @param {number} inputCost - Cost per million input tokens
+ * @param {number} outputCost - Cost per million output tokens
+ * @returns {number} Total calculated cost
+ */
+function _calculateCost(inputTokens, outputTokens, inputCost, outputCost) {
+	const calculatedCost =
+		((inputTokens || 0) / 1_000_000) * inputCost +
+		((outputTokens || 0) / 1_000_000) * outputCost;
+	return parseFloat(calculatedCost.toFixed(6));
+}
+
 // --- Configuration for Retries ---
 const MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY_MS = 1000;
@@ -617,6 +632,7 @@ async function generateTextService(params) {
 /**
  * Unified service function for streaming text.
  * Handles client retrieval, retries, and fallback sequence.
+ * Returns stream immediately for real-time progress, telemetry captured asynchronously.
  *
  * @param {object} params - Parameters for the service call.
  * @param {string} params.role - The initial client role ('main', 'research', 'fallback').
@@ -626,16 +642,70 @@ async function generateTextService(params) {
  * @param {string} [params.systemPrompt] - Optional system prompt.
  * @param {string} params.commandName - Name of the command invoking the service.
  * @param {string} [params.outputType='cli'] - 'cli' or 'mcp'.
- * @returns {Promise<object>} Result object containing the stream and usage data.
+ * @returns {Promise<object>} Result object containing the stream and telemetry data.
  */
 async function streamTextService(params) {
 	const defaults = { outputType: 'cli' };
 	const combinedParams = { ...defaults, ...params };
-	// TODO: Validate commandName exists?
-	// NOTE: Telemetry for streaming might be tricky as usage data often comes at the end.
-	// The current implementation logs *after* the stream is returned.
-	// We might need to adjust how usage is captured/logged for streams.
-	return _unifiedServiceRunner('streamText', combinedParams);
+
+	const result = await _unifiedServiceRunner('streamText', combinedParams);
+
+	// Set up async telemetry capture for streaming (doesn't block return)
+	if (
+		result.mainResult &&
+		result.mainResult.usage &&
+		typeof result.mainResult.usage.then === 'function'
+	) {
+		// The usage property is a promise that resolves when the stream completes
+		result.mainResult.usage
+			.then((usageData) => {
+				// Update telemetry data with real usage information
+				if (usageData && result.telemetryData) {
+					result.telemetryData.inputTokens =
+						usageData.promptTokens || result.telemetryData.inputTokens || 0;
+					result.telemetryData.outputTokens =
+						usageData.completionTokens ||
+						result.telemetryData.outputTokens ||
+						0;
+					result.telemetryData.totalTokens =
+						usageData.totalTokens || result.telemetryData.totalTokens || 0;
+
+					// Recalculate cost with real token data
+					if (
+						result.telemetryData.inputTokens > 0 ||
+						result.telemetryData.outputTokens > 0
+					) {
+						try {
+							const { inputCost, outputCost } = _getCostForModel(
+								result.telemetryData.providerName,
+								result.telemetryData.modelUsed
+							);
+							result.telemetryData.totalCost = _calculateCost(
+								result.telemetryData.inputTokens,
+								result.telemetryData.outputTokens,
+								inputCost,
+								outputCost
+							);
+						} catch (costError) {
+							// Cost calculation failed, keep existing telemetry
+							log(
+								'debug',
+								`Failed to recalculate cost for ${result.telemetryData.modelUsed}: ${costError.message}`
+							);
+						}
+					}
+				}
+			})
+			.catch((usageError) => {
+				// Error getting usage data, keep existing telemetry
+				log(
+					'debug',
+					`Failed to get usage data from stream: ${usageError.message}`
+				);
+			});
+	}
+
+	return result;
 }
 
 /**
@@ -698,9 +768,12 @@ async function logAiUsage({
 			modelId
 		);
 
-		const totalCost =
-			((inputTokens || 0) / 1_000_000) * inputCost +
-			((outputTokens || 0) / 1_000_000) * outputCost;
+		const totalCost = _calculateCost(
+			inputTokens,
+			outputTokens,
+			inputCost,
+			outputCost
+		);
 
 		const telemetryData = {
 			timestamp,
@@ -711,7 +784,7 @@ async function logAiUsage({
 			inputTokens: inputTokens || 0,
 			outputTokens: outputTokens || 0,
 			totalTokens,
-			totalCost: parseFloat(totalCost.toFixed(6)),
+			totalCost,
 			currency // Add currency to the telemetry data
 		};
 
