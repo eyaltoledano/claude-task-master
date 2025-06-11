@@ -4,8 +4,9 @@
  * parse-prd-analysis.js
  *
  * Detailed timing and accuracy analysis for parse-prd progress reporting.
- * Tests different PRD complexities and validates real-time characteristics.
- * Focuses specifically on progress behavior and performance metrics.
+ * Tests different task generation complexities using the sample PRD from fixtures.
+ * Validates real-time characteristics and focuses on progress behavior and performance metrics.
+ * Uses tests/fixtures/sample-prd.txt for consistent testing across all scenarios.
  */
 
 import fs from 'fs';
@@ -17,6 +18,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import parsePRD from '../../scripts/modules/task-manager/parse-prd.js';
+
+// Use the same project root as the main test file
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+
+/**
+ * Get the path to the sample PRD file
+ */
+function getSamplePRDPath() {
+	return path.resolve(PROJECT_ROOT, 'tests', 'fixtures', 'sample-prd.txt');
+}
 
 /**
  * Detailed Progress Reporter for timing analysis
@@ -129,43 +140,22 @@ class DetailedProgressReporter {
 }
 
 /**
- * Create test PRD with specific complexity
+ * Get PRD path for complexity testing
+ * For complexity testing, we'll use the same sample PRD but request different numbers of tasks
+ * This provides more realistic testing since the AI will generate different complexity based on task count
  */
-function createTestPRD(complexity = 'medium') {
-	const prdTemplates = {
-		simple: `# Simple Todo App
-Build a basic todo application.
-Features: add tasks, mark complete, delete tasks.
-Tech: HTML, CSS, JavaScript.`,
-
-		medium: `# Task Management Web App
-Build a comprehensive task management application with user authentication.
-Features: user registration, task CRUD, categories, due dates, search.
-Tech: React, Node.js, PostgreSQL, JWT authentication.
-Requirements: responsive design, error handling, data validation.`,
-
-		complex: `# Enterprise Project Management Platform
-Build a full-featured project management platform for enterprise use.
-Features: multi-user workspaces, project templates, Gantt charts, time tracking, reporting, integrations.
-Tech: React with TypeScript, Node.js microservices, PostgreSQL, Redis, Docker, Kubernetes.
-Requirements: real-time collaboration, advanced permissions, audit logging, API rate limiting, comprehensive testing.
-Integrations: Slack, GitHub, Jira, Google Calendar, email notifications.
-Performance: handle 10,000+ concurrent users, sub-second response times.
-Security: OAuth 2.0, RBAC, data encryption, GDPR compliance.`
-	};
-
-	const content = prdTemplates[complexity] || prdTemplates.medium;
-	const testPRDPath = path.join(__dirname, `test-prd-${complexity}.txt`);
-	fs.writeFileSync(testPRDPath, content);
-	return testPRDPath;
+function getPRDPathForComplexity(complexity = 'medium') {
+	// Always use the same sample PRD file - complexity will be controlled by task count
+	return getSamplePRDPath();
 }
 
 /**
- * Test streaming with different complexities
+ * Test streaming with different task generation complexities
+ * Uses the same sample PRD but requests different numbers of tasks to test complexity scaling
  */
 async function testStreamingComplexity() {
 	console.log(
-		chalk.cyan('🧪 Testing Streaming with Different PRD Complexities\n')
+		chalk.cyan('🧪 Testing Streaming with Different Task Generation Complexities\n')
 	);
 
 	const complexities = ['simple', 'medium', 'complex'];
@@ -173,10 +163,10 @@ async function testStreamingComplexity() {
 
 	for (const complexity of complexities) {
 		console.log(
-			chalk.yellow(`\n--- Testing ${complexity.toUpperCase()} PRD ---`)
+			chalk.yellow(`\n--- Testing ${complexity.toUpperCase()} Complexity ---`)
 		);
 
-		const testPRDPath = createTestPRD(complexity);
+		const testPRDPath = getPRDPathForComplexity(complexity);
 		const testTasksPath = path.join(__dirname, `test-tasks-${complexity}.json`);
 
 		// Clean up existing file
@@ -196,14 +186,14 @@ async function testStreamingComplexity() {
 				append: false,
 				research: false,
 				reportProgress: progressReporter.reportProgress.bind(progressReporter),
-				projectRoot: __dirname
+				projectRoot: PROJECT_ROOT
 			});
 
 			const endTime = Date.now();
 			const duration = endTime - startTime;
 
 			console.log(
-				chalk.green(`✅ ${complexity} PRD completed in ${duration}ms`)
+				chalk.green(`✅ ${complexity} complexity completed in ${duration}ms`)
 			);
 
 			progressReporter.printDetailedAnalysis();
@@ -214,14 +204,13 @@ async function testStreamingComplexity() {
 				analysis: progressReporter.getAnalysis()
 			});
 		} catch (error) {
-			console.error(chalk.red(`❌ ${complexity} PRD failed: ${error.message}`));
+			console.error(chalk.red(`❌ ${complexity} complexity failed: ${error.message}`));
 			results.push({
 				complexity,
 				error: error.message
 			});
 		} finally {
-			// Clean up
-			if (fs.existsSync(testPRDPath)) fs.unlinkSync(testPRDPath);
+			// Clean up (only the tasks file, not the PRD since we're using the fixture)
 			if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
 		}
 	}
@@ -247,7 +236,7 @@ async function testStreamingComplexity() {
 async function testProgressAccuracy() {
 	console.log(chalk.cyan('🧪 Testing Progress Accuracy\n'));
 
-	const testPRDPath = createTestPRD('medium');
+	const testPRDPath = getSamplePRDPath();
 	const testTasksPath = path.join(__dirname, 'test-accuracy-tasks.json');
 
 	// Clean up existing file
@@ -263,7 +252,7 @@ async function testProgressAccuracy() {
 			append: false,
 			research: false,
 			reportProgress: progressReporter.reportProgress.bind(progressReporter),
-			projectRoot: __dirname
+			projectRoot: PROJECT_ROOT
 		});
 
 		console.log(chalk.green('✅ Progress accuracy test completed'));
@@ -286,8 +275,7 @@ async function testProgressAccuracy() {
 			chalk.red(`❌ Progress accuracy test failed: ${error.message}`)
 		);
 	} finally {
-		// Clean up
-		if (fs.existsSync(testPRDPath)) fs.unlinkSync(testPRDPath);
+		// Clean up (only the tasks file, not the PRD since we're using the fixture)
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
 	}
 }
