@@ -411,7 +411,7 @@ async function parsePRDWithStreaming(
 		}
 
 		// Get priority indicators based on context (MCP vs CLI)
-		const priorityMap = getPriorityIndicators(!!reportProgress);
+		const priorityMap = getPriorityIndicators(isMCP);
 
 		// Create a simple progress callback that handles both CLI and MCP progress
 		const onProgress = async (task, metadata) => {
