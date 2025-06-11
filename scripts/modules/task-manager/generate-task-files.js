@@ -66,7 +66,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 					const filePath = path.join(outputDir, file);
 					try {
 						fs.unlinkSync(filePath);
-						log('info', `Removed orphaned task file: ${file}`);
+						log('debug', `Removed orphaned task file: ${file}`);
 					} catch (err) {
 						log(
 							'warn',
