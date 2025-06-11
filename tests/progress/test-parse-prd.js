@@ -5,7 +5,7 @@
  *
  * Comprehensive integration test for parse-prd functionality.
  * Tests MCP streaming, CLI streaming, and non-streaming modes.
- * Validates token tracking and message formats across all contexts.
+ * Validates token tracking, message formats, and priority indicators across all contexts.
  */
 
 import fs from 'fs';
@@ -16,6 +16,9 @@ import { fileURLToPath } from 'url';
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Get project root (two levels up from tests/progress/)
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 // Import the parse-prd function
 import parsePRD from '../../scripts/modules/task-manager/parse-prd.js';
@@ -156,6 +159,13 @@ class MockMCPLogger {
 }
 
 /**
+ * Get the path to the sample PRD file
+ */
+function getSamplePRDPath() {
+	return path.resolve(PROJECT_ROOT, 'tests', 'fixtures', 'sample-prd.txt');
+}
+
+/**
  * Create a basic test config file
  */
 function createTestConfig() {
@@ -203,72 +213,16 @@ function createTestConfig() {
 	return configPath;
 }
 
-/**
- * Create a test PRD file
- */
-function createTestPRD() {
-	const testPRDContent = `# Test Task Management App
 
-## Project Overview
-Build a comprehensive task management web application with real-time collaboration features.
-
-## Core Features
-1. User authentication and authorization
-2. Create, read, update, delete tasks
-3. Real-time task updates using WebSockets
-4. Task categorization and filtering
-5. User dashboard with analytics
-6. Team collaboration features
-7. File attachments for tasks
-8. Email notifications
-9. Mobile responsive design
-10. API for third-party integrations
-
-## Technical Requirements
-- Frontend: React with TypeScript
-- Backend: Node.js with Express
-- Database: PostgreSQL with Redis for caching
-- Authentication: JWT tokens with refresh mechanism
-- Real-time: Socket.io for live updates
-- File Storage: AWS S3 or similar
-- Email: SendGrid or similar service
-- Styling: Tailwind CSS with custom components
-- Testing: Jest for unit tests, Cypress for E2E
-- Deployment: Docker containers on AWS/GCP
-
-## User Stories
-- As a user, I want to register and login securely
-- As a user, I want to create tasks with rich descriptions and attachments
-- As a user, I want to see real-time updates when team members modify tasks
-- As a user, I want to organize tasks into projects and categories
-- As a user, I want to receive notifications about important task updates
-- As a team lead, I want to assign tasks to team members
-- As a team lead, I want to track project progress with analytics
-- As an admin, I want to manage user permissions and access
-
-## Success Criteria
-- Users can register, login, and manage their profiles
-- Tasks can be created, edited, deleted, and organized
-- Real-time collaboration works seamlessly
-- Application is responsive and accessible
-- All features have comprehensive error handling
-- Performance meets requirements (sub-second response times)
-- Security best practices are implemented
-`;
-
-	const testPRDPath = path.join(__dirname, 'test-prd.txt');
-	fs.writeFileSync(testPRDPath, testPRDContent);
-	return testPRDPath;
-}
 
 /**
- * Test streaming functionality
+ * Test MCP streaming with proper MCP context
  */
-async function testStreaming(numTasks = 10) {
-	console.log(chalk.cyan('🧪 Testing Streaming Functionality\n'));
+async function testMCPStreaming(numTasks = 10) {
+	console.log(chalk.cyan('🧪 Testing MCP Streaming Functionality\n'));
 
-	const testPRDPath = createTestPRD();
-	const testTasksPath = path.join(__dirname, 'test-streaming-tasks.json');
+	const testPRDPath = getSamplePRDPath();
+	const testTasksPath = path.join(__dirname, 'test-mcp-tasks.json');
 	const configPath = createTestConfig();
 
 	// Clean up existing files
@@ -277,10 +231,10 @@ async function testStreaming(numTasks = 10) {
 	}
 
 	const progressReporter = new MockProgressReporter(true);
-	const mcpLogger = new MockMCPLogger(false); // Disable debug for cleaner output
+	const mcpLogger = new MockMCPLogger(true); // Enable debug for MCP context
 
 	try {
-		console.log(chalk.yellow('Starting streaming test...'));
+		console.log(chalk.yellow('Starting MCP streaming test...'));
 		const startTime = Date.now();
 
 		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
@@ -288,16 +242,40 @@ async function testStreaming(numTasks = 10) {
 			append: false,
 			research: false,
 			reportProgress: progressReporter.reportProgress.bind(progressReporter),
-			projectRoot: __dirname
+			projectRoot: PROJECT_ROOT,
+			// Add MCP context - this is the key difference
+			mcpLog: mcpLogger
 		});
 
 		const endTime = Date.now();
 		const duration = endTime - startTime;
 
-		console.log(chalk.green(`\n✅ Streaming test completed in ${duration}ms`));
+		console.log(chalk.green(`\n✅ MCP streaming test completed in ${duration}ms`));
 
 		// Print progress summary
 		progressReporter.printSummary();
+
+		// Print MCP logs
+		console.log(chalk.cyan('\n=== MCP Logs ==='));
+		const logs = mcpLogger.getLogs();
+		logs.forEach((log, index) => {
+			const color = {
+				info: chalk.blue,
+				warn: chalk.yellow,
+				error: chalk.red,
+				debug: chalk.gray,
+				success: chalk.green
+			}[log.level] || chalk.white;
+			console.log(`${index + 1}. ${color(`[${log.level.toUpperCase()}]`)} ${log.message}`);
+		});
+
+		// Verify MCP-specific message formats (should use emoji indicators)
+		const hasEmojiIndicators = progressReporter.getProgressHistory().some(entry =>
+			/[🔴🟠🟢]/.test(entry.message)
+		);
+
+		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
+		console.log(`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`);
 
 		// Verify results
 		if (fs.existsSync(testTasksPath)) {
@@ -328,17 +306,18 @@ async function testStreaming(numTasks = 10) {
 			success: true,
 			duration,
 			progressHistory: progressReporter.getProgressHistory(),
+			mcpLogs: mcpLogger.getLogs(),
+			hasEmojiIndicators,
 			result
 		};
 	} catch (error) {
-		console.error(chalk.red(`❌ Streaming test failed: ${error.message}`));
+		console.error(chalk.red(`❌ MCP streaming test failed: ${error.message}`));
 		return {
 			success: false,
 			error: error.message
 		};
 	} finally {
 		// Clean up
-		if (fs.existsSync(testPRDPath)) fs.unlinkSync(testPRDPath);
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
@@ -350,7 +329,7 @@ async function testStreaming(numTasks = 10) {
 async function testCLIStreaming(numTasks = 10) {
 	console.log(chalk.cyan('🧪 Testing CLI Streaming (No Progress Reporter)\n'));
 
-	const testPRDPath = createTestPRD();
+	const testPRDPath = getSamplePRDPath();
 	const testTasksPath = path.join(__dirname, 'test-cli-tasks.json');
 	const configPath = createTestConfig();
 
@@ -369,7 +348,7 @@ async function testCLIStreaming(numTasks = 10) {
 			append: false,
 			research: false,
 			// No reportProgress provided
-			projectRoot: __dirname
+			projectRoot: PROJECT_ROOT
 		});
 
 		const endTime = Date.now();
@@ -417,7 +396,6 @@ async function testCLIStreaming(numTasks = 10) {
 		};
 	} finally {
 		// Clean up
-		if (fs.existsSync(testPRDPath)) fs.unlinkSync(testPRDPath);
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
@@ -429,7 +407,7 @@ async function testCLIStreaming(numTasks = 10) {
 async function testNonStreaming(numTasks = 10) {
 	console.log(chalk.cyan('🧪 Testing Non-Streaming Functionality\n'));
 
-	const testPRDPath = createTestPRD();
+	const testPRDPath = getSamplePRDPath();
 	const testTasksPath = path.join(__dirname, 'test-non-streaming-tasks.json');
 	const configPath = createTestConfig();
 
@@ -447,7 +425,7 @@ async function testNonStreaming(numTasks = 10) {
 			force: true,
 			append: false,
 			research: false,
-			projectRoot: __dirname
+			projectRoot: PROJECT_ROOT
 			// No reportProgress - should use generateObjectService
 		});
 
@@ -496,7 +474,6 @@ async function testNonStreaming(numTasks = 10) {
 		};
 	} finally {
 		// Clean up
-		if (fs.existsSync(testPRDPath)) fs.unlinkSync(testPRDPath);
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
@@ -552,8 +529,9 @@ async function main() {
 
 	try {
 		switch (testType.toLowerCase()) {
-			case 'streaming':
-				await testStreaming(numTasks);
+			case 'mcp':
+			case 'mcp-streaming':
+				await testMCPStreaming(numTasks);
 				break;
 
 			case 'cli':
@@ -568,17 +546,17 @@ async function main() {
 
 			case 'both':
 				console.log(
-					chalk.yellow('Running both streaming and non-streaming tests...\n')
+					chalk.yellow('Running both MCP streaming and non-streaming tests...\n')
 				);
-				const streamingResult = await testStreaming(numTasks);
+				const mcpStreamingResult = await testMCPStreaming(numTasks);
 				console.log('\n' + '='.repeat(60) + '\n');
 				const nonStreamingResult = await testNonStreaming(numTasks);
-				compareResults(streamingResult, nonStreamingResult);
+				compareResults(mcpStreamingResult, nonStreamingResult);
 				break;
 
 			case 'all':
 				console.log(chalk.yellow('Running all test types...\n'));
-				const streamResult = await testStreaming(numTasks);
+				const mcpResult = await testMCPStreaming(numTasks);
 				console.log('\n' + '='.repeat(60) + '\n');
 				const cliResult = await testCLIStreaming(numTasks);
 				console.log('\n' + '='.repeat(60) + '\n');
@@ -586,9 +564,9 @@ async function main() {
 
 				console.log(chalk.cyan('\n=== All Tests Summary ==='));
 				console.log(
-					`Streaming: ${streamResult.success ? '✅ PASS' : '❌ FAIL'}`
+					`MCP Streaming: ${mcpResult.success ? '✅ PASS' : '❌ FAIL'} ${mcpResult.hasEmojiIndicators ? '(✅ Emojis)' : '(❌ No Emojis)'}`
 				);
-				console.log(`CLI: ${cliResult.success ? '✅ PASS' : '❌ FAIL'}`);
+				console.log(`CLI Streaming: ${cliResult.success ? '✅ PASS' : '❌ FAIL'}`);
 				console.log(
 					`Non-streaming: ${nonStreamResult.success ? '✅ PASS' : '❌ FAIL'}`
 				);
@@ -598,7 +576,7 @@ async function main() {
 				console.log(chalk.red(`Unknown test type: ${testType}`));
 				console.log(
 					chalk.yellow(
-						'Available options: streaming, cli, non-streaming, both, all'
+						'Available options: mcp-streaming, cli-streaming, non-streaming, both, all'
 					)
 				);
 				process.exit(1);

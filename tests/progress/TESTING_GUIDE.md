@@ -2,23 +2,29 @@
 
 This guide provides comprehensive testing procedures to ensure both streaming and non-streaming functionality work correctly with the new token tracking implementation.
 
-## 🎯 Understanding Streaming Modes
+## 📄 Test Data
 
-Task Master supports three distinct operation modes for parse-prd functionality:
+The test script uses the sample PRD file located at `tests/fixtures/sample-prd.txt` which contains a comprehensive task management app specification with multiple features and requirements. This ensures consistent testing across all modes and provides a realistic PRD for validation.
 
-### **MCP Streaming Mode (`streaming`)**
-- **Context**: MCP server with `reportProgress` callback provided
-- **Behavior**: Uses `streamText` service with real-time JSON parsing
+## 🎯 Understanding Test Modes
+
+Task Master supports three distinct test modes for parse-prd functionality:
+
+### **MCP Streaming Mode (`mcp-streaming`)**
+- **Context**: MCP server with proper MCP context (`mcpLog` provided) and `reportProgress` callback
+- **Behavior**: Uses `streamText` service with real-time JSON parsing and MCP-specific priority indicators
 - **Progress**: Sends progress notifications via MCP with emoji indicators (🔴🟠🟢)
 - **Output Format**: JSON responses for MCP clients
-- **UI**: Clean progress messages without CLI styling
+- **UI**: Clean progress messages with emoji priority indicators, MCP logging
+- **Priority Indicators**: Uses `getPriorityIndicators(isMCP=true)` for emoji-based indicators
 
 ### **CLI Streaming Mode (`cli-streaming`)**  
-- **Context**: CLI or MCP without `reportProgress` callback
+- **Context**: CLI context without `reportProgress` callback
 - **Behavior**: Uses `streamText` service but displays CLI progress bars
 - **Progress**: Shows colored terminal progress bars and indicators
 - **Output Format**: Text responses with chalk styling
 - **UI**: Full CLI experience with boxed summaries and colored output
+- **Priority Indicators**: Uses `getPriorityIndicators(isMCP=false)` for CLI dot-based indicators
 
 ### **Non-Streaming Mode (`non-streaming`)**
 - **Context**: Any context without real-time progress requirements
@@ -32,8 +38,8 @@ Task Master supports three distinct operation modes for parse-prd functionality:
 ### 1. Basic Functionality Tests
 
 ```bash
-# Test MCP streaming functionality (with reportProgress)
-node test-parse-prd.js streaming
+# Test MCP streaming functionality (with proper MCP context and emoji indicators)
+node test-parse-prd.js mcp-streaming
 
 # Test CLI streaming functionality (no reportProgress, but with progress bars)
 node test-parse-prd.js cli-streaming
@@ -41,10 +47,10 @@ node test-parse-prd.js cli-streaming
 # Test non-streaming functionality (no progress reporting at all)
 node test-parse-prd.js non-streaming
 
-# Test both streaming modes and compare results
+# Test both MCP streaming and non-streaming modes and compare results
 node test-parse-prd.js both
 
-# Test all modes (MCP streaming, CLI streaming, non-streaming)
+# Test all three modes (MCP streaming, CLI streaming, non-streaming)
 node test-parse-prd.js all
 ```
 
@@ -422,17 +428,69 @@ Progress: "✅ Task Generation Completed | Tokens (I/O): 1,250/800 ($0.0234)"
 4. **Cost Calculation**: Final message includes accurate cost estimate
 5. **Completion Indicator**: Final message has ✅ symbol and summary
 
+## 🧪 **MCP-Specific Testing (`node test-parse-prd.js mcp-streaming`)**
+
+The MCP streaming test mode specifically validates the proper MCP context and priority indicator handling:
+
+### **What the MCP Streaming Test Validates:**
+- ✅ **MCP Context Detection**: Verifies `isMCP = true` when `mcpLog` is provided
+- ✅ **Emoji Priority Indicators**: Confirms emoji indicators (🔴🟠🟢) are used instead of CLI dots (●●●)
+- ✅ **MCP Logging**: Tests that MCP logger receives debug messages
+- ✅ **Progress Format**: Validates MCP-specific progress message format
+- ✅ **Telemetry Data**: Ensures telemetry data flows through MCP layers correctly
+
+### **Expected MCP Streaming Test Output:**
+```bash
+🧪 Testing MCP Streaming Functionality
+
+Starting MCP streaming test...
+[DEBUG] Parsing PRD file: /path/to/test-prd.txt, Force: true, Append: false, Research: false
+[DEBUG] Reading PRD content from /path/to/test-prd.txt
+[1ms] 0% Starting PRD analysis (Input: 1303 tokens)...
+[DEBUG] Calling streaming AI service to generate tasks from PRD...
+[9759ms] 20% 🔴 Task 1/5 - Setup Project Infrastructure | ~Output: 88 tokens
+[17104ms] 40% 🔴 Task 2/5 - Implement Core Task Management | ~Output: 173 tokens
+[24021ms] 60% 🔴 Task 3/5 - Implement Real-time Collaboration | ~Output: 252 tokens
+[31792ms] 80% 🟠 Task 4/5 - Build File Upload System | ~Output: 337 tokens
+[39943ms] 100% 🟠 Task 5/5 - Create User Dashboard | ~Output: 429 tokens
+[41583ms] 100% ✅ Task Generation Completed | ~Tokens (I/O): 1303/2196
+
+=== MCP-Specific Validation ===
+✅ Emoji priority indicators: PASS
+
+✅ Tasks file created with 5 tasks
+✅ Task structure is valid
+```
+
+### **Key Differences from CLI Streaming Test:**
+- **Priority Indicators**: Uses 🔴🟠🟢 (MCP) instead of ●●● (CLI)
+- **MCP Logging**: Includes debug logs from MCP logger
+- **Context Validation**: Specifically tests `isMCP = true` path
+- **Telemetry Flow**: Validates telemetry data through MCP layers
+
+### **Running MCP Streaming Test with Different Task Counts:**
+```bash
+# Test with 3 tasks (quick test)
+node test-parse-prd.js mcp-streaming 3
+
+# Test with 8 tasks (standard test)
+node test-parse-prd.js mcp-streaming 8
+
+# Test with 10 tasks (comprehensive test)
+node test-parse-prd.js mcp-streaming 10
+```
+
 ## 🧪 **Available Test Files**
 
 ### **Integration Tests:**
 - **`test-parse-prd.js`**: Comprehensive integration test with real AI calls
-  - **MCP Streaming Mode**: Tests with mock `reportProgress` callback, validates emoji progress indicators
-  - **CLI Streaming Mode**: Tests without `reportProgress`, validates CLI progress bars and styling
-  - **Non-Streaming Mode**: Tests traditional generateObject path with no progress reporting
+  - **MCP Streaming Mode (`mcp-streaming`)**: Tests with proper MCP context (`mcpLog`) and `reportProgress` callback, validates emoji progress indicators (🔴🟠🟢)
+  - **CLI Streaming Mode (`cli-streaming`)**: Tests without `reportProgress`, validates CLI progress bars and styling with CLI dot indicators (●●●)
+  - **Non-Streaming Mode (`non-streaming`)**: Tests traditional generateObject path with no progress reporting
   - **Token Tracking**: Validates input/output token estimation and cost calculation across all modes
   - **Message Format**: Validates specific message formats for each context (MCP vs CLI)
   - **Performance Comparison**: Compares execution times between different modes
-  - **Test Modes**: `streaming` (MCP), `cli-streaming` (CLI), `non-streaming`, `both`, `all`
+  - **Test Modes**: `mcp-streaming`, `cli-streaming`, `non-streaming`, `both`, `all`
 
 ### **Progress Analysis:**
 - **`parse-prd-analysis.js`**: Detailed timing and accuracy analysis for streaming modes
