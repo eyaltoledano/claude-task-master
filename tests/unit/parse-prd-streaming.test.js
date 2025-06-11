@@ -393,7 +393,7 @@ Build a simple task management web application with user authentication and real
 
 		const finalProgress = progressHistory[progressHistory.length - 1];
 		expect(finalProgress.message).toMatch(
-			/✅ Task Generation Completed \| ~?Tokens \(I\/O\): \d+\/\d+$/
+			/✅ Task Generation Completed \| ~?Tokens \(I\/O\): \d+\/\d+ \| Cost: (~?\$\d+\.\d+|~\$0\.00)$/
 		);
 
 		// Verify AI service was called with streaming
