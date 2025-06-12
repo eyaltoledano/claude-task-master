@@ -32,15 +32,21 @@ export async function modelsDirect(args, log, context = {}) {
 	log.info(`Using project root: ${projectRoot}`);
 
 	// Validate flags: cannot use both openrouter and ollama simultaneously
-	if (args.openrouter && args.ollama) {
+	const providerFlags = [
+		args.openrouter,
+		args.ollama,
+		args.bedrock,
+		args.requesty
+	].filter(Boolean).length;
+	if (providerFlags > 1) {
 		log.error(
-			'Error: Cannot use both openrouter and ollama flags simultaneously.'
+			'Error: Cannot use multiple provider flags openrouter, ollama, bedrock, requesty simultaneously..'
 		);
 		return {
 			success: false,
 			error: {
 				code: 'INVALID_ARGS',
-				message: 'Cannot use both openrouter and ollama flags simultaneously.'
+				message: 'Cannot use multiple provider flags openrouter, ollama, bedrock, requesty simultaneously.'
 			}
 		};
 	}
@@ -68,7 +74,11 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.bedrock
+								? 'bedrock'
+								: args.requesty
+									? 'requesty'
+									: undefined // Pass hint
 				});
 			}
 
@@ -81,7 +91,11 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.bedrock
+								? 'bedrock'
+								: args.requesty
+									? 'requesty'
+									: undefined // Pass hint
 				});
 			}
 
@@ -94,7 +108,11 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.bedrock
+								? 'bedrock'
+								: args.requesty
+									? 'requesty'
+									: undefined // Pass hint
 				});
 			}
 

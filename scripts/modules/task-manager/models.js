@@ -71,6 +71,52 @@ function fetchOpenRouterModels() {
 }
 
 /**
+ * Fetches the list of models from Requesty API.
+ * @returns {Promise<Array|null>} A promise that resolves with the list of model IDs or null if fetch fails.
+ */
+function fetchRequestyModels() {
+	return new Promise((resolve) => {
+		const options = {
+			hostname: 'router.requesty.ai',
+			path: '/v1/models',
+			method: 'GET',
+			headers: {
+				Accept: 'application/json'
+			}
+		};
+
+		const req = https.request(options, (res) => {
+			let data = '';
+			res.on('data', (chunk) => {
+				data += chunk;
+			});
+			res.on('end', () => {
+				if (res.statusCode === 200) {
+					try {
+						const parsedData = JSON.parse(data);
+						resolve(parsedData.data || []); // Return the array of models
+					} catch (e) {
+						console.error('Error parsing Requesty response:', e);
+						resolve(null); // Indicate failure
+					}
+				} else {
+					console.error(
+						`Requesty API request failed with status code: ${res.statusCode}`
+					);
+					resolve(null); // Indicate failure
+				}
+			});
+		});
+
+		req.on('error', (e) => {
+			console.error('Error fetching Requesty models:', e);
+			resolve(null); // Indicate failure
+		});
+		req.end();
+	});
+}
+
+/**
  * Fetches the list of models from Ollama instance.
  * @param {string} baseURL - The base URL for the Ollama API (e.g., "http://localhost:11434/api")
  * @returns {Promise<Array|null>} A promise that resolves with the list of model objects or null if fetch fails.
@@ -465,7 +511,25 @@ async function setModel(role, modelId, options = {}) {
 							`Model ID "${modelId}" not found in the live OpenRouter model list. Please verify the ID and ensure it's available on OpenRouter.`
 						);
 					}
-				} else if (providerHint === 'ollama') {
+				} else if (providerHint === 'requesty') {
+					// Check Requesty ONLY because hint was requesty
+					report('info', `Checking Requesty for ${modelId} (as hinted)...`);
+					const requestyModels = await fetchRequestyModels();
+
+					if (
+						requestyModels &&
+						requestyModels.some((m) => m.id === modelId)
+					) {
+						determinedProvider = 'requesty';
+						warningMessage = `Warning: Custom Requesty model '${modelId}' set. This model is not officially validated by Taskmaster and may not function as expected.`;
+						report('warn', warningMessage);
+					} else {
+						// Hinted as Requesty but not found in live check
+						throw new Error(
+							`Model ID "${modelId}" not found in the live Requesty model list. Please verify the ID and ensure it's available on Requesty.`
+						);
+					}
+			 	} else if (providerHint === 'ollama') {
 					// Check Ollama ONLY because hint was ollama
 					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
 
@@ -514,7 +578,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter or --ollama.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --requesty or --ollama.`
 					}
 				};
 			}
