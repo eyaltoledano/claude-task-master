@@ -11,9 +11,19 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { generateTextService } from '../ai-services-unified.js';
+import {
+	displayAnalyzeComplexityStart,
+	displayAnalyzeComplexitySummary
+} from '../../../src/ui/analyze-complexity.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	generateTextService,
+	streamTextService
+} from '../ai-services-unified.js';
+import { parseStream } from '../../../src/utils/stream-parser.js';
+import { createAnalyzeComplexityTracker } from '../../../src/progress/analyze-complexity-tracker.js';
+
+import { getDebugFlag, getProjectName, getConfig } from '../config-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
@@ -64,10 +74,10 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {Object} context - Context object, potentially containing session and mcpLog
  * @param {Object} [context.session] - Session object from MCP server (optional)
  * @param {Object} [context.mcpLog] - MCP logger object (optional)
- * @param {function} [context.reportProgress] - Deprecated: Function to report progress (ignored)
+ * @param {function} [context.reportProgress] - Function to report progress for MCP streaming
  */
 async function analyzeTaskComplexity(options, context = {}) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, reportProgress } = context;
 	const tasksPath = options.file || LEGACY_TASKS_FILE;
 	const outputPath = options.output || COMPLEXITY_REPORT_FILE;
 	const thresholdScore = parseFloat(options.threshold || '5');
@@ -93,12 +103,38 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 	};
 
+	// Display header for CLI mode
 	if (outputFormat === 'text') {
-		console.log(
-			chalk.blue(
-				'Analyzing task complexity and generating expansion recommendations...'
-			)
-		);
+		// Get model configuration for display
+		const config = getConfig(session);
+		// Use research model if research mode is enabled, otherwise main model
+		const modelConfig = useResearch
+			? config?.models?.research
+			: config?.models?.main;
+		const model = modelConfig?.modelId || modelConfig || 'Default';
+		const temperature =
+			modelConfig?.temperature || config?.aiParameters?.temperature || 0.7;
+
+		// Determine analysis scope description
+		let analysisScope = 'all pending tasks';
+		if (specificIds && specificIds.length > 0) {
+			analysisScope = `specific task IDs: ${specificIds.join(', ')}`;
+		} else if (fromId !== null || toId !== null) {
+			const effectiveFromId = fromId !== null ? fromId : 1;
+			const effectiveToId = toId !== null ? toId : 'end';
+			analysisScope = `task range: ${effectiveFromId} to ${effectiveToId}`;
+		}
+
+		// Store header info for later display after we know the task count
+		var headerInfo = {
+			tasksFilePath: tasksPath,
+			outputPath: outputPath,
+			model: model,
+			temperature: temperature,
+			research: useResearch,
+			threshold: thresholdScore,
+			analysisScope: analysisScope
+		};
 	}
 
 	try {
@@ -206,6 +242,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 			'info'
 		);
 
+		// Display header now that we know the task count
+		if (outputFormat === 'text' && headerInfo) {
+			displayAnalyzeComplexityStart({
+				...headerInfo,
+				numTasks: tasksData.tasks.length
+			});
+		}
+
 		// Updated messaging to reflect filtering logic
 		if (specificIds || fromId !== null || toId !== null) {
 			const filterMsg = specificIds
@@ -230,7 +274,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		try {
 			if (fs.existsSync(outputPath)) {
 				existingReport = readJSON(outputPath);
-				reportLog(`Found existing complexity report at ${outputPath}`, 'info');
+				reportLog(`Found existing complexity report at ${outputPath}`, 'debug');
 
 				if (
 					existingReport &&
@@ -243,7 +287,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 					});
 					reportLog(
 						`Existing report contains ${existingReport.complexityAnalysis.length} task analyses`,
-						'info'
+						'debug'
 					);
 				}
 			}
@@ -287,11 +331,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 				},
 				complexityAnalysis: existingReport?.complexityAnalysis || []
 			};
-			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			reportLog(`Writing complexity report to ${outputPath}...`, 'debug');
 			writeJSON(outputPath, emptyReport);
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
-				'success'
+				'debug'
 			);
 			if (outputFormat === 'text') {
 				console.log(
@@ -346,92 +390,250 @@ async function analyzeTaskComplexity(options, context = {}) {
 		const systemPrompt =
 			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
-		let loadingIndicator = null;
+		// Determine if we should use streaming (CLI with progress tracker or MCP with reportProgress)
+		const isMCP = !!mcpLog;
+		const shouldUseStreaming =
+			(outputFormat === 'text' && !isMCP && options.progressTracker) ||
+			(isMCP && reportProgress);
+
+		// Debug: Check what's happening with context detection
 		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator(
-				`${useResearch ? 'Researching' : 'Analyzing'} the complexity of your tasks with AI...\n`
+			reportLog(
+				`[DEBUG] Context check: mcpLog=${!!mcpLog}, isMCP=${isMCP}, outputFormat=${outputFormat}, progressTracker=${!!options.progressTracker}, shouldUseStreaming=${shouldUseStreaming}`,
+				'debug'
 			);
 		}
 
+		// Initialize progress tracker for CLI mode only (not MCP) and only if progressTracker option is enabled
+		let progressTracker = null;
+		if (outputFormat === 'text' && !isMCP && options.progressTracker) {
+			progressTracker = createAnalyzeComplexityTracker({
+				numTasks: tasksData.tasks.length
+			});
+		}
+
+		let loadingIndicator = null;
 		let aiServiceResponse = null;
 		let complexityAnalysis = null;
 
 		try {
 			const role = useResearch ? 'research' : 'main';
 
-			aiServiceResponse = await generateTextService({
-				prompt,
-				systemPrompt,
-				role,
-				session,
-				projectRoot,
-				commandName: 'analyze-complexity',
-				outputType: mcpLog ? 'mcp' : 'cli'
-			});
+			if (shouldUseStreaming) {
+				// Use streaming approach
+				if (progressTracker) {
+					progressTracker.start();
+				}
 
-			if (loadingIndicator) {
-				stopLoadingIndicator(loadingIndicator);
-				loadingIndicator = null;
-			}
-			if (outputFormat === 'text') {
-				readline.clearLine(process.stdout, 0);
-				readline.cursorTo(process.stdout, 0);
-				console.log(
-					chalk.green('AI service call complete. Parsing response...')
-				);
-			}
+				// Create a simple progress callback that handles both CLI and MCP progress
+				const onProgress = async (analysis, metadata) => {
+					const { currentCount, estimatedTokens } = metadata;
+					const complexityScore = analysis.complexityScore || 5;
+					const recommendedSubtasks = analysis.recommendedSubtasks;
 
-			reportLog(`Parsing complexity analysis from text response...`, 'info');
-			try {
-				let cleanedResponse = aiServiceResponse.mainResult;
-				cleanedResponse = cleanedResponse.trim();
-
-				const codeBlockMatch = cleanedResponse.match(
-					/```(?:json)?\s*([\s\S]*?)\s*```/
-				);
-				if (codeBlockMatch) {
-					cleanedResponse = codeBlockMatch[1].trim();
-				} else {
-					const firstBracket = cleanedResponse.indexOf('[');
-					const lastBracket = cleanedResponse.lastIndexOf(']');
-					if (firstBracket !== -1 && lastBracket > firstBracket) {
-						cleanedResponse = cleanedResponse.substring(
-							firstBracket,
-							lastBracket + 1
+					// CLI progress tracker (if available)
+					if (progressTracker) {
+						progressTracker.addAnalysisLine(
+							analysis.taskId,
+							analysis.taskTitle,
+							complexityScore,
+							recommendedSubtasks
 						);
+
+						// Update tokens display if available
+						if (estimatedTokens) {
+							progressTracker.updateTokens(
+								estimatedInputTokens,
+								estimatedTokens
+							);
+						}
+					}
+
+					// MCP progress reporting (if available)
+					if (reportProgress) {
+						try {
+							// Estimate output tokens for this analysis
+							const outputTokens = estimatedTokens
+								? Math.floor(estimatedTokens / tasksData.tasks.length)
+								: 0;
+
+							await reportProgress({
+								type: 'analysis_progress',
+								current: currentCount,
+								total: tasksData.tasks.length,
+								taskId: analysis.taskId,
+								taskTitle: analysis.taskTitle,
+								complexityScore: complexityScore,
+								recommendedSubtasks: recommendedSubtasks,
+								inputTokens: metadata.estimatedInputTokens || 0,
+								outputTokens: outputTokens,
+								message: `Analyzed Task ${analysis.taskId}: ${analysis.taskTitle} (Score: ${complexityScore}, Subtasks: ${recommendedSubtasks})`
+							});
+						} catch (progressError) {
+							// Don't fail the entire operation if progress reporting fails
+							reportLog(
+								`Progress reporting error: ${progressError.message}`,
+								'warn'
+							);
+						}
+					}
+				};
+
+				// Estimate input tokens for progress tracking
+				const estimatedInputTokens = Math.floor(prompt.length / 4);
+
+				// Set initial input tokens on progress tracker
+				if (progressTracker) {
+					progressTracker.updateTokens(estimatedInputTokens, 0);
+				}
+
+				aiServiceResponse = await streamTextService({
+					prompt,
+					systemPrompt,
+					role,
+					session,
+					projectRoot,
+					commandName: 'analyze-complexity',
+					outputType: mcpLog ? 'mcp' : 'cli'
+				});
+
+				// Parse the streaming response
+				const streamParseResult = await parseStream(
+					aiServiceResponse.mainResult,
+					{
+						jsonPaths: ['$.*'], // Match individual items in the array
+						onProgress,
+						estimateTokens: (text) => Math.floor(text.length / 4),
+						expectedTotal: tasksData.tasks.length,
+						// Custom validation for complexity analysis items
+						itemValidator: (item) => {
+							// Complexity analysis uses 'taskTitle' instead of 'title'
+							return (
+								item &&
+								item.taskTitle &&
+								typeof item.taskTitle === 'string' &&
+								item.taskTitle.trim() &&
+								typeof item.taskId !== 'undefined'
+							);
+						},
+						fallbackItemExtractor: (jsonObj) => {
+							// Handle different response formats
+							if (Array.isArray(jsonObj)) {
+								return jsonObj;
+							}
+							if (jsonObj.analyses && Array.isArray(jsonObj.analyses)) {
+								return jsonObj.analyses;
+							}
+							if (
+								jsonObj.complexityAnalysis &&
+								Array.isArray(jsonObj.complexityAnalysis)
+							) {
+								return jsonObj.complexityAnalysis;
+							}
+							return [];
+						}
+					}
+				);
+
+				complexityAnalysis = streamParseResult.items;
+
+				if (progressTracker) {
+					await progressTracker.stop();
+				}
+
+				if (outputFormat === 'text') {
+					reportLog(
+						'Streaming analysis complete. Processing results...',
+						'debug'
+					);
+				}
+			} else {
+				// Use traditional non-streaming approach (fallback)
+				if (outputFormat === 'text') {
+					loadingIndicator = startLoadingIndicator(
+						`${useResearch ? 'Researching' : 'Analyzing'} the complexity of your tasks with AI...\n`
+					);
+				}
+
+				aiServiceResponse = await generateTextService({
+					prompt,
+					systemPrompt,
+					role,
+					session,
+					projectRoot,
+					commandName: 'analyze-complexity',
+					outputType: mcpLog ? 'mcp' : 'cli'
+				});
+
+				if (loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator);
+					loadingIndicator = null;
+				}
+				if (outputFormat === 'text') {
+					readline.clearLine(process.stdout, 0);
+					readline.cursorTo(process.stdout, 0);
+					console.log(
+						chalk.green('AI service call complete. Parsing response...')
+					);
+				}
+			}
+
+			// Only parse JSON if we didn't use streaming (streaming already parsed it)
+			if (!shouldUseStreaming) {
+				reportLog(`Parsing complexity analysis from text response...`, 'info');
+				try {
+					let cleanedResponse = aiServiceResponse.mainResult;
+					cleanedResponse = cleanedResponse.trim();
+
+					const codeBlockMatch = cleanedResponse.match(
+						/```(?:json)?\s*([\s\S]*?)\s*```/
+					);
+					if (codeBlockMatch) {
+						cleanedResponse = codeBlockMatch[1].trim();
 					} else {
-						reportLog(
-							'Warning: Response does not appear to be a JSON array.',
-							'warn'
+						const firstBracket = cleanedResponse.indexOf('[');
+						const lastBracket = cleanedResponse.lastIndexOf(']');
+						if (firstBracket !== -1 && lastBracket > firstBracket) {
+							cleanedResponse = cleanedResponse.substring(
+								firstBracket,
+								lastBracket + 1
+							);
+						} else {
+							reportLog(
+								'Warning: Response does not appear to be a JSON array.',
+								'warn'
+							);
+						}
+					}
+
+					if (outputFormat === 'text' && getDebugFlag(session)) {
+						console.log(chalk.gray('Attempting to parse cleaned JSON...'));
+						console.log(chalk.gray('Cleaned response (first 100 chars):'));
+						console.log(chalk.gray(cleanedResponse.substring(0, 100)));
+						console.log(chalk.gray('Last 100 chars:'));
+						console.log(
+							chalk.gray(
+								cleanedResponse.substring(cleanedResponse.length - 100)
+							)
 						);
 					}
-				}
 
-				if (outputFormat === 'text' && getDebugFlag(session)) {
-					console.log(chalk.gray('Attempting to parse cleaned JSON...'));
-					console.log(chalk.gray('Cleaned response (first 100 chars):'));
-					console.log(chalk.gray(cleanedResponse.substring(0, 100)));
-					console.log(chalk.gray('Last 100 chars:'));
-					console.log(
-						chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100))
+					complexityAnalysis = JSON.parse(cleanedResponse);
+				} catch (parseError) {
+					if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+					reportLog(
+						`Error parsing complexity analysis JSON: ${parseError.message}`,
+						'error'
 					);
+					if (outputFormat === 'text') {
+						console.error(
+							chalk.red(
+								`Error parsing complexity analysis JSON: ${parseError.message}`
+							)
+						);
+					}
+					throw parseError;
 				}
-
-				complexityAnalysis = JSON.parse(cleanedResponse);
-			} catch (parseError) {
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-				reportLog(
-					`Error parsing complexity analysis JSON: ${parseError.message}`,
-					'error'
-				);
-				if (outputFormat === 'text') {
-					console.error(
-						chalk.red(
-							`Error parsing complexity analysis JSON: ${parseError.message}`
-						)
-					);
-				}
-				throw parseError;
 			}
 
 			const taskIds = tasksData.tasks.map((t) => t.id);
@@ -492,7 +694,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 				reportLog(
 					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`,
-					'info'
+					'debug'
 				);
 			} else {
 				// No existing report or invalid format, just use the new analysis
@@ -511,71 +713,63 @@ async function analyzeTaskComplexity(options, context = {}) {
 				},
 				complexityAnalysis: finalComplexityAnalysis
 			};
-			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			reportLog(`Writing complexity report to ${outputPath}...`, 'debug');
 			writeJSON(outputPath, report);
 
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
-				'success'
+				'debug'
 			);
 
 			if (outputFormat === 'text') {
-				console.log(
-					chalk.green(
-						`Task complexity analysis complete. Report written to ${outputPath}`
-					)
-				);
 				// Calculate statistics specifically for this analysis run
 				const highComplexity = complexityAnalysis.filter(
-					(t) => t.complexityScore >= 8
+					(t) => t.complexityScore >= 7
 				).length;
 				const mediumComplexity = complexityAnalysis.filter(
-					(t) => t.complexityScore >= 5 && t.complexityScore < 8
+					(t) => t.complexityScore >= 4 && t.complexityScore < 7
 				).length;
 				const lowComplexity = complexityAnalysis.filter(
-					(t) => t.complexityScore < 5
+					(t) => t.complexityScore < 4
 				).length;
 				const totalAnalyzed = complexityAnalysis.length;
 
-				console.log('\nCurrent Analysis Summary:');
-				console.log('----------------------------');
-				console.log(`Tasks analyzed in this run: ${totalAnalyzed}`);
-				console.log(`High complexity tasks: ${highComplexity}`);
-				console.log(`Medium complexity tasks: ${mediumComplexity}`);
-				console.log(`Low complexity tasks: ${lowComplexity}`);
-
-				if (existingReport) {
-					console.log('\nUpdated Report Summary:');
-					console.log('----------------------------');
-					console.log(
-						`Total analyses in report: ${finalComplexityAnalysis.length}`
-					);
-					console.log(
-						`Analyses from previous runs: ${finalComplexityAnalysis.length - totalAnalyzed}`
-					);
-					console.log(`New/updated analyses: ${totalAnalyzed}`);
+				// Determine analysis scope description for summary
+				let analysisScope = 'all pending tasks';
+				if (specificIds && specificIds.length > 0) {
+					analysisScope = `specific task IDs: ${specificIds.join(', ')}`;
+				} else if (fromId !== null || toId !== null) {
+					const effectiveFromId = fromId !== null ? fromId : 1;
+					const effectiveToId = toId !== null ? toId : 'end';
+					analysisScope = `task range: ${effectiveFromId} to ${effectiveToId}`;
 				}
 
-				console.log(`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`);
-				console.log(
-					`\nSee ${outputPath} for the full report and expansion commands.`
-				);
+				// Get elapsed time from progress tracker if available
+				let elapsedTime = 0;
+				if (progressTracker) {
+					elapsedTime = progressTracker.getElapsedTime();
+				}
 
-				console.log(
-					boxen(
-						chalk.white.bold('Suggested Next Steps:') +
-							'\n\n' +
-							`${chalk.cyan('1.')} Run ${chalk.yellow('task-master complexity-report')} to review detailed findings\n` +
-							`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down complex tasks\n` +
-							`${chalk.cyan('3.')} Run ${chalk.yellow('task-master expand --all')} to expand all pending tasks based on complexity`,
-						{
-							padding: 1,
-							borderColor: 'cyan',
-							borderStyle: 'round',
-							margin: { top: 1 }
-						}
-					)
-				);
+				// Display the comprehensive summary
+				displayAnalyzeComplexitySummary({
+					totalAnalyzed: totalAnalyzed,
+					highComplexity: highComplexity,
+					mediumComplexity: mediumComplexity,
+					lowComplexity: lowComplexity,
+					tasksFilePath: tasksPath,
+					outputPath: outputPath,
+					elapsedTime: elapsedTime,
+					research: useResearch,
+					threshold: thresholdScore,
+					analysisScope: analysisScope,
+					// Include report update info if there was an existing report
+					totalInReport: existingReport
+						? finalComplexityAnalysis.length
+						: undefined,
+					previousAnalyses: existingReport
+						? finalComplexityAnalysis.length - totalAnalyzed
+						: undefined
+				});
 
 				if (getDebugFlag(session)) {
 					console.debug(
@@ -596,6 +790,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			};
 		} catch (aiError) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+			if (progressTracker) await progressTracker.stop();
 			reportLog(`Error during AI service call: ${aiError.message}`, 'error');
 			if (outputFormat === 'text') {
 				console.error(

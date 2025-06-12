@@ -1438,7 +1438,33 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			await analyzeTaskComplexity(options);
+			// Check if we should use progress tracking instead of spinner (same pattern as parse-prd)
+			const shouldUseProgressTracker = !isSilentMode() && process.stdout.isTTY;
+			let spinner;
+
+			try {
+				if (!shouldUseProgressTracker) {
+					spinner = ora('Analyzing task complexity...\n').start();
+				}
+
+				await analyzeTaskComplexity({
+					...options,
+					progressTracker: shouldUseProgressTracker
+				});
+
+				if (spinner) {
+					spinner.succeed('Task complexity analysis completed successfully!');
+				}
+			} catch (error) {
+				if (spinner) {
+					spinner.fail(`Error analyzing task complexity: ${error.message}`);
+				} else {
+					console.error(
+						chalk.red(`Error analyzing task complexity: ${error.message}`)
+					);
+				}
+				process.exit(1);
+			}
 		});
 
 	// clear-subtasks command

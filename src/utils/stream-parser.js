@@ -9,6 +9,7 @@ import { JSONParser } from '@streamparser/json';
  * @property {Function} [estimateTokens] - Function to estimate tokens from text: (text) => number
  * @property {number} [expectedTotal] - Expected total number of items for progress calculation
  * @property {Function} [fallbackItemExtractor] - Function to extract items from complete JSON: (jsonObj) => Array
+ * @property {Function} [itemValidator] - Function to validate parsed items: (item) => boolean
  */
 
 /**
@@ -42,7 +43,8 @@ export async function parseStream(textStream, config = {}) {
 		onError,
 		estimateTokens = (text) => Math.ceil(text.length / 4),
 		expectedTotal = 0,
-		fallbackItemExtractor
+		fallbackItemExtractor,
+		itemValidator
 	} = config;
 
 	if (!textStream) {
@@ -66,13 +68,16 @@ export async function parseStream(textStream, config = {}) {
 		// Extract the actual item object from the parser's nested structure
 		const item = value.value || value;
 
-		// Only process if we have a valid item with a title
-		if (
-			item &&
-			item.title &&
-			typeof item.title === 'string' &&
-			item.title.trim()
-		) {
+		// Use custom validator if provided, otherwise default validation
+		const isValidItem = itemValidator
+			? itemValidator(item)
+			: item &&
+				item.title &&
+				typeof item.title === 'string' &&
+				item.title.trim();
+
+		// Only process if we have a valid item
+		if (isValidItem) {
 			parsedItems.push(item);
 
 			if (onProgress) {

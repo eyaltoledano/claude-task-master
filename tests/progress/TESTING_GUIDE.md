@@ -1,10 +1,14 @@
 # Task Master Testing Guide
 
-This guide provides comprehensive testing procedures to ensure both streaming and non-streaming functionality work correctly with the new token tracking implementation.
+This guide provides comprehensive testing procedures to ensure both streaming and non-streaming functionality work correctly with the new token tracking implementation across Task Master features.
 
 ## 📄 Test Data
 
+### Parse-PRD Testing
 The test script uses the sample PRD file located at `tests/fixtures/sample-prd.txt` which contains a comprehensive task management app specification with multiple features and requirements. This ensures consistent testing across all modes and provides a realistic PRD for validation.
+
+### Analyze-Complexity Testing
+The analyze-complexity tests use the existing tasks in `.taskmaster/tasks/tasks.json` or create test tasks if none exist. This provides realistic complexity analysis scenarios with actual task data.
 
 ## 🎯 Understanding Test Modes
 
@@ -35,7 +39,7 @@ Task Master supports three distinct test modes for parse-prd functionality:
 
 ## 🚀 Quick Start Testing
 
-### 1. Basic Functionality Tests
+### 1. Parse-PRD Functionality Tests
 
 ```bash
 # Test MCP streaming functionality (with proper MCP context and emoji indicators)
@@ -54,7 +58,48 @@ node test-parse-prd.js both
 node test-parse-prd.js all
 ```
 
-### 2. Detailed Progress Analysis
+### 2. Analyze-Complexity Functionality Tests
+
+```bash
+# Test MCP streaming functionality (with proper MCP context and dot indicators)
+node test-analyze-complexity.js mcp-streaming
+
+# Test CLI streaming functionality (no reportProgress, but with progress bars)
+node test-analyze-complexity.js cli-streaming
+
+# Test non-streaming functionality (no progress reporting at all)
+node test-analyze-complexity.js non-streaming
+
+# Test both MCP streaming and non-streaming modes and compare results
+node test-analyze-complexity.js both
+
+# Test all three modes (MCP streaming, CLI streaming, non-streaming)
+node test-analyze-complexity.js all
+
+# Test analyze-complexity CLI streaming (recommended - uses local dev version)
+node scripts/dev.js analyze-complexity --research
+
+# Test analyze-complexity CLI streaming without research
+node scripts/dev.js analyze-complexity
+
+# Test analyze-complexity with specific threshold
+node scripts/dev.js analyze-complexity --threshold=7 --research
+
+# Test analyze-complexity with specific task range
+node scripts/dev.js analyze-complexity --from=1 --to=3 --research
+
+# Test analyze-complexity with specific task IDs
+node scripts/dev.js analyze-complexity --id=1,3,5 --research
+
+# Test global CLI version (non-streaming by default)
+task-master analyze-complexity --research
+
+# Verify results
+task-master complexity-report
+ls .taskmaster/reports/task-complexity-report.json
+```
+
+### 3. Detailed Progress Analysis
 
 ```bash
 # Test progress accuracy and timing
@@ -67,7 +112,7 @@ node parse-prd-analysis.js complexity
 node parse-prd-analysis.js all
 ```
 
-### 3. Unit and Integration Tests
+### 4. Unit and Integration Tests
 
 ```bash
 # Run all Jest tests
@@ -76,11 +121,12 @@ npm test
 # Run specific test suites
 npm test -- --testNamePattern="parse-prd"
 npm test -- --testNamePattern="streaming"
+npm test -- --testNamePattern="analyze-complexity"
 ```
 
 ## 📋 Testing Checklist
 
-### ✅ **Streaming Functionality Tests**
+### ✅ **Parse-PRD Streaming Functionality Tests**
 
 **Auto-Detection:**
 - [ ] Streaming enabled when `reportProgress` function provided
@@ -110,6 +156,37 @@ npm test -- --testNamePattern="streaming"
 - [ ] Progress reporting errors don't break main flow
 - [ ] AI service errors are properly caught and reported
 
+### ✅ **Analyze-Complexity Streaming Functionality Tests**
+
+**Auto-Detection:**
+- [ ] Streaming enabled when `progressTracker` is true in CLI mode
+- [ ] Progress updates sent in real-time as tasks are analyzed
+- [ ] Uses existing tasks.json file or creates test tasks
+
+**Token Tracking Progress Reporting:**
+- [ ] Initial progress shows input tokens and analysis start
+- [ ] Task progress shows complexity score, subtasks count, and priority indicators: `●●○ Task 1 (Score: 5, Subtasks: 5): Setup Project...`
+- [ ] Final completion shows total tokens and cost in telemetry box
+- [ ] Progress bar shows real-time completion: `Analysis 5/5 |████████████████████████████████████████| 100%`
+- [ ] Token estimates are reasonable and tracked during analysis
+
+**Priority Indicators:**
+- [ ] ●●● High complexity tasks (scores 8-10) displayed correctly
+- [ ] ●●○ Medium complexity tasks (scores 4-7) displayed correctly  
+- [ ] ●○○ Low complexity tasks (scores 1-3) displayed correctly
+
+**Complexity Analysis:**
+- [ ] Complexity scores range from 1-10 and are reasonable
+- [ ] Subtask recommendations correlate with complexity scores
+- [ ] Task titles are properly truncated if too long
+- [ ] Analysis results are saved to complexity report file
+
+**Error Handling:**
+- [ ] Graceful handling of missing tasks file
+- [ ] Progress reporting errors don't break main analysis
+- [ ] AI service errors are properly caught and reported
+- [ ] Invalid task data is handled gracefully
+
 ### ✅ **Non-Streaming Functionality Tests**
 
 **Auto-Detection:**
@@ -130,6 +207,7 @@ npm test -- --testNamePattern="streaming"
 
 ### ✅ **CLI Integration Tests**
 
+#### Parse-PRD CLI Tests
 ```bash
 # Test CLI parse-prd command (non-streaming by default)
 echo "# Test PRD
@@ -147,13 +225,40 @@ ls task_*.txt
 rm test-prd.txt tasks.json task_*.txt
 ```
 
-**CLI Checklist:**
+**Parse-PRD CLI Checklist:**
 - [ ] `task-master parse-prd` works without errors
 - [ ] Tasks.json file created with correct structure
 - [ ] Individual task files (task_001.txt, etc.) generated
 - [ ] Task list command shows generated tasks
 - [ ] No streaming progress (CLI doesn't provide progress reporter)
 - [ ] Telemetry displayed at completion
+
+#### Analyze-Complexity CLI Tests
+```bash
+# Test CLI analyze-complexity command with streaming (using local dev version)
+node scripts/dev.js analyze-complexity --research
+
+# Test with different options
+node scripts/dev.js analyze-complexity --threshold=7 --research
+node scripts/dev.js analyze-complexity --from=1 --to=3
+node scripts/dev.js analyze-complexity --id=1,3,5 --research
+
+# Test global CLI version (non-streaming by default)
+task-master analyze-complexity --research
+
+# Verify results
+task-master complexity-report
+ls .taskmaster/reports/task-complexity-report.json
+```
+
+**Analyze-Complexity CLI Checklist:**
+- [ ] `node scripts/dev.js analyze-complexity` shows streaming progress
+- [ ] Progress bar displays real-time analysis completion
+- [ ] Individual task analysis shown with priority indicators
+- [ ] Complexity report file created with correct structure
+- [ ] `task-master complexity-report` displays formatted results
+- [ ] Token tracking and telemetry displayed at completion
+- [ ] Different options (--threshold, --from, --to, --id) work correctly
 
 ### ✅ **MCP Integration Tests**
 
@@ -168,6 +273,16 @@ rm test-prd.txt tasks.json task_*.txt
     "numTasks": "8",
     "force": true,
     "research": false,
+    "projectRoot": "/path/to/your/project"
+  }
+}
+
+// Test analyze_project_complexity MCP tool
+{
+  "tool": "analyze_project_complexity",
+  "args": {
+    "threshold": 5,
+    "research": true,
     "projectRoot": "/path/to/your/project"
   }
 }
@@ -205,13 +320,22 @@ echo "This is not a valid PRD" > invalid-prd.txt
 
 ## 🔍 **What to Look For**
 
-### **Streaming Success Indicators:**
+### **Parse-PRD Streaming Success Indicators:**
 - ✅ Initial message shows input token count
 - ✅ Progress updates appear every 4-8 seconds with priority indicators (🔴🔴🔴🟠🟠⚪🟢⚪⚪)
 - ✅ Each task shows estimated output tokens
 - ✅ Progress percentages increase monotonically
 - ✅ Final completion shows total I/O tokens and cost
 - ✅ No JSON parsing errors (or graceful fallback if they occur)
+
+### **Analyze-Complexity Streaming Success Indicators:**
+- ✅ Progress bar shows real-time analysis: `Analysis 5/5 |████████████████████████████████████████| 100%`
+- ✅ Individual task analysis displayed as it happens with priority indicators (●●●, ●●○, ●○○)
+- ✅ Task format: `●●○ Task 1 (Score: 5, Subtasks: 5): Setup Project Structure and HTML Foundation`
+- ✅ Complexity scores range from 1-10 with appropriate priority indicators
+- ✅ Subtask recommendations based on complexity scores
+- ✅ Token tracking during analysis: `Tokens (I/O): 0/770`
+- ✅ Final telemetry summary with cost calculation
 
 ### **Non-Streaming Success Indicators:**
 - ✅ Single completion message after AI finishes
@@ -328,159 +452,7 @@ npm test
 
 ---
 
-# MCP Progress Compliance Testing Guide
-
-This section provides comprehensive testing procedures to ensure MCP progress implementation is fully compliant with the MCP 2025-03-26 specification and FastMCP requirements.
-
-## 🎯 **MCP Progress Specification Compliance**
-
-### **Key Requirements from MCP Spec 2025-03-26:**
-1. **Progress values MUST increase** with each notification
-2. **Total value MUST remain consistent** throughout operation
-3. **Progress messages SHOULD** provide relevant human-readable information
-4. **Progress notifications MUST stop** after completion
-5. **Progress tokens** handled by FastMCP framework automatically
-
-### **FastMCP Integration Requirements:**
-1. **Function validation**: Check `reportProgress` is a function
-2. **Graceful degradation**: Work when progress not available
-3. **Context passing**: Thread through all layers correctly
-4. **Error handling**: Progress errors don't break main operation
-
-## 📋 **MCP Progress Testing Checklist**
-
-### ✅ **Progress Specification Compliance**
-
-**Progress Values Always Increase:**
-- [ ] Initial progress starts at 0
-- [ ] Each task completion increments by 1
-- [ ] Progress never decreases (even during fallback parsing)
-- [ ] Final progress equals total at completion
-- [ ] Setup phases can maintain same progress with different messages
-
-**Consistent Total Values:**
-- [ ] Total set to `numTasks` at start and never changes
-- [ ] All progress reports use same total value
-- [ ] No dynamic total adjustments during operation
-
-**Meaningful Messages with Token Tracking:**
-- [ ] Initial: `"Starting PRD analysis (Input: 2,150 tokens) with research..."`
-- [ ] Tasks: `"🔴 Task 1/8 - Set up project structure | ~Output: 340 tokens"`
-- [ ] Completion: `"✅ Task Generation Completed | Tokens (I/O): 2,150/1,847 ($0.0423)"`
-
-**Progress Completion:**
-- [ ] Final progress report sent at 100% completion
-- [ ] No additional progress reports after completion
-- [ ] Operation terminates cleanly after final report
-
-### ✅ **FastMCP Integration Compliance**
-
-**Function Validation:**
-- [ ] Checks `typeof reportProgress === 'function'`
-- [ ] Logs warning when progress not available
-- [ ] Passes `undefined` when function not provided
-
-**Context Threading:**
-- [ ] MCP tool receives `reportProgress` in context
-- [ ] Direct function passes progress to core logic
-- [ ] Core logic validates and uses progress function
-
-**Error Handling:**
-- [ ] Progress errors caught with `.catch()`
-- [ ] Errors logged but don't break main operation
-- [ ] Operation continues successfully even with progress failures
-
-## 🔍 **Expected Progress Flow with Token Tracking**
-
-### **Expected Output Examples:**
-
-**MCP Streaming Mode (numTasks = 3):**
-```
-Progress: "Starting PRD analysis (Input: 1,250 tokens) with research..."
-Progress: "🔴 Task 1/3 - Set up project structure | ~Output: 180 tokens"
-Progress: "🔴 Task 2/3 - Implement user authentication | ~Output: 340 tokens"
-Progress: "🟠 Task 3/3 - Design database schema | ~Output: 280 tokens"
-Progress: "✅ Task Generation Completed | Tokens (I/O): 1,250/800 ($0.0234)"
-```
-
-**CLI Streaming Mode (numTasks = 3):**
-```
-🤖 Parsing PRD and Generating Tasks
-📊 Starting PRD analysis (Input: 1,250 tokens) with research...
-▓▓▓▓▓▓▓▓▒▒▒▒▒▒ 33% | Task 1/3 - Set up project structure
-▓▓▓▓▓▓▓▓▓▓▓▒▒▒ 67% | Task 2/3 - Implement user authentication  
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100% | Task 3/3 - Design database schema
-✅ Task Generation Completed | Tokens (I/O): 1,250/800 ($0.0234)
-```
-
-**Non-Streaming Mode (numTasks = 3):**
-```
-🤖 Parsing PRD and Generating Tasks
-[processing without progress updates]
-✅ Task Generation Completed | Tokens (I/O): 1,250/800 ($0.0234)
-```
-
-### **Key Validation Points:**
-
-1. **Progress Values**: Monotonically increasing based on completed tasks
-2. **Token Tracking**: Input shown at start, output tracked during generation
-3. **Priority Display**: Task messages show priority with color indicators
-4. **Cost Calculation**: Final message includes accurate cost estimate
-5. **Completion Indicator**: Final message has ✅ symbol and summary
-
-## 🧪 **MCP-Specific Testing (`node test-parse-prd.js mcp-streaming`)**
-
-The MCP streaming test mode specifically validates the proper MCP context and priority indicator handling:
-
-### **What the MCP Streaming Test Validates:**
-- ✅ **MCP Context Detection**: Verifies `isMCP = true` when `mcpLog` is provided
-- ✅ **Emoji Priority Indicators**: Confirms emoji indicators (🔴🟠🟢) are used instead of CLI dots (●●●)
-- ✅ **MCP Logging**: Tests that MCP logger receives debug messages
-- ✅ **Progress Format**: Validates MCP-specific progress message format
-- ✅ **Telemetry Data**: Ensures telemetry data flows through MCP layers correctly
-
-### **Expected MCP Streaming Test Output:**
-```bash
-🧪 Testing MCP Streaming Functionality
-
-Starting MCP streaming test...
-[DEBUG] Parsing PRD file: /path/to/test-prd.txt, Force: true, Append: false, Research: false
-[DEBUG] Reading PRD content from /path/to/test-prd.txt
-[1ms] 0% Starting PRD analysis (Input: 1303 tokens)...
-[DEBUG] Calling streaming AI service to generate tasks from PRD...
-[9759ms] 20% 🔴 Task 1/5 - Setup Project Infrastructure | ~Output: 88 tokens
-[17104ms] 40% 🔴 Task 2/5 - Implement Core Task Management | ~Output: 173 tokens
-[24021ms] 60% 🔴 Task 3/5 - Implement Real-time Collaboration | ~Output: 252 tokens
-[31792ms] 80% 🟠 Task 4/5 - Build File Upload System | ~Output: 337 tokens
-[39943ms] 100% 🟠 Task 5/5 - Create User Dashboard | ~Output: 429 tokens
-[41583ms] 100% ✅ Task Generation Completed | ~Tokens (I/O): 1303/2196
-
-=== MCP-Specific Validation ===
-✅ Emoji priority indicators: PASS
-
-✅ Tasks file created with 5 tasks
-✅ Task structure is valid
-```
-
-### **Key Differences from CLI Streaming Test:**
-- **Priority Indicators**: Uses 🔴🟠🟢 (MCP) instead of ●●● (CLI)
-- **MCP Logging**: Includes debug logs from MCP logger
-- **Context Validation**: Specifically tests `isMCP = true` path
-- **Telemetry Flow**: Validates telemetry data through MCP layers
-
-### **Running MCP Streaming Test with Different Task Counts:**
-```bash
-# Test with 3 tasks (quick test)
-node test-parse-prd.js mcp-streaming 3
-
-# Test with 8 tasks (standard test)
-node test-parse-prd.js mcp-streaming 8
-
-# Test with 10 tasks (comprehensive test)
-node test-parse-prd.js mcp-streaming 10
-```
-
-## 🧪 **Available Test Files**
+## 📚 **Test File Reference**
 
 ### **Integration Tests:**
 - **`test-parse-prd.js`**: Comprehensive integration test with real AI calls
@@ -501,63 +473,59 @@ node test-parse-prd.js mcp-streaming 10
   - **Real-time Metrics**: Analyzes whether progress updates occur in reasonable time intervals (< 10s)
   - **Test Modes**: `accuracy`, `complexity`, `all`
 
+- **`test-analyze-complexity.js`**: Comprehensive integration test with real AI calls for analyze-complexity functionality
+  - **MCP Streaming Mode (`mcp-streaming`)**: Tests with proper MCP context (`mcpLog`) and `reportProgress` callback, validates dot progress indicators (●●●)
+  - **CLI Streaming Mode (`cli-streaming`)**: Tests without `reportProgress`, validates CLI progress bars and styling
+  - **Non-Streaming Mode (`non-streaming`)**: Tests traditional generateText path with no progress reporting
+  - **Token Tracking**: Validates input/output token estimation and cost calculation across all modes
+  - **Message Format**: Validates specific message formats for complexity analysis (Score, Subtasks, Priority indicators)
+  - **Performance Comparison**: Compares execution times between different modes
+  - **Test Modes**: `mcp-streaming`, `cli-streaming`, `non-streaming`, `both`, `all`
+
 ### **Unit Tests:**
-- **`tests/unit/parse-prd-streaming.test.js`**: Jest unit tests for streaming functionality
-- **`tests/unit/scripts/modules/task-manager/parse-prd.test.js`**: Core logic unit tests
-
-## 🎯 **Success Criteria - PERFECT Implementation**
-
-**✅ All tests pass when:**
-- Token tracking displays correctly at all stages
-- Progress values are always monotonically increasing
-- Priority indicators (🔴🔴🔴🟠🟠⚪🟢⚪⚪) display correctly
-- Messages follow exact format with token information
-- Final completion message includes cost and token summary
-- Function validation works correctly
-- Error handling doesn't break main operation
-- MCP integration follows FastMCP patterns
-- CLI mode gracefully works without progress
-- Performance stays within acceptable bounds
-
-## 🔧 **Debugging Common Issues**
-
-### **Token Tracking Not Working:**
-```bash
-# Check if estimateTokens function is working
-# Verify telemetry data is being passed through
-# Look for token counts in progress messages
-```
-
-### **Progress Format Issues:**
-```bash
-# Verify priority indicators are showing (🔴🔴🔴🟠🟠⚪🟢⚪⚪)
-# Check token format: "~Output: 340 tokens"
-# Ensure completion format: "Tokens (I/O): 2,150/1,847 ($0.0423)"
-```
-
-### **Missing Progress Updates:**
-```bash
-# Verify JSON parser onValue callback is firing
-# Check for complete tasks with valid titles
-# Ensure no errors are preventing progress reports
-```
+- **`tests/unit/parse-prd-streaming.test.js`**: Jest unit tests for parse-prd streaming functionality
+- **`tests/unit/scripts/modules/task-manager/parse-prd.test.js`**: Core logic unit tests for parse-prd
+- **`tests/unit/scripts/modules/task-manager/analyze-task-complexity.test.js`**: Core logic unit tests for analyze-complexity
 
 ---
 
-## 📁 **Test File Organization**
+# MCP Progress Compliance Testing Guide
 
-The test files in this directory have been renamed for clarity:
+This section provides specific guidance for testing MCP progress reporting compliance to ensure consistent behavior across different MCP clients.
 
-- **`test-parse-prd.js`** (formerly `test-streaming-prd.js`)
-  - Comprehensive integration tests for all parse-prd modes
-  - Tests MCP streaming, CLI streaming, and non-streaming functionality
-  - Validates token tracking and message formats across contexts
+## Progress Reporting Requirements
 
-- **`parse-prd-analysis.js`** (formerly `test-progress-detailed.js`)  
-  - Detailed timing and accuracy analysis for progress reporting
-  - Tests different PRD complexities and validates real-time characteristics
-  - Focuses specifically on progress behavior and performance metrics
+### **Message Format Standards:**
+- **Initial Progress**: `"Starting [operation] analysis (Input: N tokens)..."`
+- **Task Progress**: `"[indicator] Task X/Y - [title] | ~Output: N tokens"`
+- **Final Progress**: `"✅ [Operation] Completed | Tokens (I/O): X/Y | Cost: $N.NNNN"`
 
----
+### **Progress Value Requirements:**
+- Values must be monotonically increasing
+- Progress should only be reported for complete items
+- Total should remain constant throughout operation
+- Final progress value should equal total
 
-This testing guide ensures both streaming and non-streaming functionality work correctly with the new token tracking implementation across all integration points and edge cases. 
+### **Token Tracking Requirements:**
+- Input tokens estimated at start (~4 characters per token)
+- Output tokens tracked during streaming
+- Cost calculation based on provider pricing
+- Final telemetry includes accurate token counts
+
+## Testing MCP Compliance
+
+```bash
+# Test MCP streaming with progress reporting
+node test-parse-prd.js mcp-streaming
+
+# Verify progress messages follow MCP format
+# Check for emoji indicators in MCP mode
+# Validate token tracking accuracy
+```
+
+**MCP Compliance Checklist:**
+- [ ] Progress values are monotonically increasing
+- [ ] Messages include proper priority indicators
+- [ ] Token tracking is accurate and consistent
+- [ ] Error handling doesn't break progress flow
+- [ ] Final result includes complete telemetry data 
