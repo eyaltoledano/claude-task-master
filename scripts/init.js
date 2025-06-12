@@ -24,6 +24,7 @@ import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode, insideGitRepo } from './modules/utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
+import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import { execSync } from 'child_process';
 import {
 	EXAMPLE_PRD_FILE,
@@ -363,21 +364,29 @@ async function initializeProject(options = {}) {
 	// 	console.log('==================================================');
 	// }
 
-	// Handle boolean git flags
-	if (options.git === true) {
-		options.initGit = true;
-	} else if (options.git === false) {
-		options.initGit = false;
-	}
-	// If options.git is undefined, we'll prompt for it
-
 	// Handle boolean aliases flags
 	if (options.aliases === true) {
-		options.addAliases = true;
+		options.addAliases = true; // --aliases flag provided
 	} else if (options.aliases === false) {
-		options.addAliases = false;
+		options.addAliases = false; // --no-aliases flag provided
 	}
-	// If options.aliases is undefined, we'll prompt for it
+	// If options.aliases and options.noAliases are undefined, we'll prompt for it
+
+	// Handle boolean git flags
+	if (options.git === true) {
+		options.initGit = true; // --git flag provided
+	} else if (options.git === false) {
+		options.initGit = false; // --no-git flag provided
+	}
+	// If options.git and options.noGit are undefined, we'll prompt for it
+
+	// Handle boolean gitTasks flags
+	if (options.gitTasks === true) {
+		options.storeTasksInGit = true; // --git-tasks flag provided
+	} else if (options.gitTasks === false) {
+		options.storeTasksInGit = false; // --no-git-tasks flag provided
+	}
+	// If options.gitTasks and options.noGitTasks are undefined, we'll prompt for it
 
 	const skipPrompts = options.yes || (options.name && options.description);
 
@@ -399,6 +408,9 @@ async function initializeProject(options = {}) {
 		const dryRun = options.dryRun || false;
 		const addAliases =
 			options.addAliases !== undefined ? options.addAliases : true; // Default to true if not specified
+		const initGit = options.initGit !== undefined ? options.initGit : true; // Default to true if not specified
+		const storeTasksInGit =
+			options.storeTasksInGit !== undefined ? options.storeTasksInGit : false; // Default to false if not specified
 
 		if (dryRun) {
 			log('info', 'DRY RUN MODE: No files will be modified');
@@ -408,30 +420,29 @@ async function initializeProject(options = {}) {
 			// Show flag-specific behavior
 			log(
 				'info',
-				`Aliases: ${addAliases ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
+				`${addAliases ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
 			);
-
-			// Show Git initialization behavior
-			if (options.initGit === true) {
-				log(
-					'info',
-					'Git: Would initialize Git repository (--git flag provided)'
-				);
-			} else if (options.initGit === false) {
-				log(
-					'info',
-					'Git: Would skip Git initialization (--no-git flag provided)'
-				);
-			} else {
-				log('info', 'Git: Would initialize Git repository (default behavior)');
-			}
+			log(
+				'info',
+				`${initGit ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
+			);
+			log(
+				'info',
+				`${storeTasksInGit ? 'Would store tasks in Git' : 'Would exclude tasks from Git'}`
+			);
 
 			return {
 				dryRun: true
 			};
 		}
 
-		createProjectStructure(addAliases, dryRun, options);
+		createProjectStructure(
+			addAliases,
+			initGit,
+			storeTasksInGit,
+			dryRun,
+			options
+		);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
@@ -467,6 +478,20 @@ async function initializeProject(options = {}) {
 				initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
 			}
 
+			// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
+			let storeGitPrompted = false; // Default to false
+			if (options.storeTasksInGit !== undefined) {
+				storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
+			} else {
+				const gitTasksInput = await promptQuestion(
+					rl,
+					chalk.cyan(
+						'Store tasks in Git (tasks.json and tasks/ directory)? (y/N): '
+					)
+				);
+				storeGitPrompted = gitTasksInput.trim().toLowerCase() === 'y';
+			}
+
 			// Confirm settings...
 			console.log('\nTask Master Project settings:');
 			console.log(
@@ -478,6 +503,10 @@ async function initializeProject(options = {}) {
 			console.log(
 				chalk.blue('Initialize Git repository in project root:'),
 				chalk.white(initGitPrompted ? 'Yes' : 'No')
+			);
+			console.log(
+				chalk.blue('Store tasks in Git (tasks.json and tasks/ directory):'),
+				chalk.white(storeGitPrompted ? 'Yes' : 'No')
 			);
 
 			const confirmInput = await promptQuestion(
@@ -503,11 +532,15 @@ async function initializeProject(options = {}) {
 				// Show flag-specific behavior
 				log(
 					'info',
-					`Aliases: ${addAliasesPrompted ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
+					`${addAliasesPrompted ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
 				);
 				log(
 					'info',
-					`Git: ${initGitPrompted ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
+					`${initGitPrompted ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
+				);
+				log(
+					'info',
+					`${storeGitPrompted ? 'Would store tasks in Git' : 'Would exclude tasks from Git'}`
 				);
 
 				return {
@@ -516,8 +549,13 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			const combinedOptions = { ...options, initGit: initGitPrompted };
-			createProjectStructure(addAliasesPrompted, dryRun, combinedOptions);
+			createProjectStructure(
+				addAliasesPrompted,
+				initGitPrompted,
+				storeGitPrompted,
+				dryRun,
+				options
+			);
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -536,7 +574,13 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(addAliases, dryRun, options) {
+function createProjectStructure(
+	addAliases,
+	initGit,
+	storeTasksInGit,
+	dryRun,
+	options
+) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
 
@@ -584,8 +628,24 @@ function createProjectStructure(addAliases, dryRun, options) {
 		}
 	);
 
-	// Copy .gitignore
-	copyTemplateFile('gitignore', path.join(targetDir, GITIGNORE_FILE));
+	// Copy .gitignore with GitTasks preference
+	try {
+		const gitignoreTemplatePath = path.join(
+			__dirname,
+			'..',
+			'assets',
+			'gitignore'
+		);
+		const templateContent = fs.readFileSync(gitignoreTemplatePath, 'utf8');
+		manageGitignoreFile(
+			path.join(targetDir, GITIGNORE_FILE),
+			templateContent,
+			storeTasksInGit,
+			log
+		);
+	} catch (error) {
+		log('error', `Failed to create .gitignore: ${error.message}`);
+	}
 
 	// Copy dev_workflow.mdc
 	copyTemplateFile(
@@ -634,9 +694,9 @@ function createProjectStructure(addAliases, dryRun, options) {
 
 	// Initialize git repository if git is available
 	try {
-		if (options?.initGit === false) {
+		if (initGit === false) {
 			log('info', 'Git initialization skipped due to --no-git flag.');
-		} else if (options?.initGit === true) {
+		} else if (initGit === true) {
 			if (insideGitRepo()) {
 				log(
 					'info',

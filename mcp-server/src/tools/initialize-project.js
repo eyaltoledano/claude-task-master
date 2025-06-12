@@ -33,6 +33,13 @@ export function registerInitializeProjectTool(server) {
 				.describe(
 					'Control Git repository initialization. When true, initializes Git; when false, skips Git; defaults to true.'
 				),
+			gitTasks: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe(
+					'Control Git storage of tasks. When true, stores tasks in Git; when false, no Git storage of tasks; defaults to false.'
+				),
 			yes: z
 				.boolean()
 				.optional()
