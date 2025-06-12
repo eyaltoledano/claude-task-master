@@ -1,5 +1,74 @@
 # task-master-ai
 
+## 0.16.2
+
+### Patch Changes
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`1ece6f1`](https://github.com/eyaltoledano/claude-task-master/commit/1ece6f19048df6ae2a0b25cbfb84d2c0f430642c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - improve findTasks algorithm for resolving tasks path
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`ee0be04`](https://github.com/eyaltoledano/claude-task-master/commit/ee0be04302cc602246de5cd296291db69bc8b300) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix update tool on MCP giving `No valid tasks found`
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`27edbd8`](https://github.com/eyaltoledano/claude-task-master/commit/27edbd8f3fe5e2ac200b80e7f27f4c0e74a074d6) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced add-task fuzzy search intelligence and improved user experience
+
+  **Smarter Task Discovery:**
+
+  - Remove hardcoded category system that always matched "Task management"
+  - Eliminate arbitrary limits on fuzzy search results (5→25 high relevance, 3→10 medium relevance, 8→20 detailed tasks)
+  - Improve semantic weighting in Fuse.js search (details=3, description=2, title=1.5) for better relevance
+  - Generate context-driven task recommendations based on true semantic similarity
+
+  **Enhanced Terminal Experience:**
+
+  - Fix duplicate banner display issue that was "eating" terminal history (closes #553)
+  - Remove console.clear() and redundant displayBanner() calls from UI functions
+  - Preserve command history for better development workflow
+  - Streamline banner display across all commands (list, next, show, set-status, clear-subtasks, dependency commands)
+
+  **Visual Improvements:**
+
+  - Replace emoji complexity indicators with clean filled circle characters (●) for professional appearance
+  - Improve consistency and readability of task complexity display
+
+  **AI Provider Compatibility:**
+
+  - Change generateObject mode from 'tool' to 'auto' for better cross-provider compatibility
+  - Add qwen3-235n-a22b:free model support (closes #687)
+  - Add smart warnings for free OpenRouter models with limitations (rate limits, restricted context, no tool_use)
+
+  **Technical Improvements:**
+
+  - Enhanced context generation in add-task to rely on semantic similarity rather than rigid pattern matching
+  - Improved dependency analysis and common pattern detection
+  - Better handling of task relationships and relevance scoring
+  - More intelligent task suggestion algorithms
+
+  The add-task system now provides truly relevant task context based on semantic understanding rather than arbitrary categories and limits, while maintaining a cleaner and more professional terminal experience.
+
+- [#655](https://github.com/eyaltoledano/claude-task-master/pull/655) [`edaa5fe`](https://github.com/eyaltoledano/claude-task-master/commit/edaa5fe0d56e0e4e7c4370670a7a388eebd922ac) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix double .taskmaster directory paths in file resolution utilities
+
+  - Closes #636
+
+- [#671](https://github.com/eyaltoledano/claude-task-master/pull/671) [`86ea6d1`](https://github.com/eyaltoledano/claude-task-master/commit/86ea6d1dbc03eeb39f524f565b50b7017b1d2c9c) Thanks [@joedanz](https://github.com/joedanz)! - Add one-click MCP server installation for Cursor
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`2e55757`](https://github.com/eyaltoledano/claude-task-master/commit/2e55757b2698ba20b78f09ec0286951297510b8e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add sync-readme command for a task export to GitHub README
+
+  Introduces a new `sync-readme` command that exports your task list to your project's README.md file.
+
+  **Features:**
+
+  - **Flexible filtering**: Supports `--status` filtering (e.g., pending, done) and `--with-subtasks` flag
+  - **Smart content management**: Automatically replaces existing exports or appends to new READMEs
+  - **Metadata display**: Shows export timestamp, subtask inclusion status, and filter settings
+
+  **Usage:**
+
+  - `task-master sync-readme` - Export tasks without subtasks
+  - `task-master sync-readme --with-subtasks` - Include subtasks in export
+  - `task-master sync-readme --status=pending` - Only export pending tasks
+  - `task-master sync-readme --status=done --with-subtasks` - Export completed tasks with subtasks
+
+  Perfect for showcasing project progress on GitHub. Experimental. Open to feedback.
+
 ## 0.16.2-rc.0
 
 ### Patch Changes

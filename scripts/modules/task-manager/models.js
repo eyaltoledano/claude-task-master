@@ -494,6 +494,11 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = 'bedrock';
 					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
 					report('warn', warningMessage);
+				} else if (providerHint === 'burncloud') {
+					// Set provider without extensive validation for Burncloud
+					determinedProvider = 'burncloud';
+					warningMessage = `Warning: Custom Burncloud model '${modelId}' set. Please ensure the model ID is valid and your BURNCLOUD_API_KEY is configured.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);

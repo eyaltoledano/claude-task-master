@@ -39,7 +39,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	BurncloudAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -53,7 +54,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	burncloud: new BurncloudAIProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -172,7 +174,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		burncloud: 'BURNCLOUD_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
