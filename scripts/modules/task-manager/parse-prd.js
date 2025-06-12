@@ -35,8 +35,8 @@ import {
 	getMainModelId,
 	getResearchModelId
 } from '../config-manager.js';
-import { parseStreamingJSON } from '../../../src/utils/stream-json-parser.js';
-import { createPrdParseTracker } from '../../../src/progress/prd-parse-tracker.js';
+import { parseStream } from '../../../src/utils/stream-parser.js';
+import { createParsePrdTracker } from '../../../src/progress/parse-prd-tracker.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -283,7 +283,7 @@ async function parsePRDWithStreaming(
 	// Initialize progress tracker for CLI mode only (not MCP)
 	let progressTracker = null;
 	if (outputFormat === 'text' && !isMCP) {
-		progressTracker = createPrdParseTracker({
+		progressTracker = createParsePrdTracker({
 			numTasks,
 			append
 		});
@@ -415,8 +415,11 @@ async function parsePRDWithStreaming(
 
 		// Create a simple progress callback that handles both CLI and MCP progress
 		const onProgress = async (task, metadata) => {
-			const { currentCount, estimatedTokens, priorityIndicator } = metadata;
+			const { currentCount, estimatedTokens } = metadata;
 			const priority = task.priority || DEFAULT_TASK_PRIORITY;
+
+			// Get priority indicator for this task
+			const priorityIndicator = priorityMap[priority] || priorityMap.medium;
 
 			// CLI progress tracker (if available)
 			if (progressTracker) {
@@ -447,15 +450,20 @@ async function parsePRDWithStreaming(
 			}
 		};
 
-		const parseResult = await parseStreamingJSON(textStream, {
+		// Fallback extractor for tasks from complete JSON
+		const fallbackItemExtractor = (fullResponse) => {
+			return fullResponse.tasks || [];
+		};
+
+		const parseResult = await parseStream(textStream, {
 			jsonPaths: ['$.tasks.*'],
 			onProgress: onProgress,
 			onError: (error) => {
 				report(`JSON parsing error: ${error.message}`, 'debug');
 			},
 			estimateTokens,
-			priorityMap,
-			expectedTotal: numTasks
+			expectedTotal: numTasks,
+			fallbackItemExtractor
 		});
 
 		const {

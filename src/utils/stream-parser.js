@@ -3,13 +3,12 @@ import { JSONParser } from '@streamparser/json';
 /**
  * Configuration options for the streaming JSON parser
  * @typedef {Object} StreamParserConfig
- * @property {string[]} [jsonPaths] - JSONPath expressions to extract specific objects (default: ['$.tasks.*'])
+ * @property {string[]} jsonPaths - JSONPath expressions to extract specific objects (required)
  * @property {Function} [onProgress] - Callback for progress updates: (item, metadata) => void
  * @property {Function} [onError] - Callback for parsing errors: (error) => void
  * @property {Function} [estimateTokens] - Function to estimate tokens from text: (text) => number
- * @property {Object} [priorityMap] - Mapping of priority levels to indicators
  * @property {number} [expectedTotal] - Expected total number of items for progress calculation
- * @property {string} [progressMessageTemplate] - Template for progress messages
+ * @property {Function} [fallbackItemExtractor] - Function to extract items from complete JSON: (jsonObj) => Array
  */
 
 /**
@@ -36,19 +35,22 @@ import { JSONParser } from '@streamparser/json';
  * @param {StreamParserConfig} config - Configuration options
  * @returns {Promise<StreamParseResult>} Parsed result with metadata
  */
-export async function parseStreamingJSON(textStream, config = {}) {
+export async function parseStream(textStream, config = {}) {
 	const {
-		jsonPaths = ['$.tasks.*'],
+		jsonPaths,
 		onProgress,
 		onError,
 		estimateTokens = (text) => Math.ceil(text.length / 4),
-		priorityMap = {}, // No default - must be provided by caller
 		expectedTotal = 0,
-		progressMessageTemplate = '{indicator} Item {current}/{total} - {title} | ~Output: {tokens} tokens'
+		fallbackItemExtractor
 	} = config;
 
 	if (!textStream) {
 		throw new Error('No text stream provided');
+	}
+
+	if (!jsonPaths || !Array.isArray(jsonPaths)) {
+		throw new Error('jsonPaths is required and must be an array');
 	}
 
 	const parsedItems = [];
@@ -75,8 +77,6 @@ export async function parseStreamingJSON(textStream, config = {}) {
 
 			if (onProgress) {
 				const currentCount = parsedItems.length;
-				const priority = item.priority || 'medium';
-				const priorityIndicator = priorityMap[priority] || '⚪';
 
 				// Re-estimate tokens based on accumulated text
 				estimatedTokens = estimateTokens(accumulatedText);
@@ -85,9 +85,7 @@ export async function parseStreamingJSON(textStream, config = {}) {
 					currentCount,
 					expectedTotal,
 					accumulatedText,
-					estimatedTokens,
-					priority,
-					priorityIndicator
+					estimatedTokens
 				};
 
 				// Call progress callback
@@ -130,7 +128,8 @@ export async function parseStreamingJSON(textStream, config = {}) {
 	if (
 		expectedTotal > 0 &&
 		parsedItems.length < expectedTotal &&
-		accumulatedText
+		accumulatedText &&
+		fallbackItemExtractor
 	) {
 		try {
 			const fallbackItems = await attemptFallbackParsing(
@@ -140,8 +139,7 @@ export async function parseStreamingJSON(textStream, config = {}) {
 				{
 					onProgress,
 					estimateTokens,
-					priorityMap,
-					progressMessageTemplate
+					fallbackItemExtractor
 				}
 			);
 
@@ -175,7 +173,7 @@ export async function parseStreamingJSON(textStream, config = {}) {
  * @param {Object} textStream - The stream object from AI service
  * @param {Function} onChunk - Callback for each text chunk
  */
-async function processTextStream(textStream, onChunk) {
+export async function processTextStream(textStream, onChunk) {
 	// Try textStream property first (most common)
 	if (
 		textStream.textStream &&
@@ -222,16 +220,18 @@ async function attemptFallbackParsing(
 	expectedTotal,
 	config
 ) {
-	const { onProgress, estimateTokens, priorityMap } = config;
+	const { onProgress, estimateTokens, fallbackItemExtractor } = config;
 	const newItems = [];
 
 	try {
 		const fullResponse = JSON.parse(accumulatedText);
-		if (fullResponse.tasks && Array.isArray(fullResponse.tasks)) {
-			// Only add items we haven't already parsed
-			const fallbackItems = fullResponse.tasks.slice(existingItems.length);
+		const fallbackItems = fallbackItemExtractor(fullResponse);
 
-			for (const item of fallbackItems) {
+		if (Array.isArray(fallbackItems)) {
+			// Only add items we haven't already parsed
+			const itemsToAdd = fallbackItems.slice(existingItems.length);
+
+			for (const item of itemsToAdd) {
 				if (
 					item &&
 					item.title &&
@@ -242,17 +242,13 @@ async function attemptFallbackParsing(
 
 					if (onProgress) {
 						const currentCount = existingItems.length + newItems.length;
-						const priority = item.priority || 'medium';
-						const priorityIndicator = priorityMap[priority] || '⚪';
 						const estimatedTokens = estimateTokens(accumulatedText);
 
 						const metadata = {
 							currentCount,
 							expectedTotal,
 							accumulatedText,
-							estimatedTokens,
-							priority,
-							priorityIndicator
+							estimatedTokens
 						};
 
 						try {
@@ -272,43 +268,4 @@ async function attemptFallbackParsing(
 	}
 
 	return newItems;
-}
-
-/**
- * Create a progress callback for task parsing specifically
- * @param {Function} reportProgress - Progress reporting function
- * @param {number} expectedTotal - Expected total number of tasks
- * @returns {Function} Progress callback function
- */
-export function createTaskProgressCallback(reportProgress, expectedTotal) {
-	return async (task, metadata) => {
-		const { currentCount, priorityIndicator, estimatedTokens } = metadata;
-
-		const message = `${priorityIndicator} Task ${currentCount}/${expectedTotal} - ${task.title} | ~Output: ${estimatedTokens} tokens`;
-
-		try {
-			await reportProgress({
-				progress: currentCount,
-				total: expectedTotal,
-				message
-			});
-		} catch (error) {
-			// Log progress errors but don't break the flow
-			console.warn(`Progress reporting failed: ${error.message}`);
-		}
-	};
-}
-
-/**
- * Create a simple console progress callback for CLI usage
- * @param {string} [prefix='Progress'] - Prefix for progress messages
- * @returns {Function} Progress callback function
- */
-export function createConsoleProgressCallback(prefix = 'Progress') {
-	return (item, metadata) => {
-		const { currentCount, expectedTotal, priorityIndicator, estimatedTokens } =
-			metadata;
-		const message = `${prefix}: ${priorityIndicator} ${currentCount}/${expectedTotal} - ${item.title} | ~${estimatedTokens} tokens`;
-		console.log(message);
-	};
 }

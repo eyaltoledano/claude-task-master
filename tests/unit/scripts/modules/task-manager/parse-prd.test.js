@@ -116,27 +116,24 @@ jest.unstable_mockModule('@streamparser/json', () => ({
 	}))
 }));
 
-// Mock stream-json-parser functions
-jest.unstable_mockModule(
-	'../../../../../src/utils/stream-json-parser.js',
-	() => ({
-		parseStreamingJSON: jest.fn().mockResolvedValue({
-			items: [{ id: 1, title: 'Test Task', priority: 'high' }],
-			accumulatedText:
-				'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
-			estimatedTokens: 50,
-			usedFallback: false
-		}),
-		createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
-		createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
-	})
-);
+// Mock stream-parser functions
+jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
+	parseStream: jest.fn().mockResolvedValue({
+		items: [{ id: 1, title: 'Test Task', priority: 'high' }],
+		accumulatedText:
+			'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+		estimatedTokens: 50,
+		usedFallback: false
+	}),
+	createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+	createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
+}));
 
 // Mock progress tracker to prevent intervals
 jest.unstable_mockModule(
-	'../../../../../src/progress/prd-parse-tracker.js',
+	'../../../../../src/progress/parse-prd-tracker.js',
 	() => ({
-		createPrdParseTracker: jest.fn().mockReturnValue({
+		createParsePrdTracker: jest.fn().mockReturnValue({
 			start: jest.fn(),
 			stop: jest.fn(),
 			updateTokens: jest.fn(),
@@ -173,12 +170,12 @@ const generateTaskFiles = (
 
 const { JSONParser } = await import('@streamparser/json');
 
-const { parseStreamingJSON, createTaskProgressCallback } = await import(
-	'../../../../../src/utils/stream-json-parser.js'
+const { parseStream } = await import(
+	'../../../../../src/utils/stream-parser.js'
 );
 
-const { createPrdParseTracker } = await import(
-	'../../../../../src/progress/prd-parse-tracker.js'
+const { createParsePrdTracker } = await import(
+	'../../../../../src/progress/parse-prd-tracker.js'
 );
 
 const { displayParsePrdStart, displayParsePrdSummary } = await import(
@@ -639,8 +636,8 @@ describe('parsePRD', () => {
 		// Verify progress reporting was called
 		expect(mockReportProgress).toHaveBeenCalled();
 
-		// Verify parseStreamingJSON was called for streaming
-		expect(parseStreamingJSON).toHaveBeenCalled();
+		// Verify parseStream was called for streaming
+		expect(parseStream).toHaveBeenCalled();
 
 		// Verify result structure
 		expect(result).toEqual({

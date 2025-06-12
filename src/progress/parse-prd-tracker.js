@@ -24,7 +24,7 @@ const PRIORITY_COLORS = {
 /**
  * Tracks progress for PRD parsing operations with multibar display
  */
-export class PrdParseTracker {
+export class ParsePrdTracker {
 	constructor(options = {}) {
 		this.numTasks = options.numTasks || 10;
 		this.append = options.append;
@@ -272,6 +272,6 @@ export class PrdParseTracker {
 	}
 }
 
-export function createPrdParseTracker(options = {}) {
-	return new PrdParseTracker(options);
+export function createParsePrdTracker(options = {}) {
+	return new ParsePrdTracker(options);
 }
