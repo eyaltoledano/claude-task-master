@@ -24,7 +24,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getAkashChatBaseURL
 } from './config-manager.js';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 
@@ -39,7 +40,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	AkashChatProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -53,7 +55,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'akash-chat': new AkashChatProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -172,7 +175,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'akash-chat': 'AKASH_CHAT_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
@@ -415,6 +419,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
 				baseURL = getBedrockBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Bedrock base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'akash-chat' && !baseURL) {
+				// For AkashChat, use the global AkashChat base URL if role-specific URL is not configured
+				baseURL = getAkashChatBaseURL(effectiveProjectRoot);
+				log('debug', `Using global AkashChat base URL: ${baseURL}`);
 			}
 
 			// Get AI parameters for the current role

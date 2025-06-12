@@ -68,7 +68,9 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.akashChat
+								? 'akash-chat'
+								: undefined // Pass hint
 				});
 			}
 
@@ -81,7 +83,9 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.akashChat
+								? 'akash-chat'
+								: undefined // Pass hint
 				});
 			}
 
@@ -94,7 +98,9 @@ export async function modelsDirect(args, log, context = {}) {
 						? 'openrouter'
 						: args.ollama
 							? 'ollama'
-							: undefined // Pass hint
+							: args.akashChat
+								? 'akash-chat'
+								: undefined // Pass hint
 				});
 			}
 

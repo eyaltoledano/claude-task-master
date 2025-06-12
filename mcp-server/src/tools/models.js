@@ -55,7 +55,11 @@ export function registerModelsTool(server) {
 			ollama: z
 				.boolean()
 				.optional()
-				.describe('Indicates the set model ID is a custom Ollama model.')
+				.describe('Indicates the set model ID is a custom Ollama model.'),
+			akashChat: z
+				.boolean()
+				.optional()
+				.describe('Indicates the set model ID is a custom AkashChat model.')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

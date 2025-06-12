@@ -494,6 +494,11 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = 'bedrock';
 					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
 					report('warn', warningMessage);
+				} else if (providerHint === 'akash-chat') {
+					// Set provider without extensive model validation since AkashChat models are managed by Akash
+					determinedProvider = 'akash-chat';
+					warningMessage = `Warning: Custom AkashChat model '${modelId}' set. Please ensure the model ID is valid and accessible in your AkashChat account.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);

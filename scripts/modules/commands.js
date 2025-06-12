@@ -2380,6 +2380,10 @@ function registerCommands(programInstance) {
 			'--bedrock',
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
 		)
+		.option(
+			'--akash-chat',
+			'Allow setting a custom AkashChat model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2391,6 +2395,7 @@ Examples:
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main Meta-Llama-3-1-8B-Instruct-FP8 --akash-chat # Set custom AkashChat model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -2403,12 +2408,13 @@ Examples:
 			const providerFlags = [
 				options.openrouter,
 				options.ollama,
-				options.bedrock
+				options.bedrock,
+				options.akashChat
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --akash-chat) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -2450,7 +2456,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.akashChat
+										? 'akash-chat'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2472,7 +2480,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.akashChat
+										? 'akash-chat'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -2496,7 +2506,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.akashChat
+										? 'akash-chat'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

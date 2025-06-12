@@ -423,5 +423,49 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 32768
 		}
+	],
+	"akash-chat": [
+		{
+			"id": "Meta-Llama-3-1-8B-Instruct-FP8",
+			"swe_score": 0.4,
+			"cost_per_1m_tokens": { "input": 0.3, "output": 1.2 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000
+		},
+		{
+			"id": "Meta-Llama-3-2-3B-Instruct",
+			"swe_score": 0.35,
+			"cost_per_1m_tokens": { "input": 0.2, "output": 0.8 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "Meta-Llama-3-3-70B-Instruct",
+			"swe_score": 0.45,
+			"cost_per_1m_tokens": { "input": 0.8, "output": 3.2 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000
+		},
+		{
+			"id": "DeepSeek-R1-0528",
+			"swe_score": 0.5,
+			"cost_per_1m_tokens": { "input": 0.5, "output": 2.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "DeepSeek-R1-Distill-Llama-70B",
+			"swe_score": 0.48,
+			"cost_per_1m_tokens": { "input": 0.7, "output": 2.8 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 64000
+		},
+		{
+			"id": "Qwen3-235B-A22B-FP8",
+			"swe_score": 0.52,
+			"cost_per_1m_tokens": { "input": 1.0, "output": 4.0 },
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768
+		}
 	]
 }
