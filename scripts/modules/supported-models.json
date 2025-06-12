@@ -46,7 +46,7 @@
 		{
 			"id": "o3",
 			"swe_score": 0.5,
-			"cost_per_1m_tokens": { "input": 10.0, "output": 40.0 },
+			"cost_per_1m_tokens": { "input": 2.0, "output": 8.0 },
 			"allowed_roles": ["main", "fallback"]
 		},
 		{
