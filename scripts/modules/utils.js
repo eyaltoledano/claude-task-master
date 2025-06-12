@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import { execSync } from 'child_process';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import {
@@ -661,6 +662,20 @@ function aggregateTelemetry(telemetryArray, overallCommandName) {
 	return aggregated;
 }
 
+/**
+ * Detect if the current directory (or any parent) is part of a Git work-tree.
+ * Uses `git rev-parse --is-inside-work-tree` which exits 0 when inside a repo.
+ * @returns {boolean} True if inside a Git repository, false otherwise.
+ */
+function insideGitRepo() {
+	try {
+		execSync('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -684,5 +699,6 @@ export {
 	addComplexityToTask,
 	resolveEnvVariable,
 	findProjectRoot,
-	aggregateTelemetry
+	aggregateTelemetry,
+	insideGitRepo
 };
