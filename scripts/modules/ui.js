@@ -1675,10 +1675,10 @@ async function displayComplexityReport(reportPath) {
 	);
 
 	// Create progress bar to show complexity distribution
-	const complexityDistribution = [0, 0, 0]; // Low (0-4), Medium (5-7), High (8-10)
+	const complexityDistribution = [0, 0, 0]; // Low (1-3), Medium (4-6), High (7+)
 	sortedTasks.forEach((task) => {
-		if (task.complexityScore < 5) complexityDistribution[0]++;
-		else if (task.complexityScore < 8) complexityDistribution[1]++;
+		if (task.complexityScore <= 3) complexityDistribution[0]++;
+		else if (task.complexityScore < 7) complexityDistribution[1]++;
 		else complexityDistribution[2]++;
 	});
 
@@ -1695,9 +1695,9 @@ async function displayComplexityReport(reportPath) {
 	console.log(
 		boxen(
 			chalk.white.bold('Complexity Distribution\n\n') +
-				`${chalk.green.bold('Low (1-4):')} ${complexityDistribution[0]} tasks (${percentLow}%)\n` +
-				`${chalk.yellow.bold('Medium (5-7):')} ${complexityDistribution[1]} tasks (${percentMedium}%)\n` +
-				`${chalk.red.bold('High (8-10):')} ${complexityDistribution[2]} tasks (${percentHigh}%)`,
+				`${chalk.green.bold('Low (1-3):')} ${complexityDistribution[0]} tasks (${percentLow}%)\n` +
+				`${chalk.yellow.bold('Medium (4-6):')} ${complexityDistribution[1]} tasks (${percentMedium}%)\n` +
+				`${chalk.red.bold('High (7+):')} ${complexityDistribution[2]} tasks (${percentHigh}%)`,
 			{
 				padding: 1,
 				borderColor: 'cyan',

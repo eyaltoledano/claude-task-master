@@ -28,7 +28,7 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context;
+	const { session, reportProgress } = context;
 	const {
 		tasksJsonPath,
 		outputPath,
@@ -75,7 +75,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		} else if (from || to) {
 			const fromStr = from !== undefined ? from : 'first';
 			const toStr = to !== undefined ? to : 'last';
-			log.info(`Analyzing tasks in range: ${fromStr} to ${toStr}`);
+			reportLog(`Analyzing tasks in range: ${fromStr} to ${toStr}`, 'debug');
 		}
 
 		if (research) {
@@ -111,6 +111,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			coreResult = await analyzeTaskComplexity(coreOptions, {
 				session,
 				mcpLog: logWrapper,
+				reportProgress,
 				commandName: 'analyze-complexity',
 				outputType: 'mcp'
 			});
@@ -173,15 +174,15 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 				? coreResult.report.complexityAnalysis
 				: [];
 
-			// Count tasks by complexity (remains the same)
+			// Count tasks by complexity (updated ranges: 1-3 low, 4-6 medium, 7+ high)
 			const highComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 8
+				(t) => t.complexityScore >= 7
 			).length;
 			const mediumComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 5 && t.complexityScore < 8
+				(t) => t.complexityScore >= 4 && t.complexityScore < 7
 			).length;
 			const lowComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore < 5
+				(t) => t.complexityScore < 4
 			).length;
 
 			return {

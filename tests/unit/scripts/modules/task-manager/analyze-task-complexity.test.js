@@ -65,7 +65,29 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
-		})
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '[]';
+					}
+				}
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
+		logAiUsage: jest.fn().mockResolvedValue({})
 	})
 );
 

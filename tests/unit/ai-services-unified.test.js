@@ -338,7 +338,7 @@ describe('Unified AI Services', () => {
 				expect.stringContaining('Service call failed for role main')
 			);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				expect.stringContaining('New AI service call with role: fallback')
 			);
 		});
@@ -382,7 +382,7 @@ describe('Unified AI Services', () => {
 				expect.stringContaining('Service call failed for role fallback')
 			);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				expect.stringContaining('New AI service call with role: research')
 			);
 		});

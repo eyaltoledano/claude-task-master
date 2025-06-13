@@ -29,17 +29,17 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		log('info', `Preparing to regenerate ${data.tasks.length} task files`);
+		log('debug', `Preparing to regenerate ${data.tasks.length} task files`);
 
 		// Validate and fix dependencies before generating files
-		log('info', `Validating and fixing dependencies`);
+		log('debug', `Validating and fixing dependencies`);
 		validateAndFixDependencies(data, tasksPath);
 
 		// Get valid task IDs from tasks.json
 		const validTaskIds = data.tasks.map((task) => task.id);
 
 		// Cleanup orphaned task files
-		log('info', 'Checking for orphaned task files to clean up...');
+		log('debug', 'Checking for orphaned task files to clean up...');
 		try {
 			// Get all task files in the output directory
 			const files = fs.readdirSync(outputDir);
@@ -58,7 +58,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			// Delete orphaned files
 			if (orphanedFiles.length > 0) {
 				log(
-					'info',
+					'debug',
 					`Found ${orphanedFiles.length} orphaned task files to remove`
 				);
 
@@ -66,7 +66,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 					const filePath = path.join(outputDir, file);
 					try {
 						fs.unlinkSync(filePath);
-						log('info', `Removed orphaned task file: ${file}`);
+						log('debug', `Removed orphaned task file: ${file}`);
 					} catch (err) {
 						log(
 							'warn',
@@ -75,7 +75,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 					}
 				});
 			} else {
-				log('info', 'No orphaned task files found');
+				log('debug', 'No orphaned task files found');
 			}
 		} catch (err) {
 			log('warn', `Error cleaning up orphaned task files: ${err.message}`);
@@ -83,7 +83,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		}
 
 		// Generate task files
-		log('info', 'Generating individual task files...');
+		log('debug', 'Generating individual task files...');
 		data.tasks.forEach((task) => {
 			const taskPath = path.join(
 				outputDir,
@@ -166,7 +166,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		});
 
 		log(
-			'success',
+			'debug',
 			`All ${data.tasks.length} tasks have been generated into '${outputDir}'.`
 		);
 
