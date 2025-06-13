@@ -192,7 +192,7 @@ export class AnalyzeComplexityTracker {
 		// Create individual task display (same pattern as parse-prd)
 		const displayTitle =
 			title && title.length > 50
-				? title.substring(0, 47) + '...'
+				? `${title.substring(0, 47)}...`
 				: title || `Task ${taskId}`;
 
 		const complexityIndicator = this._getComplexityIndicator(complexityScore);
@@ -213,7 +213,7 @@ export class AnalyzeComplexityTracker {
 		// Create individual task bar with monospace-style formatting
 		const taskIdCentered = taskId.toString().padStart(3, ' ').padEnd(4, ' '); // Center in 4-char width
 		const scorePadded = complexityScore.toString().padStart(1, ' ');
-		const subtasksPadded = (subtasksDisplay + ' ').padStart(3, ' ');
+		const subtasksPadded = `${subtasksDisplay} `.padStart(3, ' ');
 
 		const taskBar = this.multibar.create(
 			1,
@@ -273,15 +273,22 @@ export class AnalyzeComplexityTracker {
 			remainingTasks * this.bestAvgTimePerAnalysis
 		);
 
-		// Stabilize the estimate to avoid rapid changes
+		// Stabilize the estimate to avoid rapid changes, but allow countdown
 		const now = Date.now();
 		if (
 			this.lastEstimateTime &&
 			now - this.lastEstimateTime < 3000 && // Less than 3 seconds since last estimate
 			Math.abs(estimatedSeconds - this.lastEstimateSeconds) < 10 // Less than 10 second difference
 		) {
-			// Use the previous estimate to avoid jitter
-			return this._formatDuration(this.lastEstimateSeconds);
+			// Use the previous estimate but subtract elapsed time for countdown effect
+			const elapsedSinceEstimate = Math.floor(
+				(now - this.lastEstimateTime) / 1000
+			);
+			const countdownSeconds = Math.max(
+				0,
+				this.lastEstimateSeconds - elapsedSinceEstimate
+			);
+			return `~${this._formatDuration(countdownSeconds)}`;
 		}
 
 		this.lastEstimateTime = now;
