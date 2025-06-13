@@ -496,9 +496,9 @@ async function runInteractiveSetup(projectRoot) {
 				!process.env.AWS_ACCESS_KEY_ID ||
 				!process.env.AWS_SECRET_ACCESS_KEY
 			) {
-				console.error(
-					chalk.red(
-						'Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.'
+				console.warn(
+					chalk.yellow(
+						'Warning: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Will fallback to system configuration. (ex: aws config files or ec2 instance profiles)'
 					)
 				);
 				setupSuccess = false;
