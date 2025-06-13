@@ -138,7 +138,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 	}
 
 	try {
-		reportLog(`Reading tasks from ${tasksPath}...`, 'info');
+		reportLog(`Reading tasks from ${tasksPath}...`, 'debug');
 		let tasksData;
 		let originalTaskCount = 0;
 		let originalData = null;
@@ -239,7 +239,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		const skippedCount = originalTaskCount - tasksData.tasks.length;
 		reportLog(
 			`Found ${originalTaskCount} total tasks in the task file.`,
-			'info'
+			'debug'
 		);
 
 		// Display header now that we know the task count
