@@ -119,9 +119,8 @@ export class AnalyzeComplexityTracker {
 				1,
 				{},
 				{
-					format: chalk.dim(
-						'------+-------+-----+--------------------------------------------------'
-					),
+					format:
+						'------+-------+-----+--------------------------------------------------',
 					barsize: 1
 				}
 			);
@@ -133,7 +132,7 @@ export class AnalyzeComplexityTracker {
 				1,
 				{},
 				{
-					format: chalk.dim(' TASK | SCORE | SUB | TITLE'),
+					format: ' TASK | SCORE | SUB | TITLE',
 					barsize: 1
 				}
 			);
@@ -145,9 +144,8 @@ export class AnalyzeComplexityTracker {
 				1,
 				{},
 				{
-					format: chalk.dim(
-						'------+-------+-----+--------------------------------------------------'
-					),
+					format:
+						'------+-------+-----+--------------------------------------------------',
 					barsize: 1
 				}
 			);
