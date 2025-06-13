@@ -240,7 +240,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			break;
 		case 'architect-rules':
 		case 'ask-rules':
-		case 'boomerang-rules':
+		case 'orchestrator-rules':
 		case 'code-rules':
 		case 'debug-rules':
 		case 'test-rules': {
@@ -475,7 +475,14 @@ function createProjectStructure(addAliases, dryRun, options) {
 	log('info', `Initializing project in ${targetDir}`);
 
 	// Define Roo modes locally (external integration, not part of core Task Master)
-	const ROO_MODES = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
+	const ROO_MODES = [
+		'architect',
+		'ask',
+		'orchestrator',
+		'code',
+		'debug',
+		'test'
+	];
 
 	// Create directories
 	ensureDirectoryExists(path.join(targetDir, '.cursor/rules'));
