@@ -266,6 +266,7 @@ describe('Validation Functions', () => {
 		expect(configManager.validateProvider('perplexity')).toBe(true);
 		expect(configManager.validateProvider('ollama')).toBe(true);
 		expect(configManager.validateProvider('openrouter')).toBe(true);
+		expect(configManager.validateProvider('bedrock')).toBe(true);
 	});
 
 	test('validateProvider should return false for invalid providers', () => {
