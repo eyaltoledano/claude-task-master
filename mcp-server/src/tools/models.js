@@ -55,7 +55,21 @@ export function registerModelsTool(server) {
 			ollama: z
 				.boolean()
 				.optional()
-				.describe('Indicates the set model ID is a custom Ollama model.')
+				.describe('Indicates the set model ID is a custom Ollama model.'),
+			bedrock: z
+				.boolean()
+				.optional()
+				.describe('Indicates the set model ID is a custom AWS Bedrock model.'),
+			azure: z
+				.boolean()
+				.optional()
+				.describe('Indicates the set model ID is a custom Azure OpenAI model.'),
+			vertex: z
+				.boolean()
+				.optional()
+				.describe(
+					'Indicates the set model ID is a custom Google Vertex AI model.'
+				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

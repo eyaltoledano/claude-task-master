@@ -14,6 +14,37 @@ import {
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
+// Define supported roles for model setting
+const MODEL_ROLES = ['main', 'research', 'fallback'];
+
+/**
+ * Handle setting models for different roles
+ * @param {Object} args - Arguments containing role-specific model IDs
+ * @param {Object} context - Context object with session, mcpLog, projectRoot
+ * @returns {Object|null} Result if a model was set, null if no model setting was requested
+ */
+async function handleModelSetting(args, context) {
+	for (const role of MODEL_ROLES) {
+		const roleKey = `set${role.charAt(0).toUpperCase() + role.slice(1)}`; // setMain, setResearch, setFallback
+
+		if (args[roleKey]) {
+			// Determine provider hint from custom provider flags
+			let providerHint = undefined;
+			if (args.openrouter) providerHint = 'openrouter';
+			else if (args.ollama) providerHint = 'ollama';
+			else if (args.bedrock) providerHint = 'bedrock';
+			else if (args.azure) providerHint = 'azure';
+			else if (args.vertex) providerHint = 'vertex';
+
+			return await setModel(role, args[roleKey], {
+				...context,
+				providerHint
+			});
+		}
+	}
+	return null; // No model setting was requested
+}
+
 /**
  * Get or update model configuration
  * @param {Object} args - Arguments passed by the MCP tool
@@ -31,16 +62,25 @@ export async function modelsDirect(args, log, context = {}) {
 	log.info(`Executing models_direct with args: ${JSON.stringify(args)}`);
 	log.info(`Using project root: ${projectRoot}`);
 
-	// Validate flags: cannot use both openrouter and ollama simultaneously
-	if (args.openrouter && args.ollama) {
+	// Validate flags: only one custom provider flag can be used simultaneously
+	const customProviderFlags = [
+		args.openrouter,
+		args.ollama,
+		args.bedrock,
+		args.azure,
+		args.vertex
+	].filter(Boolean);
+
+	if (customProviderFlags.length > 1) {
 		log.error(
-			'Error: Cannot use both openrouter and ollama flags simultaneously.'
+			'Error: Cannot use multiple custom provider flags simultaneously.'
 		);
 		return {
 			success: false,
 			error: {
 				code: 'INVALID_ARGS',
-				message: 'Cannot use both openrouter and ollama flags simultaneously.'
+				message:
+					'Cannot use multiple custom provider flags simultaneously. Choose only one: openrouter, ollama, bedrock, azure, or vertex.'
 			}
 		};
 	}
@@ -54,55 +94,22 @@ export async function modelsDirect(args, log, context = {}) {
 				return await getAvailableModelsList({
 					session,
 					mcpLog,
-					projectRoot // Pass projectRoot to function
+					projectRoot
 				});
 			}
 
-			// Handle setting a specific model
-			if (args.setMain) {
-				return await setModel('main', args.setMain, {
-					session,
-					mcpLog,
-					projectRoot, // Pass projectRoot to function
-					providerHint: args.openrouter
-						? 'openrouter'
-						: args.ollama
-							? 'ollama'
-							: undefined // Pass hint
-				});
-			}
-
-			if (args.setResearch) {
-				return await setModel('research', args.setResearch, {
-					session,
-					mcpLog,
-					projectRoot, // Pass projectRoot to function
-					providerHint: args.openrouter
-						? 'openrouter'
-						: args.ollama
-							? 'ollama'
-							: undefined // Pass hint
-				});
-			}
-
-			if (args.setFallback) {
-				return await setModel('fallback', args.setFallback, {
-					session,
-					mcpLog,
-					projectRoot, // Pass projectRoot to function
-					providerHint: args.openrouter
-						? 'openrouter'
-						: args.ollama
-							? 'ollama'
-							: undefined // Pass hint
-				});
+			// Handle setting any model role using unified function
+			const modelContext = { session, mcpLog, projectRoot };
+			const modelSetResult = await handleModelSetting(args, modelContext);
+			if (modelSetResult) {
+				return modelSetResult;
 			}
 
 			// Default action: get current configuration
 			return await getModelConfiguration({
 				session,
 				mcpLog,
-				projectRoot // Pass projectRoot to function
+				projectRoot
 			});
 		} finally {
 			disableSilentMode();

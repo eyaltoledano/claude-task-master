@@ -494,6 +494,16 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = 'bedrock';
 					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
 					report('warn', warningMessage);
+				} else if (providerHint === 'azure') {
+					// Set provider without model validation since Azure models are managed by Azure
+					determinedProvider = 'azure';
+					warningMessage = `Warning: Custom Azure OpenAI model '${modelId}' set. Please ensure the model ID is valid and accessible in your Azure OpenAI deployment.`;
+					report('warn', warningMessage);
+				} else if (providerHint === 'vertex') {
+					// Set provider without model validation since Vertex models are managed by Google Cloud
+					determinedProvider = 'vertex';
+					warningMessage = `Warning: Custom Vertex AI model '${modelId}' set. Please ensure the model ID is valid and accessible in your Google Cloud project.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -514,7 +524,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter or --ollama.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, or --vertex.`
 					}
 				};
 			}
