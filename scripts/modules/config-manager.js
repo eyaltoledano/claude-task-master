@@ -62,7 +62,8 @@ const DEFAULTS = {
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		responseLanguage: 'English'
 	}
 };
 
@@ -406,6 +407,11 @@ function getVertexProjectId(explicitRoot = null) {
 function getVertexLocation(explicitRoot = null) {
 	// Return value from config or default
 	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
+}
+
+function getResponseLanguage(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).responseLanguage;
 }
 
 /**
@@ -786,6 +792,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getResponseLanguage,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

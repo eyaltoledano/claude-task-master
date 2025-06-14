@@ -29,6 +29,7 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
+import { registerResponseLanguageTool } from './response-language.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -74,6 +75,7 @@ export function registerTaskMasterTools(server) {
 		registerRemoveDependencyTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
+		registerResponseLanguageTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;
