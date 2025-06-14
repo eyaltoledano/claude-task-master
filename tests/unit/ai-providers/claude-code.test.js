@@ -25,15 +25,15 @@ describe('ClaudeCodeProvider', () => {
 	beforeEach(() => {
 		// Create a fresh mock for each test
 		mockQuery = jest.fn();
-		
+
 		// Create provider instance
 		provider = new ClaudeCodeProvider();
-		
+
 		// Mock the loadSDK method to return our mocked module
 		provider.loadSDK = jest.fn().mockResolvedValue({
 			query: mockQuery
 		});
-		
+
 		jest.clearAllMocks();
 	});
 
