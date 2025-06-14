@@ -2,7 +2,7 @@
   "mode": "exit",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.16.2-rc.0"
+    "task-master-ai": "0.16.2"
   },
   "changesets": [
     "bright-windows-sing",
