@@ -1,0 +1,31 @@
+{
+  "mode": "exit",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.16.2-rc.0"
+  },
+  "changesets": [
+    "bright-windows-sing",
+    "chatty-rats-talk",
+    "cold-pears-poke",
+    "curly-dragons-design",
+    "eleven-news-check",
+    "fluffy-waves-allow",
+    "four-cups-enter",
+    "free-pants-rescue",
+    "large-wolves-strive",
+    "late-dryers-relax",
+    "nasty-chefs-add",
+    "pink-houses-lay",
+    "polite-areas-shave",
+    "quick-flies-sniff",
+    "six-cups-see",
+    "slick-webs-lead",
+    "slow-lies-make",
+    "stale-bats-sin",
+    "tiny-ads-decide",
+    "two-lies-start",
+    "vast-shrimps-happen",
+    "yellow-olives-admire"
+  ]
+}
