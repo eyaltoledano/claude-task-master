@@ -75,3 +75,4 @@ task-master research "How to optimize this?" --id=23 --save-to=23.1
 - Full feature parity with CLI except interactive follow-ups
 
 The research command integrates with the existing AI service layer and supports all configured AI providers. Both CLI and MCP interfaces provide comprehensive research capabilities with intelligent context gathering and flexible output options.
+

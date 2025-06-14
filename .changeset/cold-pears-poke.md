@@ -11,3 +11,4 @@ Fix critical bugs in task move functionality:
 - **Improved comma-separated batch moves**: Multiple tasks can now be moved simultaneously using comma-separated IDs (e.g., "88,90" → "92,93") with proper error handling and atomic operations.
 
 These fixes enables proper task hierarchy reorganization for corner cases that were previously broken.
+

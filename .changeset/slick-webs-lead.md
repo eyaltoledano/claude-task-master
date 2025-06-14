@@ -22,3 +22,4 @@ Added comprehensive save-to-file capability to the research command, enabling us
 - Generates timestamped, slugified filenames (e.g., `2025-01-13_what-is-typescript.md`)
 - Comprehensive Markdown format with metadata headers including query, timestamp, and context sources
 - Clean conversation history formatting without duplicate information
+

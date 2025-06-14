@@ -4,23 +4,25 @@
 
 Introduces Tagged Lists: AI Multi-Context Task Management System
 
-This major release introduces Tagged Lists, a comprehensive system that transforms Task Master into a multi-context task management powerhouse. You can now organize tasks into completely isolated contexts, enabling parallel (agentic) development workflows, team collaboration, and project experimentation without conflicts.
+This major feature release introduces Tagged Lists, a comprehensive system that transforms Taskmaster into a multi-context task management powerhouse. You can now organize tasks into completely isolated contexts, enabling parallel (agentic) development workflows, team collaboration, and project experimentation without conflicts.
 
 **🏷️ Tagged Task Lists Architecture:**
 
-The new tagged system fundamentally changes how tasks are organized:
+The new tagged system fundamentally improves how tasks are organized:
 - **Legacy Format**: `{ "tasks": [...] }` 
 - **New Tagged Format**: `{ "master": { "tasks": [...], "metadata": {...} }, "feature-xyz": { "tasks": [...], "metadata": {...} } }`
-- **Automatic Migration**: Existing projects seamlessly migrate to tagged format with zero user intervention
-- **State Management**: New `.taskmaster/state.json` tracks current tag, last switched time, and migration status
-- **Configuration Integration**: Enhanced `.taskmaster/config.json` with tag-specific settings and defaults
+- **Automatic Migration**: Existing projects will seamlessly migrate to tagged format with zero user intervention
+- **State Management**: New `.taskmaster/state.json` tracks current tag, last switched time, migration status and more.
+- **Configuration Integration**: Enhanced `.taskmaster/config.json` with tag-specific settings and defaults.
+
+By default, your existing task list will be migrated to the `master` tag.
 
 **🚀 Complete Tag Management Suite:**
 
 **Core Tag Commands:**
 - `task-master tags [--show-metadata]` - List all tags with task counts, completion stats, and metadata
 - `task-master add-tag <name> [options]` - Create new tag contexts with optional task copying
-- `task-master delete-tag <name> [--yes]` - Delete tags with double confirmation protection
+- `task-master delete-tag <name> [--yes]` - Delete tags (and attached tasks) with double confirmation protection
 - `task-master use-tag <name>` - Switch contexts and immediately see next available task
 - `task-master rename-tag <old> <new>` - Rename tags with automatic current tag reference updates
 - `task-master copy-tag <source> <target> [options]` - Duplicate tag contexts for experimentation
@@ -38,7 +40,7 @@ Task Master's multi-context capabilities are now fully exposed through the MCP s
 **Tag Creation Options:**
 - `--copy-from-current` - Copy tasks from currently active tag
 - `--copy-from=<tag>` - Copy tasks from specific tag
-- `--from-branch` - Creates a new tag usin active git branch name (for `add-tag` only)
+- `--from-branch` - Creates a new tag using the active git branch name (for `add-tag` only)
 - `--description="<text>"` - Add custom tag descriptions
 - Empty tag creation for fresh contexts
 
@@ -51,6 +53,8 @@ Every task operation now supports tag-specific execution:
 - `task-master analyze-complexity --tag=performance-work` - Generate tag-specific reports
 - `task-master set-status --tag=hotfix --id=5 --status=done` - Update tasks in specific contexts
 - `task-master expand --tag=research --id=3` - Break down tasks within tag contexts
+
+This way you or your agent can store out of context tasks into the appropriate tags for later, allowing you to maintain a groomed and scoped master list. Focus on value, not chores.
 
 **📊 Enhanced Workflow Features:**
 

@@ -17,3 +17,4 @@ Enhanced get-task/show command to support comma-separated task IDs for efficient
 - **API Efficiency**: RESTful array responses in MCP format enable more sophisticated integrations
 
 This enhancement maintains full backward compatibility while significantly improving efficiency for both human users and AI agents working with multiple tasks.
+

@@ -16,3 +16,4 @@ Adds the `--append` flag to `update-task` command, enabling it to behave like `u
 - Consistent behavior between CLI and MCP interfaces
 
 Instead of requiring separate subtask creation for progress tracking, you can now append timestamped information directly to parent tasks while preserving the option for comprehensive task updates.
+
