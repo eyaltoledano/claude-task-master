@@ -186,6 +186,9 @@ task-master init
 
 # If installed locally
 npx task-master init
+
+# Initialize project with specific rules
+task-master init --rules cursor,windsurf,vscode
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
@@ -207,6 +210,9 @@ task-master next
 
 # Generate task files
 task-master generate
+
+# Add rules after initialization
+task-master rules add windsurf,roo,vscode
 ```
 
 ## Troubleshooting
