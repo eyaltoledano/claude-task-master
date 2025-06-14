@@ -13,26 +13,27 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 	}
 }));
 
-// Create a mock query function
-const mockQuery = jest.fn();
-
-// Mock the Claude Code SDK before importing the provider
-jest.unstable_mockModule('@anthropic-ai/claude-code', () => ({
-	query: mockQuery
-}));
-
-// Import after mocking
+// Import after mocking base provider
 const { ClaudeCodeProvider } = await import(
 	'../../../src/ai-providers/claude-code.js'
 );
 
 describe('ClaudeCodeProvider', () => {
 	let provider;
+	let mockQuery;
 
 	beforeEach(() => {
+		// Create a fresh mock for each test
+		mockQuery = jest.fn();
+		
+		// Create provider instance
 		provider = new ClaudeCodeProvider();
-		// Reset the _sdkModule to ensure loadSDK is called fresh
-		provider._sdkModule = null;
+		
+		// Mock the loadSDK method to return our mocked module
+		provider.loadSDK = jest.fn().mockResolvedValue({
+			query: mockQuery
+		});
+		
 		jest.clearAllMocks();
 	});
 
@@ -254,7 +255,7 @@ describe('ClaudeCodeProvider', () => {
 
 	describe('error handling', () => {
 		it('should handle SDK not installed error', async () => {
-			// Temporarily mock the loadSDK to throw the error that the actual loadSDK would throw
+			// Override the mock to simulate SDK not found
 			provider.loadSDK = jest
 				.fn()
 				.mockRejectedValue(
@@ -273,7 +274,9 @@ describe('ClaudeCodeProvider', () => {
 				throw new Error('unauthorized: credentials not found');
 			});
 
-			await expect(provider.generateText({ messages: [{ role: 'user', content: 'test' }] })).rejects.toThrow(
+			await expect(
+				provider.generateText({ messages: [{ role: 'user', content: 'test' }] })
+			).rejects.toThrow(
 				'Claude Code authentication failed. Please ensure you are logged in by running: claude auth login'
 			);
 		});
