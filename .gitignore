@@ -9,6 +9,13 @@ jspm_packages/
 .env.test.local
 .env.production.local
 
+# Claude Code configuration
+# Keep .claude directory in version control for team sharing
+# But ignore any local overrides
+.claude/settings.local.json
+.claude/*.backup
+.claude/CLAUDE.md.backup*
+
 # Cursor configuration -- might have ENV variables. Included by default
 # .cursor/mcp.json
 
