@@ -13,8 +13,10 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 	}
 }));
 
-// Mock the Claude Code SDK
+// Create a mock query function
 const mockQuery = jest.fn();
+
+// Mock the Claude Code SDK before importing the provider
 jest.unstable_mockModule('@anthropic-ai/claude-code', () => ({
 	query: mockQuery
 }));
@@ -29,6 +31,8 @@ describe('ClaudeCodeProvider', () => {
 
 	beforeEach(() => {
 		provider = new ClaudeCodeProvider();
+		// Reset the _sdkModule to ensure loadSDK is called fresh
+		provider._sdkModule = null;
 		jest.clearAllMocks();
 	});
 
@@ -269,7 +273,7 @@ describe('ClaudeCodeProvider', () => {
 				throw new Error('unauthorized: credentials not found');
 			});
 
-			await expect(provider.generateText({ messages: [] })).rejects.toThrow(
+			await expect(provider.generateText({ messages: [{ role: 'user', content: 'test' }] })).rejects.toThrow(
 				'Claude Code authentication failed. Please ensure you are logged in by running: claude auth login'
 			);
 		});
