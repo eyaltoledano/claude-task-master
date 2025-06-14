@@ -48,7 +48,13 @@ export function registerInitializeProjectTool(server) {
 
 				const result = await initializeProjectDirect(args, log, { session });
 
-				return handleApiResult(result, log, 'Initialization failed');
+				return handleApiResult(
+					result,
+					log,
+					'Initialization failed',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				const errorMessage = `Project initialization tool failed: ${error.message || 'Unknown error'}`;
 				log.error(errorMessage, error);

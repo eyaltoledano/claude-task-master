@@ -44,7 +44,11 @@ export function registerShowTaskTool(server) {
 		name: 'get_task',
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
-			id: z.string().describe('Task ID to get'),
+			id: z
+				.string()
+				.describe(
+					'Task ID(s) to get (can be comma-separated for multiple tasks)'
+				),
 			status: z
 				.string()
 				.optional()
@@ -61,12 +65,11 @@ export function registerShowTaskTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
 					'Absolute path to the project root directory (Optional, usually from session)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const { id, file, status, projectRoot } = args;
 
 			try {
@@ -112,7 +115,8 @@ export function registerShowTaskTool(server) {
 						status: status,
 						projectRoot: projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -126,7 +130,8 @@ export function registerShowTaskTool(server) {
 					result,
 					log,
 					'Error retrieving task details',
-					processTaskResponse
+					processTaskResponse,
+					projectRoot
 				);
 			} catch (error) {
 				log.error(`Error in get-task tool: ${error.message}\n${error.stack}`);

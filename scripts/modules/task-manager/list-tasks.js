@@ -22,10 +22,12 @@ import {
 /**
  * List all tasks
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {string} statusFilter - Filter by status
+ * @param {string} statusFilter - Filter by status (single status or comma-separated list, e.g., 'pending' or 'blocked,deferred')
  * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
+ * @param {string} tag - Optional tag to override current tag resolution
+ * @param {Object} context - Optional context object containing projectRoot and other options
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
@@ -33,10 +35,14 @@ function listTasks(
 	statusFilter,
 	reportPath = null,
 	withSubtasks = false,
-	outputFormat = 'text'
+	outputFormat = 'text',
+	tag = null,
+	context = {}
 ) {
 	try {
-		const data = readJSON(tasksPath); // Reads the whole tasks.json
+		// Extract projectRoot from context if provided
+		const projectRoot = context.projectRoot || null;
+		const data = readJSON(tasksPath, projectRoot, tag); // Pass projectRoot to readJSON
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}
@@ -48,15 +54,23 @@ function listTasks(
 			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
 		}
 
-		// Filter tasks by status if specified
-		const filteredTasks =
-			statusFilter && statusFilter.toLowerCase() !== 'all' // <-- Added check for 'all'
-				? data.tasks.filter(
-						(task) =>
-							task.status &&
-							task.status.toLowerCase() === statusFilter.toLowerCase()
-					)
-				: data.tasks; // Default to all tasks if no filter or filter is 'all'
+		// Filter tasks by status if specified - now supports comma-separated statuses
+		let filteredTasks;
+		if (statusFilter && statusFilter.toLowerCase() !== 'all') {
+			// Handle comma-separated statuses
+			const allowedStatuses = statusFilter
+				.split(',')
+				.map((s) => s.trim().toLowerCase())
+				.filter((s) => s.length > 0); // Remove empty strings
+
+			filteredTasks = data.tasks.filter(
+				(task) =>
+					task.status && allowedStatuses.includes(task.status.toLowerCase())
+			);
+		} else {
+			// Default to all tasks if no filter or filter is 'all'
+			filteredTasks = data.tasks;
+		}
 
 		// Calculate completion statistics
 		const totalTasks = data.tasks.length;
@@ -83,6 +97,9 @@ function listTasks(
 		const cancelledCount = data.tasks.filter(
 			(task) => task.status === 'cancelled'
 		).length;
+		const reviewCount = data.tasks.filter(
+			(task) => task.status === 'review'
+		).length;
 
 		// Count subtasks and their statuses
 		let totalSubtasks = 0;
@@ -92,6 +109,7 @@ function listTasks(
 		let blockedSubtasks = 0;
 		let deferredSubtasks = 0;
 		let cancelledSubtasks = 0;
+		let reviewSubtasks = 0;
 
 		data.tasks.forEach((task) => {
 			if (task.subtasks && task.subtasks.length > 0) {
@@ -113,6 +131,9 @@ function listTasks(
 				).length;
 				cancelledSubtasks += task.subtasks.filter(
 					(st) => st.status === 'cancelled'
+				).length;
+				reviewSubtasks += task.subtasks.filter(
+					(st) => st.status === 'review'
 				).length;
 			}
 		});
@@ -222,6 +243,7 @@ function listTasks(
 					blocked: blockedCount,
 					deferred: deferredCount,
 					cancelled: cancelledCount,
+					review: reviewCount,
 					completionPercentage,
 					subtasks: {
 						total: totalSubtasks,
@@ -257,6 +279,7 @@ function listTasks(
 				blockedSubtasks,
 				deferredSubtasks,
 				cancelledSubtasks,
+				reviewSubtasks,
 				tasksWithNoDeps,
 				tasksReadyToWork,
 				tasksWithUnsatisfiedDeps,
@@ -278,7 +301,8 @@ function listTasks(
 			pending: totalTasks > 0 ? (pendingCount / totalTasks) * 100 : 0,
 			blocked: totalTasks > 0 ? (blockedCount / totalTasks) * 100 : 0,
 			deferred: totalTasks > 0 ? (deferredCount / totalTasks) * 100 : 0,
-			cancelled: totalTasks > 0 ? (cancelledCount / totalTasks) * 100 : 0
+			cancelled: totalTasks > 0 ? (cancelledCount / totalTasks) * 100 : 0,
+			review: totalTasks > 0 ? (reviewCount / totalTasks) * 100 : 0
 		};
 
 		const subtaskStatusBreakdown = {
@@ -289,7 +313,8 @@ function listTasks(
 			deferred:
 				totalSubtasks > 0 ? (deferredSubtasks / totalSubtasks) * 100 : 0,
 			cancelled:
-				totalSubtasks > 0 ? (cancelledSubtasks / totalSubtasks) * 100 : 0
+				totalSubtasks > 0 ? (cancelledSubtasks / totalSubtasks) * 100 : 0,
+			review: totalSubtasks > 0 ? (reviewSubtasks / totalSubtasks) * 100 : 0
 		};
 
 		// Create progress bars with status breakdowns

@@ -329,6 +329,60 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   };
   ```
 
+## Context-Aware Command Pattern
+
+For AI-powered commands that benefit from project context, follow the research command pattern:
+
+- **Context Integration**:
+  - ✅ DO: Use `ContextGatherer` utility for multi-source context extraction
+  - ✅ DO: Support task IDs, file paths, custom context, and project tree
+  - ✅ DO: Implement fuzzy search for automatic task discovery
+  - ✅ DO: Display detailed token breakdown for transparency
+
+  ```javascript
+  // ✅ DO: Follow this pattern for context-aware commands
+  programInstance
+    .command('research')
+    .description('Perform AI-powered research queries with project context')
+    .argument('<prompt>', 'Research prompt to investigate')
+    .option('-i, --id <ids>', 'Comma-separated task/subtask IDs to include as context')
+    .option('-f, --files <paths>', 'Comma-separated file paths to include as context')
+    .option('-c, --context <text>', 'Additional custom context')
+    .option('--tree', 'Include project file tree structure')
+    .option('-d, --detail <level>', 'Output detail level: low, medium, high', 'medium')
+    .action(async (prompt, options) => {
+      // 1. Parameter validation and parsing
+      const taskIds = options.id ? parseTaskIds(options.id) : [];
+      const filePaths = options.files ? parseFilePaths(options.files) : [];
+      
+      // 2. Initialize context gatherer
+      const projectRoot = findProjectRoot() || '.';
+      const gatherer = new ContextGatherer(projectRoot, tasksPath);
+      
+      // 3. Auto-discover relevant tasks if none specified
+      if (taskIds.length === 0) {
+        const fuzzySearch = new FuzzyTaskSearch(tasksData.tasks, 'research');
+        const discoveredIds = fuzzySearch.getTaskIds(
+          fuzzySearch.findRelevantTasks(prompt)
+        );
+        taskIds.push(...discoveredIds);
+      }
+      
+      // 4. Gather context with token breakdown
+      const contextResult = await gatherer.gather({
+        tasks: taskIds,
+        files: filePaths,
+        customContext: options.context,
+        includeProjectTree: options.projectTree,
+        format: 'research',
+        includeTokenCounts: true
+      });
+      
+      // 5. Display token breakdown and execute AI call
+      // Implementation continues...
+    });
+  ```
+
 ## Error Handling
 
 - **Exception Management**:

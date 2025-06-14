@@ -99,7 +99,13 @@ export function registerAddTaskTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(result, log);
+				return handleApiResult(
+					result,
+					log,
+					'Error adding task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in add-task tool: ${error.message}`);
 				return createErrorResponse(error.message);

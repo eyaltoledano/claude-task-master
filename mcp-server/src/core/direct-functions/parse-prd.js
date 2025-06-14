@@ -170,7 +170,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 				data: {
 					message: successMsg,
 					outputPath: result.tasksPath,
-					telemetryData: result.telemetryData
+					telemetryData: result.telemetryData,
+					tagInfo: result.tagInfo
 				}
 			};
 		} else {

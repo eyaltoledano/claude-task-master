@@ -63,9 +63,11 @@ export function registerClearSubtasksTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						all: args.all
+						all: args.all,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -74,7 +76,13 @@ export function registerClearSubtasksTool(server) {
 					log.error(`Failed to clear subtasks: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error clearing subtasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error clearing subtasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);

@@ -11,10 +11,12 @@ import generateTaskFiles from './generate-task-files.js';
  * Clear subtasks from specified tasks
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIds - Task IDs to clear subtasks from
+ * @param {Object} context - Context object containing projectRoot and tag
  */
-function clearSubtasks(tasksPath, taskIds) {
+function clearSubtasks(tasksPath, taskIds, context = {}) {
+	const { projectRoot, tag } = context;
 	log('info', `Reading tasks from ${tasksPath}...`);
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -48,7 +50,7 @@ function clearSubtasks(tasksPath, taskIds) {
 
 	taskIdArray.forEach((taskId) => {
 		const id = parseInt(taskId, 10);
-		if (isNaN(id)) {
+		if (Number.isNaN(id)) {
 			log('error', `Invalid task ID: ${taskId}`);
 			return;
 		}
@@ -82,7 +84,7 @@ function clearSubtasks(tasksPath, taskIds) {
 	});
 
 	if (clearedCount > 0) {
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, projectRoot, tag);
 
 		// Show summary table
 		if (!isSilentMode()) {
@@ -99,7 +101,7 @@ function clearSubtasks(tasksPath, taskIds) {
 
 		// Regenerate task files to reflect changes
 		log('info', 'Regenerating task files...');
-		generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		generateTaskFiles(tasksPath, path.dirname(tasksPath), { projectRoot, tag });
 
 		// Success message
 		if (!isSilentMode()) {

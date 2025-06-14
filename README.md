@@ -162,7 +162,10 @@ Use your AI assistant to:
 - Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
 - Plan next step: `What's the next task I should work on?`
 - Implement a task: `Can you help me implement task 3?`
+- View multiple tasks: `Can you show me tasks 1, 3, and 5?`
 - Expand a task: `Can you help me expand task 4?`
+- **Research fresh information**: `Research the latest best practices for implementing JWT authentication with Node.js`
+- **Research with context**: `Research React Query v5 migration strategies for our current API implementation in src/api.js`
 
 [More examples on how to use Task Master in chat](docs/examples.md)
 
@@ -204,6 +207,12 @@ task-master list
 
 # Show the next task to work on
 task-master next
+
+# Show specific task(s) - supports comma-separated IDs
+task-master show 1,3,5
+
+# Research fresh information with project context
+task-master research "What are the latest best practices for JWT authentication?"
 
 # Generate task files
 task-master generate

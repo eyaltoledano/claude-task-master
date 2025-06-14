@@ -95,6 +95,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		let manualTaskData = null;
 		let newTaskId;
 		let telemetryData;
+		let tagInfo;
 
 		if (isManualCreation) {
 			// Create manual task data object
@@ -129,6 +130,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
+			tagInfo = result.tagInfo;
 		} else {
 			// AI-driven task creation
 			log.info(
@@ -154,6 +156,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
+			tagInfo = result.tagInfo;
 		}
 
 		// Restore normal logging
@@ -164,7 +167,8 @@ export async function addTaskDirect(args, log, context = {}) {
 			data: {
 				taskId: newTaskId,
 				message: `Successfully added new task #${newTaskId}`,
-				telemetryData: telemetryData
+				telemetryData: telemetryData,
+				tagInfo: tagInfo
 			}
 		};
 	} catch (error) {

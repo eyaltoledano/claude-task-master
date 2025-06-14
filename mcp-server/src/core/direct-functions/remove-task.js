@@ -23,9 +23,10 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function removeTaskDirect(args, log) {
+export async function removeTaskDirect(args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, id } = args;
+	const { tasksJsonPath, id, projectRoot } = args;
+	const { session } = context;
 	try {
 		// Check if tasksJsonPath was provided
 		if (!tasksJsonPath) {
@@ -59,7 +60,7 @@ export async function removeTaskDirect(args, log) {
 		);
 
 		// Validate all task IDs exist before proceeding
-		const data = readJSON(tasksJsonPath);
+		const data = readJSON(tasksJsonPath, projectRoot);
 		if (!data || !data.tasks) {
 			return {
 				success: false,

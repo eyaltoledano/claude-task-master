@@ -69,7 +69,9 @@ export function registerComplexityReportTool(server) {
 				return handleApiResult(
 					result,
 					log,
-					'Error retrieving complexity report'
+					'Error retrieving complexity report',
+					undefined,
+					args.projectRoot
 				);
 			} catch (error) {
 				log.error(`Error in complexity-report tool: ${error.message}`);
