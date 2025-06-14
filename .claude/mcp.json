@@ -1,0 +1,12 @@
+{
+	"mcpServers": {
+		"task-master": {
+			"command": "node",
+			"args": ["./mcp-server/server.js"],
+			"env": {
+				"TASK_MASTER_PROJECT_ROOT": ".",
+				"DEBUG": "0"
+			}
+		}
+	}
+}
