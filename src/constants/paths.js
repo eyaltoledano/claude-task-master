@@ -11,6 +11,7 @@ export const TASKMASTER_TEMPLATES_DIR = '.taskmaster/templates';
 
 // Task Master configuration files
 export const TASKMASTER_CONFIG_FILE = '.taskmaster/config.json';
+export const TASKMASTER_STATE_FILE = '.taskmaster/state.json';
 export const LEGACY_CONFIG_FILE = '.taskmasterconfig';
 
 // Task Master report files

@@ -11,7 +11,9 @@ import {
 	disableSilentMode,
 	isSilentMode,
 	readJSON,
-	findTaskById
+	findTaskById,
+	ensureTagMetadata,
+	getCurrentTag
 } from '../utils.js';
 
 import { generateObjectService } from '../ai-services-unified.js';
@@ -55,6 +57,7 @@ const prdResponseSchema = z.object({
  * @param {Object} [options.mcpLog] - MCP logger object (optional).
  * @param {Object} [options.session] - Session object from MCP server (optional).
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
+ * @param {string} [options.tag] - Target tag for task generation.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  */
 async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
@@ -65,10 +68,14 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		projectRoot,
 		force = false,
 		append = false,
-		research = false
+		research = false,
+		tag
 	} = options;
 	const isMCP = !!mcpLog;
 	const outputFormat = isMCP ? 'json' : 'text';
+
+	// Use the provided tag, or the current active tag, or default to 'master'
+	const targetTag = tag || getCurrentTag(projectRoot) || 'master';
 
 	const logFn = mcpLog
 		? mcpLog
@@ -101,34 +108,41 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	let aiServiceResponse = null;
 
 	try {
-		// Handle file existence and overwrite/append logic
+		// Check if there are existing tasks in the target tag
+		let hasExistingTasksInTag = false;
 		if (fs.existsSync(tasksPath)) {
+			try {
+				// Read the entire file to check if the tag exists
+				const existingFileContent = fs.readFileSync(tasksPath, 'utf8');
+				const allData = JSON.parse(existingFileContent);
+
+				// Check if the target tag exists and has tasks
+				if (
+					allData[targetTag] &&
+					Array.isArray(allData[targetTag].tasks) &&
+					allData[targetTag].tasks.length > 0
+				) {
+					hasExistingTasksInTag = true;
+					existingTasks = allData[targetTag].tasks;
+					nextId = Math.max(...existingTasks.map((t) => t.id || 0)) + 1;
+				}
+			} catch (error) {
+				// If we can't read the file or parse it, assume no existing tasks in this tag
+				hasExistingTasksInTag = false;
+			}
+		}
+
+		// Handle file existence and overwrite/append logic based on target tag
+		if (hasExistingTasksInTag) {
 			if (append) {
 				report(
-					`Append mode enabled. Reading existing tasks from ${tasksPath}`,
+					`Append mode enabled. Found ${existingTasks.length} existing tasks in tag '${targetTag}'. Next ID will be ${nextId}.`,
 					'info'
 				);
-				const existingData = readJSON(tasksPath); // Use readJSON utility
-				if (existingData && Array.isArray(existingData.tasks)) {
-					existingTasks = existingData.tasks;
-					if (existingTasks.length > 0) {
-						nextId = Math.max(...existingTasks.map((t) => t.id || 0)) + 1;
-						report(
-							`Found ${existingTasks.length} existing tasks. Next ID will be ${nextId}.`,
-							'info'
-						);
-					}
-				} else {
-					report(
-						`Could not read existing tasks from ${tasksPath} or format is invalid. Proceeding without appending.`,
-						'warn'
-					);
-					existingTasks = []; // Reset if read fails
-				}
 			} else if (!force) {
-				// Not appending and not forcing overwrite
+				// Not appending and not forcing overwrite, and there are existing tasks in the target tag
 				const overwriteError = new Error(
-					`Output file ${tasksPath} already exists. Use --force to overwrite or --append.`
+					`Tag '${targetTag}' already contains ${existingTasks.length} tasks. Use --force to overwrite or --append to add to existing tasks.`
 				);
 				report(overwriteError.message, 'error');
 				if (outputFormat === 'text') {
@@ -140,10 +154,16 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			} else {
 				// Force overwrite is true
 				report(
-					`Force flag enabled. Overwriting existing file: ${tasksPath}`,
+					`Force flag enabled. Overwriting existing tasks in tag '${targetTag}'.`,
 					'info'
 				);
 			}
+		} else {
+			// No existing tasks in target tag, proceed without confirmation
+			report(
+				`Tag '${targetTag}' is empty or doesn't exist. Creating/updating tag with new tasks.`,
+				'info'
+			);
 		}
 
 		report(`Reading PRD content from ${prdPath}`, 'info');
@@ -312,17 +332,44 @@ Guidelines:
 		const finalTasks = append
 			? [...existingTasks, ...processedNewTasks]
 			: processedNewTasks;
-		const outputData = { tasks: finalTasks };
 
-		// Write the final tasks to the file
-		writeJSON(tasksPath, outputData);
+		// Read the existing file to preserve other tags
+		let outputData = {};
+		if (fs.existsSync(tasksPath)) {
+			try {
+				const existingFileContent = fs.readFileSync(tasksPath, 'utf8');
+				outputData = JSON.parse(existingFileContent);
+			} catch (error) {
+				// If we can't read the existing file, start with empty object
+				outputData = {};
+			}
+		}
+
+		// Update only the target tag, preserving other tags
+		outputData[targetTag] = {
+			tasks: finalTasks,
+			metadata: {
+				created:
+					outputData[targetTag]?.metadata?.created || new Date().toISOString(),
+				updated: new Date().toISOString(),
+				description: `Tasks for ${targetTag} context`
+			}
+		};
+
+		// Ensure the target tag has proper metadata
+		ensureTagMetadata(outputData[targetTag], {
+			description: `Tasks for ${targetTag} context`
+		});
+
+		// Write the complete data structure back to the file
+		fs.writeFileSync(tasksPath, JSON.stringify(outputData, null, 2));
 		report(
 			`Successfully ${append ? 'appended' : 'generated'} ${processedNewTasks.length} tasks in ${tasksPath}${research ? ' with research-backed analysis' : ''}`,
 			'success'
 		);
 
 		// Generate markdown task files after writing tasks.json
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
 
 		// Handle CLI output (e.g., success message)
 		if (outputFormat === 'text') {
@@ -359,7 +406,8 @@ Guidelines:
 		return {
 			success: true,
 			tasksPath,
-			telemetryData: aiServiceResponse?.telemetryData
+			telemetryData: aiServiceResponse?.telemetryData,
+			tagInfo: aiServiceResponse?.tagInfo
 		};
 	} catch (error) {
 		report(`Error parsing PRD: ${error.message}`, 'error');

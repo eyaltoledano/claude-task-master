@@ -24,17 +24,22 @@ alwaysApply: false
 The standard pattern for adding a feature follows this workflow:
 
 1. **Core Logic**: Implement the business logic in the appropriate module (e.g., [`task-manager.js`](mdc:scripts/modules/task-manager.js)).
-2. **AI Integration (If Applicable)**: 
+2. **Context Gathering (If Applicable)**: 
+   - For AI-powered commands that benefit from project context, use the standardized context gathering patterns from [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc).
+   - Import `ContextGatherer` and `FuzzyTaskSearch` utilities for reusable context extraction.
+   - Support multiple context types: tasks, files, custom text, project tree.
+   - Implement detailed token breakdown display for transparency.
+3. **AI Integration (If Applicable)**: 
    - Import necessary service functions (e.g., `generateTextService`, `streamTextService`) from [`ai-services-unified.js`](mdc:scripts/modules/ai-services-unified.js).
    - Prepare parameters (`role`, `session`, `systemPrompt`, `prompt`).
    - Call the service function.
    - Handle the response (direct text or stream object).
    - **Important**: Prefer `generateTextService` for calls sending large context (like stringified JSON) where incremental display is not needed. See [`ai_services.mdc`](mdc:.cursor/rules/ai_services.mdc) for detailed usage patterns and cautions.
-3. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc).
-4. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
-5. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
-6. **Configuration**: Update configuration settings or add new ones in [`config-manager.js`](mdc:scripts/modules/config-manager.js) and ensure getters/setters are appropriate. Update documentation in [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc). Update the `.taskmasterconfig` structure if needed.
-7. **Documentation**: Update help text and documentation in [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
+4. **UI Components**: Add any display functions to [`ui.js`](mdc:scripts/modules/ui.js) following [`ui.mdc`](mdc:.cursor/rules/ui.mdc). Consider enhanced formatting with syntax highlighting for code blocks.
+5. **Command Integration**: Add the CLI command to [`commands.js`](mdc:scripts/modules/commands.js) following [`commands.mdc`](mdc:.cursor/rules/commands.mdc).
+6. **Testing**: Write tests for all components of the feature (following [`tests.mdc`](mdc:.cursor/rules/tests.mdc))
+7. **Configuration**: Update configuration settings or add new ones in [`config-manager.js`](mdc:scripts/modules/config-manager.js) and ensure getters/setters are appropriate. Update documentation in [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc). Update the `.taskmasterconfig` structure if needed.
+8. **Documentation**: Update help text and documentation in [`dev_workflow.mdc`](mdc:.cursor/rules/dev_workflow.mdc) and [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
 
 ## Critical Checklist for New Features
 
@@ -629,3 +634,287 @@ When implementing project initialization commands:
      });
    }
    ```
+
+## Feature Planning
+
+- **Core Logic First**:
+  - ✅ DO: Implement core logic in `scripts/modules/` before CLI or MCP interfaces
+  - ✅ DO: Consider tagged task lists system compatibility from the start
+  - ✅ DO: Design functions to work with both legacy and tagged data formats
+  - ✅ DO: Use tag resolution functions (`getTasksForTag`, `setTasksForTag`) for task data access
+  - ❌ DON'T: Directly manipulate tagged data structure in new features
+
+  ```javascript
+  // ✅ DO: Design tagged-aware core functions
+  async function newFeatureCore(tasksPath, featureParams, options = {}) {
+    const tasksData = readJSON(tasksPath);
+    const currentTag = getCurrentTag() || 'master';
+    const tasks = getTasksForTag(tasksData, currentTag);
+    
+    // Perform feature logic on tasks array
+    const result = performFeatureLogic(tasks, featureParams);
+    
+    // Save back using tag resolution
+    setTasksForTag(tasksData, currentTag, tasks);
+    writeJSON(tasksPath, tasksData);
+    
+    return result;
+  }
+  ```
+
+- **Backward Compatibility**:
+  - ✅ DO: Ensure new features work with existing projects seamlessly
+  - ✅ DO: Test with both legacy and tagged task data formats
+  - ✅ DO: Support silent migration during feature usage
+  - ❌ DON'T: Break existing workflows when adding tagged system features
+
+## CLI Command Implementation
+
+- **Command Structure**:
+  - ✅ DO: Follow the established pattern in [`commands.js`](mdc:scripts/modules/commands.js)
+  - ✅ DO: Use Commander.js for argument parsing
+  - ✅ DO: Include comprehensive help text and examples
+  - ✅ DO: Support tagged task context awareness
+
+  ```javascript
+  // ✅ DO: Implement CLI commands with tagged system awareness
+  program
+    .command('new-feature')
+    .description('Description of the new feature with tagged task lists support')
+    .option('-t, --tag <tag>', 'Specify tag context (defaults to current tag)')
+    .option('-p, --param <value>', 'Feature-specific parameter')
+    .option('--force', 'Force operation without confirmation')
+    .action(async (options) => {
+      try {
+        const projectRoot = findProjectRoot();
+        if (!projectRoot) {
+          console.error('Not in a Task Master project directory');
+          process.exit(1);
+        }
+        
+        // Use specified tag or current tag
+        const targetTag = options.tag || getCurrentTag() || 'master';
+        
+        const result = await newFeatureCore(
+          path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json'),
+          { param: options.param },
+          { 
+            force: options.force,
+            targetTag: targetTag,
+            outputFormat: 'text'
+          }
+        );
+        
+        console.log('Feature executed successfully');
+      } catch (error) {
+        console.error(`Error: ${error.message}`);
+        process.exit(1);
+      }
+    });
+  ```
+
+- **Error Handling**:
+  - ✅ DO: Provide clear error messages for common failures
+  - ✅ DO: Handle tagged system migration errors gracefully
+  - ✅ DO: Include suggestion for resolution when possible
+  - ✅ DO: Exit with appropriate codes for scripting
+
+## MCP Tool Implementation
+
+- **Direct Function Pattern**:
+  - ✅ DO: Create direct function wrappers in `mcp-server/src/core/direct-functions/`
+  - ✅ DO: Follow silent mode patterns to prevent console output interference
+  - ✅ DO: Use `findTasksJsonPath` for consistent path resolution
+  - ✅ DO: Ensure tagged system compatibility
+
+  ```javascript
+  // ✅ DO: Implement MCP direct functions with tagged awareness
+  export async function newFeatureDirect(args, log, context = {}) {
+    try {
+      const tasksPath = findTasksJsonPath(args, log);
+      
+      // Enable silent mode for clean MCP responses
+      enableSilentMode();
+      
+      try {
+        const result = await newFeatureCore(
+          tasksPath,
+          { param: args.param },
+          { 
+            force: args.force,
+            targetTag: args.tag || 'master', // Support tag specification
+            mcpLog: log,
+            session: context.session,
+            outputFormat: 'json'
+          }
+        );
+        
+        return {
+          success: true,
+          data: result,
+          fromCache: false
+        };
+      } finally {
+        disableSilentMode();
+      }
+    } catch (error) {
+      log.error(`Error in newFeatureDirect: ${error.message}`);
+      return {
+        success: false,
+        error: { code: 'FEATURE_ERROR', message: error.message },
+        fromCache: false
+      };
+    }
+  }
+  ```
+
+- **Tool Registration**:
+  - ✅ DO: Create tool definitions in `mcp-server/src/tools/`
+  - ✅ DO: Use Zod for parameter validation
+  - ✅ DO: Include optional tag parameter for multi-context support
+  - ✅ DO: Follow established naming conventions
+
+  ```javascript
+  // ✅ DO: Register MCP tools with tagged system support
+  export function registerNewFeatureTool(server) {
+    server.addTool({
+      name: "new_feature",
+      description: "Description of the new feature with tagged task lists support",
+      inputSchema: z.object({
+        param: z.string().describe("Feature-specific parameter"),
+        tag: z.string().optional().describe("Target tag context (defaults to current tag)"),
+        force: z.boolean().optional().describe("Force operation without confirmation"),
+        projectRoot: z.string().optional().describe("Project root directory")
+      }),
+      execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+        try {
+          const result = await newFeatureDirect(
+            { ...args, projectRoot: args.projectRoot },
+            log,
+            { session }
+          );
+          return handleApiResult(result, log);
+        } catch (error) {
+          return handleApiResult({
+            success: false,
+            error: { code: 'EXECUTION_ERROR', message: error.message }
+          }, log);
+        }
+      })
+    });
+  }
+  ```
+
+## Testing Strategy
+
+- **Unit Tests**:
+  - ✅ DO: Test core logic independently with both data formats
+  - ✅ DO: Mock file system operations appropriately
+  - ✅ DO: Test tag resolution behavior
+  - ✅ DO: Verify migration compatibility
+
+  ```javascript
+  // ✅ DO: Test new features with tagged system awareness
+  describe('newFeature', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+    
+    it('should work with legacy task format', async () => {
+      const legacyData = { tasks: [/* test data */] };
+      fs.readFileSync.mockReturnValue(JSON.stringify(legacyData));
+      
+      const result = await newFeatureCore('/test/tasks.json', { param: 'test' });
+      
+      expect(result).toBeDefined();
+      // Test legacy format handling
+    });
+    
+    it('should work with tagged task format', async () => {
+      const taggedData = { 
+        master: { tasks: [/* test data */] },
+        feature: { tasks: [/* test data */] }
+      };
+      fs.readFileSync.mockReturnValue(JSON.stringify(taggedData));
+      
+      const result = await newFeatureCore('/test/tasks.json', { param: 'test' });
+      
+      expect(result).toBeDefined();
+      // Test tagged format handling
+    });
+    
+    it('should handle tag migration during feature usage', async () => {
+      const legacyData = { tasks: [/* test data */] };
+      fs.readFileSync.mockReturnValue(JSON.stringify(legacyData));
+      
+      await newFeatureCore('/test/tasks.json', { param: 'test' });
+      
+      // Verify migration occurred
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/test/tasks.json',
+        expect.stringContaining('"master"')
+      );
+    });
+  });
+  ```
+
+- **Integration Tests**:
+  - ✅ DO: Test CLI and MCP interfaces with real task data
+  - ✅ DO: Verify end-to-end workflows across tag contexts
+  - ✅ DO: Test error scenarios and recovery
+
+## Documentation Updates
+
+- **Rule Updates**:
+  - ✅ DO: Update relevant `.cursor/rules/*.mdc` files
+  - ✅ DO: Include tagged system considerations in architecture docs
+  - ✅ DO: Add examples showing multi-context usage
+  - ✅ DO: Update workflow documentation as needed
+
+- **User Documentation**:
+  - ✅ DO: Add feature documentation to `/docs` folder
+  - ✅ DO: Include tagged system usage examples
+  - ✅ DO: Update command reference documentation
+  - ✅ DO: Provide migration notes if relevant
+
+## Migration Considerations
+
+- **Silent Migration Support**:
+  - ✅ DO: Ensure new features trigger migration when needed
+  - ✅ DO: Handle migration errors gracefully in feature code
+  - ✅ DO: Test feature behavior with pre-migration projects
+  - ❌ DON'T: Assume projects are already migrated
+
+- **Tag Context Handling**:
+  - ✅ DO: Default to current tag when not specified
+  - ✅ DO: Support explicit tag selection in advanced features
+  - ✅ DO: Validate tag existence before operations
+  - ✅ DO: Provide clear messaging about tag context
+
+## Performance Considerations
+
+- **Efficient Tag Operations**:
+  - ✅ DO: Minimize file I/O operations per feature execution
+  - ✅ DO: Cache tag resolution results when appropriate
+  - ✅ DO: Use streaming for large task datasets
+  - ❌ DON'T: Load all tags when only one is needed
+
+- **Memory Management**:
+  - ✅ DO: Process large task lists efficiently
+  - ✅ DO: Clean up temporary data structures
+  - ✅ DO: Avoid keeping all tag data in memory simultaneously
+
+## Deployment and Versioning
+
+- **Changesets**:
+  - ✅ DO: Create appropriate changesets for new features
+  - ✅ DO: Use semantic versioning (minor for new features)
+  - ✅ DO: Include tagged system information in release notes
+  - ✅ DO: Document breaking changes if any
+
+- **Feature Flags**:
+  - ✅ DO: Consider feature flags for experimental functionality
+  - ✅ DO: Ensure tagged system features work with flags
+  - ✅ DO: Provide clear documentation about flag usage
+
+By following these guidelines, new features will integrate smoothly with the Task Master ecosystem while supporting the enhanced tagged task lists system for multi-context development workflows.

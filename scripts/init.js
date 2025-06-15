@@ -22,7 +22,8 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
-import { isSilentMode, insideGitRepo } from './modules/utils.js';
+import { isSilentMode } from './modules/utils.js';
+import { insideGitWorkTree } from './modules/utils/git-utils.js';
 import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import { execSync } from 'child_process';
@@ -34,6 +35,7 @@ import {
 	TASKMASTER_TASKS_DIR,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
+	TASKMASTER_STATE_FILE,
 	ENV_EXAMPLE_FILE,
 	GITIGNORE_FILE
 } from '../src/constants/paths.js';
@@ -181,6 +183,33 @@ alias taskmaster='task-master'
 	} catch (error) {
 		log('error', `Failed to add aliases: ${error.message}`);
 		return false;
+	}
+}
+
+// Function to create initial state.json file for tag management
+function createInitialStateFile(targetDir) {
+	const stateFilePath = path.join(targetDir, TASKMASTER_STATE_FILE);
+
+	// Check if state.json already exists
+	if (fs.existsSync(stateFilePath)) {
+		log('info', 'State file already exists, preserving current configuration');
+		return;
+	}
+
+	// Create initial state configuration
+	const initialState = {
+		currentTag: 'master',
+		lastSwitched: new Date().toISOString(),
+		branchTagMapping: {},
+		migrationNoticeShown: false
+	};
+
+	try {
+		fs.writeFileSync(stateFilePath, JSON.stringify(initialState, null, 2));
+		log('success', `Created initial state file: ${stateFilePath}`);
+		log('info', 'Default tag set to "master" for task organization');
+	} catch (error) {
+		log('error', `Failed to create state file: ${error.message}`);
 	}
 }
 
@@ -604,6 +633,9 @@ function createProjectStructure(
 	ensureDirectoryExists(path.join(targetDir, TASKMASTER_REPORTS_DIR));
 	ensureDirectoryExists(path.join(targetDir, TASKMASTER_TEMPLATES_DIR));
 
+	// Create initial state.json file for tag management
+	createInitialStateFile(targetDir);
+
 	// Setup MCP configuration for integration with Cursor
 	setupMCPConfiguration(targetDir);
 
@@ -697,7 +729,7 @@ function createProjectStructure(
 		if (initGit === false) {
 			log('info', 'Git initialization skipped due to --no-git flag.');
 		} else if (initGit === true) {
-			if (insideGitRepo()) {
+			if (insideGitWorkTree()) {
 				log(
 					'info',
 					'Existing Git repository detected – skipping git init despite --git flag.'
@@ -709,7 +741,7 @@ function createProjectStructure(
 			}
 		} else {
 			// Default behavior when no flag is provided (from interactive prompt)
-			if (insideGitRepo()) {
+			if (insideGitWorkTree()) {
 				log('info', 'Existing Git repository detected – skipping git init.');
 			} else {
 				log(

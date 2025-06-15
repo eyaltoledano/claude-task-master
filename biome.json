@@ -26,7 +26,8 @@
 		"rules": {
 			"complexity": {
 				"noForEach": "off",
-				"useOptionalChain": "off"
+				"useOptionalChain": "off",
+				"useArrowFunction": "off"
 			},
 			"correctness": {
 				"noConstantCondition": "off",
@@ -40,7 +41,9 @@
 				"noUselessElse": "off",
 				"useNodejsImportProtocol": "off",
 				"useNumberNamespace": "off",
-				"noParameterAssign": "off"
+				"noParameterAssign": "off",
+				"useTemplate": "off",
+				"noUnusedTemplateLiteral": "off"
 			}
 		}
 	}

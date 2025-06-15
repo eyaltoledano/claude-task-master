@@ -30,8 +30,12 @@ jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	isSilentMode: jest.fn(() => true),
 	enableSilentMode: jest.fn(),
 	log: jest.fn(),
-	findProjectRoot: jest.fn(() => process.cwd()),
-	insideGitRepo: jest.fn(() => false)
+	findProjectRoot: jest.fn(() => process.cwd())
+}));
+
+// Mock git-utils module
+jest.unstable_mockModule('../../scripts/modules/utils/git-utils.js', () => ({
+	insideGitWorkTree: jest.fn(() => false)
 }));
 
 // Mock rule transformer
@@ -66,6 +70,7 @@ const mockFs = jest.requireMock('fs');
 
 // Import the mocked modules
 const mockUtils = await import('../../scripts/modules/utils.js');
+const mockGitUtils = await import('../../scripts/modules/utils/git-utils.js');
 const mockRuleTransformer = await import(
 	'../../scripts/modules/rule-transformer.js'
 );
@@ -117,7 +122,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 
 		// Reset utils mocks
 		mockUtils.isSilentMode.mockReturnValue(true);
-		mockUtils.insideGitRepo.mockReturnValue(false);
+		mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 
 		// Default execSync mock
 		execSync.mockImplementation(() => '');
@@ -144,7 +149,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 		});
 
 		it('completes successfully with git:true when not inside repo', async () => {
-			mockUtils.insideGitRepo.mockReturnValue(false);
+			mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 
 			await expect(
 				initializeProject({
@@ -157,7 +162,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 		});
 
 		it('completes successfully when already inside repo', async () => {
-			mockUtils.insideGitRepo.mockReturnValue(true);
+			mockGitUtils.insideGitWorkTree.mockReturnValue(true);
 
 			await expect(
 				initializeProject({
@@ -170,7 +175,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 		});
 
 		it('uses default git behavior without errors', async () => {
-			mockUtils.insideGitRepo.mockReturnValue(false);
+			mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 
 			await expect(
 				initializeProject({
@@ -182,7 +187,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 		});
 
 		it('handles git command failures gracefully', async () => {
-			mockUtils.insideGitRepo.mockReturnValue(false);
+			mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 			execSync.mockImplementation((cmd) => {
 				if (cmd.includes('git init')) {
 					throw new Error('git not found');
@@ -302,7 +307,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 			}
 
 			if (git) {
-				mockUtils.insideGitRepo.mockReturnValue(false);
+				mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 			}
 
 			await expect(
@@ -369,7 +374,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 		});
 
 		it('handles git failures gracefully', async () => {
-			mockUtils.insideGitRepo.mockReturnValue(false);
+			mockGitUtils.insideGitWorkTree.mockReturnValue(false);
 			execSync.mockImplementation((cmd) => {
 				if (cmd.includes('git init')) {
 					throw new Error('git failed');

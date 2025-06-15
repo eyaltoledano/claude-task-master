@@ -35,7 +35,8 @@ export function registerClearSubtasksTool(server) {
 					),
 				projectRoot: z
 					.string()
-					.describe('The directory of the project. Must be an absolute path.')
+					.describe('The directory of the project. Must be an absolute path.'),
+				tag: z.string().optional().describe('Tag context to operate on')
 			})
 			.refine((data) => data.id || data.all, {
 				message: "Either 'id' or 'all' parameter must be provided",
@@ -63,9 +64,12 @@ export function registerClearSubtasksTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						all: args.all
+						all: args.all,
+						projectRoot: args.projectRoot,
+						tag: args.tag || 'master'
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -74,7 +78,13 @@ export function registerClearSubtasksTool(server) {
 					log.error(`Failed to clear subtasks: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error clearing subtasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error clearing subtasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);

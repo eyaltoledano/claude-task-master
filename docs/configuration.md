@@ -3,6 +3,7 @@
 Taskmaster uses two primary methods for configuration:
 
 1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
+1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
 
     - This JSON file stores most configuration settings, including AI model selections, parameters, logging levels, and project defaults.
     - **Location:** This file is created in the `.taskmaster/` directory when you run the `task-master models --setup` interactive setup or initialize a new project with `task-master init`.
@@ -38,6 +39,7 @@ Taskmaster uses two primary methods for configuration:
           "debug": false,
           "defaultSubtasks": 5,
           "defaultPriority": "medium",
+          "defaultTag": "master",
           "projectName": "Your Project Name",
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/",
@@ -79,10 +81,50 @@ Taskmaster uses two primary methods for configuration:
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
+## Tagged Task Lists Configuration (v0.17+)
+
+Taskmaster includes a tagged task lists system for multi-context task management.
+
+### Global Tag Settings
+
+```json
+"global": {
+  "defaultTag": "master"
+}
+```
+
+- **`defaultTag`** (string): Default tag context for new operations (default: "master")
+
+### Git Integration
+
+Task Master provides manual git integration through the `--from-branch` option:
+
+- **Manual Tag Creation**: Use `task-master add-tag --from-branch` to create a tag based on your current git branch name
+- **User Control**: No automatic tag switching - you control when and how tags are created
+- **Flexible Workflow**: Supports any git workflow without imposing rigid branch-tag mappings
+
+## State Management File
+
+Taskmaster uses `.taskmaster/state.json` to track tagged system runtime information:
+
+```json
+{
+  "currentTag": "master",
+  "lastSwitched": "2025-06-11T20:26:12.598Z",
+  "migrationNoticeShown": true
+}
+```
+
+- **`currentTag`**: Currently active tag context
+- **`lastSwitched`**: Timestamp of last tag switch
+- **`migrationNoticeShown`**: Whether migration notice has been displayed
+
+This file is automatically created during tagged system migration and should not be manually edited.
+
 ## Example `.env` File (for API Keys)
 
 ```
-# Required API keys for providers configured in .taskmasterconfig
+# Required API keys for providers configured in .taskmaster/config.json
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 PERPLEXITY_API_KEY=pplx-your-key-here
 # OPENAI_API_KEY=sk-your-key-here
@@ -157,7 +199,7 @@ Google Vertex AI is Google Cloud's enterprise AI platform and requires specific 
    VERTEX_LOCATION=us-central1
    ```
 
-5. **In .taskmasterconfig**:
+5. **In .taskmaster/config.json**:
    ```json
    "global": {
      "vertexProjectId": "my-gcp-project-123",

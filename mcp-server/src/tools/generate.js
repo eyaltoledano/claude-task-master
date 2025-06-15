@@ -57,9 +57,11 @@ export function registerGenerateTool(server) {
 				const result = await generateTaskFilesDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						outputDir: outputDir
+						outputDir: outputDir,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -70,7 +72,13 @@ export function registerGenerateTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error generating task files');
+				return handleApiResult(
+					result,
+					log,
+					'Error generating task files',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in generate tool: ${error.message}`);
 				return createErrorResponse(error.message);

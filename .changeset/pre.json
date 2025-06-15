@@ -2,10 +2,23 @@
   "mode": "exit",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.16.1"
+    "task-master-ai": "0.17.0-rc.1"
   },
   "changesets": [
-    "pink-houses-lay",
-    "polite-areas-shave"
+    "bright-windows-sing",
+    "chatty-rats-talk",
+    "cold-pears-poke",
+    "free-pants-rescue",
+    "large-wolves-strive",
+    "late-dryers-relax",
+    "nasty-chefs-add",
+    "quick-flies-sniff",
+    "six-cups-see",
+    "slick-webs-lead",
+    "slow-lies-make",
+    "stale-bats-sin",
+    "tiny-ads-decide",
+    "two-lies-start",
+    "yellow-olives-admire"
   ]
 }

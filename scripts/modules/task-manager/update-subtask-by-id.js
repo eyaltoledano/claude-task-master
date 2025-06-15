@@ -15,11 +15,16 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	findProjectRoot,
+	flattenTasksWithSubtasks,
+	getCurrentTag
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
 /**
  * Update a subtask by appending additional timestamped information using the unified AI service.
@@ -42,7 +47,7 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -81,7 +86,15 @@ async function updateSubtaskById(
 			throw new Error(`Tasks file not found at path: ${tasksPath}`);
 		}
 
-		const data = readJSON(tasksPath);
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
+		// Determine the tag to use
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks) {
 			throw new Error(
 				`No valid tasks found in ${tasksPath}. The file may be corrupted or have an invalid format.`
@@ -93,9 +106,9 @@ async function updateSubtaskById(
 		const subtaskIdNum = parseInt(subtaskIdStr, 10);
 
 		if (
-			isNaN(parentId) ||
+			Number.isNaN(parentId) ||
 			parentId <= 0 ||
-			isNaN(subtaskIdNum) ||
+			Number.isNaN(subtaskIdNum) ||
 			subtaskIdNum <= 0
 		) {
 			throw new Error(
@@ -124,6 +137,35 @@ async function updateSubtaskById(
 		}
 
 		const subtask = parentTask.subtasks[subtaskIndex];
+
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-subtask');
+			const searchQuery = `${parentTask.title} ${subtask.title} ${prompt}`;
+			const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const finalTaskIds = [
+				...new Set([subtaskId.toString(), ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult;
+			}
+		} catch (contextError) {
+			report('warn', `Could not gather context: ${contextError.message}`);
+		}
+		// --- End Context Gathering ---
 
 		if (outputFormat === 'text') {
 			const table = new Table({
@@ -200,7 +242,11 @@ Output Requirements:
 4. Ensure the generated text is concise yet complete for the update based on the user request. Avoid conversational fillers or explanations about what you are doing (e.g., do not start with "Okay, here's the update...").`;
 
 			// Pass the existing subtask.details in the user prompt for the AI's context.
-			const userPrompt = `Task Context:\n${contextString}\n\nUser Request: "${prompt}"\n\nBased on the User Request and all the Task Context (including current subtask details provided above), what is the new information or text that should be appended to this subtask's details? Return ONLY this new text as a plain string.`;
+			let userPrompt = `Task Context:\n${contextString}\n\nUser Request: "${prompt}"\n\nBased on the User Request and all the Task Context (including current subtask details provided above), what is the new information or text that should be appended to this subtask's details? Return ONLY this new text as a plain string.`;
+
+			if (gatheredContext) {
+				userPrompt += `\n\n# Additional Project Context\n\n${gatheredContext}`;
+			}
 
 			const role = useResearch ? 'research' : 'main';
 			report('info', `Using AI text service with role: ${role}`);
@@ -289,13 +335,13 @@ Output Requirements:
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, projectRoot, currentTag);
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: writeJSON call completed.');
 		}
 
 		report('success', `Successfully updated subtask ${subtaskId}`);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		if (outputFormat === 'text') {
 			if (loadingIndicator) {
@@ -324,7 +370,8 @@ Output Requirements:
 
 		return {
 			updatedSubtask: updatedSubtask,
-			telemetryData: aiServiceResponse.telemetryData
+			telemetryData: aiServiceResponse.telemetryData,
+			tagInfo: aiServiceResponse.tagInfo
 		};
 	} catch (error) {
 		if (outputFormat === 'text' && loadingIndicator) {

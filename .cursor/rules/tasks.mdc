@@ -3,8 +3,18 @@ description: Guidelines for implementing task management operations
 globs: scripts/modules/task-manager.js
 alwaysApply: false
 ---
-
 # Task Management Guidelines
+
+## Tagged Task Lists System
+
+Task Master now uses a **tagged task lists system** for multi-context task management:
+
+- **Data Structure**: Tasks are organized into separate contexts (tags) within `tasks.json`
+- **Legacy Format**: `{"tasks": [...]}`
+- **Tagged Format**: `{"master": {"tasks": [...]}, "feature-branch": {"tasks": [...]}}`
+- **Silent Migration**: Legacy format automatically converts to tagged format on first use
+- **Tag Resolution**: Core functions receive legacy format for 100% backward compatibility
+- **Default Tag**: "master" is used for all existing and new tasks unless otherwise specified
 
 ## Task Structure Standards
 
@@ -28,6 +38,25 @@ alwaysApply: false
   };
   ```
 
+- **Tagged Data Structure**:
+  - ✅ DO: Access tasks through tag resolution layer
+  - ✅ DO: Use `getTasksForTag(data, tagName)` to retrieve tasks for a specific tag
+  - ✅ DO: Use `setTasksForTag(data, tagName, tasks)` to update tasks for a specific tag
+  - ❌ DON'T: Directly manipulate the tagged structure in core functions
+
+  ```javascript
+  // ✅ DO: Use tag resolution functions
+  const tasksData = readJSON(tasksPath);
+  const currentTag = getCurrentTag() || 'master';
+  const tasks = getTasksForTag(tasksData, currentTag);
+  
+  // Manipulate tasks as normal...
+  
+  // Save back to the tagged structure
+  setTasksForTag(tasksData, currentTag, tasks);
+  writeJSON(tasksPath, tasksData);
+  ```
+
 - **Subtask Structure**:
   - ✅ DO: Use consistent properties across subtasks
   - ✅ DO: Maintain simple numeric IDs within parent tasks
@@ -48,53 +77,56 @@ alwaysApply: false
 ## Task Creation and Parsing
 
 - **ID Management**:
-  - ✅ DO: Assign unique sequential IDs to tasks
-  - ✅ DO: Calculate the next ID based on existing tasks
-  - ❌ DON'T: Hardcode or reuse IDs
+  - ✅ DO: Assign unique sequential IDs to tasks within each tag context
+  - ✅ DO: Calculate the next ID based on existing tasks in the current tag
+  - ❌ DON'T: Hardcode or reuse IDs within the same tag
 
   ```javascript
-  // ✅ DO: Calculate the next available ID
-  const highestId = Math.max(...data.tasks.map(t => t.id));
+  // ✅ DO: Calculate the next available ID within the current tag
+  const tasksData = readJSON(tasksPath);
+  const currentTag = getCurrentTag() || 'master';
+  const tasks = getTasksForTag(tasksData, currentTag);
+  const highestId = Math.max(...tasks.map(t => t.id));
   const nextTaskId = highestId + 1;
   ```
 
 - **PRD Parsing**:
   - ✅ DO: Extract tasks from PRD documents using AI
+  - ✅ DO: Create tasks in the current tag context (defaults to "master")
   - ✅ DO: Provide clear prompts to guide AI task generation
   - ✅ DO: Validate and clean up AI-generated tasks
 
   ```javascript
-  // ✅ DO: Validate AI responses
-  try {
-    // Parse the JSON response
-    taskData = JSON.parse(jsonContent);
-    
-    // Check that we have the required fields
-    if (!taskData.title || !taskData.description) {
-      throw new Error("Missing required fields in the generated task");
-    }
-  } catch (error) {
-    log('error', "Failed to parse AI's response as valid task JSON:", error);
-    process.exit(1);
-  }
+  // ✅ DO: Parse into current tag context
+  const tasksData = readJSON(tasksPath) || {};
+  const currentTag = getCurrentTag() || 'master';
+  
+  // Parse tasks and add to current tag
+  const newTasks = await parseTasksFromPRD(prdContent);
+  setTasksForTag(tasksData, currentTag, newTasks);
+  writeJSON(tasksPath, tasksData);
   ```
 
 ## Task Updates and Modifications
 
 - **Status Management**:
-  - ✅ DO: Provide functions for updating task status
+  - ✅ DO: Provide functions for updating task status within current tag context
   - ✅ DO: Handle both individual tasks and subtasks
   - ✅ DO: Consider subtask status when updating parent tasks
 
   ```javascript
-  // ✅ DO: Handle status updates for both tasks and subtasks
+  // ✅ DO: Handle status updates within tagged context
   async function setTaskStatus(tasksPath, taskIdInput, newStatus) {
+    const tasksData = readJSON(tasksPath);
+    const currentTag = getCurrentTag() || 'master';
+    const tasks = getTasksForTag(tasksData, currentTag);
+    
     // Check if it's a subtask (e.g., "1.2")
     if (taskIdInput.includes('.')) {
       const [parentId, subtaskId] = taskIdInput.split('.').map(id => parseInt(id, 10));
       
       // Find the parent task and subtask
-      const parentTask = data.tasks.find(t => t.id === parentId);
+      const parentTask = tasks.find(t => t.id === parentId);
       const subtask = parentTask.subtasks.find(st => st.id === subtaskId);
       
       // Update subtask status
@@ -109,7 +141,7 @@ alwaysApply: false
       }
     } else {
       // Handle regular task
-      const task = data.tasks.find(t => t.id === parseInt(taskIdInput, 10));
+      const task = tasks.find(t => t.id === parseInt(taskIdInput, 10));
       task.status = newStatus;
       
       // If marking as done, also mark subtasks
@@ -119,16 +151,24 @@ alwaysApply: false
         });
       }
     }
+    
+    // Save updated tasks back to tagged structure
+    setTasksForTag(tasksData, currentTag, tasks);
+    writeJSON(tasksPath, tasksData);
   }
   ```
 
 - **Task Expansion**:
-  - ✅ DO: Use AI to generate detailed subtasks
+  - ✅ DO: Use AI to generate detailed subtasks within current tag context
   - ✅ DO: Consider complexity analysis for subtask counts
   - ✅ DO: Ensure proper IDs for newly created subtasks
 
   ```javascript
   // ✅ DO: Generate appropriate subtasks based on complexity
+  const tasksData = readJSON(tasksPath);
+  const currentTag = getCurrentTag() || 'master';
+  const tasks = getTasksForTag(tasksData, currentTag);
+  
   if (taskAnalysis) {
     log('info', `Found complexity analysis for task ${taskId}: Score ${taskAnalysis.complexityScore}/10`);
     
@@ -138,6 +178,11 @@ alwaysApply: false
       log('info', `Using recommended number of subtasks: ${numSubtasks}`);
     }
   }
+  
+  // Generate subtasks and save back
+  // ... subtask generation logic ...
+  setTasksForTag(tasksData, currentTag, tasks);
+  writeJSON(tasksPath, tasksData);
   ```
 
 ## Task File Generation
@@ -155,67 +200,65 @@ alwaysApply: false
   
   // Format dependencies with their status
   if (task.dependencies && task.dependencies.length > 0) {
-    content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks)}\n`;
+    content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, tasks)}\n`;
   } else {
     content += '# Dependencies: None\n';
   }
   ```
 
-- **Subtask Inclusion**:
-  - ✅ DO: Include subtasks in parent task files
-  - ✅ DO: Use consistent indentation for subtask sections
-  - ✅ DO: Display subtask dependencies with proper formatting
+- **Tagged Context Awareness**:
+  - ✅ DO: Generate task files from current tag context
+  - ✅ DO: Include tag information in generated files
+  - ❌ DON'T: Mix tasks from different tags in file generation
 
   ```javascript
-  // ✅ DO: Format subtasks correctly in task files
-  if (task.subtasks && task.subtasks.length > 0) {
-    content += '\n# Subtasks:\n';
+  // ✅ DO: Generate files for current tag context
+  async function generateTaskFiles(tasksPath, outputDir) {
+    const tasksData = readJSON(tasksPath);
+    const currentTag = getCurrentTag() || 'master';
+    const tasks = getTasksForTag(tasksData, currentTag);
     
-    task.subtasks.forEach(subtask => {
-      content += `## ${subtask.id}. ${subtask.title} [${subtask.status || 'pending'}]\n`;
-      
-      // Format subtask dependencies
-      if (subtask.dependencies && subtask.dependencies.length > 0) {
-        // Format the dependencies
-        content += `### Dependencies: ${formattedDeps}\n`;
-      } else {
-        content += '### Dependencies: None\n';
-      }
-      
-      content += `### Description: ${subtask.description || ''}\n`;
-      content += '### Details:\n';
-      content += (subtask.details || '').split('\n').map(line => line).join('\n');
-      content += '\n\n';
-    });
+    // Add tag context to file header
+    let content = `# Tag Context: ${currentTag}\n`;
+    content += `# Task ID: ${task.id}\n`;
+    // ... rest of file generation
   }
   ```
 
 ## Task Listing and Display
 
 - **Filtering and Organization**:
-  - ✅ DO: Allow filtering tasks by status
+  - ✅ DO: Allow filtering tasks by status within current tag context
   - ✅ DO: Handle subtask display in lists
   - ✅ DO: Use consistent table formats
 
   ```javascript
-  // ✅ DO: Implement clear filtering and organization
+  // ✅ DO: Implement clear filtering within tag context
+  const tasksData = readJSON(tasksPath);
+  const currentTag = getCurrentTag() || 'master';
+  const tasks = getTasksForTag(tasksData, currentTag);
+  
   // Filter tasks by status if specified
   const filteredTasks = statusFilter 
-    ? data.tasks.filter(task => 
+    ? tasks.filter(task => 
         task.status && task.status.toLowerCase() === statusFilter.toLowerCase())
-    : data.tasks;
+    : tasks;
   ```
 
 - **Progress Tracking**:
-  - ✅ DO: Calculate and display completion statistics
+  - ✅ DO: Calculate and display completion statistics for current tag
   - ✅ DO: Track both task and subtask completion
   - ✅ DO: Use visual progress indicators
 
   ```javascript
-  // ✅ DO: Track and display progress
+  // ✅ DO: Track and display progress within tag context
+  const tasksData = readJSON(tasksPath);
+  const currentTag = getCurrentTag() || 'master';
+  const tasks = getTasksForTag(tasksData, currentTag);
+  
   // Calculate completion statistics
-  const totalTasks = data.tasks.length;
-  const completedTasks = data.tasks.filter(task => 
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(task => 
     task.status === 'done' || task.status === 'completed').length;
   const completionPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   
@@ -223,7 +266,7 @@ alwaysApply: false
   let totalSubtasks = 0;
   let completedSubtasks = 0;
   
-  data.tasks.forEach(task => {
+  tasks.forEach(task => {
     if (task.subtasks && task.subtasks.length > 0) {
       totalSubtasks += task.subtasks.length;
       completedSubtasks += task.subtasks.filter(st => 
@@ -232,99 +275,52 @@ alwaysApply: false
   });
   ```
 
-## Complexity Analysis
+## Migration and Compatibility
 
-- **Scoring System**:
-  - ✅ DO: Use AI to analyze task complexity
-  - ✅ DO: Include complexity scores (1-10)
-  - ✅ DO: Generate specific expansion recommendations
-
-  ```javascript
-  // ✅ DO: Handle complexity analysis properly
-  const report = {
-    meta: {
-      generatedAt: new Date().toISOString(),
-      tasksAnalyzed: tasksData.tasks.length,
-      thresholdScore: thresholdScore,
-      projectName: tasksData.meta?.projectName || 'Your Project Name',
-      usedResearch: useResearch
-    },
-    complexityAnalysis: complexityAnalysis
-  };
-  ```
-
-- **Analysis-Based Workflow**:
-  - ✅ DO: Use complexity reports to guide task expansion
-  - ✅ DO: Prioritize complex tasks for more detailed breakdown
-  - ✅ DO: Use expansion prompts from complexity analysis
+- **Silent Migration Handling**:
+  - ✅ DO: Implement silent migration in `readJSON()` function
+  - ✅ DO: Detect legacy format and convert automatically
+  - ✅ DO: Preserve all existing task data during migration
 
   ```javascript
-  // ✅ DO: Apply complexity analysis to workflow
-  // Sort tasks by complexity if report exists, otherwise by ID
-  if (complexityReport && complexityReport.complexityAnalysis) {
-    log('info', 'Sorting tasks by complexity...');
+  // ✅ DO: Handle silent migration (implemented in utils.js)
+  function readJSON(filepath) {
+    let data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
     
-    // Create a map of task IDs to complexity scores
-    const complexityMap = new Map();
-    complexityReport.complexityAnalysis.forEach(analysis => {
-      complexityMap.set(analysis.taskId, analysis.complexityScore);
-    });
+    // Silent migration for tasks.json files
+    if (data.tasks && Array.isArray(data.tasks) && !data.master && isTasksFile) {
+      const migratedData = {
+        master: {
+          tasks: data.tasks
+        }
+      };
+      writeJSON(filepath, migratedData);
+      data = migratedData;
+    }
     
-    // Sort tasks by complexity score (high to low)
-    tasksToExpand.sort((a, b) => {
-      const scoreA = complexityMap.get(a.id) || 0;
-      const scoreB = complexityMap.get(b.id) || 0;
-      return scoreB - scoreA;
-    });
+    return data;
   }
   ```
 
-## Next Task Selection
-
-- **Eligibility Criteria**:
-  - ✅ DO: Consider dependencies when finding next tasks
-  - ✅ DO: Prioritize by task priority and dependency count
-  - ✅ DO: Skip completed tasks
+- **Tag Resolution**:
+  - ✅ DO: Use tag resolution functions to maintain backward compatibility
+  - ✅ DO: Return legacy format to core functions
+  - ❌ DON'T: Expose tagged structure to existing core logic
 
   ```javascript
-  // ✅ DO: Use proper task prioritization logic
-  function findNextTask(tasks) {
-    // Get all completed task IDs
-    const completedTaskIds = new Set(
-      tasks
-        .filter(t => t.status === 'done' || t.status === 'completed')
-        .map(t => t.id)
-    );
+  // ✅ DO: Use tag resolution layer
+  function getTasksForTag(data, tagName) {
+    if (data.tasks && Array.isArray(data.tasks)) {
+      // Legacy format - return as-is
+      return data.tasks;
+    }
     
-    // Filter for pending tasks whose dependencies are all satisfied
-    const eligibleTasks = tasks.filter(task => 
-      (task.status === 'pending' || task.status === 'in-progress') && 
-      task.dependencies && 
-      task.dependencies.every(depId => completedTaskIds.has(depId))
-    );
+    if (data[tagName] && data[tagName].tasks) {
+      // Tagged format - return tasks for specified tag
+      return data[tagName].tasks;
+    }
     
-    // Sort by priority, dependency count, and ID
-    const priorityValues = { 'high': 3, 'medium': 2, 'low': 1 };
-    
-    const nextTask = eligibleTasks.sort((a, b) => {
-      // Priority first
-      const priorityA = priorityValues[a.priority || 'medium'] || 2;
-      const priorityB = priorityValues[b.priority || 'medium'] || 2;
-      
-      if (priorityB !== priorityA) {
-        return priorityB - priorityA; // Higher priority first
-      }
-      
-      // Dependency count next
-      if (a.dependencies.length !== b.dependencies.length) {
-        return a.dependencies.length - b.dependencies.length; // Fewer dependencies first
-      }
-      
-      // ID last
-      return a.id - b.id; // Lower ID first
-    })[0];
-    
-    return nextTask;
+    return [];
   }
   ```
 
