@@ -139,7 +139,8 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					subtask: coreResult.updatedSubtask,
 					tasksPath,
 					useResearch,
-					telemetryData: coreResult.telemetryData
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
 				}
 			};
 		} catch (error) {

@@ -35,6 +35,54 @@ const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
+ * Display FYI notice about tagged task lists (only if migration occurred)
+ * @param {Object} data - Data object that may contain _migrationHappened flag
+ */
+function displayTaggedTasksFYI(data) {
+	if (isSilentMode() || !data || !data._migrationHappened) return;
+
+	console.log(
+		boxen(
+			chalk.white.bold('FYI: ') +
+				chalk.gray('Taskmaster now supports separate task lists per tag. ') +
+				chalk.cyan(
+					'Use the --tag flag to create/read/update/filter tasks by tag.'
+				),
+			{
+				padding: { top: 0, bottom: 0, left: 2, right: 2 },
+				borderColor: 'cyan',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			}
+		)
+	);
+}
+
+/**
+ * Display a small, non-intrusive indicator showing the current tag context
+ * @param {string} tagName - The tag name to display
+ * @param {Object} options - Display options
+ * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
+ * @param {boolean} [options.dim=false] - Use dimmed styling
+ */
+function displayCurrentTagIndicator(tag, options = {}) {
+	if (isSilentMode()) return;
+
+	const { skipIfMaster = false, dim = false } = options;
+
+	// Skip display for master tag only if explicitly requested
+	if (skipIfMaster && tag === 'master') return;
+
+	// Create a small, tasteful tag indicator
+	const tagIcon = '🏷️';
+	const tagText = dim
+		? chalk.gray(`${tagIcon} tag: ${tag}`)
+		: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+
+	console.log(tagText);
+}
+
+/**
  * Display a fancy banner for the CLI
  */
 function displayBanner() {
@@ -611,6 +659,11 @@ function displayHelp() {
 					name: 'expand --all',
 					args: '[--force] [--research]',
 					desc: 'Expand all pending tasks with subtasks'
+				},
+				{
+					name: 'research',
+					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--tree] [-s=<save_file>] [-d=<detail_level>]',
+					desc: 'Perform AI-powered research queries with project context'
 				}
 			]
 		},
@@ -627,6 +680,42 @@ function displayHelp() {
 					name: 'show',
 					args: '<id>',
 					desc: 'Display detailed information about a specific task'
+				}
+			]
+		},
+		{
+			title: 'Tag Management',
+			color: 'magenta',
+			commands: [
+				{
+					name: 'tags',
+					args: '[--show-metadata]',
+					desc: 'List all available tags with task counts'
+				},
+				{
+					name: 'add-tag',
+					args: '<tagName> [--copy-from-current] [--copy-from=<tag>] [-d="<desc>"]',
+					desc: 'Create a new tag context for organizing tasks'
+				},
+				{
+					name: 'use-tag',
+					args: '<tagName>',
+					desc: 'Switch to a different tag context'
+				},
+				{
+					name: 'delete-tag',
+					args: '<tagName> [--yes]',
+					desc: 'Delete an existing tag and all its tasks'
+				},
+				{
+					name: 'rename-tag',
+					args: '<oldName> <newName>',
+					desc: 'Rename an existing tag'
+				},
+				{
+					name: 'copy-tag',
+					args: '<sourceName> <targetName> [-d="<desc>"]',
+					desc: 'Copy an existing tag to create a new tag with the same tasks'
 				}
 			]
 		},
@@ -830,10 +919,19 @@ function truncateString(str, maxLength) {
 /**
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} complexityReportPath - Path to the complexity report file
+ * @param {string} tag - Optional tag to override current tag resolution
  */
-async function displayNextTask(tasksPath, complexityReportPath = null) {
-	// Read the tasks file
-	const data = readJSON(tasksPath);
+async function displayNextTask(
+	tasksPath,
+	complexityReportPath = null,
+	context = {}
+) {
+	// Extract parameters from context
+	const { projectRoot, tag } = context;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -1088,22 +1186,32 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 			margin: { top: 1 }
 		})
 	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
  * Display a specific task by ID
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string|number} taskId - The ID of the task to display
+ * @param {string} complexityReportPath - Path to the complexity report file
  * @param {string} [statusFilter] - Optional status to filter subtasks by
+ * @param {string} tag - Optional tag to override current tag resolution
  */
 async function displayTaskById(
 	tasksPath,
 	taskId,
 	complexityReportPath = null,
-	statusFilter = null
+	statusFilter = null,
+	tag = null,
+	context = {}
 ) {
-	// Read the tasks file
-	const data = readJSON(tasksPath);
+	// Extract projectRoot from context
+	const projectRoot = context.projectRoot || null;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -1549,6 +1657,9 @@ async function displayTaskById(
 			}
 		)
 	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
@@ -2134,9 +2245,484 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	);
 }
 
+/**
+ * Display multiple tasks in a compact summary format with interactive drill-down
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {Array<string>} taskIds - Array of task IDs to display
+ * @param {string} complexityReportPath - Path to complexity report
+ * @param {string} statusFilter - Optional status filter for subtasks
+ * @param {Object} context - Optional context object containing projectRoot and tag
+ */
+async function displayMultipleTasksSummary(
+	tasksPath,
+	taskIds,
+	complexityReportPath = null,
+	statusFilter = null,
+	context = {}
+) {
+	displayBanner();
+
+	// Extract projectRoot and tag from context
+	const projectRoot = context.projectRoot || null;
+	const tag = context.tag || null;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
+	if (!data || !data.tasks) {
+		log('error', 'No valid tasks found.');
+		process.exit(1);
+	}
+
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
+	// Find all requested tasks
+	const foundTasks = [];
+	const notFoundIds = [];
+
+	taskIds.forEach((id) => {
+		const { task } = findTaskById(
+			data.tasks,
+			id,
+			complexityReport,
+			statusFilter
+		);
+		if (task) {
+			foundTasks.push(task);
+		} else {
+			notFoundIds.push(id);
+		}
+	});
+
+	// Show not found tasks
+	if (notFoundIds.length > 0) {
+		console.log(
+			boxen(chalk.yellow(`Tasks not found: ${notFoundIds.join(', ')}`), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'yellow',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			})
+		);
+	}
+
+	if (foundTasks.length === 0) {
+		console.log(
+			boxen(chalk.red('No valid tasks found to display'), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'red',
+				borderStyle: 'round',
+				margin: { top: 1 }
+			})
+		);
+		return;
+	}
+
+	// Display header
+	console.log(
+		boxen(
+			chalk.white.bold(
+				`Task Summary (${foundTasks.length} task${foundTasks.length === 1 ? '' : 's'})`
+			),
+			{
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'blue',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 0 }
+			}
+		)
+	);
+
+	// Calculate terminal width for responsive layout
+	const terminalWidth = process.stdout.columns || 100;
+	const availableWidth = terminalWidth - 10;
+
+	// Create compact summary table
+	const summaryTable = new Table({
+		head: [
+			chalk.cyan.bold('ID'),
+			chalk.cyan.bold('Title'),
+			chalk.cyan.bold('Status'),
+			chalk.cyan.bold('Priority'),
+			chalk.cyan.bold('Subtasks'),
+			chalk.cyan.bold('Progress')
+		],
+		colWidths: [
+			Math.floor(availableWidth * 0.08), // ID: 8%
+			Math.floor(availableWidth * 0.35), // Title: 35%
+			Math.floor(availableWidth * 0.12), // Status: 12%
+			Math.floor(availableWidth * 0.1), // Priority: 10%
+			Math.floor(availableWidth * 0.15), // Subtasks: 15%
+			Math.floor(availableWidth * 0.2) // Progress: 20%
+		],
+		style: {
+			head: [],
+			border: [],
+			'padding-top': 0,
+			'padding-bottom': 0,
+			compact: true
+		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
+		wordWrap: true
+	});
+
+	// Add each task to the summary table
+	foundTasks.forEach((task) => {
+		// Handle subtask case
+		if (task.isSubtask || task.parentTask) {
+			const parentId = task.parentTask ? task.parentTask.id : 'Unknown';
+			summaryTable.push([
+				`${parentId}.${task.id}`,
+				truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+				getStatusWithColor(task.status || 'pending', true),
+				chalk.gray('(subtask)'),
+				chalk.gray('N/A'),
+				chalk.gray('N/A')
+			]);
+			return;
+		}
+
+		// Handle regular task
+		const priorityColors = {
+			high: chalk.red.bold,
+			medium: chalk.yellow,
+			low: chalk.gray
+		};
+		const priorityColor =
+			priorityColors[task.priority || 'medium'] || chalk.white;
+
+		// Calculate subtask summary
+		let subtaskSummary = chalk.gray('None');
+		let progressBar = chalk.gray('N/A');
+
+		if (task.subtasks && task.subtasks.length > 0) {
+			const total = task.subtasks.length;
+			const completed = task.subtasks.filter(
+				(st) => st.status === 'done' || st.status === 'completed'
+			).length;
+			const inProgress = task.subtasks.filter(
+				(st) => st.status === 'in-progress'
+			).length;
+			const pending = task.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+
+			// Compact subtask count with status indicators
+			subtaskSummary = `${chalk.green(completed)}/${total}`;
+			if (inProgress > 0)
+				subtaskSummary += ` ${chalk.hex('#FFA500')(`+${inProgress}`)}`;
+			if (pending > 0) subtaskSummary += ` ${chalk.yellow(`(${pending})`)}`;
+
+			// Mini progress bar (shorter than usual)
+			const completionPercentage = (completed / total) * 100;
+			const barLength = 8; // Compact bar
+			const statusBreakdown = {
+				'in-progress': (inProgress / total) * 100,
+				pending: (pending / total) * 100
+			};
+			progressBar = createProgressBar(
+				completionPercentage,
+				barLength,
+				statusBreakdown
+			);
+		}
+
+		summaryTable.push([
+			task.id.toString(),
+			truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+			getStatusWithColor(task.status || 'pending', true),
+			priorityColor(task.priority || 'medium'),
+			subtaskSummary,
+			progressBar
+		]);
+	});
+
+	console.log(summaryTable.toString());
+
+	// Interactive drill-down prompt
+	if (foundTasks.length > 1) {
+		console.log(
+			boxen(
+				chalk.white.bold('Interactive Options:') +
+					'\n' +
+					chalk.cyan('• Press Enter to view available actions for all tasks') +
+					'\n' +
+					chalk.cyan(
+						'• Type a task ID (e.g., "3" or "3.2") to view that specific task'
+					) +
+					'\n' +
+					chalk.cyan('• Type "q" to quit'),
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+
+		// Use dynamic import for readline
+		const readline = await import('readline');
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout
+		});
+
+		const choice = await new Promise((resolve) => {
+			rl.question(chalk.cyan('Your choice: '), resolve);
+		});
+		rl.close();
+
+		if (choice.toLowerCase() === 'q') {
+			return;
+		} else if (choice.trim() === '') {
+			// Show action menu for selected tasks
+			console.log(
+				boxen(
+					chalk.white.bold('Available Actions for Selected Tasks:') +
+						'\n' +
+						chalk.cyan('1.') +
+						' Mark all as in-progress' +
+						'\n' +
+						chalk.cyan('2.') +
+						' Mark all as done' +
+						'\n' +
+						chalk.cyan('3.') +
+						' Show next available task' +
+						'\n' +
+						chalk.cyan('4.') +
+						' Expand all tasks (generate subtasks)' +
+						'\n' +
+						chalk.cyan('5.') +
+						' View dependency relationships' +
+						'\n' +
+						chalk.cyan('6.') +
+						' Generate task files' +
+						'\n' +
+						chalk.gray('Or type a task ID to view details'),
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'blue',
+						borderStyle: 'round',
+						margin: { top: 1 }
+					}
+				)
+			);
+
+			const rl2 = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
+
+			const actionChoice = await new Promise((resolve) => {
+				rl2.question(chalk.cyan('Choose action (1-6): '), resolve);
+			});
+			rl2.close();
+
+			const taskIdList = foundTasks.map((t) => t.id).join(',');
+
+			switch (actionChoice.trim()) {
+				case '1':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=in-progress`
+						)
+					);
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to mark all tasks as in-progress'
+						)
+					);
+					break;
+				case '2':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=done`
+						)
+					);
+					console.log(
+						chalk.green('✓ Copy and run this command to mark all tasks as done')
+					);
+					break;
+				case '3':
+					console.log(chalk.blue(`\n→ Command: task-master next`));
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to see the next available task'
+						)
+					);
+					break;
+				case '4':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master expand --id=${taskIdList} --research`
+						)
+					);
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to expand all selected tasks into subtasks'
+						)
+					);
+					break;
+				case '5': {
+					// Show dependency visualization
+					console.log(chalk.white.bold('\nDependency Relationships:'));
+					let hasDependencies = false;
+					foundTasks.forEach((task) => {
+						if (task.dependencies && task.dependencies.length > 0) {
+							console.log(
+								chalk.cyan(
+									`Task ${task.id} depends on: ${task.dependencies.join(', ')}`
+								)
+							);
+							hasDependencies = true;
+						}
+					});
+					if (!hasDependencies) {
+						console.log(chalk.gray('No dependencies found for selected tasks'));
+					}
+					break;
+				}
+				case '6':
+					console.log(chalk.blue(`\n→ Command: task-master generate`));
+					console.log(
+						chalk.green('✓ Copy and run this command to generate task files')
+					);
+					break;
+				default:
+					if (actionChoice.trim().length > 0) {
+						console.log(chalk.yellow(`Invalid choice: ${actionChoice.trim()}`));
+						console.log(chalk.gray('Please choose 1-6 or type a task ID'));
+					}
+			}
+		} else {
+			// Show specific task
+			await displayTaskById(
+				tasksPath,
+				choice.trim(),
+				complexityReportPath,
+				statusFilter,
+				tag,
+				context
+			);
+		}
+	} else {
+		// Single task - show suggested actions
+		const task = foundTasks[0];
+		console.log(
+			boxen(
+				chalk.white.bold('Suggested Actions:') +
+					'\n' +
+					`${chalk.cyan('1.')} View full details: ${chalk.yellow(`task-master show ${task.id}`)}\n` +
+					`${chalk.cyan('2.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}\n` +
+					`${chalk.cyan('3.')} Mark as done: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`,
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+	}
+}
+
+/**
+ * Display context analysis results with beautiful formatting
+ * @param {Object} analysisData - Analysis data from ContextGatherer
+ * @param {string} semanticQuery - The original query used for semantic search
+ * @param {number} contextSize - Size of gathered context in characters
+ */
+function displayContextAnalysis(analysisData, semanticQuery, contextSize) {
+	if (isSilentMode() || !analysisData) return;
+
+	const { highRelevance, mediumRelevance, recentTasks, allRelevantTasks } =
+		analysisData;
+
+	// Create the context analysis display
+	let analysisContent = chalk.white.bold('Context Analysis') + '\n\n';
+
+	// Query info
+	analysisContent +=
+		chalk.gray('Query: ') + chalk.white(`"${semanticQuery}"`) + '\n';
+	analysisContent +=
+		chalk.gray('Context size: ') +
+		chalk.cyan(`${contextSize.toLocaleString()} characters`) +
+		'\n';
+	analysisContent +=
+		chalk.gray('Tasks found: ') +
+		chalk.yellow(`${allRelevantTasks.length} relevant tasks`) +
+		'\n\n';
+
+	// High relevance matches
+	if (highRelevance.length > 0) {
+		analysisContent += chalk.green.bold('🎯 High Relevance Matches:') + '\n';
+		highRelevance.slice(0, 3).forEach((task) => {
+			analysisContent +=
+				chalk.green(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (highRelevance.length > 3) {
+			analysisContent +=
+				chalk.green(
+					`  • ... and ${highRelevance.length - 3} more high relevance tasks`
+				) + '\n';
+		}
+		analysisContent += '\n';
+	}
+
+	// Medium relevance matches
+	if (mediumRelevance.length > 0) {
+		analysisContent += chalk.yellow.bold('📋 Medium Relevance Matches:') + '\n';
+		mediumRelevance.slice(0, 3).forEach((task) => {
+			analysisContent +=
+				chalk.yellow(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (mediumRelevance.length > 3) {
+			analysisContent +=
+				chalk.yellow(
+					`  • ... and ${mediumRelevance.length - 3} more medium relevance tasks`
+				) + '\n';
+		}
+		analysisContent += '\n';
+	}
+
+	// Recent tasks (if they contributed)
+	const recentTasksNotInRelevance = recentTasks.filter(
+		(task) =>
+			!highRelevance.some((hr) => hr.id === task.id) &&
+			!mediumRelevance.some((mr) => mr.id === task.id)
+	);
+
+	if (recentTasksNotInRelevance.length > 0) {
+		analysisContent += chalk.cyan.bold('🕒 Recent Tasks (for context):') + '\n';
+		recentTasksNotInRelevance.slice(0, 2).forEach((task) => {
+			analysisContent +=
+				chalk.cyan(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (recentTasksNotInRelevance.length > 2) {
+			analysisContent +=
+				chalk.cyan(
+					`  • ... and ${recentTasksNotInRelevance.length - 2} more recent tasks`
+				) + '\n';
+		}
+	}
+
+	console.log(
+		boxen(analysisContent, {
+			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			margin: { top: 1, bottom: 0 },
+			borderStyle: 'round',
+			borderColor: 'blue',
+			title: chalk.blue('🔍 Context Gathering'),
+			titleAlignment: 'center'
+		})
+	);
+}
+
 // Export UI functions
 export {
 	displayBanner,
+	displayTaggedTasksFYI,
 	startLoadingIndicator,
 	stopLoadingIndicator,
 	createProgressBar,
@@ -2153,8 +2739,11 @@ export {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayAiUsageSummary,
+	displayMultipleTasksSummary,
 	succeedLoadingIndicator,
 	failLoadingIndicator,
 	warnLoadingIndicator,
-	infoLoadingIndicator
+	infoLoadingIndicator,
+	displayContextAnalysis,
+	displayCurrentTagIndicator
 };

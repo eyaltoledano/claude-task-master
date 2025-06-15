@@ -29,6 +29,13 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
+import { registerAddTagTool } from './add-tag.js';
+import { registerDeleteTagTool } from './delete-tag.js';
+import { registerListTagsTool } from './list-tags.js';
+import { registerUseTagTool } from './use-tag.js';
+import { registerRenameTagTool } from './rename-tag.js';
+import { registerCopyTagTool } from './copy-tag.js';
+import { registerResearchTool } from './research.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -43,17 +50,22 @@ export function registerTaskMasterTools(server) {
 		registerModelsTool(server);
 		registerParsePRDTool(server);
 
-		// Group 2: Task Listing & Viewing
+		// Group 2: Task Analysis & Expansion
+		registerAnalyzeProjectComplexityTool(server);
+		registerExpandTaskTool(server);
+		registerExpandAllTool(server);
+
+		// Group 3: Task Listing & Viewing
 		registerListTasksTool(server);
 		registerShowTaskTool(server);
 		registerNextTaskTool(server);
 		registerComplexityReportTool(server);
 
-		// Group 3: Task Status & Management
+		// Group 4: Task Status & Management
 		registerSetTaskStatusTool(server);
 		registerGenerateTool(server);
 
-		// Group 4: Task Creation & Modification
+		// Group 5: Task Creation & Modification
 		registerAddTaskTool(server);
 		registerAddSubtaskTool(server);
 		registerUpdateTool(server);
@@ -64,16 +76,22 @@ export function registerTaskMasterTools(server) {
 		registerClearSubtasksTool(server);
 		registerMoveTaskTool(server);
 
-		// Group 5: Task Analysis & Expansion
-		registerAnalyzeProjectComplexityTool(server);
-		registerExpandTaskTool(server);
-		registerExpandAllTool(server);
-
 		// Group 6: Dependency Management
 		registerAddDependencyTool(server);
 		registerRemoveDependencyTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
+
+		// Group 7: Tag Management
+		registerListTagsTool(server);
+		registerAddTagTool(server);
+		registerDeleteTagTool(server);
+		registerUseTagTool(server);
+		registerRenameTagTool(server);
+		registerCopyTagTool(server);
+
+		// Group 8: Research Features
+		registerResearchTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
 		throw error;

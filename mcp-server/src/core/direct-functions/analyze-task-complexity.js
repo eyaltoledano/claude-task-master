@@ -196,7 +196,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 						lowComplexityTasks
 					},
 					fullReport: coreResult.report,
-					telemetryData: coreResult.telemetryData
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
 				}
 			};
 		} catch (parseError) {

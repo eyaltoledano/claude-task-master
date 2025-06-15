@@ -80,7 +80,13 @@ export function registerUpdateTool(server) {
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				return handleApiResult(result, log, 'Error updating tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error updating tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

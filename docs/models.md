@@ -1,4 +1,4 @@
-# Available Models as of June 8, 2025
+# Available Models as of June 15, 2025
 
 ## Main Models
 
@@ -10,7 +10,7 @@
 | anthropic  | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
 | openai     | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai     | o1                                             | 0.489     | 15         | 60          |
-| openai     | o3                                             | 0.5       | 10         | 40          |
+| openai     | o3                                             | 0.5       | 2          | 8           |
 | openai     | o3-mini                                        | 0.493     | 1.1        | 4.4         |
 | openai     | o4-mini                                        | 0.45      | 1.1        | 4.4         |
 | openai     | o1-mini                                        | 0.4       | 1.1        | 4.4         |
@@ -85,7 +85,7 @@
 | anthropic  | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic  | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
 | openai     | gpt-4o                                         | 0.332     | 2.5        | 10          |
-| openai     | o3                                             | 0.5       | 10         | 40          |
+| openai     | o3                                             | 0.5       | 2          | 8           |
 | openai     | o4-mini                                        | 0.45      | 1.1        | 4.4         |
 | google     | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google     | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |

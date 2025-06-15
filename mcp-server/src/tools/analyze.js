@@ -135,7 +135,13 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				return handleApiResult(result, log, 'Error analyzing task complexity');
+				return handleApiResult(
+					result,
+					log,
+					'Error analyzing task complexity',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

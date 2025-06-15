@@ -1,6 +1,6 @@
 ---
-description: Guidelines for implementing utility functions
-globs: scripts/modules/utils.js, mcp-server/src/**/*
+description: 
+globs: 
 alwaysApply: false
 ---
 # Utility Function Guidelines
@@ -46,7 +46,7 @@ alwaysApply: false
 - **Location**:
     - **Core CLI Utilities**: Place utilities used primarily by the core `task-master` CLI logic and command modules (`scripts/modules/*`) into [`scripts/modules/utils.js`](mdc:scripts/modules/utils.js).
     - **MCP Server Utilities**: Place utilities specifically designed to support the MCP server implementation into the appropriate subdirectories within `mcp-server/src/`.
-        - Path/Core Logic Helpers: [`mcp-server/src/core/utils/`](mdc:mcp-server/src/core/utils/) (e.g., `path-utils.js`).
+        - Path/Core Logic Helpers: [`mcp-server/src/core/utils/`](mdc:mcp-server/src/core/utils) (e.g., `path-utils.js`).
         - Tool Execution/Response Helpers: [`mcp-server/src/tools/utils.js`](mdc:mcp-server/src/tools/utils.js).
 
 ## Documentation Standards
@@ -110,7 +110,7 @@ Taskmaster configuration (excluding API keys) is primarily managed through the `
   - ✅ DO: Use appropriate icons for different log levels
   - ✅ DO: Respect the configured log level
   - ❌ DON'T: Add direct console.log calls outside the logging utility
-  - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
+  - **Note on Passed Loggers**: When a logger object (like the FastMCP `log` object) is passed *as a parameter* (e.g., as `mcpLog`) into core Task Master functions, the receiving function often expects specific methods (`.info`, `.warn`, `.error`, etc.) to be directly callable on that object (e.g., `mcpLog[level](mdc:...)`). If the passed logger doesn't have this exact structure, a wrapper object may be needed. See the **Handling Logging Context (`mcpLog`)** section in [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for the standard pattern used in direct functions.
 
 - **Logger Wrapper Pattern**: 
   - ✅ DO: Use the logger wrapper pattern when passing loggers to prevent `mcpLog[level] is not a function` errors:
@@ -548,4 +548,628 @@ export {
 };
 ```
 
-Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) and [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for more context on MCP server architecture and integration. 
+## Context Gathering Utilities
+
+### **ContextGatherer** (`scripts/modules/utils/contextGatherer.js`)
+
+- **Multi-Source Context Extraction**:
+  - ✅ DO: Use for AI-powered commands that need project context
+  - ✅ DO: Support tasks, files, custom text, and project tree context
+  - ✅ DO: Implement detailed token counting with `gpt-tokens` library
+  - ✅ DO: Provide multiple output formats (research, chat, system-prompt)
+
+  ```javascript
+  // ✅ DO: Use ContextGatherer for consistent context extraction
+  import { ContextGatherer } from '../utils/contextGatherer.js';
+  
+  const gatherer = new ContextGatherer(projectRoot, tasksPath);
+  const result = await gatherer.gather({
+    tasks: ['15', '16.2'],
+    files: ['src/api.js'],
+    customContext: 'Additional context',
+    includeProjectTree: true,
+    format: 'research',
+    includeTokenCounts: true
+  });
+  ```
+
+### **FuzzyTaskSearch** (`scripts/modules/utils/fuzzyTaskSearch.js`)
+
+- **Intelligent Task Discovery**:
+  - ✅ DO: Use for automatic task relevance detection
+  - ✅ DO: Configure search parameters based on use case context
+  - ✅ DO: Implement purpose-based categorization for better matching
+  - ✅ DO: Sort results by relevance score and task ID
+
+  ```javascript
+  // ✅ DO: Use FuzzyTaskSearch for intelligent task discovery
+  import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+  
+  const fuzzySearch = new FuzzyTaskSearch(tasksData.tasks, 'research');
+  const searchResults = fuzzySearch.findRelevantTasks(query, {
+    maxResults: 8,
+    includeRecent: true,
+    includeCategoryMatches: true
+  });
+  const taskIds = fuzzySearch.getTaskIds(searchResults);
+  ```
+
+- **Integration Guidelines**:
+  - ✅ DO: Use fuzzy search to supplement user-provided task IDs
+  - ✅ DO: Display discovered task IDs to users for transparency
+  - ✅ DO: Sort discovered task IDs numerically for better readability
+  - ❌ DON'T: Replace explicit user task selections with fuzzy results
+
+Refer to [`context_gathering.mdc`](mdc:.cursor/rules/context_gathering.mdc) for detailed implementation patterns, [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) and [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for more context on MCP server architecture and integration. 
+
+## File System Operations
+
+- **JSON File Handling**:
+  - ✅ DO: Use `readJSON` and `writeJSON` for all JSON operations
+  - ✅ DO: Include error handling for file operations
+  - ✅ DO: Validate JSON structure after reading
+  - ❌ DON'T: Use raw `fs.readFileSync` or `fs.writeFileSync` for JSON
+
+  ```javascript
+  // ✅ DO: Use utility functions with error handling
+  function readJSON(filepath) {
+    try {
+      if (!fs.existsSync(filepath)) {
+        return null; // or appropriate default
+      }
+      
+      let data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+      
+      // Silent migration for tasks.json files: Transform old format to tagged format
+      const isTasksFile = filepath.includes('tasks.json') || path.basename(filepath) === 'tasks.json';
+      
+      if (data && data.tasks && Array.isArray(data.tasks) && !data.master && isTasksFile) {
+        // Migrate from old format { "tasks": [...] } to new format { "master": { "tasks": [...] } }
+        const migratedData = {
+          master: {
+            tasks: data.tasks
+          }
+        };
+        
+        writeJSON(filepath, migratedData);
+        
+        // Set global flag for CLI notice and perform complete migration
+        global.taskMasterMigrationOccurred = true;
+        performCompleteTagMigration(filepath);
+        
+        data = migratedData;
+      }
+      
+      return data;
+    } catch (error) {
+      log('error', `Failed to read JSON from ${filepath}: ${error.message}`);
+      return null;
+    }
+  }
+  
+  function writeJSON(filepath, data) {
+    try {
+      const dirPath = path.dirname(filepath);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+    } catch (error) {
+      log('error', `Failed to write JSON to ${filepath}: ${error.message}`);
+      throw error;
+    }
+  }
+  ```
+
+- **Path Resolution**:
+  - ✅ DO: Use `path.join()` for cross-platform path construction
+  - ✅ DO: Use `path.resolve()` for absolute paths
+  - ✅ DO: Validate paths before file operations
+
+  ```javascript
+  // ✅ DO: Handle paths correctly
+  function findProjectRoot(startPath = process.cwd()) {
+    let currentPath = path.resolve(startPath);
+    const rootPath = path.parse(currentPath).root;
+    
+    while (currentPath !== rootPath) {
+      const taskMasterPath = path.join(currentPath, '.taskmaster');
+      if (fs.existsSync(taskMasterPath)) {
+        return currentPath;
+      }
+      currentPath = path.dirname(currentPath);
+    }
+    
+    return null; // Not found
+  }
+  ```
+
+## Tagged Task Lists System Utilities
+
+- **Tag Resolution Functions**:
+  - ✅ DO: Use tag resolution layer for all task data access
+  - ✅ DO: Provide backward compatibility with legacy format
+  - ✅ DO: Default to "master" tag when no tag is specified
+
+  ```javascript
+  // ✅ DO: Implement tag resolution functions
+  function getTasksForTag(data, tagName = 'master') {
+    if (!data) {
+      return [];
+    }
+    
+    // Handle legacy format - direct tasks array
+    if (data.tasks && Array.isArray(data.tasks)) {
+      return data.tasks;
+    }
+    
+    // Handle tagged format - tasks under specific tag
+    if (data[tagName] && data[tagName].tasks && Array.isArray(data[tagName].tasks)) {
+      return data[tagName].tasks;
+    }
+    
+    return [];
+  }
+  
+  function setTasksForTag(data, tagName = 'master', tasks) {
+    // Ensure data object exists
+    if (!data) {
+      data = {};
+    }
+    
+    // Create tag structure if it doesn't exist
+    if (!data[tagName]) {
+      data[tagName] = {};
+    }
+    
+    // Set tasks for the tag
+    data[tagName].tasks = tasks;
+    
+    return data;
+  }
+  
+  function getCurrentTag() {
+    // Get current tag from state.json or default to 'master'
+    try {
+      const projectRoot = findProjectRoot();
+      if (!projectRoot) return 'master';
+      
+      const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+      if (fs.existsSync(statePath)) {
+        const state = readJSON(statePath);
+        return state.currentTag || 'master';
+      }
+    } catch (error) {
+      log('debug', `Error reading current tag: ${error.message}`);
+    }
+    
+    return 'master';
+  }
+  ```
+
+- **Migration Functions**:
+  - ✅ DO: Implement complete migration for all related files
+  - ✅ DO: Handle configuration and state file creation
+  - ✅ DO: Provide migration status tracking
+
+  ```javascript
+  // ✅ DO: Implement complete migration system
+  function performCompleteTagMigration(tasksJsonPath) {
+    try {
+      // Derive project root from tasks.json path
+      const projectRoot = findProjectRoot(path.dirname(tasksJsonPath)) || path.dirname(tasksJsonPath);
+      
+      // 1. Migrate config.json - add defaultTag and tags section
+      const configPath = path.join(projectRoot, '.taskmaster', 'config.json');
+      if (fs.existsSync(configPath)) {
+        migrateConfigJson(configPath);
+      }
+      
+      // 2. Create state.json if it doesn't exist
+      const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+      if (!fs.existsSync(statePath)) {
+        createStateJson(statePath);
+      }
+      
+      if (getDebugFlag()) {
+        log('debug', 'Completed tagged task lists migration for project');
+      }
+    } catch (error) {
+      if (getDebugFlag()) {
+        log('warn', `Error during complete tag migration: ${error.message}`);
+      }
+    }
+  }
+  
+  function migrateConfigJson(configPath) {
+    try {
+      const config = readJSON(configPath);
+      if (!config) return;
+      
+      let modified = false;
+      
+      // Add global.defaultTag if missing
+      if (!config.global) {
+        config.global = {};
+      }
+      if (!config.global.defaultTag) {
+        config.global.defaultTag = 'master';
+        modified = true;
+      }
+      
+      // Add tags section if missing
+      if (!config.tags) {
+        config.tags = {
+                  // Git integration settings removed - now manual only
+        };
+        modified = true;
+      }
+      
+      if (modified) {
+        writeJSON(configPath, config);
+        if (getDebugFlag()) {
+          log('debug', 'Updated config.json with tagged task system settings');
+        }
+      }
+    } catch (error) {
+      if (getDebugFlag()) {
+        log('warn', `Error migrating config.json: ${error.message}`);
+      }
+    }
+  }
+  
+  function createStateJson(statePath) {
+    try {
+      const initialState = {
+        currentTag: 'master',
+        lastSwitched: new Date().toISOString(),
+        migrationNoticeShown: false
+      };
+      
+      writeJSON(statePath, initialState);
+      if (getDebugFlag()) {
+        log('debug', 'Created initial state.json for tagged task system');
+      }
+    } catch (error) {
+      if (getDebugFlag()) {
+        log('warn', `Error creating state.json: ${error.message}`);
+      }
+    }
+  }
+  
+  function markMigrationForNotice() {
+    try {
+      const projectRoot = findProjectRoot();
+      if (!projectRoot) return;
+      
+      const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+      const state = readJSON(statePath) || {};
+      
+      state.migrationNoticeShown = false; // Reset to show notice
+      writeJSON(statePath, state);
+    } catch (error) {
+      if (getDebugFlag()) {
+        log('warn', `Error marking migration for notice: ${error.message}`);
+      }
+    }
+  }
+  ```
+
+## Logging Functions
+
+- **Consistent Logging**:
+  - ✅ DO: Use the central `log` function for all output
+  - ✅ DO: Use appropriate log levels (info, warn, error, debug)
+  - ✅ DO: Support silent mode for programmatic usage
+
+  ```javascript
+  // ✅ DO: Implement consistent logging with silent mode
+  let silentMode = false;
+  
+  function log(level, ...messages) {
+    if (silentMode && level !== 'error') {
+      return; // Suppress non-error logs in silent mode
+    }
+    
+    const timestamp = new Date().toISOString();
+    const formattedMessage = messages.join(' ');
+    
+    switch (level) {
+      case 'error':
+        console.error(`[ERROR] ${formattedMessage}`);
+        break;
+      case 'warn':
+        console.warn(`[WARN] ${formattedMessage}`);
+        break;
+      case 'info':
+        console.log(`[INFO] ${formattedMessage}`);
+        break;
+      case 'debug':
+        if (getDebugFlag()) {
+          console.log(`[DEBUG] ${formattedMessage}`);
+        }
+        break;
+      default:
+        console.log(formattedMessage);
+    }
+  }
+  
+  function enableSilentMode() {
+    silentMode = true;
+  }
+  
+  function disableSilentMode() {
+    silentMode = false;
+  }
+  
+  function isSilentMode() {
+    return silentMode;
+  }
+  ```
+
+## Task Utilities
+
+- **Task Finding and Manipulation**:
+  - ✅ DO: Use tagged task system aware functions
+  - ✅ DO: Handle both task and subtask operations
+  - ✅ DO: Validate task IDs before operations
+
+  ```javascript
+  // ✅ DO: Implement tag-aware task utilities
+  function findTaskById(tasks, taskId) {
+    if (!Array.isArray(tasks)) {
+      return null;
+    }
+    return tasks.find(task => task.id === taskId) || null;
+  }
+  
+  function findSubtaskById(tasks, parentId, subtaskId) {
+    const parentTask = findTaskById(tasks, parentId);
+    if (!parentTask || !parentTask.subtasks) {
+      return null;
+    }
+    
+    return parentTask.subtasks.find(subtask => subtask.id === subtaskId) || null;
+  }
+  
+  function getNextTaskId(tasks) {
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      return 1;
+    }
+    
+    const maxId = Math.max(...tasks.map(task => task.id));
+    return maxId + 1;
+  }
+  
+  function getNextSubtaskId(parentTask) {
+    if (!parentTask.subtasks || parentTask.subtasks.length === 0) {
+      return 1;
+    }
+    
+    const maxId = Math.max(...parentTask.subtasks.map(subtask => subtask.id));
+    return maxId + 1;
+  }
+  ```
+
+## String Utilities
+
+- **Text Processing**:
+  - ✅ DO: Handle text truncation appropriately
+  - ✅ DO: Provide consistent formatting functions
+  - ✅ DO: Support different output formats
+
+  ```javascript
+  // ✅ DO: Implement useful string utilities
+  function truncate(str, maxLength = 50) {
+    if (!str || typeof str !== 'string') {
+      return '';
+    }
+    
+    if (str.length <= maxLength) {
+      return str;
+    }
+    
+    return str.substring(0, maxLength - 3) + '...';
+  }
+  
+  function formatDuration(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+  
+  function capitalizeFirst(str) {
+    if (!str || typeof str !== 'string') {
+      return '';
+    }
+    
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+  ```
+
+## Dependency Management Utilities
+
+- **Dependency Analysis**:
+  - ✅ DO: Detect circular dependencies
+  - ✅ DO: Validate dependency references
+  - ✅ DO: Support cross-tag dependency checking (future enhancement)
+
+  ```javascript
+  // ✅ DO: Implement dependency utilities
+  function findCycles(tasks) {
+    const cycles = [];
+    const visited = new Set();
+    const recStack = new Set();
+    
+    function dfs(taskId, path = []) {
+      if (recStack.has(taskId)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(taskId);
+        const cycle = path.slice(cycleStart).concat([taskId]);
+        cycles.push(cycle);
+        return;
+      }
+      
+      if (visited.has(taskId)) {
+        return;
+      }
+      
+      visited.add(taskId);
+      recStack.add(taskId);
+      
+      const task = findTaskById(tasks, taskId);
+      if (task && task.dependencies) {
+        task.dependencies.forEach(depId => {
+          dfs(depId, path.concat([taskId]));
+        });
+      }
+      
+      recStack.delete(taskId);
+    }
+    
+    tasks.forEach(task => {
+      if (!visited.has(task.id)) {
+        dfs(task.id);
+      }
+    });
+    
+    return cycles;
+  }
+  
+  function validateDependencies(tasks) {
+    const validationErrors = [];
+    const taskIds = new Set(tasks.map(task => task.id));
+    
+    tasks.forEach(task => {
+      if (task.dependencies) {
+        task.dependencies.forEach(depId => {
+          if (!taskIds.has(depId)) {
+            validationErrors.push({
+              taskId: task.id,
+              invalidDependency: depId,
+              message: `Task ${task.id} depends on non-existent task ${depId}`
+            });
+          }
+        });
+      }
+    });
+    
+    return validationErrors;
+  }
+  ```
+
+## Environment and Configuration Utilities
+
+- **Environment Variable Resolution**:
+  - ✅ DO: Support both `.env` files and MCP session environment
+  - ✅ DO: Provide fallbacks for missing values
+  - ✅ DO: Handle API key resolution correctly
+
+  ```javascript
+  // ✅ DO: Implement flexible environment resolution
+  function resolveEnvVariable(key, sessionEnv = null) {
+    // First check session environment (for MCP)
+    if (sessionEnv && sessionEnv[key]) {
+      return sessionEnv[key];
+    }
+    
+    // Then check process environment
+    if (process.env[key]) {
+      return process.env[key];
+    }
+    
+    // Finally try .env file if in project root
+    try {
+      const projectRoot = findProjectRoot();
+      if (projectRoot) {
+        const envPath = path.join(projectRoot, '.env');
+        if (fs.existsSync(envPath)) {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          const lines = envContent.split('\n');
+          
+          for (const line of lines) {
+            const [envKey, envValue] = line.split('=');
+            if (envKey && envKey.trim() === key) {
+              return envValue ? envValue.trim().replace(/^["']|["']$/g, '') : undefined;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      log('debug', `Error reading .env file: ${error.message}`);
+    }
+    
+    return undefined;
+  }
+  
+  function getDebugFlag() {
+    const debugFlag = resolveEnvVariable('TASKMASTER_DEBUG') || 
+                     resolveEnvVariable('DEBUG') || 
+                     'false';
+    return debugFlag.toLowerCase() === 'true';
+  }
+  ```
+
+## Export Pattern
+
+- **Module Exports**:
+  - ✅ DO: Export all utility functions explicitly
+  - ✅ DO: Group related functions logically
+  - ✅ DO: Include new tagged system utilities
+
+  ```javascript
+  // ✅ DO: Export utilities in logical groups
+  module.exports = {
+    // File system utilities
+    readJSON,
+    writeJSON,
+    findProjectRoot,
+    
+    // Tagged task system utilities
+    getTasksForTag,
+    setTasksForTag,
+    getCurrentTag,
+    performCompleteTagMigration,
+    migrateConfigJson,
+    createStateJson,
+    markMigrationForNotice,
+    
+    // Logging utilities
+    log,
+    enableSilentMode,
+    disableSilentMode,
+    isSilentMode,
+    
+    // Task utilities
+    findTaskById,
+    findSubtaskById,
+    getNextTaskId,
+    getNextSubtaskId,
+    
+    // String utilities
+    truncate,
+    formatDuration,
+    capitalizeFirst,
+    
+    // Dependency utilities
+    findCycles,
+    validateDependencies,
+    
+    // Environment utilities
+    resolveEnvVariable,
+    getDebugFlag,
+    
+    // Legacy utilities (maintained for compatibility)
+    aggregateTelemetry
+  };
+  ```
+
+Refer to [`utils.js`](mdc:scripts/modules/utils.js) for implementation examples and [`architecture.mdc`](mdc:.cursor/rules/architecture.mdc) for integration patterns.

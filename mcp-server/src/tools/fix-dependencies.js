@@ -57,7 +57,13 @@ export function registerFixDependenciesTool(server) {
 					log.error(`Failed to fix dependencies: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error fixing dependencies');
+				return handleApiResult(
+					result,
+					log,
+					'Error fixing dependencies',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in fixDependencies tool: ${error.message}`);
 				return createErrorResponse(error.message);

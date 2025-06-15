@@ -64,7 +64,13 @@ export function registerParsePRDTool(server) {
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				const result = await parsePRDDirect(args, log, { session });
-				return handleApiResult(result, log);
+				return handleApiResult(
+					result,
+					log,
+					'Error parsing PRD',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in parse_prd: ${error.message}`);
 				return createErrorResponse(`Failed to parse PRD: ${error.message}`);

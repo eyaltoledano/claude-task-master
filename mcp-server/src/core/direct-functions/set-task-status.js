@@ -13,13 +13,15 @@ import { nextTaskDirect } from './next-task.js';
 /**
  * Direct function wrapper for setTaskStatus with error handling.
  *
- * @param {Object} args - Command arguments containing id, status and tasksJsonPath.
+ * @param {Object} args - Command arguments containing id, status, tasksJsonPath, and projectRoot.
  * @param {Object} log - Logger object.
+ * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function setTaskStatusDirect(args, log) {
-	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, status, complexityReportPath } = args;
+export async function setTaskStatusDirect(args, log, context = {}) {
+	// Destructure expected args, including the resolved tasksJsonPath and projectRoot
+	const { tasksJsonPath, id, status, complexityReportPath, projectRoot } = args;
+	const { session } = context;
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
 
@@ -67,7 +69,11 @@ export async function setTaskStatusDirect(args, log) {
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
-			await setTaskStatus(tasksPath, taskId, newStatus, { mcpLog: log });
+			await setTaskStatus(tasksPath, taskId, newStatus, {
+				mcpLog: log,
+				projectRoot,
+				session
+			});
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
 
@@ -89,9 +95,11 @@ export async function setTaskStatusDirect(args, log) {
 					const nextResult = await nextTaskDirect(
 						{
 							tasksJsonPath: tasksJsonPath,
-							reportPath: complexityReportPath
+							reportPath: complexityReportPath,
+							projectRoot: projectRoot
 						},
-						log
+						log,
+						{ session }
 					);
 
 					if (nextResult.success) {
