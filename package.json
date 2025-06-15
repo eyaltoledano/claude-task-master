@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.17.0-rc.1",
+	"version": "0.17.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -72,7 +72,6 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
-		"task-master-ai": "0.17.0-rc.1",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
 	},
