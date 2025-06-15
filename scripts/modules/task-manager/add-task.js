@@ -558,14 +558,14 @@ async function addTask(
 		report('DEBUG: tasks.json written.', 'debug');
 
 		// Generate markdown task files
-		report('Generating task files...', 'info');
-		report('DEBUG: Calling generateTaskFiles...', 'debug');
-		// Pass mcpLog if available to generateTaskFiles
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-			projectRoot,
-			tag: targetTag
-		});
-		report('DEBUG: generateTaskFiles finished.', 'debug');
+		// report('Generating task files...', 'info');
+		// report('DEBUG: Calling generateTaskFiles...', 'debug');
+		// // Pass mcpLog if available to generateTaskFiles
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+		// 	projectRoot,
+		// 	tag: targetTag
+		// });
+		// report('DEBUG: generateTaskFiles finished.', 'debug');
 
 		// Show success message - only for text output (CLI)
 		if (outputFormat === 'text') {

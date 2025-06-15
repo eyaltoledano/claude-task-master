@@ -669,7 +669,7 @@ async function expandTask(
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
 		writeJSON(tasksPath, data);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		// Display AI Usage Summary for CLI
 		if (

@@ -17,7 +17,8 @@ import {
 	truncate,
 	isSilentMode,
 	findProjectRoot,
-	flattenTasksWithSubtasks
+	flattenTasksWithSubtasks,
+	getCurrentTag
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -46,7 +47,7 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -90,7 +91,10 @@ async function updateSubtaskById(
 			throw new Error('Could not determine project root directory');
 		}
 
-		const data = readJSON(tasksPath, projectRoot);
+		// Determine the tag to use
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks) {
 			throw new Error(
 				`No valid tasks found in ${tasksPath}. The file may be corrupted or have an invalid format.`
@@ -331,7 +335,7 @@ Output Requirements:
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
-		writeJSON(tasksPath, data, projectRoot);
+		writeJSON(tasksPath, data, projectRoot, currentTag);
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: writeJSON call completed.');
 		}

@@ -1614,7 +1614,7 @@ function registerCommands(programInstance) {
 		.command('research')
 		.description('Perform AI-powered research queries with project context')
 		.argument('[prompt]', 'Research prompt to investigate')
-		.option('--file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+		.option('--file <file>', 'Path to the tasks file')
 		.option(
 			'-i, --id <ids>',
 			'Comma-separated task/subtask IDs to include as context (e.g., "15,16.2")'
@@ -1752,7 +1752,8 @@ function registerCommands(programInstance) {
 			const projectRoot = findProjectRoot() || '.';
 			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
 			const tasksPath =
-				options.file || path.join(projectRoot, 'tasks', 'tasks.json');
+				options.file ||
+				path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1856,14 +1857,15 @@ function registerCommands(programInstance) {
 					researchOptions,
 					{
 						commandName: 'research',
-						outputType: 'cli'
+						outputType: 'cli',
+						tag: tag
 					},
 					'text',
 					validatedParams.allowFollowUp // Pass follow-up flag
 				);
 
-				// Auto-save to task/subtask if requested
-				if (validatedParams.saveToId) {
+				// Auto-save to task/subtask if requested and no interactive save occurred
+				if (validatedParams.saveToId && !result.interactiveSaveOccurred) {
 					try {
 						const isSubtask = validatedParams.saveToId.includes('.');
 
@@ -1892,7 +1894,8 @@ ${result.result}`;
 								{
 									commandName: 'research-save',
 									outputType: 'cli',
-									projectRoot: validatedParams.projectRoot
+									projectRoot: validatedParams.projectRoot,
+									tag: tag
 								},
 								'text'
 							);
@@ -1917,7 +1920,8 @@ ${result.result}`;
 								{
 									commandName: 'research-save',
 									outputType: 'cli',
-									projectRoot: validatedParams.projectRoot
+									projectRoot: validatedParams.projectRoot,
+									tag: tag
 								},
 								'text',
 								true // appendMode = true
@@ -3540,7 +3544,7 @@ Examples:
 
 				try {
 					// Read tasks data once to validate destination IDs
-					const tasksData = readJSON(tasksPath);
+					const tasksData = readJSON(tasksPath, projectRoot, tag);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)

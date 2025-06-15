@@ -12,7 +12,8 @@ import {
 	truncate,
 	isSilentMode,
 	flattenTasksWithSubtasks,
-	findProjectRoot
+	findProjectRoot,
+	getCurrentTag
 } from '../utils.js';
 
 import {
@@ -23,11 +24,7 @@ import {
 } from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
-import {
-	getDebugFlag,
-	isApiKeySet // Keep this check
-} from '../config-manager.js';
-import generateTaskFiles from './generate-task-files.js';
+import { getDebugFlag, isApiKeySet } from '../config-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
@@ -223,7 +220,7 @@ async function updateTaskById(
 	outputFormat = 'text',
 	appendMode = false
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -268,8 +265,11 @@ async function updateTaskById(
 			throw new Error('Could not determine project root directory');
 		}
 
+		// Determine the tag to use
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
 		// --- Task Loading and Status Check (Keep existing) ---
-		const data = readJSON(tasksPath, projectRoot);
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
 		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
@@ -510,7 +510,7 @@ The changes described in the prompt should be thoughtfully applied to make the t
 
 				// Write the updated task back to file
 				data.tasks[taskIndex] = taskToUpdate;
-				writeJSON(tasksPath, data);
+				writeJSON(tasksPath, data, projectRoot, currentTag);
 				report('success', `Successfully appended to task ${taskId}`);
 
 				// Display success message for CLI
@@ -624,7 +624,7 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			// --- End Update Task Data ---
 
 			// --- Write File and Generate (Unchanged) ---
-			writeJSON(tasksPath, data);
+			writeJSON(tasksPath, data, projectRoot, currentTag);
 			report('success', `Successfully updated task ${taskId}`);
 			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 			// --- End Write File ---
