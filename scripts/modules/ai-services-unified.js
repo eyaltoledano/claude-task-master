@@ -449,7 +449,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (
+				providerName?.toLowerCase() !== 'ollama' &&
+				providerName?.toLowerCase() !== 'claude-code'
+			) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
