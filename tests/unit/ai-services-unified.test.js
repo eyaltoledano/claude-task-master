@@ -64,6 +64,7 @@ const mockGetDefaultNumTasks = jest.fn();
 const mockGetDefaultSubtasks = jest.fn();
 const mockGetDefaultPriority = jest.fn();
 const mockGetProjectName = jest.fn();
+const mockGetClaudeCodeConfig = jest.fn();
 
 jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	// Core config access
@@ -117,7 +118,8 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
-	getMcpApiKeyStatus: mockGetMcpApiKeyStatus
+	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
+	getClaudeCodeConfig: mockGetClaudeCodeConfig
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -177,6 +179,11 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateObject: jest.fn()
 	})),
 	VertexAIProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
+	})),
+	ClaudeCodeProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn()

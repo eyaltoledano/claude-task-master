@@ -750,6 +750,19 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 		: undefined;
 }
 
+/**
+ * Gets Claude Code specific configuration from config.json
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {object} Claude Code configuration with defaults
+ */
+function getClaudeCodeConfig(explicitRoot = null) {
+	// Return Claude Code specific configuration with defaults
+	const config = getConfig(explicitRoot);
+	const claudeCodeConfig = config.claudeCode || {};
+
+	return claudeCodeConfig;
+}
+
 export {
 	// Core config access
 	getConfig,
@@ -794,5 +807,6 @@ export {
 	// ADD: Function to get all provider names
 	getAllProviders,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getClaudeCodeConfig
 };
