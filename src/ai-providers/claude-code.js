@@ -161,7 +161,10 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 					completionTokens: Math.floor(tokenCount * 1.3),
 					totalTokens: Math.floor(
 						(prompt.split(/\s+/).length + tokenCount) * 1.3
-					)
+					),
+					// Also include the expected field names for telemetry
+					inputTokens: Math.floor(prompt.split(/\s+/).length * 1.3),
+					outputTokens: Math.floor(tokenCount * 1.3)
 				}
 			};
 		} catch (error) {
@@ -238,7 +241,10 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 						(enhancedPrompt.split(/\s+/).length +
 							jsonText.split(/\s+/).length) *
 							1.3
-					)
+					),
+					// Also include the expected field names for telemetry
+					inputTokens: Math.floor(enhancedPrompt.split(/\s+/).length * 1.3),
+					outputTokens: Math.floor(jsonText.split(/\s+/).length * 1.3)
 				}
 			};
 		} catch (error) {
@@ -304,7 +310,10 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 					completionTokens: Math.floor(fullText.split(/\s+/).length * 1.3),
 					totalTokens: Math.floor(
 						(prompt.split(/\s+/).length + fullText.split(/\s+/).length) * 1.3
-					)
+					),
+					// Also include the expected field names for telemetry
+					inputTokens: Math.floor(prompt.split(/\s+/).length * 1.3),
+					outputTokens: Math.floor(fullText.split(/\s+/).length * 1.3)
 				}
 			};
 		} catch (error) {

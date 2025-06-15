@@ -44,7 +44,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	ClaudeCodeProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -58,7 +59,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-code': new ClaudeCodeProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -236,14 +238,20 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'claude-code': null // Claude Code doesn't need an API key
 	};
 
 	const envVarName = keyMap[providerName];
-	if (!envVarName) {
+	if (envVarName === undefined) {
 		throw new Error(
 			`Unknown provider '${providerName}' for API key resolution.`
 		);
+	}
+
+	// Special handling for providers that don't need API keys
+	if (envVarName === null || providerName === 'claude-code') {
+		return null;
 	}
 
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);

@@ -480,8 +480,8 @@ function getParametersForRole(role, explicitRoot = null) {
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Define the expected environment variable name for each provider
-	if (providerName?.toLowerCase() === 'ollama') {
-		return true; // Indicate key status is effectively "OK"
+	if (providerName?.toLowerCase() === 'ollama' || providerName?.toLowerCase() === 'claude-code') {
+		return true; // Indicate key status is effectively "OK" - these providers don't need API keys
 	}
 
 	const keyMap = {
@@ -493,7 +493,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
+		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
+		'claude-code': null // Claude Code doesn't need an API key
 		// Add other providers as needed
 	};
 

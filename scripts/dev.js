@@ -18,5 +18,17 @@ if (process.env.DEBUG === '1') {
 
 import { runCLI } from './modules/commands.js';
 
+// Handle EPIPE errors gracefully when output is piped
+process.on('EPIPE', () => {
+	process.exit(0);
+});
+
+// Handle uncaught EPIPE errors
+process.stdout.on('error', (error) => {
+	if (error.code === 'EPIPE') {
+		process.exit(0);
+	}
+});
+
 // Run the CLI with the process arguments
 runCLI(process.argv);

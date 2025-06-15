@@ -4256,6 +4256,11 @@ function compareVersions(v1, v2) {
  * @param {string} latestVersion - Latest version
  */
 function displayUpgradeNotification(currentVersion, latestVersion) {
+	// Check if stdout is still writable to avoid EPIPE errors
+	if (!process.stdout.writable || process.stdout.destroyed) {
+		return;
+	}
+
 	const message = boxen(
 		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
 			`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
@@ -4267,7 +4272,14 @@ function displayUpgradeNotification(currentVersion, latestVersion) {
 		}
 	);
 
-	console.log(message);
+	try {
+		console.log(message);
+	} catch (error) {
+		// Silently ignore write errors when output is piped
+		if (error.code !== 'EPIPE') {
+			throw error;
+		}
+	}
 }
 
 /**
