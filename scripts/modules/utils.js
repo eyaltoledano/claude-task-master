@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
-import { execSync } from 'child_process';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import * as gitUtils from './utils/git-utils.js';
