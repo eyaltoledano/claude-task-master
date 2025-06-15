@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
+import { HOSTED_AI_PROVIDERS } from '../../src/constants/ai-providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 
 // Calculate __dirname in ESM
@@ -234,10 +235,18 @@ function getConfig(explicitRoot = null, forceReload = false) {
 
 /**
  * Validates if a provider name is in the list of supported providers.
+ * For hosted solutions (bedrock, azure, vertex), always returns true since users
+ * can configure custom models on these platforms.
  * @param {string} providerName The name of the provider.
  * @returns {boolean} True if the provider is valid, false otherwise.
  */
 function validateProvider(providerName) {
+	// Hosted solutions with custom model support - always valid
+	if (HOSTED_AI_PROVIDERS.includes(providerName)) {
+		return true;
+	}
+
+	// For other providers, check against the MODEL_MAP
 	return VALID_PROVIDERS.includes(providerName);
 }
 
