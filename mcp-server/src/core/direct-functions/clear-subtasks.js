@@ -5,9 +5,11 @@
 import { clearSubtasks } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	readJSON
 } from '../../../../scripts/modules/utils.js';
 import fs from 'fs';
+import path from 'path';
 
 /**
  * Clear subtasks from specified tasks
@@ -15,12 +17,13 @@ import fs from 'fs';
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} [args.id] - Task IDs (comma-separated) to clear subtasks from
  * @param {boolean} [args.all] - Clear subtasks from all tasks
+ * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function clearSubtasksDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id, all } = args;
+	const { tasksJsonPath, id, all, tag, projectRoot } = args;
 	try {
 		log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
@@ -64,52 +67,70 @@ export async function clearSubtasksDirect(args, log) {
 
 		let taskIds;
 
+		// Use readJSON which handles silent migration and tag resolution
+		const data = readJSON(tasksPath, projectRoot, tag);
+
+		if (!data || !data.tasks) {
+			return {
+				success: false,
+				error: {
+					code: 'INPUT_VALIDATION_ERROR',
+					message: `No tasks found in tasks file: ${tasksPath}`
+				}
+			};
+		}
+
+		const currentTag = data.tag || 'master';
+		const tasks = data.tasks;
+
 		// If all is specified, get all task IDs
 		if (all) {
-			log.info('Clearing subtasks from all tasks');
-			const data = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-			if (!data || !data.tasks || data.tasks.length === 0) {
+			log.info(`Clearing subtasks from all tasks in tag '${currentTag}'`);
+			if (tasks.length === 0) {
 				return {
 					success: false,
 					error: {
 						code: 'INPUT_VALIDATION_ERROR',
-						message: 'No valid tasks found in the tasks file'
+						message: `No tasks found in tag context '${currentTag}'`
 					}
 				};
 			}
-			taskIds = data.tasks.map((t) => t.id).join(',');
+			taskIds = tasks.map((t) => t.id).join(',');
 		} else {
 			// Use the provided task IDs
 			taskIds = id;
 		}
 
-		log.info(`Clearing subtasks from tasks: ${taskIds}`);
+		log.info(`Clearing subtasks from tasks: ${taskIds} in tag '${currentTag}'`);
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
 		// Call the core function
-		clearSubtasks(tasksPath, taskIds);
+		clearSubtasks(tasksPath, taskIds, { projectRoot, tag: currentTag });
 
 		// Restore normal logging
 		disableSilentMode();
 
 		// Read the updated data to provide a summary
-		const updatedData = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
+		const updatedData = readJSON(tasksPath, projectRoot, currentTag);
 		const taskIdArray = taskIds.split(',').map((id) => parseInt(id.trim(), 10));
 
 		// Build a summary of what was done
 		const clearedTasksCount = taskIdArray.length;
+		const updatedTasks = updatedData.tasks || [];
+
 		const taskSummary = taskIdArray.map((id) => {
-			const task = updatedData.tasks.find((t) => t.id === id);
+			const task = updatedTasks.find((t) => t.id === id);
 			return task ? { id, title: task.title } : { id, title: 'Task not found' };
 		});
 
 		return {
 			success: true,
 			data: {
-				message: `Successfully cleared subtasks from ${clearedTasksCount} task(s)`,
-				tasksCleared: taskSummary
+				message: `Successfully cleared subtasks from ${clearedTasksCount} task(s) in tag '${currentTag}'`,
+				tasksCleared: taskSummary,
+				tag: currentTag
 			}
 		};
 	} catch (error) {

@@ -107,8 +107,13 @@ async function performResearch(
 		let autoDiscoveredIds = [];
 
 		try {
-			const tasksPath = path.join(projectRoot, 'tasks', 'tasks.json');
-			const tasksData = await readJSON(tasksPath);
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			const tasksData = await readJSON(tasksPath, projectRoot);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
@@ -250,6 +255,9 @@ async function performResearch(
 		const tagInfo = aiResult.tagInfo;
 
 		// Format and display results
+		// Initialize interactive save tracking
+		let interactiveSaveInfo = { interactiveSaveOccurred: false };
+
 		if (outputFormat === 'text') {
 			displayResearchResults(
 				researchResult,
@@ -265,7 +273,7 @@ async function performResearch(
 
 			// Offer follow-up question option (only for initial CLI queries, not MCP)
 			if (allowFollowUp && !isMCP) {
-				await handleFollowUpQuestions(
+				interactiveSaveInfo = await handleFollowUpQuestions(
 					options,
 					context,
 					outputFormat,
@@ -308,7 +316,8 @@ async function performResearch(
 				detailLevel,
 				telemetryData,
 				tagInfo,
-				savedFilePath
+				savedFilePath,
+				interactiveSaveOccurred: false // MCP save-to-file doesn't count as interactive save
 			};
 		}
 
@@ -325,7 +334,9 @@ async function performResearch(
 			totalInputTokens,
 			detailLevel,
 			telemetryData,
-			tagInfo
+			tagInfo,
+			interactiveSaveOccurred:
+				interactiveSaveInfo?.interactiveSaveOccurred || false
 		};
 	} catch (error) {
 		logFn.error(`Research query failed: ${error.message}`);
@@ -643,6 +654,8 @@ async function handleFollowUpQuestions(
 	initialQuery,
 	initialResult
 ) {
+	let interactiveSaveOccurred = false;
+
 	try {
 		// Import required modules for saving
 		const { readJSON } = await import('../utils.js');
@@ -693,12 +706,15 @@ async function handleFollowUpQuestions(
 
 			if (action === 'save') {
 				// Handle save functionality
-				await handleSaveToTask(
+				const saveResult = await handleSaveToTask(
 					conversationHistory,
 					projectRoot,
 					context,
 					logFn
 				);
+				if (saveResult) {
+					interactiveSaveOccurred = true;
+				}
 				continue;
 			}
 
@@ -762,6 +778,8 @@ async function handleFollowUpQuestions(
 		// silently continue without follow-up functionality
 		logFn.debug(`Follow-up questions not available: ${error.message}`);
 	}
+
+	return { interactiveSaveOccurred };
 }
 
 /**
@@ -828,8 +846,10 @@ async function handleSaveToTask(
 			return;
 		}
 
-		// Validate ID exists
-		const data = readJSON(tasksPath, projectRoot);
+		// Validate ID exists - use tag from context
+		const { getCurrentTag } = await import('../utils.js');
+		const tag = context.tag || getCurrentTag(projectRoot) || 'master';
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return;
@@ -863,7 +883,7 @@ async function handleSaveToTask(
 				trimmedTaskId,
 				conversationThread,
 				false, // useResearch = false for simple append
-				context,
+				{ ...context, tag },
 				'text'
 			);
 
@@ -890,7 +910,7 @@ async function handleSaveToTask(
 				taskIdNum,
 				conversationThread,
 				false, // useResearch = false for simple append
-				context,
+				{ ...context, tag },
 				'text',
 				true // appendMode = true
 			);
@@ -899,9 +919,12 @@ async function handleSaveToTask(
 				chalk.green(`✅ Research conversation saved to task ${trimmedTaskId}`)
 			);
 		}
+
+		return true; // Indicate successful save
 	} catch (error) {
 		console.log(chalk.red(`❌ Error saving conversation: ${error.message}`));
 		logFn.error(`Error saving conversation: ${error.message}`);
+		return false; // Indicate failed save
 	}
 }
 

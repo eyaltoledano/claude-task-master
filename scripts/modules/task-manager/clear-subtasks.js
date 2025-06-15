@@ -5,7 +5,6 @@ import Table from 'cli-table3';
 
 import { log, readJSON, writeJSON, truncate, isSilentMode } from '../utils.js';
 import { displayBanner } from '../ui.js';
-import generateTaskFiles from './generate-task-files.js';
 
 /**
  * Clear subtasks from specified tasks
@@ -98,10 +97,6 @@ function clearSubtasks(tasksPath, taskIds, context = {}) {
 			);
 			console.log(summaryTable.toString());
 		}
-
-		// Regenerate task files to reflect changes
-		log('info', 'Regenerating task files...');
-		generateTaskFiles(tasksPath, path.dirname(tasksPath), { projectRoot, tag });
 
 		// Success message
 		if (!isSilentMode()) {

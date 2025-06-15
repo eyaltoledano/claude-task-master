@@ -144,10 +144,6 @@ describe('clearSubtasks', () => {
 			undefined,
 			undefined
 		);
-		expect(generateTaskFiles).toHaveBeenCalledWith(tasksPath, 'tasks', {
-			projectRoot: undefined,
-			tag: undefined
-		});
 	});
 
 	test('should clear subtasks from multiple tasks when given comma-separated IDs', () => {
@@ -175,10 +171,6 @@ describe('clearSubtasks', () => {
 			undefined,
 			undefined
 		);
-		expect(generateTaskFiles).toHaveBeenCalledWith(tasksPath, 'tasks', {
-			projectRoot: undefined,
-			tag: undefined
-		});
 	});
 
 	test('should handle tasks with no subtasks', () => {
@@ -242,10 +234,6 @@ describe('clearSubtasks', () => {
 			undefined,
 			undefined
 		);
-		expect(generateTaskFiles).toHaveBeenCalledWith(tasksPath, 'tasks', {
-			projectRoot: undefined,
-			tag: undefined
-		});
 	});
 
 	test('should handle file read errors', () => {

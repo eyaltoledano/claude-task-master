@@ -260,7 +260,6 @@ describe('addTask', () => {
 				})
 			})
 		);
-		expect(generateTaskFiles).toHaveBeenCalled();
 		expect(result).toEqual(
 			expect.objectContaining({
 				newTaskId: 4,

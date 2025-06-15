@@ -120,7 +120,7 @@ async function moveTask(
 
 	// Always write the data object, never the _rawTaggedData directly
 	// The writeJSON function will filter out _rawTaggedData automatically
-	writeJSON(tasksPath, rawData);
+	writeJSON(tasksPath, rawData, options.projectRoot, currentTag);
 
 	if (generateFiles) {
 		await generateTaskFiles(tasksPath, path.dirname(tasksPath));

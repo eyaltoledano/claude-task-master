@@ -71,7 +71,11 @@ export async function moveTaskDirect(args, log, context = {}) {
 			tasksPath,
 			args.sourceId,
 			args.destinationId,
-			generateFiles
+			generateFiles,
+			{
+				projectRoot: args.projectRoot,
+				tag: args.tag
+			}
 		);
 
 		// Restore console output
