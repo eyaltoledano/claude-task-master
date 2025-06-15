@@ -24,7 +24,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	getClaudeCodeConfig
 } from './config-manager.js';
 import {
 	log,
@@ -44,8 +45,12 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	ClaudeCodeProvider
 } from '../../src/ai-providers/index.js';
+
+// Constants for providers with special authentication handling
+const PROVIDERS_WITH_OPTIONAL_API_KEY = ['ollama', 'bedrock', 'claude-code'];
 
 // Create provider instances
 const PROVIDERS = {
@@ -58,7 +63,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-code': new ClaudeCodeProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -236,7 +242,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'claude-code': 'CLAUDE_CODE_API_KEY' // Not actually used, but needed for keyMap
 	};
 
 	const envVarName = keyMap[providerName];
@@ -249,7 +256,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Special handling for providers that can use alternative auth
-	if (providerName === 'ollama' || providerName === 'bedrock') {
+	if (PROVIDERS_WITH_OPTIONAL_API_KEY.includes(providerName)) {
 		return apiKey || null;
 	}
 
@@ -449,7 +456,9 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (
+				!PROVIDERS_WITH_OPTIONAL_API_KEY.includes(providerName?.toLowerCase())
+			) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -532,6 +541,32 @@ async function _unifiedServiceRunner(serviceType, params) {
 				);
 			}
 
+			// Handle Claude Code specific configuration
+			if (providerName?.toLowerCase() === 'claude-code') {
+				// Get Claude Code configuration
+				const claudeCodeConfig = getClaudeCodeConfig(effectiveProjectRoot);
+
+				log(
+					'debug',
+					`Raw Claude Code config from getClaudeCodeConfig: ${JSON.stringify(claudeCodeConfig)}`
+				);
+
+				// Add Claude Code-specific parameters (only those actually supported by the SDK)
+				providerSpecificParams = {
+					// Map cliPath to pathToClaudeCodeExecutable for the SDK
+					pathToClaudeCodeExecutable: claudeCodeConfig.cliPath,
+					// Working directory
+					cwd: claudeCodeConfig.cwd || effectiveProjectRoot || process.cwd(),
+					// Max turns is passed through options in the provider
+					maxTurns: claudeCodeConfig.maxTurns
+				};
+
+				log(
+					'debug',
+					`Using Claude Code configuration: ${JSON.stringify(providerSpecificParams)}`
+				);
+			}
+
 			const messages = [];
 			if (systemPrompt) {
 				messages.push({ role: 'system', content: systemPrompt });
@@ -562,7 +597,9 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			const callParams = {
-				apiKey,
+				...(!PROVIDERS_WITH_OPTIONAL_API_KEY.includes(
+					providerName?.toLowerCase()
+				) && { apiKey }),
 				modelId,
 				maxTokens: roleParams.maxTokens,
 				temperature: roleParams.temperature,
