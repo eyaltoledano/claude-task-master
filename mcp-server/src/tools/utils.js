@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 import { fileURLToPath } from 'url';
+import { getCurrentTag } from '../../../scripts/modules/utils.js';
 
 // Import path utilities to ensure consistent path resolution
 import {
@@ -56,6 +57,64 @@ function getVersionInfo() {
 			name: 'task-master-ai'
 		};
 		return cachedVersionInfo;
+	}
+}
+
+/**
+ * Get current tag information for MCP responses
+ * @param {string} projectRoot - The project root directory
+ * @param {Object} log - Logger object
+ * @returns {Object} Tag information object
+ */
+function getTagInfo(projectRoot, log) {
+	try {
+		if (!projectRoot) {
+			log.warn('No project root provided for tag information');
+			return { currentTag: 'master', availableTags: ['master'] };
+		}
+
+		const currentTag = getCurrentTag(projectRoot);
+
+		// Read available tags from tasks.json
+		let availableTags = ['master']; // Default fallback
+		try {
+			const tasksJsonPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			if (fs.existsSync(tasksJsonPath)) {
+				const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf-8'));
+
+				// If it's the new tagged format, extract tag keys
+				if (
+					tasksData &&
+					typeof tasksData === 'object' &&
+					!Array.isArray(tasksData.tasks)
+				) {
+					const tagKeys = Object.keys(tasksData).filter(
+						(key) =>
+							tasksData[key] &&
+							typeof tasksData[key] === 'object' &&
+							Array.isArray(tasksData[key].tasks)
+					);
+					if (tagKeys.length > 0) {
+						availableTags = tagKeys;
+					}
+				}
+			}
+		} catch (tagError) {
+			log.debug(`Could not read available tags: ${tagError.message}`);
+		}
+
+		return {
+			currentTag: currentTag || 'master',
+			availableTags: availableTags
+		};
+	} catch (error) {
+		log.warn(`Error getting tag information: ${error.message}`);
+		return { currentTag: 'master', availableTags: ['master'] };
 	}
 }
 
@@ -242,21 +301,26 @@ function getProjectRootFromSession(session, log) {
  * @param {Object} log - Logger object
  * @param {string} errorPrefix - Prefix for error messages
  * @param {Function} processFunction - Optional function to process successful result data
+ * @param {string} [projectRoot] - Optional project root for tag information
  * @returns {Object} - Standardized MCP response object
  */
 async function handleApiResult(
 	result,
 	log,
 	errorPrefix = 'API error',
-	processFunction = processMCPResponseData
+	processFunction = processMCPResponseData,
+	projectRoot = null
 ) {
 	// Get version info for every response
 	const versionInfo = getVersionInfo();
 
+	// Get tag info if project root is provided
+	const tagInfo = projectRoot ? getTagInfo(projectRoot, log) : null;
+
 	if (!result.success) {
 		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
 		log.error(`${errorPrefix}: ${errorMsg}`);
-		return createErrorResponse(errorMsg, versionInfo);
+		return createErrorResponse(errorMsg, versionInfo, tagInfo);
 	}
 
 	// Process the result data if needed
@@ -266,11 +330,16 @@ async function handleApiResult(
 
 	log.info('Successfully completed operation');
 
-	// Create the response payload including version info
+	// Create the response payload including version info and tag info
 	const responsePayload = {
 		data: processedData,
 		version: versionInfo
 	};
+
+	// Add tag information if available
+	if (tagInfo) {
+		responsePayload.tag = tagInfo;
+	}
 
 	return createContentResponse(responsePayload);
 }
@@ -496,21 +565,30 @@ function createContentResponse(content) {
  * Creates error response for tools
  * @param {string} errorMessage - Error message to include in response
  * @param {Object} [versionInfo] - Optional version information object
+ * @param {Object} [tagInfo] - Optional tag information object
  * @returns {Object} - Error content response object in FastMCP format
  */
-function createErrorResponse(errorMessage, versionInfo) {
+function createErrorResponse(errorMessage, versionInfo, tagInfo) {
 	// Provide fallback version info if not provided
 	if (!versionInfo) {
 		versionInfo = getVersionInfo();
+	}
+
+	let responseText = `Error: ${errorMessage}
+Version: ${versionInfo.version}
+Name: ${versionInfo.name}`;
+
+	// Add tag information if available
+	if (tagInfo) {
+		responseText += `
+Current Tag: ${tagInfo.currentTag}`;
 	}
 
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `Error: ${errorMessage}
-Version: ${versionInfo.version}
-Name: ${versionInfo.name}`
+				text: responseText
 			}
 		],
 		isError: true
@@ -704,6 +782,7 @@ function withNormalizedProjectRoot(executeFn) {
 export {
 	getProjectRoot,
 	getProjectRootFromSession,
+	getTagInfo,
 	handleApiResult,
 	executeTaskMasterCommand,
 	getCachedOrExecute,

@@ -1,9 +1,9 @@
 {
 	"meta": {
-		"generatedAt": "2025-05-22T05:48:33.026Z",
-		"tasksAnalyzed": 6,
-		"totalTasks": 88,
-		"analysisCount": 43,
+		"generatedAt": "2025-05-27T16:34:53.088Z",
+		"tasksAnalyzed": 1,
+		"totalTasks": 84,
+		"analysisCount": 45,
 		"thresholdScore": 5,
 		"projectName": "Taskmaster",
 		"usedResearch": true
@@ -314,14 +314,6 @@
 			"reasoning": "This task involves significant code changes to a core function, integration of a new utility, dynamic logic for multiple models, and robust error handling. It also requires comprehensive testing for edge cases and integration, making it moderately complex and best managed by splitting into focused subtasks."
 		},
 		{
-			"taskId": 86,
-			"taskTitle": "Update .taskmasterconfig schema and user guide",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Expand this task into subtasks: (1) Draft a migration guide for users, (2) Update user documentation to explain new config fields, (3) Modify schema validation logic in config-manager.js, (4) Test and validate backward compatibility and error messaging.",
-			"reasoning": "The task spans documentation, schema changes, migration guidance, and validation logic. While not algorithmically complex, it requires careful coordination and thorough testing to ensure a smooth user transition and robust validation."
-		},
-		{
 			"taskId": 87,
 			"taskTitle": "Implement validation and error handling",
 			"complexityScore": 5,
@@ -352,6 +344,30 @@
 			"recommendedSubtasks": 5,
 			"expansionPrompt": "Expand this task into: (1) Implement move logic for tasks and subtasks, (2) Handle edge cases (invalid ids, non-existent parents, circular dependencies), (3) Update CLI to support move command with flags, (4) Ensure data integrity and update relationships, (5) Write and execute tests for various move scenarios.",
 			"reasoning": "Moving tasks and subtasks requires careful handling of hierarchical data, edge cases, and data integrity. The command must be robust and user-friendly, necessitating multiple focused subtasks for safe implementation."
+		},
+		{
+			"taskId": 92,
+			"taskTitle": "Add Global Joke Flag to All CLI Commands",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down the implementation of the global --joke flag into the following subtasks: (1) Update CLI foundation to support global flags, (2) Develop the joke-service module with joke management and category support, (3) Integrate joke output into existing output utilities, (4) Update all CLI commands for joke flag compatibility, (5) Add configuration options for joke categories and custom jokes, (6) Implement comprehensive testing (flag recognition, output, content, integration, performance, regression), (7) Update documentation and usage examples.",
+			"reasoning": "This task requires changes across the CLI foundation, output utilities, all command modules, and configuration management. It introduces a new service module, global flag handling, and output logic that must not interfere with existing features (including JSON output). The need for robust testing and backward compatibility further increases complexity. The scope spans multiple code areas and requires careful integration, justifying a high complexity score and a detailed subtask breakdown to manage risk and ensure maintainability.[2][3][5]"
+		},
+		{
+			"taskId": 94,
+			"taskTitle": "Implement Standalone 'research' CLI Command for AI-Powered Queries",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the implementation of the 'research' CLI command into logical subtasks covering command registration, parameter handling, context gathering, AI service integration, output formatting, and documentation.",
+			"reasoning": "This task has moderate to high complexity (7/10) due to multiple interconnected components: CLI argument parsing, integration with AI services, context gathering from various sources, and output formatting with different modes. The cyclomatic complexity would be significant with multiple decision paths for handling different flags and options. The task requires understanding existing patterns and extending the codebase in a consistent manner, suggesting the need for careful decomposition into manageable subtasks."
+		},
+		{
+			"taskId": 86,
+			"taskTitle": "Implement GitHub Issue Export Feature",
+			"complexityScore": 9,
+			"recommendedSubtasks": 10,
+			"expansionPrompt": "Break down the implementation of the GitHub Issue Export Feature into detailed subtasks covering: command structure and CLI integration, GitHub API client development, authentication and error handling, task-to-issue mapping logic, content formatting and markdown conversion, bidirectional linking and metadata management, extensible architecture and adapter interfaces, configuration and settings management, documentation, and comprehensive testing (unit, integration, edge cases, performance).",
+			"reasoning": "This task involves designing and implementing a robust, extensible export system with deep integration into GitHub, including bidirectional workflows, complex data mapping, error handling, and support for future platforms. The requirements span CLI design, API integration, content transformation, metadata management, extensibility, configuration, and extensive testing. The breadth and depth of these requirements, along with the need for maintainability and future extensibility, place this task at a high complexity level. Breaking it into at least 10 subtasks will ensure each major component and concern is addressed systematically, reducing risk and improving quality."
 		}
 	]
 }

@@ -102,7 +102,10 @@ export function registerMoveTaskTool(server) {
 								message: `Successfully moved ${results.length} tasks`
 							}
 						},
-						log
+						log,
+						'Error moving multiple tasks',
+						undefined,
+						args.projectRoot
 					);
 				} else {
 					// Moving a single task
@@ -117,7 +120,10 @@ export function registerMoveTaskTool(server) {
 							log,
 							{ session }
 						),
-						log
+						log,
+						'Error moving task',
+						undefined,
+						args.projectRoot
 					);
 				}
 			} catch (error) {

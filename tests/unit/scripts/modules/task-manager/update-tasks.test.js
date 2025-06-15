@@ -16,7 +16,12 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	},
 	sanitizePrompt: jest.fn((prompt) => prompt),
 	truncate: jest.fn((text) => text),
-	isSilentMode: jest.fn(() => false)
+	isSilentMode: jest.fn(() => false),
+	findTaskById: jest.fn(),
+	getCurrentTag: jest.fn(() => 'master'),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj),
+	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
+	findProjectRoot: jest.fn(() => '/mock/project/root')
 }));
 
 jest.unstable_mockModule(
@@ -62,7 +67,7 @@ jest.unstable_mockModule(
 );
 
 // Import the mocked modules
-const { readJSON, writeJSON, log, CONFIG } = await import(
+const { readJSON, writeJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
@@ -86,26 +91,28 @@ describe('updateTasks', () => {
 		const mockFromId = 2;
 		const mockPrompt = 'New project direction';
 		const mockInitialTasks = {
-			tasks: [
-				{
-					id: 1,
-					title: 'Old Task 1',
-					status: 'done',
-					details: 'Done details'
-				},
-				{
-					id: 2,
-					title: 'Old Task 2',
-					status: 'pending',
-					details: 'Old details 2'
-				},
-				{
-					id: 3,
-					title: 'Old Task 3',
-					status: 'in-progress',
-					details: 'Old details 3'
-				}
-			]
+			master: {
+				tasks: [
+					{
+						id: 1,
+						title: 'Old Task 1',
+						status: 'done',
+						details: 'Done details'
+					},
+					{
+						id: 2,
+						title: 'Old Task 2',
+						status: 'pending',
+						details: 'Old details 2'
+					},
+					{
+						id: 3,
+						title: 'Old Task 3',
+						status: 'in-progress',
+						details: 'Old details 3'
+					}
+				]
+			}
 		};
 
 		const mockUpdatedTasks = [
@@ -134,8 +141,12 @@ describe('updateTasks', () => {
 			telemetryData: {}
 		};
 
-		// Configure mocks
-		readJSON.mockReturnValue(mockInitialTasks);
+		// Configure mocks - readJSON should return the resolved view with tasks at top level
+		readJSON.mockReturnValue({
+			...mockInitialTasks.master,
+			tag: 'master',
+			_rawTaggedData: mockInitialTasks
+		});
 		generateTextService.mockResolvedValue(mockApiResponse);
 
 		// Act
@@ -143,14 +154,14 @@ describe('updateTasks', () => {
 			mockTasksPath,
 			mockFromId,
 			mockPrompt,
-			false,
-			{},
-			'json'
-		); // Use json format to avoid console output and process.exit
+			false, // research
+			{ projectRoot: '/mock/path' }, // context
+			'json' // output format
+		);
 
 		// Assert
 		// 1. Read JSON called
-		expect(readJSON).toHaveBeenCalledWith(mockTasksPath);
+		expect(readJSON).toHaveBeenCalledWith(mockTasksPath, '/mock/path');
 
 		// 2. AI Service called with correct args
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
@@ -159,11 +170,15 @@ describe('updateTasks', () => {
 		expect(writeJSON).toHaveBeenCalledWith(
 			mockTasksPath,
 			expect.objectContaining({
-				tasks: expect.arrayContaining([
-					expect.objectContaining({ id: 1 }),
-					expect.objectContaining({ id: 2, title: 'Updated Task 2' }),
-					expect.objectContaining({ id: 3, title: 'Updated Task 3' })
-				])
+				_rawTaggedData: expect.objectContaining({
+					master: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({ id: 1 }),
+							expect.objectContaining({ id: 2, title: 'Updated Task 2' }),
+							expect.objectContaining({ id: 3, title: 'Updated Task 3' })
+						])
+					})
+				})
 			})
 		);
 
@@ -183,14 +198,20 @@ describe('updateTasks', () => {
 		const mockFromId = 99; // Non-existent ID
 		const mockPrompt = 'Update non-existent tasks';
 		const mockInitialTasks = {
-			tasks: [
-				{ id: 1, status: 'done' },
-				{ id: 2, status: 'done' }
-			]
+			master: {
+				tasks: [
+					{ id: 1, status: 'done' },
+					{ id: 2, status: 'done' }
+				]
+			}
 		};
 
-		// Configure mocks
-		readJSON.mockReturnValue(mockInitialTasks);
+		// Configure mocks - readJSON should return the resolved view with tasks at top level
+		readJSON.mockReturnValue({
+			...mockInitialTasks.master,
+			tag: 'master',
+			_rawTaggedData: mockInitialTasks
+		});
 
 		// Act
 		const result = await updateTasks(
@@ -198,12 +219,12 @@ describe('updateTasks', () => {
 			mockFromId,
 			mockPrompt,
 			false,
-			{},
+			{ projectRoot: '/mock/path' },
 			'json'
 		);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(mockTasksPath);
+		expect(readJSON).toHaveBeenCalledWith(mockTasksPath, '/mock/path');
 		expect(generateTextService).not.toHaveBeenCalled();
 		expect(writeJSON).not.toHaveBeenCalled();
 		expect(log).toHaveBeenCalledWith(

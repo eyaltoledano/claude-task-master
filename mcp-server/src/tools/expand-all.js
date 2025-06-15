@@ -92,7 +92,13 @@ export function registerExpandAllTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(result, log, 'Error expanding all tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error expanding all tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Unexpected error in expand_all tool execute: ${error.message}`

@@ -25,6 +25,7 @@
 		"defaultSubtasks": 5,
 		"defaultPriority": "medium",
 		"projectName": "Taskmaster",
+		"defaultTag": "master",
 		"ollamaBaseURL": "http://localhost:11434/api",
 		"azureOpenaiBaseURL": "https://your-endpoint.openai.azure.com/",
 		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com"

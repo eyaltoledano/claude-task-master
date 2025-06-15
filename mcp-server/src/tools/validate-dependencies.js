@@ -60,7 +60,13 @@ export function registerValidateDependenciesTool(server) {
 					log.error(`Failed to validate dependencies: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error validating dependencies');
+				return handleApiResult(
+					result,
+					log,
+					'Error validating dependencies',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in validateDependencies tool: ${error.message}`);
 				return createErrorResponse(error.message);

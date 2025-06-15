@@ -68,7 +68,13 @@ export function registerModelsTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(result, log);
+				return handleApiResult(
+					result,
+					log,
+					'Error managing models',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in models tool: ${error.message}`);
 				return createErrorResponse(error.message);

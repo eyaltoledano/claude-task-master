@@ -1,5 +1,411 @@
 # task-master-ai
 
+## 0.17.0
+
+### Minor Changes
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add comprehensive AI-powered research command with intelligent context gathering and interactive follow-ups.
+
+  The new `research` command provides AI-powered research capabilities that automatically gather relevant project context to answer your questions. The command intelligently selects context from multiple sources and supports interactive follow-up questions in CLI mode.
+
+  **Key Features:**
+
+  - **Intelligent Task Discovery**: Automatically finds relevant tasks and subtasks using fuzzy search based on your query keywords, supplementing any explicitly provided task IDs
+  - **Multi-Source Context**: Gathers context from tasks, files, project structure, and custom text to provide comprehensive answers
+  - **Interactive Follow-ups**: CLI users can ask follow-up questions that build on the conversation history while allowing fresh context discovery for each question
+  - **Flexible Detail Levels**: Choose from low (concise), medium (balanced), or high (comprehensive) response detail levels
+  - **Token Transparency**: Displays detailed token breakdown showing context size, sources, and estimated costs
+  - **Enhanced Display**: Syntax-highlighted code blocks and structured output with clear visual separation
+
+  **Usage Examples:**
+
+  ```bash
+  # Basic research with auto-discovered context
+  task-master research "How should I implement user authentication?"
+
+  # Research with specific task context
+  task-master research "What's the best approach for this?" --id=15,23.2
+
+  # Research with file context and project tree
+  task-master research "How does the current auth system work?" --files=src/auth.js,config/auth.json --tree
+
+  # Research with custom context and low detail
+  task-master research "Quick implementation steps?" --context="Using JWT tokens" --detail=low
+  ```
+
+  **Context Sources:**
+
+  - **Tasks**: Automatically discovers relevant tasks/subtasks via fuzzy search, plus any explicitly specified via `--id`
+  - **Files**: Include specific files via `--files` for code-aware responses
+  - **Project Tree**: Add `--tree` to include project structure overview
+  - **Custom Context**: Provide additional context via `--context` for domain-specific information
+
+  **Interactive Features (CLI only):**
+
+  - Follow-up questions that maintain conversation history
+  - Fresh fuzzy search for each follow-up to discover newly relevant tasks
+  - Cumulative context building across the conversation
+  - Clean visual separation between exchanges
+  - **Save to Tasks**: Save entire research conversations (including follow-ups) directly to task or subtask details with timestamps
+  - **Clean Menu Interface**: Streamlined inquirer-based menu for follow-up actions without redundant UI elements
+
+  **Save Functionality:**
+
+  The research command now supports saving complete conversation threads to tasks or subtasks:
+
+  - Save research results and follow-up conversations to any task (e.g., "15") or subtask (e.g., "15.2")
+  - Automatic timestamping and formatting of conversation history
+  - Validation of task/subtask existence before saving
+  - Appends to existing task details without overwriting content
+  - Supports both CLI interactive mode and MCP programmatic access via `--save-to` flag
+
+  **Enhanced CLI Options:**
+
+  ```bash
+  # Auto-save research results to a task
+  task-master research "Implementation approach?" --save-to=15
+
+  # Combine auto-save with context gathering
+  task-master research "How to optimize this?" --id=23 --save-to=23.1
+  ```
+
+  **MCP Integration:**
+
+  - `saveTo` parameter for automatic saving to specified task/subtask ID
+  - Structured response format with telemetry data
+  - Silent operation mode for programmatic usage
+  - Full feature parity with CLI except interactive follow-ups
+
+  The research command integrates with the existing AI service layer and supports all configured AI providers. Both CLI and MCP interfaces provide comprehensive research capabilities with intelligent context gathering and flexible output options.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhance update-task with --append flag for timestamped task updates
+
+  Adds the `--append` flag to `update-task` command, enabling it to behave like `update-subtask` with timestamped information appending. This provides more flexible task updating options:
+
+  **CLI Enhancement:**
+
+  - `task-master update-task --id=5 --prompt="New info"` - Full task update (existing behavior)
+  - `task-master update-task --id=5 --append --prompt="Progress update"` - Append timestamped info to task details
+
+  **Full MCP Integration:**
+
+  - MCP tool `update_task` now supports `append` parameter
+  - Seamless integration with Cursor and other MCP clients
+  - Consistent behavior between CLI and MCP interfaces
+
+  Instead of requiring separate subtask creation for progress tracking, you can now append timestamped information directly to parent tasks while preserving the option for comprehensive task updates.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add --tag flag support to core commands for multi-context task management. Commands like parse-prd, analyze-complexity, and others now support targeting specific task lists, enabling rapid prototyping and parallel development workflows.
+
+  Key features:
+
+  - parse-prd --tag=feature-name: Parse PRDs into separate task contexts on the fly
+  - analyze-complexity --tag=branch: Generate tag-specific complexity reports
+  - All task operations can target specific contexts while preserving other lists
+  - Non-existent tags are created automatically for seamless workflow
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Introduces Tagged Lists: AI Multi-Context Task Management System
+
+  This major feature release introduces Tagged Lists, a comprehensive system that transforms Taskmaster into a multi-context task management powerhouse. You can now organize tasks into completely isolated contexts, enabling parallel (agentic) development workflows, team collaboration, and project experimentation without conflicts.
+
+  **🏷️ Tagged Task Lists Architecture:**
+
+  The new tagged system fundamentally improves how tasks are organized:
+
+  - **Legacy Format**: `{ "tasks": [...] }`
+  - **New Tagged Format**: `{ "master": { "tasks": [...], "metadata": {...} }, "feature-xyz": { "tasks": [...], "metadata": {...} } }`
+  - **Automatic Migration**: Existing projects will seamlessly migrate to tagged format with zero user intervention
+  - **State Management**: New `.taskmaster/state.json` tracks current tag, last switched time, migration status and more.
+  - **Configuration Integration**: Enhanced `.taskmaster/config.json` with tag-specific settings and defaults.
+
+  By default, your existing task list will be migrated to the `master` tag.
+
+  **🚀 Complete Tag Management Suite:**
+
+  **Core Tag Commands:**
+
+  - `task-master tags [--show-metadata]` - List all tags with task counts, completion stats, and metadata
+  - `task-master add-tag <name> [options]` - Create new tag contexts with optional task copying
+  - `task-master delete-tag <name> [--yes]` - Delete tags (and attached tasks) with double confirmation protection
+  - `task-master use-tag <name>` - Switch contexts and immediately see next available task
+  - `task-master rename-tag <old> <new>` - Rename tags with automatic current tag reference updates
+  - `task-master copy-tag <source> <target> [options]` - Duplicate tag contexts for experimentation
+
+  **🤖 Full MCP Integration for Tag Management:**
+
+  Task Master's multi-context capabilities are now fully exposed through the MCP server, enabling powerful agentic workflows:
+
+  - **`list_tags`**: List all available tag contexts.
+  - **`add_tag`**: Programmatically create new tags.
+  - **`delete_tag`**: Remove tag contexts.
+  - **`use_tag`**: Switch the agent's active task context.
+  - **`rename_tag`**: Rename existing tags.
+  - **`copy_tag`**: Duplicate entire task contexts for experimentation.
+
+  **Tag Creation Options:**
+
+  - `--copy-from-current` - Copy tasks from currently active tag
+  - `--copy-from=<tag>` - Copy tasks from specific tag
+  - `--from-branch` - Creates a new tag using the active git branch name (for `add-tag` only)
+  - `--description="<text>"` - Add custom tag descriptions
+  - Empty tag creation for fresh contexts
+
+  **🎯 Universal --tag Flag Support:**
+
+  Every task operation now supports tag-specific execution:
+
+  - `task-master list --tag=feature-branch` - View tasks in specific context
+  - `task-master add-task --tag=experiment --prompt="..."` - Create tasks in specific tag
+  - `task-master parse-prd document.txt --tag=v2-redesign` - Parse PRDs into dedicated contexts
+  - `task-master analyze-complexity --tag=performance-work` - Generate tag-specific reports
+  - `task-master set-status --tag=hotfix --id=5 --status=done` - Update tasks in specific contexts
+  - `task-master expand --tag=research --id=3` - Break down tasks within tag contexts
+
+  This way you or your agent can store out of context tasks into the appropriate tags for later, allowing you to maintain a groomed and scoped master list. Focus on value, not chores.
+
+  **📊 Enhanced Workflow Features:**
+
+  **Smart Context Switching:**
+
+  - `use-tag` command shows immediate next task after switching
+  - Automatic tag creation when targeting non-existent tags
+  - Current tag persistence across terminal sessions
+  - Branch-tag mapping for future Git integration
+
+  **Intelligent File Management:**
+
+  - Tag-specific complexity reports: `task-complexity-report_tagname.json`
+  - Master tag uses default filenames: `task-complexity-report.json`
+  - Automatic file isolation prevents cross-tag contamination
+
+  **Advanced Confirmation Logic:**
+
+  - Commands only prompt when target tag has existing tasks
+  - Empty tags allow immediate operations without confirmation
+  - Smart append vs overwrite detection
+
+  **🔄 Seamless Migration & Compatibility:**
+
+  **Zero-Disruption Migration:**
+
+  - Existing `tasks.json` files automatically migrate on first command
+  - Master tag receives proper metadata (creation date, description)
+  - Migration notice shown once with helpful explanation
+  - All existing commands work identically to before
+
+  **State Management:**
+
+  - `.taskmaster/state.json` tracks current tag and migration status
+  - Automatic state creation and maintenance
+  - Branch-tag mapping foundation for Git integration
+  - Migration notice tracking to avoid repeated notifications
+  - Grounds for future context additions
+
+  **Backward Compatibility:**
+
+  - All existing workflows continue unchanged
+  - Legacy commands work exactly as before
+  - Gradual adoption - users can ignore tags entirely if desired
+  - No breaking changes to existing tasks or file formats
+
+  **💡 Real-World Use Cases:**
+
+  **Team Collaboration:**
+
+  - `task-master add-tag alice --copy-from-current` - Create teammate-specific contexts
+  - `task-master add-tag bob --copy-from=master` - Onboard new team members
+  - `task-master use-tag alice` - Switch to teammate's work context
+
+  **Feature Development:**
+
+  - `task-master parse-prd feature-spec.txt --tag=user-auth` - Dedicated feature planning
+  - `task-master add-tag experiment --copy-from=user-auth` - Safe experimentation
+  - `task-master analyze-complexity --tag=user-auth` - Feature-specific analysis
+
+  **Release Management:**
+
+  - `task-master add-tag v2.0 --description="Next major release"` - Version-specific planning
+  - `task-master copy-tag master v2.1` - Release branch preparation
+  - `task-master use-tag hotfix` - Emergency fix context
+
+  **Project Phases:**
+
+  - `task-master add-tag research --description="Discovery phase"` - Research tasks
+  - `task-master add-tag implementation --copy-from=research` - Development phase
+  - `task-master add-tag testing --copy-from=implementation` - QA phase
+
+  **🛠️ Technical Implementation:**
+
+  **Data Structure:**
+
+  - Tagged format with complete isolation between contexts
+  - Rich metadata per tag (creation date, description, update tracking)
+  - Automatic metadata enhancement for existing tags
+  - Clean separation of tag data and internal state
+
+  **Performance Optimizations:**
+
+  - Dynamic task counting without stored counters
+  - Efficient tag resolution and caching
+  - Minimal file I/O with smart data loading
+  - Responsive table layouts adapting to terminal width
+
+  **Error Handling:**
+
+  - Comprehensive validation for tag names (alphanumeric, hyphens, underscores)
+  - Reserved name protection (master, main, default)
+  - Graceful handling of missing tags and corrupted data
+  - Detailed error messages with suggested corrections
+
+  This release establishes the foundation for advanced multi-context workflows while maintaining the simplicity and power that makes Task Master effective for individual developers.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Research Save-to-File Feature & Critical MCP Tag Corruption Fix
+
+  **🔬 New Research Save-to-File Functionality:**
+
+  Added comprehensive save-to-file capability to the research command, enabling users to preserve research sessions for future reference and documentation.
+
+  **CLI Integration:**
+
+  - New `--save-file` flag for `task-master research` command
+  - Consistent with existing `--save` and `--save-to` flags for intuitive usage
+  - Interactive "Save to file" option in follow-up questions menu
+
+  **MCP Integration:**
+
+  - New `saveToFile` boolean parameter for the `research` MCP tool
+  - Enables programmatic research saving for AI agents and integrated tools
+
+  **File Management:**
+
+  - Automatically creates `.taskmaster/docs/research/` directory structure
+  - Generates timestamped, slugified filenames (e.g., `2025-01-13_what-is-typescript.md`)
+  - Comprehensive Markdown format with metadata headers including query, timestamp, and context sources
+  - Clean conversation history formatting without duplicate information
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - No longer automatically creates individual task files as they are not used by the applicatoin. You can still generate them anytime using the `generate` command.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced get-task/show command to support comma-separated task IDs for efficient batch operations
+
+  **New Features:**
+
+  - **Multiple Task Retrieval**: Pass comma-separated IDs to get/show multiple tasks at once (e.g., `task-master show 1,3,5` or MCP `get_task` with `id: "1,3,5"`)
+  - **Smart Display Logic**: Single ID shows detailed view, multiple IDs show compact summary table with interactive options
+  - **Batch Action Menu**: Interactive menu for multiple tasks with copy-paste ready commands for common operations (mark as done/in-progress, expand all, view dependencies, etc.)
+  - **MCP Array Response**: MCP tool returns structured array of task objects for efficient AI agent context gathering
+
+  **Benefits:**
+
+  - **Faster Context Gathering**: AI agents can collect multiple tasks/subtasks in one call instead of iterating
+  - **Improved Workflow**: Interactive batch operations reduce repetitive command execution
+  - **Better UX**: Responsive layout adapts to terminal width, maintains consistency with existing UI patterns
+  - **API Efficiency**: RESTful array responses in MCP format enable more sophisticated integrations
+
+  This enhancement maintains full backward compatibility while significantly improving efficiency for both human users and AI agents working with multiple tasks.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds support for filtering tasks by multiple statuses at once using comma-separated statuses.
+
+  Example: `cancelled,deferred`
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds tag to CLI and MCP outputs/responses so you know which tag you are performing operations on.
+
+### Patch Changes
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`5ec1f61`](https://github.com/eyaltoledano/claude-task-master/commit/5ec1f61c13f468648b7fdc8fa112e95aec25f76d) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix Cursor deeplink installation by providing copy-paste instructions for GitHub compatibility
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix critical bugs in task move functionality:
+
+  - **Fixed moving tasks to become subtasks of empty parents**: When moving a task to become a subtask of a parent that had no existing subtasks (e.g., task 89 → task 98.1), the operation would fail with validation errors.
+  - **Fixed moving subtasks between parents**: Subtasks can now be properly moved between different parent tasks, including to parents that previously had no subtasks.
+  - **Improved comma-separated batch moves**: Multiple tasks can now be moved simultaneously using comma-separated IDs (e.g., "88,90" → "92,93") with proper error handling and atomic operations.
+
+  These fixes enables proper task hierarchy reorganization for corner cases that were previously broken.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`d76bea4`](https://github.com/eyaltoledano/claude-task-master/commit/d76bea49b381c523183f39e33c2a4269371576ed) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Update o3 model price
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`0849c0c`](https://github.com/eyaltoledano/claude-task-master/commit/0849c0c2cedb16ac44ba5cc2d109625a9b4efd67) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes issue with expand CLI command "Complexity report not found"
+
+  - Closes #735
+  - Closes #728
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix issue with generate command which was creating tasks in the legacy tasks location.
+
+      - No longer creates individual task files automatically. You can still use `generate` if you need to create our update your task files.
+
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Improves dependency management when moving tasks by updating subtask dependencies that reference sibling subtasks by their old parent-based ID
+
+- Updated dependencies [[`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`5ec1f61`](https://github.com/eyaltoledano/claude-task-master/commit/5ec1f61c13f468648b7fdc8fa112e95aec25f76d), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`d76bea4`](https://github.com/eyaltoledano/claude-task-master/commit/d76bea49b381c523183f39e33c2a4269371576ed), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`0849c0c`](https://github.com/eyaltoledano/claude-task-master/commit/0849c0c2cedb16ac44ba5cc2d109625a9b4efd67), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f)]:
+  - task-master-ai@0.17.0
+
+## 0.16.2
+
+### Patch Changes
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`1ece6f1`](https://github.com/eyaltoledano/claude-task-master/commit/1ece6f19048df6ae2a0b25cbfb84d2c0f430642c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - improve findTasks algorithm for resolving tasks path
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`ee0be04`](https://github.com/eyaltoledano/claude-task-master/commit/ee0be04302cc602246de5cd296291db69bc8b300) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix update tool on MCP giving `No valid tasks found`
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`27edbd8`](https://github.com/eyaltoledano/claude-task-master/commit/27edbd8f3fe5e2ac200b80e7f27f4c0e74a074d6) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced add-task fuzzy search intelligence and improved user experience
+
+  **Smarter Task Discovery:**
+
+  - Remove hardcoded category system that always matched "Task management"
+  - Eliminate arbitrary limits on fuzzy search results (5→25 high relevance, 3→10 medium relevance, 8→20 detailed tasks)
+  - Improve semantic weighting in Fuse.js search (details=3, description=2, title=1.5) for better relevance
+  - Generate context-driven task recommendations based on true semantic similarity
+
+  **Enhanced Terminal Experience:**
+
+  - Fix duplicate banner display issue that was "eating" terminal history (closes #553)
+  - Remove console.clear() and redundant displayBanner() calls from UI functions
+  - Preserve command history for better development workflow
+  - Streamline banner display across all commands (list, next, show, set-status, clear-subtasks, dependency commands)
+
+  **Visual Improvements:**
+
+  - Replace emoji complexity indicators with clean filled circle characters (●) for professional appearance
+  - Improve consistency and readability of task complexity display
+
+  **AI Provider Compatibility:**
+
+  - Change generateObject mode from 'tool' to 'auto' for better cross-provider compatibility
+  - Add qwen3-235n-a22b:free model support (closes #687)
+  - Add smart warnings for free OpenRouter models with limitations (rate limits, restricted context, no tool_use)
+
+  **Technical Improvements:**
+
+  - Enhanced context generation in add-task to rely on semantic similarity rather than rigid pattern matching
+  - Improved dependency analysis and common pattern detection
+  - Better handling of task relationships and relevance scoring
+  - More intelligent task suggestion algorithms
+
+  The add-task system now provides truly relevant task context based on semantic understanding rather than arbitrary categories and limits, while maintaining a cleaner and more professional terminal experience.
+
+- [#655](https://github.com/eyaltoledano/claude-task-master/pull/655) [`edaa5fe`](https://github.com/eyaltoledano/claude-task-master/commit/edaa5fe0d56e0e4e7c4370670a7a388eebd922ac) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix double .taskmaster directory paths in file resolution utilities
+
+  - Closes #636
+
+- [#671](https://github.com/eyaltoledano/claude-task-master/pull/671) [`86ea6d1`](https://github.com/eyaltoledano/claude-task-master/commit/86ea6d1dbc03eeb39f524f565b50b7017b1d2c9c) Thanks [@joedanz](https://github.com/joedanz)! - Add one-click MCP server installation for Cursor
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`2e55757`](https://github.com/eyaltoledano/claude-task-master/commit/2e55757b2698ba20b78f09ec0286951297510b8e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add sync-readme command for a task export to GitHub README
+
+  Introduces a new `sync-readme` command that exports your task list to your project's README.md file.
+
+  **Features:**
+
+  - **Flexible filtering**: Supports `--status` filtering (e.g., pending, done) and `--with-subtasks` flag
+  - **Smart content management**: Automatically replaces existing exports or appends to new READMEs
+  - **Metadata display**: Shows export timestamp, subtask inclusion status, and filter settings
+
+  **Usage:**
+
+  - `task-master sync-readme` - Export tasks without subtasks
+  - `task-master sync-readme --with-subtasks` - Include subtasks in export
+  - `task-master sync-readme --status=pending` - Only export pending tasks
+  - `task-master sync-readme --status=done --with-subtasks` - Export completed tasks with subtasks
+
+  Perfect for showcasing project progress on GitHub. Experimental. Open to feedback.
+
 ## 0.16.2
 
 ### Patch Changes

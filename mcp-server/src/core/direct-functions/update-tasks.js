@@ -90,7 +90,8 @@ export async function updateTasksDirect(args, log, context = {}) {
 					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
 					tasksPath: tasksJsonPath,
 					updatedCount: result.updatedTasks.length,
-					telemetryData: result.telemetryData
+					telemetryData: result.telemetryData,
+					tagInfo: result.tagInfo
 				}
 			};
 		} else {

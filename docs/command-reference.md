@@ -43,9 +43,27 @@ task-master show <id>
 # or
 task-master show --id=<id>
 
+# View multiple tasks with comma-separated IDs
+task-master show 1,3,5
+task-master show 44,55
+
 # View a specific subtask (e.g., subtask 2 of task 1)
 task-master show 1.2
+
+# Mix parent tasks and subtasks
+task-master show 44,44.1,55,55.2
 ```
+
+**Multiple Task Display:**
+
+- **Single ID**: Shows detailed task view with full implementation details
+- **Multiple IDs**: Shows compact summary table with interactive action menu
+- **Action Menu**: Provides copy-paste ready commands for batch operations:
+  - Mark all as in-progress/done
+  - Show next available task
+  - Expand all tasks (generate subtasks)
+  - View dependency relationships
+  - Generate task files
 
 ## Update Tasks
 
@@ -229,6 +247,56 @@ task-master add-task --prompt="Description" --dependencies=1,2,3
 task-master add-task --prompt="Description" --priority=high
 ```
 
+## Tag Management
+
+Task Master supports tagged task lists for multi-context task management. Each tag represents a separate, isolated context for tasks.
+
+```bash
+# List all available tags with task counts and status
+task-master tags
+
+# List tags with detailed metadata
+task-master tags --show-metadata
+
+# Create a new empty tag
+task-master add-tag <tag-name>
+
+# Create a new tag with a description
+task-master add-tag <tag-name> --description="Feature development tasks"
+
+# Create a tag based on current git branch name
+task-master add-tag --from-branch
+
+# Create a new tag by copying tasks from the current tag
+task-master add-tag <new-tag> --copy-from-current
+
+# Create a new tag by copying from a specific tag
+task-master add-tag <new-tag> --copy-from=<source-tag>
+
+# Switch to a different tag context
+task-master use-tag <tag-name>
+
+# Rename an existing tag
+task-master rename-tag <old-name> <new-name>
+
+# Copy an entire tag to create a new one
+task-master copy-tag <source-tag> <target-tag>
+
+# Copy a tag with a description
+task-master copy-tag <source-tag> <target-tag> --description="Copied for testing"
+
+# Delete a tag and all its tasks (with confirmation)
+task-master delete-tag <tag-name>
+
+# Delete a tag without confirmation prompt
+task-master delete-tag <tag-name> --yes
+```
+
+**Tag Context:**
+- All task operations (list, show, add, update, etc.) work within the currently active tag
+- Use `--tag=<name>` flag with most commands to operate on a specific tag context
+- Tags provide complete isolation - tasks in different tags don't interfere with each other
+
 ## Initialize a Project
 
 ```bash
@@ -261,4 +329,70 @@ task-master models --set-research=google/gemini-pro --openrouter
 task-master models --setup
 ```
 
-Configuration is stored in `.taskmasterconfig` in your project root. API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+Configuration is stored in `.taskmaster/config.json` in your project root (legacy `.taskmasterconfig` files are automatically migrated). API keys are still managed via `.env` or MCP configuration. Use `task-master models` without flags to see available built-in models. Use `--setup` for a guided experience.
+
+State is stored in `.taskmaster/state.json` in your project root. It maintains important information like the current tag. Do not manually edit this file.
+
+## Research Fresh Information
+
+```bash
+# Perform AI-powered research with fresh, up-to-date information
+task-master research "What are the latest best practices for JWT authentication in Node.js?"
+
+# Research with specific task context
+task-master research "How to implement OAuth 2.0?" --id=15,16
+
+# Research with file context for code-aware suggestions
+task-master research "How can I optimize this API implementation?" --files=src/api.js,src/auth.js
+
+# Research with custom context and project tree
+task-master research "Best practices for error handling" --context="We're using Express.js" --tree
+
+# Research with different detail levels
+task-master research "React Query v5 migration guide" --detail=high
+
+# Disable interactive follow-up questions (useful for scripting, is the default for MCP)
+# Use a custom tasks file location
+task-master research "How to implement this feature?" --file=custom-tasks.json
+
+# Research within a specific tag context
+task-master research "Database optimization strategies" --tag=feature-branch
+
+# Save research conversation to .taskmaster/docs/research/ directory (for later reference)
+task-master research "Database optimization techniques" --save-file
+
+# Save key findings directly to a task or subtask (recommended for actionable insights)
+task-master research "How to implement OAuth?" --save-to=15
+task-master research "API optimization strategies" --save-to=15.2
+
+# Combine context gathering with automatic saving of findings
+task-master research "Best practices for this implementation" --id=15,16 --files=src/auth.js --save-to=15.3
+```
+
+**The research command is a powerful exploration tool that provides:**
+
+- **Fresh information beyond AI knowledge cutoffs**
+- **Project-aware context** from your tasks and files
+- **Automatic task discovery** using fuzzy search
+- **Multiple detail levels** (low, medium, high)
+- **Token counting and cost tracking**
+- **Interactive follow-up questions** for deep exploration
+- **Flexible save options** (commit findings to tasks or preserve conversations)
+- **Iterative discovery** through continuous questioning and refinement
+
+**Use research frequently to:**
+
+- Get current best practices before implementing features
+- Research new technologies and libraries
+- Find solutions to complex problems
+- Validate your implementation approaches
+- Stay updated with latest security recommendations
+
+**Interactive Features (CLI):**
+
+- **Follow-up questions** that maintain conversation context and allow deep exploration
+- **Save menu** during or after research with flexible options:
+  - **Save to task/subtask**: Commit key findings and actionable insights (recommended)
+  - **Save to file**: Preserve entire conversation for later reference if needed
+  - **Continue exploring**: Ask more follow-up questions to dig deeper
+- **Automatic file naming** with timestamps and query-based slugs when saving conversations

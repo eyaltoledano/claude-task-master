@@ -79,7 +79,13 @@ export function registerExpandTaskTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(result, log, 'Error expanding task');
+				return handleApiResult(
+					result,
+					log,
+					'Error expanding task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in expand-task tool: ${error.message}`);
 				return createErrorResponse(error.message);
