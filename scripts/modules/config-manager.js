@@ -479,9 +479,12 @@ function getParametersForRole(role, explicitRoot = null) {
  * @returns {boolean} True if the API key is set, false otherwise.
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
+	// Normalize provider name once
+	const normalizedProvider = providerName?.toLowerCase();
+	
 	// Define the expected environment variable name for each provider
-	if (providerName?.toLowerCase() === 'ollama') {
-		return true; // Indicate key status is effectively "OK"
+	if (normalizedProvider === 'ollama' || normalizedProvider === 'claude-code') {
+		return true; // Indicate key status is effectively "OK" - these providers don't need API keys
 	}
 
 	const keyMap = {
@@ -497,13 +500,12 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		// Add other providers as needed
 	};
 
-	const providerKey = providerName?.toLowerCase();
-	if (!providerKey || !keyMap[providerKey]) {
+	if (!normalizedProvider || !keyMap[normalizedProvider]) {
 		log('warn', `Unknown provider name: ${providerName} in isApiKeySet check.`);
 		return false;
 	}
 
-	const envVarName = keyMap[providerKey];
+	const envVarName = keyMap[normalizedProvider];
 	const apiKeyValue = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Check if the key exists, is not empty, and is not a placeholder

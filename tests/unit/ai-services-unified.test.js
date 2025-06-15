@@ -36,6 +36,12 @@ const mockModelMap = {
 			id: 'test-openai-model',
 			cost_per_1m_tokens: { input: 2, output: 6, currency: 'USD' }
 		}
+	],
+	'claude-code': [
+		{
+			id: 'claude-code',
+			cost_per_1m_tokens: { input: 0, output: 0, currency: 'USD' }
+		}
 	]
 	// Add other providers/models if needed for specific tests
 };
@@ -177,6 +183,11 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateObject: jest.fn()
 	})),
 	VertexAIProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
+	})),
+	ClaudeCodeProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn()
