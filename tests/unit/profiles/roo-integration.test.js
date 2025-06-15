@@ -59,7 +59,14 @@ describe('Roo Integration', () => {
 		fs.mkdirSync(path.join(tempDir, '.roo', 'rules'), { recursive: true });
 
 		// Create mode-specific rule directories
-		const rooModes = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
+		const rooModes = [
+			'architect',
+			'ask',
+			'orchestrator',
+			'code',
+			'debug',
+			'test'
+		];
 		for (const mode of rooModes) {
 			fs.mkdirSync(path.join(tempDir, '.roo', `rules-${mode}`), {
 				recursive: true
@@ -102,7 +109,7 @@ describe('Roo Integration', () => {
 			{ recursive: true }
 		);
 		expect(fs.mkdirSync).toHaveBeenCalledWith(
-			path.join(tempDir, '.roo', 'rules-boomerang'),
+			path.join(tempDir, '.roo', 'rules-orchestrator'),
 			{ recursive: true }
 		);
 		expect(fs.mkdirSync).toHaveBeenCalledWith(
@@ -133,7 +140,7 @@ describe('Roo Integration', () => {
 			expect.any(String)
 		);
 		expect(fs.writeFileSync).toHaveBeenCalledWith(
-			path.join(tempDir, '.roo', 'rules-boomerang', 'boomerang-rules'),
+			path.join(tempDir, '.roo', 'rules-orchestrator', 'orchestrator-rules'),
 			expect.any(String)
 		);
 		expect(fs.writeFileSync).toHaveBeenCalledWith(

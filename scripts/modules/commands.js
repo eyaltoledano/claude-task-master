@@ -96,6 +96,14 @@ import {
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator
 } from './ui.js';
+import {
+	confirmProfilesRemove,
+	confirmRemoveAllRemainingProfiles
+} from '../../src/ui/confirm.js';
+import {
+	wouldRemovalLeaveNoProfiles,
+	getInstalledProfiles
+} from '../../src/utils/profiles.js';
 
 import { initializeProject } from '../init.js';
 import {
@@ -108,8 +116,27 @@ import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
+import {
+	isValidRulesAction,
+	RULES_ACTIONS,
+	RULES_SETUP_ACTION
+} from '../../src/constants/rules-actions.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 import { syncTasksToReadme } from './sync-readme.js';
+import { RULE_PROFILES } from '../../src/constants/profiles.js';
+import {
+	convertAllRulesToProfileRules,
+	removeProfileRules,
+	isValidProfile,
+	getRulesProfile
+} from '../../src/utils/rule-transformer.js';
+import {
+	runInteractiveProfilesSetup,
+	generateProfileSummary,
+	categorizeProfileResults,
+	generateProfileRemovalSummary,
+	categorizeRemovalResults
+} from '../../src/utils/profiles.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -3211,17 +3238,35 @@ ${result.result}
 		.option('-d, --description <description>', 'Project description')
 		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
 		.option('-a, --author <author>', 'Author name')
+		.option(
+			'-r, --rules <rules...>',
+			'List of rules to add (roo, windsurf, cursor, ...). Accepts comma or space separated values.'
+		)
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
 		.action(async (cmdOptions) => {
 			// cmdOptions contains parsed arguments
+			// Parse rules: accept space or comma separated, default to all available rules
+			let selectedProfiles = RULE_PROFILES;
+			let rulesExplicitlyProvided = false;
+
+			if (cmdOptions.rules && Array.isArray(cmdOptions.rules)) {
+				const userSpecifiedProfiles = cmdOptions.rules
+					.flatMap((r) => r.split(','))
+					.map((r) => r.trim())
+					.filter(Boolean);
+				// Only override defaults if user specified valid rules
+				if (userSpecifiedProfiles.length > 0) {
+					selectedProfiles = userSpecifiedProfiles;
+					rulesExplicitlyProvided = true;
+				}
+			}
+
+			cmdOptions.rules = selectedProfiles;
+			cmdOptions.rulesExplicitlyProvided = rulesExplicitlyProvided;
+
 			try {
-				console.log('DEBUG: Running init command action in commands.js');
-				console.log(
-					'DEBUG: Options received by action:',
-					JSON.stringify(cmdOptions)
-				);
 				// Directly call the initializeProject function, passing the parsed options
 				await initializeProject(cmdOptions);
 				// initializeProject handles its own flow, including potential process.exit()
@@ -3615,6 +3660,254 @@ Examples:
 					console.error(chalk.red(`Error: ${error.message}`));
 					process.exit(1);
 				}
+			}
+		});
+
+	// Add/remove profile rules command
+	programInstance
+		.command('rules [action] [profiles...]')
+		.description(
+			`Add or remove rules for one or more profiles. Valid actions: ${Object.values(RULES_ACTIONS).join(', ')} (e.g., task-master rules ${RULES_ACTIONS.ADD} windsurf roo)`
+		)
+		.option(
+			'-f, --force',
+			'Skip confirmation prompt when removing rules (dangerous)'
+		)
+		.option(
+			`--${RULES_SETUP_ACTION}`,
+			'Run interactive setup to select rule profiles to add'
+		)
+		.addHelpText(
+			'after',
+			`
+		Examples:
+		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add Windsurf and Roo rule sets
+		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set
+		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
+		)
+		.action(async (action, profiles, options) => {
+			const projectDir = process.cwd();
+
+			/**
+			 * 'task-master rules --setup' action:
+			 *
+			 * Launches an interactive prompt to select which rule profiles to add to the current project.
+			 * This does NOT perform project initialization or ask about shell aliases—only rules selection.
+			 *
+			 * Example usage:
+			 *   $ task-master rules --setup
+			 *
+			 * Useful for adding rules after project creation.
+			 *
+			 * The list of profiles is always up-to-date with the available profiles.
+			 */
+			if (options[RULES_SETUP_ACTION]) {
+				// Run interactive rules setup ONLY (no project init)
+				const selectedRuleProfiles = await runInteractiveProfilesSetup();
+				for (const profile of selectedRuleProfiles) {
+					if (!isValidProfile(profile)) {
+						console.warn(
+							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
+						);
+						continue;
+					}
+					const profileConfig = getRulesProfile(profile);
+					const addResult = convertAllRulesToProfileRules(
+						projectDir,
+						profileConfig
+					);
+					if (typeof profileConfig.onAddRulesProfile === 'function') {
+						profileConfig.onAddRulesProfile(projectDir);
+					}
+
+					console.log(chalk.green(generateProfileSummary(profile, addResult)));
+				}
+				return;
+			}
+
+			// Validate action for non-setup mode
+			if (!action || !isValidRulesAction(action)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid or missing action '${action || 'none'}'. Valid actions are: ${Object.values(RULES_ACTIONS).join(', ')}`
+					)
+				);
+				console.error(
+					chalk.yellow(
+						`For interactive setup, use: task-master rules --${RULES_SETUP_ACTION}`
+					)
+				);
+				process.exit(1);
+			}
+
+			if (!profiles || profiles.length === 0) {
+				console.error(
+					'Please specify at least one rule profile (e.g., windsurf, roo).'
+				);
+				process.exit(1);
+			}
+
+			// Support both space- and comma-separated profile lists
+			const expandedProfiles = profiles
+				.flatMap((b) => b.split(',').map((s) => s.trim()))
+				.filter(Boolean);
+
+			if (action === RULES_ACTIONS.REMOVE) {
+				let confirmed = true;
+				if (!options.force) {
+					// Check if this removal would leave no profiles remaining
+					if (wouldRemovalLeaveNoProfiles(projectDir, expandedProfiles)) {
+						const installedProfiles = getInstalledProfiles(projectDir);
+						confirmed = await confirmRemoveAllRemainingProfiles(
+							expandedProfiles,
+							installedProfiles
+						);
+					} else {
+						confirmed = await confirmProfilesRemove(expandedProfiles);
+					}
+				}
+				if (!confirmed) {
+					console.log(chalk.yellow('Aborted: No rules were removed.'));
+					return;
+				}
+			}
+
+			const removalResults = [];
+			const addResults = [];
+
+			for (const profile of expandedProfiles) {
+				if (!isValidProfile(profile)) {
+					console.warn(
+						`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
+					);
+					continue;
+				}
+				const profileConfig = getRulesProfile(profile);
+
+				if (action === RULES_ACTIONS.ADD) {
+					console.log(chalk.blue(`Adding rules for profile: ${profile}...`));
+					const addResult = convertAllRulesToProfileRules(
+						projectDir,
+						profileConfig
+					);
+					if (typeof profileConfig.onAddRulesProfile === 'function') {
+						const assetsDir = path.join(process.cwd(), 'assets');
+						profileConfig.onAddRulesProfile(projectDir, assetsDir);
+					}
+					console.log(
+						chalk.blue(`Completed adding rules for profile: ${profile}`)
+					);
+
+					// Store result with profile name for summary
+					addResults.push({
+						profileName: profile,
+						success: addResult.success,
+						failed: addResult.failed
+					});
+
+					console.log(chalk.green(generateProfileSummary(profile, addResult)));
+				} else if (action === RULES_ACTIONS.REMOVE) {
+					console.log(chalk.blue(`Removing rules for profile: ${profile}...`));
+					const result = removeProfileRules(projectDir, profileConfig);
+					removalResults.push(result);
+					console.log(
+						chalk.green(generateProfileRemovalSummary(profile, result))
+					);
+				} else {
+					console.error(
+						`Unknown action. Use "${RULES_ACTIONS.ADD}" or "${RULES_ACTIONS.REMOVE}".`
+					);
+					process.exit(1);
+				}
+			}
+
+			// Print summary for additions
+			if (action === RULES_ACTIONS.ADD && addResults.length > 0) {
+				const {
+					allSuccessfulProfiles,
+					totalSuccess,
+					totalFailed,
+					simpleProfiles
+				} = categorizeProfileResults(addResults);
+
+				if (allSuccessfulProfiles.length > 0) {
+					console.log(
+						chalk.green(
+							`\nSuccessfully added rules for: ${allSuccessfulProfiles.join(', ')}`
+						)
+					);
+
+					// Create a more descriptive summary
+					if (totalSuccess > 0 && simpleProfiles.length > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
+							)
+						);
+					} else if (totalSuccess > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
+							)
+						);
+					} else if (simpleProfiles.length > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${simpleProfiles.length} integration guide(s) copied.`
+							)
+						);
+					}
+				}
+			}
+
+			// Print summary for removals
+			if (action === RULES_ACTIONS.REMOVE && removalResults.length > 0) {
+				const {
+					successfulRemovals,
+					skippedRemovals,
+					failedRemovals,
+					removalsWithNotices
+				} = categorizeRemovalResults(removalResults);
+
+				if (successfulRemovals.length > 0) {
+					console.log(
+						chalk.green(
+							`\nSuccessfully removed profiles for: ${successfulRemovals.join(', ')}`
+						)
+					);
+				}
+				if (skippedRemovals.length > 0) {
+					console.log(
+						chalk.yellow(
+							`Skipped (default or protected): ${skippedRemovals.join(', ')}`
+						)
+					);
+				}
+				if (failedRemovals.length > 0) {
+					console.log(chalk.red('\nErrors occurred:'));
+					failedRemovals.forEach((r) => {
+						console.log(chalk.red(`  ${r.profileName}: ${r.error}`));
+					});
+				}
+				// Display notices about preserved files/configurations
+				if (removalsWithNotices.length > 0) {
+					console.log(chalk.cyan('\nNotices:'));
+					removalsWithNotices.forEach((r) => {
+						console.log(chalk.cyan(`  ${r.profileName}: ${r.notice}`));
+					});
+				}
+
+				// Overall summary
+				const totalProcessed = removalResults.length;
+				const totalSuccessful = successfulRemovals.length;
+				const totalSkipped = skippedRemovals.length;
+				const totalFailed = failedRemovals.length;
+
+				console.log(
+					chalk.blue(
+						`\nTotal: ${totalProcessed} profile(s) processed - ${totalSuccessful} removed, ${totalSkipped} skipped, ${totalFailed} failed.`
+					)
+				);
 			}
 		});
 
