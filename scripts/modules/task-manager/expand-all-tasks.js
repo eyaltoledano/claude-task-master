@@ -1,4 +1,4 @@
-import { log, readJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, isSilentMode, findProjectRoot } from '../utils.js';
 import {
 	startLoadingIndicator,
 	stopLoadingIndicator,
@@ -32,8 +32,13 @@ async function expandAllTasks(
 	context = {},
 	outputFormat = 'text' // Assume text default for CLI
 ) {
-	const { session, mcpLog } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
+
+	const projectRoot = providedProjectRoot || findProjectRoot();
+	if (!projectRoot) {
+		throw new Error('Could not determine project root directory');
+	}
 
 	// Use mcpLog if available, otherwise use the default console log wrapper respecting silent mode
 	const logger =
@@ -69,7 +74,7 @@ async function expandAllTasks(
 
 	try {
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		}
@@ -119,7 +124,7 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					context, // Pass the whole context object { session, mcpLog }
+					{ ...context, projectRoot }, // Pass the whole context object with projectRoot
 					force
 				);
 				expandedCount++;

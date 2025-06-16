@@ -26,11 +26,12 @@ import { generateTaskFiles } from './task-manager.js';
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number|string} taskId - ID of the task to add dependency to
  * @param {number|string} dependencyId - ID of the task to add as dependency
+ * @param {Object} context - Context object containing projectRoot and tag information
  */
-async function addDependency(tasksPath, taskId, dependencyId) {
+async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 	log('info', `Adding dependency ${dependencyId} to task ${taskId}...`);
 
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, context.projectRoot, context.tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found in tasks.json');
 		process.exit(1);
@@ -149,7 +150,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 	}
 
 	// Check for circular dependencies
-	let dependencyChain = [formattedTaskId];
+	const dependencyChain = [formattedTaskId];
 	if (
 		!isCircularDependency(data.tasks, formattedDependencyId, dependencyChain)
 	) {
@@ -172,7 +173,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 		});
 
 		// Save changes
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, context.projectRoot, context.tag);
 		log(
 			'success',
 			`Added dependency ${formattedDependencyId} to task ${formattedTaskId}`
@@ -195,7 +196,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 		}
 
 		// Generate updated task files
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		log('info', 'Task files regenerated with updated dependencies.');
 	} else {
@@ -212,12 +213,13 @@ async function addDependency(tasksPath, taskId, dependencyId) {
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number|string} taskId - ID of the task to remove dependency from
  * @param {number|string} dependencyId - ID of the task to remove as dependency
+ * @param {Object} context - Context object containing projectRoot and tag information
  */
-async function removeDependency(tasksPath, taskId, dependencyId) {
+async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 	log('info', `Removing dependency ${dependencyId} from task ${taskId}...`);
 
 	// Read tasks file
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, context.projectRoot, context.tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -309,7 +311,7 @@ async function removeDependency(tasksPath, taskId, dependencyId) {
 	targetTask.dependencies.splice(dependencyIndex, 1);
 
 	// Save the updated tasks
-	writeJSON(tasksPath, data);
+	writeJSON(tasksPath, data, context.projectRoot, context.tag);
 
 	// Success message
 	log(
@@ -334,7 +336,7 @@ async function removeDependency(tasksPath, taskId, dependencyId) {
 	}
 
 	// Regenerate task files
-	await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+	// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 }
 
 /**
@@ -561,12 +563,14 @@ function cleanupSubtaskDependencies(tasksData) {
 /**
  * Validate dependencies in task files
  * @param {string} tasksPath - Path to tasks.json
+ * @param {Object} options - Options object, including context
  */
 async function validateDependenciesCommand(tasksPath, options = {}) {
+	const { context = {} } = options;
 	log('info', 'Checking for invalid dependencies in task files...');
 
 	// Read tasks data
-	const data = readJSON(tasksPath);
+	const data = readJSON(tasksPath, context.projectRoot, context.tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found in tasks.json');
 		process.exit(1);
@@ -683,14 +687,15 @@ function countAllDependencies(tasks) {
 /**
  * Fixes invalid dependencies in tasks.json
  * @param {string} tasksPath - Path to tasks.json
- * @param {Object} options - Options object
+ * @param {Object} options - Options object, including context
  */
 async function fixDependenciesCommand(tasksPath, options = {}) {
+	const { context = {} } = options;
 	log('info', 'Checking for and fixing invalid dependencies in tasks.json...');
 
 	try {
 		// Read tasks data
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, context.projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			log('error', 'No valid tasks found in tasks.json');
 			process.exit(1);
@@ -1004,12 +1009,12 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 
 		if (dataChanged) {
 			// Save the changes
-			writeJSON(tasksPath, data);
+			writeJSON(tasksPath, data, context.projectRoot, context.tag);
 			log('success', 'Fixed dependency issues in tasks.json');
 
 			// Regenerate task files
 			log('info', 'Regenerating task files to reflect dependency changes...');
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 		} else {
 			log('info', 'No changes needed to fix dependencies');
 		}
@@ -1120,9 +1125,16 @@ function ensureAtLeastOneIndependentSubtask(tasksData) {
  * This function is designed to be called after any task modification
  * @param {Object} tasksData - The tasks data object with tasks array
  * @param {string} tasksPath - Optional path to save the changes
+ * @param {string} projectRoot - Optional project root for tag context
+ * @param {string} tag - Optional tag for tag context
  * @returns {boolean} - True if any changes were made
  */
-function validateAndFixDependencies(tasksData, tasksPath = null) {
+function validateAndFixDependencies(
+	tasksData,
+	tasksPath = null,
+	projectRoot = null,
+	tag = null
+) {
 	if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
 		log('error', 'Invalid tasks data');
 		return false;
@@ -1209,7 +1221,7 @@ function validateAndFixDependencies(tasksData, tasksPath = null) {
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
 		try {
-			writeJSON(tasksPath, tasksData);
+			writeJSON(tasksPath, tasksData, projectRoot, tag);
 			log('debug', 'Saved dependency fixes to tasks.json');
 		} catch (error) {
 			log('error', 'Failed to save dependency fixes to tasks.json', error);

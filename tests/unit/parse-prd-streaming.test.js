@@ -62,7 +62,9 @@ jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	disableSilentMode: mockDisableSilentMode,
 	isSilentMode: mockIsSilentMode,
 	readJSON: mockReadJSON,
-	findTaskById: mockFindTaskById
+	findTaskById: mockFindTaskById,
+	ensureTagMetadata: jest.fn((tagObj) => tagObj),
+	getCurrentTag: jest.fn(() => 'master')
 }));
 
 // Mock the generate-task-files module
@@ -76,6 +78,32 @@ jest.unstable_mockModule(
 // Mock the ui module
 jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
 	displayAiUsageSummary: mockDisplayAiUsageSummary
+}));
+
+// Mock fs module
+const mockWriteFileSync = jest.fn();
+const mockExistsSync = jest.fn();
+const mockMkdirSync = jest.fn();
+const mockReadFileSync = jest.fn();
+
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		writeFileSync: mockWriteFileSync,
+		existsSync: mockExistsSync,
+		mkdirSync: mockMkdirSync,
+		readFileSync: mockReadFileSync,
+		promises: {
+			readFile: jest.fn()
+		}
+	}
+}));
+
+// Mock path module
+jest.unstable_mockModule('path', () => ({
+	default: {
+		dirname: jest.fn(() => 'test-dir'),
+		join: jest.fn((dir, file) => `${dir}/${file}`)
+	}
 }));
 
 // Import after mocking
@@ -297,6 +325,26 @@ Build a simple task management web application with user authentication and real
 		// Reset all mocks
 		jest.clearAllMocks();
 
+		// Setup fs mocks
+		mockExistsSync.mockImplementation((filePath) => {
+			// Mock that directories exist but files don't (unless specified)
+			if (filePath.includes('.json')) return false;
+			return true;
+		});
+		mockReadFileSync.mockImplementation((filePath) => {
+			// Throw error for nonexistent files
+			if (filePath === '/nonexistent/file.txt') {
+				const error = new Error(
+					`ENOENT: no such file or directory, open '${filePath}'`
+				);
+				error.code = 'ENOENT';
+				throw error;
+			}
+			return '# Sample PRD Content\n\nThis is a test PRD file.';
+		});
+		mockWriteFileSync.mockImplementation(() => {});
+		mockMkdirSync.mockImplementation(() => {});
+
 		// Setup default config mock
 		mockGetConfig.mockReturnValue({
 			models: {
@@ -360,8 +408,8 @@ Build a simple task management web application with user authentication and real
 		expect(result.tasksPath).toBe(streamingTasksPath);
 		expect(result.telemetryData).toBeDefined();
 
-		// Verify file was created (via writeJSON mock)
-		expect(mockWriteJSON).toHaveBeenCalled();
+		// Verify file was created (via fs.writeFileSync mock)
+		expect(mockWriteFileSync).toHaveBeenCalled();
 
 		// Verify progress reporting
 		const progressHistory = progressReporter.getProgressHistory();
@@ -435,8 +483,8 @@ Build a simple task management web application with user authentication and real
 		expect(result.tasksPath).toBe(nonStreamingTasksPath);
 		expect(result.telemetryData).toBeDefined();
 
-		// Verify file was created (via writeJSON mock)
-		expect(mockWriteJSON).toHaveBeenCalled();
+		// Verify file was created (via fs.writeFileSync mock)
+		expect(mockWriteFileSync).toHaveBeenCalled();
 
 		// Verify AI service was called with non-streaming
 		expect(mockGenerateObjectService).toHaveBeenCalledTimes(1);
@@ -531,8 +579,8 @@ Build a simple task management web application with user authentication and real
 		expect(result.tasksPath).toBe(streamingTasksPath);
 		expect(result.telemetryData).toBeDefined();
 
-		// Verify file was created (via writeJSON mock)
-		expect(mockWriteJSON).toHaveBeenCalled();
+		// Verify file was created (via fs.writeFileSync mock)
+		expect(mockWriteFileSync).toHaveBeenCalled();
 
 		// Verify AI service was called with streaming (CLI mode uses streaming when outputFormat === 'text')
 		expect(mockStreamTextService).toHaveBeenCalledTimes(1);
@@ -608,7 +656,7 @@ Build a simple task management web application with user authentication and real
 		// Should succeed and append tasks
 		expect(result.success).toBe(true);
 
-		// Verify writeJSON was called (file operations handled by mocks)
-		expect(mockWriteJSON).toHaveBeenCalled();
+		// Verify writeFileSync was called (file operations handled by mocks)
+		expect(mockWriteFileSync).toHaveBeenCalled();
 	});
 });

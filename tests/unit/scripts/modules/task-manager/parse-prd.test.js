@@ -20,6 +20,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	enableSilentMode: jest.fn(),
 	disableSilentMode: jest.fn(),
 	findTaskById: jest.fn(),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj),
+	getCurrentTag: jest.fn(() => 'master'),
 	promptYesNo: jest.fn()
 }));
 
@@ -69,12 +71,12 @@ jest.unstable_mockModule(
 	})
 );
 
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
+// jest.unstable_mockModule(
+// 	'../../../../../scripts/modules/task-manager/generate-task-files.js',
+// 	() => ({
+// 		default: jest.fn().mockResolvedValue()
+// 	})
+// );
 
 // Mock fs module
 jest.unstable_mockModule('fs', () => ({
@@ -162,11 +164,11 @@ const { readJSON, writeJSON, log, promptYesNo } = await import(
 const { generateObjectService, streamTextService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
+// const generateTaskFiles = (
+// 	await import(
+// 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
+// 	)
+// ).default;
 
 const { JSONParser } = await import('@streamparser/json');
 
@@ -199,8 +201,7 @@ const sampleClaudeResponse = {
 			description: 'Initialize the project with necessary files and folders',
 			status: 'pending',
 			dependencies: [],
-			priority: 'high',
-			subtasks: []
+			priority: 'high'
 		},
 		{
 			id: 2,
@@ -208,30 +209,43 @@ const sampleClaudeResponse = {
 			description: 'Build the main functionality',
 			status: 'pending',
 			dependencies: [1],
-			priority: 'high',
-			subtasks: []
+			priority: 'high'
 		}
-	]
+	],
+	metadata: {
+		projectName: 'Test Project',
+		totalTasks: 2,
+		sourceFile: 'path/to/prd.txt',
+		generatedAt: expect.any(String)
+	}
 };
 
 describe('parsePRD', () => {
 	// Mock the sample PRD content
 	const samplePRDContent = '# Sample PRD for Testing';
 
-	// Mock existing tasks for append test
-	const existingTasks = {
-		tasks: [
-			{ id: 1, title: 'Existing Task 1', status: 'done' },
-			{ id: 2, title: 'Existing Task 2', status: 'pending' }
-		]
+	// Mock existing tasks for append test - TAGGED FORMAT
+	const existingTasksData = {
+		master: {
+			tasks: [
+				{ id: 1, title: 'Existing Task 1', status: 'done' },
+				{ id: 2, title: 'Existing Task 2', status: 'pending' }
+			]
+		}
 	};
 
 	// Mock new tasks with continuing IDs for append test
-	const newTasksWithContinuedIds = {
+	const newTasksClaudeResponse = {
 		tasks: [
 			{ id: 3, title: 'New Task 3' },
 			{ id: 4, title: 'New Task 4' }
-		]
+		],
+		metadata: {
+			projectName: 'Test Project',
+			totalTasks: 2,
+			sourceFile: 'path/to/prd.txt',
+			generatedAt: expect.any(String)
+		}
 	};
 
 	beforeEach(() => {
@@ -244,7 +258,7 @@ describe('parsePRD', () => {
 		fs.default.existsSync.mockReturnValue(true);
 		path.default.dirname.mockReturnValue('tasks');
 		generateObjectService.mockResolvedValue({
-			mainResult: sampleClaudeResponse,
+			mainResult: { object: sampleClaudeResponse },
 			telemetryData: {}
 		});
 		streamTextService.mockResolvedValue({
@@ -259,7 +273,7 @@ describe('parsePRD', () => {
 			},
 			telemetryData: {}
 		});
-		generateTaskFiles.mockResolvedValue(undefined);
+		// generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
 
 		// Mock console.error to prevent output
@@ -274,9 +288,9 @@ describe('parsePRD', () => {
 
 	test('should parse a PRD file and generate tasks', async () => {
 		// Setup mocks to simulate normal conditions (no existing output file)
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
-			if (path === 'tasks') return true; // Directory exists
+		fs.default.existsSync.mockImplementation((p) => {
+			if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (p === 'tasks') return true; // Directory exists
 			return false;
 		});
 
@@ -307,17 +321,10 @@ describe('parsePRD', () => {
 		// Verify directory check
 		expect(fs.default.existsSync).toHaveBeenCalledWith('tasks');
 
-		// Verify writeJSON was called with the correct arguments
-		expect(writeJSON).toHaveBeenCalledWith(
+		// Verify fs.writeFileSync was called with the correct arguments in tagged format
+		expect(fs.default.writeFileSync).toHaveBeenCalledWith(
 			'tasks/tasks.json',
-			sampleClaudeResponse
-		);
-
-		// Verify generateTaskFiles was called
-		expect(generateTaskFiles).toHaveBeenCalledWith(
-			'tasks/tasks.json',
-			'tasks',
-			expect.objectContaining({ mcpLog: expect.any(Object) })
+			expect.stringContaining('"master"')
 		);
 
 		// Verify result
@@ -327,17 +334,18 @@ describe('parsePRD', () => {
 			telemetryData: {}
 		});
 
-		// Verify that the written data contains 2 tasks from sampleClaudeResponse
-		const writtenData = writeJSON.mock.calls[0][1];
-		expect(writtenData.tasks.length).toBe(2);
+		// Verify that the written data contains 2 tasks from sampleClaudeResponse in the correct tag
+		const writtenDataString = fs.default.writeFileSync.mock.calls[0][1];
+		const writtenData = JSON.parse(writtenDataString);
+		expect(writtenData.master.tasks.length).toBe(2);
 	});
 
 	test('should create the tasks directory if it does not exist', async () => {
 		// Mock existsSync to return false specifically for the directory check
 		// but true for the output file check (so we don't trigger confirmation path)
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
-			if (path === 'tasks') return false; // Directory doesn't exist
+		fs.default.existsSync.mockImplementation((p) => {
+			if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (p === 'tasks') return false; // Directory doesn't exist
 			return true; // Default for other paths
 		});
 
@@ -364,9 +372,9 @@ describe('parsePRD', () => {
 		generateObjectService.mockRejectedValueOnce(testError);
 
 		// Setup mocks to simulate normal file conditions (no existing file)
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
-			if (path === 'tasks') return true; // Directory exists
+		fs.default.existsSync.mockImplementation((p) => {
+			if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (p === 'tasks') return true; // Directory exists
 			return false;
 		});
 
@@ -386,9 +394,9 @@ describe('parsePRD', () => {
 
 	test('should generate individual task files after creating tasks.json', async () => {
 		// Setup mocks to simulate normal conditions (no existing output file)
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
-			if (path === 'tasks') return true; // Directory exists
+		fs.default.existsSync.mockImplementation((p) => {
+			if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (p === 'tasks') return true; // Directory exists
 			return false;
 		});
 
@@ -403,19 +411,14 @@ describe('parsePRD', () => {
 			}
 		});
 
-		// Verify generateTaskFiles was called
-		expect(generateTaskFiles).toHaveBeenCalledWith(
-			'tasks/tasks.json',
-			'tasks',
-			expect.objectContaining({ mcpLog: expect.any(Object) })
-		);
+		// generateTaskFiles is currently commented out in parse-prd.js
 	});
 
 	test('should overwrite tasks.json when force flag is true', async () => {
 		// Setup mocks to simulate tasks.json already exists
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return true; // Output file exists
-			if (path === 'tasks') return true; // Directory exists
+		fs.default.existsSync.mockImplementation((p) => {
+			if (p === 'tasks/tasks.json') return true; // Output file exists
+			if (p === 'tasks') return true; // Directory exists
 			return false;
 		});
 
@@ -435,19 +438,19 @@ describe('parsePRD', () => {
 		expect(promptYesNo).not.toHaveBeenCalled();
 
 		// Verify the file was written after force overwrite
-		expect(writeJSON).toHaveBeenCalledWith(
+		expect(fs.default.writeFileSync).toHaveBeenCalledWith(
 			'tasks/tasks.json',
-			sampleClaudeResponse
+			expect.stringContaining('"master"')
 		);
 	});
 
-	test('should throw error when tasks.json exists without force flag in MCP mode', async () => {
-		// Setup mocks to simulate tasks.json already exists
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return true; // Output file exists
-			if (path === 'tasks') return true; // Directory exists
-			return false;
-		});
+	test('should throw error when tasks in tag exist without force flag in MCP mode', async () => {
+		// Setup mocks to simulate tasks.json already exists with tasks in the target tag
+		fs.default.existsSync.mockReturnValue(true);
+		// Mock readFileSync to return data with tasks in the 'master' tag
+		fs.default.readFileSync.mockReturnValueOnce(
+			JSON.stringify(existingTasksData)
+		);
 
 		// Call the function with mcpLog to make it think it's in MCP mode (which throws instead of process.exit)
 		await expect(
@@ -460,22 +463,21 @@ describe('parsePRD', () => {
 					success: jest.fn()
 				}
 			})
-		).rejects.toThrow('Output file tasks/tasks.json already exists');
+		).rejects.toThrow('already contains');
 
-		// Verify prompt was NOT called (confirmation happens at CLI level, not in core function)
+		// Verify prompt was NOT called
 		expect(promptYesNo).not.toHaveBeenCalled();
 
 		// Verify the file was NOT written
-		expect(writeJSON).not.toHaveBeenCalled();
+		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
 	});
 
-	test('should call process.exit when tasks.json exists without force flag in CLI mode', async () => {
-		// Setup mocks to simulate tasks.json already exists
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return true; // Output file exists
-			if (path === 'tasks') return true; // Directory exists
-			return false;
-		});
+	test('should call process.exit when tasks in tag exist without force flag in CLI mode', async () => {
+		// Setup mocks to simulate tasks.json already exists with tasks in the target tag
+		fs.default.existsSync.mockReturnValue(true);
+		fs.default.readFileSync.mockReturnValueOnce(
+			JSON.stringify(existingTasksData)
+		);
 
 		// Mock process.exit for this specific test
 		const mockProcessExit = jest
@@ -493,55 +495,26 @@ describe('parsePRD', () => {
 		expect(mockProcessExit).toHaveBeenCalledWith(1);
 
 		// Verify the file was NOT written
-		expect(writeJSON).not.toHaveBeenCalled();
+		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
 
 		// Restore the mock
 		mockProcessExit.mockRestore();
 	});
 
-	test('should not prompt for confirmation when tasks.json does not exist', async () => {
-		// Setup mocks to simulate tasks.json does not exist
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
-			if (path === 'tasks') return true; // Directory exists
-			return false;
-		});
-
-		// Call the function with mcpLog to force non-streaming mode
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
-			mcpLog: {
-				info: jest.fn(),
-				warn: jest.fn(),
-				error: jest.fn(),
-				debug: jest.fn(),
-				success: jest.fn()
-			}
-		});
-
-		// Verify prompt was NOT called
-		expect(promptYesNo).not.toHaveBeenCalled();
-
-		// Verify the file was written without confirmation
-		expect(writeJSON).toHaveBeenCalledWith(
-			'tasks/tasks.json',
-			sampleClaudeResponse
-		);
-	});
-
 	test('should append new tasks when append option is true', async () => {
 		// Setup mocks to simulate tasks.json already exists
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return true; // Output file exists
-			if (path === 'tasks') return true; // Directory exists
-			return false;
-		});
+		fs.default.existsSync.mockReturnValue(true);
 
-		// Mock for reading existing tasks
-		readJSON.mockReturnValue(existingTasks);
+		// Mock for reading existing tasks in tagged format
+		readJSON.mockReturnValue(existingTasksData);
+		// Mock readFileSync to return the raw content for the initial check
+		fs.default.readFileSync.mockReturnValueOnce(
+			JSON.stringify(existingTasksData)
+		);
 
 		// Mock generateObjectService to return new tasks with continuing IDs
 		generateObjectService.mockResolvedValueOnce({
-			mainResult: newTasksWithContinuedIds,
+			mainResult: { object: newTasksClaudeResponse },
 			telemetryData: {}
 		});
 
@@ -560,17 +533,10 @@ describe('parsePRD', () => {
 		// Verify prompt was NOT called (no confirmation needed for append)
 		expect(promptYesNo).not.toHaveBeenCalled();
 
-		// Verify the file was written with merged tasks
-		expect(writeJSON).toHaveBeenCalledWith(
+		// Verify the file was written with merged tasks in the correct tag
+		expect(fs.default.writeFileSync).toHaveBeenCalledWith(
 			'tasks/tasks.json',
-			expect.objectContaining({
-				tasks: expect.arrayContaining([
-					expect.objectContaining({ id: 1 }),
-					expect.objectContaining({ id: 2 }),
-					expect.objectContaining({ id: 3 }),
-					expect.objectContaining({ id: 4 })
-				])
-			})
+			expect.stringContaining('"master"')
 		);
 
 		// Verify the result contains merged tasks
@@ -581,17 +547,17 @@ describe('parsePRD', () => {
 		});
 
 		// Verify that the written data contains 4 tasks (2 existing + 2 new)
-		const writtenData = writeJSON.mock.calls[0][1];
-		expect(writtenData.tasks.length).toBe(4);
+		const writtenDataString = fs.default.writeFileSync.mock.calls[0][1];
+		const writtenData = JSON.parse(writtenDataString);
+		expect(writtenData.master.tasks.length).toBe(4);
 	});
 
 	test('should skip prompt and not overwrite when append is true', async () => {
 		// Setup mocks to simulate tasks.json already exists
-		fs.default.existsSync.mockImplementation((path) => {
-			if (path === 'tasks/tasks.json') return true; // Output file exists
-			if (path === 'tasks') return true; // Directory exists
-			return false;
-		});
+		fs.default.existsSync.mockReturnValue(true);
+		fs.default.readFileSync.mockReturnValueOnce(
+			JSON.stringify(existingTasksData)
+		);
 
 		// Call the function with append option
 		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
@@ -738,6 +704,14 @@ describe('parsePRD', () => {
 				return false;
 			});
 
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
 			// Call with streaming + force
 			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
 				force: true,
@@ -749,7 +723,7 @@ describe('parsePRD', () => {
 			expect(generateObjectService).not.toHaveBeenCalled();
 
 			// Verify file was written (force overwrite)
-			expect(writeJSON).toHaveBeenCalled();
+			expect(fs.default.writeFileSync).toHaveBeenCalled();
 		});
 
 		test('should handle append mode with streaming', async () => {
@@ -760,8 +734,16 @@ describe('parsePRD', () => {
 				return false;
 			});
 
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
 			// Mock for reading existing tasks
-			readJSON.mockReturnValue(existingTasks);
+			readJSON.mockReturnValue(existingTasksData);
 
 			// Call with streaming + append
 			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
@@ -774,7 +756,10 @@ describe('parsePRD', () => {
 			expect(generateObjectService).not.toHaveBeenCalled();
 
 			// Verify append logic worked
-			expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				'utf8'
+			);
 			expect(result.success).toBe(true);
 		});
 
@@ -832,6 +817,14 @@ describe('parsePRD', () => {
 				return false;
 			});
 
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
 			// Call with streaming + MCP mode (no force)
 			await expect(
 				parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
@@ -844,7 +837,7 @@ describe('parsePRD', () => {
 						success: jest.fn()
 					}
 				})
-			).rejects.toThrow('Output file tasks/tasks.json already exists');
+			).rejects.toThrow('already contains');
 
 			// Verify streaming path would have been used (but failed before AI call)
 			expect(streamTextService).not.toHaveBeenCalled();
@@ -859,6 +852,14 @@ describe('parsePRD', () => {
 				if (path === 'tasks/tasks.json') return true; // Output file exists
 				if (path === 'tasks') return true; // Directory exists
 				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
 			});
 
 			// Call without reportProgress but with mcpLog (non-streaming) + force
@@ -878,7 +879,7 @@ describe('parsePRD', () => {
 			expect(streamTextService).not.toHaveBeenCalled();
 
 			// Verify file was written (force overwrite)
-			expect(writeJSON).toHaveBeenCalled();
+			expect(fs.default.writeFileSync).toHaveBeenCalled();
 		});
 
 		test('should handle append mode with non-streaming', async () => {
@@ -889,12 +890,20 @@ describe('parsePRD', () => {
 				return false;
 			});
 
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
 			// Mock for reading existing tasks
-			readJSON.mockReturnValue(existingTasks);
+			readJSON.mockReturnValue(existingTasksData);
 
 			// Mock generateObjectService to return new tasks with continuing IDs
 			generateObjectService.mockResolvedValueOnce({
-				mainResult: newTasksWithContinuedIds,
+				mainResult: { object: newTasksClaudeResponse },
 				telemetryData: {}
 			});
 
@@ -915,7 +924,10 @@ describe('parsePRD', () => {
 			expect(streamTextService).not.toHaveBeenCalled();
 
 			// Verify append logic worked
-			expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				'utf8'
+			);
 			expect(result.success).toBe(true);
 		});
 

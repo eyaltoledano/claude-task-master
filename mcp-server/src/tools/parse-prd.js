@@ -76,7 +76,13 @@ export function registerParsePRDTool(server) {
 						reportProgress:
 							typeof reportProgress === 'function' ? reportProgress : undefined
 					});
-					return handleApiResult(result, log);
+					return handleApiResult(
+						result,
+						log,
+						'Error parsing PRD',
+						undefined,
+						args.projectRoot
+					);
 				} catch (error) {
 					log.error(`Error in parse_prd: ${error.message}`);
 					return createErrorResponse(`Failed to parse PRD: ${error.message}`);

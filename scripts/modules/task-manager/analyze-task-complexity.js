@@ -28,19 +28,32 @@ import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { flattenTasksWithSubtasks } from '../utils.js';
 
 /**
  * Generates the prompt for complexity analysis.
  * (Moved from ai-services.js and simplified)
  * @param {Object} tasksData - The tasks data object.
+ * @param {string} [gatheredContext] - The gathered context for the analysis.
  * @returns {string} The generated prompt.
  */
-function generateInternalComplexityAnalysisPrompt(tasksData) {
+function generateInternalComplexityAnalysisPrompt(
+	tasksData,
+	gatheredContext = ''
+) {
 	const tasksString = JSON.stringify(tasksData.tasks, null, 2);
-	return `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
+	let prompt = `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
 
 Tasks:
-${tasksString}
+${tasksString}`;
+
+	if (gatheredContext) {
+		prompt += `\n\n# Project Context\n\n${gatheredContext}`;
+	}
+
+	prompt += `
 
 Respond ONLY with a valid JSON array matching the schema:
 [
@@ -56,6 +69,7 @@ Respond ONLY with a valid JSON array matching the schema:
 ]
 
 Do not include any explanatory text, markdown formatting, or code block markers before or after the JSON array.`;
+	return prompt;
 }
 
 /**
@@ -83,6 +97,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
+	const tag = options.tag;
 	// New parameters for task ID filtering
 	const specificIds = options.id
 		? options.id
@@ -148,7 +163,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			originalTaskCount = options._originalTaskCount || tasksData.tasks.length;
 			if (!options._originalTaskCount) {
 				try {
-					originalData = readJSON(tasksPath);
+					originalData = readJSON(tasksPath, projectRoot, tag);
 					if (originalData && originalData.tasks) {
 						originalTaskCount = originalData.tasks.length;
 					}
@@ -157,7 +172,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 		} else {
-			originalData = readJSON(tasksPath);
+			originalData = readJSON(tasksPath, projectRoot, tag);
 			if (
 				!originalData ||
 				!originalData.tasks ||
@@ -236,6 +251,41 @@ async function analyzeTaskComplexity(options, context = {}) {
 			};
 		}
 
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		if (originalData && originalData.tasks.length > 0) {
+			try {
+				const contextGatherer = new ContextGatherer(projectRoot);
+				const allTasksFlat = flattenTasksWithSubtasks(originalData.tasks);
+				const fuzzySearch = new FuzzyTaskSearch(
+					allTasksFlat,
+					'analyze-complexity'
+				);
+				// Create a query from the tasks being analyzed
+				const searchQuery = tasksData.tasks
+					.map((t) => `${t.title} ${t.description}`)
+					.join(' ');
+				const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+					maxResults: 10
+				});
+				const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+				if (relevantTaskIds.length > 0) {
+					const contextResult = await contextGatherer.gather({
+						tasks: relevantTaskIds,
+						format: 'research'
+					});
+					gatheredContext = contextResult;
+				}
+			} catch (contextError) {
+				reportLog(
+					`Could not gather additional context: ${contextError.message}`,
+					'warn'
+				);
+			}
+		}
+		// --- End Context Gathering ---
+
 		const skippedCount = originalTaskCount - tasksData.tasks.length;
 		reportLog(
 			`Found ${originalTaskCount} total tasks in the task file.`,
@@ -270,10 +320,10 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 		// Check for existing report before doing analysis
 		let existingReport = null;
-		let existingAnalysisMap = new Map(); // For quick lookups by task ID
+		const existingAnalysisMap = new Map(); // For quick lookups by task ID
 		try {
 			if (fs.existsSync(outputPath)) {
-				existingReport = readJSON(outputPath);
+				existingReport = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 				reportLog(`Found existing complexity report at ${outputPath}`, 'debug');
 
 				if (
@@ -304,13 +354,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 			// If using ID filtering but no matching tasks, return existing report or empty
 			if (existingReport && (specificIds || fromId !== null || toId !== null)) {
 				reportLog(
-					`No matching tasks found for analysis. Keeping existing report.`,
+					'No matching tasks found for analysis. Keeping existing report.',
 					'info'
 				);
 				if (outputFormat === 'text') {
 					console.log(
 						chalk.yellow(
-							`No matching tasks found for analysis. Keeping existing report.`
+							'No matching tasks found for analysis. Keeping existing report.'
 						)
 					);
 				}
@@ -332,7 +382,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: existingReport?.complexityAnalysis || []
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'debug');
-			writeJSON(outputPath, emptyReport);
+			fs.writeFileSync(
+				outputPath,
+				JSON.stringify(emptyReport, null, '\t'),
+				'utf8'
+			);
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
 				'debug'
@@ -386,7 +440,10 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		// Continue with regular analysis path
-		const prompt = generateInternalComplexityAnalysisPrompt(tasksData);
+		const prompt = generateInternalComplexityAnalysisPrompt(
+			tasksData,
+			gatheredContext
+		);
 		const systemPrompt =
 			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
@@ -713,8 +770,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 				},
 				complexityAnalysis: finalComplexityAnalysis
 			};
-			reportLog(`Writing complexity report to ${outputPath}...`, 'debug');
-			writeJSON(outputPath, report);
+			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			fs.writeFileSync(outputPath, JSON.stringify(report, null, '\t'), 'utf8');
 
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
@@ -786,7 +843,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 			return {
 				report: report,
-				telemetryData: aiServiceResponse?.telemetryData
+				telemetryData: aiServiceResponse?.telemetryData,
+				tagInfo: aiServiceResponse?.tagInfo
 			};
 		} catch (aiError) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

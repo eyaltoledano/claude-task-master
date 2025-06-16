@@ -68,7 +68,13 @@ export function registerRemoveDependencyTool(server) {
 					log.error(`Failed to remove dependency: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error removing dependency');
+				return handleApiResult(
+					result,
+					log,
+					'Error removing dependency',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in removeDependency tool: ${error.message}`);
 				return createErrorResponse(error.message);

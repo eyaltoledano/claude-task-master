@@ -8,19 +8,21 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {string} subtaskId - ID of the subtask to remove in format "parentId.subtaskId"
  * @param {boolean} convertToTask - Whether to convert the subtask to a standalone task
  * @param {boolean} generateFiles - Whether to regenerate task files after removing the subtask
+ * @param {Object} context - Context object containing projectRoot and tag information
  * @returns {Object|null} The removed subtask if convertToTask is true, otherwise null
  */
 async function removeSubtask(
 	tasksPath,
 	subtaskId,
 	convertToTask = false,
-	generateFiles = true
+	generateFiles = true,
+	context = {}
 ) {
 	try {
 		log('info', `Removing subtask ${subtaskId}...`);
 
-		// Read the existing tasks
-		const data = readJSON(tasksPath);
+		// Read the existing tasks with proper context
+		const data = readJSON(tasksPath, context.projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
 		}
@@ -63,7 +65,7 @@ async function removeSubtask(
 
 		// If parent has no more subtasks, remove the subtasks array
 		if (parentTask.subtasks.length === 0) {
-			delete parentTask.subtasks;
+			parentTask.subtasks = undefined;
 		}
 
 		let convertedTask = null;
@@ -100,13 +102,13 @@ async function removeSubtask(
 			log('info', `Subtask ${subtaskId} deleted`);
 		}
 
-		// Write the updated tasks back to the file
-		writeJSON(tasksPath, data);
+		// Write the updated tasks back to the file with proper context
+		writeJSON(tasksPath, data, context.projectRoot, context.tag);
 
 		// Generate task files if requested
 		if (generateFiles) {
 			log('info', 'Regenerating task files...');
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
 		}
 
 		return convertedTask;

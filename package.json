@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.16.2-rc.0",
+	"version": "0.17.0-rc.1",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -55,6 +55,7 @@
 		"ai": "^4.3.10",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
+		"cli-highlight": "^2.1.11",
 		"cli-progress": "^3.12.0",
 		"cli-table3": "^0.6.5",
 		"commander": "^11.1.0",
@@ -64,6 +65,7 @@
 		"fastmcp": "^2.2.2",
 		"figlet": "^1.8.0",
 		"fuse.js": "^7.1.0",
+		"gpt-tokens": "^1.3.14",
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",
 		"inquirer": "^12.5.0",
@@ -72,6 +74,7 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
+		"task-master-ai": "0.17.0-rc.1",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
 	},

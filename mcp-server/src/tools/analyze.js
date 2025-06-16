@@ -141,7 +141,9 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					return handleApiResult(
 						result,
 						log,
-						'Error analyzing task complexity'
+						'Error analyzing task complexity',
+						undefined,
+						args.projectRoot
 					);
 				} catch (error) {
 					log.error(
