@@ -42,16 +42,19 @@ Once configured, you can use Claude Code with all Task Master commands:
 
 ```bash
 # Generate tasks from a PRD
-task-master parse-prd "Build a todo app with React"
-
-# Get a complexity estimate
-task-master estimate
+task-master parse-prd --input=prd.txt
 
 # Analyze project complexity
-task-master analyze
+task-master analyze-complexity
 
-# Work on tasks
-task-master do task-001
+# Show the next task to work on
+task-master next
+
+# View a specific task
+task-master show task-001
+
+# Update task status
+task-master set-status --id=task-001 --status=in-progress
 ```
 
 ## Requirements
