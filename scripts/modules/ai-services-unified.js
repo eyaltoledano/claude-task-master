@@ -44,7 +44,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	ClaudeCodeProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -58,7 +59,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-code': new ClaudeCodeProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -225,6 +227,11 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
+	// Claude Code doesn't require an API key
+	if (providerName === 'claude-code') {
+		return 'claude-code-no-key-required';
+	}
+
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -236,7 +243,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'claude-code': 'CLAUDE_CODE_API_KEY' // Not actually used, but included for consistency
 	};
 
 	const envVarName = keyMap[providerName];

@@ -19,7 +19,8 @@ export const CUSTOM_PROVIDERS = {
 	VERTEX: 'vertex',
 	BEDROCK: 'bedrock',
 	OPENROUTER: 'openrouter',
-	OLLAMA: 'ollama'
+	OLLAMA: 'ollama',
+	CLAUDE_CODE: 'claude-code'
 };
 
 // Custom providers array (for backward compatibility and iteration)

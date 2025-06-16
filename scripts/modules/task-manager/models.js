@@ -425,7 +425,7 @@ async function setModel(role, modelId, options = {}) {
 		let warningMessage = null;
 
 		// Find the model data in internal list initially to see if it exists at all
-		const modelData = availableModels.find((m) => m.id === modelId);
+		let modelData = availableModels.find((m) => m.id === modelId);
 
 		// --- Revised Logic: Prioritize providerHint --- //
 
@@ -495,6 +495,24 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = CUSTOM_PROVIDERS.BEDROCK;
 					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
 					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.CLAUDE_CODE) {
+					// Claude Code provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.CLAUDE_CODE;
+					// Re-find modelData specifically for claude-code provider
+					const claudeCodeModels = availableModels.filter(
+						(m) => m.provider === 'claude-code'
+					);
+					const claudeCodeModelData = claudeCodeModels.find(
+						(m) => m.id === modelId
+					);
+					if (claudeCodeModelData) {
+						// Update modelData to the found claude-code model
+						modelData = claudeCodeModelData;
+						report('info', `Setting Claude Code model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: Claude Code model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else if (providerHint === CUSTOM_PROVIDERS.AZURE) {
 					// Set provider without model validation since Azure models are managed by Azure
 					determinedProvider = CUSTOM_PROVIDERS.AZURE;
@@ -547,10 +565,15 @@ async function setModel(role, modelId, options = {}) {
 
 		// Update configuration
 		currentConfig.models[role] = {
-			...currentConfig.models[role], // Keep existing params like maxTokens
+			...currentConfig.models[role], // Keep existing params like temperature
 			provider: determinedProvider,
 			modelId: modelId
 		};
+
+		// If model data is available, update maxTokens from supported-models.json
+		if (modelData && modelData.max_tokens) {
+			currentConfig.models[role].maxTokens = modelData.max_tokens;
+		}
 
 		// Write updated configuration
 		const writeResult = writeConfig(currentConfig, projectRoot);
