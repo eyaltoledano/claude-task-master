@@ -28,7 +28,6 @@ import {
 	convertAllRulesToProfileRules,
 	getRulesProfile
 } from '../src/utils/rule-transformer.js';
-import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
 
 import { execSync } from 'child_process';
 import {
@@ -507,14 +506,6 @@ function createProjectStructure(
 			...replacements
 		}
 	);
-
-	// Update config.json with correct maxTokens values from supported-models.json
-	const configPath = path.join(targetDir, TASKMASTER_CONFIG_FILE);
-	if (updateConfigMaxTokens(configPath)) {
-		log('info', 'Updated config with correct maxTokens values');
-	} else {
-		log('warn', 'Could not update maxTokens in config');
-	}
 
 	// Copy .gitignore
 	copyTemplateFile('gitignore', path.join(targetDir, GITIGNORE_FILE));
