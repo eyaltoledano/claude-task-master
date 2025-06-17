@@ -20,29 +20,33 @@ export function updateConfigMaxTokens(configPath) {
 	try {
 		// Load supported models
 		const supportedModelsPath = path.join(__dirname, 'supported-models.json');
-		const supportedModels = JSON.parse(fs.readFileSync(supportedModelsPath, 'utf-8'));
-		
+		const supportedModels = JSON.parse(
+			fs.readFileSync(supportedModelsPath, 'utf-8')
+		);
+
 		// Load config
 		const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-		
+
 		// Update each role's maxTokens if the model exists in supported-models.json
 		const roles = ['main', 'research', 'fallback'];
-		
+
 		for (const role of roles) {
 			if (config.models && config.models[role]) {
 				const provider = config.models[role].provider;
 				const modelId = config.models[role].modelId;
-				
+
 				// Find the model in supported models
 				if (supportedModels[provider]) {
-					const modelData = supportedModels[provider].find(m => m.id === modelId);
+					const modelData = supportedModels[provider].find(
+						(m) => m.id === modelId
+					);
 					if (modelData && modelData.max_tokens) {
 						config.models[role].maxTokens = modelData.max_tokens;
 					}
 				}
 			}
 		}
-		
+
 		// Write back the updated config
 		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 		return true;

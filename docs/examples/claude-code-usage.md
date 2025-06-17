@@ -60,7 +60,11 @@ task-master set-status --id=task-001 --status=in-progress
 ## Requirements
 
 1. Claude Code CLI must be installed and authenticated on your system
-2. No API key is required in your environment variables or MCP configuration
+2. Install the optional `@anthropic-ai/claude-code` package if you enable this provider:
+   ```bash
+   npm install @anthropic-ai/claude-code
+   ```
+3. No API key is required in your environment variables or MCP configuration
 
 ## Advanced Settings
 

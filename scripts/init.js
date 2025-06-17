@@ -507,7 +507,7 @@ function createProjectStructure(
 			...replacements
 		}
 	);
-	
+
 	// Update config.json with correct maxTokens values from supported-models.json
 	const configPath = path.join(targetDir, TASKMASTER_CONFIG_FILE);
 	if (updateConfigMaxTokens(configPath)) {

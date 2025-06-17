@@ -76,6 +76,9 @@
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
 	},
+	"optionalDependencies": {
+		"@anthropic-ai/claude-code": "^1.0.25"
+	},
 	"engines": {
 		"node": ">=18.0.0"
 	},

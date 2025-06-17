@@ -7,7 +7,23 @@ import { generateId } from '@ai-sdk/provider-utils';
 import { convertToClaudeCodeMessages } from './message-converter.js';
 import { extractJson } from './json-extractor.js';
 import { createAPICallError, createAuthenticationError } from './errors.js';
-import { query, AbortError } from '@anthropic-ai/claude-code';
+
+let query;
+let AbortError;
+
+async function loadClaudeCodeModule() {
+	if (!query || !AbortError) {
+		try {
+			const mod = await import('@anthropic-ai/claude-code');
+			query = mod.query;
+			AbortError = mod.AbortError;
+		} catch (err) {
+			throw new Error(
+				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+			);
+		}
+	}
+}
 
 /**
  * @typedef {import('./types.js').ClaudeCodeSettings} ClaudeCodeSettings
@@ -78,7 +94,8 @@ export class ClaudeCodeLanguageModel {
 		const unsupportedParams = [];
 
 		// Check for unsupported parameters
-		if (options.temperature !== undefined) unsupportedParams.push('temperature');
+		if (options.temperature !== undefined)
+			unsupportedParams.push('temperature');
 		if (options.maxTokens !== undefined) unsupportedParams.push('maxTokens');
 		if (options.topP !== undefined) unsupportedParams.push('topP');
 		if (options.topK !== undefined) unsupportedParams.push('topK');
@@ -110,6 +127,7 @@ export class ClaudeCodeLanguageModel {
 	 * @returns {Promise<Object>}
 	 */
 	async doGenerate(options) {
+		await loadClaudeCodeModule();
 		const { messagesPrompt } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
@@ -188,9 +206,7 @@ export class ClaudeCodeLanguageModel {
 			}
 		} catch (error) {
 			if (error instanceof AbortError) {
-				throw options.abortSignal?.aborted
-					? options.abortSignal.reason
-					: error;
+				throw options.abortSignal?.aborted ? options.abortSignal.reason : error;
 			}
 
 			// Check for authentication errors
@@ -256,6 +272,7 @@ export class ClaudeCodeLanguageModel {
 	 * @returns {Promise<Object>}
 	 */
 	async doStream(options) {
+		await loadClaudeCodeModule();
 		const { messagesPrompt } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
@@ -368,7 +385,10 @@ export class ClaudeCodeLanguageModel {
 									}
 								}
 							});
-						} else if (message.type === 'system' && message.subtype === 'init') {
+						} else if (
+							message.type === 'system' &&
+							message.subtype === 'init'
+						) {
 							// Store session ID for future use
 							this.sessionId = message.session_id;
 
