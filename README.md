@@ -47,8 +47,9 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
+- Claude Code (no API key required - requires Claude Code CLI)
 
-Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
+Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
 
 ## Quick Start
 
@@ -131,7 +132,12 @@ In your editor's AI chat pane, say:
 Change the main, research and fallback models to <model_name>, <model_name> and <model_name> respectively.
 ```
 
-[Table of available models](docs/models.md)
+For example, to use Claude Code (no API key required):
+```txt
+Change the main model to claude-code/sonnet
+```
+
+[Table of available models](docs/models.md) | [Claude Code setup](docs/examples/claude-code-usage.md)
 
 #### 4. Initialize Task Master
 
@@ -223,6 +229,16 @@ task-master generate
 # Add rules after initialization
 task-master rules add windsurf,roo,vscode
 ```
+
+## Claude Code Support
+
+Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
+
+- **Models**: `claude-code/opus` and `claude-code/sonnet`
+- **Requirements**: Claude Code CLI installed
+- **Benefits**: No API key needed, uses your local Claude instance
+
+[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
 
 ## Troubleshooting
 
