@@ -1,0 +1,15 @@
+# Task ID: 6
+# Title: Develop Example Simulation Scenarios
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Create example scenarios showcasing TinyTroupe capabilities for different use cases mentioned in the PRD.
+# Details:
+- Develop advertisement evaluation scenario.
+- Implement software testing simulation example.
+- Create synthetic data generation example.
+- Build product feedback simulation.
+- Design brainstorming simulation for focus groups.
+
+# Test Strategy:
+

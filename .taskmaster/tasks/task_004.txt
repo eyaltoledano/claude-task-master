@@ -1,0 +1,14 @@
+# Task ID: 4
+# Title: Document Databricks Image Upload Feature Usage
+# Status: pending
+# Dependencies: 2
+# Priority: medium
+# Description: Create documentation and examples for using Databricks' built-in image upload feature with TinyTroupe simulations.
+# Details:
+- Document how to use Databricks' built-in image upload feature.
+- Create examples of associating uploaded images with TinyTroupe simulations.
+- Add helper functions for working with uploaded images.
+- Demonstrate proper image referencing in notebooks.
+
+# Test Strategy:
+
