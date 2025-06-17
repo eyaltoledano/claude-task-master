@@ -1,18 +1,21 @@
 import { jest } from '@jest/globals';
 
 // Mock the claude-code SDK module
-jest.unstable_mockModule('../../../src/ai-providers/custom-sdk/claude-code/index.js', () => ({
-	createClaudeCode: jest.fn(() => {
-		const provider = (modelId, settings) => ({
-			// Mock language model
-			id: modelId,
-			settings
-		});
-		provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
-		provider.chat = provider.languageModel;
-		return provider;
+jest.unstable_mockModule(
+	'../../../src/ai-providers/custom-sdk/claude-code/index.js',
+	() => ({
+		createClaudeCode: jest.fn(() => {
+			const provider = (modelId, settings) => ({
+				// Mock language model
+				id: modelId,
+				settings
+			});
+			provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
+			provider.chat = provider.languageModel;
+			return provider;
+		})
 	})
-}));
+);
 
 // Mock the base provider
 jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
@@ -27,7 +30,9 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 }));
 
 // Import after mocking
-const { ClaudeCodeProvider } = await import('../../../src/ai-providers/claude-code.js');
+const { ClaudeCodeProvider } = await import(
+	'../../../src/ai-providers/claude-code.js'
+);
 
 describe('ClaudeCodeProvider', () => {
 	let provider;
@@ -53,10 +58,12 @@ describe('ClaudeCodeProvider', () => {
 		});
 
 		it('should work with any params passed', () => {
-			expect(() => provider.validateAuth({
-				apiKey: 'some-key',
-				baseURL: 'https://example.com'
-			})).not.toThrow();
+			expect(() =>
+				provider.validateAuth({
+					apiKey: 'some-key',
+					baseURL: 'https://example.com'
+				})
+			).not.toThrow();
 		});
 	});
 
@@ -91,14 +98,18 @@ describe('ClaudeCodeProvider', () => {
 	describe('error handling', () => {
 		it('should handle client initialization errors', async () => {
 			// Force an error by making createClaudeCode throw
-			const { createClaudeCode } = await import('../../../src/ai-providers/custom-sdk/claude-code/index.js');
+			const { createClaudeCode } = await import(
+				'../../../src/ai-providers/custom-sdk/claude-code/index.js'
+			);
 			createClaudeCode.mockImplementationOnce(() => {
 				throw new Error('Mock initialization error');
 			});
 
 			// Create a new provider instance to use the mocked createClaudeCode
 			const errorProvider = new ClaudeCodeProvider();
-			expect(() => errorProvider.getClient({})).toThrow('Mock initialization error');
+			expect(() => errorProvider.getClient({})).toThrow(
+				'Mock initialization error'
+			);
 		});
 	});
 });

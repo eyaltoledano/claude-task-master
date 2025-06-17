@@ -18,7 +18,9 @@ jest.unstable_mockModule('@anthropic-ai/claude-code', () => {
 });
 
 // Import after mocking
-const { ClaudeCodeProvider } = await import('../../src/ai-providers/claude-code.js');
+const { ClaudeCodeProvider } = await import(
+	'../../src/ai-providers/claude-code.js'
+);
 
 describe('Claude Code Optional Dependency Integration', () => {
 	describe('when @anthropic-ai/claude-code is not installed', () => {
@@ -43,10 +45,14 @@ describe('Claude Code Optional Dependency Integration', () => {
 			const model = client('opus');
 
 			// The actual usage should fail with the lazy loading error
-			await expect(model.doGenerate({
-				prompt: [{ role: 'user', content: 'Hello' }],
-				mode: { type: 'regular' }
-			})).rejects.toThrow("Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider.");
+			await expect(
+				model.doGenerate({
+					prompt: [{ role: 'user', content: 'Hello' }],
+					mode: { type: 'regular' }
+				})
+			).rejects.toThrow(
+				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+			);
 		});
 
 		it('should provide helpful error message for streaming', async () => {
@@ -54,10 +60,14 @@ describe('Claude Code Optional Dependency Integration', () => {
 			const client = provider.getClient({});
 			const model = client('sonnet');
 
-			await expect(model.doStream({
-				prompt: [{ role: 'user', content: 'Hello' }],
-				mode: { type: 'regular' }
-			})).rejects.toThrow("Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider.");
+			await expect(
+				model.doStream({
+					prompt: [{ role: 'user', content: 'Hello' }],
+					mode: { type: 'regular' }
+				})
+			).rejects.toThrow(
+				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+			);
 		});
 	});
 
@@ -74,7 +84,7 @@ describe('Claude Code Optional Dependency Integration', () => {
 			// when the actual model is used
 			const provider = new ClaudeCodeProvider();
 			expect(provider).toBeDefined();
-			
+
 			// In real usage, ai-services-unified would:
 			// 1. Get the provider instance (works)
 			// 2. Call provider.getClient() (works)

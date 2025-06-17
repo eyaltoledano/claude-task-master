@@ -15,21 +15,30 @@ jest.unstable_mockModule('@ai-sdk/provider-utils', () => ({
 	generateId: jest.fn(() => 'test-id-123')
 }));
 
-jest.unstable_mockModule('../../../../../src/ai-providers/custom-sdk/claude-code/message-converter.js', () => ({
-	convertToClaudeCodeMessages: jest.fn((prompt) => ({
-		messagesPrompt: 'converted-prompt',
-		systemPrompt: 'system'
-	}))
-}));
+jest.unstable_mockModule(
+	'../../../../../src/ai-providers/custom-sdk/claude-code/message-converter.js',
+	() => ({
+		convertToClaudeCodeMessages: jest.fn((prompt) => ({
+			messagesPrompt: 'converted-prompt',
+			systemPrompt: 'system'
+		}))
+	})
+);
 
-jest.unstable_mockModule('../../../../../src/ai-providers/custom-sdk/claude-code/json-extractor.js', () => ({
-	extractJson: jest.fn((text) => text)
-}));
+jest.unstable_mockModule(
+	'../../../../../src/ai-providers/custom-sdk/claude-code/json-extractor.js',
+	() => ({
+		extractJson: jest.fn((text) => text)
+	})
+);
 
-jest.unstable_mockModule('../../../../../src/ai-providers/custom-sdk/claude-code/errors.js', () => ({
-	createAPICallError: jest.fn((opts) => new Error(opts.message)),
-	createAuthenticationError: jest.fn((opts) => new Error(opts.message))
-}));
+jest.unstable_mockModule(
+	'../../../../../src/ai-providers/custom-sdk/claude-code/errors.js',
+	() => ({
+		createAPICallError: jest.fn((opts) => new Error(opts.message)),
+		createAuthenticationError: jest.fn((opts) => new Error(opts.message))
+	})
+);
 
 // This mock will be controlled by tests
 let mockClaudeCodeModule = null;
@@ -41,7 +50,9 @@ jest.unstable_mockModule('@anthropic-ai/claude-code', () => {
 });
 
 // Import the module under test
-const { ClaudeCodeLanguageModel } = await import('../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js');
+const { ClaudeCodeLanguageModel } = await import(
+	'../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js'
+);
 
 describe('ClaudeCodeLanguageModel', () => {
 	beforeEach(() => {
@@ -65,15 +76,21 @@ describe('ClaudeCodeLanguageModel', () => {
 		});
 
 		it('should throw NoSuchModelError for invalid model ID', async () => {
-			expect(() => new ClaudeCodeLanguageModel({
-				id: '',
-				settings: {}
-			})).toThrow('No such model: ');
+			expect(
+				() =>
+					new ClaudeCodeLanguageModel({
+						id: '',
+						settings: {}
+					})
+			).toThrow('No such model: ');
 
-			expect(() => new ClaudeCodeLanguageModel({
-				id: null,
-				settings: {}
-			})).toThrow('No such model: null');
+			expect(
+				() =>
+					new ClaudeCodeLanguageModel({
+						id: null,
+						settings: {}
+					})
+			).toThrow('No such model: null');
 		});
 	});
 
@@ -85,19 +102,30 @@ describe('ClaudeCodeLanguageModel', () => {
 				settings: {}
 			});
 
-			await expect(model.doGenerate({
-				prompt: [{ role: 'user', content: 'test' }],
-				mode: { type: 'regular' }
-			})).rejects.toThrow("Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider.");
+			await expect(
+				model.doGenerate({
+					prompt: [{ role: 'user', content: 'test' }],
+					mode: { type: 'regular' }
+				})
+			).rejects.toThrow(
+				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+			);
 		});
 
 		it('should load package successfully when available', async () => {
 			// Mock successful package load
 			const mockQuery = jest.fn(async function* () {
-				yield { type: 'assistant', message: { content: [{ type: 'text', text: 'Hello' }] } };
-				yield { type: 'result', subtype: 'done', usage: { output_tokens: 10, input_tokens: 5 } };
+				yield {
+					type: 'assistant',
+					message: { content: [{ type: 'text', text: 'Hello' }] }
+				};
+				yield {
+					type: 'result',
+					subtype: 'done',
+					usage: { output_tokens: 10, input_tokens: 5 }
+				};
 			});
-			
+
 			mockClaudeCodeModule = {
 				query: mockQuery,
 				AbortError: class AbortError extends Error {}
@@ -105,8 +133,10 @@ describe('ClaudeCodeLanguageModel', () => {
 
 			// Need to re-import to get fresh module with mocks
 			jest.resetModules();
-			const { ClaudeCodeLanguageModel: FreshModel } = await import('../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js');
-			
+			const { ClaudeCodeLanguageModel: FreshModel } = await import(
+				'../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js'
+			);
+
 			const model = new FreshModel({
 				id: 'opus',
 				settings: {}
@@ -124,24 +154,30 @@ describe('ClaudeCodeLanguageModel', () => {
 		it('should only attempt to load package once', async () => {
 			// Get a fresh import to ensure clean state
 			jest.resetModules();
-			const { ClaudeCodeLanguageModel: TestModel } = await import('../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js');
-			
+			const { ClaudeCodeLanguageModel: TestModel } = await import(
+				'../../../../../src/ai-providers/custom-sdk/claude-code/language-model.js'
+			);
+
 			const model = new TestModel({
 				id: 'opus',
 				settings: {}
 			});
 
 			// First call should throw
-			await expect(model.doGenerate({
-				prompt: [{ role: 'user', content: 'test' }],
-				mode: { type: 'regular' }
-			})).rejects.toThrow("Claude Code SDK is not installed");
+			await expect(
+				model.doGenerate({
+					prompt: [{ role: 'user', content: 'test' }],
+					mode: { type: 'regular' }
+				})
+			).rejects.toThrow('Claude Code SDK is not installed');
 
 			// Second call should also throw without trying to load again
-			await expect(model.doGenerate({
-				prompt: [{ role: 'user', content: 'test' }],
-				mode: { type: 'regular' }
-			})).rejects.toThrow("Claude Code SDK is not installed");
+			await expect(
+				model.doGenerate({
+					prompt: [{ role: 'user', content: 'test' }],
+					mode: { type: 'regular' }
+				})
+			).rejects.toThrow('Claude Code SDK is not installed');
 		});
 	});
 
@@ -163,7 +199,8 @@ describe('ClaudeCodeLanguageModel', () => {
 			expect(warnings[0]).toEqual({
 				type: 'unsupported-setting',
 				setting: 'temperature',
-				details: 'Claude Code CLI does not support the temperature parameter. It will be ignored.'
+				details:
+					'Claude Code CLI does not support the temperature parameter. It will be ignored.'
 			});
 		});
 
