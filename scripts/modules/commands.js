@@ -3405,6 +3405,10 @@ ${result.result}
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
 		)
 		.option(
+			'--claude-code',
+			'Allow setting a Claude Code model ID (use with --set-*)'
+		)
+		.option(
 			'--azure',
 			'Allow setting a custom Azure OpenAI model ID (use with --set-*) '
 		)
@@ -3423,6 +3427,7 @@ Examples:
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main sonnet --claude-code           # Set Claude Code model for main role
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --setup                            # Run interactive setup`
@@ -3437,12 +3442,13 @@ Examples:
 			const providerFlags = [
 				options.openrouter,
 				options.ollama,
-				options.bedrock
+				options.bedrock,
+				options.claudeCode
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3484,7 +3490,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3506,7 +3514,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3530,7 +3540,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
