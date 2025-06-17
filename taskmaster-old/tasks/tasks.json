@@ -1,0 +1,224 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Databricks Python Notebook Environment",
+        "description": "Create and configure a Databricks notebook environment that can be shared with the Product team for TinyTroupe simulations.",
+        "details": "- Create a basic Databricks notebook template.\n- Configure Python environment with necessary dependencies.\n- Add authentication and access controls for sharing with the Product team.\n- Document the setup process for future reference.",
+        "status": "done",
+        "priority": "high",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "subtasks": [
+          {
+            "id": "1.1",
+            "title": "Create Databricks Workspace",
+            "description": "Set up a new Databricks workspace or configure an existing one for TinyTroupe simulations.",
+            "details": "- Create a new Databricks workspace if needed\n- Configure workspace settings for optimal performance\n- Ensure proper access controls for team members",
+            "status": "done",
+            "created": "2025-06-16T12:05:00.000Z",
+            "modified": "2025-06-16T12:05:00.000Z"
+          },
+          {
+            "id": "1.2",
+            "title": "Set Up Python Environment",
+            "description": "Configure the Python environment with all necessary dependencies for TinyTroupe.",
+            "details": "- Install required Python packages\n- Configure environment variables\n- Set up connection to TinyTroupe library\n- Test environment with basic imports",
+            "status": "done",
+            "created": "2025-06-16T12:05:00.000Z",
+            "modified": "2025-06-16T12:05:00.000Z"
+          },
+          {
+            "id": "1.3",
+            "title": "Create Template Notebook",
+            "description": "Develop a template notebook that serves as the foundation for running TinyTroupe simulations.",
+            "details": "- Create notebook structure with sections for setup, simulation, and results\n- Add helper functions for common operations\n- Include documentation within the notebook\n- Test the notebook with a simple scenario",
+            "status": "done",
+            "created": "2025-06-16T12:05:00.000Z",
+            "modified": "2025-06-16T12:05:00.000Z"
+          },
+          {
+            "id": "1.4",
+            "title": "Configure Sharing and Collaboration",
+            "description": "Set up sharing and collaboration features to make the notebook accessible to the Product team.",
+            "details": "- Configure access permissions for team members\n- Set up version control for notebooks\n- Enable collaboration features\n- Test sharing with a team member",
+            "status": "done",
+            "created": "2025-06-16T12:05:00.000Z",
+            "modified": "2025-06-16T12:05:00.000Z"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement TinyTroupe Integration for Databricks",
+        "description": "Create the necessary code to integrate TinyTroupe library within the Databricks environment.",
+        "details": "- Import and initialize TinyTroupe library in Databricks.\n- Set up configuration files for TinyTroupe integration.\n- Test basic TinyTroupe functionalities in Databricks environment.\n- Document any integration challenges and solutions.",
+        "status": "done",
+        "priority": "high",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          1
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Prepare TinyTroupe Notebook Templates",
+        "description": "Create notebook templates with example TinyTroupe prompts that Product team can directly edit and run.",
+        "details": "- Provide clear notebook structure with documentation.\n- Include example TinyTroupe prompts that can be easily modified.\n- Add guidance comments within code cells.\n- Create templates for different simulation scenarios.",
+        "status": "done",
+        "priority": "medium",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T14:30:00.000Z",
+        "dependencies": [
+          2
+        ],
+        "subtasks": [
+          {
+            "id": "3.1",
+            "title": "Create Basic TinyTroupe Notebook Structure",
+            "description": "Develop a well-organized notebook structure with clear sections for documentation, setup, prompt editing, and results.",
+            "details": "- Create markdown cells with clear instructions\n- Add code cells for imports and initialization\n- Include well-commented prompt cells\n- Add results processing and visualization sections\n- Document workflow through the notebook",
+            "status": "done",
+            "created": "2025-06-16T14:30:00.000Z",
+            "modified": "2025-06-16T14:30:00.000Z"
+          },
+          {
+            "id": "3.2",
+            "title": "Develop Example Prompts for Different Use Cases",
+            "description": "Create example TinyTroupe prompts for various simulation scenarios that product team can modify.",
+            "details": "- Create advertisement evaluation prompt examples\n- Develop product testing prompt examples\n- Add focus group simulation prompt examples\n- Include market research prompt examples\n- Create brainstorming session prompt examples",
+            "status": "done",
+            "created": "2025-06-16T14:30:00.000Z",
+            "modified": "2025-06-16T14:30:00.000Z"
+          },
+          {
+            "id": "3.3",
+            "title": "Add Inline Documentation and Tips",
+            "description": "Provide extensive inline comments and tips to guide the product team in writing effective TinyTroupe prompts.",
+            "details": "- Add documentation on prompt structure\n- Include tips for effective prompt engineering\n- Provide warnings about common pitfalls\n- Add examples of good vs. poor prompts\n- Include troubleshooting guidance",
+            "status": "done",
+            "created": "2025-06-16T14:30:00.000Z",
+            "modified": "2025-06-16T14:30:00.000Z"
+          },
+          {
+            "id": "3.4",
+            "title": "Create Helper Functions for Prompt Execution",
+            "description": "Develop simple helper functions to make prompt execution and results handling easier for the product team.",
+            "details": "- Create function for running TinyTroupe prompts\n- Develop error handling utilities\n- Add functions for formatting and displaying results\n- Include functions for saving results\n- Create simple debugging helpers",
+            "status": "done",
+            "created": "2025-06-16T14:30:00.000Z",
+            "modified": "2025-06-16T14:30:00.000Z"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Document Databricks Image Upload Feature Usage",
+        "description": "Create documentation and examples for using Databricks' built-in image upload feature with TinyTroupe simulations.",
+        "details": "- Document how to use Databricks' built-in image upload feature.\n- Create examples of associating uploaded images with TinyTroupe simulations.\n- Add helper functions for working with uploaded images.\n- Demonstrate proper image referencing in notebooks.",
+        "status": "pending",
+        "priority": "medium",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T15:00:00.000Z",
+        "dependencies": [
+          2
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Develop Visual Reporting Feature",
+        "description": "Create visual reports for simulation outputs that can be viewed within Databricks notebooks.",
+        "details": "- Design report templates and layouts.\n- Implement data processing for simulation outputs.\n- Create visualization components (charts, graphs, tables).\n- Ensure reports are interactive and exportable.",
+        "status": "pending",
+        "priority": "medium",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          3,
+          4
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Develop Example Simulation Scenarios",
+        "description": "Create example scenarios showcasing TinyTroupe capabilities for different use cases mentioned in the PRD.",
+        "details": "- Develop advertisement evaluation scenario.\n- Implement software testing simulation example.\n- Create synthetic data generation example.\n- Build product feedback simulation.\n- Design brainstorming simulation for focus groups.",
+        "status": "pending",
+        "priority": "medium",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          5
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Documentation and User Guide",
+        "description": "Create comprehensive documentation and user guide for the Product team.",
+        "details": "- Write setup instructions for new users.\n- Create tutorials for common use cases.\n- Document all features and functionalities.\n- Provide troubleshooting guide and FAQs.",
+        "status": "pending",
+        "priority": "low",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          6
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Testing and Quality Assurance",
+        "description": "Perform thorough testing of the entire simulation environment.",
+        "details": "- Test all features for functionality.\n- Validate integration with Databricks.\n- Perform load testing with complex scenarios.\n- Verify security measures for data privacy.",
+        "status": "pending",
+        "priority": "high",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          6
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Training Materials for Product Team",
+        "description": "Develop training materials to help the Product team understand and use the simulation environment effectively.",
+        "details": "- Create video tutorials.\n- Develop hands-on exercises.\n- Write step-by-step guides for common scenarios.\n- Prepare Q&A session materials.",
+        "status": "pending",
+        "priority": "low",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          7
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Performance Optimization",
+        "description": "Optimize the simulation environment for better performance within Databricks.",
+        "details": "- Identify and address performance bottlenecks.\n- Implement caching mechanisms where appropriate.\n- Optimize code for parallel execution.\n- Reduce resource utilization for large simulations.",
+        "status": "pending",
+        "priority": "medium",
+        "created": "2025-06-16T12:00:00.000Z",
+        "modified": "2025-06-16T12:00:00.000Z",
+        "dependencies": [
+          8
+        ]
+      }
+    ],
+    "metadata": {
+      "version": "0.17.0",
+      "created": "2025-06-16T12:00:00.000Z",
+      "modified": "2025-06-16T12:00:00.000Z",
+      "tags": {
+        "master": {
+          "description": "Main task list for TinyTroupe Databricks Integration",
+          "created": "2025-06-16T12:00:00.000Z"
+        }
+      },
+      "currentTag": "master",
+      "description": "Tasks for master context",
+      "updated": "2025-06-16T10:00:53.753Z"
+    }
+  }
+}

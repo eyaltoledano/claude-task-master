@@ -1,0 +1,56 @@
+# Task ID: 3
+# Title: Prepare TinyTroupe Notebook Templates
+# Status: done
+# Dependencies: 2
+# Priority: medium
+# Description: Create notebook templates with example TinyTroupe prompts that Product team can directly edit and run.
+# Details:
+- Provide clear notebook structure with documentation.
+- Include example TinyTroupe prompts that can be easily modified.
+- Add guidance comments within code cells.
+- Create templates for different simulation scenarios.
+
+# Test Strategy:
+
+
+# Subtasks:
+## 3.1. Create Basic TinyTroupe Notebook Structure [done]
+### Dependencies: None
+### Description: Develop a well-organized notebook structure with clear sections for documentation, setup, prompt editing, and results.
+### Details:
+- Create markdown cells with clear instructions
+- Add code cells for imports and initialization
+- Include well-commented prompt cells
+- Add results processing and visualization sections
+- Document workflow through the notebook
+
+## 3.2. Develop Example Prompts for Different Use Cases [done]
+### Dependencies: None
+### Description: Create example TinyTroupe prompts for various simulation scenarios that product team can modify.
+### Details:
+- Create advertisement evaluation prompt examples
+- Develop product testing prompt examples
+- Add focus group simulation prompt examples
+- Include market research prompt examples
+- Create brainstorming session prompt examples
+
+## 3.3. Add Inline Documentation and Tips [done]
+### Dependencies: None
+### Description: Provide extensive inline comments and tips to guide the product team in writing effective TinyTroupe prompts.
+### Details:
+- Add documentation on prompt structure
+- Include tips for effective prompt engineering
+- Provide warnings about common pitfalls
+- Add examples of good vs. poor prompts
+- Include troubleshooting guidance
+
+## 3.4. Create Helper Functions for Prompt Execution [done]
+### Dependencies: None
+### Description: Develop simple helper functions to make prompt execution and results handling easier for the product team.
+### Details:
+- Create function for running TinyTroupe prompts
+- Develop error handling utilities
+- Add functions for formatting and displaying results
+- Include functions for saving results
+- Create simple debugging helpers
+
