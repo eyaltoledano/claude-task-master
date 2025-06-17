@@ -770,7 +770,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				},
 				complexityAnalysis: finalComplexityAnalysis
 			};
-			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			reportLog(`Writing complexity report to ${outputPath}...`, 'debug');
 			fs.writeFileSync(outputPath, JSON.stringify(report, null, '\t'), 'utf8');
 
 			reportLog(
