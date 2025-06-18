@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.17.1
+
+### Patch Changes
+
+- [#789](https://github.com/eyaltoledano/claude-task-master/pull/789) [`8cde6c2`](https://github.com/eyaltoledano/claude-task-master/commit/8cde6c27087f401d085fe267091ae75334309d96) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix contextGatherer bug when adding a task `Cannot read properties of undefined (reading 'forEach')`
+
 ## 0.17.0
 
 ### Minor Changes
