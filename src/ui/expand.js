@@ -1,7 +1,12 @@
 import { formatElapsedTime } from '../utils/format.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { getMainModelId, getMainTemperature, getResearchModelId, getResearchTemperature } from '../../scripts/modules/config-manager.js';
+import {
+	getMainModelId,
+	getMainTemperature,
+	getResearchModelId,
+	getResearchTemperature
+} from '../../scripts/modules/config-manager.js';
 
 /**
  * expand.js
@@ -48,11 +53,11 @@ function displayExpandStart({
 		: '🚀 Expanding Task';
 
 	// Get actual model and temperature values from config
-	const actualModel = research 
-		? getResearchModelId() || model 
+	const actualModel = research
+		? getResearchModelId() || model
 		: getMainModelId() || model;
-	const actualTemperature = research 
-		? getResearchTemperature() || temperature 
+	const actualTemperature = research
+		? getResearchTemperature() || temperature
 		: getMainTemperature() || temperature;
 
 	// Create the model line with research indicator
@@ -60,7 +65,7 @@ function displayExpandStart({
 	if (research) {
 		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
 	}
-	
+
 	// Add tag to the model line if provided
 	if (tagName) {
 		modelLine += `\n🏷️ tag: ${tagName}`;
