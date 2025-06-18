@@ -22,6 +22,7 @@ import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
+import { ExpandTracker } from '../../../src/progress/expand-tracker.js';
 
 // --- Zod Schemas (Keep from previous step) ---
 const subtaskSchema = z
@@ -409,6 +410,9 @@ function parseSubtasksFromText(
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
+ * @param {Object} [progressTracker] - Optional progress tracker object.
+ * @param {Function} [progressTracker.updateTaskProgress] - Function to update task progress.
+ * @param {Function} [progressTracker.reportProgress] - Function to report progress to the caller.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
  */
@@ -419,9 +423,10 @@ async function expandTask(
 	useResearch = false,
 	additionalContext = '',
 	context = {},
-	force = false
+	force = false,
+	progressTracker = null
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot } = context;
+	const { session, mcpLog, projectRoot: contextProjectRoot, reportProgress } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
@@ -443,6 +448,21 @@ async function expandTask(
 	const startTime = Date.now();
 
 	try {
+		// Report progress: Starting expansion
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'starting', 'Loading task data...');
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'starting',
+				message: 'Loading task data...',
+				progress: 0
+			});
+		}
+
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot);
@@ -484,6 +504,21 @@ async function expandTask(
 			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
 		);
 
+		// Report progress: Preparing expansion
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'preparing', 'Preparing expansion...');
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'preparing',
+				message: 'Preparing expansion...',
+				progress: 10
+			});
+		}
+
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
 		if (force && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
 			logger.info(
@@ -496,6 +531,21 @@ async function expandTask(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
+			// Report progress: Gathering context
+			if (progressTracker) {
+				progressTracker.updateTaskProgress(taskId, 'context', 'Gathering project context...');
+			}
+			if (reportProgress) {
+				reportProgress({
+					type: 'progress',
+					operation: 'expand-task',
+					taskId: taskId.toString(),
+					stage: 'context',
+					message: 'Gathering project context...',
+					progress: 20
+				});
+			}
+
 			const contextGatherer = new ContextGatherer(projectRoot);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
@@ -637,7 +687,23 @@ async function expandTask(
 		// --- AI Subtask Generation using generateTextService ---
 		let generatedSubtasks = [];
 		let loadingIndicator = null;
-		if (outputFormat === 'text') {
+		
+		// Report progress: Starting AI generation
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'generating', `Generating ${finalSubtaskCount} subtasks with AI...`);
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'generating',
+				message: `Generating ${finalSubtaskCount} subtasks with AI...`,
+				progress: 40
+			});
+		}
+
+		if (outputFormat === 'text' && !progressTracker) {
 			loadingIndicator = startLoadingIndicator(
 				`Generating ${finalSubtaskCount} subtasks...\n`
 			);
@@ -661,6 +727,21 @@ async function expandTask(
 			});
 			responseText = aiServiceResponse.mainResult;
 
+			// Report progress: Parsing response
+			if (progressTracker) {
+				progressTracker.updateTaskProgress(taskId, 'parsing', 'Parsing AI response...');
+			}
+			if (reportProgress) {
+				reportProgress({
+					type: 'progress',
+					operation: 'expand-task',
+					taskId: taskId.toString(),
+					stage: 'parsing',
+					message: 'Parsing AI response...',
+					progress: 70
+				});
+			}
+
 			// Parse Subtasks
 			generatedSubtasks = parseSubtasksFromText(
 				responseText,
@@ -674,6 +755,23 @@ async function expandTask(
 			);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+			
+			// Report error progress
+			if (progressTracker) {
+				progressTracker.updateTaskProgress(taskId, 'error', `Error: ${error.message}`);
+				progressTracker.incrementErrors();
+			}
+			if (reportProgress) {
+				reportProgress({
+					type: 'error',
+					operation: 'expand-task',
+					taskId: taskId.toString(),
+					stage: 'error',
+					message: `Error: ${error.message}`,
+					progress: 0
+				});
+			}
+			
 			logger.error(
 				`Error during AI call or parsing for task ${taskId}: ${error.message}`, // Added task ID context
 				'error'
@@ -691,6 +789,21 @@ async function expandTask(
 		}
 
 		// --- Task Update & File Writing ---
+		// Report progress: Saving changes
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'saving', 'Saving subtasks to file...');
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'saving',
+				message: 'Saving subtasks to file...',
+				progress: 90
+			});
+		}
+
 		// Ensure task.subtasks is an array before appending
 		if (!Array.isArray(task.subtasks)) {
 			task.subtasks = [];
@@ -702,6 +815,27 @@ async function expandTask(
 		data.tasks[taskIndex] = task; // Assign the modified task back
 		writeJSON(tasksPath, data);
 		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+
+		// Report progress: Completed
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'completed', `Generated ${generatedSubtasks.length} subtasks successfully`);
+			progressTracker.incrementCompleted();
+			
+			// Update telemetry if available
+			if (aiServiceResponse?.telemetryData) {
+				progressTracker.addTelemetryData(aiServiceResponse.telemetryData);
+			}
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'completed',
+				message: `Generated ${generatedSubtasks.length} subtasks successfully`,
+				progress: 100
+			});
+		}
 
 		// Display AI Usage Summary for CLI
 		if (
@@ -719,6 +853,22 @@ async function expandTask(
 			tagInfo: aiServiceResponse?.tagInfo
 		};
 	} catch (error) {
+		// Report error progress for top-level errors
+		if (progressTracker) {
+			progressTracker.updateTaskProgress(taskId, 'error', `Error: ${error.message}`);
+			progressTracker.incrementErrors();
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'error',
+				operation: 'expand-task',
+				taskId: taskId.toString(),
+				stage: 'error',
+				message: `Error: ${error.message}`,
+				progress: 0
+			});
+		}
+		
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
 		if (outputFormat === 'text' && getDebugFlag(session)) {

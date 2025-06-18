@@ -14,6 +14,7 @@ import {
 import path from 'path';
 import fs from 'fs';
 import { createLogWrapper } from '../../tools/utils.js';
+import { ExpandTracker } from '../../../../src/progress/expand-tracker.js';
 
 /**
  * Direct function wrapper for expanding a task into subtasks with error handling.
@@ -26,6 +27,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.prompt] - Additional context to guide subtask generation.
  * @param {boolean} [args.force] - Force expansion even if subtasks exist.
  * @param {string} [args.projectRoot] - Project root directory.
+ * @param {Function} [args.reportProgress] - Optional progress reporting callback for MCP.
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @param {Object} [context.session] - MCP Session object
@@ -33,8 +35,8 @@ import { createLogWrapper } from '../../tools/utils.js';
  */
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, num, research, prompt, force, projectRoot } = args;
+	// Destructure expected args, including projectRoot and reportProgress
+	const { tasksJsonPath, id, num, research, prompt, force, projectRoot, reportProgress } = args;
 
 	// Log session root data for debugging
 	log.info(
@@ -175,6 +177,17 @@ export async function expandTaskDirect(args, log, context = {}) {
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
 
+		// Create progress tracker for streaming mode if reportProgress is available
+		let progressTracker = null;
+		if (reportProgress) {
+			progressTracker = new ExpandTracker({
+				expandType: 'single',
+				numTasks: 1,
+				taskId: taskId.toString()
+			});
+			progressTracker.start();
+		}
+
 		let wasSilent; // Declare wasSilent outside the try block
 		// Process the request
 		try {
@@ -194,9 +207,11 @@ export async function expandTaskDirect(args, log, context = {}) {
 					session,
 					projectRoot,
 					commandName: 'expand-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					reportProgress
 				},
-				forceFlag
+				forceFlag,
+				progressTracker
 			);
 
 			// Restore normal logging
@@ -210,6 +225,11 @@ export async function expandTaskDirect(args, log, context = {}) {
 			const subtasksAdded = updatedTask.subtasks
 				? updatedTask.subtasks.length - subtasksCountBefore
 				: 0;
+
+			// Finalize progress tracker
+			if (progressTracker) {
+				progressTracker.stop();
+			}
 
 			// Return the result, including telemetryData
 			log.info(

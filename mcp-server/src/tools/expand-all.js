@@ -59,11 +59,18 @@ export function registerExpandAllTool(server) {
 					'Absolute path to the project root directory (derived from session if possible)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(
 					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 				);
+
+				// Validate that reportProgress is available for long-running operations
+				if (typeof reportProgress !== 'function') {
+					log.warn(
+						'reportProgress not available - operation will run without progress updates'
+					);
+				}
 
 				let tasksJsonPath;
 				try {
@@ -86,7 +93,8 @@ export function registerExpandAllTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						reportProgress: typeof reportProgress === 'function' ? reportProgress : undefined
 					},
 					log,
 					{ session }

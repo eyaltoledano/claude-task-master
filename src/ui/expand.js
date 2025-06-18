@@ -47,9 +47,6 @@ function displayExpandStart({
 		? '🚀 Expanding All Pending Tasks'
 		: '🚀 Expanding Task';
 
-	// Create the tag line if provided
-	let tagLine = tagName ? `\n🏷️ tag: ${tagName}` : '';
-
 	// Get actual model and temperature values from config
 	const actualModel = research 
 		? getResearchModelId() || model 
@@ -66,7 +63,7 @@ function displayExpandStart({
 	
 	// Add tag to the model line if provided
 	if (tagName) {
-		modelLine += tagLine;
+		modelLine += `\n🏷️ tag: ${tagName}`;
 	}
 
 	// Build the main content based on expansion type

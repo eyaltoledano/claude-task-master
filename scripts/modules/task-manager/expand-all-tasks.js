@@ -13,6 +13,7 @@ import { getDebugFlag } from '../config-manager.js';
 import { aggregateTelemetry } from '../utils.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import { ExpandTracker } from '../../../src/progress/expand-tracker.js';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.
@@ -25,6 +26,7 @@ import boxen from 'boxen';
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
+ * @param {Object} [progressTracker] - Optional progress tracker object.
  * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
  */
 async function expandAllTasks(
@@ -34,9 +36,10 @@ async function expandAllTasks(
 	additionalContext = '',
 	force = false, // Keep force here for the filter logic
 	context = {},
-	outputFormat = 'text' // Assume text default for CLI
+	outputFormat = 'text', // Assume text default for CLI
+	progressTracker = null
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, reportProgress } = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
 	const projectRoot = providedProjectRoot || findProjectRoot();
@@ -71,7 +74,21 @@ async function expandAllTasks(
 	const allTelemetryData = []; // Still collect individual data first
 	const startTime = Date.now();
 
-	if (!isMCPCall && outputFormat === 'text') {
+	// Report initial progress
+	if (progressTracker) {
+		progressTracker.updateOverallProgress('starting', 'Analyzing tasks for expansion...');
+	}
+	if (reportProgress) {
+		reportProgress({
+			type: 'progress',
+			operation: 'expand-all',
+			stage: 'starting',
+			message: 'Analyzing tasks for expansion...',
+			progress: 0
+		});
+	}
+
+	if (!isMCPCall && outputFormat === 'text' && !progressTracker) {
 		loadingIndicator = startLoadingIndicator(
 			'Analyzing tasks for expansion...'
 		);
@@ -96,6 +113,22 @@ async function expandAllTasks(
 
 		if (loadingIndicator) {
 			stopLoadingIndicator(loadingIndicator, 'Analysis complete.');
+		}
+
+		// Update progress tracker with task count
+		if (progressTracker) {
+			progressTracker.setTotalTasks(tasksToExpandCount);
+			progressTracker.updateOverallProgress('analyzing', `Found ${tasksToExpandCount} tasks to expand`);
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-all',
+				stage: 'analyzing',
+				message: `Found ${tasksToExpandCount} tasks to expand`,
+				progress: 10,
+				totalTasks: tasksToExpandCount
+			});
 		}
 
 		if (tasksToExpandCount === 0) {
@@ -130,10 +163,33 @@ async function expandAllTasks(
 		}
 
 		// Iterate over the already filtered tasks
-		for (const task of tasksToExpand) {
+		for (let i = 0; i < tasksToExpand.length; i++) {
+			const task = tasksToExpand[i];
+			const taskNumber = i + 1;
+			
+			// Update overall progress
+			if (progressTracker) {
+				progressTracker.updateOverallProgress(
+					'expanding', 
+					`Expanding task ${taskNumber}/${tasksToExpandCount}: ${task.title}`
+				);
+			}
+			if (reportProgress) {
+				const overallProgress = Math.round(((taskNumber - 1) / tasksToExpandCount) * 80) + 20; // 20-100%
+				reportProgress({
+					type: 'progress',
+					operation: 'expand-all',
+					stage: 'expanding',
+					message: `Expanding task ${taskNumber}/${tasksToExpandCount}: ${task.title}`,
+					progress: overallProgress,
+					currentTask: taskNumber,
+					totalTasks: tasksToExpandCount
+				});
+			}
+			
 			// Start indicator for individual task expansion in CLI mode
 			let taskIndicator = null;
-			if (!isMCPCall && outputFormat === 'text') {
+			if (!isMCPCall && outputFormat === 'text' && !progressTracker) {
 				taskIndicator = startLoadingIndicator(`Expanding task ${task.id}...`);
 			}
 
@@ -145,14 +201,21 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot }, // Pass the whole context object with projectRoot
-					force
+					{ ...context, projectRoot, reportProgress }, // Pass the whole context object with projectRoot and reportProgress
+					force,
+					progressTracker // Pass the progress tracker
 				);
 				expandedCount++;
 
 				// Collect individual telemetry data
 				if (result && result.telemetryData) {
 					allTelemetryData.push(result.telemetryData);
+				}
+
+				// Update progress tracker with task completion
+				if (progressTracker) {
+					const subtasksAdded = result.task?.subtasks?.length || 0;
+					progressTracker.addExpansionLine(task.id, task.title, subtasksAdded, 'success');
 				}
 
 				if (taskIndicator) {
@@ -168,6 +231,12 @@ async function expandAllTasks(
 						false
 					);
 				}
+
+				// Update progress tracker with error
+				if (progressTracker) {
+					progressTracker.addExpansionLine(task.id, task.title, 0, 'error');
+				}
+
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
 				// Continue to the next task
 			}
@@ -177,6 +246,22 @@ async function expandAllTasks(
 		logger.info(
 			`Expansion complete: ${expandedCount} expanded, ${failedCount} failed.`
 		);
+
+		// Report completion
+		if (progressTracker) {
+			progressTracker.updateOverallProgress('completed', `Expansion complete: ${expandedCount} expanded, ${failedCount} failed`);
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'progress',
+				operation: 'expand-all',
+				stage: 'completed',
+				message: `Expansion complete: ${expandedCount} expanded, ${failedCount} failed`,
+				progress: 100,
+				expandedCount,
+				failedCount
+			});
+		}
 
 		// Aggregate the collected telemetry data
 		const aggregatedTelemetryData = aggregateTelemetry(
@@ -224,6 +309,20 @@ async function expandAllTasks(
 			telemetryData: aggregatedTelemetryData
 		};
 	} catch (error) {
+		// Report error
+		if (progressTracker) {
+			progressTracker.updateOverallProgress('error', `Error: ${error.message}`);
+		}
+		if (reportProgress) {
+			reportProgress({
+				type: 'error',
+				operation: 'expand-all',
+				stage: 'error',
+				message: `Error: ${error.message}`,
+				progress: 0
+			});
+		}
+		
 		if (loadingIndicator)
 			stopLoadingIndicator(loadingIndicator, 'Error.', false);
 		logger.error(`Error during expand all operation: ${error.message}`);

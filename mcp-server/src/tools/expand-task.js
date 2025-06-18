@@ -47,9 +47,16 @@ export function registerExpandTaskTool(server) {
 				.default(false)
 				.describe('Force expansion even if subtasks exist')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session, reportProgress }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
+
+				// Validate that reportProgress is available for long-running operations
+				if (typeof reportProgress !== 'function') {
+					log.warn(
+						'reportProgress not available - operation will run without progress updates'
+					);
+				}
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -73,7 +80,8 @@ export function registerExpandTaskTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						reportProgress: typeof reportProgress === 'function' ? reportProgress : undefined
 					},
 					log,
 					{ session }

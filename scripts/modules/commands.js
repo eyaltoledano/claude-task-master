@@ -1475,6 +1475,17 @@ function registerCommands(programInstance) {
 			if (options.all) {
 				// --- Handle expand --all ---
 				console.log(chalk.blue('Expanding all pending tasks...'));
+				
+				// Create progress tracker for CLI mode
+				const { ExpandTracker } = await import('../../src/progress/expand-tracker.js');
+				const progressTracker = new ExpandTracker({
+					expandType: 'all',
+					numTasks: 0 // Will be set by the core function
+				});
+				
+				// Start progress tracking in CLI mode
+				progressTracker.start();
+				
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
@@ -1483,10 +1494,15 @@ function registerCommands(programInstance) {
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
 						options.force, // Pass force flag
-						{ projectRoot, tag } // Pass context with projectRoot and tag
-						// outputFormat defaults to 'text' in expandAllTasks for CLI
+						{ projectRoot, tag }, // Pass context with projectRoot and tag
+						'text', // Explicitly set output format for CLI
+						progressTracker // Pass progress tracker
 					);
+					
+					// Finalize progress tracking
+					progressTracker.stop();
 				} catch (error) {
+					progressTracker.stop();
 					console.error(
 						chalk.red(`Error expanding all tasks: ${error.message}`)
 					);
@@ -1502,6 +1518,18 @@ function registerCommands(programInstance) {
 				}
 
 				console.log(chalk.blue(`Expanding task ${options.id}...`));
+				
+				// Create progress tracker for CLI mode
+				const { ExpandTracker } = await import('../../src/progress/expand-tracker.js');
+				const progressTracker = new ExpandTracker({
+					expandType: 'single',
+					numTasks: 1,
+					taskId: options.id.toString()
+				});
+				
+				// Start progress tracking in CLI mode
+				progressTracker.start();
+				
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
@@ -1511,10 +1539,15 @@ function registerCommands(programInstance) {
 						options.research,
 						options.prompt,
 						{ projectRoot, tag }, // Pass context with projectRoot and tag
-						options.force // Pass the force flag down
+						options.force, // Pass the force flag down
+						progressTracker // Pass progress tracker
 					);
+					
+					// Finalize progress tracking
+					progressTracker.stop();
 					// expandTask logs its own success/failure for single task
 				} catch (error) {
+					progressTracker.stop();
 					console.error(
 						chalk.red(`Error expanding task ${options.id}: ${error.message}`)
 					);
