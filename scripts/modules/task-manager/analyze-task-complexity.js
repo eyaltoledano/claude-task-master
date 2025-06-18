@@ -563,7 +563,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 					totalTasks: originalTaskCount,
 					analysisCount: finalComplexityAnalysis.length,
 					thresholdScore: thresholdScore,
-					projectName: getProjectName(session),
+					projectName: getProjectName(null),
 					usedResearch: useResearch
 				},
 				complexityAnalysis: finalComplexityAnalysis

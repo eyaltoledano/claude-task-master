@@ -44,7 +44,8 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	MCPAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -58,7 +59,8 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	mcp: new MCPAIProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -236,20 +238,28 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		mcp: null // MCP uses session-based communication, no API key needed
 	};
 
-	const envVarName = keyMap[providerName];
-	if (!envVarName) {
+	// Check if provider exists in keyMap
+	if (!(providerName in keyMap)) {
 		throw new Error(
-			`Unknown provider '${providerName}' for API key resolution.`
+			`Unknown provider '${providerName}' for API key resolution. Available providers: ${Object.keys(keyMap).join(', ')}`
 		);
+	}
+
+	const envVarName = keyMap[providerName];
+	
+	// If envVarName is null (like for MCP), return null directly
+	if (envVarName === null) {
+		return null;
 	}
 
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
-	// Special handling for providers that can use alternative auth
-	if (providerName === 'ollama' || providerName === 'bedrock') {
+	// Special handling for providers that can use alternative auth or no API key
+	if (providerName === 'ollama' || providerName === 'bedrock' || providerName === 'mcp') {
 		return apiKey || null;
 	}
 
@@ -404,14 +414,14 @@ async function _unifiedServiceRunner(serviceType, params) {
 			log('info', `New AI service call with role: ${currentRole}`);
 
 			if (currentRole === 'main') {
-				providerName = getMainProvider(effectiveProjectRoot);
-				modelId = getMainModelId(effectiveProjectRoot);
+				providerName = getMainProvider(effectiveProjectRoot, session);
+				modelId = getMainModelId(effectiveProjectRoot, session);
 			} else if (currentRole === 'research') {
-				providerName = getResearchProvider(effectiveProjectRoot);
-				modelId = getResearchModelId(effectiveProjectRoot);
+				providerName = getResearchProvider(effectiveProjectRoot, session);
+				modelId = getResearchModelId(effectiveProjectRoot, session);
 			} else if (currentRole === 'fallback') {
-				providerName = getFallbackProvider(effectiveProjectRoot);
-				modelId = getFallbackModelId(effectiveProjectRoot);
+				providerName = getFallbackProvider(effectiveProjectRoot, session);
+				modelId = getFallbackModelId(effectiveProjectRoot, session);
 			} else {
 				log(
 					'error',
@@ -449,7 +459,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (providerName?.toLowerCase() !== 'ollama' && providerName?.toLowerCase() !== 'mcp') {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -482,12 +492,18 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Get AI parameters for the current role
-			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
-			apiKey = _resolveApiKey(
-				providerName?.toLowerCase(),
-				session,
-				effectiveProjectRoot
-			);
+			roleParams = getParametersForRole(currentRole, effectiveProjectRoot, session);
+			
+			// Only resolve API key for providers that need it
+			if (providerName?.toLowerCase() === 'mcp') {
+				apiKey = null; // MCP uses session-based communication
+			} else {
+				apiKey = _resolveApiKey(
+					providerName?.toLowerCase(),
+					session,
+					effectiveProjectRoot
+				);
+			}
 
 			// Prepare provider-specific configuration
 			let providerSpecificParams = {};
@@ -529,6 +545,24 @@ async function _unifiedServiceRunner(serviceType, params) {
 				log(
 					'debug',
 					`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
+				);
+			}
+
+			// Handle MCP specific configuration
+			if (providerName?.toLowerCase() === 'mcp') {
+				// MCP providers need session context instead of API keys
+				if (!session) {
+					throw new Error('MCP provider requires session context');
+				}
+
+				// Pass the FastMCPSession directly - it already has clientCapabilities.sampling
+				providerSpecificParams = {
+					session: session
+				};
+
+				log(
+					'debug',
+					`Using MCP configuration with session sampling capability: ${session.clientCapabilities?.sampling ? 'available' : 'unavailable'}`
 				);
 			}
 

@@ -167,6 +167,49 @@ node scripts/init.js
 
 ## Provider-Specific Configuration
 
+### MCP (Model Context Protocol) Provider
+
+The MCP provider enables Task Master to use MCP servers as AI providers. This is particularly useful when running Task Master within MCP-compatible development environments like Claude Desktop or Cursor.
+
+1. **Prerequisites**:
+   - An active MCP session with sampling capability
+   - MCP client with sampling support (e.g., Claude Desktop, VS Code)
+   - No API keys required (uses session-based authentication)
+
+2. **Configuration**:
+   ```json
+   {
+     "models": {
+       "main": {
+         "provider": "mcp",
+         "modelId": "mcp-sampling"
+       },
+       "research": {
+         "provider": "mcp",
+         "modelId": "mcp-sampling"
+       }
+     }
+   }
+   ```
+
+3. **Available Model IDs**:
+   - `mcp-sampling` - General text generation using MCP client sampling (supports all roles)
+
+4. **Usage Requirements**:
+   - Must be running in an MCP context (session must be available)
+   - Session must provide `clientCapabilities.sampling` capability
+   - Client must support `requestSampling()` method
+
+5. **Best Practices**:
+   - Always configure a non-MCP fallback provider
+   - Use `mcp` for main/research roles when in MCP environments
+   - Test sampling capability before production use
+
+6. **Troubleshooting**:
+   - "MCP provider requires session context" → Ensure running in MCP environment
+   - "MCP tool not available" → Check session capabilities and tool names
+   - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
+
 ### Google Vertex AI Configuration
 
 Google Vertex AI is Google Cloud's enterprise AI platform and requires specific configuration:

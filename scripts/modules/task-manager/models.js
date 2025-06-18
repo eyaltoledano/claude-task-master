@@ -173,13 +173,13 @@ async function getModelConfiguration(options = {}) {
 	}
 
 	try {
-		// Get current settings - these should use the config from the found path automatically
-		const mainProvider = getMainProvider(projectRoot);
-		const mainModelId = getMainModelId(projectRoot);
-		const researchProvider = getResearchProvider(projectRoot);
-		const researchModelId = getResearchModelId(projectRoot);
-		const fallbackProvider = getFallbackProvider(projectRoot);
-		const fallbackModelId = getFallbackModelId(projectRoot);
+		// Get current settings - pass null session for CLI usage
+		const mainProvider = getMainProvider(projectRoot, null);
+		const mainModelId = getMainModelId(projectRoot, null);
+		const researchProvider = getResearchProvider(projectRoot, null);
+		const researchModelId = getResearchModelId(projectRoot, null);
+		const fallbackProvider = getFallbackProvider(projectRoot, null);
+		const fallbackModelId = getFallbackModelId(projectRoot, null);
 
 		// Check API keys
 		const mainCliKeyOk = isApiKeySet(mainProvider, session, projectRoot);
@@ -316,10 +316,10 @@ async function getAvailableModelsList(options = {}) {
 			};
 		}
 
-		// Get currently used model IDs
-		const mainModelId = getMainModelId(projectRoot);
-		const researchModelId = getResearchModelId(projectRoot);
-		const fallbackModelId = getFallbackModelId(projectRoot);
+		// Get currently used model IDs - pass null session for CLI usage
+		const mainModelId = getMainModelId(projectRoot, null);
+		const researchModelId = getResearchModelId(projectRoot, null);
+		const fallbackModelId = getFallbackModelId(projectRoot, null);
 
 		// Filter out placeholder models and active models
 		const activeIds = [mainModelId, researchModelId, fallbackModelId].filter(

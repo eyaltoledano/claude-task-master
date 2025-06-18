@@ -1,0 +1,26 @@
+{
+  "servers": {
+    // "Task Master": {
+    //   "type": "stdio",
+    //   "command": "npx",
+    //   "args": ["-y", "task-master-ai"]
+    // },
+    "task-master-dev": {
+      "command": "node",
+      "args": ["mcp-server/server.js"],
+      "cwd": "/Users/oren.m/code/claude-task-master",
+      "env": {
+        "NODE_ENV": "development",
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE"
+      },
+      "dev": {
+        "watch": "**/*.ts",
+        "debug": {
+          "type": "node"
+        }
+      }
+    }
+  }
+}

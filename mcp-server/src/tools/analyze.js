@@ -116,6 +116,11 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				}
 
 				// 3. Call Direct Function - Pass projectRoot in first arg object
+				// Pass the FastMCPSession directly for MCP provider use
+				const enhancedContext = {
+					session: server.sessions[0] // Pass the FastMCPSession directly - it already has clientCapabilities.sampling
+				};
+
 				const result = await analyzeTaskComplexityDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -128,7 +133,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						to: args.to
 					},
 					log,
-					{ session }
+					enhancedContext
 				);
 
 				// 4. Handle Result
