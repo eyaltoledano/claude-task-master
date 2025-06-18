@@ -8,7 +8,6 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { ExpandTracker } from '../../../../src/progress/expand-tracker.js';
 
 /**
  * Expand all pending tasks with subtasks (Direct Function Wrapper)
@@ -19,15 +18,14 @@ import { ExpandTracker } from '../../../../src/progress/expand-tracker.js';
  * @param {string} [args.prompt] - Additional context to guide subtask generation
  * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
  * @param {string} [args.projectRoot] - Project root path.
- * @param {Function} [args.reportProgress] - Optional progress reporting callback for MCP.
  * @param {Object} log - Logger object from FastMCP
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function expandAllTasksDirect(args, log, context = {}) {
-	const { session } = context; // Extract session
-	// Destructure expected args, including projectRoot and reportProgress
-	const { tasksJsonPath, num, research, prompt, force, projectRoot, reportProgress } = args;
+	const { session, reportProgress } = context; // Extract session and reportProgress
+	// Destructure expected args, including projectRoot
+	const { tasksJsonPath, num, research, prompt, force, projectRoot } = args;
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
@@ -43,16 +41,6 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		};
 	}
 
-	// Create progress tracker for streaming mode if reportProgress is available
-	let progressTracker = null;
-	if (reportProgress) {
-		progressTracker = new ExpandTracker({
-			expandType: 'all',
-			numTasks: 0 // Will be set by the core function
-		});
-		progressTracker.start();
-	}
-
 	enableSilentMode(); // Enable silent mode for the core function call
 	try {
 		log.info(
@@ -65,22 +53,23 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
 
-		// Call the core function, passing options and the context object { session, mcpLog, projectRoot }
+		// Call the core function, passing options and the context object { session, mcpLog, projectRoot, reportProgress }
 		const result = await expandAllTasks(
 			tasksJsonPath,
 			numSubtasks,
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot, reportProgress },
-			'json',
-			progressTracker
+			{
+				session,
+				mcpLog,
+				projectRoot,
+				reportProgress,
+				commandName: 'expand-all',
+				outputType: 'mcp'
+			},
+			'json'
 		);
-
-		// Finalize progress tracker
-		if (progressTracker) {
-			progressTracker.stop();
-		}
 
 		// Core function now returns a summary object including the *aggregated* telemetryData
 		return {

@@ -59,65 +59,72 @@ export function registerExpandAllTool(server) {
 					'Absolute path to the project root directory (derived from session if possible)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session, reportProgress }) => {
-			try {
-				log.info(
-					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
-				);
-
-				// Validate that reportProgress is available for long-running operations
-				if (typeof reportProgress !== 'function') {
-					log.warn(
-						'reportProgress not available - operation will run without progress updates'
-					);
-				}
-
-				let tasksJsonPath;
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
+					log.info(
+						`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 					);
-					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
+
+					// Validate that reportProgress is available for long-running operations
+					if (typeof reportProgress !== 'function') {
+						log.warn(
+							'reportProgress not available - operation will run without progress updates'
+						);
+					}
+
+					let tasksJsonPath;
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+						log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
+					} catch (error) {
+						log.error(`Error finding tasks.json: ${error.message}`);
+						return createErrorResponse(
+							`Failed to find tasks.json: ${error.message}`
+						);
+					}
+
+					const result = await expandAllTasksDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							num: args.num,
+							research: args.research,
+							prompt: args.prompt,
+							force: args.force,
+							projectRoot: args.projectRoot
+						},
+						log,
+						{
+							session,
+							reportProgress:
+								typeof reportProgress === 'function'
+									? reportProgress
+									: undefined
+						}
+					);
+
+					return handleApiResult(
+						result,
+						log,
+						'Error expanding all tasks',
+						undefined,
+						args.projectRoot
+					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					log.error(
+						`Unexpected error in expand_all tool execute: ${error.message}`
+					);
+					if (error.stack) {
+						log.error(error.stack);
+					}
 					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
+						`An unexpected error occurred: ${error.message}`
 					);
 				}
-
-				const result = await expandAllTasksDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						num: args.num,
-						research: args.research,
-						prompt: args.prompt,
-						force: args.force,
-						projectRoot: args.projectRoot,
-						reportProgress: typeof reportProgress === 'function' ? reportProgress : undefined
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error expanding all tasks',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(
-					`Unexpected error in expand_all tool execute: ${error.message}`
-				);
-				if (error.stack) {
-					log.error(error.stack);
-				}
-				return createErrorResponse(
-					`An unexpected error occurred: ${error.message}`
-				);
 			}
-		})
+		)
 	});
 }
