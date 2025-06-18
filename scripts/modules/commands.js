@@ -11,7 +11,7 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
-import ora from 'ora'; // Import ora
+
 
 import {
 	log,
@@ -752,8 +752,6 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			let spinner;
-
 			try {
 				if (!inputFile) {
 					if (fs.existsSync(defaultPrdPath)) {
@@ -764,11 +762,6 @@ function registerCommands(programInstance) {
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
 
-						// Only show spinner if not in TTY mode (progress tracker will be used in TTY mode)
-						if (!process.stdout.isTTY) {
-							spinner = ora('Parsing PRD and generating tasks...\n').start();
-						}
-
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
 							append: useAppend, // Changed key from useAppend to append
 							force: useForce, // Changed key from useForce to force
@@ -777,9 +770,6 @@ function registerCommands(programInstance) {
 							tag: tag
 						});
 
-						if (spinner) {
-							spinner.succeed('Tasks generated successfully!');
-						}
 						return;
 					}
 
@@ -819,10 +809,7 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				// Only show spinner if not in TTY mode (progress tracker will be used in TTY mode)
-				if (!process.stdout.isTTY) {
-					spinner = ora('Parsing PRD and generating tasks...\n').start();
-				}
+
 
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
@@ -832,15 +819,8 @@ function registerCommands(programInstance) {
 					tag: tag
 				});
 
-				if (spinner) {
-					spinner.succeed('Tasks generated successfully!');
-				}
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error parsing PRD: ${error.message}`);
-				} else {
-					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
-				}
+				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
 			}
 		});
@@ -1475,17 +1455,6 @@ function registerCommands(programInstance) {
 			if (options.all) {
 				// --- Handle expand --all ---
 				console.log(chalk.blue('Expanding all pending tasks...'));
-				
-				// Create progress tracker for CLI mode
-				const { ExpandTracker } = await import('../../src/progress/expand-tracker.js');
-				const progressTracker = new ExpandTracker({
-					expandType: 'all',
-					numTasks: 0 // Will be set by the core function
-				});
-				
-				// Start progress tracking in CLI mode
-				progressTracker.start();
-				
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
@@ -1494,15 +1463,10 @@ function registerCommands(programInstance) {
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
 						options.force, // Pass force flag
-						{ projectRoot, tag }, // Pass context with projectRoot and tag
-						'text', // Explicitly set output format for CLI
-						progressTracker // Pass progress tracker
+						{ projectRoot, tag } // Pass context with projectRoot and tag
+						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
-					
-					// Finalize progress tracking
-					progressTracker.stop();
 				} catch (error) {
-					progressTracker.stop();
 					console.error(
 						chalk.red(`Error expanding all tasks: ${error.message}`)
 					);
@@ -1518,18 +1482,6 @@ function registerCommands(programInstance) {
 				}
 
 				console.log(chalk.blue(`Expanding task ${options.id}...`));
-				
-				// Create progress tracker for CLI mode
-				const { ExpandTracker } = await import('../../src/progress/expand-tracker.js');
-				const progressTracker = new ExpandTracker({
-					expandType: 'single',
-					numTasks: 1,
-					taskId: options.id.toString()
-				});
-				
-				// Start progress tracking in CLI mode
-				progressTracker.start();
-				
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
@@ -1539,15 +1491,10 @@ function registerCommands(programInstance) {
 						options.research,
 						options.prompt,
 						{ projectRoot, tag }, // Pass context with projectRoot and tag
-						options.force, // Pass the force flag down
-						progressTracker // Pass progress tracker
+						options.force // Pass the force flag down
 					);
-					
-					// Finalize progress tracking
-					progressTracker.stop();
 					// expandTask logs its own success/failure for single task
 				} catch (error) {
-					progressTracker.stop();
 					console.error(
 						chalk.red(`Error expanding task ${options.id}: ${error.message}`)
 					);
@@ -1643,14 +1590,7 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			let spinner;
-
 			try {
-				// Only show spinner if not in TTY mode (progress tracker will be used in TTY mode)
-				if (!process.stdout.isTTY) {
-					spinner = ora('Analyzing task complexity...\n').start();
-				}
-
 				// Update options with tag-aware output path and context
 				const updatedOptions = {
 					...options,
@@ -1661,17 +1601,10 @@ function registerCommands(programInstance) {
 
 				await analyzeTaskComplexity(updatedOptions);
 
-				if (spinner) {
-					spinner.succeed('Task complexity analysis completed successfully!');
-				}
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error analyzing task complexity: ${error.message}`);
-				} else {
-					console.error(
-						chalk.red(`Error analyzing task complexity: ${error.message}`)
-					);
-				}
+				console.error(
+					chalk.red(`Error analyzing task complexity: ${error.message}`)
+				);
 			}
 		});
 
