@@ -90,7 +90,7 @@ export class ExpandTracker {
 		this._updateTimeTokensBar();
 	}
 
-	addExpansionLine(taskId, title, subtasksGenerated = 0, status = 'success') {
+	addExpansionLine(taskId, title, subtasksGenerated = 0, status = 'success', telemetryData = null) {
 		if (!this.multibar || this.isFinished) return;
 
 		// Show header on first task for expand-all
@@ -103,7 +103,7 @@ export class ExpandTracker {
 				1,
 				{},
 				{
-					format: '------+-----+--------------------------------------------------',
+					format: '------+-----+-----+-----+-------+----------------------------------',
 					barsize: 1
 				}
 			);
@@ -115,7 +115,7 @@ export class ExpandTracker {
 				1,
 				{},
 				{
-					format: ' TASK | SUB | TITLE',
+					format: ' TASK | SUB |  IN | OUT |  COST | TITLE',
 					barsize: 1
 				}
 			);
@@ -127,7 +127,7 @@ export class ExpandTracker {
 				1,
 				{},
 				{
-					format: '------+-----+--------------------------------------------------',
+					format: '------+-----+-----+-----+-------+----------------------------------',
 					barsize: 1
 				}
 			);
@@ -142,6 +142,12 @@ export class ExpandTracker {
 			this.tasksSkipped++;
 		} else if (status === 'error') {
 			this.tasksWithErrors++;
+		}
+
+		// Add telemetry data if provided
+		if (telemetryData) {
+			this.tokensIn += telemetryData.inputTokens || 0;
+			this.tokensOut += telemetryData.outputTokens || 0;
 		}
 
 		// Track timing for better estimates
@@ -172,31 +178,43 @@ export class ExpandTracker {
 		// Create individual task display for expand-all
 		if (this.expandType === 'all') {
 			const displayTitle =
-				title && title.length > 50
-					? `${title.substring(0, 47)}...`
+				title && title.length > 34
+					? `${title.substring(0, 31)}...`
 					: title || `Task ${taskId}`;
 
 			const statusIndicator = this._getStatusIndicator(status);
 			const subtasksDisplay = subtasksGenerated.toString();
+
+			// Format telemetry data for display
+			const tokensIn = telemetryData?.inputTokens || 0;
+			const tokensOut = telemetryData?.outputTokens || 0;
+			const cost = telemetryData?.totalCost || 0;
 
 			// Store for final summary
 			this.expansionResults.push({
 				id: taskId.toString(),
 				subtasks: subtasksDisplay,
 				title: displayTitle,
-				status: status
+				status: status,
+				tokensIn: tokensIn,
+				tokensOut: tokensOut,
+				cost: cost
 			});
 
 			// Create individual task bar with monospace-style formatting
 			const taskIdCentered = taskId.toString().padStart(3, ' ').padEnd(4, ' ');
 			const subtasksPadded = `${subtasksDisplay} `.padStart(3, ' ');
+			const tokensInPadded = tokensIn.toString().padStart(3, ' ');
+			const tokensOutPadded = tokensOut.toString().padStart(3, ' ');
+			const costFormatted = cost > 0 ? `$${cost.toFixed(3)}` : '$0.000';
+			const costPadded = costFormatted.padStart(5, ' ');
 
 			const taskBar = this.multibar.create(
 				1,
 				1,
 				{},
 				{
-					format: ` ${taskIdCentered} | ${subtasksPadded} | {status} {title}`,
+					format: ` ${taskIdCentered} | ${subtasksPadded} | ${tokensInPadded} | ${tokensOutPadded} | ${costPadded} | {status} {title}`,
 					barsize: 1
 				}
 			);
@@ -211,7 +229,10 @@ export class ExpandTracker {
 				id: taskId.toString(),
 				subtasks: subtasksGenerated.toString(),
 				title: title,
-				status: status
+				status: status,
+				tokensIn: telemetryData?.inputTokens || 0,
+				tokensOut: telemetryData?.outputTokens || 0,
+				cost: telemetryData?.totalCost || 0
 			});
 		}
 

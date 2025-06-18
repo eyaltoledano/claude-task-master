@@ -95,7 +95,7 @@ async function expandAllTasks(
 	}
 
 	try {
-		logger.info(`Reading tasks from ${tasksPath}`);
+		logger.debug(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
@@ -215,13 +215,13 @@ async function expandAllTasks(
 				// Update progress tracker with task completion
 				if (progressTracker) {
 					const subtasksAdded = result.task?.subtasks?.length || 0;
-					progressTracker.addExpansionLine(task.id, task.title, subtasksAdded, 'success');
+					progressTracker.addExpansionLine(task.id, task.title, subtasksAdded, 'success', result.telemetryData);
 				}
 
 				if (taskIndicator) {
 					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
 				}
-				logger.info(`Successfully expanded task ${task.id}.`);
+				logger.debug(`Successfully expanded task ${task.id}.`);
 			} catch (error) {
 				failedCount++;
 				if (taskIndicator) {
@@ -234,7 +234,7 @@ async function expandAllTasks(
 
 				// Update progress tracker with error
 				if (progressTracker) {
-					progressTracker.addExpansionLine(task.id, task.title, 0, 'error');
+					progressTracker.addExpansionLine(task.id, task.title, 0, 'error', null);
 				}
 
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
