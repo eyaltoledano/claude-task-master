@@ -11,7 +11,7 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
-
+import ora from 'ora'; // Import ora
 
 import {
 	log,
@@ -752,6 +752,8 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
+			let spinner;
+
 			try {
 				if (!inputFile) {
 					if (fs.existsSync(defaultPrdPath)) {
@@ -761,7 +763,7 @@ function registerCommands(programInstance) {
 						if (!(await confirmOverwriteIfNeeded())) return;
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-
+						spinner = ora('Parsing PRD and generating tasks...\n').start();
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
 							append: useAppend, // Changed key from useAppend to append
 							force: useForce, // Changed key from useForce to force
@@ -769,7 +771,7 @@ function registerCommands(programInstance) {
 							projectRoot: projectRoot,
 							tag: tag
 						});
-
+						spinner.succeed('Tasks generated successfully!');
 						return;
 					}
 
@@ -809,8 +811,7 @@ function registerCommands(programInstance) {
 					);
 				}
 
-
-
+				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
@@ -818,9 +819,13 @@ function registerCommands(programInstance) {
 					projectRoot: projectRoot,
 					tag: tag
 				});
-
+				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
-				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
+				if (spinner) {
+					spinner.fail(`Error parsing PRD: ${error.message}`);
+				} else {
+					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
+				}
 				process.exit(1);
 			}
 		});
@@ -1452,6 +1457,9 @@ function registerCommands(programInstance) {
 			const tasksPath = path.resolve(projectRoot, options.file); // Resolve tasks path
 			const tag = options.tag;
 
+			// Show current tag context
+			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+
 			if (options.all) {
 				// --- Handle expand --all ---
 				console.log(chalk.blue('Expanding all pending tasks...'));
@@ -1590,22 +1598,15 @@ function registerCommands(programInstance) {
 				);
 			}
 
-			try {
-				// Update options with tag-aware output path and context
-				const updatedOptions = {
-					...options,
-					output: outputPath,
-					tag: targetTag,
-					projectRoot: projectRoot
-				};
+			// Update options with tag-aware output path and context
+			const updatedOptions = {
+				...options,
+				output: outputPath,
+				tag: targetTag,
+				projectRoot: projectRoot
+			};
 
-				await analyzeTaskComplexity(updatedOptions);
-
-			} catch (error) {
-				console.error(
-					chalk.red(`Error analyzing task complexity: ${error.message}`)
-				);
-			}
+			await analyzeTaskComplexity(updatedOptions);
 		});
 
 	// research command
