@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import boxen from 'boxen';
 import chalk from 'chalk';
+import ora from 'ora';
 import { z } from 'zod';
 import {
 	DEFAULT_TASK_PRIORITY,
@@ -229,9 +230,23 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			if (isStreamingError) {
 				// Log fallback warning
 				const logFn = mcpLog || { warn: (...args) => log('warn', ...args) };
-				logFn.warn(
-					`Streaming failed (${streamingError.message}), falling back to non-streaming mode...`
+				const { outputFormat, isMCP } = createLoggingFunctions(
+					mcpLog,
+					reportProgress
 				);
+
+				// Show fallback message for CLI users
+				if (outputFormat === 'text' && !isMCP) {
+					console.log(
+						chalk.yellow(
+							`Streaming failed, falling back to non-streaming mode...`
+						)
+					);
+				} else {
+					logFn.warn(
+						`Streaming failed (${streamingError.message}), falling back to non-streaming mode...`
+					);
+				}
 
 				// Fallback to non-streaming mode
 				return await parsePRDWithoutStreaming(
@@ -713,6 +728,12 @@ async function parsePRDWithoutStreaming(
 		'debug'
 	);
 
+	// Initialize ora spinner for CLI non-streaming mode
+	let spinner = null;
+	if (outputFormat === 'text' && !isMCP) {
+		spinner = ora('Parsing PRD and generating tasks...\n').start();
+	}
+
 	let existingTasks = [];
 	let nextId = 1;
 	let aiServiceResponse = null;
@@ -945,6 +966,11 @@ async function parsePRDWithoutStreaming(
 
 		// Handle CLI output for non-streaming mode
 		if (outputFormat === 'text') {
+			// Stop spinner with success message
+			if (spinner) {
+				spinner.succeed('Tasks generated successfully!');
+			}
+
 			console.log(
 				boxen(
 					chalk.green(
@@ -1011,13 +1037,21 @@ async function parsePRDWithoutStreaming(
 	} catch (error) {
 		report(`Error parsing PRD: ${error.message}`, 'error');
 
+		// Stop spinner with failure message for CLI
+		if (spinner) {
+			spinner.fail(`Error parsing PRD: ${error.message}`);
+		}
+
 		// Only show error UI for CLI context
 		if (isMCP) {
 			// MCP context should always throw, never exit
 			throw error;
 		} else {
 			// CLI context should show error and exit
-			console.error(chalk.red(`Error: ${error.message}`));
+			if (!spinner) {
+				// Only show error if spinner didn't already show it
+				console.error(chalk.red(`Error: ${error.message}`));
+			}
 
 			if (getDebugFlag(projectRoot)) {
 				// Use projectRoot for debug flag check
