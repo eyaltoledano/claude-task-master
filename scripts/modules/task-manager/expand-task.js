@@ -9,6 +9,10 @@ import {
 	stopLoadingIndicator,
 	displayAiUsageSummary
 } from '../ui.js';
+import {
+	displayExpandStart,
+	displayExpandSummary
+} from '../../../src/ui/expand.js';
 
 import { generateTextService } from '../ai-services-unified.js';
 
@@ -436,6 +440,8 @@ async function expandTask(
 		logger.info(`expandTask called with context: session=${!!session}`);
 	}
 
+	const startTime = Date.now();
+
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
@@ -447,10 +453,36 @@ async function expandTask(
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
 		const task = data.tasks[taskIndex];
+		// --- End Task Loading/Filtering ---
+
+		// Check if task already has subtasks and force is not enabled
+		if (task.subtasks && task.subtasks.length > 0 && !force) {
+			throw new Error(
+				`Task ${taskId} already has subtasks. Use --force to regenerate.`
+			);
+		}
+
+		// Display start UI for CLI mode (only if not using --all flag)
+		const isExpandAllCommand =
+			process.argv.includes('--all') || process.argv.includes('-a');
+		if (outputFormat === 'text' && !isExpandAllCommand) {
+			displayExpandStart({
+				tagName: context.tagName || context.session?.tagName,
+				taskId: taskId.toString(),
+				tasksFilePath: tasksPath,
+				numSubtasks: numSubtasks || 'Auto-calculated',
+				model: context.model,
+				temperature: context.temperature,
+				force: force,
+				research: useResearch,
+				customPrompt: additionalContext || undefined,
+				expandType: 'single'
+			});
+		}
+
 		logger.info(
 			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
 		);
-		// --- End Task Loading/Filtering ---
 
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
 		if (force && Array.isArray(task.subtasks) && task.subtasks.length > 0) {

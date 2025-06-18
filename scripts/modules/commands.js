@@ -1472,9 +1472,6 @@ function registerCommands(programInstance) {
 			const tasksPath = path.resolve(projectRoot, options.file); // Resolve tasks path
 			const tag = options.tag;
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
-
 			if (options.all) {
 				// --- Handle expand --all ---
 				console.log(chalk.blue('Expanding all pending tasks...'));

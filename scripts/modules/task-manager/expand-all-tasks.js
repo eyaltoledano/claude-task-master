@@ -4,6 +4,10 @@ import {
 	stopLoadingIndicator,
 	displayAiUsageSummary
 } from '../ui.js';
+import {
+	displayExpandStart,
+	displayExpandSummary
+} from '../../../src/ui/expand.js';
 import expandTask from './expand-task.js';
 import { getDebugFlag } from '../config-manager.js';
 import { aggregateTelemetry } from '../utils.js';
@@ -65,6 +69,7 @@ async function expandAllTasks(
 	let failedCount = 0;
 	let tasksToExpandCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
+	const startTime = Date.now();
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
@@ -106,6 +111,22 @@ async function expandAllTasks(
 				message: 'No tasks eligible for expansion.'
 			};
 			// --- End Fix ---
+		}
+
+		// Display start UI for CLI mode
+		if (outputFormat === 'text') {
+			displayExpandStart({
+				totalPendingTasks: tasksToExpandCount,
+				tasksFilePath: tasksPath,
+				numSubtasks: numSubtasks || 'Auto-calculated',
+				model: context.model,
+				temperature: context.temperature,
+				force: force,
+				research: useResearch,
+				customPrompt: additionalContext || undefined,
+				expandType: 'all',
+				tagName: context.tagName || context.session?.tagName
+			});
 		}
 
 		// Iterate over the already filtered tasks
@@ -164,22 +185,29 @@ async function expandAllTasks(
 		);
 
 		if (outputFormat === 'text') {
-			const summaryContent =
-				`${chalk.white.bold('Expansion Summary:')}\n\n` +
-				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
-				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
-				// Skipped count is always 0 now due to pre-filtering
-				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
-				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
+			const elapsedTime = Date.now() - startTime;
 
-			console.log(
-				boxen(summaryContent, {
-					padding: 1,
-					margin: { top: 1 },
-					borderColor: failedCount > 0 ? 'red' : 'green', // Red if failures, green otherwise
-					borderStyle: 'round'
-				})
-			);
+			// Calculate total subtasks created
+			let totalSubtasksCreated = 0;
+			for (const telemetryData of allTelemetryData) {
+				// Each telemetry data represents one successful task expansion
+				// We can estimate subtasks created (typically 5 per task) or use actual count if available
+				totalSubtasksCreated += telemetryData.subtasksCreated || 5;
+			}
+
+			// Display our custom summary UI with the correct stats
+			displayExpandSummary({
+				totalTasksProcessed: tasksToExpandCount,
+				totalSubtasksCreated: totalSubtasksCreated,
+				tasksSkipped: 0, // Always 0 due to pre-filtering (like old "Skipped" stat)
+				tasksWithErrors: failedCount,
+				tasksFilePath: tasksPath,
+				elapsedTime: elapsedTime,
+				force: force,
+				research: useResearch,
+				expandType: 'all',
+				errors: failedCount > 0 ? [`${failedCount} tasks failed to expand`] : []
+			});
 		}
 
 		if (outputFormat === 'text' && aggregatedTelemetryData) {
