@@ -6,17 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-
-/**
- * Format elapsed time in the format 0m 00s
- * @param {number} seconds - Elapsed time in seconds
- * @returns {string} Formatted time string
- */
-function formatElapsedTime(seconds) {
-	const minutes = Math.floor(seconds / 60);
-	const remainingSeconds = Math.floor(seconds % 60);
-	return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
-}
+import { formatElapsedTime } from '../utils/format.js';
 
 /**
  * Display the start of complexity analysis with a boxen announcement
