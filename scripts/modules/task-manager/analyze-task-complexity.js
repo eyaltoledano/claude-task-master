@@ -447,23 +447,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 		const systemPrompt =
 			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
-		// Determine if we should use streaming (CLI with progress tracker or MCP with reportProgress)
+		// Use streaming if reportProgress is provided (MCP) OR if outputFormat is 'text' (CLI)
 		const isMCP = !!mcpLog;
 		const shouldUseStreaming =
-			(outputFormat === 'text' && !isMCP && options.progressTracker) ||
-			(isMCP && reportProgress);
+			typeof reportProgress === 'function' || outputFormat === 'text';
 
-		// Debug: Check what's happening with context detection
-		if (outputFormat === 'text') {
-			reportLog(
-				`[DEBUG] Context check: mcpLog=${!!mcpLog}, isMCP=${isMCP}, outputFormat=${outputFormat}, progressTracker=${!!options.progressTracker}, shouldUseStreaming=${shouldUseStreaming}`,
-				'debug'
-			);
-		}
-
-		// Initialize progress tracker for CLI mode only (not MCP) and only if progressTracker option is enabled
+		// Initialize progress tracker for CLI mode only (not MCP)
 		let progressTracker = null;
-		if (outputFormat === 'text' && !isMCP && options.progressTracker) {
+		if (outputFormat === 'text' && !isMCP) {
 			progressTracker = createAnalyzeComplexityTracker({
 				numTasks: tasksData.tasks.length
 			});
