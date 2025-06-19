@@ -1,0 +1,29 @@
+{
+  "validTagWithValidTasksS": {
+    "tasks": [
+      {
+        "id": 10,
+        "title": "Valid Task in Valid Tag",
+        "description": "Description",
+        "status": "done",
+        "dependencies": [], "priority": "low", "details": "", "testStrategy": "", "subtasks": []
+      }
+    ],
+    "metadata": { "created": "2023-01-01T00:00:00Z", "updated": "2023-01-01T00:00:00Z", "description": "Valid tasks here" }
+  },
+  "validTagWithInvalidTaskS": {
+    "tasks": [
+      {
+        "id": 20,
+        "title": "Task with no status",
+        "description": "This task is invalid because status is missing.",
+        "priority": "high", "dependencies": [], "details": "", "testStrategy": "", "subtasks": []
+      }
+    ],
+    "metadata": { "created": "2023-01-01T00:00:00Z", "updated": "2023-01-01T00:00:00Z", "description": "Tag with one invalid task" }
+  },
+  "anotherValidTagS": {
+     "tasks": [],
+     "metadata": { "created": "2023-01-01T00:00:00Z", "updated": "2023-01-01T00:00:00Z", "description": "Another valid tag, no tasks" }
+  }
+}

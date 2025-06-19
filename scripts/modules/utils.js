@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import { validateTasksFile, formatZodError } from './task-validator.js';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import * as gitUtils from './utils/git-utils.js';
@@ -235,33 +236,62 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		// use default false and continue
 	}
 
+  // Ensure existing debug logs also use the log function for consistency
 	if (isDebug) {
-		console.log(
-			`readJSON called with: ${filepath}, projectRoot: ${projectRoot}, tag: ${tag}`
-		);
+    log('debug', `readJSON called with: filepath='${filepath}', projectRoot='${projectRoot}', tag='${tag}'`);
 	}
 
 	if (!filepath) {
+    log('debug', `readJSON: filepath is null or undefined. Returning null.`); // New Log
 		return null;
 	}
 
+  // New Log: Check if file exists
+  if (!fs.existsSync(filepath)) {
+    log('debug', `readJSON: File does not exist at filepath='${filepath}'. Returning null.`); // New Log
+    return null;
+  }
+
+  let fileContent;
+  try {
+    fileContent = fs.readFileSync(filepath, 'utf8');
+    if (isDebug) {
+      log('debug', `readJSON: Successfully read file content from '${filepath}'. Length: ${fileContent.length}`);
+    }
+  } catch (err) {
+    if (isDebug) {
+      log('debug', `readJSON: Failed to read file '${filepath}'. Error: ${err.message}. Returning null.`); // Enhanced Log
+    }
+    return null;
+  }
+
 	let data;
 	try {
-		data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    data = JSON.parse(fileContent);
 		if (isDebug) {
-			console.log(`Successfully read JSON from ${filepath}`);
+      log('debug', `readJSON: Successfully parsed JSON from '${filepath}'.`);
 		}
-	} catch (err) {
-		if (isDebug) {
-			console.log(`Failed to read JSON from ${filepath}: ${err.message}`);
+  } catch (err) {
+    if (isDebug) {
+      log('debug', `readJSON: Failed to parse JSON from '${filepath}'. Error: ${err.message}. Content (first 100 chars): '${fileContent.substring(0,100)}'. Returning null.`); // Enhanced Log
+    }
+    return null;
+  }
+		// Validate tasks.json content after reading
+		if (filepath.endsWith('tasks.json') && typeof data === 'object' && data !== null) {
+			const { isValid, errors } = validateTasksFile(data);
+			if (!isValid && errors) { // errors is now an array of strings from formatZodError
+				errors.forEach(formattedErrorString => {
+					log('warn', `Validation warning for ${filepath} - ${formattedErrorString}`);
+				});
+			}
 		}
-		return null;
-	}
+  // } // THIS BRACE IS THE LIKELY CULPRIT, REMOVING IT
 
 	// If it's not a tasks.json file, return as-is
 	if (!filepath.includes('tasks.json') || !data) {
 		if (isDebug) {
-			console.log(`File is not tasks.json or data is null, returning as-is`);
+      log('debug', `File is not tasks.json or data is null, returning as-is`);
 		}
 		return data;
 	}
@@ -274,7 +304,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		!hasTaggedStructure(data)
 	) {
 		if (isDebug) {
-			console.log(`File is in legacy format, performing migration...`);
+      log('debug', `File is in legacy format, performing migration...`);
 		}
 
 		// This is legacy format - migrate it to tagged format
@@ -293,7 +323,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		try {
 			writeJSON(filepath, migratedData);
 			if (isDebug) {
-				console.log(`Successfully migrated legacy format to tagged format`);
+        log('debug', `Successfully migrated legacy format to tagged format`);
 			}
 
 			// Perform complete migration (config.json, state.json)
@@ -314,7 +344,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			markMigrationForNotice(filepath);
 		} catch (writeError) {
 			if (isDebug) {
-				console.log(`Error writing migrated data: ${writeError.message}`);
+        log('debug', `Error writing migrated data: ${writeError.message}`);
 			}
 			// If write fails, continue with the original data
 		}
@@ -327,7 +357,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 	if (typeof data === 'object' && !data.tasks) {
 		// This is tagged format
 		if (isDebug) {
-			console.log(`File is in tagged format, resolving tag...`);
+      log('debug', `File is in tagged format, resolving tag...`);
 		}
 
 		// Ensure all tags have proper metadata before proceeding
@@ -345,7 +375,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				} catch (error) {
 					// If ensureTagMetadata fails, continue without metadata
 					if (isDebug) {
-						console.log(
+            log('debug',
 							`Failed to ensure metadata for tag ${tagName}: ${error.message}`
 						);
 					}
@@ -389,7 +419,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				}
 			} catch (tagResolveError) {
 				if (isDebug) {
-					console.log(
+          log('debug',
 						`Tag resolution failed, using master: ${tagResolveError.message}`
 					);
 				}
@@ -397,7 +427,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			}
 
 			if (isDebug) {
-				console.log(`Resolved tag: ${resolvedTag}`);
+        log('debug', `Resolved tag: ${resolvedTag}`);
 			}
 
 			// Get the data for the resolved tag
@@ -410,7 +440,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 					_rawTaggedData: originalTaggedData
 				};
 				if (isDebug) {
-					console.log(
+          log('debug',
 						`Returning data for tag '${resolvedTag}' with ${tagData.tasks.length} tasks`
 					);
 				}
@@ -420,7 +450,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
 					if (isDebug) {
-						console.log(
+            log('debug',
 							`Tag '${resolvedTag}' not found, falling back to master with ${masterData.tasks.length} tasks`
 						);
 					}
@@ -431,7 +461,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 					};
 				} else {
 					if (isDebug) {
-						console.log(`No valid tag data found, returning empty structure`);
+            log('debug', `No valid tag data found, returning empty structure`);
 					}
 					// Return empty structure if no valid data
 					return {
@@ -443,7 +473,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			}
 		} catch (error) {
 			if (isDebug) {
-				console.log(`Error during tag resolution: ${error.message}`);
+        log('debug', `Error during tag resolution: ${error.message}`);
 			}
 			// If anything goes wrong, try to return master or empty
 			const masterData = data.master;
@@ -462,7 +492,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 	// If we reach here, it's some other format
 	if (isDebug) {
-		console.log(`File format not recognized, returning as-is`);
+    log('debug', `File format not recognized, returning as-is`);
 	}
 	return data;
 }
@@ -701,6 +731,18 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 					}
 				}
 				cleanData = finalCleanData;
+			}
+		}
+
+		// Validate tasks.json content before writing
+		if (filepath.endsWith('tasks.json')) {
+			const { isValid, errors } = validateTasksFile(cleanData);
+			if (!isValid && errors) { // errors is now an array of strings from formatZodError
+				log('error', `Validation failed for ${filepath}. Not writing to disk.`);
+				errors.forEach(formattedErrorString => {
+					log('error', `- ${formattedErrorString}`);
+				});
+				throw new Error('Tasks file validation failed. Aborting write operation.');
 			}
 		}
 

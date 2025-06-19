@@ -1,0 +1,17 @@
+{
+  "brokenTagS": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Task in Broken Tag",
+        "description": "This task is under a tag missing metadata.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Details here",
+        "testStrategy": "Test strategy here",
+        "subtasks": []
+      }
+    ]
+  }
+}

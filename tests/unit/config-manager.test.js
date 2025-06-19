@@ -676,11 +676,20 @@ describe('Getter Functions', () => {
 		fsExistsSyncSpy.mockReturnValue(true);
 		// findProjectRoot mock set in beforeEach
 
+		// Store and temporarily delete the env var to test config file path
+		const originalEnvLogLevel = process.env.TASKMASTER_LOG_LEVEL;
+		delete process.env.TASKMASTER_LOG_LEVEL;
+
 		// Act
 		const logLevel = configManager.getLogLevel(MOCK_PROJECT_ROOT);
 
 		// Assert
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
+
+		// Restore environment variable
+		if (originalEnvLogLevel !== undefined) {
+			process.env.TASKMASTER_LOG_LEVEL = originalEnvLogLevel;
+		}
 	});
 
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+console.log('[[CLI SCRIPT STARTED]]');
+console.log('[[CLI SCRIPT ARGS]]', process.argv);
 
 /**
  * Task Master
@@ -65,6 +67,7 @@ function runDevScript(args) {
 		process.exit(0);
 		return;
 	}
+	console.log(`[[SPAWNING CHILD SCRIPT]]: node ${devScriptPath} ${args.join(' ')}`);
 
 	const child = spawn('node', [devScriptPath, ...args], {
 		stdio: 'inherit',
@@ -72,6 +75,7 @@ function runDevScript(args) {
 	});
 
 	child.on('close', (code) => {
+    console.log(`[[CHILD SCRIPT EXITED WITH CODE]]: ${code}`);
 		process.exit(code);
 	});
 }
@@ -378,3 +382,6 @@ if (typeof module !== 'undefined') {
 		detectCamelCaseFlags
 	};
 }
+process.on('exit', (code) => {
+  console.log(`[[CLI SCRIPT FINISHED WITH CODE]]: ${code}`);
+});

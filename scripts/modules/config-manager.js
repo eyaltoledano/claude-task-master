@@ -341,12 +341,22 @@ function getGlobalConfig(explicitRoot = null) {
 }
 
 function getLogLevel(explicitRoot = null) {
-	// Directly return value from config
+  const envLogLevel = process.env.TASKMASTER_LOG_LEVEL;
+  // Basic validation: check if it's one of the known log level strings
+  const validLevels = ['debug', 'info', 'warn', 'error', 'success'];
+  if (envLogLevel && validLevels.includes(envLogLevel.toLowerCase())) {
+      return envLogLevel.toLowerCase();
+  }
+  // Fallback to config file setting
 	return getGlobalConfig(explicitRoot).logLevel.toLowerCase();
 }
 
 function getDebugFlag(explicitRoot = null) {
-	// Directly return value from config, ensure boolean
+  // Prioritize environment variable
+  if (process.env.TASKMASTER_DEBUG === 'true') {
+    return true;
+  }
+  // Fallback to config file setting
 	return getGlobalConfig(explicitRoot).debug === true;
 }
 

@@ -1,0 +1,22 @@
+{
+  "mainS": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Invalid Status Task",
+        "description": "This task has an invalid status.",
+        "status": "invalid_status_value",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Details here",
+        "testStrategy": "Test strategy here",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2023-01-01T00:00:00Z",
+      "updated": "2023-01-01T00:00:00Z",
+      "description": "Main tag"
+    }
+  }
+}

@@ -664,6 +664,11 @@ function displayHelp() {
 					name: 'research',
 					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--tree] [-s=<save_file>] [-d=<detail_level>]',
 					desc: 'Perform AI-powered research queries with project context'
+				},
+				{
+					name: 'validate-tasks',
+					args: '[--file=<path>] [--tag=<tagName>]',
+					desc: 'Validate the structure and content of tasks.json'
 				}
 			]
 		},

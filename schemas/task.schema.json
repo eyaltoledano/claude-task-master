@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task",
+  "description": "Schema for a task object",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the task",
+      "type": "integer"
+    },
+    "title": {
+      "description": "Title of the task",
+      "type": "string"
+    },
+    "description": {
+      "description": "Detailed description of the task",
+      "type": "string"
+    },
+    "status": {
+      "description": "Current status of the task",
+      "type": "string",
+      "enum": ["pending", "in-progress", "done", "review", "deferred", "cancelled"]
+    },
+    "dependencies": {
+      "description": "List of task IDs that this task depends on",
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "default": []
+    },
+    "priority": {
+      "description": "Priority of the task",
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "default": "medium"
+    },
+    "details": {
+      "description": "Additional details or notes for the task",
+      "type": "string"
+    },
+    "testStrategy": {
+      "description": "Proposed testing strategy for the task",
+      "type": "string"
+    },
+    "subtasks": {
+      "description": "List of subtasks",
+      "type": "array",
+      "items": {
+        "$ref": "#"
+      },
+      "default": []
+    },
+    "previousStatus": {
+      "description": "The status of the task before the current status",
+      "type": "string"
+    },
+    "acceptanceCriteria": {
+      "description": "Criteria that must be met for the task to be considered done",
+      "type": "string"
+    },
+    "parentTaskId": {
+      "description": "ID of the parent task, if this is a subtask",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "description",
+    "status"
+  ]
+}

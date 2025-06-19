@@ -22,6 +22,7 @@ import {
 	detectCamelCaseFlags,
 	toKebabCase
 } from './utils.js';
+import { validateTasksFile, validateTasksArray, formatZodError } from './task-validator.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -3647,6 +3648,60 @@ Examples:
 				await migrateProject(options);
 			} catch (error) {
 				console.error(chalk.red('Error during migration:'), error.message);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('validate-tasks')
+		.alias('validate')
+		.description('Validates the structure and content of the tasks.json file.')
+		.option('-f, --file <filepath>', 'Path to the tasks file (defaults to .taskmaster/tasks/tasks.json)')
+		.option('-t, --tag <tagName>', 'Validate only the specified tag tasks array')
+		.action(async (options) => {
+			const projectRoot = findProjectRoot(process.cwd()) || process.cwd();
+			const tasksFilePath = options.file || path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+
+			log('info', `Validating tasks file: ${tasksFilePath}`);
+
+			const tasksData = readJSON(tasksFilePath, projectRoot);
+
+			if (!tasksData) {
+				log('error', `Could not read tasks file at: ${tasksFilePath}`);
+				process.exit(1);
+			}
+
+			let result;
+			let validationTargetDescription;
+
+			if (options.tag) {
+				validationTargetDescription = `tasks for tag '${options.tag}'`;
+				const tagToValidate = options.tag;
+				const fullData = tasksData._rawTaggedData || tasksData;
+
+				if (fullData && fullData[tagToValidate] && Array.isArray(fullData[tagToValidate].tasks)) {
+					result = validateTasksArray(fullData[tagToValidate].tasks);
+				} else {
+					log('error', `Tag '${tagToValidate}' not found or has no tasks array in ${tasksFilePath}`);
+					process.exit(1);
+				}
+			} else {
+				validationTargetDescription = `entire file structure of ${tasksFilePath}`;
+				const fullData = tasksData._rawTaggedData || tasksData;
+				result = validateTasksFile(fullData);
+			}
+
+			if (result.isValid) {
+				log('success', chalk.green(`Validation successful for ${validationTargetDescription}.`));
+			} else {
+				log('error', chalk.red(`Validation failed for ${validationTargetDescription}:`));
+				// result.errors is now an array of formatted strings or null
+				(result.errors || []).forEach(formattedErrorString => {
+					log('error', chalk.yellow(`  ${formattedErrorString}`));
+				});
+				// The schemaPath detail is lost with pre-formatted errors,
+				// but formatZodError includes path and keyword which is usually enough.
+				// If more raw error details are needed for debug, the validator's raw output could be exposed.
 				process.exit(1);
 			}
 		});
