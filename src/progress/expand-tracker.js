@@ -22,7 +22,12 @@ export class ExpandTracker {
 		this.multibar = null;
 		this.timeTokensBar = null;
 		this.progressBar = null;
+		this.currentTaskBar = null;
 		this._timerInterval = null;
+
+		// Current task tracking
+		this.currentTaskId = null;
+		this.currentTaskTitle = null;
 
 		// Track expansion results for summary
 		this.expansionResults = [];
@@ -62,9 +67,10 @@ export class ExpandTracker {
 		);
 
 		// Main progress bar
-		const progressFormat = this.expandType === 'single'
-			? 'Expansion {expansions} |{bar}| {percentage}%'
-			: 'Expansions {expansions} |{bar}| {percentage}%';
+		const progressFormat =
+			this.expandType === 'single'
+				? 'Task {tasks} |{bar}| {percentage}%'
+				: 'Task {tasks} |{bar}| {percentage}%';
 
 		this.progressBar = this.multibar.create(
 			this.numTasks,
@@ -77,8 +83,22 @@ export class ExpandTracker {
 			}
 		);
 
+		// Current task info bar
+		this.currentTaskBar = this.multibar.create(
+			1,
+			0,
+			{},
+			{
+				format: '{taskInfo}',
+				barsize: 1,
+				hideCursor: true,
+				clearOnComplete: false
+			}
+		);
+
 		this._updateTimeTokensBar();
-		this.progressBar.update(0, { expansions: `0/${this.numTasks}` });
+		this.progressBar.update(0, { tasks: `0/${this.numTasks}` });
+		this._updateCurrentTaskBar();
 
 		// Update timer every second
 		this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
@@ -90,44 +110,68 @@ export class ExpandTracker {
 		this._updateTimeTokensBar();
 	}
 
-	addExpansionLine(taskId, title, subtasksGenerated = 0, status = 'success', telemetryData = null) {
+	setCurrentTask(taskId, taskTitle) {
+		this.currentTaskId = taskId;
+		this.currentTaskTitle = taskTitle;
+		this._updateCurrentTaskBar();
+
+		// Update progress bar to show current task being processed (1-based indexing)
+		// This shows which task we're currently working on
+		const currentTaskNumber = this.completedExpansions + 1;
+		if (currentTaskNumber <= this.numTasks) {
+			this.progressBar.update(this.completedExpansions, {
+				tasks: `${currentTaskNumber}/${this.numTasks}`
+			});
+		}
+	}
+
+	addExpansionLine(
+		taskId,
+		title,
+		subtasksGenerated = 0,
+		status = 'success',
+		telemetryData = null,
+		complexityScore = null
+	) {
 		if (!this.multibar || this.isFinished) return;
 
 		// Show header on first task for expand-all
 		if (!this.headerShown && this.expandType === 'all') {
 			this.headerShown = true;
 
-			// Top border
+			// Top border - updated width for SCORE column
 			const topBorderBar = this.multibar.create(
 				1,
 				1,
 				{},
 				{
-					format: '------+-----+-----+-----+-------+----------------------------------',
+					format:
+						'------+-----+-------+-----+-----+-------+----------------------------------',
 					barsize: 1
 				}
 			);
 			topBorderBar.update(1);
 
-			// Header
+			// Header - updated to include SCORE column
 			const headerBar = this.multibar.create(
 				1,
 				1,
 				{},
 				{
-					format: ' TASK | SUB |  IN | OUT |  COST | TITLE',
+					format: ' TASK | SUB | SCORE |  IN | OUT |  COST | TITLE',
 					barsize: 1
 				}
 			);
 			headerBar.update(1);
 
-			// Bottom border
+			// Bottom border - updated width for SCORE column
 			const bottomBorderBar = this.multibar.create(
 				1,
 				1,
 				{},
 				{
-					format: '------+-----+-----+-----+-------+----------------------------------',
+					format:
+						'------+-----+-------+-----+-----+-------+----------------------------------',
 					barsize: 1
 				}
 			);
@@ -156,23 +200,27 @@ export class ExpandTracker {
 			const elapsed = (now - this.startTime) / 1000;
 			const currentAvgTimePerExpansion = elapsed / this.completedExpansions;
 
-			// Use the best (most recent) average we've seen to avoid degrading estimates
-			if (
-				this.bestAvgTimePerExpansion === null ||
-				currentAvgTimePerExpansion < this.bestAvgTimePerExpansion
-			) {
+			// Use a more realistic average - don't just keep the fastest time
+			// Use exponential moving average to balance recent performance with historical data
+			if (this.bestAvgTimePerExpansion === null) {
 				this.bestAvgTimePerExpansion = currentAvgTimePerExpansion;
+			} else {
+				// Weight: 70% current average, 30% historical average
+				// This prevents both overly optimistic and overly pessimistic estimates
+				this.bestAvgTimePerExpansion =
+					0.7 * currentAvgTimePerExpansion + 0.3 * this.bestAvgTimePerExpansion;
 			}
 		}
 		this.lastExpansionTime = now;
 
-		// Reset estimate timing for fresh calculation
-		this.lastEstimateTime = null;
-		this.lastEstimateSeconds = 0;
+		// Don't reset estimate timing here - let the countdown logic work
+		// The estimate will be recalculated naturally when the stabilization window expires
 
-		// Update progress bar
+		// Update progress bar - show current task number correctly
+		// Show the task that was just completed (1-based indexing)
+		const displayTaskNumber = this.completedExpansions;
 		this.progressBar.update(this.completedExpansions, {
-			expansions: `${this.completedExpansions}/${this.numTasks}`
+			tasks: `${displayTaskNumber}/${this.numTasks}`
 		});
 
 		// Create individual task display for expand-all
@@ -185,6 +233,12 @@ export class ExpandTracker {
 			const statusIndicator = this._getStatusIndicator(status);
 			const subtasksDisplay = subtasksGenerated.toString();
 
+			// Format complexity score for display
+			const scoreDisplay =
+				complexityScore !== null && complexityScore !== undefined
+					? complexityScore.toString()
+					: 'N/A';
+
 			// Format telemetry data for display
 			const tokensIn = telemetryData?.inputTokens || 0;
 			const tokensOut = telemetryData?.outputTokens || 0;
@@ -194,6 +248,7 @@ export class ExpandTracker {
 			this.expansionResults.push({
 				id: taskId.toString(),
 				subtasks: subtasksDisplay,
+				complexityScore: scoreDisplay,
 				title: displayTitle,
 				status: status,
 				tokensIn: tokensIn,
@@ -204,6 +259,7 @@ export class ExpandTracker {
 			// Create individual task bar with monospace-style formatting
 			const taskIdCentered = taskId.toString().padStart(3, ' ').padEnd(4, ' ');
 			const subtasksPadded = `${subtasksDisplay} `.padStart(3, ' ');
+			const scorePadded = scoreDisplay.padStart(5, ' ');
 			const tokensInPadded = tokensIn.toString().padStart(3, ' ');
 			const tokensOutPadded = tokensOut.toString().padStart(3, ' ');
 			const costFormatted = cost > 0 ? `$${cost.toFixed(3)}` : '$0.000';
@@ -214,12 +270,12 @@ export class ExpandTracker {
 				1,
 				{},
 				{
-					format: ` ${taskIdCentered} | ${subtasksPadded} | ${tokensInPadded} | ${tokensOutPadded} | ${costPadded} | {status} {title}`,
+					format: ` ${taskIdCentered} | ${subtasksPadded} | ${scorePadded} | ${tokensInPadded} | ${tokensOutPadded} | ${costPadded} | {status} {title}`,
 					barsize: 1
 				}
 			);
 
-			taskBar.update(1, { 
+			taskBar.update(1, {
 				title: displayTitle,
 				status: statusIndicator
 			});
@@ -228,6 +284,10 @@ export class ExpandTracker {
 			this.expansionResults.push({
 				id: taskId.toString(),
 				subtasks: subtasksGenerated.toString(),
+				complexityScore:
+					complexityScore !== null && complexityScore !== undefined
+						? complexityScore.toString()
+						: 'N/A',
 				title: title,
 				status: status,
 				tokensIn: telemetryData?.inputTokens || 0,
@@ -273,6 +333,21 @@ export class ExpandTracker {
 		});
 	}
 
+	_updateCurrentTaskBar() {
+		if (!this.currentTaskBar || this.isFinished) return;
+
+		let taskInfo = '';
+		if (this.currentTaskId && this.currentTaskTitle) {
+			taskInfo = `Expanding task ${this.currentTaskId}: ${this.currentTaskTitle}`;
+		} else if (this.currentTaskId) {
+			taskInfo = `Expanding task ${this.currentTaskId}`;
+		} else {
+			taskInfo = 'Preparing to expand tasks...';
+		}
+
+		this.currentTaskBar.update(1, { taskInfo });
+	}
+
 	_formatElapsedTime() {
 		if (!this.startTime) return '0m 00s';
 		const seconds = Math.floor((Date.now() - this.startTime) / 1000);
@@ -289,31 +364,56 @@ export class ExpandTracker {
 		const remainingTasks = this.numTasks - this.completedExpansions;
 		if (remainingTasks <= 0) return '~0s';
 
+		const now = Date.now();
 		const estimatedSeconds = Math.ceil(
 			remainingTasks * this.bestAvgTimePerExpansion
 		);
 
-		// Stabilize the estimate to avoid rapid changes, but allow countdown
-		const now = Date.now();
-		if (
-			this.lastEstimateTime &&
-			now - this.lastEstimateTime < 3000 && // Less than 3 seconds since last estimate
-			Math.abs(estimatedSeconds - this.lastEstimateSeconds) < 10 // Less than 10 second difference
-		) {
-			// Use the previous estimate but subtract elapsed time for countdown effect
+		// Stabilize the estimate to avoid rapid changes and prevent increases
+		if (this.lastEstimateTime && this.lastEstimateSeconds >= 0) {
 			const elapsedSinceEstimate = Math.floor(
 				(now - this.lastEstimateTime) / 1000
 			);
+
+			// Always count down from the previous estimate
 			const countdownSeconds = Math.max(
 				0,
 				this.lastEstimateSeconds - elapsedSinceEstimate
 			);
-			return `~${this._formatDuration(countdownSeconds)}`;
+
+			// STICKY ZERO: Once we reach 0, stay at 0 until task actually completes
+			if (countdownSeconds === 0) {
+				return '~0s';
+			}
+
+			// Only update to a new estimate if:
+			// 1. Enough time has passed (5+ seconds), AND
+			// 2. The new estimate is significantly lower, OR
+			// 3. We haven't reached zero yet
+			const timeSinceLastEstimate = now - this.lastEstimateTime;
+			const significantlyLower =
+				estimatedSeconds < this.lastEstimateSeconds * 0.8;
+
+			if (
+				timeSinceLastEstimate < 5000 &&
+				!significantlyLower &&
+				countdownSeconds > 0
+			) {
+				// Continue counting down from previous estimate
+				return `~${this._formatDuration(countdownSeconds)}`;
+			}
+
+			// Update estimate, but ensure it's never higher than the countdown would be
+			// and never goes back up from 0
+			const newEstimate = Math.min(estimatedSeconds, countdownSeconds);
+			this.lastEstimateTime = now;
+			this.lastEstimateSeconds = newEstimate;
+			return `~${this._formatDuration(newEstimate)}`;
 		}
 
+		// First time estimate or no previous estimate
 		this.lastEstimateTime = now;
 		this.lastEstimateSeconds = estimatedSeconds;
-
 		return `~${this._formatDuration(estimatedSeconds)}`;
 	}
 
@@ -405,7 +505,8 @@ export class ExpandTracker {
 				subtasks: this.subtasksCreated,
 				in: this.tokensIn,
 				out: this.tokensOut,
-				remaining: stage === 'completed' ? 'Done!' : this._estimateRemainingTime()
+				remaining:
+					stage === 'completed' ? 'Done!' : this._estimateRemainingTime()
 			});
 		}
 	}
@@ -415,15 +516,20 @@ export class ExpandTracker {
 		// Update the progress bar total
 		if (this.progressBar) {
 			this.progressBar.setTotal(totalTasks);
+			const displayTaskNumber = Math.min(
+				this.completedExpansions,
+				this.numTasks
+			);
 			this.progressBar.update(this.completedExpansions, {
-				expansions: `${this.completedExpansions}/${this.numTasks}`
+				tasks: `${displayTaskNumber}/${this.numTasks}`
 			});
 		}
 	}
 
 	getSummary() {
-		const successfulExpansions = this.completedExpansions - this.tasksSkipped - this.tasksWithErrors;
-		
+		const successfulExpansions =
+			this.completedExpansions - this.tasksSkipped - this.tasksWithErrors;
+
 		return {
 			expandType: this.expandType,
 			taskId: this.taskId, // For single task expansion
@@ -440,4 +546,4 @@ export class ExpandTracker {
 
 export function createExpandTracker(options = {}) {
 	return new ExpandTracker(options);
-} 
+}
