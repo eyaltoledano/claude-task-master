@@ -15,6 +15,9 @@
 				"OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE",
 				"GITHUB_API_KEY": "GITHUB_API_KEY_HERE"
 			}
+		},
+		"task-master-ai-http": {
+			"url": "http://localhost:3000/sse"
 		}
 	}
 }

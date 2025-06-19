@@ -77,3 +77,14 @@ dev-debug.log
 
 # NPMRC
 .npmrc
+
+# Added by Task Master AI
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
