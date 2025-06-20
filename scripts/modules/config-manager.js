@@ -5,6 +5,12 @@ import { fileURLToPath } from 'url';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
+import {
+	VALIDATED_PROVIDERS,
+	CUSTOM_PROVIDERS,
+	CUSTOM_PROVIDERS_ARRAY,
+	ALL_PROVIDERS
+} from '../../src/constants/providers.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -28,9 +34,6 @@ try {
 	MODEL_MAP = {}; // Default to empty map on error to avoid crashing, though functionality will be limited
 	process.exit(1); // Exit if models can't be loaded
 }
-
-// Define valid providers dynamically from the loaded MODEL_MAP
-const VALID_PROVIDERS = Object.keys(MODEL_MAP || {});
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
@@ -233,12 +236,25 @@ function getConfig(explicitRoot = null, forceReload = false) {
 }
 
 /**
- * Validates if a provider name is in the list of supported providers.
+ * Validates if a provider name is supported.
+ * Custom providers (azure, vertex, bedrock, openrouter, ollama) are always allowed.
+ * Validated providers must exist in the MODEL_MAP from supported-models.json.
  * @param {string} providerName The name of the provider.
  * @returns {boolean} True if the provider is valid, false otherwise.
  */
 function validateProvider(providerName) {
-	return VALID_PROVIDERS.includes(providerName);
+	// Custom providers are always allowed
+	if (CUSTOM_PROVIDERS_ARRAY.includes(providerName)) {
+		return true;
+	}
+
+	// Validated providers must exist in MODEL_MAP
+	if (VALIDATED_PROVIDERS.includes(providerName)) {
+		return !!(MODEL_MAP && MODEL_MAP[providerName]);
+	}
+
+	// Unknown providers are not allowed
+	return false;
 }
 
 /**
@@ -736,11 +752,11 @@ function getUserId(explicitRoot = null) {
 }
 
 /**
- * Gets a list of all provider names defined in the MODEL_MAP.
- * @returns {string[]} An array of provider names.
+ * Gets a list of all known provider names (both validated and custom).
+ * @returns {string[]} An array of all provider names.
  */
 function getAllProviders() {
-	return Object.keys(MODEL_MAP || {});
+	return ALL_PROVIDERS;
 }
 
 function getBaseUrlForRole(role, explicitRoot = null) {
@@ -759,7 +775,9 @@ export {
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
-	VALID_PROVIDERS,
+	VALIDATED_PROVIDERS,
+	CUSTOM_PROVIDERS,
+	ALL_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
 	// Role-specific getters (No env var overrides)

@@ -39,8 +39,12 @@ jest.unstable_mockModule('../../scripts/modules/utils/git-utils.js', () => ({
 }));
 
 // Mock rule transformer
-jest.unstable_mockModule('../../scripts/modules/rule-transformer.js', () => ({
-	convertAllCursorRulesToRooRules: jest.fn()
+jest.unstable_mockModule('../../src/utils/rule-transformer.js', () => ({
+	convertAllRulesToProfileRules: jest.fn(),
+	getRulesProfile: jest.fn(() => ({
+		conversionConfig: {},
+		globalReplacements: []
+	}))
 }));
 
 // Mock any other modules that might output or do real operations
@@ -71,9 +75,7 @@ const mockFs = jest.requireMock('fs');
 // Import the mocked modules
 const mockUtils = await import('../../scripts/modules/utils.js');
 const mockGitUtils = await import('../../scripts/modules/utils/git-utils.js');
-const mockRuleTransformer = await import(
-	'../../scripts/modules/rule-transformer.js'
-);
+const mockRuleTransformer = await import('../../src/utils/rule-transformer.js');
 
 // Import after mocks
 const { initializeProject } = await import('../../scripts/init.js');
@@ -491,7 +493,7 @@ describe('initializeProject – Git / Alias flag logic', () => {
 			// Verify that utility functions were called
 			expect(mockUtils.isSilentMode).toHaveBeenCalled();
 			expect(
-				mockRuleTransformer.convertAllCursorRulesToRooRules
+				mockRuleTransformer.convertAllRulesToProfileRules
 			).toHaveBeenCalled();
 		});
 
