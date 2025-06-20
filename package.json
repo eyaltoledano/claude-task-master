@@ -50,6 +50,7 @@
 		"@ai-sdk/xai": "^1.2.15",
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@aws-sdk/credential-providers": "^3.817.0",
+		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"ai": "^4.3.10",
 		"boxen": "^8.0.1",
