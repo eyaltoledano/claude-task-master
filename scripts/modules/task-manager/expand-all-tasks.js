@@ -32,7 +32,12 @@ async function expandAllTasks(
 	context = {},
 	outputFormat = 'text' // Assume text default for CLI
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag: contextTag
+	} = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
 	const projectRoot = providedProjectRoot || findProjectRoot();
@@ -74,7 +79,7 @@ async function expandAllTasks(
 
 	try {
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath, projectRoot);
+		const data = readJSON(tasksPath, projectRoot, contextTag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		}
@@ -124,7 +129,7 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot }, // Pass the whole context object with projectRoot
+					{ ...context, projectRoot, tag: data.tag || contextTag }, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
 				expandedCount++;

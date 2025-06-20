@@ -417,7 +417,7 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot } = context;
+	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
@@ -439,7 +439,7 @@ async function expandTask(
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath, projectRoot);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		const taskIndex = data.tasks.findIndex(
@@ -668,7 +668,7 @@ async function expandTask(
 		// --- End Change: Append instead of replace ---
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, projectRoot, tag);
 		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		// Display AI Usage Summary for CLI
