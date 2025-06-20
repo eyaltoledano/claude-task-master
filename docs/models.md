@@ -4,6 +4,7 @@
 
 | Provider   | Model Name                                     | SWE Score | Input Cost | Output Cost |
 | ---------- | ---------------------------------------------- | --------- | ---------- | ----------- |
+| bedrock    | us.anthropic.claude-3-7-sonnet-20250219-v1:0   | 0.623     | 3          | 15          |
 | anthropic  | claude-sonnet-4-20250514                       | 0.727     | 3          | 15          |
 | anthropic  | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic  | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
@@ -66,6 +67,7 @@
 
 | Provider   | Model Name                 | SWE Score | Input Cost | Output Cost |
 | ---------- | -------------------------- | --------- | ---------- | ----------- |
+| bedrock    | us.deepseek.r1-v1:0        | —         | 1.35       | 5.4         |
 | openai     | gpt-4o-search-preview      | 0.33      | 2.5        | 10          |
 | openai     | gpt-4o-mini-search-preview | 0.3       | 0.15       | 0.6         |
 | perplexity | sonar-pro                  | —         | 3          | 15          |
@@ -80,6 +82,7 @@
 
 | Provider   | Model Name                                     | SWE Score | Input Cost | Output Cost |
 | ---------- | ---------------------------------------------- | --------- | ---------- | ----------- |
+| bedrock    | us.anthropic.claude-3-7-sonnet-20250219-v1:0   | 0.623     | 3          | 15          |
 | anthropic  | claude-sonnet-4-20250514                       | 0.727     | 3          | 15          |
 | anthropic  | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic  | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
