@@ -294,30 +294,14 @@ async function runInteractiveSetup(projectRoot) {
 				}
 			: null;
 
-		const customOpenRouterOption = {
-			name: '* Custom OpenRouter model', // Symbol updated
-			value: '__CUSTOM_OPENROUTER__'
-		};
-
-		const customOllamaOption = {
-			name: '* Custom Ollama model', // Symbol updated
-			value: '__CUSTOM_OLLAMA__'
-		};
-
-		const customBedrockOption = {
-			name: '* Custom Bedrock model', // Add Bedrock custom option
-			value: '__CUSTOM_BEDROCK__'
-		};
-
-		const customAzureOption = {
-			name: '* Custom Azure OpenAI model', // Add Azure custom option
-			value: '__CUSTOM_AZURE__'
-		};
-
-		const customVertexOption = {
-			name: '* Custom Vertex AI model', // Add Vertex custom option
-			value: '__CUSTOM_VERTEX__'
-		};
+		// Define custom provider options
+		const customProviderOptions = [
+			{ name: '* Custom OpenRouter model', value: '__CUSTOM_OPENROUTER__' },
+			{ name: '* Custom Ollama model', value: '__CUSTOM_OLLAMA__' },
+			{ name: '* Custom Bedrock model', value: '__CUSTOM_BEDROCK__' },
+			{ name: '* Custom Azure model', value: '__CUSTOM_AZURE__' },
+			{ name: '* Custom Vertex model', value: '__CUSTOM_VERTEX__' }
+		];
 
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
@@ -364,24 +348,16 @@ async function runInteractiveSetup(projectRoot) {
 		}
 		systemOptions.push(cancelOption);
 
-		const customOptions = [
-			customOpenRouterOption,
-			customOllamaOption,
-			customBedrockOption,
-			customAzureOption,
-			customVertexOption
-		];
-
 		const systemLength = systemOptions.length;
 
 		if (allowNone) {
 			choices = [
 				...systemOptions,
-				new inquirer.Separator('── Standard Models ──'),
+				new inquirer.Separator('\n── Standard Models ──'),
 				{ name: '⚪ None (disable)', value: null },
 				...roleChoices,
-				new inquirer.Separator('── Custom Providers ──'),
-				...customOptions
+				new inquirer.Separator('\n── Custom Providers ──'),
+				...customProviderOptions
 			];
 			// Adjust default index: System + Sep1 + None (+2)
 			const noneOptionIndex = systemLength + 1;
@@ -392,10 +368,10 @@ async function runInteractiveSetup(projectRoot) {
 		} else {
 			choices = [
 				...systemOptions,
-				new inquirer.Separator('── Standard Models ──'),
+				new inquirer.Separator('\n── Standard Models ──'),
 				...roleChoices,
-				new inquirer.Separator('── Custom Providers ──'),
-				...customOptions
+				new inquirer.Separator('\n── Custom Providers ──'),
+				...customProviderOptions
 			];
 			// Adjust default index: System + Sep (+1)
 			defaultIndex =
