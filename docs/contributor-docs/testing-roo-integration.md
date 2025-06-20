@@ -64,7 +64,7 @@ To manually verify that the Roo files are properly included in the package:
    ls -la .roo/rules
    ls -la .roo/rules-architect
    ls -la .roo/rules-ask
-   ls -la .roo/rules-boomerang
+   ls -la .roo/rules-orchestrator
    ls -la .roo/rules-code
    ls -la .roo/rules-debug
    ls -la .roo/rules-test
