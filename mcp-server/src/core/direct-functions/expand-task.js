@@ -32,7 +32,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function expandTaskDirect(args, log, context = {}) {
-	const { session } = context; // Extract session
+	const { session, reportProgress } = context; // Extract session and reportProgress
 	// Destructure expected args, including projectRoot
 	const { tasksJsonPath, id, num, research, prompt, force, projectRoot } = args;
 
@@ -193,6 +193,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 					mcpLog,
 					session,
 					projectRoot,
+					reportProgress,
 					commandName: 'expand-task',
 					outputType: 'mcp'
 				},

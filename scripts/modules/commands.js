@@ -876,8 +876,6 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			let spinner;
-
 			try {
 				if (!inputFile) {
 					if (fs.existsSync(defaultPrdPath)) {
@@ -887,7 +885,6 @@ function registerCommands(programInstance) {
 						if (!(await confirmOverwriteIfNeeded())) return;
 
 						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-						spinner = ora('Parsing PRD and generating tasks...\n').start();
 						await parsePRD(defaultPrdPath, outputPath, numTasks, {
 							append: useAppend, // Changed key from useAppend to append
 							force: useForce, // Changed key from useForce to force
@@ -895,7 +892,6 @@ function registerCommands(programInstance) {
 							projectRoot: projectRoot,
 							tag: tag
 						});
-						spinner.succeed('Tasks generated successfully!');
 						return;
 					}
 
@@ -935,7 +931,6 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				await parsePRD(inputFile, outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
@@ -943,13 +938,8 @@ function registerCommands(programInstance) {
 					projectRoot: projectRoot,
 					tag: tag
 				});
-				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error parsing PRD: ${error.message}`);
-				} else {
-					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
-				}
+				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
 			}
 		});
