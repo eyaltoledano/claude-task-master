@@ -1,13 +1,13 @@
 {
 	"name": "task-master-ai",
-	"version": "0.17.1",
+	"version": "0.17.1-test",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
 	"bin": {
-		"task-master": "bin/task-master.js",
-		"task-master-mcp": "mcp-server/server.js",
-		"task-master-ai": "mcp-server/server.js"
+		"task-master": "dist/task-master.cjs",
+		"task-master-mcp": "dist/task-master-mcp.cjs",
+		"task-master-ai": "dist/task-master-mcp.cjs"
 	},
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
@@ -22,7 +22,13 @@
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write"
+		"format": "biome format . --write",
+		"prebuild": "npm test",
+		"build": "vite build && npm run postbuild",
+		"postbuild": "node scripts/add-shebang.js",
+		"build:bundle": "npm run build",
+		"build:watch": "vite build --watch",
+		"test:build": "echo 'Testing bundled binaries:' && echo '🔧 CLI (task-master):' && node dist/task-master.cjs --version && echo '🔌 MCP (task-master-ai):' && node dist/task-master-mcp.cjs --help | head -5 && echo '✅ Both bundles work!'"
 	},
 	"keywords": [
 		"claude",
@@ -91,14 +97,11 @@
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
 	"files": [
-		"scripts/**",
-		"assets/**",
-		".cursor/**",
-		"README-task-master.md",
-		"index.js",
-		"bin/**",
+		"dist/**",
 		"mcp-server/**",
-		"src/**"
+		"README-task-master.md",
+		".cursor/**",
+		"assets/**"
 	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
@@ -108,15 +111,19 @@
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
+		"@rollup/plugin-json": "^6.1.0",
+		"@rollup/plugin-node-resolve": "^16.0.1",
 		"@types/jest": "^29.5.14",
 		"execa": "^8.0.1",
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
 		"mock-fs": "^5.5.0",
+		"pkg": "^5.8.1",
 		"prettier": "^3.5.3",
 		"react": "^18.3.1",
 		"supertest": "^7.1.0",
-		"tsx": "^4.16.2"
+		"tsx": "^4.16.2",
+		"vite": "^6.3.5"
 	}
 }
