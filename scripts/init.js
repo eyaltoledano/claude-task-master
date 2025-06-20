@@ -373,7 +373,7 @@ async function initializeProject(options = {}) {
 			options.addAliases !== undefined ? options.addAliases : true; // Default to true if not specified
 		const initGit = options.initGit !== undefined ? options.initGit : true; // Default to true if not specified
 		const storeTasksInGit =
-			options.storeTasksInGit !== undefined ? options.storeTasksInGit : false; // Default to false if not specified
+			options.storeTasksInGit !== undefined ? options.storeTasksInGit : true; // Default to true if not specified
 
 		if (dryRun) {
 			log('info', 'DRY RUN MODE: No files will be modified');
@@ -443,17 +443,17 @@ async function initializeProject(options = {}) {
 			}
 
 			// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
-			let storeGitPrompted = false; // Default to false
+			let storeGitPrompted = true; // Default to true
 			if (options.storeTasksInGit !== undefined) {
 				storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
 			} else {
 				const gitTasksInput = await promptQuestion(
 					rl,
 					chalk.cyan(
-						'Store tasks in Git (tasks.json and tasks/ directory)? (y/N): '
+						'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
 					)
 				);
-				storeGitPrompted = gitTasksInput.trim().toLowerCase() === 'y';
+				storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
 			}
 
 			// Confirm settings...

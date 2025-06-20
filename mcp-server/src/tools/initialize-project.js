@@ -33,7 +33,7 @@ export function registerInitializeProjectTool(server) {
 			storeTasksInGit: z
 				.boolean()
 				.optional()
-				.default(false)
+				.default(true)
 				.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
 			yes: z
 				.boolean()

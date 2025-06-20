@@ -255,7 +255,7 @@ function mergeWithExistingFile(
 function manageGitignoreFile(
 	targetPath,
 	content,
-	storeTasksInGit = false,
+	storeTasksInGit = true,
 	log = null
 ) {
 	// Validate inputs
