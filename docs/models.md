@@ -1,4 +1,4 @@
-# Available Models as of June 15, 2025
+# Available Models as of June 20, 2025
 
 ## Main Models
 
@@ -21,8 +21,8 @@
 | openai     | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
 | google     | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google     | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
-| google     | gemini-2.5-flash-preview-04-17                 | —         | —          | —           |
-| google     | gemini-2.0-flash                               | 0.754     | 0.15       | 0.6         |
+| google     | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
+| google     | gemini-2.0-flash                               | 0.518     | 0.15       | 0.6         |
 | google     | gemini-2.0-flash-lite                          | —         | —          | —           |
 | perplexity | sonar-pro                                      | —         | 3          | 15          |
 | perplexity | sonar-reasoning-pro                            | 0.211     | 2          | 8           |
@@ -89,8 +89,8 @@
 | openai     | o4-mini                                        | 0.45      | 1.1        | 4.4         |
 | google     | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google     | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
-| google     | gemini-2.5-flash-preview-04-17                 | —         | —          | —           |
-| google     | gemini-2.0-flash                               | 0.754     | 0.15       | 0.6         |
+| google     | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
+| google     | gemini-2.0-flash                               | 0.518     | 0.15       | 0.6         |
 | google     | gemini-2.0-flash-lite                          | —         | —          | —           |
 | perplexity | sonar-reasoning-pro                            | 0.211     | 2          | 8           |
 | perplexity | sonar-reasoning                                | 0.211     | 1          | 5           |
