@@ -21,18 +21,10 @@ export class BedrockAIProvider extends BaseAIProvider {
 	 */
 	getClient(params) {
 		try {
-			const {
-				profile = process.env.AWS_PROFILE || 'default',
-				region = process.env.AWS_DEFAULT_REGION || 'us-east-1',
-				baseURL
-			} = params;
-
-			const credentialProvider = fromNodeProviderChain({ profile });
+			const credentialProvider = fromNodeProviderChain();
 
 			return createAmazonBedrock({
-				region,
-				credentialProvider,
-				...(baseURL && { baseURL })
+				credentialProvider
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);
