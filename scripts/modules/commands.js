@@ -11,6 +11,7 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
+import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
 import {
@@ -70,6 +71,8 @@ import {
 	getAvailableModels,
 	getBaseUrlForRole
 } from './config-manager.js';
+
+import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
 
 import {
 	COMPLEXITY_REPORT_FILE,
@@ -306,6 +309,16 @@ async function runInteractiveSetup(projectRoot) {
 			value: '__CUSTOM_BEDROCK__'
 		};
 
+		const customAzureOption = {
+			name: '* Custom Azure OpenAI model', // Add Azure custom option
+			value: '__CUSTOM_AZURE__'
+		};
+
+		const customVertexOption = {
+			name: '* Custom Vertex AI model', // Add Vertex custom option
+			value: '__CUSTOM_VERTEX__'
+		};
+
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
 
@@ -344,43 +357,50 @@ async function runInteractiveSetup(projectRoot) {
 			);
 		}
 
-		// Construct final choices list based on whether 'None' is allowed
-		const commonPrefix = [];
+		// Construct final choices list with custom options moved to bottom
+		const systemOptions = [];
 		if (noChangeOption) {
-			commonPrefix.push(noChangeOption);
+			systemOptions.push(noChangeOption);
 		}
-		commonPrefix.push(cancelOption);
-		commonPrefix.push(customOpenRouterOption);
-		commonPrefix.push(customOllamaOption);
-		commonPrefix.push(customBedrockOption);
+		systemOptions.push(cancelOption);
 
-		const prefixLength = commonPrefix.length; // Initial prefix length
+		const customOptions = [
+			customOpenRouterOption,
+			customOllamaOption,
+			customBedrockOption,
+			customAzureOption,
+			customVertexOption
+		];
+
+		const systemLength = systemOptions.length;
 
 		if (allowNone) {
 			choices = [
-				...commonPrefix,
-				new inquirer.Separator(),
-				{ name: '⚪ None (disable)', value: null }, // Symbol updated
-				new inquirer.Separator(),
-				...roleChoices
+				...systemOptions,
+				new inquirer.Separator('── Standard Models ──'),
+				{ name: '⚪ None (disable)', value: null },
+				...roleChoices,
+				new inquirer.Separator('── Custom Providers ──'),
+				...customOptions
 			];
-			// Adjust default index: Prefix + Sep1 + None + Sep2 (+3)
-			const noneOptionIndex = prefixLength + 1;
+			// Adjust default index: System + Sep1 + None (+2)
+			const noneOptionIndex = systemLength + 1;
 			defaultIndex =
 				currentChoiceIndex !== -1
-					? currentChoiceIndex + prefixLength + 3 // Offset by prefix and separators
+					? currentChoiceIndex + systemLength + 2 // Offset by system options and separators
 					: noneOptionIndex; // Default to 'None' if no current model matched
 		} else {
 			choices = [
-				...commonPrefix,
-				new inquirer.Separator(),
+				...systemOptions,
+				new inquirer.Separator('── Standard Models ──'),
 				...roleChoices,
-				new inquirer.Separator()
+				new inquirer.Separator('── Custom Providers ──'),
+				...customOptions
 			];
-			// Adjust default index: Prefix + Sep (+1)
+			// Adjust default index: System + Sep (+1)
 			defaultIndex =
 				currentChoiceIndex !== -1
-					? currentChoiceIndex + prefixLength + 1 // Offset by prefix and separator
+					? currentChoiceIndex + systemLength + 1 // Offset by system options and separator
 					: noChangeOption
 						? 1
 						: 0; // Default to 'No Change' if present, else 'Cancel'
@@ -403,32 +423,63 @@ async function runInteractiveSetup(projectRoot) {
 	const researchPromptData = getPromptData('research');
 	const fallbackPromptData = getPromptData('fallback', true); // Allow 'None' for fallback
 
-	const answers = await inquirer.prompt([
-		{
-			type: 'list',
-			name: 'mainModel',
-			message: 'Select the main model for generation/updates:',
-			choices: mainPromptData.choices,
-			default: mainPromptData.default
-		},
-		{
-			type: 'list',
-			name: 'researchModel',
+	// Display helpful intro message
+	console.log(chalk.cyan('\n🎯 Interactive Model Setup'));
+	console.log(chalk.gray('━'.repeat(50)));
+	console.log(chalk.yellow('💡 Navigation tips:'));
+	console.log(chalk.gray('   • Type to search and filter options'));
+	console.log(chalk.gray('   • Use ↑↓ arrow keys to navigate results'));
+	console.log(
+		chalk.gray(
+			'   • Standard models are listed first, custom providers at bottom'
+		)
+	);
+	console.log(chalk.gray('   • Press Enter to select\n'));
+
+	// Helper function to create search source for models
+	const createSearchSource = (choices, defaultValue) => {
+		return (searchTerm = '') => {
+			const filteredChoices = choices.filter((choice) => {
+				if (choice.type === 'separator') return true; // Always show separators
+				const searchText = choice.name || '';
+				return searchText.toLowerCase().includes(searchTerm.toLowerCase());
+			});
+			return Promise.resolve(filteredChoices);
+		};
+	};
+
+	const answers = {};
+
+	// Main model selection
+	answers.mainModel = await search({
+		message: 'Select the main model for generation/updates:',
+		source: createSearchSource(mainPromptData.choices, mainPromptData.default),
+		pageSize: 15
+	});
+
+	if (answers.mainModel !== '__CANCEL__') {
+		// Research model selection
+		answers.researchModel = await search({
 			message: 'Select the research model:',
-			choices: researchPromptData.choices,
-			default: researchPromptData.default,
-			when: (ans) => ans.mainModel !== '__CANCEL__'
-		},
-		{
-			type: 'list',
-			name: 'fallbackModel',
-			message: 'Select the fallback model (optional):',
-			choices: fallbackPromptData.choices,
-			default: fallbackPromptData.default,
-			when: (ans) =>
-				ans.mainModel !== '__CANCEL__' && ans.researchModel !== '__CANCEL__'
+			source: createSearchSource(
+				researchPromptData.choices,
+				researchPromptData.default
+			),
+			pageSize: 15
+		});
+
+		if (answers.researchModel !== '__CANCEL__') {
+			// Fallback model selection
+			answers.fallbackModel = await search({
+				message: 'Select the fallback model (optional):',
+				source: createSearchSource(
+					fallbackPromptData.choices,
+					fallbackPromptData.default
+				),
+				pageSize: 15
+			});
 		}
-	]);
+	}
 
 	let setupSuccess = true;
 	let setupConfigModified = false;
@@ -468,7 +519,7 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'openrouter';
+			providerHint = CUSTOM_PROVIDERS.OPENROUTER;
 			// Validate against live OpenRouter list
 			const openRouterModels = await fetchOpenRouterModelsCLI();
 			if (
@@ -497,7 +548,7 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'ollama';
+			providerHint = CUSTOM_PROVIDERS.OLLAMA;
 			// Get the Ollama base URL from config for this role
 			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
 			// Validate against live Ollama list
@@ -538,7 +589,7 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'bedrock';
+			providerHint = CUSTOM_PROVIDERS.BEDROCK;
 
 			// Check if AWS environment variables exist
 			if (
@@ -557,6 +608,76 @@ async function runInteractiveSetup(projectRoot) {
 			console.log(
 				chalk.blue(
 					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
+		} else if (selectedValue === '__CUSTOM_AZURE__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Azure OpenAI Model ID for the ${role} role (e.g., gpt-4o):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = CUSTOM_PROVIDERS.AZURE;
+
+			// Check if Azure environment variables exist
+			if (
+				!process.env.AZURE_OPENAI_API_KEY ||
+				!process.env.AZURE_OPENAI_ENDPOINT
+			) {
+				console.error(
+					chalk.red(
+						'Error: AZURE_OPENAI_API_KEY and/or AZURE_OPENAI_ENDPOINT environment variables are missing. Please set them before using custom Azure models.'
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Azure OpenAI model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
+		} else if (selectedValue === '__CUSTOM_VERTEX__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Vertex AI Model ID for the ${role} role (e.g., gemini-1.5-pro-002):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = CUSTOM_PROVIDERS.VERTEX;
+
+			// Check if Google/Vertex environment variables exist
+			if (
+				!process.env.GOOGLE_API_KEY &&
+				!process.env.GOOGLE_APPLICATION_CREDENTIALS
+			) {
+				console.error(
+					chalk.red(
+						'Error: Either GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS environment variable is required. Please set one before using custom Vertex models.'
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Vertex AI model "${modelIdToSet}" will be used. No validation performed.`
 				)
 			);
 		} else if (
@@ -3307,6 +3428,14 @@ ${result.result}
 			'--bedrock',
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
 		)
+		.option(
+			'--azure',
+			'Allow setting a custom Azure OpenAI model ID (use with --set-*) '
+		)
+		.option(
+			'--vertex',
+			'Allow setting a custom Vertex AI model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3318,6 +3447,8 @@ Examples:
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
+  $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
