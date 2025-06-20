@@ -3,15 +3,26 @@
 		{
 			"id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
 			"swe_score": 0.623,
-			"cost_per_1m_tokens": { "input": 3, "output": 15 },
-			"allowed_roles": ["main", "fallback"],
+			"cost_per_1m_tokens": {
+				"input": 3,
+				"output": 15
+			},
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 65536
 		},
 		{
 			"id": "us.deepseek.r1-v1:0",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 1.35, "output": 5.4 },
-			"allowed_roles": ["research"],
+			"cost_per_1m_tokens": {
+				"input": 1.35,
+				"output": 5.4
+			},
+			"allowed_roles": [
+				"research"
+			],
 			"max_tokens": 65536
 		}
 	],
@@ -23,7 +34,10 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 64000
 		},
 		{
@@ -33,7 +47,10 @@
 				"input": 15.0,
 				"output": 75.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 32000
 		},
 		{
@@ -43,7 +60,10 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 120000
 		},
 		{
@@ -53,7 +73,10 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 8192
 		}
 	],
@@ -65,7 +88,10 @@
 				"input": 2.5,
 				"output": 10.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 16384
 		},
 		{
@@ -75,7 +101,10 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 16384
 		},
 		{
@@ -85,7 +114,10 @@
 				"input": 2.0,
 				"output": 10.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 16384
 		}
 	],
@@ -97,7 +129,10 @@
 				"input": 2.5,
 				"output": 10.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 16384
 		},
 		{
@@ -107,7 +142,9 @@
 				"input": 15.0,
 				"output": 60.0
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "o3",
@@ -116,7 +153,10 @@
 				"input": 2.0,
 				"output": 8.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -126,7 +166,9 @@
 				"input": 1.1,
 				"output": 4.4
 			},
-			"allowed_roles": ["main"],
+			"allowed_roles": [
+				"main"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -136,7 +178,10 @@
 				"input": 1.1,
 				"output": 4.4
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "o1-mini",
@@ -145,7 +190,9 @@
 				"input": 1.1,
 				"output": 4.4
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "o1-pro",
@@ -154,7 +201,9 @@
 				"input": 150.0,
 				"output": 600.0
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "gpt-4-5-preview",
@@ -163,7 +212,9 @@
 				"input": 75.0,
 				"output": 150.0
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "gpt-4-1-mini",
@@ -172,7 +223,9 @@
 				"input": 0.4,
 				"output": 1.6
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "gpt-4-1-nano",
@@ -181,7 +234,9 @@
 				"input": 0.1,
 				"output": 0.4
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "gpt-4o-mini",
@@ -190,7 +245,9 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main"]
+			"allowed_roles": [
+				"main"
+			]
 		},
 		{
 			"id": "gpt-4o-search-preview",
@@ -199,7 +256,9 @@
 				"input": 2.5,
 				"output": 10.0
 			},
-			"allowed_roles": ["research"]
+			"allowed_roles": [
+				"research"
+			]
 		},
 		{
 			"id": "gpt-4o-mini-search-preview",
@@ -208,7 +267,9 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["research"]
+			"allowed_roles": [
+				"research"
+			]
 		}
 	],
 	"google": [
@@ -216,21 +277,30 @@
 			"id": "gemini-2.5-pro-preview-05-06",
 			"swe_score": 0.638,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.5-pro-preview-03-25",
 			"swe_score": 0.638,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.5-flash-preview-04-17",
 			"swe_score": 0.604,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048000
 		},
 		{
@@ -240,14 +310,20 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048000
 		},
 		{
 			"id": "gemini-2.0-flash-lite",
 			"swe_score": 0,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048000
 		}
 	],
@@ -259,7 +335,10 @@
 				"input": 3,
 				"output": 15
 			},
-			"allowed_roles": ["main", "research"],
+			"allowed_roles": [
+				"main",
+				"research"
+			],
 			"max_tokens": 8700
 		},
 		{
@@ -269,7 +348,9 @@
 				"input": 1,
 				"output": 1
 			},
-			"allowed_roles": ["research"],
+			"allowed_roles": [
+				"research"
+			],
 			"max_tokens": 8700
 		},
 		{
@@ -279,7 +360,9 @@
 				"input": 2,
 				"output": 8
 			},
-			"allowed_roles": ["research"],
+			"allowed_roles": [
+				"research"
+			],
 			"max_tokens": 8700
 		},
 		{
@@ -289,7 +372,11 @@
 				"input": 2,
 				"output": 8
 			},
-			"allowed_roles": ["main", "research", "fallback"],
+			"allowed_roles": [
+				"main",
+				"research",
+				"fallback"
+			],
 			"max_tokens": 8700
 		},
 		{
@@ -299,7 +386,11 @@
 				"input": 1,
 				"output": 5
 			},
-			"allowed_roles": ["main", "research", "fallback"],
+			"allowed_roles": [
+				"main",
+				"research",
+				"fallback"
+			],
 			"max_tokens": 8700
 		}
 	],
@@ -312,7 +403,11 @@
 				"input": 3,
 				"output": 15
 			},
-			"allowed_roles": ["main", "fallback", "research"],
+			"allowed_roles": [
+				"main",
+				"fallback",
+				"research"
+			],
 			"max_tokens": 131072
 		},
 		{
@@ -323,7 +418,11 @@
 				"input": 5,
 				"output": 25
 			},
-			"allowed_roles": ["main", "fallback", "research"],
+			"allowed_roles": [
+				"main",
+				"fallback",
+				"research"
+			],
 			"max_tokens": 131072
 		}
 	],
@@ -335,7 +434,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "qwen3:latest",
@@ -344,7 +446,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "qwen3:14b",
@@ -353,7 +458,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "qwen3:32b",
@@ -362,7 +470,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "mistral-small3.1:latest",
@@ -371,7 +482,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "llama3.3:latest",
@@ -380,7 +494,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		},
 		{
 			"id": "phi4:latest",
@@ -389,7 +506,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": [
+				"main",
+				"fallback"
+			]
 		}
 	],
 	"openrouter": [
@@ -400,7 +520,10 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048576
 		},
 		{
@@ -410,7 +533,10 @@
 				"input": 0.15,
 				"output": 3.5
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048576
 		},
 		{
@@ -420,7 +546,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -430,7 +559,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 163840
 		},
 		{
@@ -440,7 +572,9 @@
 				"input": 0.27,
 				"output": 1.1
 			},
-			"allowed_roles": ["main"],
+			"allowed_roles": [
+				"main"
+			],
 			"max_tokens": 64000
 		},
 		{
@@ -450,7 +584,10 @@
 				"input": 2,
 				"output": 8
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -460,7 +597,10 @@
 				"input": 0.4,
 				"output": 1.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -470,7 +610,10 @@
 				"input": 0.1,
 				"output": 0.4
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -480,7 +623,10 @@
 				"input": 10,
 				"output": 40
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 200000
 		},
 		{
@@ -490,7 +636,10 @@
 				"input": 1.5,
 				"output": 6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -500,7 +649,10 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -510,7 +662,10 @@
 				"input": 1.1,
 				"output": 4.4
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -520,7 +675,10 @@
 				"input": 1.1,
 				"output": 4.4
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -530,7 +688,10 @@
 				"input": 150,
 				"output": 600
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -540,7 +701,10 @@
 				"input": 120,
 				"output": 600
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1048576
 		},
 		{
@@ -550,7 +714,10 @@
 				"input": 0.18,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -560,7 +727,10 @@
 				"input": 0.08,
 				"output": 0.3
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -570,7 +740,10 @@
 				"input": 1.6,
 				"output": 6.4
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 32768
 		},
 		{
@@ -580,7 +753,10 @@
 				"input": 0.05,
 				"output": 0.2
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 1000000
 		},
 		{
@@ -590,7 +766,10 @@
 				"input": 0.14,
 				"output": 2
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 24000
 		},
 		{
@@ -600,7 +779,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 96000
 		},
 		{
@@ -610,7 +792,10 @@
 				"input": 0.1,
 				"output": 0.3
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 128000
 		},
 		{
@@ -620,7 +805,9 @@
 				"input": 0.1,
 				"output": 0.3
 			},
-			"allowed_roles": ["main"],
+			"allowed_roles": [
+				"main"
+			],
 			"max_tokens": 110000
 		},
 		{
@@ -630,7 +817,10 @@
 				"input": 0.03,
 				"output": 0.07
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 100000
 		},
 		{
@@ -640,7 +830,10 @@
 				"input": 0,
 				"output": 0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": [
+				"main",
+				"fallback"
+			],
 			"max_tokens": 32768
 		}
 	],
@@ -648,15 +841,29 @@
 		{
 			"id": "opus",
 			"swe_score": 0.725,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["main", "fallback", "research"],
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": [
+				"main",
+				"fallback",
+				"research"
+			],
 			"max_tokens": 32000
 		},
 		{
 			"id": "sonnet",
 			"swe_score": 0.727,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["main", "fallback", "research"],
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": [
+				"main",
+				"fallback",
+				"research"
+			],
 			"max_tokens": 64000
 		}
 	]
