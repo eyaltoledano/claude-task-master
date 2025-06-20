@@ -1,10 +1,10 @@
 # task-master-ai
 
-## 0.17.0-rc.1
+## 0.17.0
 
 ### Minor Changes
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add comprehensive AI-powered research command with intelligent context gathering and interactive follow-ups.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add comprehensive AI-powered research command with intelligent context gathering and interactive follow-ups.
 
   The new `research` command provides AI-powered research capabilities that automatically gather relevant project context to answer your questions. The command intelligently selects context from multiple sources and supports interactive follow-up questions in CLI mode.
 
@@ -78,7 +78,7 @@
 
   The research command integrates with the existing AI service layer and supports all configured AI providers. Both CLI and MCP interfaces provide comprehensive research capabilities with intelligent context gathering and flexible output options.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhance update-task with --append flag for timestamped task updates
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhance update-task with --append flag for timestamped task updates
 
   Adds the `--append` flag to `update-task` command, enabling it to behave like `update-subtask` with timestamped information appending. This provides more flexible task updating options:
 
@@ -95,7 +95,7 @@
 
   Instead of requiring separate subtask creation for progress tracking, you can now append timestamped information directly to parent tasks while preserving the option for comprehensive task updates.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add --tag flag support to core commands for multi-context task management. Commands like parse-prd, analyze-complexity, and others now support targeting specific task lists, enabling rapid prototyping and parallel development workflows.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add --tag flag support to core commands for multi-context task management. Commands like parse-prd, analyze-complexity, and others now support targeting specific task lists, enabling rapid prototyping and parallel development workflows.
 
   Key features:
 
@@ -104,19 +104,21 @@
   - All task operations can target specific contexts while preserving other lists
   - Non-existent tags are created automatically for seamless workflow
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Introduces Tagged Lists: AI Multi-Context Task Management System
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Introduces Tagged Lists: AI Multi-Context Task Management System
 
-  This major release introduces Tagged Lists, a comprehensive system that transforms Task Master into a multi-context task management powerhouse. You can now organize tasks into completely isolated contexts, enabling parallel (agentic) development workflows, team collaboration, and project experimentation without conflicts.
+  This major feature release introduces Tagged Lists, a comprehensive system that transforms Taskmaster into a multi-context task management powerhouse. You can now organize tasks into completely isolated contexts, enabling parallel (agentic) development workflows, team collaboration, and project experimentation without conflicts.
 
   **🏷️ Tagged Task Lists Architecture:**
 
-  The new tagged system fundamentally changes how tasks are organized:
+  The new tagged system fundamentally improves how tasks are organized:
 
   - **Legacy Format**: `{ "tasks": [...] }`
   - **New Tagged Format**: `{ "master": { "tasks": [...], "metadata": {...} }, "feature-xyz": { "tasks": [...], "metadata": {...} } }`
-  - **Automatic Migration**: Existing projects seamlessly migrate to tagged format with zero user intervention
-  - **State Management**: New `.taskmaster/state.json` tracks current tag, last switched time, and migration status
-  - **Configuration Integration**: Enhanced `.taskmaster/config.json` with tag-specific settings and defaults
+  - **Automatic Migration**: Existing projects will seamlessly migrate to tagged format with zero user intervention
+  - **State Management**: New `.taskmaster/state.json` tracks current tag, last switched time, migration status and more.
+  - **Configuration Integration**: Enhanced `.taskmaster/config.json` with tag-specific settings and defaults.
+
+  By default, your existing task list will be migrated to the `master` tag.
 
   **🚀 Complete Tag Management Suite:**
 
@@ -124,7 +126,7 @@
 
   - `task-master tags [--show-metadata]` - List all tags with task counts, completion stats, and metadata
   - `task-master add-tag <name> [options]` - Create new tag contexts with optional task copying
-  - `task-master delete-tag <name> [--yes]` - Delete tags with double confirmation protection
+  - `task-master delete-tag <name> [--yes]` - Delete tags (and attached tasks) with double confirmation protection
   - `task-master use-tag <name>` - Switch contexts and immediately see next available task
   - `task-master rename-tag <old> <new>` - Rename tags with automatic current tag reference updates
   - `task-master copy-tag <source> <target> [options]` - Duplicate tag contexts for experimentation
@@ -144,7 +146,7 @@
 
   - `--copy-from-current` - Copy tasks from currently active tag
   - `--copy-from=<tag>` - Copy tasks from specific tag
-  - `--from-branch` - Creates a new tag usin active git branch name (for `add-tag` only)
+  - `--from-branch` - Creates a new tag using the active git branch name (for `add-tag` only)
   - `--description="<text>"` - Add custom tag descriptions
   - Empty tag creation for fresh contexts
 
@@ -158,6 +160,8 @@
   - `task-master analyze-complexity --tag=performance-work` - Generate tag-specific reports
   - `task-master set-status --tag=hotfix --id=5 --status=done` - Update tasks in specific contexts
   - `task-master expand --tag=research --id=3` - Break down tasks within tag contexts
+
+  This way you or your agent can store out of context tasks into the appropriate tags for later, allowing you to maintain a groomed and scoped master list. Focus on value, not chores.
 
   **📊 Enhanced Workflow Features:**
 
@@ -255,7 +259,7 @@
 
   This release establishes the foundation for advanced multi-context workflows while maintaining the simplicity and power that makes Task Master effective for individual developers.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Research Save-to-File Feature & Critical MCP Tag Corruption Fix
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Research Save-to-File Feature & Critical MCP Tag Corruption Fix
 
   **🔬 New Research Save-to-File Functionality:**
 
@@ -279,9 +283,9 @@
   - Comprehensive Markdown format with metadata headers including query, timestamp, and context sources
   - Clean conversation history formatting without duplicate information
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - No longer automatically creates individual task files as they are not used by the applicatoin. You can still generate them anytime using the `generate` command.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - No longer automatically creates individual task files as they are not used by the applicatoin. You can still generate them anytime using the `generate` command.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced get-task/show command to support comma-separated task IDs for efficient batch operations
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced get-task/show command to support comma-separated task IDs for efficient batch operations
 
   **New Features:**
 
@@ -299,17 +303,17 @@
 
   This enhancement maintains full backward compatibility while significantly improving efficiency for both human users and AI agents working with multiple tasks.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Adds support for filtering tasks by multiple statuses at once using comma-separated statuses.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds support for filtering tasks by multiple statuses at once using comma-separated statuses.
 
   Example: `cancelled,deferred`
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Adds tag to CLI output so you know which tag you are performing operations on. Already supported in the MCP response.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Adds tag to CLI and MCP outputs/responses so you know which tag you are performing operations on.
 
 ### Patch Changes
 
-- [#723](https://github.com/eyaltoledano/claude-task-master/pull/723) [`40a5238`](https://github.com/eyaltoledano/claude-task-master/commit/40a52385baf43a5ed97ce29bc5c4fb3fea766b70) Thanks [@joedanz](https://github.com/joedanz)! - Fix Cursor deeplink installation by providing copy-paste instructions for GitHub compatibility
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`5ec1f61`](https://github.com/eyaltoledano/claude-task-master/commit/5ec1f61c13f468648b7fdc8fa112e95aec25f76d) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix Cursor deeplink installation by providing copy-paste instructions for GitHub compatibility
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix critical bugs in task move functionality:
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix critical bugs in task move functionality:
 
   - **Fixed moving tasks to become subtasks of empty parents**: When moving a task to become a subtask of a parent that had no existing subtasks (e.g., task 89 → task 98.1), the operation would fail with validation errors.
   - **Fixed moving subtasks between parents**: Subtasks can now be properly moved between different parent tasks, including to parents that previously had no subtasks.
@@ -317,80 +321,21 @@
 
   These fixes enables proper task hierarchy reorganization for corner cases that were previously broken.
 
-- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`1ece6f1`](https://github.com/eyaltoledano/claude-task-master/commit/1ece6f19048df6ae2a0b25cbfb84d2c0f430642c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - improve findTasks algorithm for resolving tasks path
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`d76bea4`](https://github.com/eyaltoledano/claude-task-master/commit/d76bea49b381c523183f39e33c2a4269371576ed) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Update o3 model price
 
-- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`ee0be04`](https://github.com/eyaltoledano/claude-task-master/commit/ee0be04302cc602246de5cd296291db69bc8b300) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix update tool on MCP giving `No valid tasks found`
-
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Adds ability to automatically create/switch tags to match the current git branch. The configuration to enable the git workflow and then use the auto switching is in config.json."
-
-- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`27edbd8`](https://github.com/eyaltoledano/claude-task-master/commit/27edbd8f3fe5e2ac200b80e7f27f4c0e74a074d6) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced add-task fuzzy search intelligence and improved user experience
-
-  **Smarter Task Discovery:**
-
-  - Remove hardcoded category system that always matched "Task management"
-  - Eliminate arbitrary limits on fuzzy search results (5→25 high relevance, 3→10 medium relevance, 8→20 detailed tasks)
-  - Improve semantic weighting in Fuse.js search (details=3, description=2, title=1.5) for better relevance
-  - Generate context-driven task recommendations based on true semantic similarity
-
-  **Enhanced Terminal Experience:**
-
-  - Fix duplicate banner display issue that was "eating" terminal history (closes #553)
-  - Remove console.clear() and redundant displayBanner() calls from UI functions
-  - Preserve command history for better development workflow
-  - Streamline banner display across all commands (list, next, show, set-status, clear-subtasks, dependency commands)
-
-  **Visual Improvements:**
-
-  - Replace emoji complexity indicators with clean filled circle characters (●) for professional appearance
-  - Improve consistency and readability of task complexity display
-
-  **AI Provider Compatibility:**
-
-  - Change generateObject mode from 'tool' to 'auto' for better cross-provider compatibility
-  - Add qwen3-235n-a22b:free model support (closes #687)
-  - Add smart warnings for free OpenRouter models with limitations (rate limits, restricted context, no tool_use)
-
-  **Technical Improvements:**
-
-  - Enhanced context generation in add-task to rely on semantic similarity rather than rigid pattern matching
-  - Improved dependency analysis and common pattern detection
-  - Better handling of task relationships and relevance scoring
-  - More intelligent task suggestion algorithms
-
-  The add-task system now provides truly relevant task context based on semantic understanding rather than arbitrary categories and limits, while maintaining a cleaner and more professional terminal experience.
-
-- [#751](https://github.com/eyaltoledano/claude-task-master/pull/751) [`4901908`](https://github.com/eyaltoledano/claude-task-master/commit/4901908f5d1f5c39e82a23d650047074691deda4) Thanks [@zahorniak](https://github.com/zahorniak)! - Update o3 model price
-
-- [#755](https://github.com/eyaltoledano/claude-task-master/pull/755) [`dc7a541`](https://github.com/eyaltoledano/claude-task-master/commit/dc7a5414c0364a87412192ac01ccc49cf7b68768) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixes issue with expand CLI command "Complexity report not found"
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`0849c0c`](https://github.com/eyaltoledano/claude-task-master/commit/0849c0c2cedb16ac44ba5cc2d109625a9b4efd67) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fixes issue with expand CLI command "Complexity report not found"
 
   - Closes #735
   - Closes #728
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix issue with generate command which was creating tasks in the legacy tasks location.
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix issue with generate command which was creating tasks in the legacy tasks location.
 
-- [#771](https://github.com/eyaltoledano/claude-task-master/pull/771) [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improves dependency management when moving tasks by updating subtask dependencies that reference sibling subtasks by their old parent-based ID
+      - No longer creates individual task files automatically. You can still use `generate` if you need to create our update your task files.
 
-- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`2e55757`](https://github.com/eyaltoledano/claude-task-master/commit/2e55757b2698ba20b78f09ec0286951297510b8e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add sync-readme command for a task export to GitHub README
+- [#779](https://github.com/eyaltoledano/claude-task-master/pull/779) [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Improves dependency management when moving tasks by updating subtask dependencies that reference sibling subtasks by their old parent-based ID
 
-  Introduces a new `sync-readme` command that exports your task list to your project's README.md file.
-
-  **Features:**
-
-  - **Flexible filtering**: Supports `--status` filtering (e.g., pending, done) and `--with-subtasks` flag
-  - **Smart content management**: Automatically replaces existing exports or appends to new READMEs
-  - **Metadata display**: Shows export timestamp, subtask inclusion status, and filter settings
-
-  **Usage:**
-
-  - `task-master sync-readme` - Export tasks without subtasks
-  - `task-master sync-readme --with-subtasks` - Include subtasks in export
-  - `task-master sync-readme --status=pending` - Only export pending tasks
-  - `task-master sync-readme --status=done --with-subtasks` - Export completed tasks with subtasks
-
-  Perfect for showcasing project progress on GitHub. Experimental. Open to feedback.
-
-- Updated dependencies [[`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`40a5238`](https://github.com/eyaltoledano/claude-task-master/commit/40a52385baf43a5ed97ce29bc5c4fb3fea766b70), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`1ece6f1`](https://github.com/eyaltoledano/claude-task-master/commit/1ece6f19048df6ae2a0b25cbfb84d2c0f430642c), [`ee0be04`](https://github.com/eyaltoledano/claude-task-master/commit/ee0be04302cc602246de5cd296291db69bc8b300), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`27edbd8`](https://github.com/eyaltoledano/claude-task-master/commit/27edbd8f3fe5e2ac200b80e7f27f4c0e74a074d6), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`4901908`](https://github.com/eyaltoledano/claude-task-master/commit/4901908f5d1f5c39e82a23d650047074691deda4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`dc7a541`](https://github.com/eyaltoledano/claude-task-master/commit/dc7a5414c0364a87412192ac01ccc49cf7b68768), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4), [`2e55757`](https://github.com/eyaltoledano/claude-task-master/commit/2e55757b2698ba20b78f09ec0286951297510b8e), [`7250241`](https://github.com/eyaltoledano/claude-task-master/commit/72502416c6969055e0d139e408e726e03371c4f4)]:
-  - task-master-ai@0.17.0-rc.1
+- Updated dependencies [[`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`5ec1f61`](https://github.com/eyaltoledano/claude-task-master/commit/5ec1f61c13f468648b7fdc8fa112e95aec25f76d), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`d76bea4`](https://github.com/eyaltoledano/claude-task-master/commit/d76bea49b381c523183f39e33c2a4269371576ed), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`0849c0c`](https://github.com/eyaltoledano/claude-task-master/commit/0849c0c2cedb16ac44ba5cc2d109625a9b4efd67), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f), [`c0b3f43`](https://github.com/eyaltoledano/claude-task-master/commit/c0b3f432a60891550b00acb113dc877bd432995f)]:
+  - task-master-ai@0.17.0
 
 ## 0.16.2
 

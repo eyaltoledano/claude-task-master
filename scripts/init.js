@@ -24,8 +24,13 @@ import boxen from 'boxen';
 import gradient from 'gradient-string';
 import { isSilentMode } from './modules/utils.js';
 import { insideGitWorkTree } from './modules/utils/git-utils.js';
-import { convertAllCursorRulesToRooRules } from './modules/rule-transformer.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
+import { RULE_PROFILES } from '../src/constants/profiles.js';
+import {
+	convertAllRulesToProfileRules,
+	getRulesProfile
+} from '../src/utils/rule-transformer.js';
+
 import { execSync } from 'child_process';
 import {
 	EXAMPLE_PRD_FILE,
@@ -223,70 +228,9 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 		// case 'scripts_README.md':
 		// 	sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
 		// 	break;
-		case 'dev_workflow.mdc':
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'.cursor',
-				'rules',
-				'dev_workflow.mdc'
-			);
-			break;
-		case 'taskmaster.mdc':
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'.cursor',
-				'rules',
-				'taskmaster.mdc'
-			);
-			break;
-		case 'cursor_rules.mdc':
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'.cursor',
-				'rules',
-				'cursor_rules.mdc'
-			);
-			break;
-		case 'self_improve.mdc':
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'.cursor',
-				'rules',
-				'self_improve.mdc'
-			);
-			break;
-			// case 'README-task-master.md':
-			// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
-			break;
-		case 'windsurfrules':
-			sourcePath = path.join(__dirname, '..', 'assets', '.windsurfrules');
-			break;
-		case '.roomodes':
-			sourcePath = path.join(__dirname, '..', 'assets', 'roocode', '.roomodes');
-			break;
-		case 'architect-rules':
-		case 'ask-rules':
-		case 'boomerang-rules':
-		case 'code-rules':
-		case 'debug-rules':
-		case 'test-rules': {
-			// Extract the mode name from the template name (e.g., 'architect' from 'architect-rules')
-			const mode = templateName.split('-')[0];
-			sourcePath = path.join(
-				__dirname,
-				'..',
-				'assets',
-				'roocode',
-				'.roo',
-				`rules-${mode}`,
-				templateName
-			);
-			break;
-		}
+		// case 'README-task-master.md':
+		// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
+		// 	break;
 		default:
 			// For other files like env.example, gitignore, etc. that don't have direct equivalents
 			sourcePath = path.join(__dirname, '..', 'assets', templateName);
@@ -336,21 +280,6 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 			return;
 		}
 
-		// Handle .windsurfrules - append the entire content
-		if (filename === '.windsurfrules') {
-			log(
-				'info',
-				`${targetPath} already exists, appending content instead of overwriting...`
-			);
-			const existingContent = fs.readFileSync(targetPath, 'utf8');
-
-			// Add a separator comment before appending our content
-			const updatedContent = `${existingContent.trim()}\n\n# Added by Task Master - Development Workflow Rules\n\n${content}`;
-			fs.writeFileSync(targetPath, updatedContent);
-			log('success', `Updated ${targetPath} with additional rules`);
-			return;
-		}
-
 		// Handle README.md - offer to preserve or create a different file
 		if (filename === 'README-task-master.md') {
 			log('info', `${targetPath} already exists`);
@@ -377,7 +306,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 	log('info', `Created file: ${targetPath}`);
 }
 
-// Main function to initialize a new project (No longer needs isInteractive logic)
+// Main function to initialize a new project
 async function initializeProject(options = {}) {
 	// Receives options as argument
 	// Only display banner if not in silent mode
@@ -422,6 +351,11 @@ async function initializeProject(options = {}) {
 	// if (!isSilentMode()) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
 	// }
+
+	const selectedRuleProfiles =
+		options.rules && Array.isArray(options.rules) && options.rules.length > 0
+			? options.rules
+			: RULE_PROFILES; // Default to all profiles
 
 	if (skipPrompts) {
 		if (!isSilentMode()) {
@@ -470,17 +404,18 @@ async function initializeProject(options = {}) {
 			initGit,
 			storeTasksInGit,
 			dryRun,
-			options
+			options,
+			selectedRuleProfiles
 		);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout
-		});
 
 		try {
+			const rl = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
 			// Prompt for shell aliases (skip if --aliases or --no-aliases flag was provided)
 			let addAliasesPrompted = true; // Default to true
 			if (options.addAliases !== undefined) {
@@ -543,12 +478,30 @@ async function initializeProject(options = {}) {
 				chalk.yellow('\nDo you want to continue with these settings? (Y/n): ')
 			);
 			const shouldContinue = confirmInput.trim().toLowerCase() !== 'n';
-			rl.close();
 
 			if (!shouldContinue) {
+				rl.close();
 				log('info', 'Project initialization cancelled by user');
 				process.exit(0);
 				return;
+			}
+
+			// Only run interactive rules if rules flag not provided via command line
+			if (options.rulesExplicitlyProvided) {
+				log(
+					'info',
+					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
+				);
+			} else {
+				try {
+					const targetDir = process.cwd();
+					execSync('npx task-master rules setup', {
+						stdio: 'inherit',
+						cwd: targetDir
+					});
+				} catch (error) {
+					log('error', 'Failed to run interactive rules setup:', error.message);
+				}
 			}
 
 			const dryRun = options.dryRun || false;
@@ -583,8 +536,10 @@ async function initializeProject(options = {}) {
 				initGitPrompted,
 				storeGitPrompted,
 				dryRun,
-				options
+				options,
+				selectedRuleProfiles
 			);
+			rl.close();
 		} catch (error) {
 			rl.close();
 			log('error', `Error during initialization process: ${error.message}`);
@@ -608,23 +563,11 @@ function createProjectStructure(
 	initGit,
 	storeTasksInGit,
 	dryRun,
-	options
+	options,
+	selectedRuleProfiles = RULE_PROFILES // Default to all rule profiles
 ) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
-
-	// Define Roo modes locally (external integration, not part of core Task Master)
-	const ROO_MODES = ['architect', 'ask', 'boomerang', 'code', 'debug', 'test'];
-
-	// Create directories
-	ensureDirectoryExists(path.join(targetDir, '.cursor/rules'));
-
-	// Create Roo directories
-	ensureDirectoryExists(path.join(targetDir, '.roo'));
-	ensureDirectoryExists(path.join(targetDir, '.roo/rules'));
-	for (const mode of ROO_MODES) {
-		ensureDirectoryExists(path.join(targetDir, '.roo', `rules-${mode}`));
-	}
 
 	// Create NEW .taskmaster directory structure (using constants)
 	ensureDirectoryExists(path.join(targetDir, TASKMASTER_DIR));
@@ -636,13 +579,21 @@ function createProjectStructure(
 	// Create initial state.json file for tag management
 	createInitialStateFile(targetDir);
 
-	// Setup MCP configuration for integration with Cursor
-	setupMCPConfiguration(targetDir);
-
 	// Copy template files with replacements
 	const replacements = {
 		year: new Date().getFullYear()
 	};
+
+	// Helper function to create rule profiles
+	function _processSingleProfile(profileName) {
+		const profile = getRulesProfile(profileName);
+		if (profile) {
+			convertAllRulesToProfileRules(targetDir, profile);
+			// Also triggers MCP config setup (if applicable)
+		} else {
+			log('warn', `Unknown rule profile: ${profileName}`);
+		}
+	}
 
 	// Copy .env.example
 	copyTemplateFile(
@@ -679,48 +630,6 @@ function createProjectStructure(
 		log('error', `Failed to create .gitignore: ${error.message}`);
 	}
 
-	// Copy dev_workflow.mdc
-	copyTemplateFile(
-		'dev_workflow.mdc',
-		path.join(targetDir, '.cursor/rules/dev_workflow.mdc')
-	);
-
-	// Copy taskmaster.mdc
-	copyTemplateFile(
-		'taskmaster.mdc',
-		path.join(targetDir, '.cursor/rules/taskmaster.mdc')
-	);
-
-	// Copy cursor_rules.mdc
-	copyTemplateFile(
-		'cursor_rules.mdc',
-		path.join(targetDir, '.cursor/rules/cursor_rules.mdc')
-	);
-
-	// Copy self_improve.mdc
-	copyTemplateFile(
-		'self_improve.mdc',
-		path.join(targetDir, '.cursor/rules/self_improve.mdc')
-	);
-
-	// Generate Roo rules from Cursor rules
-	log('info', 'Generating Roo rules from Cursor rules...');
-	convertAllCursorRulesToRooRules(targetDir);
-
-	// Copy .windsurfrules
-	copyTemplateFile('windsurfrules', path.join(targetDir, '.windsurfrules'));
-
-	// Copy .roomodes for Roo Code integration
-	copyTemplateFile('.roomodes', path.join(targetDir, '.roomodes'));
-
-	// Copy Roo rule files for each mode
-	for (const mode of ROO_MODES) {
-		copyTemplateFile(
-			`${mode}-rules`,
-			path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`)
-		);
-	}
-
 	// Copy example_prd.txt to NEW location
 	copyTemplateFile('example_prd.txt', path.join(targetDir, EXAMPLE_PRD_FILE));
 
@@ -754,6 +663,17 @@ function createProjectStructure(
 		}
 	} catch (error) {
 		log('warn', 'Git not available, skipping repository initialization');
+	}
+
+	// Generate profile rules from assets/rules
+	log('info', 'Generating profile rules from assets/rules...');
+	for (const profileName of selectedRuleProfiles) {
+		_processSingleProfile(profileName);
+	}
+
+	// Add shell aliases if requested
+	if (addAliases) {
+		addShellAliases();
 	}
 
 	// Run npm install automatically
@@ -888,114 +808,5 @@ function createProjectStructure(
 	}
 }
 
-// Function to setup MCP configuration for Cursor integration
-function setupMCPConfiguration(targetDir) {
-	const mcpDirPath = path.join(targetDir, '.cursor');
-	const mcpJsonPath = path.join(mcpDirPath, 'mcp.json');
-
-	log('info', 'Setting up MCP configuration for Cursor integration...');
-
-	// Create .cursor directory if it doesn't exist
-	ensureDirectoryExists(mcpDirPath);
-
-	// New MCP config to be added - references the installed package
-	const newMCPServer = {
-		'task-master-ai': {
-			command: 'npx',
-			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
-			env: {
-				ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY_HERE',
-				PERPLEXITY_API_KEY: 'PERPLEXITY_API_KEY_HERE',
-				OPENAI_API_KEY: 'OPENAI_API_KEY_HERE',
-				GOOGLE_API_KEY: 'GOOGLE_API_KEY_HERE',
-				XAI_API_KEY: 'XAI_API_KEY_HERE',
-				OPENROUTER_API_KEY: 'OPENROUTER_API_KEY_HERE',
-				MISTRAL_API_KEY: 'MISTRAL_API_KEY_HERE',
-				AZURE_OPENAI_API_KEY: 'AZURE_OPENAI_API_KEY_HERE',
-				OLLAMA_API_KEY: 'OLLAMA_API_KEY_HERE'
-			}
-		}
-	};
-
-	// Check if mcp.json already existsimage.png
-	if (fs.existsSync(mcpJsonPath)) {
-		log(
-			'info',
-			'MCP configuration file already exists, checking for existing task-master-mcp...'
-		);
-		try {
-			// Read existing config
-			const mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
-
-			// Initialize mcpServers if it doesn't exist
-			if (!mcpConfig.mcpServers) {
-				mcpConfig.mcpServers = {};
-			}
-
-			// Check if any existing server configuration already has task-master-mcp in its args
-			const hasMCPString = Object.values(mcpConfig.mcpServers).some(
-				(server) =>
-					server.args &&
-					server.args.some(
-						(arg) => typeof arg === 'string' && arg.includes('task-master-ai')
-					)
-			);
-
-			if (hasMCPString) {
-				log(
-					'info',
-					'Found existing task-master-ai MCP configuration in mcp.json, leaving untouched'
-				);
-				return; // Exit early, don't modify the existing configuration
-			}
-
-			// Add the task-master-ai server if it doesn't exist
-			if (!mcpConfig.mcpServers['task-master-ai']) {
-				mcpConfig.mcpServers['task-master-ai'] = newMCPServer['task-master-ai'];
-				log(
-					'info',
-					'Added task-master-ai server to existing MCP configuration'
-				);
-			} else {
-				log('info', 'task-master-ai server already configured in mcp.json');
-			}
-
-			// Write the updated configuration
-			fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 4));
-			log('success', 'Updated MCP configuration file');
-		} catch (error) {
-			log('error', `Failed to update MCP configuration: ${error.message}`);
-			// Create a backup before potentially modifying
-			const backupPath = `${mcpJsonPath}.backup-${Date.now()}`;
-			if (fs.existsSync(mcpJsonPath)) {
-				fs.copyFileSync(mcpJsonPath, backupPath);
-				log('info', `Created backup of existing mcp.json at ${backupPath}`);
-			}
-
-			// Create new configuration
-			const newMCPConfig = {
-				mcpServers: newMCPServer
-			};
-
-			fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
-			log(
-				'warn',
-				'Created new MCP configuration file (backup of original file was created if it existed)'
-			);
-		}
-	} else {
-		// If mcp.json doesn't exist, create it
-		const newMCPConfig = {
-			mcpServers: newMCPServer
-		};
-
-		fs.writeFileSync(mcpJsonPath, JSON.stringify(newMCPConfig, null, 4));
-		log('success', 'Created MCP configuration file for Cursor integration');
-	}
-
-	// Add note to console about MCP integration
-	log('info', 'MCP server will use the installed task-master-ai package');
-}
-
 // Ensure necessary functions are exported
-export { initializeProject, log }; // Only export what's needed by commands.js
+export { initializeProject, log };

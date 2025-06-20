@@ -5,6 +5,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
+import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
 export function registerInitializeProjectTool(server) {
 	server.addTool({
@@ -19,27 +20,21 @@ export function registerInitializeProjectTool(server) {
 				.describe(
 					'Skip installing dependencies automatically. Never do this unless you are sure the project is already installed.'
 				),
-			aliases: z
+			addAliases: z
 				.boolean()
 				.optional()
 				.default(true)
-				.describe(
-					'Control shell aliases creation. When true, adds aliases (tm, taskmaster); when false, skips aliases; defaults to true.'
-				),
-			git: z
+				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+			initGit: z
 				.boolean()
 				.optional()
 				.default(true)
-				.describe(
-					'Control Git repository initialization. When true, initializes Git; when false, skips Git; defaults to true.'
-				),
-			gitTasks: z
+				.describe('Initialize Git repository in project root.'),
+			storeTasksInGit: z
 				.boolean()
 				.optional()
 				.default(false)
-				.describe(
-					'Control Git storage of tasks. When true, stores tasks in Git; when false, no Git storage of tasks; defaults to false.'
-				),
+				.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
 			yes: z
 				.boolean()
 				.optional()
@@ -51,6 +46,12 @@ export function registerInitializeProjectTool(server) {
 				.string()
 				.describe(
 					'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
+				),
+			rules: z
+				.array(z.enum(RULE_PROFILES))
+				.optional()
+				.describe(
+					`List of rule profiles to include at initialization. If omitted, defaults to all available profiles. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, context) => {
