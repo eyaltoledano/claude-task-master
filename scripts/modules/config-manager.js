@@ -496,7 +496,14 @@ function getParametersForRole(role, explicitRoot = null) {
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Define the expected environment variable name for each provider
-	if (providerName?.toLowerCase() === 'ollama') {
+
+	// Providers that don't require API keys for authentication
+	const providersWithoutApiKeys = [
+		CUSTOM_PROVIDERS.OLLAMA,
+		CUSTOM_PROVIDERS.BEDROCK
+	];
+
+	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 		return true; // Indicate key status is effectively "OK"
 	}
 
