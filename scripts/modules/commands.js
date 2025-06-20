@@ -3823,7 +3823,26 @@ Examples:
 			if (options[RULES_SETUP_ACTION]) {
 				// Run interactive rules setup ONLY (no project init)
 				const selectedRuleProfiles = await runInteractiveProfilesSetup();
-				for (const profile of selectedRuleProfiles) {
+
+				if (!selectedRuleProfiles || selectedRuleProfiles.length === 0) {
+					console.log(chalk.yellow('No profiles selected. Exiting.'));
+					return;
+				}
+
+				console.log(
+					chalk.blue(
+						`Installing ${selectedRuleProfiles.length} selected profile(s)...`
+					)
+				);
+
+				for (let i = 0; i < selectedRuleProfiles.length; i++) {
+					const profile = selectedRuleProfiles[i];
+					console.log(
+						chalk.blue(
+							`Processing profile ${i + 1}/${selectedRuleProfiles.length}: ${profile}...`
+						)
+					);
+
 					if (!isValidProfile(profile)) {
 						console.warn(
 							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
@@ -3831,16 +3850,20 @@ Examples:
 						continue;
 					}
 					const profileConfig = getRulesProfile(profile);
+
 					const addResult = convertAllRulesToProfileRules(
 						projectDir,
 						profileConfig
 					);
-					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						profileConfig.onAddRulesProfile(projectDir);
-					}
 
 					console.log(chalk.green(generateProfileSummary(profile, addResult)));
 				}
+
+				console.log(
+					chalk.green(
+						`\nCompleted installation of all ${selectedRuleProfiles.length} profile(s).`
+					)
+				);
 				return;
 			}
 

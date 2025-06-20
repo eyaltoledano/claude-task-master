@@ -326,10 +326,30 @@ async function initializeProject(options = {}) {
 	// 	console.log('Skip prompts determined:', skipPrompts);
 	// }
 
-	const selectedRuleProfiles =
-		options.rules && Array.isArray(options.rules) && options.rules.length > 0
-			? options.rules
-			: RULE_PROFILES; // Default to all profiles
+	let selectedRuleProfiles;
+	if (options.rulesExplicitlyProvided) {
+		// If --rules flag was used, always respect it.
+		log(
+			'info',
+			`Using rule profiles provided via command line: ${options.rules.join(', ')}`
+		);
+		selectedRuleProfiles = options.rules;
+	} else if (skipPrompts) {
+		// If non-interactive (e.g., --yes) and no rules specified, default to ALL.
+		log(
+			'info',
+			`No rules specified in non-interactive mode, defaulting to all profiles.`
+		);
+		selectedRuleProfiles = RULE_PROFILES;
+	} else {
+		// If interactive and no rules specified, default to NONE.
+		// The 'rules --setup' wizard will handle selection.
+		log(
+			'info',
+			'No rules specified; interactive setup will be launched to select profiles.'
+		);
+		selectedRuleProfiles = [];
+	}
 
 	if (skipPrompts) {
 		if (!isSilentMode()) {
@@ -404,16 +424,6 @@ async function initializeProject(options = {}) {
 					'info',
 					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
 				);
-			} else {
-				try {
-					const targetDir = process.cwd();
-					execSync('npx task-master rules setup', {
-						stdio: 'inherit',
-						cwd: targetDir
-					});
-				} catch (error) {
-					log('error', 'Failed to run interactive rules setup:', error.message);
-				}
 			}
 
 			const dryRun = options.dryRun || false;
@@ -439,7 +449,9 @@ async function initializeProject(options = {}) {
 			);
 			rl.close();
 		} catch (error) {
-			rl.close();
+			if (rl) {
+				rl.close();
+			}
 			log('error', `Error during initialization process: ${error.message}`);
 			process.exit(1);
 		}
@@ -460,7 +472,7 @@ function createProjectStructure(
 	addAliases,
 	dryRun,
 	options,
-	selectedRuleProfiles = RULE_PROFILES // Default to all rule profiles
+	selectedRuleProfiles = RULE_PROFILES
 ) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
@@ -524,10 +536,13 @@ function createProjectStructure(
 		log('warn', 'Git not available, skipping repository initialization');
 	}
 
-	// Generate profile rules from assets/rules
-	log('info', 'Generating profile rules from assets/rules...');
-	for (const profileName of selectedRuleProfiles) {
-		_processSingleProfile(profileName);
+	// Only run the manual transformer if rules were provided via flags.
+	// The interactive `rules --setup` wizard handles its own installation.
+	if (options.rulesExplicitlyProvided || options.yes) {
+		log('info', 'Generating profile rules from command-line flags...');
+		for (const profileName of selectedRuleProfiles) {
+			_processSingleProfile(profileName);
+		}
 	}
 
 	// Add shell aliases if requested
@@ -557,6 +572,49 @@ function createProjectStructure(
 			})
 		);
 	}
+
+	// === Add Rule Profiles Setup Step ===
+	if (
+		!isSilentMode() &&
+		!dryRun &&
+		!options?.yes &&
+		!options.rulesExplicitlyProvided
+	) {
+		console.log(
+			boxen(chalk.cyan('Configuring Rule Profiles...'), {
+				padding: 0.5,
+				margin: { top: 1, bottom: 0.5 },
+				borderStyle: 'round',
+				borderColor: 'blue'
+			})
+		);
+		log(
+			'info',
+			'Running interactive rules setup. Please select which rule profiles to include.'
+		);
+		try {
+			// Correct command confirmed by you.
+			execSync('npx task-master rules --setup', {
+				stdio: 'inherit',
+				cwd: targetDir
+			});
+			log('success', 'Rule profiles configured.');
+		} catch (error) {
+			log('error', 'Failed to configure rule profiles:', error.message);
+			log('warn', 'You may need to run "task-master rules --setup" manually.');
+		}
+	} else if (isSilentMode() || dryRun || options?.yes) {
+		// This branch can log why setup was skipped, similar to the model setup logic.
+		if (options.rulesExplicitlyProvided) {
+			log(
+				'info',
+				'Skipping interactive rules setup because --rules flag was used.'
+			);
+		} else {
+			log('info', 'Skipping interactive rules setup in non-interactive mode.');
+		}
+	}
+	// =====================================
 
 	// === Add Model Configuration Step ===
 	if (!isSilentMode() && !dryRun && !options?.yes) {

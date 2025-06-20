@@ -206,6 +206,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
 		const assetsDir = path.join(__dirname, '..', '..', 'assets');
+
 		if (typeof profile.onPostConvertRulesProfile === 'function') {
 			profile.onPostConvertRulesProfile(projectDir, assetsDir);
 		}
