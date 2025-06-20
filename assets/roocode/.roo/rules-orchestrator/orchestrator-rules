@@ -70,52 +70,52 @@ taskmaster_strategy:
 **Mode Collaboration & Triggers:**
 
 mode_collaboration: |
-    # Collaboration definitions for how Boomerang orchestrates and interacts.
-    # Boomerang delegates via `new_task` using taskmaster-ai for task context,
+    # Collaboration definitions for how Orchestrator orchestrates and interacts.
+    # Orchestrator delegates via `new_task` using taskmaster-ai for task context,
     # receives results via `attempt_completion`, processes them, updates taskmaster-ai, and determines the next step.
 
-      1. Architect Mode Collaboration: # Interaction initiated BY Boomerang
+      1. Architect Mode Collaboration: # Interaction initiated BY Orchestrator
         - Delegation via `new_task`:
           * Provide clear architectural task scope (referencing taskmaster-ai task ID).
           * Request design, structure, planning based on taskmaster context.
-        - Completion Reporting TO Boomerang: # Receiving results FROM Architect via attempt_completion
+        - Completion Reporting TO Orchestrator: # Receiving results FROM Architect via attempt_completion
           * Expect design decisions, artifacts created, completion status (taskmaster-ai task ID).
           * Expect context needed for subsequent implementation delegation.
 
-    2. Test Mode Collaboration: # Interaction initiated BY Boomerang
+    2. Test Mode Collaboration: # Interaction initiated BY Orchestrator
       - Delegation via `new_task`:
         * Provide clear testing scope (referencing taskmaster-ai task ID).
         * Request test plan development, execution, verification based on taskmaster context.
-      - Completion Reporting TO Boomerang: # Receiving results FROM Test via attempt_completion
+      - Completion Reporting TO Orchestrator: # Receiving results FROM Test via attempt_completion
         * Expect summary of test results (pass/fail, coverage), completion status (taskmaster-ai task ID).
         * Expect details on bugs or validation issues.
 
-    3. Debug Mode Collaboration: # Interaction initiated BY Boomerang
+    3. Debug Mode Collaboration: # Interaction initiated BY Orchestrator
       - Delegation via `new_task`:
         * Provide clear debugging scope (referencing taskmaster-ai task ID).
         * Request investigation, root cause analysis based on taskmaster context.
-      - Completion Reporting TO Boomerang: # Receiving results FROM Debug via attempt_completion
+      - Completion Reporting TO Orchestrator: # Receiving results FROM Debug via attempt_completion
         * Expect summary of findings (root cause, affected areas), completion status (taskmaster-ai task ID).
         * Expect recommended fixes or next diagnostic steps.
 
-    4. Ask Mode Collaboration: # Interaction initiated BY Boomerang
+    4. Ask Mode Collaboration: # Interaction initiated BY Orchestrator
       - Delegation via `new_task`:
         * Provide clear question/analysis request (referencing taskmaster-ai task ID).
         * Request research, context analysis, explanation based on taskmaster context.
-      - Completion Reporting TO Boomerang: # Receiving results FROM Ask via attempt_completion
+      - Completion Reporting TO Orchestrator: # Receiving results FROM Ask via attempt_completion
         * Expect answers, explanations, analysis results, completion status (taskmaster-ai task ID).
         * Expect cited sources or relevant context found.
 
-    5. Code Mode Collaboration: # Interaction initiated BY Boomerang
+    5. Code Mode Collaboration: # Interaction initiated BY Orchestrator
       - Delegation via `new_task`:
         * Provide clear coding requirements (referencing taskmaster-ai task ID).
         * Request implementation, fixes, documentation, command execution based on taskmaster context.
-      - Completion Reporting TO Boomerang: # Receiving results FROM Code via attempt_completion
+      - Completion Reporting TO Orchestrator: # Receiving results FROM Code via attempt_completion
         * Expect outcome of commands/tool usage, summary of code changes/operations, completion status (taskmaster-ai task ID).
         * Expect links to commits or relevant code sections if relevant.
 
-    7. Boomerang Mode Collaboration: # Boomerang's Internal Orchestration Logic
-      # Boomerang orchestrates via delegation, using taskmaster-ai as the source of truth.
+    7. Orchestrator Mode Collaboration: # Orchestrator's Internal Orchestration Logic
+      # Orchestrator orchestrates via delegation, using taskmaster-ai as the source of truth.
       - Task Decomposition & Planning:
         * Analyze complex user requests, potentially delegating initial analysis to Architect mode.
         * Use `taskmaster-ai` (`get_tasks`, `analyze_project_complexity`) to understand current state.
@@ -141,9 +141,9 @@ mode_collaboration: |
 
 mode_triggers:
   # Conditions that trigger a switch TO the specified mode via switch_mode.
-  # Note: Boomerang mode is typically initiated for complex tasks or explicitly chosen by the user,
+  # Note: Orchestrator mode is typically initiated for complex tasks or explicitly chosen by the user,
   #       and receives results via attempt_completion, not standard switch_mode triggers from other modes.
-  # These triggers remain the same as they define inter-mode handoffs, not Boomerang's internal logic.
+  # These triggers remain the same as they define inter-mode handoffs, not Orchestrator's internal logic.
 
   architect:
     - condition: needs_architectural_changes
