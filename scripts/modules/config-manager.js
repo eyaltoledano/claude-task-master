@@ -571,10 +571,11 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 		const mcpConfigRaw = fs.readFileSync(mcpConfigPath, 'utf-8');
 		const mcpConfig = JSON.parse(mcpConfigRaw);
 
-		const mcpEnv = mcpConfig?.mcpServers?.['taskmaster-ai']?.env;
+		const mcpEnv =
+			mcpConfig?.mcpServers?.['task-master-ai']?.env ||
+			mcpConfig?.mcpServers?.['taskmaster-ai']?.env;
 		if (!mcpEnv) {
-			// console.warn(chalk.yellow('Warning: Could not find taskmaster-ai env in mcp.json.'));
-			return false; // Structure missing
+			return false;
 		}
 
 		let apiKeyToCheck = null;
@@ -782,9 +783,15 @@ function getAllProviders() {
 
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseURL === 'string'
-		? roleConfig.baseURL
-		: undefined;
+	if (roleConfig && typeof roleConfig.baseURL === 'string') {
+		return roleConfig.baseURL;
+	}
+	const provider = roleConfig?.provider;
+	if (provider) {
+		const envVarName = `${provider.toUpperCase()}_BASE_URL`;
+		return resolveEnvVariable(envVarName, null, explicitRoot);
+	}
+	return undefined;
 }
 
 export {
