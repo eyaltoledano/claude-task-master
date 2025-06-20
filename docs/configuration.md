@@ -72,6 +72,7 @@ Taskmaster uses two primary methods for configuration:
   - `XAI_API_KEY`: Your X-AI API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
+  - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
   - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
   - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
@@ -131,13 +132,14 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # etc.
 
 # Optional Endpoint Overrides
+# Use a specific provider's base URL, e.g., for an OpenAI-compatible API
+# OPENAI_BASE_URL=https://api.third-party.com/v1
+#
 # AZURE_OPENAI_ENDPOINT=https://your-azure-endpoint.openai.azure.com/
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
-# VERTEX_LOCATION=us-central1
-# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-credentials.json
 ```
 
 ## Troubleshooting
