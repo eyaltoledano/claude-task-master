@@ -5,6 +5,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
+import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
 export function registerInitializeProjectTool(server) {
 	server.addTool({
@@ -35,6 +36,12 @@ export function registerInitializeProjectTool(server) {
 				.string()
 				.describe(
 					'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
+				),
+			rules: z
+				.array(z.enum(RULE_PROFILES))
+				.optional()
+				.describe(
+					`List of rule profiles to include at initialization. If omitted, defaults to all available profiles. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, context) => {
