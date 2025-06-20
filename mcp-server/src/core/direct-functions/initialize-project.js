@@ -11,7 +11,7 @@ import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transf
 /**
  * Direct function wrapper for initializing a project.
  * Derives target directory from session, sets CWD, and calls core init logic.
- * @param {object} args - Arguments containing initialization options (addAliases, skipInstall, yes, projectRoot, rules)
+ * @param {object} args - Arguments containing initialization options (addAliases, initGit, storeTasksInGit, skipInstall, yes, projectRoot, rules)
  * @param {object} log - The FastMCP logger instance.
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
@@ -65,7 +65,9 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		// Construct options ONLY from the relevant flags in args
 		// The core initializeProject operates in the current CWD, which we just set
 		const options = {
-			aliases: args.addAliases,
+			addAliases: args.addAliases,
+			initGit: args.initGit,
+			storeTasksInGit: args.storeTasksInGit,
 			skipInstall: args.skipInstall,
 			yes: true // Force yes mode
 		};

@@ -23,8 +23,18 @@ export function registerInitializeProjectTool(server) {
 			addAliases: z
 				.boolean()
 				.optional()
-				.default(false)
+				.default(true)
 				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+			initGit: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe('Initialize Git repository in project root.'),
+			storeTasksInGit: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
 			yes: z
 				.boolean()
 				.optional()
