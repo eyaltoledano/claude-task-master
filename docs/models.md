@@ -9,9 +9,6 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
-| azure       | gpt-4o                                         | 0.332     | 2.5        | 10          |
-| azure       | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
-| azure       | gpt-4-1                                        | -         | 2          | 8           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o1                                             | 0.489     | 15         | 60          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
@@ -94,9 +91,6 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
-| azure       | gpt-4o                                         | 0.332     | 2.5        | 10          |
-| azure       | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
-| azure       | gpt-4-1                                        | -         | 2          | 8           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
 | openai      | o4-mini                                        | 0.45      | 1.1        | 4.4         |
