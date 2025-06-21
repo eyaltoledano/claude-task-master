@@ -6,7 +6,8 @@
 			".changeset",
 			"tasks",
 			"package-lock.json",
-			"tests/fixture/*.json"
+			"tests/fixture/*.json",
+			"dist"
 		]
 	},
 	"formatter": {

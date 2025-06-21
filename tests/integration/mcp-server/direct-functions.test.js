@@ -133,7 +133,7 @@ jest.mock('../../../scripts/modules/utils.js', () => ({
 	readComplexityReport: mockReadComplexityReport,
 	CONFIG: {
 		model: 'claude-3-7-sonnet-20250219',
-		maxTokens: 64000,
+		maxTokens: 8192,
 		temperature: 0.2,
 		defaultSubtasks: 5
 	}

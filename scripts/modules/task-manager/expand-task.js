@@ -43,8 +43,9 @@ const subtaskSchema = z
 			),
 		testStrategy: z
 			.string()
-			.optional()
+			.nullable()
 			.describe('Approach for testing this subtask')
+			.default('')
 	})
 	.strict();
 const subtaskArraySchema = z.array(subtaskSchema);

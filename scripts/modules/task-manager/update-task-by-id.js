@@ -36,9 +36,9 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
+		priority: z.string().nullable().default('medium'),
+		details: z.string().nullable().default(''),
+		testStrategy: z.string().nullable().default(''),
 		subtasks: z
 			.array(
 				z.object({
@@ -50,12 +50,13 @@ const updatedTaskSchema = z
 					title: z.string(),
 					description: z.string(),
 					status: z.string(),
-					dependencies: z.array(z.number().int()).optional(),
-					details: z.string().optional(),
-					testStrategy: z.string().optional()
+					dependencies: z.array(z.number().int()).nullable().default([]),
+					details: z.string().nullable().default(''),
+					testStrategy: z.string().nullable().default('')
 				})
 			)
-			.optional()
+			.nullable()
+			.default([])
 	})
 	.strip(); // Allows parsing even if AI adds extra fields, but validation focuses on schema
 

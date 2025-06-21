@@ -54,7 +54,7 @@
 				"output": 15.0
 			},
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 64000
+			"max_tokens": 8192
 		}
 	],
 	"openai": [
@@ -84,7 +84,8 @@
 				"input": 2.0,
 				"output": 8.0
 			},
-			"allowed_roles": ["main", "fallback"]
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000
 		},
 		{
 			"id": "o3-mini",
