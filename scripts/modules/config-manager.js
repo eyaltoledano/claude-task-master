@@ -5,6 +5,12 @@ import { fileURLToPath } from 'url';
 import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
 import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
+import {
+	VALIDATED_PROVIDERS,
+	CUSTOM_PROVIDERS,
+	CUSTOM_PROVIDERS_ARRAY,
+	ALL_PROVIDERS
+} from '../../src/constants/providers.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -29,9 +35,6 @@ try {
 	process.exit(1); // Exit if models can't be loaded
 }
 
-// Define valid providers dynamically from the loaded MODEL_MAP
-const VALID_PROVIDERS = Object.keys(MODEL_MAP || {});
-
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
 	models: {
@@ -51,7 +54,7 @@ const DEFAULTS = {
 			// No default fallback provider/model initially
 			provider: 'anthropic',
 			modelId: 'claude-3-5-sonnet',
-			maxTokens: 64000, // Default parameters if fallback IS configured
+			maxTokens: 8192, // Default parameters if fallback IS configured
 			temperature: 0.2
 		}
 	},
@@ -233,12 +236,25 @@ function getConfig(explicitRoot = null, forceReload = false) {
 }
 
 /**
- * Validates if a provider name is in the list of supported providers.
+ * Validates if a provider name is supported.
+ * Custom providers (azure, vertex, bedrock, openrouter, ollama) are always allowed.
+ * Validated providers must exist in the MODEL_MAP from supported-models.json.
  * @param {string} providerName The name of the provider.
  * @returns {boolean} True if the provider is valid, false otherwise.
  */
 function validateProvider(providerName) {
-	return VALID_PROVIDERS.includes(providerName);
+	// Custom providers are always allowed
+	if (CUSTOM_PROVIDERS_ARRAY.includes(providerName)) {
+		return true;
+	}
+
+	// Validated providers must exist in MODEL_MAP
+	if (VALIDATED_PROVIDERS.includes(providerName)) {
+		return !!(MODEL_MAP && MODEL_MAP[providerName]);
+	}
+
+	// Unknown providers are not allowed
+	return false;
 }
 
 /**
@@ -480,8 +496,20 @@ function getParametersForRole(role, explicitRoot = null) {
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Define the expected environment variable name for each provider
-	if (providerName?.toLowerCase() === 'ollama') {
+
+	// Providers that don't require API keys for authentication
+	const providersWithoutApiKeys = [
+		CUSTOM_PROVIDERS.OLLAMA,
+		CUSTOM_PROVIDERS.BEDROCK
+	];
+
+	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 		return true; // Indicate key status is effectively "OK"
+	}
+
+	// Claude Code doesn't require an API key
+	if (providerName?.toLowerCase() === 'claude-code') {
+		return true; // No API key needed
 	}
 
 	const keyMap = {
@@ -493,7 +521,9 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
-		vertex: 'GOOGLE_API_KEY' // Vertex uses the same key as Google
+		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
+		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
+		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
 		// Add other providers as needed
 	};
 
@@ -541,10 +571,11 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 		const mcpConfigRaw = fs.readFileSync(mcpConfigPath, 'utf-8');
 		const mcpConfig = JSON.parse(mcpConfigRaw);
 
-		const mcpEnv = mcpConfig?.mcpServers?.['taskmaster-ai']?.env;
+		const mcpEnv =
+			mcpConfig?.mcpServers?.['task-master-ai']?.env ||
+			mcpConfig?.mcpServers?.['taskmaster-ai']?.env;
 		if (!mcpEnv) {
-			// console.warn(chalk.yellow('Warning: Could not find taskmaster-ai env in mcp.json.'));
-			return false; // Structure missing
+			return false;
 		}
 
 		let apiKeyToCheck = null;
@@ -577,6 +608,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				break;
 			case 'ollama':
 				return true; // No key needed
+			case 'claude-code':
+				return true; // No key needed
 			case 'mistral':
 				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
 				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
@@ -588,6 +621,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'vertex':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
 				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
+				break;
+			case 'bedrock':
+				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
+				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
 				break;
 			default:
 				return false; // Unknown provider
@@ -636,7 +673,8 @@ function getAvailableModels() {
 					provider: provider,
 					swe_score: sweScore,
 					cost_per_1m_tokens: cost,
-					allowed_roles: allowedRoles
+					allowed_roles: allowedRoles,
+					max_tokens: modelObj.max_tokens
 				});
 			});
 		} else {
@@ -736,18 +774,24 @@ function getUserId(explicitRoot = null) {
 }
 
 /**
- * Gets a list of all provider names defined in the MODEL_MAP.
- * @returns {string[]} An array of provider names.
+ * Gets a list of all known provider names (both validated and custom).
+ * @returns {string[]} An array of all provider names.
  */
 function getAllProviders() {
-	return Object.keys(MODEL_MAP || {});
+	return ALL_PROVIDERS;
 }
 
 function getBaseUrlForRole(role, explicitRoot = null) {
 	const roleConfig = getModelConfigForRole(role, explicitRoot);
-	return roleConfig && typeof roleConfig.baseURL === 'string'
-		? roleConfig.baseURL
-		: undefined;
+	if (roleConfig && typeof roleConfig.baseURL === 'string') {
+		return roleConfig.baseURL;
+	}
+	const provider = roleConfig?.provider;
+	if (provider) {
+		const envVarName = `${provider.toUpperCase()}_BASE_URL`;
+		return resolveEnvVariable(envVarName, null, explicitRoot);
+	}
+	return undefined;
 }
 
 export {
@@ -759,7 +803,9 @@ export {
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
-	VALID_PROVIDERS,
+	VALIDATED_PROVIDERS,
+	CUSTOM_PROVIDERS,
+	ALL_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
 	// Role-specific getters (No env var overrides)

@@ -36,10 +36,27 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
-		subtasks: z.array(z.any()).optional()
+		priority: z.string().nullable().default('medium'),
+		details: z.string().nullable().default(''),
+		testStrategy: z.string().nullable().default(''),
+		subtasks: z
+			.array(
+				z.object({
+					id: z
+						.number()
+						.int()
+						.positive()
+						.describe('Sequential subtask ID starting from 1'),
+					title: z.string(),
+					description: z.string(),
+					status: z.string(),
+					dependencies: z.array(z.number().int()).nullable().default([]),
+					details: z.string().nullable().default(''),
+					testStrategy: z.string().nullable().default('')
+				})
+			)
+			.nullable()
+			.default([])
 	})
 	.strip(); // Allows parsing even if AI adds extra fields, but validation focuses on schema
 
@@ -441,6 +458,8 @@ Guidelines:
 9. Instead, add a new subtask that clearly indicates what needs to be changed or replaced
 10. Use the existence of completed subtasks as an opportunity to make new subtasks more specific and targeted
 11. Ensure any new subtasks have unique IDs that don't conflict with existing ones
+12. CRITICAL: For subtask IDs, use ONLY numeric values (1, 2, 3, etc.) NOT strings ("1", "2", "3")
+13. CRITICAL: Subtask IDs should start from 1 and increment sequentially (1, 2, 3...) - do NOT use parent task ID as prefix
 
 The changes described in the prompt should be thoughtfully applied to make the task more accurate and actionable.`;
 
@@ -573,6 +592,37 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				);
 				updatedTask.status = taskToUpdate.status;
 			}
+			// Fix subtask IDs if they exist (ensure they are numeric and sequential)
+			if (updatedTask.subtasks && Array.isArray(updatedTask.subtasks)) {
+				let currentSubtaskId = 1;
+				updatedTask.subtasks = updatedTask.subtasks.map((subtask) => {
+					// Fix AI-generated subtask IDs that might be strings or use parent ID as prefix
+					const correctedSubtask = {
+						...subtask,
+						id: currentSubtaskId, // Override AI-generated ID with correct sequential ID
+						dependencies: Array.isArray(subtask.dependencies)
+							? subtask.dependencies
+									.map((dep) =>
+										typeof dep === 'string' ? parseInt(dep, 10) : dep
+									)
+									.filter(
+										(depId) =>
+											!Number.isNaN(depId) &&
+											depId >= 1 &&
+											depId < currentSubtaskId
+									)
+							: [],
+						status: subtask.status || 'pending'
+					};
+					currentSubtaskId++;
+					return correctedSubtask;
+				});
+				report(
+					'info',
+					`Fixed ${updatedTask.subtasks.length} subtask IDs to be sequential numeric IDs.`
+				);
+			}
+
 			// Preserve completed subtasks (Keep existing logic)
 			if (taskToUpdate.subtasks?.length > 0) {
 				if (!updatedTask.subtasks) {

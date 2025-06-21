@@ -1,14 +1,14 @@
 {
 	"models": {
 		"main": {
-			"provider": "anthropic",
-			"modelId": "claude-sonnet-4-20250514",
+			"provider": "vertex",
+			"modelId": "gemini-1.5-pro-002",
 			"maxTokens": 50000,
 			"temperature": 0.2
 		},
 		"research": {
 			"provider": "perplexity",
-			"modelId": "sonar-pro",
+			"modelId": "sonar",
 			"maxTokens": 8700,
 			"temperature": 0.1
 		},
@@ -20,7 +20,6 @@
 		}
 	},
 	"global": {
-		"userId": "1234567890",
 		"logLevel": "info",
 		"debug": false,
 		"defaultSubtasks": 5,
@@ -28,6 +27,7 @@
 		"projectName": "Taskmaster",
 		"ollamaBaseURL": "http://localhost:11434/api",
 		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
+		"userId": "1234567890",
 		"azureBaseURL": "https://your-endpoint.azure.com/",
 		"defaultTag": "master"
 	}

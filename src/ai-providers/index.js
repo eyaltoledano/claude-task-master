@@ -13,3 +13,4 @@ export { OllamaAIProvider } from './ollama.js';
 export { BedrockAIProvider } from './bedrock.js';
 export { AzureProvider } from './azure.js';
 export { VertexAIProvider } from './google-vertex.js';
+export { ClaudeCodeProvider } from './claude-code.js';

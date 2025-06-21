@@ -26,6 +26,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `--name <name>`: `Set the name for your project in Taskmaster's configuration.`
     *   `--description <text>`: `Provide a brief description for your project.`
     *   `--version <version>`: `Set the initial version for your project, e.g., '0.1.0'.`
+    *   `--no-git`: `Skip initializing a Git repository entirely.`
     *   `-y, --yes`: `Initialize Taskmaster quickly using default settings without interactive prompts.`
 *   **Usage:** Run this once at the beginning of a new project.
 *   **MCP Variant Description:** `Set up the basic Taskmaster file structure and configuration in the current directory for a new project by running the 'task-master init' command.`
@@ -36,6 +37,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `authorName`: `Author name.` (CLI: `--author <author>`)
     *   `skipInstall`: `Skip installing dependencies. Default is false.` (CLI: `--skip-install`)
     *   `addAliases`: `Add shell aliases tm and taskmaster. Default is false.` (CLI: `--aliases`)
+    *   `noGit`: `Skip initializing a Git repository entirely. Default is false.` (CLI: `--no-git`)
     *   `yes`: `Skip prompts and use defaults/provided arguments. Default is false.` (CLI: `-y, --yes`)
 *   **Usage:** Run this once at the beginning of a new project, typically via an integrated tool like Cursor. Operates on the current working directory of the MCP server. 
 *   **Important:** Once complete, you *MUST* parse a prd in order to generate tasks. There will be no tasks files until then. The next step after initializing should be to create a PRD using the example PRD in .taskmaster/templates/example_prd.txt. 
