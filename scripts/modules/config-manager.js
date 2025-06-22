@@ -394,6 +394,11 @@ function getOllamaBaseURL(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).ollamaBaseURL;
 }
 
+function getOpenAIBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).openaiBaseURL;
+}
+
 function getAzureBaseURL(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).azureBaseURL;
@@ -830,6 +835,7 @@ export {
 	getDefaultPriority,
 	getProjectName,
 	getOllamaBaseURL,
+	getOpenAIBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getParametersForRole,
