@@ -75,10 +75,12 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		// Handle rules option with MCP-specific defaults
 		if (Array.isArray(args.rules) && args.rules.length > 0) {
 			options.rules = args.rules;
+			options.rulesExplicitlyProvided = true;
 			log.info(`Including rules: ${args.rules.join(', ')}`);
 		} else {
 			// For MCP initialization, default to Cursor profile only
 			options.rules = ['cursor'];
+			options.rulesExplicitlyProvided = true;
 			log.info(
 				`No rule profiles specified, defaulting to: Cursor`
 			);
