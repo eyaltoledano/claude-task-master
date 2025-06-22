@@ -68,13 +68,19 @@ function onAddRulesProfile(targetDir, assetsDir) {
 			if (copyDirectoryRecursive(claudeSourceDir, claudeDestDir)) {
 				log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
 			} else {
-				log('warn', `[Claude] Source .claude directory not found at ${claudeSourceDir}`);
+				log(
+					'warn',
+					`[Claude] Source .claude directory not found at ${claudeSourceDir}`
+				);
 			}
 		} catch (err) {
 			log('error', `[Claude] Failed to copy .claude directory: ${err.message}`);
 		}
 	} else {
-		log('warn', `[Claude] Source .claude directory not found at ${claudeSourceDir}`);
+		log(
+			'warn',
+			`[Claude] Source .claude directory not found at ${claudeSourceDir}`
+		);
 	}
 }
 
