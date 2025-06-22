@@ -45,8 +45,11 @@ import {
 	BedrockAIProvider,
 	AzureProvider,
 	VertexAIProvider,
-	MCPAIProvider
+	//MCPAIProvider
 } from '../../src/ai-providers/index.js';
+
+// Import the provider registry
+import ProviderRegistry from '../../src/provider-registry/index.js';
 
 // Create provider instances
 const PROVIDERS = {
@@ -60,8 +63,25 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
-	mcp: new MCPAIProvider()
+	// mcp: new MCPAIProvider()
 };
+
+function _getProvider(providerName) {
+	// First check the static PROVIDERS object
+	if (PROVIDERS[providerName]) {
+		return PROVIDERS[providerName];
+	}
+	
+	// If not found, check the provider registry
+	const providerRegistry = ProviderRegistry();
+	if (providerRegistry.hasProvider(providerName)) {
+		log('debug', `Provider "${providerName}" found in dynamic registry`);
+		return providerRegistry.getProvider(providerName);
+	}
+	
+	// Provider not found in either location
+	return null;
+}
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
@@ -446,7 +466,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Get provider instance
-			provider = PROVIDERS[providerName?.toLowerCase()];
+			provider = _getProvider(providerName?.toLowerCase());
 			if (!provider) {
 				log(
 					'warn',
@@ -545,24 +565,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 				log(
 					'debug',
 					`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
-				);
-			}
-
-			// Handle MCP specific configuration
-			if (providerName?.toLowerCase() === 'mcp') {
-				// MCP providers need session context instead of API keys
-				if (!session) {
-					throw new Error('MCP provider requires session context');
-				}
-
-				// Pass the FastMCPSession directly - it already has clientCapabilities.sampling
-				providerSpecificParams = {
-					session: session
-				};
-
-				log(
-					'debug',
-					`Using MCP configuration with session sampling capability: ${session.clientCapabilities?.sampling ? 'available' : 'unavailable'}`
 				);
 			}
 

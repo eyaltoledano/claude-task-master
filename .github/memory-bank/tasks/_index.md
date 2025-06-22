@@ -2,10 +2,11 @@
 
 ## In Progress
 - [TASK002] **Enhanced Task Creation** - Smart dependency detection and context-aware generation
+- [TASK003] **MCP Provider Registry Implementation** - Remote provider architecture and session handling
 
 ## Pending
-- [TASK003] **Advanced Research Features** - Research caching and multi-source integration
-- [TASK004] **Task Analytics & Visualization** - Complexity analysis and progress tracking
+- [TASK004] **Advanced Research Features** - Research caching and multi-source integration
+- [TASK005] **Task Analytics & Visualization** - Complexity analysis and progress tracking
 - [TASK005] **Enhanced Git Integration** - Branch workflow and commit integration
 - [TASK006] **Configuration Enhancements** - Validation and setup wizard
 - [TASK007] **Documentation System** - Interactive docs and troubleshooting

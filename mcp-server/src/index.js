@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
+import ProviderRegistry from '../../src/provider-registry/index.js';
+import MCPRemoteProvider from './providers/mcp-remote-provider.js';
 
 // Load environment variables
 dotenv.config();
@@ -65,6 +67,12 @@ class TaskMasterMCPServer {
 			await this.init();
 		}
 
+
+		this.server.on("connect", (event) => {
+			this.logger.info(`MCP Server connected: ${event.session}`);
+			this.registerRemoteProvider(event.session);
+		});
+
 		// Start the FastMCP server with increased timeout
 		await this.server.start({
 			transportType: 'stdio',
@@ -72,6 +80,37 @@ class TaskMasterMCPServer {
 		});
 
 		return this;
+	}
+
+	/**
+	 * Register the MCP remote provider with the provider registry
+	 */
+	registerRemoteProvider(session) {
+		// Check if the server has at least one session
+		if (session) {
+			
+			// Make sure session has required capabilities
+			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
+				this.logger.warn('MCP session missing required sampling capabilities, Remote Provider not registered');
+				return;
+			}
+			
+			// Create the remote provider with the first session
+			const remoteProvider = new MCPRemoteProvider(this.server, {
+				defaultModel: 'claude-3-5-sonnet-20241022' // Use a default model
+			});
+			
+			// Set the session explicitly
+			remoteProvider.setSession(session);
+			
+			// Register the provider with the registry
+			const providerRegistry = ProviderRegistry.getInstance();
+			providerRegistry.registerProvider(MCPRemoteProvider.name, remoteProvider);
+			
+			this.logger.info('MCP Remote Provider registered with Provider Registry');
+		} else {
+			this.logger.warn('No MCP sessions available, Remote Provider not registered');
+		}
 	}
 
 	/**

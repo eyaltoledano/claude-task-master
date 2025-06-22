@@ -1,0 +1,141 @@
+/**
+ * Provider Registry - Singleton for managing AI providers
+ * 
+ * This module implements a singleton registry that allows dynamic registration
+ * of AI providers at runtime, while maintaining compatibility with the existing
+ * static PROVIDERS object in ai-services-unified.js.
+ */
+
+import { log } from '../../scripts/modules/utils.js';
+
+// Singleton instance
+let instance = null;
+
+/**
+ * Provider Registry class - Manages dynamic provider registration
+ */
+class ProviderRegistry {
+    constructor() {
+        // Private provider map
+        this._providers = new Map();
+        
+        // Flag to track initialization
+        this._initialized = false;
+        
+        log('debug', 'Provider Registry created');
+    }
+    
+    /**
+     * Get the singleton instance
+     * @returns {ProviderRegistry} The singleton instance
+     */
+    static getInstance() {
+        if (!instance) {
+            instance = new ProviderRegistry();
+        }
+        return instance;
+    }
+    
+    /**
+     * Initialize the registry
+     * @returns {ProviderRegistry} The singleton instance
+     */
+    initialize() {
+        if (this._initialized) {
+            log('debug', 'Provider Registry already initialized');
+            return this;
+        }
+        
+        log('info', 'Initializing Provider Registry');
+        this._initialized = true;
+        return this;
+    }
+    
+    /**
+     * Register a provider with the registry
+     * @param {string} providerName - The name of the provider
+     * @param {object} provider - The provider instance
+     * @param {object} options - Additional options for registration
+     * @returns {ProviderRegistry} The singleton instance for chaining
+     */
+    registerProvider(providerName, provider, options = {}) {
+        if (!providerName || typeof providerName !== 'string') {
+            throw new Error('Provider name must be a non-empty string');
+        }
+        
+        if (!provider) {
+            throw new Error('Provider instance is required');
+        }
+        
+        // Validate that provider implements the required interface
+        if (typeof provider.generateText !== 'function' || 
+            typeof provider.streamText !== 'function' || 
+            typeof provider.generateObject !== 'function') {
+            throw new Error('Provider must implement BaseAIProvider interface');
+        }
+        
+        // Add provider to the registry
+        this._providers.set(providerName, {
+            instance: provider,
+            options,
+            registeredAt: new Date()
+        });
+        
+        log('info', `Provider "${providerName}" registered with the registry`);
+        return this;
+    }
+    
+    /**
+     * Check if a provider exists in the registry
+     * @param {string} providerName - The name of the provider
+     * @returns {boolean} True if the provider exists
+     */
+    hasProvider(providerName) {
+        return this._providers.has(providerName);
+    }
+    
+    /**
+     * Get a provider from the registry
+     * @param {string} providerName - The name of the provider
+     * @returns {object|null} The provider instance or null if not found
+     */
+    getProvider(providerName) {
+        const providerEntry = this._providers.get(providerName);
+        return providerEntry ? providerEntry.instance : null;
+    }
+    
+    /**
+     * Get all registered providers
+     * @returns {Map} Map of all registered providers
+     */
+    getAllProviders() {
+        return new Map(this._providers);
+    }
+    
+    /**
+     * Remove a provider from the registry
+     * @param {string} providerName - The name of the provider
+     * @returns {boolean} True if the provider was removed
+     */
+    unregisterProvider(providerName) {
+        if (this._providers.has(providerName)) {
+            this._providers.delete(providerName);
+            log('info', `Provider "${providerName}" unregistered from the registry`);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Reset the registry (primarily for testing)
+     */
+    reset() {
+        this._providers.clear();
+        this._initialized = false;
+        log('warn', 'Provider Registry reset');
+    }
+}
+
+ProviderRegistry.getInstance().initialize(); // Ensure singleton is initialized on import
+// Export singleton getter
+export default ProviderRegistry;

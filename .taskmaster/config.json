@@ -1,21 +1,21 @@
 {
 	"models": {
 		"main": {
-			"provider": "anthropic",
+			"provider": "mcp",
 			"modelId": "claude-sonnet-4-20250514",
 			"maxTokens": 50000,
 			"temperature": 0.2
 		},
 		"research": {
-			"provider": "perplexity",
+			"provider": "mcp",
 			"modelId": "sonar-pro",
 			"maxTokens": 8700,
 			"temperature": 0.1
 		},
 		"fallback": {
 			"provider": "anthropic",
-			"modelId": "claude-3-7-sonnet-20250219",
-			"maxTokens": 128000,
+			"modelId": "claude-3-sonnet-20240229",
+			"maxTokens": 50000,
 			"temperature": 0.2
 		}
 	},

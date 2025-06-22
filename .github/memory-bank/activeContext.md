@@ -13,7 +13,7 @@ Successfully implemented comprehensive MCP (Model Context Protocol) provider sup
 - ✅ **Unit Tests Created** (25 passing tests)
 - ✅ **Documentation Complete** (comprehensive guides and examples)
 
-### CURRENT FOCUS: Enhanced Task Creation Features - TASK002 🔄
+### TASK002: Enhanced Task Creation Features - IN PROGRESS 🔄
 **Status**: Phase 1 Complete - Smart Dependency Detection Implemented ✅
 **Priority**: High - Core enhancement to fix dependency auto-population issue
 
@@ -27,6 +27,26 @@ Successfully implemented comprehensive MCP (Model Context Protocol) provider sup
 **Key Technical Achievement**: The AI now receives a complete overview of ALL tasks in the project (ID, title, description, dependencies, status) organized by completion status. This provides full project visibility for intelligent dependency detection while maintaining token efficiency through lightweight formatting.
 
 **Expected Impact**: Dependency detection accuracy should improve from ~20% to >80%, significantly reducing manual post-creation updates.
+
+### CURRENT FOCUS: MCP Provider Registry Implementation - TASK003 🔄
+**Status**: Implementation in Progress - Core Architecture Created (30% Complete)
+**Priority**: High - Critical architecture enhancement for improved MCP integration
+
+**Current Progress**:
+- ✅ Created Provider Registry singleton (`src/provider-registry/index.js`)
+- ✅ Implemented MCP Remote Provider (`mcp-server/src/providers/mcp-remote-provider.js`)
+- ✅ Updated MCP server to register providers on startup
+- ✅ Modified AI services to check registry for providers
+- 🔄 Started simplifying context handling in direct functions
+
+**Current Implementation**:
+The new provider architecture uses a singleton registry pattern that maintains backward compatibility with the existing static PROVIDERS object. When a provider isn't found in the static registry, the system automatically checks the dynamic registry. This enables seamless runtime registration of providers from the MCP server.
+
+**Next Steps**:
+1. Complete context simplification in remaining direct functions
+2. Update provider selection logic to fully leverage the registry
+3. Add unit tests for the new provider architecture
+4. Update documentation to reflect the changes
 
 ### NEXT FOCUS: Enhanced Task Creation Features
 

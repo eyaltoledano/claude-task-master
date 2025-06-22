@@ -11,9 +11,10 @@
       "cwd": "/Users/oren.m/code/claude-task-master",
       "env": {
         "NODE_ENV": "development",
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE"
+        "ANTHROPIC_API_KEY": "${env:ANTHROPIC_API_KEY}",
+        "PERPLEXITY_API_KEY": "${env:PERPLEXITY_API_KEY}",
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}",
+        "TASK_MASTER_PROJECT_ROOT": "/Users/oren.m/code/claude-task-master"
       },
       "dev": {
         "watch": "**/*.ts",
