@@ -81,9 +81,7 @@ export async function initializeProjectDirect(args, log, context = {}) {
 			// For MCP initialization, default to Cursor profile only
 			options.rules = ['cursor'];
 			options.rulesExplicitlyProvided = true;
-			log.info(
-				`No rule profiles specified, defaulting to: Cursor`
-			);
+			log.info(`No rule profiles specified, defaulting to: Cursor`);
 		}
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
