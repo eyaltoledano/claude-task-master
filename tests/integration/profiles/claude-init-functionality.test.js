@@ -15,23 +15,25 @@ describe('Claude Profile Initialization Functionality', () => {
 		claudeProfileContent = fs.readFileSync(claudeJsPath, 'utf8');
 	});
 
-	test('claude.js has correct profile configuration', () => {
+	test('claude.js has correct asset-only profile configuration', () => {
+		// Check for explicit, non-default values in the source file
 		expect(claudeProfileContent).toContain("name: 'claude'");
 		expect(claudeProfileContent).toContain("displayName: 'Claude Code'");
-		expect(claudeProfileContent).toContain("profileDir: '.'");
-		expect(claudeProfileContent).toContain("rulesDir: '.'");
-	});
-
-	test('claude.js has no MCP configuration', () => {
-		// Check that claude disables MCP config (asset-only profile)
-		expect(claudeProfileContent).toContain('mcpConfig: false');
-		// Verify runtime behavior: mcpConfigName should be null (handled automatically by base-profile.js)
-		expect(claudeProfile.mcpConfig).toBe(false);
-		expect(claudeProfile.mcpConfigName).toBe(null);
-	});
-
-	test('claude.js has file map for AGENTS.md -> CLAUDE.md', () => {
+		expect(claudeProfileContent).toContain("profileDir: '.'"); // non-default
+		expect(claudeProfileContent).toContain("rulesDir: '.'"); // non-default
+		expect(claudeProfileContent).toContain('mcpConfig: false'); // non-default
+		expect(claudeProfileContent).toContain('includeDefaultRules: false'); // non-default
 		expect(claudeProfileContent).toContain("'AGENTS.md': 'CLAUDE.md'");
+
+		// Check the final computed properties on the profile object
+		expect(claudeProfile.profileName).toBe('claude');
+		expect(claudeProfile.displayName).toBe('Claude Code');
+		expect(claudeProfile.profileDir).toBe('.');
+		expect(claudeProfile.rulesDir).toBe('.');
+		expect(claudeProfile.mcpConfig).toBe(false);
+		expect(claudeProfile.mcpConfigName).toBe(null); // computed
+		expect(claudeProfile.includeDefaultRules).toBe(false);
+		expect(claudeProfile.fileMap['AGENTS.md']).toBe('CLAUDE.md');
 	});
 
 	test('claude.js has lifecycle functions for file management', () => {
@@ -47,7 +49,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain('copyRecursiveSync');
 	});
 
-	test('claude.js has proper error handling', () => {
+	test('claude.js has proper error handling in lifecycle functions', () => {
 		expect(claudeProfileContent).toContain('try {');
 		expect(claudeProfileContent).toContain('} catch (err) {');
 		expect(claudeProfileContent).toContain("log('error'");

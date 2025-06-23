@@ -16,12 +16,20 @@ describe('Cursor Profile Initialization Functionality', () => {
 	});
 
 	test('cursor.js uses factory pattern with correct configuration', () => {
-		// Check that the profile file explicitly sets name and displayName (required fields)
+		// Check for explicit, non-default values in the source file
 		expect(cursorProfileContent).toContain("name: 'cursor'");
 		expect(cursorProfileContent).toContain("displayName: 'Cursor'");
-		// Check that the profile object has the correct properties (using defaults)
-		expect(cursorProfile.profileDir).toBe('.cursor');
-		expect(cursorProfile.rulesDir).toBe('.cursor/rules');
+		expect(cursorProfileContent).toContain("url: 'cursor.so'");
+		expect(cursorProfileContent).toContain("docsUrl: 'docs.cursor.com'");
+		expect(cursorProfileContent).toContain("targetExtension: '.mdc'"); // non-default
+
+		// Check the final computed properties on the profile object
+		expect(cursorProfile.profileName).toBe('cursor');
+		expect(cursorProfile.displayName).toBe('Cursor');
+		expect(cursorProfile.profileDir).toBe('.cursor'); // default
+		expect(cursorProfile.rulesDir).toBe('.cursor/rules'); // default
+		expect(cursorProfile.mcpConfig).toBe(true); // default
+		expect(cursorProfile.mcpConfigName).toBe('mcp.json'); // default
 	});
 
 	test('cursor.js preserves .mdc extension in both input and output', () => {
@@ -45,11 +53,5 @@ describe('Cursor Profile Initialization Functionality', () => {
 			'edit_file'
 		);
 		expect(cursorProfile.conversionConfig.toolNames.search).toBe('search');
-	});
-
-	test('cursor.js contains correct URL configuration', () => {
-		// Check that the profile file explicitly sets URL configuration
-		expect(cursorProfileContent).toContain("url: 'cursor.so'");
-		expect(cursorProfileContent).toContain("docsUrl: 'docs.cursor.com'");
 	});
 });

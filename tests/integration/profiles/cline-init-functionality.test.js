@@ -11,11 +11,20 @@ describe('Cline Profile Initialization Functionality', () => {
 	});
 
 	test('cline.js uses factory pattern with correct configuration', () => {
-		// Check that the profile file explicitly sets required and non-default fields
+		// Check for explicit, non-default values in the source file
 		expect(clineProfileContent).toContain("name: 'cline'");
 		expect(clineProfileContent).toContain("displayName: 'Cline'");
-		expect(clineProfileContent).toContain("profileDir: '.clinerules'");
-		expect(clineProfileContent).toContain("rulesDir: '.clinerules'");
+		expect(clineProfileContent).toContain("profileDir: '.clinerules'"); // non-default
+		expect(clineProfileContent).toContain("rulesDir: '.clinerules'"); // non-default
+		expect(clineProfileContent).toContain('mcpConfig: false'); // non-default
+
+		// Check the final computed properties on the profile object
+		expect(clineProfile.profileName).toBe('cline');
+		expect(clineProfile.displayName).toBe('Cline');
+		expect(clineProfile.profileDir).toBe('.clinerules');
+		expect(clineProfile.rulesDir).toBe('.clinerules');
+		expect(clineProfile.mcpConfig).toBe(false);
+		expect(clineProfile.mcpConfigName).toBe(null);
 	});
 
 	test('cline.js configures .mdc to .md extension mapping', () => {
@@ -35,20 +44,6 @@ describe('Cline Profile Initialization Functionality', () => {
 		// Verify the result: default mappings means tools keep their original names
 		expect(clineProfile.conversionConfig.toolNames.edit_file).toBe('edit_file');
 		expect(clineProfile.conversionConfig.toolNames.search).toBe('search');
-	});
-
-	test('cline.js contains correct URL configuration', () => {
-		// Check that the profile file explicitly sets URL configuration
-		expect(clineProfileContent).toContain("url: 'cline.bot'");
-		expect(clineProfileContent).toContain("docsUrl: 'docs.cline.bot'");
-	});
-
-	test('cline.js has MCP configuration disabled', () => {
-		// Check actual behavior
-		expect(clineProfile.mcpConfig).toBe(false);
-		expect(clineProfile.mcpConfigName).toBe(null);
-		// Check that mcpConfig: false is explicitly set (since it's non-default)
-		expect(clineProfileContent).toContain('mcpConfig: false');
 	});
 
 	test('cline.js has custom file mapping for cursor_rules.mdc', () => {

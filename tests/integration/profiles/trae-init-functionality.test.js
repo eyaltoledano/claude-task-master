@@ -11,15 +11,20 @@ describe('Trae Profile Initialization Functionality', () => {
 	});
 
 	test('trae.js uses factory pattern with correct configuration', () => {
-		// Check actual profile configuration behavior
-		expect(traeProfile.profileName).toBe('trae');
-		expect(traeProfile.displayName).toBe('Trae');
-		expect(traeProfile.rulesDir).toBe('.trae/rules');
-		expect(traeProfile.profileDir).toBe('.trae');
-
-		// Still check that the profile file explicitly sets name and displayName (required fields)
+		// Check for explicit, non-default values in the source file
 		expect(traeProfileContent).toContain("name: 'trae'");
 		expect(traeProfileContent).toContain("displayName: 'Trae'");
+		expect(traeProfileContent).toContain("url: 'trae.ai'");
+		expect(traeProfileContent).toContain("docsUrl: 'docs.trae.ai'");
+		expect(traeProfileContent).toContain('mcpConfig: false');
+
+		// Check the final computed properties on the profile object
+		expect(traeProfile.profileName).toBe('trae');
+		expect(traeProfile.displayName).toBe('Trae');
+		expect(traeProfile.profileDir).toBe('.trae'); // default
+		expect(traeProfile.rulesDir).toBe('.trae/rules'); // default
+		expect(traeProfile.mcpConfig).toBe(false); // non-default
+		expect(traeProfile.mcpConfigName).toBe(null); // computed from mcpConfig
 	});
 
 	test('trae.js configures .mdc to .md extension mapping', () => {
@@ -37,19 +42,5 @@ describe('Trae Profile Initialization Functionality', () => {
 		// Verify the result: default mappings means tools keep their original names
 		expect(traeProfile.conversionConfig.toolNames.edit_file).toBe('edit_file');
 		expect(traeProfile.conversionConfig.toolNames.search).toBe('search');
-	});
-
-	test('trae.js contains correct URL configuration', () => {
-		// Check that the profile file explicitly sets URL configuration
-		expect(traeProfileContent).toContain("url: 'trae.ai'");
-		expect(traeProfileContent).toContain("docsUrl: 'docs.trae.ai'");
-	});
-
-	test('trae.js has MCP configuration disabled', () => {
-		// Check actual behavior
-		expect(traeProfile.mcpConfig).toBe(false);
-		expect(traeProfile.mcpConfigName).toBe(null);
-		// Check that mcpConfig: false is explicitly set (since it's non-default)
-		expect(traeProfileContent).toContain('mcpConfig: false');
 	});
 });

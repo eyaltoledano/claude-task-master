@@ -227,6 +227,7 @@ export function createProfile(editorConfig) {
 		mcpConfigName,
 		mcpConfigPath,
 		supportsRulesSubdirectories,
+		includeDefaultRules,
 		fileMap: finalFileMap,
 		globalReplacements: baseGlobalReplacements,
 		conversionConfig,
