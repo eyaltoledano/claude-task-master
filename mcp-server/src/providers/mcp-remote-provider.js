@@ -110,16 +110,18 @@ export class MCPRemoteProvider extends BaseAIProvider {
 			// Convert our message format to MCP sampling format
 			const response = await this.requestSampling(messages, systemPrompt, temperature, maxTokens);
 
+            logger.debug(
+				`${this.name} generateText completed successfully for model: ${params.modelId} with finishReason: ${response.stopReason || 'completed'}`
+			);
+
 			// Format response to match expected structure
 			return {
 				text: response.content.text,
-				finishReason: response.stopReason || 'completed',
 				usage: {
 					inputTokens: 0, // MCP doesn't provide token counts
 					outputTokens: 0,
 					totalTokens: 0
-				},
-				rawResponse: response
+				}
 			};
 
 		} catch (error) {
@@ -180,7 +182,7 @@ export class MCPRemoteProvider extends BaseAIProvider {
             
             const object = JSON.parse(response.content.text);
             logger.debug(
-				`${this.name} generateText completed successfully for model: ${params.modelId}`
+				`${this.name} generateObject completed successfully for model: ${params.modelId}`
 			);
 
 			return {
@@ -223,6 +225,9 @@ export class MCPRemoteProvider extends BaseAIProvider {
         if (!params.messages || !Array.isArray(params.messages) || params.messages.length === 0) {
             throw new Error('Messages array is required and must not be empty');
         }
+
+        // Validate optional parameters
+		this.validateOptionalParams(params);
     }
 
     /**
