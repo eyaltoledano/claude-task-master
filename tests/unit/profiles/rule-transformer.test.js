@@ -55,8 +55,8 @@ describe('Rule Transformer - General', () => {
 
 	describe('Profile Structure', () => {
 		it('should have all required properties for each profile', () => {
-			// Simple profiles that only copy files (no rule transformation)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that only copy files (no rule transformation)
+			const assetOnlyProfiles = ['claude', 'codex'];
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
@@ -68,9 +68,9 @@ describe('Rule Transformer - General', () => {
 				expect(profileConfig).toHaveProperty('rulesDir');
 				expect(profileConfig).toHaveProperty('profileDir');
 
-				// Simple profiles have minimal structure
-				if (simpleProfiles.includes(profile)) {
-					// For simple profiles, conversionConfig and fileMap can be empty
+				// Asset-only profiles have minimal structure
+				if (assetOnlyProfiles.includes(profile)) {
+					// For asset-only profiles, conversionConfig and fileMap can be empty
 					expect(typeof profileConfig.conversionConfig).toBe('object');
 					expect(typeof profileConfig.fileMap).toBe('object');
 					return;
@@ -109,8 +109,8 @@ describe('Rule Transformer - General', () => {
 				'taskmaster.mdc'
 			];
 
-			// Simple profiles that only copy files (no rule transformation)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that only copy files (no rule transformation)
+			const assetOnlyProfiles = ['claude', 'codex'];
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
@@ -120,8 +120,8 @@ describe('Rule Transformer - General', () => {
 				expect(typeof profileConfig.fileMap).toBe('object');
 				expect(profileConfig.fileMap).not.toBeNull();
 
-				// Simple profiles can have empty fileMap since they don't transform rules
-				if (simpleProfiles.includes(profile)) {
+				// Asset-only profiles can have empty fileMap since they don't transform rules
+				if (assetOnlyProfiles.includes(profile)) {
 					return;
 				}
 
@@ -144,8 +144,8 @@ describe('Rule Transformer - General', () => {
 
 	describe('MCP Configuration Properties', () => {
 		it('should have all required MCP properties for each profile', () => {
-			// Simple profiles that only copy files (no MCP configuration)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that only copy files (no MCP configuration)
+			const assetOnlyProfiles = ['claude', 'codex'];
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
@@ -155,8 +155,8 @@ describe('Rule Transformer - General', () => {
 				expect(profileConfig).toHaveProperty('mcpConfigName');
 				expect(profileConfig).toHaveProperty('mcpConfigPath');
 
-				// Simple profiles have no MCP configuration
-				if (simpleProfiles.includes(profile)) {
+				// Asset-only profiles have no MCP configuration
+				if (assetOnlyProfiles.includes(profile)) {
 					expect(profileConfig.mcpConfig).toBe(false);
 					expect(profileConfig.mcpConfigName).toBe(null);
 					expect(profileConfig.mcpConfigPath).toBe(null);
@@ -230,14 +230,14 @@ describe('Rule Transformer - General', () => {
 		});
 
 		it('should have consistent profileDir and mcpConfigPath relationship', () => {
-			// Simple profiles that only copy files (no MCP configuration)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that only copy files (no MCP configuration)
+			const assetOnlyProfiles = ['claude', 'codex'];
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
 
-				// Simple profiles have null mcpConfigPath
-				if (simpleProfiles.includes(profile)) {
+				// Asset-only profiles have null mcpConfigPath
+				if (assetOnlyProfiles.includes(profile)) {
 					expect(profileConfig.mcpConfigPath).toBe(null);
 					return;
 				}

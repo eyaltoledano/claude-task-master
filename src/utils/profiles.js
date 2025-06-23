@@ -16,24 +16,67 @@ import { RULE_PROFILES } from '../constants/profiles.js';
 // =============================================================================
 
 /**
- * Detect which profiles are currently installed in the project
- * @param {string} projectRoot - Project root directory
- * @returns {string[]} Array of installed profile names
+ * Get the display name for a profile
+ * @param {string} profileName - The profile name
+ * @returns {string} - The display name
  */
-export function getInstalledProfiles(projectRoot) {
+export function getProfileDisplayName(profileName) {
+	try {
+		const profile = getRulesProfile(profileName);
+		return profile.displayName || profileName;
+	} catch (error) {
+		return profileName;
+	}
+}
+
+/**
+ * Get installed profiles in the project directory
+ * @param {string} projectDir - Project directory path
+ * @returns {string[]} - Array of installed profile names
+ */
+export function getInstalledProfiles(projectDir) {
 	const installedProfiles = [];
 
 	for (const profileName of RULE_PROFILES) {
-		const profileConfig = getRulesProfile(profileName);
-		if (!profileConfig) continue;
+		try {
+			const profile = getRulesProfile(profileName);
+			const profileDir = path.join(projectDir, profile.profileDir);
 
-		// Check if the profile directory exists
-		const profileDir = path.join(projectRoot, profileConfig.profileDir);
-		const rulesDir = path.join(projectRoot, profileConfig.rulesDir);
-
-		// A profile is considered installed if either the profile dir or rules dir exists
-		if (fs.existsSync(profileDir) || fs.existsSync(rulesDir)) {
-			installedProfiles.push(profileName);
+			// Check if profile directory exists (skip root directory check)
+			if (profile.profileDir === '.' || fs.existsSync(profileDir)) {
+				// For profiles with fileMap, check if any rule files exist
+				if (Object.keys(profile.fileMap).length > 0) {
+					const rulesDir = path.join(projectDir, profile.rulesDir);
+					if (fs.existsSync(rulesDir)) {
+						const ruleFiles = Object.values(profile.fileMap);
+						const hasRuleFiles = ruleFiles.some((ruleFile) =>
+							fs.existsSync(path.join(rulesDir, ruleFile))
+						);
+						if (hasRuleFiles) {
+							installedProfiles.push(profileName);
+						}
+					}
+				} else {
+					// For profiles without fileMap, check for their specific files
+					// This covers profiles that only copy assets without transforming rules
+					let hasProfileFiles = false;
+					
+					// Check for common profile-specific files
+					if (profileName === 'claude') {
+						hasProfileFiles = fs.existsSync(path.join(projectDir, 'CLAUDE.md')) ||
+										fs.existsSync(path.join(projectDir, '.claude'));
+					} else if (profileName === 'codex') {
+						hasProfileFiles = fs.existsSync(path.join(projectDir, 'AGENTS.md'));
+					}
+					
+					if (hasProfileFiles) {
+						installedProfiles.push(profileName);
+					}
+				}
+			}
+		} catch (error) {
+			// Skip profiles that can't be loaded
+			continue;
 		}
 	}
 
@@ -41,31 +84,28 @@ export function getInstalledProfiles(projectRoot) {
 }
 
 /**
- * Check if removing the specified profiles would result in no profiles remaining
- * @param {string} projectRoot - Project root directory
+ * Check if removing specified profiles would leave no profiles installed
+ * @param {string} projectDir - Project directory path
  * @param {string[]} profilesToRemove - Array of profile names to remove
- * @returns {boolean} True if removal would result in no profiles remaining
+ * @returns {boolean} - True if removal would leave no profiles
  */
-export function wouldRemovalLeaveNoProfiles(projectRoot, profilesToRemove) {
-	const installedProfiles = getInstalledProfiles(projectRoot);
+export function wouldRemovalLeaveNoProfiles(projectDir, profilesToRemove) {
+	const installedProfiles = getInstalledProfiles(projectDir);
+	
+	// If no profiles are currently installed, removal cannot leave no profiles
+	if (installedProfiles.length === 0) {
+		return false;
+	}
+	
 	const remainingProfiles = installedProfiles.filter(
 		(profile) => !profilesToRemove.includes(profile)
 	);
-
-	return remainingProfiles.length === 0 && installedProfiles.length > 0;
+	return remainingProfiles.length === 0;
 }
 
 // =============================================================================
 // PROFILE SETUP
 // =============================================================================
-
-/**
- * Get the display name for a profile
- */
-function getProfileDisplayName(name) {
-	const profile = getRulesProfile(name);
-	return profile?.displayName || name.charAt(0).toUpperCase() + name.slice(1);
-}
 
 // Note: Profile choices are now generated dynamically within runInteractiveProfilesSetup()
 // to ensure proper alphabetical sorting and pagination configuration
@@ -89,7 +129,7 @@ export async function runInteractiveProfilesSetup() {
 		// Determine description based on profile type
 		let description;
 		if (Object.keys(profile.fileMap).length === 0) {
-			// Simple profiles (Claude, Codex) - specify the target file
+			// Asset-only profiles (Claude, Codex) - specify the target file
 			const targetFileName =
 				profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
 			description = `Integration guide (${targetFileName})`;
@@ -170,10 +210,10 @@ export async function runInteractiveProfilesSetup() {
  */
 export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
+	const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
 
-	if (isSimpleProfile) {
-		// Simple profiles like Claude and Codex only copy AGENTS.md
+	if (isAssetOnlyProfile) {
+		// Asset-only profiles like Claude and Codex only copy integration guides
 		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
 		return `Summary for ${profileName}: Integration guide copied to ${targetFileName}`;
 	} else {
@@ -189,7 +229,7 @@ export function generateProfileSummary(profileName, addResult) {
  */
 export function generateProfileRemovalSummary(profileName, removeResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
+	const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
 
 	if (removeResult.skipped) {
 		return `Summary for ${profileName}: Skipped (default or protected files)`;
@@ -199,8 +239,8 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 		return `Summary for ${profileName}: Failed to remove - ${removeResult.error}`;
 	}
 
-	if (isSimpleProfile) {
-		// Simple profiles like Claude and Codex only have an integration guide
+	if (isAssetOnlyProfile) {
+		// Asset-only profiles like Claude and Codex only have an integration guide
 		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
 		return `Summary for ${profileName}: Integration guide (${targetFileName}) removed`;
 	} else {
@@ -220,7 +260,7 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
  */
 export function categorizeProfileResults(addResults) {
 	const successfulProfiles = [];
-	const simpleProfiles = [];
+	const assetOnlyProfiles = [];
 	let totalSuccess = 0;
 	let totalFailed = 0;
 
@@ -229,11 +269,11 @@ export function categorizeProfileResults(addResults) {
 		totalFailed += r.failed;
 
 		const profileConfig = getRulesProfile(r.profileName);
-		const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
+		const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
 
-		if (isSimpleProfile) {
-			// Simple profiles are successful if they completed without error
-			simpleProfiles.push(r.profileName);
+		if (isAssetOnlyProfile) {
+			// Asset-only profiles are successful if they completed without error
+			assetOnlyProfiles.push(r.profileName);
 		} else if (r.success > 0) {
 			// Full profiles are successful if they added rules
 			successfulProfiles.push(r.profileName);
@@ -242,8 +282,8 @@ export function categorizeProfileResults(addResults) {
 
 	return {
 		successfulProfiles,
-		simpleProfiles,
-		allSuccessfulProfiles: [...successfulProfiles, ...simpleProfiles],
+		assetOnlyProfiles,
+		allSuccessfulProfiles: [...successfulProfiles, ...assetOnlyProfiles],
 		totalSuccess,
 		totalFailed
 	};

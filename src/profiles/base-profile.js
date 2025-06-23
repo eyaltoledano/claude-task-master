@@ -44,7 +44,7 @@ export function createProfile(editorConfig) {
 		onPostConvert
 	} = editorConfig;
 
-	const mcpConfigPath = `${profileDir}/${mcpConfigName}`;
+	const mcpConfigPath = mcpConfigName ? `${profileDir}/${mcpConfigName}` : null;
 
 	// Standard file mapping with custom overrides
 	// Use taskmaster subdirectory only if profile supports it
@@ -56,7 +56,12 @@ export function createProfile(editorConfig) {
 		'taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`
 	};
 
-	const fileMap = { ...defaultFileMap, ...customFileMap };
+	// If customFileMap is explicitly empty (asset-only profiles), use it as-is
+	// Otherwise, merge with defaults
+	const fileMap = Object.keys(customFileMap).length === 0 && 
+		editorConfig.hasOwnProperty('customFileMap') 
+		? customFileMap 
+		: { ...defaultFileMap, ...customFileMap };
 
 	// Base global replacements that work for all editors
 	const baseGlobalReplacements = [

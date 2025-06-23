@@ -2,6 +2,7 @@
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
+import { createProfile } from './base-profile.js';
 
 // Lifecycle functions for Codex profile
 function onAddRulesProfile(targetDir, assetsDir) {
@@ -32,28 +33,27 @@ function onRemoveRulesProfile(targetDir) {
 }
 
 function onPostConvertRulesProfile(targetDir, assetsDir) {
+	// For Codex, post-convert is the same as add since we don't transform rules
 	onAddRulesProfile(targetDir, assetsDir);
 }
 
-// Simple filename function
-function getTargetRuleFilename(sourceFilename) {
-	return sourceFilename;
-}
-
-// Simple profile configuration - bypasses base-profile system
-export const codexProfile = {
-	profileName: 'codex',
+// Create and export codex profile using the base factory
+export const codexProfile = createProfile({
+	name: 'codex',
 	displayName: 'Codex',
+	url: 'codex.ai',
+	docsUrl: 'docs.codex.ai',
 	profileDir: '.', // Root directory
-	rulesDir: '.', // No rules directory needed
+	rulesDir: '.', // No specific rules directory needed
 	mcpConfig: false, // No MCP config needed
 	mcpConfigName: null,
-	mcpConfigPath: null,
-	conversionConfig: {},
-	fileMap: {},
-	globalReplacements: [],
-	getTargetRuleFilename,
-	onAddRulesProfile,
-	onRemoveRulesProfile,
-	onPostConvertRulesProfile
-};
+	fileExtension: '.mdc',
+	targetExtension: '.md',
+	customFileMap: {}, // Empty - Codex doesn't transform rules, just copies files
+	onAdd: onAddRulesProfile,
+	onRemove: onRemoveRulesProfile,
+	onPostConvert: onPostConvertRulesProfile
+});
+
+// Export lifecycle functions separately to avoid naming conflicts
+export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

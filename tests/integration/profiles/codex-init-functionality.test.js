@@ -9,8 +9,8 @@ describe('Codex Profile Initialization Functionality', () => {
 		codexProfileContent = fs.readFileSync(codexJsPath, 'utf8');
 	});
 
-	test('codex.js is a simple profile with correct configuration', () => {
-		expect(codexProfileContent).toContain("profileName: 'codex'");
+	test('codex.js is an asset-only profile with correct configuration', () => {
+		expect(codexProfileContent).toContain("name: 'codex'");
 		expect(codexProfileContent).toContain("displayName: 'Codex'");
 		expect(codexProfileContent).toContain("profileDir: '.'");
 		expect(codexProfileContent).toContain("rulesDir: '.'");
@@ -19,13 +19,10 @@ describe('Codex Profile Initialization Functionality', () => {
 	test('codex.js has no MCP configuration', () => {
 		expect(codexProfileContent).toContain('mcpConfig: false');
 		expect(codexProfileContent).toContain('mcpConfigName: null');
-		expect(codexProfileContent).toContain('mcpConfigPath: null');
 	});
 
-	test('codex.js has empty file map (simple profile)', () => {
-		expect(codexProfileContent).toContain('fileMap: {}');
-		expect(codexProfileContent).toContain('conversionConfig: {}');
-		expect(codexProfileContent).toContain('globalReplacements: []');
+	test('codex.js has empty file map (asset-only profile)', () => {
+		expect(codexProfileContent).toContain('customFileMap: {}');
 	});
 
 	test('codex.js has lifecycle functions for file management', () => {

@@ -3974,7 +3974,7 @@ Examples:
 					allSuccessfulProfiles,
 					totalSuccess,
 					totalFailed,
-					simpleProfiles
+					assetOnlyProfiles
 				} = categorizeProfileResults(addResults);
 
 				if (allSuccessfulProfiles.length > 0) {
@@ -3984,26 +3984,26 @@ Examples:
 						)
 					);
 
-					// Create a more descriptive summary
-					if (totalSuccess > 0 && simpleProfiles.length > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
-							)
-						);
-					} else if (totalSuccess > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
-							)
-						);
-					} else if (simpleProfiles.length > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${simpleProfiles.length} integration guide(s) copied.`
-							)
-						);
-					}
+									// Create a more descriptive summary
+				if (totalSuccess > 0 && assetOnlyProfiles.length > 0) {
+					console.log(
+						chalk.green(
+							`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${assetOnlyProfiles.length} integration guide(s) copied.`
+						)
+					);
+				} else if (totalSuccess > 0) {
+					console.log(
+						chalk.green(
+							`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
+						)
+					);
+				} else if (assetOnlyProfiles.length > 0) {
+					console.log(
+						chalk.green(
+							`Total: ${assetOnlyProfiles.length} integration guide(s) copied.`
+						)
+					);
+				}
 				}
 			}
 

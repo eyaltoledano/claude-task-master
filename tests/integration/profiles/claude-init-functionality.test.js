@@ -14,8 +14,8 @@ describe('Claude Profile Initialization Functionality', () => {
 		claudeProfileContent = fs.readFileSync(claudeJsPath, 'utf8');
 	});
 
-	test('claude.js is a simple profile with correct configuration', () => {
-		expect(claudeProfileContent).toContain("profileName: 'claude'");
+	test('claude.js is an asset-only profile with correct configuration', () => {
+		expect(claudeProfileContent).toContain("name: 'claude'");
 		expect(claudeProfileContent).toContain("displayName: 'Claude Code'");
 		expect(claudeProfileContent).toContain("profileDir: '.'");
 		expect(claudeProfileContent).toContain("rulesDir: '.'");
@@ -24,13 +24,10 @@ describe('Claude Profile Initialization Functionality', () => {
 	test('claude.js has no MCP configuration', () => {
 		expect(claudeProfileContent).toContain('mcpConfig: false');
 		expect(claudeProfileContent).toContain('mcpConfigName: null');
-		expect(claudeProfileContent).toContain('mcpConfigPath: null');
 	});
 
-	test('claude.js has empty file map (simple profile)', () => {
-		expect(claudeProfileContent).toContain('fileMap: {}');
-		expect(claudeProfileContent).toContain('conversionConfig: {}');
-		expect(claudeProfileContent).toContain('globalReplacements: []');
+	test('claude.js has empty file map (asset-only profile)', () => {
+		expect(claudeProfileContent).toContain('customFileMap: {}');
 	});
 
 	test('claude.js has lifecycle functions for file management', () => {

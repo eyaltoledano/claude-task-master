@@ -2,32 +2,24 @@
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
+import { createProfile } from './base-profile.js';
 
-// Helper function to recursively copy directory
-function copyDirectoryRecursive(src, dest) {
-	if (!fs.existsSync(src)) {
-		return false;
+// Helper function to recursively copy directory (adopted from Roo profile)
+function copyRecursiveSync(src, dest) {
+	const exists = fs.existsSync(src);
+	const stats = exists && fs.statSync(src);
+	const isDirectory = exists && stats.isDirectory();
+	if (isDirectory) {
+		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+		fs.readdirSync(src).forEach((childItemName) => {
+			copyRecursiveSync(
+				path.join(src, childItemName),
+				path.join(dest, childItemName)
+			);
+		});
+	} else {
+		fs.copyFileSync(src, dest);
 	}
-
-	// Create destination directory if it doesn't exist
-	if (!fs.existsSync(dest)) {
-		fs.mkdirSync(dest, { recursive: true });
-	}
-
-	const entries = fs.readdirSync(src, { withFileTypes: true });
-
-	for (const entry of entries) {
-		const srcPath = path.join(src, entry.name);
-		const destPath = path.join(dest, entry.name);
-
-		if (entry.isDirectory()) {
-			copyDirectoryRecursive(srcPath, destPath);
-		} else {
-			fs.copyFileSync(srcPath, destPath);
-		}
-	}
-
-	return true;
 }
 
 // Helper function to recursively remove directory
@@ -59,28 +51,20 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		}
 	}
 
-	// Copy .claude directory recursively (new functionality)
+	// Copy .claude directory recursively (fixed approach)
 	const claudeSourceDir = path.join(assetsDir, 'claude');
 	const claudeDestDir = path.join(targetDir, '.claude');
 
-	if (fs.existsSync(claudeSourceDir)) {
-		try {
-			if (copyDirectoryRecursive(claudeSourceDir, claudeDestDir)) {
-				log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
-			} else {
-				log(
-					'warn',
-					`[Claude] Source .claude directory not found at ${claudeSourceDir}`
-				);
-			}
-		} catch (err) {
-			log('error', `[Claude] Failed to copy .claude directory: ${err.message}`);
-		}
-	} else {
-		log(
-			'warn',
-			`[Claude] Source .claude directory not found at ${claudeSourceDir}`
-		);
+	if (!fs.existsSync(claudeSourceDir)) {
+		log('error', `[Claude] Source directory does not exist: ${claudeSourceDir}`);
+		return;
+	}
+
+	try {
+		copyRecursiveSync(claudeSourceDir, claudeDestDir);
+		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
+	} catch (err) {
+		log('error', `[Claude] An error occurred during directory copy: ${err.message}`);
 	}
 }
 
@@ -104,28 +88,27 @@ function onRemoveRulesProfile(targetDir) {
 }
 
 function onPostConvertRulesProfile(targetDir, assetsDir) {
+	// For Claude, post-convert is the same as add since we don't transform rules
 	onAddRulesProfile(targetDir, assetsDir);
 }
 
-// Simple filename function
-function getTargetRuleFilename(sourceFilename) {
-	return sourceFilename;
-}
-
-// Simple profile configuration - bypasses base-profile system
-export const claudeProfile = {
-	profileName: 'claude',
+// Create and export claude profile using the base factory
+export const claudeProfile = createProfile({
+	name: 'claude',
 	displayName: 'Claude Code',
+	url: 'claude.ai',
+	docsUrl: 'docs.anthropic.com',
 	profileDir: '.', // Root directory
-	rulesDir: '.', // No rules directory needed
+	rulesDir: '.', // No specific rules directory needed
 	mcpConfig: false, // No MCP config needed
 	mcpConfigName: null,
-	mcpConfigPath: null,
-	conversionConfig: {},
-	fileMap: {},
-	globalReplacements: [],
-	getTargetRuleFilename,
-	onAddRulesProfile,
-	onRemoveRulesProfile,
-	onPostConvertRulesProfile
-};
+	fileExtension: '.mdc',
+	targetExtension: '.md',
+	customFileMap: {}, // Empty - Claude doesn't transform rules, just copies files
+	onAdd: onAddRulesProfile,
+	onRemove: onRemoveRulesProfile,
+	onPostConvert: onPostConvertRulesProfile
+});
+
+// Export lifecycle functions separately to avoid naming conflicts
+export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };
