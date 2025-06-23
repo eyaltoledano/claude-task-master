@@ -103,7 +103,7 @@ class TaskMasterMCPServer {
 			
 			// Register the provider with the registry
 			const providerRegistry = ProviderRegistry.getInstance();
-			providerRegistry.registerProvider(MCPRemoteProvider.name, remoteProvider);
+			providerRegistry.registerProvider(remoteProvider.name, remoteProvider);
 			
 			this.logger.info('MCP Remote Provider registered with Provider Registry');
 		} else {

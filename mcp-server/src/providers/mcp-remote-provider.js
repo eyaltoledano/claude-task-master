@@ -13,7 +13,6 @@ import logger from '../logger.js';
  * MCP Remote Provider class - Uses MCP server session for AI operations
  */
 export class MCPRemoteProvider extends BaseAIProvider {
-    static name = "mcp";
     /**
      * Create a new MCP Remote Provider
      * @param {object} server - The FastMCP server instance
