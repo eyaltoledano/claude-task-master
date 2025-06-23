@@ -10,11 +10,9 @@ export const clineProfile = createProfile({
 	profileDir: '.clinerules',
 	rulesDir: '.clinerules',
 	mcpConfig: false,
-	mcpConfigName: 'cline_mcp_settings.json',
+	mcpConfigName: null,
 	fileExtension: '.mdc',
 	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD, // Cline uses standard tool names
-	customFileMap: {
-		'cursor_rules.mdc': 'cline_rules.md'
-	}
+	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Cline uses standard tool names
+	// fileMap: uses default
 });

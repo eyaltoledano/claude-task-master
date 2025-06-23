@@ -14,4 +14,5 @@ export const windsurfProfile = createProfile({
 	fileExtension: '.mdc',
 	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Windsurf uses standard tool names
+	// fileMap: uses default
 });

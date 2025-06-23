@@ -117,9 +117,6 @@ export const rooProfile = createProfile({
 	fileExtension: '.mdc',
 	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
-	customFileMap: {
-		'cursor_rules.mdc': 'roo_rules.md'
-	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile

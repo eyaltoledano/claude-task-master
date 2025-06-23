@@ -9,7 +9,7 @@ describe('Codex Profile Initialization Functionality', () => {
 		codexProfileContent = fs.readFileSync(codexJsPath, 'utf8');
 	});
 
-	test('codex.js is an asset-only profile with correct configuration', () => {
+	test('codex.js has correct profile configuration', () => {
 		expect(codexProfileContent).toContain("name: 'codex'");
 		expect(codexProfileContent).toContain("displayName: 'Codex'");
 		expect(codexProfileContent).toContain("profileDir: '.'");
@@ -21,8 +21,8 @@ describe('Codex Profile Initialization Functionality', () => {
 		expect(codexProfileContent).toContain('mcpConfigName: null');
 	});
 
-	test('codex.js has empty file map (asset-only profile)', () => {
-		expect(codexProfileContent).toContain('customFileMap: {}');
+	test('codex.js has file map for AGENTS.md -> AGENTS.md', () => {
+		expect(codexProfileContent).toContain("'AGENTS.md': 'AGENTS.md'");
 	});
 
 	test('codex.js has lifecycle functions for file management', () => {
@@ -31,21 +31,14 @@ describe('Codex Profile Initialization Functionality', () => {
 		expect(codexProfileContent).toContain('function onPostConvertRulesProfile');
 	});
 
-	test('codex.js copies AGENTS.md to AGENTS.md (same filename)', () => {
-		expect(codexProfileContent).toContain("'AGENTS.md'");
-		expect(codexProfileContent).toContain('copyFileSync');
-		// Should copy to the same filename (AGENTS.md)
-		expect(codexProfileContent).toMatch(/destFile.*AGENTS\.md/);
+	test('codex.js has minimal lifecycle functions', () => {
+		expect(codexProfileContent).toContain('Profile setup complete');
+		expect(codexProfileContent).toContain('Profile cleanup complete');
 	});
 
-	test('codex.js has proper error handling', () => {
-		expect(codexProfileContent).toContain('try {');
-		expect(codexProfileContent).toContain('} catch (err) {');
-		expect(codexProfileContent).toContain("log('error'");
-	});
-
-	test('codex.js removes AGENTS.md on profile removal', () => {
-		expect(codexProfileContent).toContain('rmSync');
-		expect(codexProfileContent).toContain('force: true');
+	test('codex.js has proper logging', () => {
+		expect(codexProfileContent).toContain("log('debug'");
+		expect(codexProfileContent).toContain('Profile setup complete');
+		expect(codexProfileContent).toContain('Profile cleanup complete');
 	});
 });

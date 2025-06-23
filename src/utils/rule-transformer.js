@@ -235,13 +235,14 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 
 		for (const sourceFile of sourceFiles) {
 			try {
-				const sourcePath = path.join(sourceDir, sourceFile);
+				// Use explicit path from fileMap - assets/ is the base directory
+				const sourcePath = path.join(assetsDir, sourceFile);
 
 				// Check if source file exists
 				if (!fs.existsSync(sourcePath)) {
 					log(
 						'warn',
-						`[Rule Transformer] Source file not found: ${sourceFile}, skipping`
+						`[Rule Transformer] Source file not found: ${sourcePath}, skipping`
 					);
 					continue;
 				}
@@ -258,12 +259,15 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 				// Read source content
 				let content = fs.readFileSync(sourcePath, 'utf8');
 
-				// Apply transformations
-				content = transformRuleContent(
-					content,
-					profile.conversionConfig,
-					profile.globalReplacements
-				);
+				// Apply transformations (only if this is a rule file, not an asset file)
+				const isAssetFile = !sourceFile.startsWith('rules/');
+				if (!isAssetFile) {
+					content = transformRuleContent(
+						content,
+						profile.conversionConfig,
+						profile.globalReplacements
+					);
+				}
 
 				// Write to target
 				fs.writeFileSync(targetPath, content, 'utf8');
@@ -271,13 +275,13 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 
 				log(
 					'debug',
-					`[Rule Transformer] Converted ${sourceFile} -> ${targetFilename} for ${profile.profileName}`
+					`[Rule Transformer] ${isAssetFile ? 'Copied' : 'Converted'} ${sourceFile} -> ${targetFilename} for ${profile.profileName}`
 				);
 			} catch (error) {
 				failed++;
 				log(
 					'error',
-					`[Rule Transformer] Failed to convert ${sourceFile} for ${profile.profileName}: ${error.message}`
+					`[Rule Transformer] Failed to ${isAssetFile ? 'copy' : 'convert'} ${sourceFile} for ${profile.profileName}: ${error.message}`
 				);
 			}
 		}

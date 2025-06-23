@@ -1,35 +1,18 @@
 // Codex profile for rule-transformer
 import path from 'path';
 import fs from 'fs';
-import { isSilentMode, log } from '../../scripts/modules/utils.js';
+import { log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 
-// Lifecycle functions for Codex profile
+// Lifecycle functions for Codex profile (minimal since it just copies AGENTS.md)
 function onAddRulesProfile(targetDir, assetsDir) {
-	// Use the provided assets directory to find the source file
-	const sourceFile = path.join(assetsDir, 'AGENTS.md');
-	const destFile = path.join(targetDir, 'AGENTS.md');
-
-	if (fs.existsSync(sourceFile)) {
-		try {
-			fs.copyFileSync(sourceFile, destFile);
-			log('debug', `[Codex] Copied AGENTS.md to ${destFile}`);
-		} catch (err) {
-			log('error', `[Codex] Failed to copy AGENTS.md: ${err.message}`);
-		}
-	}
+	// No additional setup needed - fileMap handles AGENTS.md copy
+	log('debug', `[Codex] Profile setup complete`);
 }
 
 function onRemoveRulesProfile(targetDir) {
-	const agentsFile = path.join(targetDir, 'AGENTS.md');
-	if (fs.existsSync(agentsFile)) {
-		try {
-			fs.rmSync(agentsFile, { force: true });
-			log('debug', `[Codex] Removed AGENTS.md from ${agentsFile}`);
-		} catch (err) {
-			log('error', `[Codex] Failed to remove AGENTS.md: ${err.message}`);
-		}
-	}
+	// No additional cleanup needed - rule transformer handles AGENTS.md removal
+	log('debug', `[Codex] Profile cleanup complete`);
 }
 
 function onPostConvertRulesProfile(targetDir, assetsDir) {
@@ -42,14 +25,16 @@ export const codexProfile = createProfile({
 	name: 'codex',
 	displayName: 'Codex',
 	url: 'codex.ai',
-	docsUrl: 'docs.codex.ai',
+	docsUrl: 'platform.openai.com/docs/codex',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // No specific rules directory needed
 	mcpConfig: false, // No MCP config needed
 	mcpConfigName: null,
 	fileExtension: '.mdc',
 	targetExtension: '.md',
-	customFileMap: {}, // Empty - Codex doesn't transform rules, just copies files
+	fileMap: {
+		'AGENTS.md': 'AGENTS.md' // Only copy AGENTS.md for Codex
+	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile

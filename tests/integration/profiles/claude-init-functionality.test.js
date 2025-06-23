@@ -14,7 +14,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		claudeProfileContent = fs.readFileSync(claudeJsPath, 'utf8');
 	});
 
-	test('claude.js is an asset-only profile with correct configuration', () => {
+	test('claude.js has correct profile configuration', () => {
 		expect(claudeProfileContent).toContain("name: 'claude'");
 		expect(claudeProfileContent).toContain("displayName: 'Claude Code'");
 		expect(claudeProfileContent).toContain("profileDir: '.'");
@@ -26,8 +26,8 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain('mcpConfigName: null');
 	});
 
-	test('claude.js has empty file map (asset-only profile)', () => {
-		expect(claudeProfileContent).toContain('customFileMap: {}');
+	test('claude.js has file map for AGENTS.md -> CLAUDE.md', () => {
+		expect(claudeProfileContent).toContain("'AGENTS.md': 'CLAUDE.md'");
 	});
 
 	test('claude.js has lifecycle functions for file management', () => {
@@ -38,10 +38,9 @@ describe('Claude Profile Initialization Functionality', () => {
 		);
 	});
 
-	test('claude.js copies AGENTS.md to CLAUDE.md', () => {
-		expect(claudeProfileContent).toContain("'AGENTS.md'");
-		expect(claudeProfileContent).toContain("'CLAUDE.md'");
-		expect(claudeProfileContent).toContain('copyFileSync');
+	test('claude.js handles .claude directory in lifecycle functions', () => {
+		expect(claudeProfileContent).toContain('.claude');
+		expect(claudeProfileContent).toContain('copyRecursiveSync');
 	});
 
 	test('claude.js has proper error handling', () => {

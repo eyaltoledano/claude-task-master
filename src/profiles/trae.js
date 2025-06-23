@@ -10,8 +10,9 @@ export const traeProfile = createProfile({
 	profileDir: '.trae',
 	rulesDir: '.trae/rules',
 	mcpConfig: false,
-	mcpConfigName: 'trae_mcp_settings.json',
+	mcpConfigName: null,
 	fileExtension: '.mdc',
 	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Trae uses standard tool names
+	// fileMap: uses default
 });

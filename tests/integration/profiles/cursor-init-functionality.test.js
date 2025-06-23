@@ -24,9 +24,9 @@ describe('Cursor Profile Initialization Functionality', () => {
 	test('cursor.js preserves .mdc extension in both input and output', () => {
 		expect(cursorProfileContent).toContain("fileExtension: '.mdc'");
 		expect(cursorProfileContent).toContain("targetExtension: '.mdc'");
-		// Should preserve cursor_rules.mdc filename
+		// Should use default fileMap with taskmaster subdirectories
 		expect(cursorProfileContent).toContain(
-			"'cursor_rules.mdc': 'cursor_rules.mdc'"
+			'// fileMap: will use default with taskmaster subdirectories'
 		);
 	});
 

@@ -8,8 +8,8 @@ describe('MCP Configuration Validation', () => {
 			cline: {
 				shouldHaveMcp: false,
 				expectedDir: '.clinerules',
-				expectedConfigName: 'cline_mcp_settings.json',
-				expectedPath: '.clinerules/cline_mcp_settings.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			cursor: {
 				shouldHaveMcp: true,
@@ -26,8 +26,8 @@ describe('MCP Configuration Validation', () => {
 			trae: {
 				shouldHaveMcp: false,
 				expectedDir: '.trae',
-				expectedConfigName: 'trae_mcp_settings.json',
-				expectedPath: '.trae/trae_mcp_settings.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			vscode: {
 				shouldHaveMcp: true,
@@ -111,12 +111,18 @@ describe('MCP Configuration Validation', () => {
 			});
 		});
 
-		test('should use profile-specific config name for non-MCP profiles', () => {
+		test('should have null config name for non-MCP profiles', () => {
 			const clineProfile = getRulesProfile('cline');
-			expect(clineProfile.mcpConfigName).toBe('cline_mcp_settings.json');
+			expect(clineProfile.mcpConfigName).toBe(null);
 
 			const traeProfile = getRulesProfile('trae');
-			expect(traeProfile.mcpConfigName).toBe('trae_mcp_settings.json');
+			expect(traeProfile.mcpConfigName).toBe(null);
+
+			const claudeProfile = getRulesProfile('claude');
+			expect(claudeProfile.mcpConfigName).toBe(null);
+
+			const codexProfile = getRulesProfile('codex');
+			expect(codexProfile.mcpConfigName).toBe(null);
 		});
 	});
 
@@ -293,11 +299,14 @@ describe('MCP Configuration Validation', () => {
 		);
 
 		test.each(nonMcpProfiles)(
-			'should have lifecycle functions for %s profile',
+			'should have file mappings and lifecycle functions for %s profile',
 			(profileName) => {
 				const profile = getRulesProfile(profileName);
 				expect(profile).toBeDefined();
-				// These profiles rely on lifecycle functions rather than fileMap
+				// These profiles now have both fileMap and lifecycle functions
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
 				expect(typeof profile.onAddRulesProfile).toBe('function');
 				expect(typeof profile.onRemoveRulesProfile).toBe('function');
 				expect(typeof profile.onPostConvertRulesProfile).toBe('function');

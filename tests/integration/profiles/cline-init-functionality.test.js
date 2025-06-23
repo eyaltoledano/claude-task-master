@@ -34,16 +34,11 @@ describe('Cline Profile Initialization Functionality', () => {
 
 	test('cline.js has MCP configuration disabled', () => {
 		expect(clineProfileContent).toContain('mcpConfig: false');
-		expect(clineProfileContent).toContain(
-			"mcpConfigName: 'cline_mcp_settings.json'"
-		);
+		expect(clineProfileContent).toContain('mcpConfigName: null');
 	});
 
 	test('cline.js has custom file mapping for cursor_rules.mdc', () => {
-		expect(clineProfileContent).toContain('customFileMap:');
-		expect(clineProfileContent).toContain(
-			"'cursor_rules.mdc': 'cline_rules.md'"
-		);
+		expect(clineProfileContent).toContain('// fileMap: uses default');
 	});
 
 	test('cline.js uses createProfile factory function', () => {

@@ -57,8 +57,8 @@ export function getInstalledProfiles(projectDir) {
 						}
 					}
 				} else {
-					// For profiles without fileMap, check for their specific files
-					// This covers profiles that only copy assets without transforming rules
+					// Legacy check for profiles without fileMap - this should no longer be needed
+					// but kept for backward compatibility during transition
 					let hasProfileFiles = false;
 
 					// Check for common profile-specific files
@@ -127,26 +127,23 @@ export async function runInteractiveProfilesSetup() {
 		const displayName = getProfileDisplayName(profileName);
 		const profile = getRulesProfile(profileName);
 
-		// Determine description based on profile type
+		// Determine description based on profile capabilities
 		let description;
-		if (Object.keys(profile.fileMap).length === 0) {
-			// Asset-only profiles (Claude, Codex) - specify the target file
-			const targetFileName =
-				profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-			description = `Integration guide (${targetFileName})`;
-		} else {
-			// Full profiles with rules - check if they have MCP config
-			const hasMcpConfig = profile.mcpConfig === true;
-			if (hasMcpConfig) {
-				// Special case for Roo to mention agent modes
-				if (profileName === 'roo') {
-					description = 'Rule profile, MCP config, and agent modes';
-				} else {
-					description = 'Rule profile and MCP config';
-				}
+		const hasRules = Object.keys(profile.fileMap).length > 0;
+		const hasMcpConfig = profile.mcpConfig === true;
+
+		if (hasRules && hasMcpConfig) {
+			// Special case for Roo to mention agent modes
+			if (profileName === 'roo') {
+				description = 'Rule profile, MCP config, and agent modes';
 			} else {
-				description = 'Rule profile';
+				description = 'Rule profile and MCP config';
 			}
+		} else if (hasRules) {
+			description = 'Rule profile';
+		} else {
+			// Profiles with only lifecycle functions (should be rare after unification)
+			description = 'Integration guide';
 		}
 
 		return {
@@ -211,14 +208,13 @@ export async function runInteractiveProfilesSetup() {
  */
 export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
+	const hasFileMap = Object.keys(profileConfig.fileMap).length > 0;
 
-	if (isAssetOnlyProfile) {
-		// Asset-only profiles like Claude and Codex only copy integration guides
-		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-		return `Summary for ${profileName}: Integration guide copied to ${targetFileName}`;
+	if (hasFileMap) {
+		return `Summary for ${profileName}: ${addResult.success} files processed, ${addResult.failed} failed.`;
 	} else {
-		return `Summary for ${profileName}: ${addResult.success} rules added, ${addResult.failed} failed.`;
+		// Profiles with only lifecycle functions
+		return `Summary for ${profileName}: Integration setup completed.`;
 	}
 }
 
@@ -229,9 +225,6 @@ export function generateProfileSummary(profileName, addResult) {
  * @returns {string} Formatted summary message
  */
 export function generateProfileRemovalSummary(profileName, removeResult) {
-	const profileConfig = getRulesProfile(profileName);
-	const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
-
 	if (removeResult.skipped) {
 		return `Summary for ${profileName}: Skipped (default or protected files)`;
 	}
@@ -240,17 +233,19 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 		return `Summary for ${profileName}: Failed to remove - ${removeResult.error}`;
 	}
 
-	if (isAssetOnlyProfile) {
-		// Asset-only profiles like Claude and Codex only have an integration guide
-		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-		return `Summary for ${profileName}: Integration guide (${targetFileName}) removed`;
-	} else {
-		// Full profiles have rules directories and potentially MCP configs
-		const baseMessage = `Summary for ${profileName}: Rules directory removed`;
+	const profileConfig = getRulesProfile(profileName);
+	const hasFileMap = Object.keys(profileConfig.fileMap).length > 0;
+
+	if (hasFileMap) {
+		// Profiles with files managed by fileMap
+		const baseMessage = `Summary for ${profileName}: Profile files removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;
 		}
 		return baseMessage;
+	} else {
+		// Profiles with only lifecycle functions
+		return `Summary for ${profileName}: Integration cleanup completed`;
 	}
 }
 
@@ -261,7 +256,6 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
  */
 export function categorizeProfileResults(addResults) {
 	const successfulProfiles = [];
-	const assetOnlyProfiles = [];
 	let totalSuccess = 0;
 	let totalFailed = 0;
 
@@ -269,22 +263,15 @@ export function categorizeProfileResults(addResults) {
 		totalSuccess += r.success;
 		totalFailed += r.failed;
 
-		const profileConfig = getRulesProfile(r.profileName);
-		const isAssetOnlyProfile = Object.keys(profileConfig.fileMap).length === 0;
-
-		if (isAssetOnlyProfile) {
-			// Asset-only profiles are successful if they completed without error
-			assetOnlyProfiles.push(r.profileName);
-		} else if (r.success > 0) {
-			// Full profiles are successful if they added rules
+		// All profiles are considered successful if they completed without major errors
+		if (r.success > 0 || r.failed === 0) {
 			successfulProfiles.push(r.profileName);
 		}
 	});
 
 	return {
 		successfulProfiles,
-		assetOnlyProfiles,
-		allSuccessfulProfiles: [...successfulProfiles, ...assetOnlyProfiles],
+		allSuccessfulProfiles: successfulProfiles, // Simplified - no separate asset-only category
 		totalSuccess,
 		totalFailed
 	};

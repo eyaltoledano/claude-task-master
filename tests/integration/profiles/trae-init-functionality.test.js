@@ -34,8 +34,6 @@ describe('Trae Profile Initialization Functionality', () => {
 
 	test('trae.js has MCP configuration disabled', () => {
 		expect(traeProfileContent).toContain('mcpConfig: false');
-		expect(traeProfileContent).toContain(
-			"mcpConfigName: 'trae_mcp_settings.json'"
-		);
+		expect(traeProfileContent).toContain('mcpConfigName: null');
 	});
 });

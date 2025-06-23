@@ -14,9 +14,7 @@ export const vscodeProfile = createProfile({
 	fileExtension: '.mdc',
 	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD, // VS Code uses standard tool names
-	customFileMap: {
-		'cursor_rules.mdc': 'vscode_rules.md' // Rename cursor_rules to vscode_rules
-	},
+	// fileMap: uses default
 	customReplacements: [
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },

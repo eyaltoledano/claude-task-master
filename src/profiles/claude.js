@@ -38,20 +38,7 @@ function removeDirectoryRecursive(dirPath) {
 
 // Lifecycle functions for Claude Code profile
 function onAddRulesProfile(targetDir, assetsDir) {
-	// Copy CLAUDE.md file (existing functionality)
-	const sourceFile = path.join(assetsDir, 'AGENTS.md');
-	const destFile = path.join(targetDir, 'CLAUDE.md');
-
-	if (fs.existsSync(sourceFile)) {
-		try {
-			fs.copyFileSync(sourceFile, destFile);
-			log('debug', `[Claude] Copied AGENTS.md to ${destFile}`);
-		} catch (err) {
-			log('error', `[Claude] Failed to copy AGENTS.md: ${err.message}`);
-		}
-	}
-
-	// Copy .claude directory recursively (fixed approach)
+	// Copy .claude directory recursively
 	const claudeSourceDir = path.join(assetsDir, 'claude');
 	const claudeDestDir = path.join(targetDir, '.claude');
 
@@ -75,18 +62,7 @@ function onAddRulesProfile(targetDir, assetsDir) {
 }
 
 function onRemoveRulesProfile(targetDir) {
-	// Remove CLAUDE.md file (existing functionality)
-	const claudeFile = path.join(targetDir, 'CLAUDE.md');
-	if (fs.existsSync(claudeFile)) {
-		try {
-			fs.rmSync(claudeFile, { force: true });
-			log('debug', `[Claude] Removed CLAUDE.md from ${claudeFile}`);
-		} catch (err) {
-			log('error', `[Claude] Failed to remove CLAUDE.md: ${err.message}`);
-		}
-	}
-
-	// Remove .claude directory recursively (new functionality)
+	// Remove .claude directory recursively
 	const claudeDir = path.join(targetDir, '.claude');
 	if (removeDirectoryRecursive(claudeDir)) {
 		log('debug', `[Claude] Removed .claude directory from ${claudeDir}`);
@@ -103,14 +79,16 @@ export const claudeProfile = createProfile({
 	name: 'claude',
 	displayName: 'Claude Code',
 	url: 'claude.ai',
-	docsUrl: 'docs.anthropic.com',
+	docsUrl: 'docs.anthropic.com/en/docs/claude-code',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // No specific rules directory needed
 	mcpConfig: false, // No MCP config needed
 	mcpConfigName: null,
 	fileExtension: '.mdc',
 	targetExtension: '.md',
-	customFileMap: {}, // Empty - Claude doesn't transform rules, just copies files
+	fileMap: {
+		'AGENTS.md': 'CLAUDE.md' // Only copy AGENTS.md, .claude folder handled by lifecycle functions
+	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile
