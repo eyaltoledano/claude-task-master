@@ -2,4 +2,4 @@
 "task-master-ai": patch
 ---
 
-Unify profile system architecture for improved maintainability and consistency
+Unify and streamline profile system architecture for improved maintainability
