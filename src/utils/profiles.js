@@ -113,18 +113,28 @@ export async function runInteractiveProfilesSetup() {
 		const hasRules = Object.keys(profile.fileMap).length > 0;
 		const hasMcpConfig = profile.mcpConfig === true;
 
-		if (hasRules && hasMcpConfig) {
-			// Special case for Roo to mention agent modes
+		// Check if this is an asset-only profile (integration guides)
+		const isAssetOnly = profile.includeDefaultRules === false;
+
+		if (isAssetOnly) {
+			// Asset-only profiles like claude and codex
+			if (profileName === 'claude') {
+				description = 'Integration guide with Task Master slash commands';
+			} else if (profileName === 'codex') {
+				description = 'Comprehensive Task Master integration guide';
+			} else {
+				description = 'Integration guide';
+			}
+		} else if (hasRules && hasMcpConfig) {
+			// Full rule profiles with MCP config
 			if (profileName === 'roo') {
 				description = 'Rule profile, MCP config, and agent modes';
 			} else {
 				description = 'Rule profile and MCP config';
 			}
 		} else if (hasRules) {
+			// Rule profiles without MCP config
 			description = 'Rule profile';
-		} else {
-			// Profiles with only lifecycle functions (should be rare after unification)
-			description = 'Integration guide';
 		}
 
 		return {
@@ -189,13 +199,14 @@ export async function runInteractiveProfilesSetup() {
  */
 export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const hasFileMap = Object.keys(profileConfig.fileMap).length > 0;
+	const isAssetOnly = profileConfig.includeDefaultRules === false;
 
-	if (hasFileMap) {
-		return `Summary for ${profileName}: ${addResult.success} files processed, ${addResult.failed} failed.`;
+	if (isAssetOnly) {
+		// Asset-only profiles (integration guides)
+		return `Summary for ${profileName}: Integration guide installed.`;
 	} else {
-		// Profiles with only lifecycle functions
-		return `Summary for ${profileName}: Integration setup completed.`;
+		// Rule profiles
+		return `Summary for ${profileName}: ${addResult.success} files processed, ${addResult.failed} failed.`;
 	}
 }
 
@@ -215,18 +226,22 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 	}
 
 	const profileConfig = getRulesProfile(profileName);
-	const hasFileMap = Object.keys(profileConfig.fileMap).length > 0;
+	const isAssetOnly = profileConfig.includeDefaultRules === false;
 
-	if (hasFileMap) {
-		// Profiles with files managed by fileMap
-		const baseMessage = `Summary for ${profileName}: Profile files removed`;
+	if (isAssetOnly) {
+		// Asset-only profiles (integration guides)
+		const baseMessage = `Summary for ${profileName}: Integration guide removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;
 		}
 		return baseMessage;
 	} else {
-		// Profiles with only lifecycle functions
-		return `Summary for ${profileName}: Integration cleanup completed`;
+		// Rule profiles
+		const baseMessage = `Summary for ${profileName}: Rule profile removed`;
+		if (removeResult.notice) {
+			return `${baseMessage} (${removeResult.notice})`;
+		}
+		return baseMessage;
 	}
 }
 
@@ -252,7 +267,7 @@ export function categorizeProfileResults(addResults) {
 
 	return {
 		successfulProfiles,
-		allSuccessfulProfiles: successfulProfiles, // Simplified - no separate asset-only category
+		allSuccessfulProfiles: successfulProfiles,
 		totalSuccess,
 		totalFailed
 	};
