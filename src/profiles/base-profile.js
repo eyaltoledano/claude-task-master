@@ -58,10 +58,11 @@ export function createProfile(editorConfig) {
 
 	// If customFileMap is explicitly empty (asset-only profiles), use it as-is
 	// Otherwise, merge with defaults
-	const fileMap = Object.keys(customFileMap).length === 0 && 
-		editorConfig.hasOwnProperty('customFileMap') 
-		? customFileMap 
-		: { ...defaultFileMap, ...customFileMap };
+	const fileMap =
+		Object.keys(customFileMap).length === 0 &&
+		editorConfig.hasOwnProperty('customFileMap')
+			? customFileMap
+			: { ...defaultFileMap, ...customFileMap };
 
 	// Base global replacements that work for all editors
 	const baseGlobalReplacements = [

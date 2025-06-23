@@ -23,15 +23,18 @@ console.log('Simulated assetsDir:', simulatedAssetsDir);
 console.log('Simulated assets dir exists?', fs.existsSync(simulatedAssetsDir));
 
 if (fs.existsSync(simulatedAssetsDir)) {
-    console.log('Contents of simulated assets dir:', fs.readdirSync(simulatedAssetsDir));
-    
-    const claudeDir = path.join(simulatedAssetsDir, 'claude');
-    console.log('Claude dir path:', claudeDir);
-    console.log('Claude dir exists?', fs.existsSync(claudeDir));
-    
-    if (fs.existsSync(claudeDir)) {
-        console.log('Contents of claude dir:', fs.readdirSync(claudeDir));
-    }
+	console.log(
+		'Contents of simulated assets dir:',
+		fs.readdirSync(simulatedAssetsDir)
+	);
+
+	const claudeDir = path.join(simulatedAssetsDir, 'claude');
+	console.log('Claude dir path:', claudeDir);
+	console.log('Claude dir exists?', fs.existsSync(claudeDir));
+
+	if (fs.existsSync(claudeDir)) {
+		console.log('Contents of claude dir:', fs.readdirSync(claudeDir));
+	}
 }
 
 // This is how the CLI constructs assetsDir
@@ -39,4 +42,4 @@ const cliAssetsDir = path.join(process.cwd(), 'assets');
 console.log('\nCLI assetsDir:', cliAssetsDir);
 console.log('CLI assets dir exists?', fs.existsSync(cliAssetsDir));
 
-console.log('\nCurrent working directory:', process.cwd()); 
+console.log('\nCurrent working directory:', process.cwd());

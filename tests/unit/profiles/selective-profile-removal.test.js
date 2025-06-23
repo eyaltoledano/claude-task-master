@@ -401,7 +401,7 @@ describe('Selective Rules Removal', () => {
 			// Mock sequence: only Task Master rules, rules dir removed, but profile dir has other files/folders
 			mockReaddirSync
 				.mockReturnValueOnce(['cursor_rules.mdc']) // Only Task Master files (initial check)
-				.mockReturnValueOnce(['cursor_rules.mdc']) // Task Master files list for filtering  
+				.mockReturnValueOnce(['cursor_rules.mdc']) // Task Master files list for filtering
 				.mockReturnValueOnce([]) // Rules dir empty after removal (not used since no remaining files)
 				.mockReturnValueOnce(['workflows', 'custom-config.json']); // Profile dir has other files/folders
 
@@ -591,12 +591,27 @@ describe('Selective Rules Removal', () => {
 				// Only .cursor directories exist
 				if (filePath === path.join(projectRoot, '.cursor')) return true;
 				if (filePath === path.join(projectRoot, '.cursor/rules')) return true;
-				if (filePath === path.join(projectRoot, '.cursor/mcp.json')) return true;
+				if (filePath === path.join(projectRoot, '.cursor/mcp.json'))
+					return true;
 				// Only cursor_rules.mdc exists, not the other taskmaster files
-				if (filePath === path.join(projectRoot, '.cursor/rules/cursor_rules.mdc')) return true;
-				if (filePath === path.join(projectRoot, '.cursor/rules/taskmaster/dev_workflow.mdc')) return false;
-				if (filePath === path.join(projectRoot, '.cursor/rules/self_improve.mdc')) return false;
-				if (filePath === path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc')) return false;
+				if (
+					filePath === path.join(projectRoot, '.cursor/rules/cursor_rules.mdc')
+				)
+					return true;
+				if (
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/dev_workflow.mdc')
+				)
+					return false;
+				if (
+					filePath === path.join(projectRoot, '.cursor/rules/self_improve.mdc')
+				)
+					return false;
+				if (
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc')
+				)
+					return false;
 				return false;
 			});
 

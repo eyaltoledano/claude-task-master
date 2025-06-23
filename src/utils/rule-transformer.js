@@ -212,9 +212,15 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
 			profile.onAddRulesProfile(projectDir, assetsDir);
-			log('debug', `[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`);
+			log(
+				'debug',
+				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
+			);
 		} catch (error) {
-			log('error', `[Rule Transformer] onAddRulesProfile failed for ${profile.profileName}: ${error.message}`);
+			log(
+				'error',
+				`[Rule Transformer] onAddRulesProfile failed for ${profile.profileName}: ${error.message}`
+			);
 			failed++;
 		}
 	}
@@ -281,9 +287,15 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	if (profile.mcpConfig !== false) {
 		try {
 			setupMCPConfiguration(projectDir, profile.mcpConfigPath);
-			log('debug', `[Rule Transformer] Setup MCP configuration for ${profile.profileName}`);
+			log(
+				'debug',
+				`[Rule Transformer] Setup MCP configuration for ${profile.profileName}`
+			);
 		} catch (error) {
-			log('error', `[Rule Transformer] MCP setup failed for ${profile.profileName}: ${error.message}`);
+			log(
+				'error',
+				`[Rule Transformer] MCP setup failed for ${profile.profileName}: ${error.message}`
+			);
 		}
 	}
 
@@ -291,9 +303,15 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
 		try {
 			profile.onPostConvertRulesProfile(projectDir, assetsDir);
-			log('debug', `[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`);
+			log(
+				'debug',
+				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
+			);
 		} catch (error) {
-			log('error', `[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`);
+			log(
+				'error',
+				`[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`
+			);
 		}
 	}
 
@@ -327,9 +345,15 @@ export function removeProfileRules(projectDir, profile) {
 		if (typeof profile.onRemoveRulesProfile === 'function') {
 			try {
 				profile.onRemoveRulesProfile(projectDir);
-				log('debug', `[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`);
+				log(
+					'debug',
+					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
+				);
 			} catch (error) {
-				log('error', `[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`);
+				log(
+					'error',
+					`[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`
+				);
 			}
 		}
 
@@ -419,9 +443,15 @@ export function removeProfileRules(projectDir, profile) {
 						result.notice += '; preserved other MCP server configurations';
 					}
 				}
-				log('debug', `[Rule Transformer] Processed MCP configuration for ${profile.profileName}`);
+				log(
+					'debug',
+					`[Rule Transformer] Processed MCP configuration for ${profile.profileName}`
+				);
 			} catch (error) {
-				log('error', `[Rule Transformer] MCP cleanup failed for ${profile.profileName}: ${error.message}`);
+				log(
+					'error',
+					`[Rule Transformer] MCP cleanup failed for ${profile.profileName}: ${error.message}`
+				);
 			}
 		}
 

@@ -60,15 +60,16 @@ export function getInstalledProfiles(projectDir) {
 					// For profiles without fileMap, check for their specific files
 					// This covers profiles that only copy assets without transforming rules
 					let hasProfileFiles = false;
-					
+
 					// Check for common profile-specific files
 					if (profileName === 'claude') {
-						hasProfileFiles = fs.existsSync(path.join(projectDir, 'CLAUDE.md')) ||
-										fs.existsSync(path.join(projectDir, '.claude'));
+						hasProfileFiles =
+							fs.existsSync(path.join(projectDir, 'CLAUDE.md')) ||
+							fs.existsSync(path.join(projectDir, '.claude'));
 					} else if (profileName === 'codex') {
 						hasProfileFiles = fs.existsSync(path.join(projectDir, 'AGENTS.md'));
 					}
-					
+
 					if (hasProfileFiles) {
 						installedProfiles.push(profileName);
 					}
@@ -91,12 +92,12 @@ export function getInstalledProfiles(projectDir) {
  */
 export function wouldRemovalLeaveNoProfiles(projectDir, profilesToRemove) {
 	const installedProfiles = getInstalledProfiles(projectDir);
-	
+
 	// If no profiles are currently installed, removal cannot leave no profiles
 	if (installedProfiles.length === 0) {
 		return false;
 	}
-	
+
 	const remainingProfiles = installedProfiles.filter(
 		(profile) => !profilesToRemove.includes(profile)
 	);

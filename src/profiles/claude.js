@@ -56,7 +56,10 @@ function onAddRulesProfile(targetDir, assetsDir) {
 	const claudeDestDir = path.join(targetDir, '.claude');
 
 	if (!fs.existsSync(claudeSourceDir)) {
-		log('error', `[Claude] Source directory does not exist: ${claudeSourceDir}`);
+		log(
+			'error',
+			`[Claude] Source directory does not exist: ${claudeSourceDir}`
+		);
 		return;
 	}
 
@@ -64,7 +67,10 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		copyRecursiveSync(claudeSourceDir, claudeDestDir);
 		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
 	} catch (err) {
-		log('error', `[Claude] An error occurred during directory copy: ${err.message}`);
+		log(
+			'error',
+			`[Claude] An error occurred during directory copy: ${err.message}`
+		);
 	}
 }
 
