@@ -82,12 +82,11 @@ export const claudeProfile = createProfile({
 	docsUrl: 'docs.anthropic.com/en/docs/claude-code',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // No specific rules directory needed
-	mcpConfig: false, // No MCP config needed
+	mcpConfig: false,
 	mcpConfigName: null,
-	fileExtension: '.mdc',
-	targetExtension: '.md',
+	includeDefaultRules: false,
 	fileMap: {
-		'AGENTS.md': 'CLAUDE.md' // Only copy AGENTS.md, .claude folder handled by lifecycle functions
+		'AGENTS.md': 'CLAUDE.md'
 	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,

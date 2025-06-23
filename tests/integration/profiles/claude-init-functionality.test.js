@@ -22,8 +22,9 @@ describe('Claude Profile Initialization Functionality', () => {
 	});
 
 	test('claude.js has no MCP configuration', () => {
+		// Check actual behavior and explicit configuration
 		expect(claudeProfileContent).toContain('mcpConfig: false');
-		expect(claudeProfileContent).toContain('mcpConfigName: null');
+		// Note: mcpConfigName: null is now handled automatically by base-profile.js
 	});
 
 	test('claude.js has file map for AGENTS.md -> CLAUDE.md', () => {

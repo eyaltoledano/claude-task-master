@@ -7,14 +7,7 @@ export const vscodeProfile = createProfile({
 	displayName: 'VS Code',
 	url: 'code.visualstudio.com',
 	docsUrl: 'code.visualstudio.com/docs',
-	profileDir: '.vscode', // MCP config location
 	rulesDir: '.github/instructions', // VS Code instructions location
-	mcpConfig: true,
-	mcpConfigName: 'mcp.json',
-	fileExtension: '.mdc',
-	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD, // VS Code uses standard tool names
-	// fileMap: uses default
 	customReplacements: [
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },

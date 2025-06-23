@@ -28,12 +28,11 @@ export const codexProfile = createProfile({
 	docsUrl: 'platform.openai.com/docs/codex',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // No specific rules directory needed
-	mcpConfig: false, // No MCP config needed
+	mcpConfig: false,
 	mcpConfigName: null,
-	fileExtension: '.mdc',
-	targetExtension: '.md',
+	includeDefaultRules: false,
 	fileMap: {
-		'AGENTS.md': 'AGENTS.md' // Only copy AGENTS.md for Codex
+		'AGENTS.md': 'AGENTS.md'
 	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,

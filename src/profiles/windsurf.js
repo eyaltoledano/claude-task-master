@@ -9,10 +9,7 @@ export const windsurfProfile = createProfile({
 	docsUrl: 'docs.windsurf.com',
 	profileDir: '.windsurf',
 	rulesDir: '.windsurf/rules',
-	mcpConfig: true,
-	mcpConfigName: 'mcp.json',
 	fileExtension: '.mdc',
 	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Windsurf uses standard tool names
-	// fileMap: uses default
+	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD
 });

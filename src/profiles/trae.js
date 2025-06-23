@@ -14,5 +14,4 @@ export const traeProfile = createProfile({
 	fileExtension: '.mdc',
 	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Trae uses standard tool names
-	// fileMap: uses default
 });

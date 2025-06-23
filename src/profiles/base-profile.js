@@ -18,6 +18,7 @@ import path from 'path';
  * @param {Array} [editorConfig.customReplacements=[]] - Custom text replacements
  * @param {Object} [editorConfig.fileMap={}] - Custom file name mappings
  * @param {boolean} [editorConfig.supportsRulesSubdirectories=false] - Whether to use taskmaster/ subdirectory for taskmaster-specific rules (only Cursor uses this by default)
+ * @param {boolean} [editorConfig.includeDefaultRules=true] - Whether to include default rule files
  * @param {Function} [editorConfig.onAdd] - Lifecycle hook for profile addition
  * @param {Function} [editorConfig.onRemove] - Lifecycle hook for profile removal
  * @param {Function} [editorConfig.onPostConvert] - Lifecycle hook for post-conversion
@@ -29,7 +30,7 @@ export function createProfile(editorConfig) {
 		displayName = name,
 		url,
 		docsUrl,
-		profileDir,
+		profileDir = `.${name.toLowerCase()}`,
 		rulesDir = `${profileDir}/rules`,
 		mcpConfig = true,
 		mcpConfigName = 'mcp.json',
@@ -39,6 +40,7 @@ export function createProfile(editorConfig) {
 		customReplacements = [],
 		fileMap = {},
 		supportsRulesSubdirectories = false,
+		includeDefaultRules = true,
 		onAdd,
 		onRemove,
 		onPostConvert
@@ -56,8 +58,10 @@ export function createProfile(editorConfig) {
 		'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`
 	};
 
-	// Merge defaults with any custom fileMap entries
-	const finalFileMap = { ...defaultFileMap, ...editorConfig.fileMap };
+	// Build final fileMap - merge defaults with custom entries when includeDefaultRules is true
+	const finalFileMap = includeDefaultRules
+		? { ...defaultFileMap, ...fileMap }
+		: fileMap;
 
 	// Base global replacements that work for all editors
 	const baseGlobalReplacements = [

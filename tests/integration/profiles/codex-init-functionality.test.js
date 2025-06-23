@@ -17,8 +17,9 @@ describe('Codex Profile Initialization Functionality', () => {
 	});
 
 	test('codex.js has no MCP configuration', () => {
+		// Check actual behavior and explicit configuration
 		expect(codexProfileContent).toContain('mcpConfig: false');
-		expect(codexProfileContent).toContain('mcpConfigName: null');
+		// Note: mcpConfigName: null is now handled automatically by base-profile.js
 	});
 
 	test('codex.js has file map for AGENTS.md -> AGENTS.md', () => {

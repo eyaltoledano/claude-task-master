@@ -9,11 +9,8 @@ export const cursorProfile = createProfile({
 	docsUrl: 'docs.cursor.com',
 	profileDir: '.cursor',
 	rulesDir: '.cursor/rules',
-	mcpConfig: true,
-	mcpConfigName: 'mcp.json',
 	fileExtension: '.mdc',
 	targetExtension: '.mdc', // Cursor keeps .mdc extension
 	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD,
 	supportsRulesSubdirectories: true
-	// fileMap: will use default with taskmaster subdirectories
 });
