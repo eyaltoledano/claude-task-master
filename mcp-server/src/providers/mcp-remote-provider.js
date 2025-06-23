@@ -6,6 +6,7 @@
  */
 
 import { BaseAIProvider } from '../../../src/ai-providers/base-provider.js';
+import { zodToJsonSchema } from "zod-to-json-schema";
 import logger from '../logger.js';
 
 /**
@@ -48,18 +49,12 @@ export class MCPRemoteProvider extends BaseAIProvider {
      * @param {object} params - Parameters to validate
      */
     validateAuth(params) {
-        // For MCP remote, we need either:
-        // 1. A valid server session from construction
-        // 2. A session provided in params
-        // 3. A session provided in context object
-        const session = this.session || params.session || (params.context?.session);
-        
-        if (!session) {
+        if (!this.session) {
             throw new Error('MCP provider requires session context');
         }
         
         // Validate that session has required MCP sampling capabilities
-        if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
+        if (!this.session.clientCapabilities || !this.session.clientCapabilities.sampling) {
             throw new Error('MCP session must have client sampling capabilities');
         }
     }
@@ -77,6 +72,29 @@ export class MCPRemoteProvider extends BaseAIProvider {
         this.session = session;
         logger.debug('Updated MCP Remote Provider session');
     }
+
+
+    async requestSampling(messages, systemPrompt, temperature, maxTokens) {
+        const mcpMessages = messages.map(msg => ({
+            role: msg.role,
+            content: {
+                type: 'text',
+                text: msg.content
+            }
+        }));
+
+        // Use MCP sampling to request completion from client
+        const response = await this.session.requestSampling({
+            messages: mcpMessages,
+            systemPrompt: systemPrompt,
+            temperature: temperature,
+            maxTokens: maxTokens || 1000,
+            includeContext: 'thisServer' // Include context from this MCP server
+        }, {
+            timeout: 2400000 // 2 minutes timeout (in milliseconds)
+        });
+        return response;
+    }
     
     /**
      * Generate text using the MCP server session
@@ -84,92 +102,39 @@ export class MCPRemoteProvider extends BaseAIProvider {
      * @returns {Promise<string>} The generated text
      */
     async generateText(params) {
-        this.validateParams(params);
-        
-        // Get session from either instance, params, or context
-        const session = this.session || params.session || (params.context?.session);
-        const modelId = params.modelId || this.options.defaultModel;
-        
-        logger.debug(`Generating text with MCP Remote Provider using model: ${modelId}`);
-        
         try {
 			this.validateParams(params);
-
+            const modelId = params.modelId || this.options.defaultModel;
+            logger.debug(`Generating text with MCP Remote Provider using model: ${modelId}`);
 			const { messages, systemPrompt, temperature, maxTokens } = params;
 
 			// Convert our message format to MCP sampling format
-			const mcpMessages = messages.map(msg => ({
-				role: msg.role,
-				content: {
-					type: 'text',
-					text: msg.content
-				}
-			}));
-
-			// Use MCP sampling to request completion from client
-			const response = await session.requestSampling({
-				messages: mcpMessages,
-				systemPrompt: systemPrompt,
-				temperature: temperature,
-				maxTokens: maxTokens || 1000,
-				includeContext: 'thisServer' // Include context from this MCP server
-			},{
-                timeout: 2400000 // 2 minutes timeout (in milliseconds)
-            });
+			const response = await this.requestSampling(messages, systemPrompt, temperature, maxTokens);
 
 			// Format response to match expected structure
 			return {
 				text: response.content.text,
 				finishReason: response.stopReason || 'completed',
 				usage: {
-					promptTokens: 0, // MCP doesn't provide token counts
-					completionTokens: 0,
+					inputTokens: 0, // MCP doesn't provide token counts
+					outputTokens: 0,
 					totalTokens: 0
 				},
 				rawResponse: response
 			};
 
 		} catch (error) {
-            logger.error(`MCP Remote Provider generateText error: ${error.message}`);
-			throw new Error(`MCP sampling failed: ${error.message}`);
+            this.handleError('text generation', error);
 		}
     }
-    
+
     /**
      * Stream text using the MCP server session
      * @param {object} params - Generation parameters
      * @returns {AsyncIterable<object>} Stream of generated text chunks
      */
     async *streamText(params) {
-        this.validateParams(params);
-        
-        const session = this.session || params.session || (params.context?.session);
-        const modelId = params.modelId || this.options.defaultModel;
-        
-        logger.debug(`Streaming text with MCP Remote Provider using model: ${modelId}`);
-        
-        try {
-            // Use the session's requestSamplingStream method to stream text
-            const stream = await session.requestSamplingStream({
-                model: modelId,
-                messages: params.messages,
-                temperature: params.temperature || 0.7,
-                maxTokens: params.maxTokens || 1000,
-                stopSequences: params.stopSequences,
-                topP: params.topP,
-                topK: params.topK
-            });
-            
-            for await (const chunk of stream) {
-                yield {
-                    text: chunk.text,
-                    done: chunk.done
-                };
-            }
-        } catch (error) {
-            logger.error(`MCP Remote Provider streamText error: ${error.message}`);
-            throw error;
-        }
+        this.handleError('streaming text', new Error('MCP Remote Provider does not support streaming text, use generateText instead'));
     }
     
     /**
@@ -178,58 +143,60 @@ export class MCPRemoteProvider extends BaseAIProvider {
      * @returns {Promise<object>} The generated object
      */
     async generateObject(params) {
-        this.validateParams(params);
-        
-        const session = this.session || params.session || (params.context?.session);
-        const modelId = params.modelId || this.options.defaultModel;
-        
-        logger.debug(`Generating object with MCP Remote Provider using model: ${modelId}`);
-        
         try {
-            // Use the session's requestJsonSampling method if available, otherwise parse from text
-            if (session.requestJsonSampling) {
-                return await session.requestJsonSampling({
-                    model: modelId,
-                    messages: params.messages,
-                    temperature: params.temperature || 0.7,
-                    maxTokens: params.maxTokens || 1000,
-                    stopSequences: params.stopSequences,
-                    topP: params.topP,
-                    topK: params.topK,
-                    schema: params.jsonSchema
-                });
-            }
-            
-            // Fallback to parsing JSON from text if requestJsonSampling isn't available
+			this.validateParams(params);
+
+			if (!params.schema) {
+				throw new Error('Schema is required for object generation');
+			}
+			if (!params.objectName) {
+				throw new Error('Object name is required for object generation');
+			}
+
+			logger.debug(
+				`Generating ${this.name} object ('${params.objectName}') with model: ${params.modelId}`
+			);
+
+            const modelId = params.modelId || this.options.defaultModel;
+
             const systemPrompt = params.messages[0]?.content || '';
+            const schema = zodToJsonSchema(params.schema, params.objectName);
+            
             const updatedMessages = [
                 {
                     role: 'system',
-                    content: `${systemPrompt}\nYou must respond with valid JSON only. No explanation, no markup.`
+                    content: `${systemPrompt}\n\nIMPORTANT: Your response MUST be valid JSON that matches this
+                                structure: ${JSON.stringify(schema)}\n\nRespond ONLY with the JSON object, no explanation, no markdown,
+                                just the raw JSON.`
                 },
                 ...params.messages.slice(1)
             ];
+
+            const response = await this.requestSampling(
+                updatedMessages,
+                systemPrompt,
+                params.temperature || 0.7,
+                params.maxTokens || 1000
+            );
             
-            const result = await session.requestSampling({
-                model: modelId,
-                messages: updatedMessages,
-                temperature: params.temperature || 0.7,
-                maxTokens: params.maxTokens || 1000,
-                stopSequences: params.stopSequences,
-                topP: params.topP,
-                topK: params.topK
-            });
+            const object = JSON.parse(response.content.text);
+            logger.debug(
+				`${this.name} generateText completed successfully for model: ${params.modelId}`
+			);
+
+			return {
+				object,
+				usage: {
+					inputTokens: 0,
+					outputTokens: 0,
+					totalTokens: 0
+				},
+				rawResponse: response
+			};
             
-            try {
-                return JSON.parse(result.text);
-            } catch (parseError) {
-                logger.error(`Failed to parse JSON from MCP response: ${parseError.message}`);
-                throw new Error(`Invalid JSON response: ${parseError.message}`);
-            }
         } catch (error) {
-            logger.error(`MCP Remote Provider generateObject error: ${error.message}`);
-            throw error;
-        }
+			this.handleError('object generation', error);
+		}
     }
     
     /**
@@ -250,7 +217,7 @@ export class MCPRemoteProvider extends BaseAIProvider {
             hasMessages: !!params.messages,
             isArray: params.messages ? Array.isArray(params.messages) : false,
             length: params.messages ? params.messages.length : 0,
-            hasSession: !!this.session || !!params.session || !!(params.context?.session)
+            hasSession: !!this.session
         })}`);
         
         // Validate messages
@@ -258,6 +225,25 @@ export class MCPRemoteProvider extends BaseAIProvider {
             throw new Error('Messages array is required and must not be empty');
         }
     }
+
+    /**
+	 * Get client instance (not applicable for MCP)
+	 *
+	 * This method is required by the BaseAIProvider interface but is not
+	 * applicable for the MCP provider since it uses MCP sampling
+	 * execution rather than an API client.
+	 *
+	 * @returns {null} Always returns null as no client instance is needed
+	 * @override
+	 *
+	 * @description
+	 * The MCP provider executes commands directly via MCP sampling
+	 * rather than maintaining a persistent client connection. This method
+	 * exists only for interface compatibility with other AI providers.
+	 */
+	getClient() {
+		return null;
+	}
 }
 
 export default MCPRemoteProvider;
