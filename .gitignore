@@ -77,3 +77,7 @@ dev-debug.log
 
 # NPMRC
 .npmrc
+
+.github/chatmodes
+.github/instructions
+.github/memory-bank
