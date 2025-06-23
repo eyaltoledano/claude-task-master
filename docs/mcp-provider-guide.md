@@ -58,10 +58,6 @@ The MCP provider requires an active MCP session with sampling capabilities:
 session: {
   clientCapabilities: {
     sampling: {} // Client supports sampling requests
-  },
-  requestSampling: function(params) {
-    // MCP sampling implementation
-    // Returns completion from client's model
   }
 }
 ```

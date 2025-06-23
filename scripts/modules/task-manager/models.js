@@ -173,7 +173,7 @@ async function getModelConfiguration(options = {}) {
 	}
 
 	try {
-		// Get current settings
+		// Get current settings - these should use the config from the found path automatically
 		const mainProvider = getMainProvider(projectRoot);
 		const mainModelId = getMainModelId(projectRoot);
 		const researchProvider = getResearchProvider(projectRoot);

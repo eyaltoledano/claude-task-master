@@ -96,9 +96,7 @@ class TaskMasterMCPServer {
 			}
 			
 			// Create the remote provider with the first session
-			const remoteProvider = new MCPRemoteProvider(this.server, {
-				defaultModel: 'claude-3-5-sonnet-20241022' // Use a default model
-			});
+			const remoteProvider = new MCPRemoteProvider(this.server);
 			
 			// Set the session explicitly
 			remoteProvider.setSession(session);

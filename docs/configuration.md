@@ -173,7 +173,7 @@ The MCP provider enables Task Master to use MCP servers as AI providers. This is
 
 1. **Prerequisites**:
    - An active MCP session with sampling capability
-   - MCP client with sampling support (e.g., Claude Desktop, VS Code)
+   - MCP client with sampling support (e.g. VS Code)
    - No API keys required (uses session-based authentication)
 
 2. **Configuration**:
@@ -198,7 +198,6 @@ The MCP provider enables Task Master to use MCP servers as AI providers. This is
 4. **Usage Requirements**:
    - Must be running in an MCP context (session must be available)
    - Session must provide `clientCapabilities.sampling` capability
-   - Client must support `requestSampling()` method
 
 5. **Best Practices**:
    - Always configure a non-MCP fallback provider
@@ -207,7 +206,6 @@ The MCP provider enables Task Master to use MCP servers as AI providers. This is
 
 6. **Troubleshooting**:
    - "MCP provider requires session context" → Ensure running in MCP environment
-   - "MCP tool not available" → Check session capabilities and tool names
    - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
 
 ### Google Vertex AI Configuration
