@@ -29,6 +29,7 @@
 | perplexity | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai        | grok-3                                         | —         | 3          | 15          |
 | xai        | grok-3-fast                                    | —         | 5          | 25          |
+| mcp        | mcp-sampling                                   | -       | 0          | 0           |
 | ollama     | devstral:latest                                | —         | 0          | 0           |
 | ollama     | qwen3:latest                                   | —         | 0          | 0           |
 | ollama     | qwen3:14b                                      | —         | 0          | 0           |
@@ -75,6 +76,7 @@
 | perplexity | sonar-reasoning            | 0.211     | 1          | 5           |
 | xai        | grok-3                     | —         | 3          | 15          |
 | xai        | grok-3-fast                | —         | 5          | 25          |
+| mcp        | mcp-sampling               | -         | 0          | 0           |
 
 ## Fallback Models
 
@@ -96,6 +98,7 @@
 | perplexity | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai        | grok-3                                         | —         | 3          | 15          |
 | xai        | grok-3-fast                                    | —         | 5          | 25          |
+| mcp        | mcp-sampling                                   | -         | 0          | 0           |
 | ollama     | devstral:latest                                | —         | 0          | 0           |
 | ollama     | qwen3:latest                                   | —         | 0          | 0           |
 | ollama     | qwen3:14b                                      | —         | 0          | 0           |

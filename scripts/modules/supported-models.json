@@ -427,7 +427,7 @@
 	"mcp": [
 		{
 			"id": "mcp-sampling",
-			"swe_score": 0.5,
+			"swe_score": null,
 			"cost_per_1m_tokens": { "input": 0, "output": 0 },
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 100000

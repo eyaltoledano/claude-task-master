@@ -17,18 +17,22 @@ The MCP provider allows Task Master to:
 
 ### Basic Setup
 
-Add MCP provider to your `.taskmasterconfig`:
+Add MCP provider to your `.taskmaster/config.json`:
 
 ```json
 {
   "models": {
     "main": {
       "provider": "mcp",
-      "modelId": "mcp-sampling"
+      "modelId": "mcp-sampling",
+      "maxTokens": 100000,
+      "temperature": 0.2
     },
     "research": {
       "provider": "mcp", 
-      "modelId": "mcp-sampling"
+      "modelId": "mcp-sampling",
+      "maxTokens": 100000,
+      "temperature": 0.1
     },
     "fallback": {
       "provider": "anthropic",
@@ -43,6 +47,10 @@ Add MCP provider to your `.taskmasterconfig`:
 The MCP provider supports sampling-based text generation:
 
 - **`mcp-sampling`** - General text generation using MCP client sampling (all roles)
+  - **SWE Score**: null
+  - **Token Limits**: NA
+  - **Cost**: Requires Github account
+  - **Roles**: Supports main, research, and fallback roles
 
 ### Model ID Format
 
@@ -130,36 +138,77 @@ task-master parse-prd requirements.txt
 
 ## Architecture Details
 
+### Provider Architecture
+**MCPRemoteProvider** (`mcp-server/src/providers/mcp-remote-provider.js`)
+   - Server-side provider for Task Master's own MCP server
+   - Auto-registers when MCP sessions connect to Task Master
+   - Enables Task Master to use its own MCP session for AI operations
+
+### Auto-Registration Process
+
+When running as an MCP server, Task Master automatically:
+
+```javascript
+// On MCP session connect
+server.on("connect", (event) => {
+  // Check session capabilities
+  if (session.clientCapabilities?.sampling) {
+    // Create and register remote provider
+    const remoteProvider = new MCPRemoteProvider(server);
+    remoteProvider.setSession(session);
+    
+    // Auto-register with provider registry
+    providerRegistry.registerProvider('mcp', remoteProvider);
+  }
+});
+```
+
+This enables seamless self-referential AI operations within MCP contexts.
+
 ### Provider Pattern Integration
 
 The MCP provider follows the same pattern as other providers:
 
 ```javascript
-class MCPAIProvider extends BaseAIProvider {
-  // Implements generateText, streamText, generateObject
+class MCPRemoteProvider extends BaseAIProvider {
+  // Implements generateText, generateObject
   // Uses session context instead of API keys
-  // Maps operations to MCP tool calls
+  // Maps operations to MCP sampling requests
 }
 ```
 
 ### Session Detection
 
-The provider automatically detects MCP sampling capability:
+The provider automatically detects MCP sampling capability when sessions connect:
 
 ```javascript
-// Check if MCP sampling is available
-if (MCPAIProvider.isAvailable({ session })) {
-  // Use MCP provider with sampling
+// On MCP session connect
+if (session.clientCapabilities?.sampling) {
+  // Auto-register MCP provider for use
+  const remoteProvider = new MCPRemoteProvider(server);
+  remoteProvider.setSession(session);
 }
 ```
 
 ### Sampling Integration
 
-AI operations use MCP sampling:
+AI operations use MCP sampling with different levels of support:
 
-- `generateText()` → MCP `requestSampling()` with messages
-- `streamText()` → Falls back to `generateText()` (streaming not supported)
-- `generateObject()` → MCP `requestSampling()` with JSON schema instructions
+- `generateText()` → MCP `requestSampling()` with messages (2-minute timeout) ✅ **Full Support**
+- `streamText()` → **Limited/No Support** ⚠️ See streaming limitations below
+- `generateObject()` → MCP `requestSampling()` with JSON schema instructions (2-minute timeout) ✅ **Full Support**
+
+**Timeout Configuration**: All MCP sampling requests use a 2-minute (120,000ms) timeout to accommodate complex AI operations.
+
+#### Streaming Text Limitations ⚠️
+
+**Important**: The MCP provider has **no support** for text streaming:
+
+**MCPRemoteProvider** (Task Master's MCP server):
+- **❌ No Streaming Support**: Throws error "MCP Remote Provider does not support streaming text, use generateText instead"  
+- **Solution**: Always use `generateText()` instead of `streamText()` with this provider
+
+**Recommendation**: For streaming functionality, configure a non-MCP fallback provider (like Anthropic or OpenAI) in your fallback role.
 
 ### Error Handling
 
@@ -170,11 +219,11 @@ The MCP provider includes comprehensive error handling:
 - JSON parsing errors (for structured output)
 - Automatic fallback to other providers
 
-## Best Practices
+### Best Practices
 
 ### 1. Configure Fallbacks
 
-Always configure a non-MCP fallback provider:
+Always configure a non-MCP fallback provider, especially for streaming operations:
 
 ```json
 {
@@ -191,7 +240,27 @@ Always configure a non-MCP fallback provider:
 }
 ```
 
-### 2. Session Management
+### 2. Avoid Streaming with MCP
+
+**Do not use `streamTextService()` with MCP provider**. Use `generateTextService()` instead:
+
+```javascript
+// ❌ Don't do this with MCP provider
+const result = await streamTextService({
+  role: 'main', // MCP provider
+  session: mcpSession,
+  prompt: 'Generate content'
+});
+
+// ✅ Do this instead
+const result = await generateTextService({
+  role: 'main', // MCP provider
+  session: mcpSession,
+  prompt: 'Generate content'
+});
+```
+
+### 3. Session Management
 
 Ensure your MCP session remains active throughout Task Master operations:
 
@@ -202,16 +271,20 @@ if (!session || !session.capabilities) {
 }
 ```
 
-### 3. Tool Availability
+### 4. Tool Availability
 
-Verify required tools are available in your MCP session:
+Verify required capabilities are available in your MCP session:
 
 ```javascript
-const availableModels = MCPAIProvider.getAvailableModels(session);
-console.log('Available MCP models:', availableModels);
+// Check session health and capabilities
+if (session && session.clientCapabilities && session.clientCapabilities.sampling) {
+  console.log('MCP sampling available');
+} else {
+  console.log('MCP sampling not available');
+}
 ```
 
-### 4. Error Recovery
+### 5. Error Recovery
 
 Handle MCP-specific errors gracefully:
 
@@ -237,18 +310,42 @@ try {
 1. **"MCP provider requires session context"**
    - Ensure `session` parameter is passed to service calls
    - Verify session has proper structure
+   - Check that you're running in an MCP environment
 
 2. **"MCP session must have client sampling capabilities"**
    - Check that `session.clientCapabilities.sampling` exists
    - Verify session has `requestSampling()` method
+   - Ensure MCP client supports sampling feature
 
-3. **"MCP sampling failed"**
+3. **"MCP Remote Provider does not support streaming text, use generateText instead"**
+   - **Common Error**: Occurs when calling `streamTextService()` with MCP remote provider
+   - **Solution**: Use `generateTextService()` instead of `streamTextService()`
+   - **Alternative**: Configure a non-MCP fallback provider for streaming operations
+
+4. **"MCP sampling failed"** or **Timeout errors**
    - Check MCP client is responding to sampling requests
    - Verify session is still active and connected
+   - Consider if request complexity requires longer processing time
+   - Check for network connectivity issues
 
-4. **"Cannot access 'BaseAIProvider' before initialization"**
-   - This indicates a circular import issue
-   - Should be resolved in current implementation
+5. **"Model ID is required for MCP Remote Provider"**
+   - Ensure `modelId` is specified in configuration
+   - Use `mcp-sampling` as the standard model ID
+   - Verify provider configuration is properly loaded
+
+6. **Auto-registration failures**
+   - Check that MCP session has required sampling capabilities
+   - Verify server event listeners are properly configured
+   - Look for provider registry initialization issues
+
+### Streaming-Related Issues
+
+**Error**: `streamTextService()` calls fail with MCP provider
+**Cause**: MCP provider has no streaming support
+**Solutions**:
+- Use `generateTextService()` for all MCP-based text generation
+- Configure non-MCP fallback providers for streaming requirements
+- Check your provider configuration to ensure fallback chain includes streaming-capable providers
 
 ### Debug Mode
 
@@ -271,18 +368,49 @@ Test MCP provider functionality:
 
 ```javascript
 // Check if MCP provider is properly registered
-import { MCPAIProvider } from './src/ai-providers/mcp-provider.js';
+import MCPRemoteProvider from './mcp-server/src/providers/mcp-remote-provider.js';
 
-// Test session detection
-const isAvailable = MCPAIProvider.isAvailable({ session: yourSession });
-console.log('MCP available:', isAvailable);
-
-// Test available models
-const models = MCPAIProvider.getAvailableModels(yourSession);
-console.log('Available models:', models);
+// Test session capabilities
+if (session && session.clientCapabilities && session.clientCapabilities.sampling) {
+  console.log('MCP sampling available');
+  
+  // Test provider creation
+  const provider = new MCPRemoteProvider(server);
+  provider.setSession(session);
+  console.log('MCP provider created successfully');
+} else {
+  console.log('MCP session lacks required capabilities');
+}
 ```
 
 ## Integration with Development Tools
+
+### VS Code with MCP Extension
+
+When using Task Master in VS Code with MCP support:
+
+1. Configure Task Master MCP server in your `.vscode/mcp.json`
+2. Set MCP provider as main/research in `.taskmaster/config.json`
+3. Benefit from integrated AI assistance within your development workflow
+4. Use Task Master tools directly from VS Code's MCP interface
+
+**Example VS Code MCP Configuration:**
+```json
+{
+  "servers": {
+    "task-master-dev": {
+      "command": "node",
+      "args": ["mcp-server/server.js"],
+      "cwd": "/path/to/your/task-master-project",
+      "env": {
+        "NODE_ENV": "development",
+        "ANTHROPIC_API_KEY": "${env:ANTHROPIC_API_KEY}",
+        "TASK_MASTER_PROJECT_ROOT": "/path/to/your/project"
+      }
+    }
+  }
+}
+```
 
 ### Claude Desktop
 
@@ -341,43 +469,44 @@ Configure MCP sampling for different roles:
 }
 ```
 
-## API Reference
+### API Reference
 
-### MCPAIProvider Methods
+### MCPRemoteProvider Methods
 
-- `isAvailable(params)` - Check if MCP context is available
-- `validateAuth(params)` - Validate session context
-- `generateText(params)` - Generate text using MCP tools
-- `streamText(params)` - Stream text (falls back to generateText)
-- `generateObject(params)` - Generate structured objects
-- `getAvailableModels(session)` - Get available MCP models
+- `generateText(params)` - Generate text using MCP sampling ✅ **Supported**
+- `streamText(params)` - Stream text ❌ **Not supported** (throws error)
+- `generateObject(params)` - Generate structured objects ✅ **Supported**
+- `setSession(session)` - Update provider session
+- `validateAuth(params)` - Validate session capabilities
+- `getClient()` - Returns null (not applicable for MCP)
 
 ### Required Parameters
 
 All MCP operations require:
-- `session` - Active MCP session object
-- `modelId` - MCP tool identifier
+- `session` - Active MCP session object (auto-provided when registered)
+- `modelId` - MCP model identifier (typically "mcp-sampling")
 - `messages` - Array of message objects
 
 ### Optional Parameters
 
-- `temperature` - Creativity control (if supported by MCP tool)
+- `temperature` - Creativity control (if supported by MCP client)
 - `maxTokens` - Maximum response length (if supported)
 - `schema` - JSON schema for structured output (generateObject only)
 
 ## Security Considerations
 
 1. **Session Security**: MCP sessions should be properly authenticated
-2. **Tool Validation**: Only use trusted MCP tools and servers
-3. **Data Privacy**: Ensure MCP tools handle data according to your privacy requirements
+2. **Server Validation**: Only connect to trusted MCP servers
+3. **Data Privacy**: Ensure MCP clients handle data according to your privacy requirements
 4. **Error Exposure**: Be careful not to expose sensitive session information in error messages
 
 ## Future Enhancements
 
 Planned improvements for MCP provider:
 
-1. **True Streaming Support** - Native streaming for compatible MCP tools
-2. **Enhanced Tool Discovery** - Automatic detection of tool capabilities
-3. **Session Health Monitoring** - Automatic session validation and recovery
-4. **Performance Optimization** - Caching and connection pooling
-5. **Advanced Error Recovery** - Intelligent retry and fallback strategies
+1. **Native Streaming Support** - True streaming for compatible MCP clients (requires MCP protocol updates)
+2. **Enhanced Session Monitoring** - Automatic session validation and recovery
+3. **Performance Optimization** - Caching and connection pooling
+4. **Advanced Error Recovery** - Intelligent retry and fallback strategies
+
+**Note**: True streaming support depends on future MCP protocol enhancements. Current implementation provides text generation without streaming capabilities.
