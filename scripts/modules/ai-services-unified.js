@@ -45,7 +45,6 @@ import {
 	BedrockAIProvider,
 	AzureProvider,
 	VertexAIProvider,
-	//MCPAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -63,7 +62,6 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
-	// mcp: new MCPAIProvider()
 };
 
 function _getProvider(providerName) {
@@ -73,7 +71,7 @@ function _getProvider(providerName) {
 	}
 	
 	// If not found, check the provider registry
-	const providerRegistry = ProviderRegistry();
+	const providerRegistry = ProviderRegistry.getInstance();
 	if (providerRegistry.hasProvider(providerName)) {
 		log('debug', `Provider "${providerName}" found in dynamic registry`);
 		return providerRegistry.getProvider(providerName);
@@ -434,13 +432,13 @@ async function _unifiedServiceRunner(serviceType, params) {
 			log('info', `New AI service call with role: ${currentRole}`);
 
 			if (currentRole === 'main') {
-				providerName = getMainProvider(effectiveProjectRoot, session);
+				providerName = getMainProvider(effectiveProjectRoot);
 				modelId = getMainModelId(effectiveProjectRoot, session);
 			} else if (currentRole === 'research') {
-				providerName = getResearchProvider(effectiveProjectRoot, session);
+				providerName = getResearchProvider(effectiveProjectRoot);
 				modelId = getResearchModelId(effectiveProjectRoot, session);
 			} else if (currentRole === 'fallback') {
-				providerName = getFallbackProvider(effectiveProjectRoot, session);
+				providerName = getFallbackProvider(effectiveProjectRoot);
 				modelId = getFallbackModelId(effectiveProjectRoot, session);
 			} else {
 				log(

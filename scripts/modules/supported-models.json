@@ -426,28 +426,11 @@
 	],
 	"mcp": [
 		{
-			"id": "text-generation",
-			"swe_score": 0,
+			"id": "mcp-sampling",
+			"swe_score": 0.5,
 			"cost_per_1m_tokens": { "input": 0, "output": 0 },
 			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 100000,
-			"description": "Generic MCP text generation tool"
-		},
-		{
-			"id": "research",
-			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["research"],
-			"max_tokens": 100000,
-			"description": "MCP research tool"
-		},
-		{
-			"id": "analysis",
-			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 100000,
-			"description": "MCP analysis tool"
+			"max_tokens": 100000
 		}
 	]
 }
