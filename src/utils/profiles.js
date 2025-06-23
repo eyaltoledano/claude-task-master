@@ -67,7 +67,7 @@ export function getInstalledProfiles(projectRoot) {
 
 /**
  * Check if removing specified profiles would leave no profiles installed
- * @param {string} projectRoot - Project directory path
+ * @param {string} projectRoot - Project root directory
  * @param {string[]} profilesToRemove - Array of profile names to remove
  * @returns {boolean} - True if removal would leave no profiles
  */
