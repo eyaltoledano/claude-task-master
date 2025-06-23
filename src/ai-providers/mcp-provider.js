@@ -11,6 +11,15 @@ export class MCPAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the required API key environment variable name for MCP.
+	 * MCP uses session-based communication, so no API key is needed.
+	 * @returns {null} MCP doesn't require an API key
+	 */
+	getRequiredApiKeyName() {
+		return null;
+	}
+
+	/**
 	 * MCP providers use session context instead of API keys
 	 * @param {object} params - Parameters to validate
 	 */

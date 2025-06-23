@@ -245,29 +245,14 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
-	const keyMap = {
-		openai: 'OPENAI_API_KEY',
-		anthropic: 'ANTHROPIC_API_KEY',
-		google: 'GOOGLE_API_KEY',
-		perplexity: 'PERPLEXITY_API_KEY',
-		mistral: 'MISTRAL_API_KEY',
-		azure: 'AZURE_OPENAI_API_KEY',
-		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY',
-		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY',
-		mcp: null // MCP uses session-based communication, no API key needed
-	};
-
-	// Check if provider exists in keyMap
-	if (!(providerName in keyMap)) {
-		throw new Error(
-			`Unknown provider '${providerName}' for API key resolution. Available providers: ${Object.keys(keyMap).join(', ')}`
-		);
+	// Get provider instance
+	const provider = _getProvider(providerName);
+	if (!provider) {
+		throw new Error(`Unknown provider '${providerName}' for API key resolution.`);
 	}
 
-	const envVarName = keyMap[providerName];
+	// All providers must implement getRequiredApiKeyName()
+	const envVarName = provider.getRequiredApiKeyName();
 	
 	// If envVarName is null (like for MCP), return null directly
 	if (envVarName === null) {
@@ -511,17 +496,11 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Get AI parameters for the current role
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot, session);
-			
-			// Only resolve API key for providers that need it
-			if (providerName?.toLowerCase() === 'mcp') {
-				apiKey = null; // MCP uses session-based communication
-			} else {
-				apiKey = _resolveApiKey(
-					providerName?.toLowerCase(),
-					session,
-					effectiveProjectRoot
-				);
-			}
+			apiKey = _resolveApiKey(
+				providerName?.toLowerCase(),
+				session,
+				effectiveProjectRoot
+			);
 
 			// Prepare provider-specific configuration
 			let providerSpecificParams = {};

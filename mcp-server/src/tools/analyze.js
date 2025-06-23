@@ -114,7 +114,8 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						`Failed to create output directory: ${dirError.message}`
 					);
 				}
-
+				
+				// 3. Call Direct Function - Pass projectRoot in first arg object
 				const result = await analyzeTaskComplexityDirect(
 					{
 						tasksJsonPath: tasksJsonPath,

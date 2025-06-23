@@ -97,6 +97,15 @@ export class BaseAIProvider {
 	}
 
 	/**
+	 * Returns the required API key environment variable name
+	 * @abstract
+	 * @returns {string|null} The environment variable name, or null if no API key is required
+	 */
+	getRequiredApiKeyName() {
+		throw new Error('getRequiredApiKeyName must be implemented by provider');
+	}
+
+	/**
 	 * Generates text using the provider's model
 	 */
 	async generateText(params) {
