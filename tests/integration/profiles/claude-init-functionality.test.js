@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { claudeProfile } from '../../../src/profiles/claude.js';
 
 describe('Claude Profile Initialization Functionality', () => {
 	let claudeProfileContent;
@@ -22,9 +23,11 @@ describe('Claude Profile Initialization Functionality', () => {
 	});
 
 	test('claude.js has no MCP configuration', () => {
-		// Check actual behavior and explicit configuration
+		// Check that claude disables MCP config (asset-only profile)
 		expect(claudeProfileContent).toContain('mcpConfig: false');
-		// Note: mcpConfigName: null is now handled automatically by base-profile.js
+		// Verify runtime behavior: mcpConfigName should be null (handled automatically by base-profile.js)
+		expect(claudeProfile.mcpConfig).toBe(false);
+		expect(claudeProfile.mcpConfigName).toBe(null);
 	});
 
 	test('claude.js has file map for AGENTS.md -> CLAUDE.md', () => {

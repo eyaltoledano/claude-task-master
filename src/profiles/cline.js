@@ -9,9 +9,5 @@ export const clineProfile = createProfile({
 	docsUrl: 'docs.cline.bot',
 	profileDir: '.clinerules',
 	rulesDir: '.clinerules',
-	mcpConfig: false,
-	mcpConfigName: null,
-	fileExtension: '.mdc',
-	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Cline uses standard tool names
+	mcpConfig: false
 });

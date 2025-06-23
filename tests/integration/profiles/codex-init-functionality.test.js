@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { codexProfile } from '../../../src/profiles/codex.js';
 
 describe('Codex Profile Initialization Functionality', () => {
 	let codexProfileContent;
@@ -17,9 +18,11 @@ describe('Codex Profile Initialization Functionality', () => {
 	});
 
 	test('codex.js has no MCP configuration', () => {
-		// Check actual behavior and explicit configuration
+		// Check that codex disables MCP config (asset-only profile)
 		expect(codexProfileContent).toContain('mcpConfig: false');
-		// Note: mcpConfigName: null is now handled automatically by base-profile.js
+		// Verify runtime behavior: mcpConfigName should be null (handled automatically by base-profile.js)
+		expect(codexProfile.mcpConfig).toBe(false);
+		expect(codexProfile.mcpConfigName).toBe(null);
 	});
 
 	test('codex.js has file map for AGENTS.md -> AGENTS.md', () => {

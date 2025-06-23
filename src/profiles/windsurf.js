@@ -6,10 +6,5 @@ export const windsurfProfile = createProfile({
 	name: 'windsurf',
 	displayName: 'Windsurf',
 	url: 'windsurf.com',
-	docsUrl: 'docs.windsurf.com',
-	profileDir: '.windsurf',
-	rulesDir: '.windsurf/rules',
-	fileExtension: '.mdc',
-	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD
+	docsUrl: 'docs.windsurf.com'
 });

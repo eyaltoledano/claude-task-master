@@ -23,15 +23,20 @@ describe('Trae Profile Initialization Functionality', () => {
 	});
 
 	test('trae.js configures .mdc to .md extension mapping', () => {
-		// Check that the profile file explicitly sets extension configuration
-		expect(traeProfileContent).toContain("fileExtension: '.mdc'");
-		expect(traeProfileContent).toContain("targetExtension: '.md'");
+		// Check that the profile object has the correct file mapping behavior (trae converts to .md)
+		expect(traeProfile.fileMap['rules/cursor_rules.mdc']).toBe('trae_rules.md');
 	});
 
 	test('trae.js uses standard tool mappings', () => {
-		// Check that the profile uses standard tool mappings
-		expect(traeProfileContent).toContain('COMMON_TOOL_MAPPINGS.STANDARD');
-		expect(traeProfileContent).toContain('standard tool names');
+		// Check that the profile uses default tool mappings (equivalent to COMMON_TOOL_MAPPINGS.STANDARD)
+		// This verifies the architectural pattern: no custom toolMappings = standard tool names
+		expect(traeProfileContent).not.toContain('toolMappings:');
+		expect(traeProfileContent).not.toContain('apply_diff');
+		expect(traeProfileContent).not.toContain('search_files');
+
+		// Verify the result: default mappings means tools keep their original names
+		expect(traeProfile.conversionConfig.toolNames.edit_file).toBe('edit_file');
+		expect(traeProfile.conversionConfig.toolNames.search).toBe('search');
 	});
 
 	test('trae.js contains correct URL configuration', () => {

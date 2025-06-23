@@ -7,10 +7,6 @@ export const cursorProfile = createProfile({
 	displayName: 'Cursor',
 	url: 'cursor.so',
 	docsUrl: 'docs.cursor.com',
-	profileDir: '.cursor',
-	rulesDir: '.cursor/rules',
-	fileExtension: '.mdc',
 	targetExtension: '.mdc', // Cursor keeps .mdc extension
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD,
 	supportsRulesSubdirectories: true
 });

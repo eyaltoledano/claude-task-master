@@ -33,7 +33,7 @@ export function createProfile(editorConfig) {
 		profileDir = `.${name.toLowerCase()}`,
 		rulesDir = `${profileDir}/rules`,
 		mcpConfig = true,
-		mcpConfigName = 'mcp.json',
+		mcpConfigName = mcpConfig ? 'mcp.json' : null,
 		fileExtension = '.mdc',
 		targetExtension = '.md',
 		toolMappings = {},
