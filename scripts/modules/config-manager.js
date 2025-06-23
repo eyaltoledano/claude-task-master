@@ -261,51 +261,9 @@ function validateProviderModelCombination(providerName, modelId) {
 	);
 }
 
-// --- MCP Context Detection ---
-
-/**
- * Helper function to detect if we're running in MCP context
- * @param {object|null} session - Optional MCP session object
- * @returns {boolean} True if MCP context is detected
- */
-function isMcpContext(session) {
-    return session && typeof session.requestSampling === 'function';
-}
-
-/**
- * Get MCP model configuration based on role
- * @param {string} role - The role ('main', 'research', 'fallback')
- * @returns {object} MCP model configuration
- */
-function getMcpModelConfigForRole(role) {
-	// MCP model selection based on role
-	let modelId;
-	if (role === 'research') {
-		modelId = 'research'; // Dedicated research model for MCP
-	} else if (role === 'main' || role === 'fallback') {
-		modelId = 'text-generation'; // General purpose model for main/fallback
-	} else {
-		modelId = 'text-generation'; // Default fallback
-	}
-
-	// Return MCP configuration with appropriate defaults
-	return {
-		provider: 'mcp',
-		modelId: modelId,
-		maxTokens: 100000, // From supported-models.json MCP entries
-		temperature: 0.2 // Reasonable default
-	};
-}
-
 // --- Role-Specific Getters ---
 
-function getModelConfigForRole(role, explicitRoot = null, session = null) {
-	const mcpResult = isMcpContext(session);
-	
-	if (mcpResult) {
-		log('info', `MCP context detected for role: ${role}, using MCP provider`);
-		return getMcpModelConfigForRole(role);
-	}
+function getModelConfigForRole(role, explicitRoot = null) {
 	const config = getConfig(explicitRoot);
 	const roleConfig = config?.models?.[role];
 	if (!roleConfig) {
@@ -318,60 +276,60 @@ function getModelConfigForRole(role, explicitRoot = null, session = null) {
 	return roleConfig;
 }
 
-function getMainProvider(explicitRoot = null, session = null) {
-	return getModelConfigForRole('main', explicitRoot, session).provider;
+function getMainProvider(explicitRoot = null) {
+	return getModelConfigForRole('main', explicitRoot).provider;
 }
 
-function getMainModelId(explicitRoot = null, session = null) {
-	return getModelConfigForRole('main', explicitRoot, session).modelId;
+function getMainModelId(explicitRoot = null) {
+	return getModelConfigForRole('main', explicitRoot).modelId;
 }
 
-function getMainMaxTokens(explicitRoot = null, session = null) {
+function getMainMaxTokens(explicitRoot = null) {
 	// Directly return value from config (which includes defaults)
-	return getModelConfigForRole('main', explicitRoot, session).maxTokens;
+	return getModelConfigForRole('main', explicitRoot).maxTokens;
 }
 
-function getMainTemperature(explicitRoot = null, session = null) {
+function getMainTemperature(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('main', explicitRoot, session).temperature;
+	return getModelConfigForRole('main', explicitRoot).temperature;
 }
 
-function getResearchProvider(explicitRoot = null, session = null) {
-	return getModelConfigForRole('research', explicitRoot, session).provider;
+function getResearchProvider(explicitRoot = null) {
+	return getModelConfigForRole('research', explicitRoot).provider;
 }
 
-function getResearchModelId(explicitRoot = null, session = null) {
-	return getModelConfigForRole('research', explicitRoot, session).modelId;
+function getResearchModelId(explicitRoot = null) {
+	return getModelConfigForRole('research', explicitRoot).modelId;
 }
 
-function getResearchMaxTokens(explicitRoot = null, session = null) {
+function getResearchMaxTokens(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('research', explicitRoot, session).maxTokens;
+	return getModelConfigForRole('research', explicitRoot).maxTokens;
 }
 
-function getResearchTemperature(explicitRoot = null, session = null) {
+function getResearchTemperature(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('research', explicitRoot, session).temperature;
+	return getModelConfigForRole('research', explicitRoot).temperature;
 }
 
-function getFallbackProvider(explicitRoot = null, session = null) {
+function getFallbackProvider(explicitRoot = null) {
 	// Directly return value from config (will be undefined if not set)
-	return getModelConfigForRole('fallback', explicitRoot, session).provider;
+	return getModelConfigForRole('fallback', explicitRoot).provider;
 }
 
-function getFallbackModelId(explicitRoot = null, session = null) {
+function getFallbackModelId(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('fallback', explicitRoot, session).modelId;
+	return getModelConfigForRole('fallback', explicitRoot).modelId;
 }
 
-function getFallbackMaxTokens(explicitRoot = null, session = null) {
+function getFallbackMaxTokens(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('fallback', explicitRoot, session).maxTokens;
+	return getModelConfigForRole('fallback', explicitRoot).maxTokens;
 }
 
-function getFallbackTemperature(explicitRoot = null, session = null) {
+function getFallbackTemperature(explicitRoot = null) {
 	// Directly return value from config
-	return getModelConfigForRole('fallback', explicitRoot, session).temperature;
+	return getModelConfigForRole('fallback', explicitRoot).temperature;
 }
 
 // --- Global Settings Getters ---
@@ -457,8 +415,8 @@ function getVertexLocation(explicitRoot = null) {
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
  * @returns {{maxTokens: number, temperature: number}}
  */
-function getParametersForRole(role, explicitRoot = null, session = null) {
-	const roleConfig = getModelConfigForRole(role, explicitRoot, session);
+function getParametersForRole(role, explicitRoot = null) {
+	const roleConfig = getModelConfigForRole(role, explicitRoot);
 	const roleMaxTokens = roleConfig.maxTokens;
 	const roleTemperature = roleConfig.temperature;
 	const modelId = roleConfig.modelId;
@@ -804,9 +762,6 @@ export {
 	VALID_PROVIDERS,
 	MODEL_MAP,
 	getAvailableModels,
-	// MCP Context Detection
-	isMcpContext,
-	getMcpModelConfigForRole,
 	// Role-specific getters (No env var overrides)
 	getMainProvider,
 	getMainModelId,
