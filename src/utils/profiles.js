@@ -31,21 +31,21 @@ export function getProfileDisplayName(profileName) {
 
 /**
  * Get installed profiles in the project directory
- * @param {string} projectDir - Project directory path
+ * @param {string} projectRoot - Project directory path
  * @returns {string[]} - Array of installed profile names
  */
-export function getInstalledProfiles(projectDir) {
+export function getInstalledProfiles(projectRoot) {
 	const installedProfiles = [];
 
 	for (const profileName of RULE_PROFILES) {
 		try {
 			const profile = getRulesProfile(profileName);
-			const profileDir = path.join(projectDir, profile.profileDir);
+			const profileDir = path.join(projectRoot, profile.profileDir);
 
 			// Check if profile directory exists (skip root directory check)
 			if (profile.profileDir === '.' || fs.existsSync(profileDir)) {
 				// Check if any files from the profile's fileMap exist
-				const rulesDir = path.join(projectDir, profile.rulesDir);
+				const rulesDir = path.join(projectRoot, profile.rulesDir);
 				if (fs.existsSync(rulesDir)) {
 					const ruleFiles = Object.values(profile.fileMap);
 					const hasRuleFiles = ruleFiles.some((ruleFile) =>
@@ -67,12 +67,12 @@ export function getInstalledProfiles(projectDir) {
 
 /**
  * Check if removing specified profiles would leave no profiles installed
- * @param {string} projectDir - Project directory path
+ * @param {string} projectRoot - Project directory path
  * @param {string[]} profilesToRemove - Array of profile names to remove
  * @returns {boolean} - True if removal would leave no profiles
  */
-export function wouldRemovalLeaveNoProfiles(projectDir, profilesToRemove) {
-	const installedProfiles = getInstalledProfiles(projectDir);
+export function wouldRemovalLeaveNoProfiles(projectRoot, profilesToRemove) {
+	const installedProfiles = getInstalledProfiles(projectRoot);
 
 	// If no profiles are currently installed, removal cannot leave no profiles
 	if (installedProfiles.length === 0) {
