@@ -113,11 +113,8 @@ export async function runInteractiveProfilesSetup() {
 		const hasRules = Object.keys(profile.fileMap).length > 0;
 		const hasMcpConfig = profile.mcpConfig === true;
 
-		// Check if this is an asset-only profile (integration guides)
-		const isAssetOnly = profile.includeDefaultRules === false;
-
-		if (isAssetOnly) {
-			// Asset-only profiles like claude and codex
+		if (!profile.includeDefaultRules) {
+			// Integration guide profiles (claude, codex) - don't include standard coding rules
 			if (profileName === 'claude') {
 				description = 'Integration guide with Task Master slash commands';
 			} else if (profileName === 'codex') {
@@ -199,13 +196,12 @@ export async function runInteractiveProfilesSetup() {
  */
 export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const isAssetOnly = profileConfig.includeDefaultRules === false;
 
-	if (isAssetOnly) {
-		// Asset-only profiles (integration guides)
+	if (!profileConfig.includeDefaultRules) {
+		// Integration guide profiles (claude, codex)
 		return `Summary for ${profileName}: Integration guide installed.`;
 	} else {
-		// Rule profiles
+		// Rule profiles with coding guidelines
 		return `Summary for ${profileName}: ${addResult.success} files processed, ${addResult.failed} failed.`;
 	}
 }
@@ -226,17 +222,16 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 	}
 
 	const profileConfig = getRulesProfile(profileName);
-	const isAssetOnly = profileConfig.includeDefaultRules === false;
 
-	if (isAssetOnly) {
-		// Asset-only profiles (integration guides)
+	if (!profileConfig.includeDefaultRules) {
+		// Integration guide profiles (claude, codex)
 		const baseMessage = `Summary for ${profileName}: Integration guide removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;
 		}
 		return baseMessage;
 	} else {
-		// Rule profiles
+		// Rule profiles with coding guidelines
 		const baseMessage = `Summary for ${profileName}: Rule profile removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;

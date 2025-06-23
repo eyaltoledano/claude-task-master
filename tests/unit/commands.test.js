@@ -372,7 +372,7 @@ describe('rules command', () => {
 			expect.stringMatching(/removing rules for profile: roo/i)
 		);
 		expect(mockConsoleLog).toHaveBeenCalledWith(
-			expect.stringMatching(/Summary for roo: Profile files removed/i)
+			expect.stringMatching(/Summary for roo: Rule profile removed/i)
 		);
 		// Should not exit with error
 		expect(mockExit).not.toHaveBeenCalledWith(1);
