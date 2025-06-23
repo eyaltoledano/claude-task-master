@@ -418,13 +418,13 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
-				modelId = getMainModelId(effectiveProjectRoot, session);
+				modelId = getMainModelId(effectiveProjectRoot);
 			} else if (currentRole === 'research') {
 				providerName = getResearchProvider(effectiveProjectRoot);
-				modelId = getResearchModelId(effectiveProjectRoot, session);
+				modelId = getResearchModelId(effectiveProjectRoot);
 			} else if (currentRole === 'fallback') {
 				providerName = getFallbackProvider(effectiveProjectRoot);
-				modelId = getFallbackModelId(effectiveProjectRoot, session);
+				modelId = getFallbackModelId(effectiveProjectRoot);
 			} else {
 				log(
 					'error',
@@ -495,7 +495,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Get AI parameters for the current role
-			roleParams = getParametersForRole(currentRole, effectiveProjectRoot, session);
+			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
