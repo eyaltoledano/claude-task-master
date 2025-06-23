@@ -44,33 +44,14 @@ export function getInstalledProfiles(projectDir) {
 
 			// Check if profile directory exists (skip root directory check)
 			if (profile.profileDir === '.' || fs.existsSync(profileDir)) {
-				// For profiles with fileMap, check if any rule files exist
-				if (Object.keys(profile.fileMap).length > 0) {
-					const rulesDir = path.join(projectDir, profile.rulesDir);
-					if (fs.existsSync(rulesDir)) {
-						const ruleFiles = Object.values(profile.fileMap);
-						const hasRuleFiles = ruleFiles.some((ruleFile) =>
-							fs.existsSync(path.join(rulesDir, ruleFile))
-						);
-						if (hasRuleFiles) {
-							installedProfiles.push(profileName);
-						}
-					}
-				} else {
-					// Legacy check for profiles without fileMap - this should no longer be needed
-					// but kept for backward compatibility during transition
-					let hasProfileFiles = false;
-
-					// Check for common profile-specific files
-					if (profileName === 'claude') {
-						hasProfileFiles =
-							fs.existsSync(path.join(projectDir, 'CLAUDE.md')) ||
-							fs.existsSync(path.join(projectDir, '.claude'));
-					} else if (profileName === 'codex') {
-						hasProfileFiles = fs.existsSync(path.join(projectDir, 'AGENTS.md'));
-					}
-
-					if (hasProfileFiles) {
+				// Check if any files from the profile's fileMap exist
+				const rulesDir = path.join(projectDir, profile.rulesDir);
+				if (fs.existsSync(rulesDir)) {
+					const ruleFiles = Object.values(profile.fileMap);
+					const hasRuleFiles = ruleFiles.some((ruleFile) =>
+						fs.existsSync(path.join(rulesDir, ruleFile))
+					);
+					if (hasRuleFiles) {
 						installedProfiles.push(profileName);
 					}
 				}
