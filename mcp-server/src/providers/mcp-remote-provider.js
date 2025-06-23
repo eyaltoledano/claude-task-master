@@ -31,6 +31,10 @@ export class MCPRemoteProvider extends BaseAIProvider {
         logger.debug('MCP Remote Provider created');
     }
 
+    isRequiredApiKey() {
+		return false;
+	}
+
     /**
 	 * Returns the environment variable name required for this provider's API key.
 	 * @returns {string} The environment variable name for the MCP API key

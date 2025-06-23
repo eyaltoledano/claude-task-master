@@ -8,6 +8,10 @@ export class BedrockAIProvider extends BaseAIProvider {
 		this.name = 'Bedrock';
 	}
 
+	isRequiredApiKey() {
+		return false;
+	}
+
 	/**
 	 * Returns the required API key environment variable name for Bedrock.
 	 * Bedrock uses AWS credentials, so we return the AWS access key identifier.

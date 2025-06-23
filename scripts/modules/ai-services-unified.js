@@ -262,7 +262,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Special handling for providers that can use alternative auth or no API key
-	if (providerName === 'ollama' || providerName === 'bedrock' || providerName === 'mcp') {
+	if (!provider.isRequiredApiKey()) {
 		return apiKey || null;
 	}
 

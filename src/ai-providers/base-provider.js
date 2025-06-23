@@ -97,6 +97,15 @@ export class BaseAIProvider {
 	}
 
 	/**
+	 * Returns if the API key is required
+	 * @abstract
+	 * @returns {boolean} if the API key is required, defaults to true
+	 */
+	isRequiredApiKey() {
+		return true;
+	}
+
+	/**
 	 * Returns the required API key environment variable name
 	 * @abstract
 	 * @returns {string|null} The environment variable name, or null if no API key is required

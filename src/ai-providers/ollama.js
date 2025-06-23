@@ -40,6 +40,10 @@ export class OllamaAIProvider extends BaseAIProvider {
 		}
 	}
 
+	isRequiredApiKey() {
+		return false;
+	}
+
 	/**
 	 * Returns the required API key environment variable name for Ollama.
 	 * @returns {string} The environment variable name
