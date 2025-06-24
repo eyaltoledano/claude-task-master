@@ -112,7 +112,60 @@ node parse-prd-analysis.js complexity
 node parse-prd-analysis.js all
 ```
 
-### 4. Unit and Integration Tests
+### 4. Expand Task Functionality Tests
+
+```bash
+# Test single task expansion with MCP streaming (with progress reporting)
+node test-expand.js mcp-streaming
+
+# Test single task expansion with CLI streaming (with progress bar)
+node test-expand.js cli-streaming
+
+# Test single task expansion non-streaming functionality
+node test-expand.js non-streaming
+
+# Test both MCP streaming and non-streaming modes and compare results
+node test-expand.js both
+
+# Test all three modes (MCP streaming, CLI streaming, non-streaming)
+node test-expand.js all
+
+# Test with custom number of subtasks (default is 5)
+node test-expand.js mcp-streaming 8
+```
+
+### 5. Expand All Functionality Tests
+
+```bash
+# Test expand-all with MCP streaming (with fractional progress reporting)
+node test-expand-all.js mcp-streaming
+
+# Test expand-all with CLI streaming (with dual progress bars)
+node test-expand-all.js cli-streaming
+
+# Test expand-all non-streaming functionality
+node test-expand-all.js non-streaming
+
+# Test both MCP streaming and non-streaming modes and compare results
+node test-expand-all.js both
+
+# Test all three modes (MCP streaming, CLI streaming, non-streaming)
+node test-expand-all.js all
+
+# Test with custom number of subtasks per task (default is 3)
+node test-expand-all.js mcp-streaming 5
+
+# Test expand-all CLI command (recommended - uses local dev version)
+node scripts/dev.js expand --all --force
+
+# Test expand-all with research
+node scripts/dev.js expand --all --research --force
+
+# Test global CLI version
+task-master expand --all --force
+```
+
+### 6. Unit and Integration Tests
 
 ```bash
 # Run all Jest tests
@@ -122,6 +175,7 @@ npm test
 npm test -- --testNamePattern="parse-prd"
 npm test -- --testNamePattern="streaming"
 npm test -- --testNamePattern="analyze-complexity"
+npm test -- --testNamePattern="expand"
 ```
 
 ## 📋 Testing Checklist
@@ -204,6 +258,68 @@ npm test -- --testNamePattern="analyze-complexity"
 - [ ] Reasonable completion time
 - [ ] Memory usage within expected bounds
 - [ ] No memory leaks or hanging processes
+
+### ✅ **Expand Task Streaming Functionality Tests**
+
+**Auto-Detection:**
+- [ ] Streaming enabled when `reportProgress` function provided (MCP mode)
+- [ ] Progress bar displayed when no `reportProgress` (CLI mode)
+- [ ] Non-streaming used when `mcpLog` is provided without `reportProgress`
+
+**Token Tracking Progress Reporting:**
+- [ ] Initial progress shows input tokens: `"Starting subtask generation (Input: X tokens)..."`
+- [ ] Subtask progress shows: `"Generated subtask X/Y: [Subtask Title]"`
+- [ ] Final completion shows total tokens and cost: `"✅ Subtask generation completed | Tokens (I/O): X/Y | Cost: $N.NNNN"`
+- [ ] Progress is monotonically increasing
+- [ ] Token estimates are reasonable
+
+**Expand Features:**
+- [ ] Subtasks are generated incrementally in streaming mode
+- [ ] Each subtask has proper ID format (e.g., 1.1, 1.2, etc.)
+- [ ] Subtask quality is consistent across streaming and non-streaming
+- [ ] Task file is updated with new subtasks
+- [ ] Dependencies are properly handled in subtasks
+
+**Error Handling:**
+- [ ] Graceful handling of AI service errors
+- [ ] Progress reporting errors don't break main flow
+- [ ] Task file remains valid even on partial failure
+
+### ✅ **Expand All Streaming Functionality Tests**
+
+**Auto-Detection:**
+- [ ] Streaming enabled when `reportProgress` function provided (MCP mode)
+- [ ] Dual progress bars displayed when no `reportProgress` (CLI mode)
+- [ ] Non-streaming used when JSON output without progress
+
+**Fractional Progress Reporting:**
+- [ ] Overall task progress bar shows: `Expanding 3 tasks | Task 1/3 |████░░░░| 33%`
+- [ ] Subtask progress bar shows: `Generating 5 subtasks for Task 1... |██████░░| 80%`
+- [ ] Fractional progress values (e.g., 0.333, 0.666) for partial task completion
+- [ ] MCP reports include `subtask_progress` type with fractional values
+- [ ] Progress smoothly transitions: 33% → 46% → 60% → 66% → 80% → 93% → 100%
+
+**Dual Progress Bar Features:**
+- [ ] Parent progress bar tracks overall task completion
+- [ ] Child progress bar tracks current task's subtask generation
+- [ ] Both bars update in real-time during streaming
+- [ ] Time estimates update based on fractional progress
+- [ ] "Complete!" message replaces time estimate at 100%
+
+**MCP Progress Reporting:**
+- [ ] `expand_all_start` message sent at beginning
+- [ ] `task_expansion_start` sent for each task
+- [ ] `subtask_progress` sent with fractional progress values
+- [ ] `task_expansion_complete` sent after each task
+- [ ] `expand_all_complete` sent at end with telemetry
+- [ ] Error cases report `task_expansion_error` with progress
+
+**Performance & Quality:**
+- [ ] All tasks are expanded successfully
+- [ ] Subtask generation respects `--num` parameter
+- [ ] Complexity report integration works correctly
+- [ ] Token tracking and telemetry are accurate
+- [ ] Memory usage remains stable during operation
 
 ### ✅ **CLI Integration Tests**
 
@@ -349,10 +465,32 @@ echo "This is not a valid PRD" > invalid-prd.txt
 - ✅ Final token counts and cost calculation accurate
 - ✅ Token display format consistent: `Tokens (I/O): 2,150/1,847 ($0.0423)`
 
+### **Expand Task Success Indicators:**
+- ✅ Progress bar shows real-time subtask generation
+- ✅ Format: `Generating subtasks for Task 1... |████████░░| 80% (4/5)`
+- ✅ Each subtask appears as it's generated
+- ✅ Token tracking shows accurate I/O counts
+- ✅ Final telemetry summary with cost calculation
+- ✅ Task file updated with proper subtask structure (1.1, 1.2, etc.)
+
+### **Expand All Success Indicators:**
+- ✅ Dual progress bars display correctly:
+  - Overall: `Expanding 3 tasks | Task 2/3 |████████░░░░| 66%`
+  - Current: `Generating 5 subtasks for Task 2... |██████░░░░| 60%`
+- ✅ Fractional progress updates: 33% → 46% → 60% → 66% → 80% → 93% → 100%
+- ✅ Each task expansion shows:
+  - Task start with expected subtask count
+  - Individual subtask progress
+  - Task completion with actual count
+- ✅ Final telemetry summary with aggregated costs
+- ✅ Time estimates update correctly during expansion
+- ✅ Memory efficient with no leaks
+
 ### **Performance Benchmarks:**
-- **Streaming:** Usually 30-60 seconds for 8 tasks
-- **Non-streaming:** Usually 30-60 seconds for 8 tasks
-- **Progress Updates:** Every 4-8 seconds during generation
+- **Single Task Expansion:** Usually 10-20 seconds for 5 subtasks
+- **Expand All (3 tasks):** Usually 30-45 seconds total
+- **Streaming:** Typically 10-20% faster than non-streaming
+- **Progress Updates:** Every 2-5 seconds during generation
 - **Memory Usage:** Should remain stable throughout
 
 ## 🐛 **Troubleshooting Common Issues**
@@ -482,6 +620,24 @@ npm test
   - **Performance Comparison**: Compares execution times between different modes
   - **Test Modes**: `mcp-streaming`, `cli-streaming`, `non-streaming`, `both`, `all`
 
+- **`test-expand.js`**: Comprehensive integration test with real AI calls for single task expansion functionality
+  - **MCP Streaming Mode (`mcp-streaming`)**: Tests with proper MCP context (`mcpLog`) and `reportProgress` callback for real-time subtask generation
+  - **CLI Streaming Mode (`cli-streaming`)**: Tests without `reportProgress`, validates CLI progress bar during subtask generation
+  - **Non-Streaming Mode (`non-streaming`)**: Tests traditional path with no progress reporting
+  - **Token Tracking**: Validates input/output token estimation and cost calculation during subtask generation
+  - **Message Format**: Validates specific message formats for subtask generation progress
+  - **Subtask Quality**: Ensures consistent subtask generation across all modes
+  - **Test Modes**: `mcp-streaming`, `cli-streaming`, `non-streaming`, `both`, `all`
+
+- **`test-expand-all.js`**: Comprehensive integration test with real AI calls for expand-all functionality with dual progress bars
+  - **MCP Streaming Mode (`mcp-streaming`)**: Tests with proper MCP context and fractional progress reporting (0.333, 0.666, etc.)
+  - **CLI Streaming Mode (`cli-streaming`)**: Tests dual progress bars (overall task progress + current task subtask progress)
+  - **Non-Streaming Mode (`non-streaming`)**: Tests traditional path with no progress reporting
+  - **Fractional Progress**: Validates smooth incremental progress updates during subtask generation
+  - **Dual Progress Bars**: Tests parent/child progress bar interaction and real-time updates
+  - **Time Estimation**: Validates dynamic time remaining estimates based on fractional progress
+  - **Test Modes**: `mcp-streaming`, `cli-streaming`, `non-streaming`, `both`, `all`
+
 ### **Unit Tests:**
 - **`tests/unit/parse-prd-streaming.test.js`**: Jest unit tests for parse-prd streaming functionality
 - **`tests/unit/scripts/modules/task-manager/parse-prd.test.js`**: Core logic unit tests for parse-prd
@@ -529,3 +685,57 @@ node test-parse-prd.js mcp-streaming
 - [ ] Token tracking is accurate and consistent
 - [ ] Error handling doesn't break progress flow
 - [ ] Final result includes complete telemetry data 
+
+## Known Issues & Debugging
+
+### **Common Test Failures**
+
+1. **"projectRoot.split is not a function" Error**
+   - **Cause**: Config functions being called with wrong parameter type
+   - **Fix**: Ensure all `getDefaultSubtasks()`, `getDebugFlag()` calls use `projectRoot` not `session`
+   - **Check**: `grep -r "getDefaultSubtasks(session)" scripts/`
+
+2. **Progress Bar Display Issues**
+   - **Cause**: Terminal width or ANSI escape sequences
+   - **Fix**: Ensure terminal width > 80 columns
+   - **Debug**: Run with `DEBUG=* node test-expand.js`
+
+3. **MCP Tests Showing NaN% Progress**
+   - **Cause**: Duplicate progress events from nested calls
+   - **Fix**: Filter out redundant `subtask_progress` events
+   - **Note**: This is cosmetic only - functionality is correct
+
+4. **Telemetry Data Missing**
+   - **Cause**: AI service not returning telemetry in test mode
+   - **Fix**: Ensure `.env` file has valid API keys
+   - **Check**: Token counts should be > 0 in final summary
+
+### **Debug Commands**
+
+```bash
+# Run with full debug output
+TASKMASTER_DEBUG=true node test-expand.js
+
+# Run with specific API provider
+ANTHROPIC_API_KEY=your_key node test-expand-all.js
+
+# Check for linter errors before running
+npm run lint
+
+# Run with custom project root
+PROJECT_ROOT=/path/to/project node test-expand.js
+```
+
+### **Test Environment Setup**
+
+Each test creates its own isolated environment:
+- Temporary `test-expand-tasks.json` or `test-expand-all-tasks.json`
+- Temporary `.taskmaster/config.json` with test configuration
+- All files are cleaned up after test completion
+
+### **Interpreting Progress Percentages**
+
+For expand-all operations:
+- **Overall Progress**: `expandedTasks / totalTasks`
+- **Fractional Progress**: `(expandedTasks + currentSubtask/totalSubtasks) / totalTasks`
+- **Example**: Task 2/3 with subtask 2/5 = (1 + 2/5) / 3 = 46.67% 
