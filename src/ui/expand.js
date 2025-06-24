@@ -26,6 +26,9 @@ import {
  * @param {number} [options.totalPendingTasks] - Total number of pending tasks (for expand-all)
  * @param {string} options.tasksFilePath - Path to the tasks file
  * @param {string|number} [options.numSubtasks] - Number of subtasks to generate per task
+ * @param {boolean} [options.explicitSubtasks] - Whether subtask count was explicitly provided
+ * @param {number} [options.complexityScore] - Complexity score from analysis
+ * @param {boolean} [options.hasComplexityAnalysis] - Whether complexity analysis was used
  * @param {string} [options.model] - AI model name
  * @param {number} [options.temperature] - AI temperature setting
  * @param {boolean} [options.force=false] - Whether force mode is enabled
@@ -39,6 +42,9 @@ function displayExpandStart({
 	totalPendingTasks,
 	tasksFilePath,
 	numSubtasks,
+	explicitSubtasks = false,
+	complexityScore,
+	hasComplexityAnalysis = false,
 	model = 'Default',
 	temperature = 0.7,
 	force = false,
@@ -48,9 +54,14 @@ function displayExpandStart({
 }) {
 	// Determine the operation type and title
 	const isExpandAll = expandType === 'all';
-	const title = isExpandAll
+	let title = isExpandAll
 		? '🚀 Expanding All Pending Tasks'
 		: '🚀 Expanding Task';
+
+	// Add complexity score to title if available
+	if (!isExpandAll && hasComplexityAnalysis && complexityScore !== undefined) {
+		title += ` (Complexity: ${complexityScore})`;
+	}
 
 	// Get actual model and temperature values from config
 	const actualModel = research
@@ -80,16 +91,24 @@ function displayExpandStart({
 		content += chalk.blue(`Task ID: ${taskId}\n`);
 	}
 
-	// Add subtask info if specified
+	// Add subtask info
+	const subtaskText = isExpandAll
+		? 'Subtasks per task'
+		: 'Subtasks to generate';
+
 	if (numSubtasks) {
-		const subtaskText = isExpandAll
-			? 'Subtasks per task'
-			: 'Subtasks to generate';
-		content += chalk.blue(`${subtaskText}: ${numSubtasks}\n`);
+		if (explicitSubtasks) {
+			content += chalk.blue(
+				`${subtaskText}: ${numSubtasks} (explicitly provided)\n`
+			);
+		} else if (hasComplexityAnalysis && !isExpandAll) {
+			content += chalk.blue(
+				`${subtaskText}: ${numSubtasks} (from complexity report)\n`
+			);
+		} else {
+			content += chalk.blue(`${subtaskText}: ${numSubtasks} (using default)\n`);
+		}
 	} else {
-		const subtaskText = isExpandAll
-			? 'Subtasks per task'
-			: 'Subtasks to generate';
 		content += chalk.blue(`${subtaskText}: Auto-calculated\n`);
 	}
 
@@ -119,10 +138,36 @@ function displayExpandStart({
 	// Display force mode notice if enabled
 	if (force) {
 		console.log(
-			chalk.red.bold('⚠️  Force mode enabled') +
-				` - Will regenerate subtasks even if they already exist`
+			chalk.yellow.bold('⚠️  Force mode enabled') +
+				chalk.dim(` - regenerate subtasks even if they exist`)
 		);
-		console.log(); // Add spacing
+	}
+
+	// Display complexity analysis status for single task expansion
+	if (!isExpandAll) {
+		if (hasComplexityAnalysis) {
+			console.log(
+				chalk.bold('ℹ️  Using expansion prompt from complexity report') +
+					chalk.dim(` and simplified system prompt`)
+			);
+		} else {
+			console.log(chalk.bold('ℹ️  No complexity analysis found'));
+		}
+
+		// Display prompt generation method
+		if (customPrompt) {
+			console.log(
+				chalk.bold('ℹ️  Additional context provided') +
+					chalk.dim(` for subtask generation`)
+			);
+		} else if (!hasComplexityAnalysis) {
+			console.log(chalk.bold('ℹ️  Using standard prompt generation'));
+		}
+	}
+
+	// Add spacing after notices
+	if (force || !isExpandAll) {
+		console.log();
 	}
 }
 
@@ -138,6 +183,9 @@ function displayExpandStart({
  * @param {number} summary.elapsedTime - Total elapsed time in milliseconds
  * @param {boolean} [summary.force=false] - Whether force mode was used
  * @param {boolean} [summary.research=false] - Whether research mode was used
+ * @param {boolean} [summary.explicitSubtasks=false] - Whether subtask count was explicitly provided
+ * @param {number} [summary.complexityScore] - Complexity score from analysis
+ * @param {boolean} [summary.hasComplexityAnalysis=false] - Whether complexity analysis was used
  * @param {string} [summary.expandType='single'] - Type of expansion: 'single' or 'all'
  * @param {Array} [summary.errors] - Array of error messages if any occurred
  */
@@ -152,6 +200,9 @@ function displayExpandSummary(summary) {
 		elapsedTime,
 		force = false,
 		research = false,
+		explicitSubtasks = false,
+		complexityScore,
+		hasComplexityAnalysis = false,
 		expandType = 'single',
 		errors = []
 	} = summary;
@@ -180,9 +231,27 @@ function displayExpandSummary(summary) {
 	} else {
 		summaryContent =
 			`${chalk.white.bold('Task Expansion Summary:')}\n\n` +
-			`${chalk.cyan('-')} Task ID:   ${chalk.bold(taskId)}\n` +
-			`${chalk.green('-')} Subtasks:  ${chalk.bold(totalSubtasksCreated)}\n` +
-			`${chalk.blue('-')} Time:      ${chalk.bold(timeDisplay)}`;
+			`${chalk.cyan('-')} Task ID:     ${chalk.bold(taskId)}\n`;
+
+		// Add complexity score if available
+		if (hasComplexityAnalysis && complexityScore !== undefined) {
+			const complexityIcon =
+				complexityScore >= 7 ? '●●●' : complexityScore >= 4 ? '●●○' : '●○○';
+			summaryContent += `${chalk.yellow('-')} Complexity:  ${chalk.bold(complexityScore)} ${complexityIcon}\n`;
+		}
+
+		summaryContent += `${chalk.green('-')} Subtasks:    ${chalk.bold(totalSubtasksCreated)}`;
+
+		// Add source info
+		if (explicitSubtasks) {
+			summaryContent += ` ${chalk.dim('(explicitly set)')}`;
+		} else if (hasComplexityAnalysis) {
+			summaryContent += ` ${chalk.dim('(from complexity analysis)')}`;
+		} else {
+			summaryContent += ` ${chalk.dim('(auto-calculated)')}`;
+		}
+
+		summaryContent += `\n${chalk.blue('-')} Time:        ${chalk.bold(timeDisplay)}`;
 	}
 
 	// Determine border color based on failures

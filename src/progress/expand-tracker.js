@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
+import { getPriorityIndicator } from '../ui/priority-indicators.js';
 
 /**
  * Tracks progress for task expansion operations with individual task bars
@@ -10,6 +11,8 @@ export class ExpandTracker {
 		this.expandType = options.expandType || 'single'; // 'single' or 'all'
 		this.numTasks = options.numTasks || 1;
 		this.taskId = options.taskId; // For single task expansion
+		this.taskTitle = options.taskTitle; // For single task expansion
+		this.taskPriority = options.taskPriority || 'medium'; // For single task expansion
 		this.startTime = null;
 		this.completedExpansions = 0;
 		this.tokensIn = 0;
@@ -43,6 +46,11 @@ export class ExpandTracker {
 		this.bestAvgTimePerExpansion = null;
 		this.lastEstimateTime = null;
 		this.lastEstimateSeconds = 0;
+
+		// For single task expansion, track subtask generation
+		this.generatedSubtasks = 0;
+		this.lastSubtaskGenerationTime = null;
+		this.avgTimePerSubtask = null;
 	}
 
 	start() {
@@ -66,10 +74,32 @@ export class ExpandTracker {
 			}
 		);
 
+		// Task info bar for single task expansion
+		if (this.expandType === 'single' && this.taskId && this.taskTitle) {
+			const priorityDots = getPriorityIndicator(this.taskPriority, false);
+			const displayTitle =
+				this.taskTitle.length > 60
+					? `${this.taskTitle.substring(0, 57)}...`
+					: this.taskTitle;
+
+			const taskInfoBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format: `Expanding Task ${this.taskId}: ${priorityDots} ${displayTitle}`,
+					barsize: 1,
+					hideCursor: true,
+					clearOnComplete: false
+				}
+			);
+			taskInfoBar.update(1);
+		}
+
 		// Main progress bar
 		const progressFormat =
 			this.expandType === 'single'
-				? 'Task {tasks} |{bar}| {percentage}%'
+				? 'Subtask {tasks} |{bar}| {percentage}%'
 				: 'Task {tasks} |{bar}| {percentage}%';
 
 		this.progressBar = this.multibar.create(
@@ -83,22 +113,24 @@ export class ExpandTracker {
 			}
 		);
 
-		// Current task info bar
-		this.currentTaskBar = this.multibar.create(
-			1,
-			0,
-			{},
-			{
-				format: '{taskInfo}',
-				barsize: 1,
-				hideCursor: true,
-				clearOnComplete: false
-			}
-		);
+		// Current task info bar (only for expand-all)
+		if (this.expandType === 'all') {
+			this.currentTaskBar = this.multibar.create(
+				1,
+				0,
+				{},
+				{
+					format: '{taskInfo}',
+					barsize: 1,
+					hideCursor: true,
+					clearOnComplete: false
+				}
+			);
+			this._updateCurrentTaskBar();
+		}
 
 		this._updateTimeTokensBar();
 		this.progressBar.update(0, { tasks: `0/${this.numTasks}` });
-		this._updateCurrentTaskBar();
 
 		// Update timer every second
 		this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
@@ -323,10 +355,16 @@ export class ExpandTracker {
 		const elapsed = this._formatElapsedTime();
 		const remaining = this._estimateRemainingTime();
 
+		// For single task expansion, show generated subtasks count
+		const subtaskCount =
+			this.expandType === 'single'
+				? this.generatedSubtasks
+				: this.subtasksCreated;
+
 		this.timeTokensBar.update(1, {
 			clock: '⏱️',
 			elapsed,
-			subtasks: this.subtasksCreated,
+			subtasks: subtaskCount,
 			in: this.tokensIn,
 			out: this.tokensOut,
 			remaining
@@ -345,7 +383,9 @@ export class ExpandTracker {
 			taskInfo = 'Preparing to expand tasks...';
 		}
 
-		this.currentTaskBar.update(1, { taskInfo });
+		if (this.currentTaskBar) {
+			this.currentTaskBar.update(1, { taskInfo });
+		}
 	}
 
 	_formatElapsedTime() {
@@ -357,6 +397,62 @@ export class ExpandTracker {
 	}
 
 	_estimateRemainingTime() {
+		// Time estimation differs between single task and expand-all:
+		// - Single task: estimates based on subtasks being generated for ONE task
+		// - Expand-all: estimates based on multiple TASKS, each generating multiple subtasks
+
+		// For single task expansion, use subtask generation data
+		if (this.expandType === 'single') {
+			if (this.generatedSubtasks === 0 || !this.avgTimePerSubtask) {
+				return '~calculating...';
+			}
+
+			const remainingSubtasks = this.numTasks - this.generatedSubtasks;
+			if (remainingSubtasks <= 0) return '~0s';
+
+			const now = Date.now();
+			const estimatedSeconds = Math.ceil(
+				remainingSubtasks * this.avgTimePerSubtask
+			);
+
+			// Use same stabilization logic pattern
+			if (this.lastEstimateTime && this.lastEstimateSeconds >= 0) {
+				const elapsedSinceEstimate = Math.floor(
+					(now - this.lastEstimateTime) / 1000
+				);
+				const countdownSeconds = Math.max(
+					0,
+					this.lastEstimateSeconds - elapsedSinceEstimate
+				);
+
+				if (countdownSeconds === 0) {
+					return '~0s';
+				}
+
+				const timeSinceLastEstimate = now - this.lastEstimateTime;
+				const significantlyLower =
+					estimatedSeconds < this.lastEstimateSeconds * 0.8;
+
+				if (
+					timeSinceLastEstimate < 5000 &&
+					!significantlyLower &&
+					countdownSeconds > 0
+				) {
+					return `~${this._formatDuration(countdownSeconds)}`;
+				}
+
+				const newEstimate = Math.min(estimatedSeconds, countdownSeconds);
+				this.lastEstimateTime = now;
+				this.lastEstimateSeconds = newEstimate;
+				return `~${this._formatDuration(newEstimate)}`;
+			}
+
+			this.lastEstimateTime = now;
+			this.lastEstimateSeconds = estimatedSeconds;
+			return `~${this._formatDuration(estimatedSeconds)}`;
+		}
+
+		// For expand-all, use task expansion data
 		if (this.completedExpansions === 0 || !this.bestAvgTimePerExpansion) {
 			return '~calculating...';
 		}
@@ -454,6 +550,116 @@ export class ExpandTracker {
 	// Alias for compatibility with existing code
 	async finish() {
 		return this.stop();
+	}
+
+	// Track subtask generation for single task expansion
+	updateSubtaskGeneration(subtaskNumber) {
+		if (this.expandType !== 'single') return;
+
+		this.generatedSubtasks = subtaskNumber;
+		const now = Date.now();
+
+		// Calculate average time per subtask
+		if (this.generatedSubtasks > 0 && this.startTime) {
+			const elapsed = (now - this.startTime) / 1000;
+			const currentAvg = elapsed / this.generatedSubtasks;
+
+			if (this.avgTimePerSubtask === null) {
+				this.avgTimePerSubtask = currentAvg;
+			} else {
+				// Exponential moving average
+				this.avgTimePerSubtask =
+					0.7 * currentAvg + 0.3 * this.avgTimePerSubtask;
+			}
+		}
+
+		this.lastSubtaskGenerationTime = now;
+		this._updateTimeTokensBar();
+	}
+
+	// Add a subtask line to the display (for single task expansion)
+	addSubtaskLine(subtaskId, title) {
+		if (!this.multibar || this.isFinished || this.expandType !== 'single')
+			return;
+
+		// Show header on first subtask
+		if (!this.headerShown) {
+			this.headerShown = true;
+
+			// Top border
+			const topBorderBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format:
+						'-----+------------------------------------------------------------------',
+					barsize: 1
+				}
+			);
+			topBorderBar.update(1);
+
+			// Header - right-align # to match data padding
+			const headerBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format: '  #  | SUBTASK',
+					barsize: 1
+				}
+			);
+			headerBar.update(1);
+
+			// Bottom border
+			const bottomBorderBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format:
+						'-----+------------------------------------------------------------------',
+					barsize: 1
+				}
+			);
+			bottomBorderBar.update(1);
+		}
+
+		// Format subtask display
+		const displayTitle =
+			title && title.length > 66
+				? `${title.substring(0, 63)}...`
+				: title || `Subtask ${subtaskId}`;
+
+		// Format as "X/Y" where X is current subtask number and Y is total
+		const subtaskNumber = `${this.generatedSubtasks}/${this.numTasks}`;
+		const subtaskNumberPadded = subtaskNumber.padStart(3, ' ');
+
+		// Create individual subtask bar
+		const subtaskBar = this.multibar.create(
+			1,
+			1,
+			{},
+			{
+				format: ` ${subtaskNumberPadded} | {title}`,
+				barsize: 1
+			}
+		);
+
+		subtaskBar.update(1, { title: displayTitle });
+
+		// Add border row after each subtask
+		const borderBar = this.multibar.create(
+			1,
+			1,
+			{},
+			{
+				format:
+					'-----+------------------------------------------------------------------',
+				barsize: 1
+			}
+		);
+		borderBar.update(1);
 	}
 
 	// Methods needed by expand-task.js
