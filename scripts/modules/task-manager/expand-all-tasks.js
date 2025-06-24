@@ -4,16 +4,11 @@ import {
 	stopLoadingIndicator,
 	displayAiUsageSummary
 } from '../ui.js';
-import {
-	displayExpandStart,
-	displayExpandSummary
-} from '../../../src/ui/expand.js';
 import expandTask from './expand-task.js';
 import { getDebugFlag } from '../config-manager.js';
 import { aggregateTelemetry } from '../utils.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { ExpandTracker } from '../../../src/progress/expand-tracker.js';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.
@@ -26,7 +21,6 @@ import { ExpandTracker } from '../../../src/progress/expand-tracker.js';
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
- * @param {Object} [progressTracker] - Optional progress tracker object.
  * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
  */
 async function expandAllTasks(
@@ -36,10 +30,14 @@ async function expandAllTasks(
 	additionalContext = '',
 	force = false, // Keep force here for the filter logic
 	context = {},
-	outputFormat = 'text', // Assume text default for CLI
-	progressTracker = null
+	outputFormat = 'text' // Assume text default for CLI
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, reportProgress } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag: contextTag
+	} = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
 	const projectRoot = providedProjectRoot || findProjectRoot();
@@ -72,31 +70,16 @@ async function expandAllTasks(
 	let failedCount = 0;
 	let tasksToExpandCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
-	const startTime = Date.now();
 
-	// Report initial progress
-	if (progressTracker) {
-		progressTracker.updateOverallProgress('starting', 'Analyzing tasks for expansion...');
-	}
-	if (reportProgress) {
-		reportProgress({
-			type: 'progress',
-			operation: 'expand-all',
-			stage: 'starting',
-			message: 'Analyzing tasks for expansion...',
-			progress: 0
-		});
-	}
-
-	if (!isMCPCall && outputFormat === 'text' && !progressTracker) {
+	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
 			'Analyzing tasks for expansion...'
 		);
 	}
 
 	try {
-		logger.debug(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath, projectRoot);
+		logger.info(`Reading tasks from ${tasksPath}`);
+		const data = readJSON(tasksPath, projectRoot, contextTag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		}
@@ -115,22 +98,6 @@ async function expandAllTasks(
 			stopLoadingIndicator(loadingIndicator, 'Analysis complete.');
 		}
 
-		// Update progress tracker with task count
-		if (progressTracker) {
-			progressTracker.setTotalTasks(tasksToExpandCount);
-			progressTracker.updateOverallProgress('analyzing', `Found ${tasksToExpandCount} tasks to expand`);
-		}
-		if (reportProgress) {
-			reportProgress({
-				type: 'progress',
-				operation: 'expand-all',
-				stage: 'analyzing',
-				message: `Found ${tasksToExpandCount} tasks to expand`,
-				progress: 10,
-				totalTasks: tasksToExpandCount
-			});
-		}
-
 		if (tasksToExpandCount === 0) {
 			logger.info('No tasks eligible for expansion.');
 			// --- Fix: Restore success: true and add message ---
@@ -146,50 +113,11 @@ async function expandAllTasks(
 			// --- End Fix ---
 		}
 
-		// Display start UI for CLI mode
-		if (outputFormat === 'text') {
-			displayExpandStart({
-				totalPendingTasks: tasksToExpandCount,
-				tasksFilePath: tasksPath,
-				numSubtasks: numSubtasks || 'Auto-calculated',
-				model: context.model,
-				temperature: context.temperature,
-				force: force,
-				research: useResearch,
-				customPrompt: additionalContext || undefined,
-				expandType: 'all',
-				tagName: context.tagName || context.session?.tagName
-			});
-		}
-
 		// Iterate over the already filtered tasks
-		for (let i = 0; i < tasksToExpand.length; i++) {
-			const task = tasksToExpand[i];
-			const taskNumber = i + 1;
-			
-			// Update overall progress
-			if (progressTracker) {
-				progressTracker.updateOverallProgress(
-					'expanding', 
-					`Expanding task ${taskNumber}/${tasksToExpandCount}: ${task.title}`
-				);
-			}
-			if (reportProgress) {
-				const overallProgress = Math.round(((taskNumber - 1) / tasksToExpandCount) * 80) + 20; // 20-100%
-				reportProgress({
-					type: 'progress',
-					operation: 'expand-all',
-					stage: 'expanding',
-					message: `Expanding task ${taskNumber}/${tasksToExpandCount}: ${task.title}`,
-					progress: overallProgress,
-					currentTask: taskNumber,
-					totalTasks: tasksToExpandCount
-				});
-			}
-			
+		for (const task of tasksToExpand) {
 			// Start indicator for individual task expansion in CLI mode
 			let taskIndicator = null;
-			if (!isMCPCall && outputFormat === 'text' && !progressTracker) {
+			if (!isMCPCall && outputFormat === 'text') {
 				taskIndicator = startLoadingIndicator(`Expanding task ${task.id}...`);
 			}
 
@@ -201,9 +129,8 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot, reportProgress }, // Pass the whole context object with projectRoot and reportProgress
-					force,
-					progressTracker // Pass the progress tracker
+					{ ...context, projectRoot, tag: data.tag || contextTag }, // Pass the whole context object with projectRoot and resolved tag
+					force
 				);
 				expandedCount++;
 
@@ -212,16 +139,10 @@ async function expandAllTasks(
 					allTelemetryData.push(result.telemetryData);
 				}
 
-				// Update progress tracker with task completion
-				if (progressTracker) {
-					const subtasksAdded = result.task?.subtasks?.length || 0;
-					progressTracker.addExpansionLine(task.id, task.title, subtasksAdded, 'success', result.telemetryData);
-				}
-
 				if (taskIndicator) {
 					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
 				}
-				logger.debug(`Successfully expanded task ${task.id}.`);
+				logger.info(`Successfully expanded task ${task.id}.`);
 			} catch (error) {
 				failedCount++;
 				if (taskIndicator) {
@@ -231,12 +152,6 @@ async function expandAllTasks(
 						false
 					);
 				}
-
-				// Update progress tracker with error
-				if (progressTracker) {
-					progressTracker.addExpansionLine(task.id, task.title, 0, 'error', null);
-				}
-
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
 				// Continue to the next task
 			}
@@ -247,22 +162,6 @@ async function expandAllTasks(
 			`Expansion complete: ${expandedCount} expanded, ${failedCount} failed.`
 		);
 
-		// Report completion
-		if (progressTracker) {
-			progressTracker.updateOverallProgress('completed', `Expansion complete: ${expandedCount} expanded, ${failedCount} failed`);
-		}
-		if (reportProgress) {
-			reportProgress({
-				type: 'progress',
-				operation: 'expand-all',
-				stage: 'completed',
-				message: `Expansion complete: ${expandedCount} expanded, ${failedCount} failed`,
-				progress: 100,
-				expandedCount,
-				failedCount
-			});
-		}
-
 		// Aggregate the collected telemetry data
 		const aggregatedTelemetryData = aggregateTelemetry(
 			allTelemetryData,
@@ -270,29 +169,22 @@ async function expandAllTasks(
 		);
 
 		if (outputFormat === 'text') {
-			const elapsedTime = Date.now() - startTime;
+			const summaryContent =
+				`${chalk.white.bold('Expansion Summary:')}\n\n` +
+				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
+				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
+				// Skipped count is always 0 now due to pre-filtering
+				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
+				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
 
-			// Calculate total subtasks created
-			let totalSubtasksCreated = 0;
-			for (const telemetryData of allTelemetryData) {
-				// Each telemetry data represents one successful task expansion
-				// We can estimate subtasks created (typically 5 per task) or use actual count if available
-				totalSubtasksCreated += telemetryData.subtasksCreated || 5;
-			}
-
-			// Display our custom summary UI with the correct stats
-			displayExpandSummary({
-				totalTasksProcessed: tasksToExpandCount,
-				totalSubtasksCreated: totalSubtasksCreated,
-				tasksSkipped: 0, // Always 0 due to pre-filtering (like old "Skipped" stat)
-				tasksWithErrors: failedCount,
-				tasksFilePath: tasksPath,
-				elapsedTime: elapsedTime,
-				force: force,
-				research: useResearch,
-				expandType: 'all',
-				errors: failedCount > 0 ? [`${failedCount} tasks failed to expand`] : []
-			});
+			console.log(
+				boxen(summaryContent, {
+					padding: 1,
+					margin: { top: 1 },
+					borderColor: failedCount > 0 ? 'red' : 'green', // Red if failures, green otherwise
+					borderStyle: 'round'
+				})
+			);
 		}
 
 		if (outputFormat === 'text' && aggregatedTelemetryData) {
@@ -309,20 +201,6 @@ async function expandAllTasks(
 			telemetryData: aggregatedTelemetryData
 		};
 	} catch (error) {
-		// Report error
-		if (progressTracker) {
-			progressTracker.updateOverallProgress('error', `Error: ${error.message}`);
-		}
-		if (reportProgress) {
-			reportProgress({
-				type: 'error',
-				operation: 'expand-all',
-				stage: 'error',
-				message: `Error: ${error.message}`,
-				progress: 0
-			});
-		}
-		
 		if (loadingIndicator)
 			stopLoadingIndicator(loadingIndicator, 'Error.', false);
 		logger.error(`Error during expand all operation: ${error.message}`);
