@@ -40,7 +40,8 @@ async function expandAllTasks(
 		session,
 		mcpLog,
 		projectRoot: providedProjectRoot,
-		tag: contextTag
+		tag: contextTag,
+		reportProgress
 	} = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
@@ -142,6 +143,22 @@ async function expandAllTasks(
 			parentTracker.start();
 		}
 
+		// Report initial progress for MCP
+		if (reportProgress) {
+			await reportProgress({
+				type: 'expand_all_start',
+				progress: 0,
+				current: 0,
+				total: tasksToExpandCount,
+				message: `Starting expansion of ${tasksToExpandCount} tasks...`
+			});
+		}
+
+		// Track completed and in-progress subtasks for fractional progress
+		const totalSubtasksProcessed = 0; // Not used in current implementation
+		let currentTaskSubtaskProgress = 0;
+		let currentTaskExpectedSubtasks = 0;
+
 		// Iterate over the already filtered tasks
 		for (const task of tasksToExpand) {
 			// Get task analysis and complexity score
@@ -150,22 +167,68 @@ async function expandAllTasks(
 			);
 			const complexityScore = taskAnalysis?.complexityScore || null;
 
+			// Determine expected subtask count (same logic as in expandTask)
+			let expectedSubtasks = 0;
+			const explicitNumSubtasks = parseInt(numSubtasks, 10);
+			if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+				expectedSubtasks = explicitNumSubtasks;
+			} else if (taskAnalysis?.recommendedSubtasks) {
+				expectedSubtasks = parseInt(taskAnalysis.recommendedSubtasks, 10);
+			} else {
+				expectedSubtasks = getDefaultSubtasks(session); // Use config default
+			}
+
 			// Update parent tracker with current task and expected subtask count
 			if (parentTracker) {
-				// Determine expected subtask count (same logic as in expandTask)
-				let expectedSubtasks = 0;
-				const explicitNumSubtasks = parseInt(numSubtasks, 10);
-				if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
-					expectedSubtasks = explicitNumSubtasks;
-				} else if (taskAnalysis?.recommendedSubtasks) {
-					expectedSubtasks = parseInt(taskAnalysis.recommendedSubtasks, 10);
-				} else {
-					expectedSubtasks = getDefaultSubtasks(session); // Use config default
-				}
 				parentTracker.setCurrentTask(task.id, task.title, expectedSubtasks);
 			}
 
+			// Store expected subtasks for MCP progress reporting
+			currentTaskExpectedSubtasks = expectedSubtasks;
+			currentTaskSubtaskProgress = 0;
+
+			// Report task expansion start for MCP
+			if (reportProgress) {
+				const currentTaskNumber = expandedCount + 1;
+				await reportProgress({
+					type: 'task_expansion_start',
+					progress: expandedCount / tasksToExpandCount,
+					current: expandedCount,
+					total: tasksToExpandCount,
+					taskId: task.id,
+					taskTitle: task.title,
+					taskNumber: currentTaskNumber,
+					expectedSubtasks: expectedSubtasks,
+					message: `Starting expansion of Task ${currentTaskNumber}/${tasksToExpandCount}: ${task.title}`
+				});
+			}
+
 			try {
+				// Create a callback for subtask progress updates (for MCP)
+				const onSubtaskProgress = reportProgress
+					? async (subtaskCount) => {
+							currentTaskSubtaskProgress = subtaskCount;
+							// Calculate fractional progress
+							const fractionalProgress =
+								expandedCount +
+								(currentTaskExpectedSubtasks > 0
+									? subtaskCount / currentTaskExpectedSubtasks
+									: 0);
+
+							await reportProgress({
+								type: 'subtask_progress',
+								progress: fractionalProgress / tasksToExpandCount,
+								current: fractionalProgress,
+								total: tasksToExpandCount,
+								taskId: task.id,
+								taskTitle: task.title,
+								subtaskProgress: subtaskCount,
+								subtaskTotal: currentTaskExpectedSubtasks,
+								message: `Task ${expandedCount + 1}/${tasksToExpandCount}: Generating subtask ${subtaskCount}/${currentTaskExpectedSubtasks}...`
+							});
+						}
+					: null;
+
 				// Call the refactored expandTask function AND capture result
 				const result = await expandTask(
 					tasksPath,
@@ -177,7 +240,8 @@ async function expandAllTasks(
 						...context,
 						projectRoot,
 						tag: data.tag || contextTag,
-						parentTracker
+						parentTracker,
+						onSubtaskProgress // Pass the callback
 					}, // Pass parent tracker in context
 					force
 				);
@@ -200,6 +264,23 @@ async function expandAllTasks(
 					);
 				}
 
+				// Report task completion for MCP
+				if (reportProgress) {
+					const currentTaskNumber = expandedCount;
+					await reportProgress({
+						type: 'task_expansion_complete',
+						progress: expandedCount / tasksToExpandCount,
+						current: expandedCount,
+						total: tasksToExpandCount,
+						taskId: task.id,
+						taskTitle: task.title,
+						taskNumber: currentTaskNumber,
+						subtasksGenerated: result.task?.subtasks?.length || 0,
+						telemetryData: result.telemetryData,
+						message: `Completed Task ${currentTaskNumber}/${tasksToExpandCount}: ${task.title} (${result.task?.subtasks?.length || 0} subtasks)`
+					});
+				}
+
 				logger.debug(`Successfully expanded task ${task.id}.`);
 			} catch (error) {
 				failedCount++;
@@ -207,6 +288,21 @@ async function expandAllTasks(
 				// Add error to parent tracker
 				if (parentTracker) {
 					parentTracker.addError(task.id, error.message);
+				}
+
+				// Report task failure for MCP
+				if (reportProgress) {
+					const currentTaskNumber = expandedCount + failedCount;
+					await reportProgress({
+						type: 'task_expansion_error',
+						progress: currentTaskNumber / tasksToExpandCount,
+						current: currentTaskNumber,
+						total: tasksToExpandCount,
+						taskId: task.id,
+						taskTitle: task.title,
+						error: error.message,
+						message: `Failed to expand Task ${task.id}: ${error.message}`
+					});
 				}
 
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
@@ -253,6 +349,20 @@ async function expandAllTasks(
 		// Display AI usage summary after parent tracker stops
 		if (outputFormat === 'text' && aggregatedTelemetryData) {
 			displayAiUsageSummary(aggregatedTelemetryData, 'cli');
+		}
+
+		// Report final completion for MCP
+		if (reportProgress) {
+			await reportProgress({
+				type: 'expand_all_complete',
+				progress: 1,
+				current: tasksToExpandCount,
+				total: tasksToExpandCount,
+				expandedCount: expandedCount,
+				failedCount: failedCount,
+				telemetryData: aggregatedTelemetryData,
+				message: `Expansion complete: ${expandedCount} tasks expanded, ${failedCount} failed`
+			});
 		}
 
 		// Return summary including the AGGREGATED telemetry data

@@ -761,6 +761,11 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 						parentTracker.updateCurrentTaskSubtaskProgress(currentCount);
 					}
 
+					// Call the onSubtaskProgress callback if provided (for MCP in expand-all)
+					if (context.onSubtaskProgress && typeof context.onSubtaskProgress === 'function') {
+						await context.onSubtaskProgress(currentCount);
+					}
+
 					// MCP progress reporting (following the pattern from parse-prd and analyze-complexity)
 					if (reportProgress) {
 						try {
