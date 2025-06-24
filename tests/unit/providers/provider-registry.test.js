@@ -1,6 +1,6 @@
 /**
  * Tests for ProviderRegistry - Singleton for managing AI providers
- * 
+ *
  * This test suite covers:
  * 1. Singleton pattern behavior
  * 2. Provider registration and validation
@@ -20,7 +20,9 @@ jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 }));
 
 // Import ProviderRegistry after mocking
-const { default: ProviderRegistry } = await import('../../../src/provider-registry/index.js');
+const { default: ProviderRegistry } = await import(
+	'../../../src/provider-registry/index.js'
+);
 
 // Mock provider classes for testing
 class MockValidProvider {
@@ -28,10 +30,18 @@ class MockValidProvider {
 		this.name = 'MockValidProvider';
 	}
 
-	generateText() { return Promise.resolve({ text: 'mock text' }); }
-	streamText() { return Promise.resolve('mock stream'); }
-	generateObject() { return Promise.resolve({ object: {} }); }
-	getRequiredApiKeyName() { return 'MOCK_API_KEY'; }
+	generateText() {
+		return Promise.resolve({ text: 'mock text' });
+	}
+	streamText() {
+		return Promise.resolve('mock stream');
+	}
+	generateObject() {
+		return Promise.resolve({ object: {} });
+	}
+	getRequiredApiKeyName() {
+		return 'MOCK_API_KEY';
+	}
 }
 
 class MockInvalidProvider {
@@ -60,15 +70,17 @@ describe('ProviderRegistry', () => {
 		test('getInstance returns the same instance', () => {
 			const instance1 = ProviderRegistry.getInstance();
 			const instance2 = ProviderRegistry.getInstance();
-			
+
 			expect(instance1).toBe(instance2);
 			expect(instance1).toBe(registry);
 		});
 
 		test('multiple calls to getInstance return same instance', () => {
-			const instances = Array.from({ length: 5 }, () => ProviderRegistry.getInstance());
-			
-			instances.forEach(instance => {
+			const instances = Array.from({ length: 5 }, () =>
+				ProviderRegistry.getInstance()
+			);
+
+			instances.forEach((instance) => {
 				expect(instance).toBe(registry);
 			});
 		});
@@ -82,12 +94,15 @@ describe('ProviderRegistry', () => {
 
 		test('initialize sets initialized flag and logs', () => {
 			expect(registry._initialized).toBe(false);
-			
+
 			const result = registry.initialize();
-			
+
 			expect(registry._initialized).toBe(true);
 			expect(result).toBe(registry);
-			expect(mockLog).toHaveBeenCalledWith('info', 'Initializing Provider Registry');
+			expect(mockLog).toHaveBeenCalledWith(
+				'info',
+				'Initializing Provider Registry'
+			);
 		});
 
 		test('initialize can be called multiple times safely', () => {
@@ -95,10 +110,13 @@ describe('ProviderRegistry', () => {
 			registry.initialize();
 			expect(registry._initialized).toBe(true);
 			jest.clearAllMocks();
-			
+
 			// Second call should log "already initialized"
 			registry.initialize();
-			expect(mockLog).toHaveBeenCalledWith('debug', 'Provider Registry already initialized');
+			expect(mockLog).toHaveBeenCalledWith(
+				'debug',
+				'Provider Registry already initialized'
+			);
 		});
 
 		test('initialize returns self for chaining', () => {
@@ -111,27 +129,30 @@ describe('ProviderRegistry', () => {
 		test('registerProvider adds valid provider successfully', () => {
 			const mockProvider = new MockValidProvider();
 			const options = { priority: 'high' };
-			
+
 			const result = registry.registerProvider('mock', mockProvider, options);
-			
+
 			expect(result).toBe(registry); // Should return self for chaining
 			expect(registry.hasProvider('mock')).toBe(true);
-			expect(mockLog).toHaveBeenCalledWith('info', 'Provider "mock" registered with the registry');
+			expect(mockLog).toHaveBeenCalledWith(
+				'info',
+				'Provider "mock" registered with the registry'
+			);
 		});
 
 		test('registerProvider validates provider name', () => {
 			const mockProvider = new MockValidProvider();
-			
+
 			// Test empty string
 			expect(() => registry.registerProvider('', mockProvider)).toThrow(
 				'Provider name must be a non-empty string'
 			);
-			
+
 			// Test null
 			expect(() => registry.registerProvider(null, mockProvider)).toThrow(
 				'Provider name must be a non-empty string'
 			);
-			
+
 			// Test non-string
 			expect(() => registry.registerProvider(123, mockProvider)).toThrow(
 				'Provider name must be a non-empty string'
@@ -142,7 +163,7 @@ describe('ProviderRegistry', () => {
 			expect(() => registry.registerProvider('mock', null)).toThrow(
 				'Provider instance is required'
 			);
-			
+
 			expect(() => registry.registerProvider('mock', undefined)).toThrow(
 				'Provider instance is required'
 			);
@@ -150,7 +171,7 @@ describe('ProviderRegistry', () => {
 
 		test('registerProvider validates provider interface', () => {
 			const invalidProvider = new MockInvalidProvider();
-			
+
 			expect(() => registry.registerProvider('mock', invalidProvider)).toThrow(
 				'Provider must implement BaseAIProvider interface'
 			);
@@ -160,32 +181,34 @@ describe('ProviderRegistry', () => {
 			const mockProvider = new MockValidProvider();
 			const options = { priority: 'high', custom: 'value' };
 			const beforeRegistration = new Date();
-			
+
 			registry.registerProvider('mock', mockProvider, options);
-			
+
 			const storedEntry = registry._providers.get('mock');
 			expect(storedEntry.instance).toBe(mockProvider);
 			expect(storedEntry.options).toEqual(options);
 			expect(storedEntry.registeredAt).toBeInstanceOf(Date);
-			expect(storedEntry.registeredAt.getTime()).toBeGreaterThanOrEqual(beforeRegistration.getTime());
+			expect(storedEntry.registeredAt.getTime()).toBeGreaterThanOrEqual(
+				beforeRegistration.getTime()
+			);
 		});
 
 		test('registerProvider can overwrite existing providers', () => {
 			const provider1 = new MockValidProvider();
 			const provider2 = new MockValidProvider();
-			
+
 			registry.registerProvider('mock', provider1);
 			expect(registry.getProvider('mock')).toBe(provider1);
-			
+
 			registry.registerProvider('mock', provider2);
 			expect(registry.getProvider('mock')).toBe(provider2);
 		});
 
 		test('registerProvider handles missing options', () => {
 			const mockProvider = new MockValidProvider();
-			
+
 			registry.registerProvider('mock', mockProvider);
-			
+
 			const storedEntry = registry._providers.get('mock');
 			expect(storedEntry.options).toEqual({});
 		});
@@ -219,23 +242,23 @@ describe('ProviderRegistry', () => {
 		test('getAllProviders returns copy of providers map', () => {
 			const mockProvider2 = new MockValidProvider();
 			registry.registerProvider('mock2', mockProvider2);
-			
+
 			const allProviders = registry.getAllProviders();
-			
+
 			expect(allProviders).toBeInstanceOf(Map);
 			expect(allProviders.size).toBe(2);
 			expect(allProviders.has('mock')).toBe(true);
 			expect(allProviders.has('mock2')).toBe(true);
-			
+
 			// Should be a copy, not the original
 			expect(allProviders).not.toBe(registry._providers);
 		});
 
 		test('getAllProviders returns empty map when no providers', () => {
 			registry.reset();
-			
+
 			const allProviders = registry.getAllProviders();
-			
+
 			expect(allProviders).toBeInstanceOf(Map);
 			expect(allProviders.size).toBe(0);
 		});
@@ -249,17 +272,20 @@ describe('ProviderRegistry', () => {
 
 		test('unregisterProvider removes existing provider', () => {
 			expect(registry.hasProvider('mock')).toBe(true);
-			
+
 			const result = registry.unregisterProvider('mock');
-			
+
 			expect(result).toBe(true);
 			expect(registry.hasProvider('mock')).toBe(false);
-			expect(mockLog).toHaveBeenCalledWith('info', 'Provider "mock" unregistered from the registry');
+			expect(mockLog).toHaveBeenCalledWith(
+				'info',
+				'Provider "mock" unregistered from the registry'
+			);
 		});
 
 		test('unregisterProvider returns false for nonexistent provider', () => {
 			const result = registry.unregisterProvider('nonexistent');
-			
+
 			expect(result).toBe(false);
 			expect(mockLog).not.toHaveBeenCalledWith(
 				expect.stringContaining('unregistered')
@@ -283,31 +309,31 @@ describe('ProviderRegistry', () => {
 		test('reset clears all providers', () => {
 			expect(registry.hasProvider('mock')).toBe(true);
 			expect(registry._initialized).toBe(true);
-			
+
 			registry.reset();
-			
+
 			expect(registry.hasProvider('mock')).toBe(false);
 			expect(registry._providers.size).toBe(0);
 		});
 
 		test('reset clears initialization flag', () => {
 			expect(registry._initialized).toBe(true);
-			
+
 			registry.reset();
-			
+
 			expect(registry._initialized).toBe(false);
 		});
 
 		test('reset logs warning message', () => {
 			registry.reset();
-			
+
 			expect(mockLog).toHaveBeenCalledWith('warn', 'Provider Registry reset');
 		});
 
 		test('reset allows re-initialization', () => {
 			registry.reset();
 			expect(registry._initialized).toBe(false);
-			
+
 			registry.initialize();
 			expect(registry._initialized).toBe(true);
 		});
@@ -319,8 +345,8 @@ describe('ProviderRegistry', () => {
 				streamText: jest.fn(),
 				generateObject: jest.fn()
 			};
-			
-			expect(() => 
+
+			expect(() =>
 				registry.registerProvider('invalid', providerWithoutGenerateText)
 			).toThrow('Provider must implement BaseAIProvider interface');
 		});
@@ -330,8 +356,8 @@ describe('ProviderRegistry', () => {
 				generateText: jest.fn(),
 				generateObject: jest.fn()
 			};
-			
-			expect(() => 
+
+			expect(() =>
 				registry.registerProvider('invalid', providerWithoutStreamText)
 			).toThrow('Provider must implement BaseAIProvider interface');
 		});
@@ -341,8 +367,8 @@ describe('ProviderRegistry', () => {
 				generateText: jest.fn(),
 				streamText: jest.fn()
 			};
-			
-			expect(() => 
+
+			expect(() =>
 				registry.registerProvider('invalid', providerWithoutGenerateObject)
 			).toThrow('Provider must implement BaseAIProvider interface');
 		});
@@ -353,8 +379,8 @@ describe('ProviderRegistry', () => {
 				streamText: jest.fn(),
 				generateObject: jest.fn()
 			};
-			
-			expect(() => 
+
+			expect(() =>
 				registry.registerProvider('invalid', providerWithNonFunctionMethods)
 			).toThrow('Provider must implement BaseAIProvider interface');
 		});
@@ -365,8 +391,8 @@ describe('ProviderRegistry', () => {
 				streamText: jest.fn(),
 				generateObject: jest.fn()
 			};
-			
-			expect(() => 
+
+			expect(() =>
 				registry.registerProvider('valid', validProvider)
 			).not.toThrow();
 		});
@@ -377,10 +403,10 @@ describe('ProviderRegistry', () => {
 			const mockProvider = new MockValidProvider();
 			registry.registerProvider('mock', mockProvider);
 			expect(registry.hasProvider('mock')).toBe(true);
-			
+
 			registry.reset();
 			expect(registry.hasProvider('mock')).toBe(false);
-			
+
 			registry.registerProvider('mock', mockProvider);
 			expect(registry.hasProvider('mock')).toBe(true);
 		});
@@ -388,16 +414,16 @@ describe('ProviderRegistry', () => {
 		test('handles multiple registrations and unregistrations', () => {
 			const provider1 = new MockValidProvider();
 			const provider2 = new MockValidProvider();
-			
+
 			registry.registerProvider('provider1', provider1);
 			registry.registerProvider('provider2', provider2);
-			
+
 			expect(registry.getAllProviders().size).toBe(2);
-			
+
 			registry.unregisterProvider('provider1');
 			expect(registry.hasProvider('provider1')).toBe(false);
 			expect(registry.hasProvider('provider2')).toBe(true);
-			
+
 			registry.unregisterProvider('provider2');
 			expect(registry.getAllProviders().size).toBe(0);
 		});
@@ -405,13 +431,13 @@ describe('ProviderRegistry', () => {
 		test('maintains provider isolation', () => {
 			const provider1 = new MockValidProvider();
 			const provider2 = new MockValidProvider();
-			
+
 			registry.registerProvider('provider1', provider1);
 			registry.registerProvider('provider2', provider2);
-			
+
 			const retrieved1 = registry.getProvider('provider1');
 			const retrieved2 = registry.getProvider('provider2');
-			
+
 			expect(retrieved1).toBe(provider1);
 			expect(retrieved2).toBe(provider2);
 			expect(retrieved1).not.toBe(retrieved2);

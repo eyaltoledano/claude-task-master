@@ -1,6 +1,6 @@
 /**
  * Tests for MCPRemoteProvider - MCP provider implementation
- * 
+ *
  * This test suite covers:
  * 1. Constructor and initialization
  * 2. Session management and validation
@@ -37,11 +37,11 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 		constructor() {
 			this.name = this.constructor.name;
 		}
-		
+
 		validateOptionalParams(params) {
 			return mockBaseAIProvider.validateOptionalParams(params);
 		}
-		
+
 		handleError(operation, error) {
 			return mockBaseAIProvider.handleError(operation, error);
 		}
@@ -55,7 +55,9 @@ jest.unstable_mockModule('zod-to-json-schema', () => ({
 }));
 
 // Import MCPRemoteProvider after mocking
-const { MCPRemoteProvider } = await import('../../../mcp-server/src/providers/mcp-remote-provider.js');
+const { MCPRemoteProvider } = await import(
+	'../../../mcp-server/src/providers/mcp-remote-provider.js'
+);
 
 describe('MCPRemoteProvider', () => {
 	let provider;
@@ -64,7 +66,7 @@ describe('MCPRemoteProvider', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Create mock session with MCP capabilities
 		mockSession = {
 			clientCapabilities: {
@@ -116,15 +118,19 @@ describe('MCPRemoteProvider', () => {
 		test('setSession updates session and logs debug info', () => {
 			const newSession = { id: 'new-session' };
 			provider.setSession(newSession);
-			
+
 			expect(provider.session).toBe(newSession);
-			expect(mockLogger.debug).toHaveBeenCalledWith('Updated MCP Remote Provider session');
+			expect(mockLogger.debug).toHaveBeenCalledWith(
+				'Updated MCP Remote Provider session'
+			);
 		});
 
 		test('warns when setting null session', () => {
 			provider.setSession(null);
-			
-			expect(mockLogger.warn).toHaveBeenCalledWith('Attempted to set null session on MCP Remote Provider');
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Attempted to set null session on MCP Remote Provider'
+			);
 		});
 	});
 
@@ -160,26 +166,30 @@ describe('MCPRemoteProvider', () => {
 
 	describe('Parameter Validation', () => {
 		test('validateParams calls validateOptionalParams', () => {
-			const params = { 
-				messages: [{ role: 'user', content: 'Hello' }], 
+			const params = {
+				messages: [{ role: 'user', content: 'Hello' }],
 				temperature: 0.7,
 				modelId: 'claude-3-sonnet'
 			};
 			provider.validateParams(params);
-			
-			expect(mockBaseAIProvider.validateOptionalParams).toHaveBeenCalledWith(params);
+
+			expect(mockBaseAIProvider.validateOptionalParams).toHaveBeenCalledWith(
+				params
+			);
 		});
 
 		test('throws error for missing model ID', () => {
 			expect(() => {
-				provider.validateParams({ messages: [{ role: 'user', content: 'Hello' }] });
+				provider.validateParams({
+					messages: [{ role: 'user', content: 'Hello' }]
+				});
 			}).toThrow('Model ID is required for MCP Remote Provider');
 		});
 
 		test('throws error for empty messages array', () => {
 			expect(() => {
-				provider.validateParams({ 
-					messages: [], 
+				provider.validateParams({
+					messages: [],
 					modelId: 'claude-3-sonnet'
 				});
 			}).toThrow('Messages array is required and must not be empty');
@@ -187,7 +197,7 @@ describe('MCPRemoteProvider', () => {
 
 		test('throws error for missing messages', () => {
 			expect(() => {
-				provider.validateParams({ 
+				provider.validateParams({
 					modelId: 'claude-3-sonnet'
 				});
 			}).toThrow('Messages array is required and must not be empty');
@@ -198,7 +208,7 @@ describe('MCPRemoteProvider', () => {
 				messages: [{ role: 'user', content: 'Hello' }],
 				modelId: 'claude-3-sonnet'
 			};
-			
+
 			expect(() => {
 				provider.validateParams(validParams);
 			}).not.toThrow();
@@ -209,7 +219,7 @@ describe('MCPRemoteProvider', () => {
 			const validParams = {
 				messages: [{ role: 'user', content: 'Hello' }]
 			};
-			
+
 			expect(() => {
 				provider.validateParams(validParams);
 			}).not.toThrow();
@@ -226,25 +236,33 @@ describe('MCPRemoteProvider', () => {
 			const temperature = 0.7;
 			const maxTokens = 1000;
 
-			await provider.requestSampling(messages, systemPrompt, temperature, maxTokens);
+			await provider.requestSampling(
+				messages,
+				systemPrompt,
+				temperature,
+				maxTokens
+			);
 
-			expect(mockSession.requestSampling).toHaveBeenCalledWith({
-				messages: [
-					{ role: 'user', content: { type: 'text', text: 'Hello' } },
-					{ role: 'assistant', content: { type: 'text', text: 'Hi there!' } }
-				],
-				systemPrompt: 'You are helpful',
-				temperature: 0.7,
-				maxTokens: 1000,
-				includeContext: 'thisServer'
-			}, {
-				timeout: 2400000
-			});
+			expect(mockSession.requestSampling).toHaveBeenCalledWith(
+				{
+					messages: [
+						{ role: 'user', content: { type: 'text', text: 'Hello' } },
+						{ role: 'assistant', content: { type: 'text', text: 'Hi there!' } }
+					],
+					systemPrompt: 'You are helpful',
+					temperature: 0.7,
+					maxTokens: 1000,
+					includeContext: 'thisServer'
+				},
+				{
+					timeout: 2400000
+				}
+			);
 		});
 
 		test('uses default maxTokens when not provided', async () => {
 			const messages = [{ role: 'user', content: 'Hello' }];
-			
+
 			await provider.requestSampling(messages, undefined, undefined, undefined);
 
 			expect(mockSession.requestSampling).toHaveBeenCalledWith(
@@ -266,17 +284,17 @@ describe('MCPRemoteProvider', () => {
 
 		test('validates parameters before processing', async () => {
 			const validateParamsSpy = jest.spyOn(provider, 'validateParams');
-			
+
 			await provider.generateText(validParams);
-			
+
 			expect(validateParamsSpy).toHaveBeenCalledWith(validParams);
 		});
 
 		test('calls requestSampling with correct parameters', async () => {
 			const requestSamplingSpy = jest.spyOn(provider, 'requestSampling');
-			
+
 			await provider.generateText(validParams);
-			
+
 			expect(requestSamplingSpy).toHaveBeenCalledWith(
 				validParams.messages,
 				undefined,
@@ -287,7 +305,7 @@ describe('MCPRemoteProvider', () => {
 
 		test('returns formatted response with zero token counts', async () => {
 			const result = await provider.generateText(validParams);
-			
+
 			expect(result).toEqual({
 				text: 'Generated response',
 				usage: {
@@ -300,7 +318,7 @@ describe('MCPRemoteProvider', () => {
 
 		test('logs debug information about completion', async () => {
 			await provider.generateText(validParams);
-			
+
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('mcp generateText completed successfully')
 			);
@@ -309,7 +327,7 @@ describe('MCPRemoteProvider', () => {
 		test('handles error and calls handleError', async () => {
 			const error = new Error('MCP sampling failed');
 			mockSession.requestSampling.mockRejectedValue(error);
-			
+
 			mockBaseAIProvider.handleError.mockImplementation((operation, err) => {
 				throw new Error(`MCP API error during ${operation}: ${err.message}`);
 			});
@@ -317,8 +335,11 @@ describe('MCPRemoteProvider', () => {
 			await expect(provider.generateText(validParams)).rejects.toThrow(
 				'MCP API error during text generation: MCP sampling failed'
 			);
-			
-			expect(mockBaseAIProvider.handleError).toHaveBeenCalledWith('text generation', error);
+
+			expect(mockBaseAIProvider.handleError).toHaveBeenCalledWith(
+				'text generation',
+				error
+			);
 		});
 	});
 
@@ -340,20 +361,25 @@ describe('MCPRemoteProvider', () => {
 
 		test('converts schema using zodToJsonSchema', async () => {
 			await provider.generateObject(validParams);
-			
-			expect(mockZodToJsonSchema).toHaveBeenCalledWith(validParams.schema, validParams.objectName);
+
+			expect(mockZodToJsonSchema).toHaveBeenCalledWith(
+				validParams.schema,
+				validParams.objectName
+			);
 		});
 
 		test('adds schema instruction to system prompt', async () => {
 			const requestSamplingSpy = jest.spyOn(provider, 'requestSampling');
-			
+
 			await provider.generateObject(validParams);
-			
+
 			expect(requestSamplingSpy).toHaveBeenCalledWith(
 				expect.arrayContaining([
 					expect.objectContaining({
 						role: 'system',
-						content: expect.stringContaining('IMPORTANT: Your response MUST be valid JSON')
+						content: expect.stringContaining(
+							'IMPORTANT: Your response MUST be valid JSON'
+						)
 					})
 				]),
 				'Generate data',
@@ -364,7 +390,7 @@ describe('MCPRemoteProvider', () => {
 
 		test('parses JSON response', async () => {
 			const result = await provider.generateObject(validParams);
-			
+
 			expect(result).toEqual({
 				object: { name: 'test' },
 				usage: {
@@ -384,7 +410,7 @@ describe('MCPRemoteProvider', () => {
 				content: { text: 'invalid json' },
 				stopReason: 'stop_sequence'
 			});
-			
+
 			mockBaseAIProvider.handleError.mockImplementation((operation, error) => {
 				throw new Error(`Object generation failed: ${error.message}`);
 			});
@@ -418,7 +444,7 @@ describe('MCPRemoteProvider', () => {
 		test('handles MCP request failures', async () => {
 			const error = new Error('Network error');
 			mockSession.requestSampling.mockRejectedValue(error);
-			
+
 			mockBaseAIProvider.handleError.mockImplementation((operation, err) => {
 				throw new Error(`Handled: ${err.message}`);
 			});
@@ -428,19 +454,26 @@ describe('MCPRemoteProvider', () => {
 				modelId: 'claude-3-sonnet'
 			};
 
-			await expect(provider.generateText(validParams)).rejects.toThrow('Handled: Network error');
-			expect(mockBaseAIProvider.handleError).toHaveBeenCalledWith('text generation', error);
+			await expect(provider.generateText(validParams)).rejects.toThrow(
+				'Handled: Network error'
+			);
+			expect(mockBaseAIProvider.handleError).toHaveBeenCalledWith(
+				'text generation',
+				error
+			);
 		});
 
 		test('handles session not available error', async () => {
 			provider.session = null;
-			
+
 			const validParams = {
 				messages: [{ role: 'user', content: 'Hello' }],
 				modelId: 'claude-3-sonnet'
 			};
 
-			await expect(provider.generateText(validParams)).rejects.toThrow('MCP provider requires session context');
+			await expect(provider.generateText(validParams)).rejects.toThrow(
+				'MCP provider requires session context'
+			);
 		});
 	});
 
@@ -450,7 +483,7 @@ describe('MCPRemoteProvider', () => {
 				stopReason: 'stop_sequence'
 				// missing content
 			});
-			
+
 			mockBaseAIProvider.handleError.mockImplementation((operation, error) => {
 				throw new Error(`Content missing: ${error.message}`);
 			});
@@ -475,7 +508,7 @@ describe('MCPRemoteProvider', () => {
 			};
 
 			const result = await provider.generateText(validParams);
-			
+
 			expect(result.text).toBe(null);
 			expect(result.usage).toEqual({
 				inputTokens: 0,
@@ -493,7 +526,7 @@ describe('MCPRemoteProvider', () => {
 			provider.options.defaultModel = 'default-model';
 
 			await provider.generateText(paramsWithoutModel);
-			
+
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('using model: default-model')
 			);

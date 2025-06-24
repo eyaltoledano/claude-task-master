@@ -44,7 +44,7 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider,
+	VertexAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -61,7 +61,7 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider(),
+	vertex: new VertexAIProvider()
 };
 
 function _getProvider(providerName) {
@@ -69,14 +69,14 @@ function _getProvider(providerName) {
 	if (PROVIDERS[providerName]) {
 		return PROVIDERS[providerName];
 	}
-	
+
 	// If not found, check the provider registry
 	const providerRegistry = ProviderRegistry.getInstance();
 	if (providerRegistry.hasProvider(providerName)) {
 		log('debug', `Provider "${providerName}" found in dynamic registry`);
 		return providerRegistry.getProvider(providerName);
 	}
-	
+
 	// Provider not found in either location
 	return null;
 }
@@ -248,12 +248,14 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	// Get provider instance
 	const provider = _getProvider(providerName);
 	if (!provider) {
-		throw new Error(`Unknown provider '${providerName}' for API key resolution.`);
+		throw new Error(
+			`Unknown provider '${providerName}' for API key resolution.`
+		);
 	}
 
 	// All providers must implement getRequiredApiKeyName()
 	const envVarName = provider.getRequiredApiKeyName();
-	
+
 	// If envVarName is null (like for MCP), return null directly
 	if (envVarName === null) {
 		return null;
@@ -462,7 +464,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama' && providerName?.toLowerCase() !== 'mcp') {
+			if (
+				providerName?.toLowerCase() !== 'ollama' &&
+				providerName?.toLowerCase() !== 'mcp'
+			) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',

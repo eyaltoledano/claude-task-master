@@ -67,8 +67,7 @@ class TaskMasterMCPServer {
 			await this.init();
 		}
 
-
-		this.server.on("connect", (event) => {
+		this.server.on('connect', (event) => {
 			this.logger.info(`MCP Server connected: ${event.session}`);
 			this.registerRemoteProvider(event.session);
 		});
@@ -88,26 +87,29 @@ class TaskMasterMCPServer {
 	registerRemoteProvider(session) {
 		// Check if the server has at least one session
 		if (session) {
-			
 			// Make sure session has required capabilities
 			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
-				this.logger.warn('MCP session missing required sampling capabilities, Remote Provider not registered');
+				this.logger.warn(
+					'MCP session missing required sampling capabilities, Remote Provider not registered'
+				);
 				return;
 			}
-			
+
 			// Create the remote provider with the first session
 			const remoteProvider = new MCPRemoteProvider(this.server);
-			
+
 			// Set the session explicitly
 			remoteProvider.setSession(session);
-			
+
 			// Register the provider with the registry
 			const providerRegistry = ProviderRegistry.getInstance();
 			providerRegistry.registerProvider(remoteProvider.name, remoteProvider);
-			
+
 			this.logger.info('MCP Remote Provider registered with Provider Registry');
 		} else {
-			this.logger.warn('No MCP sessions available, Remote Provider not registered');
+			this.logger.warn(
+				'No MCP sessions available, Remote Provider not registered'
+			);
 		}
 	}
 
