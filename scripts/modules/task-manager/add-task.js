@@ -27,7 +27,6 @@ import {
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 
 // Define Zod schema for the expected AI output object
@@ -44,7 +43,7 @@ const AiTaskDataSchema = z.object({
 		.describe('Detailed approach for verifying task completion'),
 	dependencies: z
 		.array(z.number())
-		.optional()
+		.nullable()
 		.describe(
 			'Array of task IDs that this task depends on (must be completed before this task can start)'
 		)

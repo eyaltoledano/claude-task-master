@@ -83,6 +83,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
+		.option('--no-aliases', 'Skip shell aliases (tm, taskmaster)')
+		.option('--git', 'Initialize Git repository')
+		.option('--no-git', 'Skip Git repository initialization')
+		.option('--git-tasks', 'Store tasks in Git')
+		.option('--no-git-tasks', 'No Git storage of tasks')
 		.action(async (cmdOptions) => {
 			try {
 				await runInitCLI(cmdOptions);

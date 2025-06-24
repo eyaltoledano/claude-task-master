@@ -11,6 +11,7 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
+import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
 import {
@@ -71,6 +72,8 @@ import {
 	getBaseUrlForRole
 } from './config-manager.js';
 
+import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
+
 import {
 	COMPLEXITY_REPORT_FILE,
 	PRD_FILE,
@@ -96,6 +99,14 @@ import {
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator
 } from './ui.js';
+import {
+	confirmProfilesRemove,
+	confirmRemoveAllRemainingProfiles
+} from '../../src/ui/confirm.js';
+import {
+	wouldRemovalLeaveNoProfiles,
+	getInstalledProfiles
+} from '../../src/utils/profiles.js';
 
 import { initializeProject } from '../init.js';
 import {
@@ -108,8 +119,27 @@ import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
+import {
+	isValidRulesAction,
+	RULES_ACTIONS,
+	RULES_SETUP_ACTION
+} from '../../src/constants/rules-actions.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 import { syncTasksToReadme } from './sync-readme.js';
+import { RULE_PROFILES } from '../../src/constants/profiles.js';
+import {
+	convertAllRulesToProfileRules,
+	removeProfileRules,
+	isValidProfile,
+	getRulesProfile
+} from '../../src/utils/rule-transformer.js';
+import {
+	runInteractiveProfilesSetup,
+	generateProfileSummary,
+	categorizeProfileResults,
+	generateProfileRemovalSummary,
+	categorizeRemovalResults
+} from '../../src/utils/profiles.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -264,20 +294,14 @@ async function runInteractiveSetup(projectRoot) {
 				}
 			: null;
 
-		const customOpenRouterOption = {
-			name: '* Custom OpenRouter model', // Symbol updated
-			value: '__CUSTOM_OPENROUTER__'
-		};
-
-		const customOllamaOption = {
-			name: '* Custom Ollama model', // Symbol updated
-			value: '__CUSTOM_OLLAMA__'
-		};
-
-		const customBedrockOption = {
-			name: '* Custom Bedrock model', // Add Bedrock custom option
-			value: '__CUSTOM_BEDROCK__'
-		};
+		// Define custom provider options
+		const customProviderOptions = [
+			{ name: '* Custom OpenRouter model', value: '__CUSTOM_OPENROUTER__' },
+			{ name: '* Custom Ollama model', value: '__CUSTOM_OLLAMA__' },
+			{ name: '* Custom Bedrock model', value: '__CUSTOM_BEDROCK__' },
+			{ name: '* Custom Azure model', value: '__CUSTOM_AZURE__' },
+			{ name: '* Custom Vertex model', value: '__CUSTOM_VERTEX__' }
+		];
 
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
@@ -317,43 +341,42 @@ async function runInteractiveSetup(projectRoot) {
 			);
 		}
 
-		// Construct final choices list based on whether 'None' is allowed
-		const commonPrefix = [];
+		// Construct final choices list with custom options moved to bottom
+		const systemOptions = [];
 		if (noChangeOption) {
-			commonPrefix.push(noChangeOption);
+			systemOptions.push(noChangeOption);
 		}
-		commonPrefix.push(cancelOption);
-		commonPrefix.push(customOpenRouterOption);
-		commonPrefix.push(customOllamaOption);
-		commonPrefix.push(customBedrockOption);
+		systemOptions.push(cancelOption);
 
-		const prefixLength = commonPrefix.length; // Initial prefix length
+		const systemLength = systemOptions.length;
 
 		if (allowNone) {
 			choices = [
-				...commonPrefix,
-				new inquirer.Separator(),
-				{ name: '⚪ None (disable)', value: null }, // Symbol updated
-				new inquirer.Separator(),
-				...roleChoices
+				...systemOptions,
+				new inquirer.Separator('\n── Standard Models ──'),
+				{ name: '⚪ None (disable)', value: null },
+				...roleChoices,
+				new inquirer.Separator('\n── Custom Providers ──'),
+				...customProviderOptions
 			];
-			// Adjust default index: Prefix + Sep1 + None + Sep2 (+3)
-			const noneOptionIndex = prefixLength + 1;
+			// Adjust default index: System + Sep1 + None (+2)
+			const noneOptionIndex = systemLength + 1;
 			defaultIndex =
 				currentChoiceIndex !== -1
-					? currentChoiceIndex + prefixLength + 3 // Offset by prefix and separators
+					? currentChoiceIndex + systemLength + 2 // Offset by system options and separators
 					: noneOptionIndex; // Default to 'None' if no current model matched
 		} else {
 			choices = [
-				...commonPrefix,
-				new inquirer.Separator(),
+				...systemOptions,
+				new inquirer.Separator('\n── Standard Models ──'),
 				...roleChoices,
-				new inquirer.Separator()
+				new inquirer.Separator('\n── Custom Providers ──'),
+				...customProviderOptions
 			];
-			// Adjust default index: Prefix + Sep (+1)
+			// Adjust default index: System + Sep (+1)
 			defaultIndex =
 				currentChoiceIndex !== -1
-					? currentChoiceIndex + prefixLength + 1 // Offset by prefix and separator
+					? currentChoiceIndex + systemLength + 1 // Offset by system options and separator
 					: noChangeOption
 						? 1
 						: 0; // Default to 'No Change' if present, else 'Cancel'
@@ -376,32 +399,63 @@ async function runInteractiveSetup(projectRoot) {
 	const researchPromptData = getPromptData('research');
 	const fallbackPromptData = getPromptData('fallback', true); // Allow 'None' for fallback
 
-	const answers = await inquirer.prompt([
-		{
-			type: 'list',
-			name: 'mainModel',
-			message: 'Select the main model for generation/updates:',
-			choices: mainPromptData.choices,
-			default: mainPromptData.default
-		},
-		{
-			type: 'list',
-			name: 'researchModel',
+	// Display helpful intro message
+	console.log(chalk.cyan('\n🎯 Interactive Model Setup'));
+	console.log(chalk.gray('━'.repeat(50)));
+	console.log(chalk.yellow('💡 Navigation tips:'));
+	console.log(chalk.gray('   • Type to search and filter options'));
+	console.log(chalk.gray('   • Use ↑↓ arrow keys to navigate results'));
+	console.log(
+		chalk.gray(
+			'   • Standard models are listed first, custom providers at bottom'
+		)
+	);
+	console.log(chalk.gray('   • Press Enter to select\n'));
+
+	// Helper function to create search source for models
+	const createSearchSource = (choices, defaultValue) => {
+		return (searchTerm = '') => {
+			const filteredChoices = choices.filter((choice) => {
+				if (choice.type === 'separator') return true; // Always show separators
+				const searchText = choice.name || '';
+				return searchText.toLowerCase().includes(searchTerm.toLowerCase());
+			});
+			return Promise.resolve(filteredChoices);
+		};
+	};
+
+	const answers = {};
+
+	// Main model selection
+	answers.mainModel = await search({
+		message: 'Select the main model for generation/updates:',
+		source: createSearchSource(mainPromptData.choices, mainPromptData.default),
+		pageSize: 15
+	});
+
+	if (answers.mainModel !== '__CANCEL__') {
+		// Research model selection
+		answers.researchModel = await search({
 			message: 'Select the research model:',
-			choices: researchPromptData.choices,
-			default: researchPromptData.default,
-			when: (ans) => ans.mainModel !== '__CANCEL__'
-		},
-		{
-			type: 'list',
-			name: 'fallbackModel',
-			message: 'Select the fallback model (optional):',
-			choices: fallbackPromptData.choices,
-			default: fallbackPromptData.default,
-			when: (ans) =>
-				ans.mainModel !== '__CANCEL__' && ans.researchModel !== '__CANCEL__'
+			source: createSearchSource(
+				researchPromptData.choices,
+				researchPromptData.default
+			),
+			pageSize: 15
+		});
+
+		if (answers.researchModel !== '__CANCEL__') {
+			// Fallback model selection
+			answers.fallbackModel = await search({
+				message: 'Select the fallback model (optional):',
+				source: createSearchSource(
+					fallbackPromptData.choices,
+					fallbackPromptData.default
+				),
+				pageSize: 15
+			});
 		}
-	]);
+	}
 
 	let setupSuccess = true;
 	let setupConfigModified = false;
@@ -441,7 +495,7 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'openrouter';
+			providerHint = CUSTOM_PROVIDERS.OPENROUTER;
 			// Validate against live OpenRouter list
 			const openRouterModels = await fetchOpenRouterModelsCLI();
 			if (
@@ -470,7 +524,7 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'ollama';
+			providerHint = CUSTOM_PROVIDERS.OLLAMA;
 			// Get the Ollama base URL from config for this role
 			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
 			// Validate against live Ollama list
@@ -511,16 +565,16 @@ async function runInteractiveSetup(projectRoot) {
 				return true; // Continue setup, but don't set this role
 			}
 			modelIdToSet = customId;
-			providerHint = 'bedrock';
+			providerHint = CUSTOM_PROVIDERS.BEDROCK;
 
 			// Check if AWS environment variables exist
 			if (
 				!process.env.AWS_ACCESS_KEY_ID ||
 				!process.env.AWS_SECRET_ACCESS_KEY
 			) {
-				console.error(
-					chalk.red(
-						'Error: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Please set them before using custom Bedrock models.'
+				console.warn(
+					chalk.yellow(
+						'Warning: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Will fallback to system configuration. (ex: aws config files or ec2 instance profiles)'
 					)
 				);
 				setupSuccess = false;
@@ -530,6 +584,76 @@ async function runInteractiveSetup(projectRoot) {
 			console.log(
 				chalk.blue(
 					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
+		} else if (selectedValue === '__CUSTOM_AZURE__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Azure OpenAI Model ID for the ${role} role (e.g., gpt-4o):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = CUSTOM_PROVIDERS.AZURE;
+
+			// Check if Azure environment variables exist
+			if (
+				!process.env.AZURE_OPENAI_API_KEY ||
+				!process.env.AZURE_OPENAI_ENDPOINT
+			) {
+				console.error(
+					chalk.red(
+						'Error: AZURE_OPENAI_API_KEY and/or AZURE_OPENAI_ENDPOINT environment variables are missing. Please set them before using custom Azure models.'
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Azure OpenAI model "${modelIdToSet}" will be used. No validation performed.`
+				)
+			);
+		} else if (selectedValue === '__CUSTOM_VERTEX__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Vertex AI Model ID for the ${role} role (e.g., gemini-1.5-pro-002):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true; // Continue setup, but don't set this role
+			}
+			modelIdToSet = customId;
+			providerHint = CUSTOM_PROVIDERS.VERTEX;
+
+			// Check if Google/Vertex environment variables exist
+			if (
+				!process.env.GOOGLE_API_KEY &&
+				!process.env.GOOGLE_APPLICATION_CREDENTIALS
+			) {
+				console.error(
+					chalk.red(
+						'Error: Either GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS environment variable is required. Please set one before using custom Vertex models.'
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
+
+			console.log(
+				chalk.blue(
+					`Custom Vertex AI model "${modelIdToSet}" will be used. No validation performed.`
 				)
 			);
 		} else if (
@@ -3211,17 +3335,40 @@ ${result.result}
 		.option('-d, --description <description>', 'Project description')
 		.option('-v, --version <version>', 'Project version', '0.1.0') // Set default here
 		.option('-a, --author <author>', 'Author name')
+		.option(
+			'-r, --rules <rules...>',
+			'List of rules to add (roo, windsurf, cursor, ...). Accepts comma or space separated values.'
+		)
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
 		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
+		.option('--no-aliases', 'Skip shell aliases (tm, taskmaster)')
+		.option('--git', 'Initialize Git repository')
+		.option('--no-git', 'Skip Git repository initialization')
+		.option('--git-tasks', 'Store tasks in Git')
+		.option('--no-git-tasks', 'No Git storage of tasks')
 		.action(async (cmdOptions) => {
 			// cmdOptions contains parsed arguments
+			// Parse rules: accept space or comma separated, default to all available rules
+			let selectedProfiles = RULE_PROFILES;
+			let rulesExplicitlyProvided = false;
+
+			if (cmdOptions.rules && Array.isArray(cmdOptions.rules)) {
+				const userSpecifiedProfiles = cmdOptions.rules
+					.flatMap((r) => r.split(','))
+					.map((r) => r.trim())
+					.filter(Boolean);
+				// Only override defaults if user specified valid rules
+				if (userSpecifiedProfiles.length > 0) {
+					selectedProfiles = userSpecifiedProfiles;
+					rulesExplicitlyProvided = true;
+				}
+			}
+
+			cmdOptions.rules = selectedProfiles;
+			cmdOptions.rulesExplicitlyProvided = rulesExplicitlyProvided;
+
 			try {
-				console.log('DEBUG: Running init command action in commands.js');
-				console.log(
-					'DEBUG: Options received by action:',
-					JSON.stringify(cmdOptions)
-				);
 				// Directly call the initializeProject function, passing the parsed options
 				await initializeProject(cmdOptions);
 				// initializeProject handles its own flow, including potential process.exit()
@@ -3262,6 +3409,18 @@ ${result.result}
 			'--bedrock',
 			'Allow setting a custom Bedrock model ID (use with --set-*) '
 		)
+		.option(
+			'--claude-code',
+			'Allow setting a Claude Code model ID (use with --set-*)'
+		)
+		.option(
+			'--azure',
+			'Allow setting a custom Azure OpenAI model ID (use with --set-*) '
+		)
+		.option(
+			'--vertex',
+			'Allow setting a custom Vertex AI model ID (use with --set-*) '
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3273,6 +3432,9 @@ Examples:
   $ task-master models --set-main my-custom-model --ollama  # Set custom Ollama model for main role
   $ task-master models --set-main anthropic.claude-3-sonnet-20240229-v1:0 --bedrock # Set custom Bedrock model for main role
   $ task-master models --set-main some/other-model --openrouter # Set custom OpenRouter model for main role
+  $ task-master models --set-main sonnet --claude-code           # Set Claude Code model for main role
+  $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
+  $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3285,12 +3447,13 @@ Examples:
 			const providerFlags = [
 				options.openrouter,
 				options.ollama,
-				options.bedrock
+				options.bedrock,
+				options.claudeCode
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3332,7 +3495,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3354,7 +3519,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3378,7 +3545,9 @@ Examples:
 								? 'ollama'
 								: options.bedrock
 									? 'bedrock'
-									: undefined
+									: options.claudeCode
+										? 'claude-code'
+										: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3615,6 +3784,277 @@ Examples:
 					console.error(chalk.red(`Error: ${error.message}`));
 					process.exit(1);
 				}
+			}
+		});
+
+	// Add/remove profile rules command
+	programInstance
+		.command('rules [action] [profiles...]')
+		.description(
+			`Add or remove rules for one or more profiles. Valid actions: ${Object.values(RULES_ACTIONS).join(', ')} (e.g., task-master rules ${RULES_ACTIONS.ADD} windsurf roo)`
+		)
+		.option(
+			'-f, --force',
+			'Skip confirmation prompt when removing rules (dangerous)'
+		)
+		.option(
+			`--${RULES_SETUP_ACTION}`,
+			'Run interactive setup to select rule profiles to add'
+		)
+		.addHelpText(
+			'after',
+			`
+		Examples:
+		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add Windsurf and Roo rule sets
+		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set
+		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
+		)
+		.action(async (action, profiles, options) => {
+			const projectDir = process.cwd();
+
+			/**
+			 * 'task-master rules --setup' action:
+			 *
+			 * Launches an interactive prompt to select which rule profiles to add to the current project.
+			 * This does NOT perform project initialization or ask about shell aliases—only rules selection.
+			 *
+			 * Example usage:
+			 *   $ task-master rules --setup
+			 *
+			 * Useful for adding rules after project creation.
+			 *
+			 * The list of profiles is always up-to-date with the available profiles.
+			 */
+			if (options[RULES_SETUP_ACTION]) {
+				// Run interactive rules setup ONLY (no project init)
+				const selectedRuleProfiles = await runInteractiveProfilesSetup();
+
+				if (!selectedRuleProfiles || selectedRuleProfiles.length === 0) {
+					console.log(chalk.yellow('No profiles selected. Exiting.'));
+					return;
+				}
+
+				console.log(
+					chalk.blue(
+						`Installing ${selectedRuleProfiles.length} selected profile(s)...`
+					)
+				);
+
+				for (let i = 0; i < selectedRuleProfiles.length; i++) {
+					const profile = selectedRuleProfiles[i];
+					console.log(
+						chalk.blue(
+							`Processing profile ${i + 1}/${selectedRuleProfiles.length}: ${profile}...`
+						)
+					);
+
+					if (!isValidProfile(profile)) {
+						console.warn(
+							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
+						);
+						continue;
+					}
+					const profileConfig = getRulesProfile(profile);
+
+					const addResult = convertAllRulesToProfileRules(
+						projectDir,
+						profileConfig
+					);
+
+					console.log(chalk.green(generateProfileSummary(profile, addResult)));
+				}
+
+				console.log(
+					chalk.green(
+						`\nCompleted installation of all ${selectedRuleProfiles.length} profile(s).`
+					)
+				);
+				return;
+			}
+
+			// Validate action for non-setup mode
+			if (!action || !isValidRulesAction(action)) {
+				console.error(
+					chalk.red(
+						`Error: Invalid or missing action '${action || 'none'}'. Valid actions are: ${Object.values(RULES_ACTIONS).join(', ')}`
+					)
+				);
+				console.error(
+					chalk.yellow(
+						`For interactive setup, use: task-master rules --${RULES_SETUP_ACTION}`
+					)
+				);
+				process.exit(1);
+			}
+
+			if (!profiles || profiles.length === 0) {
+				console.error(
+					'Please specify at least one rule profile (e.g., windsurf, roo).'
+				);
+				process.exit(1);
+			}
+
+			// Support both space- and comma-separated profile lists
+			const expandedProfiles = profiles
+				.flatMap((b) => b.split(',').map((s) => s.trim()))
+				.filter(Boolean);
+
+			if (action === RULES_ACTIONS.REMOVE) {
+				let confirmed = true;
+				if (!options.force) {
+					// Check if this removal would leave no profiles remaining
+					if (wouldRemovalLeaveNoProfiles(projectDir, expandedProfiles)) {
+						const installedProfiles = getInstalledProfiles(projectDir);
+						confirmed = await confirmRemoveAllRemainingProfiles(
+							expandedProfiles,
+							installedProfiles
+						);
+					} else {
+						confirmed = await confirmProfilesRemove(expandedProfiles);
+					}
+				}
+				if (!confirmed) {
+					console.log(chalk.yellow('Aborted: No rules were removed.'));
+					return;
+				}
+			}
+
+			const removalResults = [];
+			const addResults = [];
+
+			for (const profile of expandedProfiles) {
+				if (!isValidProfile(profile)) {
+					console.warn(
+						`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
+					);
+					continue;
+				}
+				const profileConfig = getRulesProfile(profile);
+
+				if (action === RULES_ACTIONS.ADD) {
+					console.log(chalk.blue(`Adding rules for profile: ${profile}...`));
+					const addResult = convertAllRulesToProfileRules(
+						projectDir,
+						profileConfig
+					);
+					if (typeof profileConfig.onAddRulesProfile === 'function') {
+						const assetsDir = path.join(process.cwd(), 'assets');
+						profileConfig.onAddRulesProfile(projectDir, assetsDir);
+					}
+					console.log(
+						chalk.blue(`Completed adding rules for profile: ${profile}`)
+					);
+
+					// Store result with profile name for summary
+					addResults.push({
+						profileName: profile,
+						success: addResult.success,
+						failed: addResult.failed
+					});
+
+					console.log(chalk.green(generateProfileSummary(profile, addResult)));
+				} else if (action === RULES_ACTIONS.REMOVE) {
+					console.log(chalk.blue(`Removing rules for profile: ${profile}...`));
+					const result = removeProfileRules(projectDir, profileConfig);
+					removalResults.push(result);
+					console.log(
+						chalk.green(generateProfileRemovalSummary(profile, result))
+					);
+				} else {
+					console.error(
+						`Unknown action. Use "${RULES_ACTIONS.ADD}" or "${RULES_ACTIONS.REMOVE}".`
+					);
+					process.exit(1);
+				}
+			}
+
+			// Print summary for additions
+			if (action === RULES_ACTIONS.ADD && addResults.length > 0) {
+				const {
+					allSuccessfulProfiles,
+					totalSuccess,
+					totalFailed,
+					simpleProfiles
+				} = categorizeProfileResults(addResults);
+
+				if (allSuccessfulProfiles.length > 0) {
+					console.log(
+						chalk.green(
+							`\nSuccessfully added rules for: ${allSuccessfulProfiles.join(', ')}`
+						)
+					);
+
+					// Create a more descriptive summary
+					if (totalSuccess > 0 && simpleProfiles.length > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
+							)
+						);
+					} else if (totalSuccess > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
+							)
+						);
+					} else if (simpleProfiles.length > 0) {
+						console.log(
+							chalk.green(
+								`Total: ${simpleProfiles.length} integration guide(s) copied.`
+							)
+						);
+					}
+				}
+			}
+
+			// Print summary for removals
+			if (action === RULES_ACTIONS.REMOVE && removalResults.length > 0) {
+				const {
+					successfulRemovals,
+					skippedRemovals,
+					failedRemovals,
+					removalsWithNotices
+				} = categorizeRemovalResults(removalResults);
+
+				if (successfulRemovals.length > 0) {
+					console.log(
+						chalk.green(
+							`\nSuccessfully removed profiles for: ${successfulRemovals.join(', ')}`
+						)
+					);
+				}
+				if (skippedRemovals.length > 0) {
+					console.log(
+						chalk.yellow(
+							`Skipped (default or protected): ${skippedRemovals.join(', ')}`
+						)
+					);
+				}
+				if (failedRemovals.length > 0) {
+					console.log(chalk.red('\nErrors occurred:'));
+					failedRemovals.forEach((r) => {
+						console.log(chalk.red(`  ${r.profileName}: ${r.error}`));
+					});
+				}
+				// Display notices about preserved files/configurations
+				if (removalsWithNotices.length > 0) {
+					console.log(chalk.cyan('\nNotices:'));
+					removalsWithNotices.forEach((r) => {
+						console.log(chalk.cyan(`  ${r.profileName}: ${r.notice}`));
+					});
+				}
+
+				// Overall summary
+				const totalProcessed = removalResults.length;
+				const totalSuccessful = successfulRemovals.length;
+				const totalSkipped = skippedRemovals.length;
+				const totalFailed = failedRemovals.length;
+
+				console.log(
+					chalk.blue(
+						`\nTotal: ${totalProcessed} profile(s) processed - ${totalSuccessful} removed, ${totalSkipped} skipped, ${totalFailed} failed.`
+					)
+				);
 			}
 		});
 

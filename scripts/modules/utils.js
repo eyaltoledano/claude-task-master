@@ -73,7 +73,7 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
  */
 function findProjectRoot(
 	startDir = process.cwd(),
-	markers = ['package.json', '.git', LEGACY_CONFIG_FILE]
+	markers = ['package.json', 'pyproject.toml', '.git', LEGACY_CONFIG_FILE]
 ) {
 	let currentPath = path.resolve(startDir);
 	const rootPath = path.parse(currentPath).root;

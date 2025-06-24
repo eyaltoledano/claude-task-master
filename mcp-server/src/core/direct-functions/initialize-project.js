@@ -5,11 +5,13 @@ import {
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
 import os from 'os'; // Import os module for home directory check
+import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
+import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transformer.js';
 
 /**
  * Direct function wrapper for initializing a project.
  * Derives target directory from session, sets CWD, and calls core init logic.
- * @param {object} args - Arguments containing initialization options (addAliases, skipInstall, yes, projectRoot)
+ * @param {object} args - Arguments containing initialization options (addAliases, initGit, storeTasksInGit, skipInstall, yes, projectRoot, rules)
  * @param {object} log - The FastMCP logger instance.
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
@@ -63,10 +65,24 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		// Construct options ONLY from the relevant flags in args
 		// The core initializeProject operates in the current CWD, which we just set
 		const options = {
-			aliases: args.addAliases,
+			addAliases: args.addAliases,
+			initGit: args.initGit,
+			storeTasksInGit: args.storeTasksInGit,
 			skipInstall: args.skipInstall,
 			yes: true // Force yes mode
 		};
+
+		// Handle rules option with MCP-specific defaults
+		if (Array.isArray(args.rules) && args.rules.length > 0) {
+			options.rules = args.rules;
+			options.rulesExplicitlyProvided = true;
+			log.info(`Including rules: ${args.rules.join(', ')}`);
+		} else {
+			// For MCP initialization, default to Cursor profile only
+			options.rules = ['cursor'];
+			options.rulesExplicitlyProvided = true;
+			log.info(`No rule profiles specified, defaulting to: Cursor`);
+		}
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
 		const result = await initializeProject(options); // Call core logic

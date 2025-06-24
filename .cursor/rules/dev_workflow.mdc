@@ -33,6 +33,7 @@ All your standard command executions should operate on the user's current task c
 For new projects or when users are getting started, operate within the `master` tag context:
 
 -   Start new projects by running `initialize_project` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input='<prd-file.txt>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to generate initial tasks.json with tagged structure
+-   Configure rule sets during initialization with `--rules` flag (e.g., `task-master init --rules cursor,windsurf`) or manage them later with `task-master rules add/remove` commands  
 -   Begin coding sessions with `get_tasks` / `task-master list` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to see current tasks, status, and IDs
 -   Determine the next task to work on using `next_task` / `task-master next` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
 -   Analyze task complexity with `analyze_project_complexity` / `task-master analyze-complexity --research` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) before breaking down tasks
@@ -293,6 +294,17 @@ Taskmaster configuration is managed through two main mechanisms:
 **Important:** Non-API key settings (like model selections, `MAX_TOKENS`, `TASKMASTER_LOG_LEVEL`) are **no longer configured via environment variables**. Use the `task-master models` command (or `--setup` for interactive configuration) or the `models` MCP tool.
 **If AI commands FAIL in MCP** verify that the API key for the selected provider is present in the `env` section of `.cursor/mcp.json`.
 **If AI commands FAIL in CLI** verify that the API key for the selected provider is present in the `.env` file in the root of the project.
+
+## Rules Management
+
+Taskmaster supports multiple AI coding assistant rule sets that can be configured during project initialization or managed afterward:
+
+- **Available Profiles**: Claude Code, Cline, Codex, Cursor, Roo Code, Trae, Windsurf (claude, cline, codex, cursor, roo, trae, windsurf)
+- **During Initialization**: Use `task-master init --rules cursor,windsurf` to specify which rule sets to include
+- **After Initialization**: Use `task-master rules add <profiles>` or `task-master rules remove <profiles>` to manage rule sets
+- **Interactive Setup**: Use `task-master rules setup` to launch an interactive prompt for selecting rule profiles
+- **Default Behavior**: If no `--rules` flag is specified during initialization, all available rule profiles are included
+- **Rule Structure**: Each profile creates its own directory (e.g., `.cursor/rules`, `.roo/rules`) with appropriate configuration files
 
 ## Determining the Next Task
 

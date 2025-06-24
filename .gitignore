@@ -78,6 +78,12 @@ dev-debug.log
 # NPMRC
 .npmrc
 
-.github/chatmodes
-.github/instructions
-.github/memory-bank
+# Added by Task Master AI
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

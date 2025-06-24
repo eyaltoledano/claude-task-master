@@ -123,7 +123,7 @@ export class ContextGatherer {
 
 		// Dependency Graph Analysis
 		if (dependencyTasks.length > 0) {
-			const dependencyResults = this._buildDependencyContext(dependencyTasks);
+			const dependencyResults = this._buildDependencyGraphs(dependencyTasks);
 			dependencyResults.allRelatedTaskIds.forEach((id) =>
 				finalTaskIds.add(String(id))
 			);
