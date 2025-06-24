@@ -29,6 +29,15 @@ import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
+/**
+ * Helper function to detect if expandTask is being called from expandAllTasks
+ * @returns {boolean} True if called from expand-all-tasks
+ */
+function isCalledFromExpandAll() {
+	const stack = new Error().stack;
+	return stack.includes('expandAllTasks') || stack.includes('expand-all-tasks');
+}
+
 // --- Zod Schemas (Keep from previous step) ---
 const subtaskSchema = z
 	.object({
@@ -430,8 +439,15 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: contextProjectRoot,
+		tag,
+		parentTracker
+	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+	const isChildExpansion = isCalledFromExpandAll();
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
@@ -627,9 +643,9 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 		const shouldUseStreaming =
 			typeof reportProgress === 'function' || outputFormat === 'text';
 
-		// Initialize progress tracker for CLI mode only (not MCP)
+		// Initialize progress tracker for CLI mode only (not MCP, and not child expansion)
 		let progressTracker = null;
-		if (outputFormat === 'text' && !isMCP) {
+		if (outputFormat === 'text' && !isMCP && !isChildExpansion) {
 			progressTracker = createExpandTracker({
 				expandType: 'single',
 				numTasks: finalSubtaskCount, // Track number of subtasks being generated
@@ -655,9 +671,16 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 		}
 
 		// Estimate input tokens
-		const estimatedInputTokens = Math.ceil(
-			(systemPrompt.length + promptContent.length) / 4
+		// Our prompts contain a mix of prose and JSON schemas/examples
+		// Empirically, we see ~3-4 chars per token for this type of content
+		const totalPromptLength = systemPrompt.length + promptContent.length;
+		const estimatedInputTokens = Math.ceil(totalPromptLength / 3.5);
+
+		// Debug logging to check our estimates
+		logger.debug(
+			`Prompt lengths - System: ${systemPrompt.length}, User: ${promptContent.length}, Total: ${totalPromptLength}`
 		);
+		logger.debug(`Estimated input tokens: ${estimatedInputTokens}`);
 
 		// Report initial progress for MCP
 		if (reportProgress) {
@@ -710,12 +733,15 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 						// Track subtask generation for time estimation
 						progressTracker.updateSubtaskGeneration(currentCount);
 
-						// Update tokens display
+						// Update tokens with estimates during streaming (will be replaced with actuals later)
 						if (estimatedTokens) {
-							progressTracker.updateTokens(
-								estimatedInputTokens,
-								estimatedTokens
-							);
+							// estimatedTokens from parseStream is ONLY the output tokens (from accumulated response)
+							// Use our pre-calculated input estimate
+							const inputEstimate = estimatedInputTokens; // From our calculation above
+							const outputEstimate = estimatedTokens; // This is already just output tokens
+
+							// Show estimates with a ~ prefix to indicate they're not final
+							progressTracker.updateTokens(inputEstimate, outputEstimate);
 						}
 
 						// Add the subtask to the table display
@@ -724,6 +750,15 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 							subtaskId,
 							subtask.title || `Subtask ${currentCount}`
 						);
+					}
+
+					// Update parent tracker if this is a child expansion
+					if (parentTracker && isChildExpansion) {
+						// Don't update token counts during streaming - wait for final telemetry
+						// The estimated tokens during streaming are not accurate
+
+						// Update subtask progress in parent
+						parentTracker.updateCurrentTaskSubtaskProgress(currentCount);
 					}
 
 					// MCP progress reporting (following the pattern from parse-prd and analyze-complexity)
@@ -764,7 +799,7 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 					onError: (error) => {
 						logger.debug(`JSON parsing error: ${error.message}`);
 					},
-					estimateTokens: (text) => Math.ceil(text.length / 4),
+					estimateTokens: (text) => Math.ceil(text.length / 3.5), // Match our input estimation ratio
 					expectedTotal: finalSubtaskCount,
 					fallbackItemExtractor
 				});
@@ -909,6 +944,11 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 			progressTracker.addTelemetryData(aiServiceResponse.telemetryData);
 		}
 
+		// Update parent tracker with telemetry data if this is a child expansion
+		if (parentTracker && isChildExpansion && aiServiceResponse?.telemetryData) {
+			parentTracker.addTelemetryData(aiServiceResponse.telemetryData);
+		}
+
 		// Stop progress tracker for CLI mode
 		if (progressTracker) {
 			// For single task expansion, manually update the final count
@@ -990,11 +1030,12 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 		writeJSON(tasksPath, data, projectRoot, tag);
 		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-		// Display AI Usage Summary for CLI
+		// Display AI Usage Summary for CLI (skip if child expansion - parent will handle it)
 		if (
 			outputFormat === 'text' &&
 			aiServiceResponse &&
-			aiServiceResponse.telemetryData
+			aiServiceResponse.telemetryData &&
+			!isChildExpansion
 		) {
 			displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
 		}

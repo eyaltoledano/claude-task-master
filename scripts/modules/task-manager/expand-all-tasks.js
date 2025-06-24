@@ -5,10 +5,14 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 import expandTask from './expand-task.js';
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
 import { aggregateTelemetry } from '../utils.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import { createExpandTracker } from '../../../src/progress/expand-tracker.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.
@@ -70,6 +74,7 @@ async function expandAllTasks(
 	let failedCount = 0;
 	let tasksToExpandCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
+	let parentTracker = null;
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
@@ -78,7 +83,7 @@ async function expandAllTasks(
 	}
 
 	try {
-		logger.info(`Reading tasks from ${tasksPath}`);
+		logger.debug(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot, contextTag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
@@ -91,7 +96,7 @@ async function expandAllTasks(
 				(!task.subtasks || task.subtasks.length === 0 || force) // Check subtasks/force here
 		);
 		tasksToExpandCount = tasksToExpand.length; // Get the count from the filtered array
-		logger.info(`Found ${tasksToExpandCount} tasks eligible for expansion.`);
+		logger.debug(`Found ${tasksToExpandCount} tasks eligible for expansion.`);
 		// --- End Restored Filtering Logic ---
 
 		if (loadingIndicator) {
@@ -113,12 +118,51 @@ async function expandAllTasks(
 			// --- End Fix ---
 		}
 
+		// Load complexity report for task scores
+		let complexityReport = null;
+		try {
+			const complexityReportPath = path.join(
+				projectRoot,
+				COMPLEXITY_REPORT_FILE
+			);
+			if (fs.existsSync(complexityReportPath)) {
+				complexityReport = readJSON(complexityReportPath);
+				logger.debug('Loaded complexity report for task scores');
+			}
+		} catch (error) {
+			logger.debug(`Could not load complexity report: ${error.message}`);
+		}
+
+		// Create parent tracker for CLI mode
+		if (!isMCPCall && outputFormat === 'text') {
+			parentTracker = createExpandTracker({
+				expandType: 'all',
+				numTasks: tasksToExpandCount
+			});
+			parentTracker.start();
+		}
+
 		// Iterate over the already filtered tasks
 		for (const task of tasksToExpand) {
-			// Start indicator for individual task expansion in CLI mode
-			let taskIndicator = null;
-			if (!isMCPCall && outputFormat === 'text') {
-				taskIndicator = startLoadingIndicator(`Expanding task ${task.id}...`);
+			// Get task analysis and complexity score
+			const taskAnalysis = complexityReport?.complexityAnalysis?.find(
+				(a) => a.taskId === task.id
+			);
+			const complexityScore = taskAnalysis?.complexityScore || null;
+
+			// Update parent tracker with current task and expected subtask count
+			if (parentTracker) {
+				// Determine expected subtask count (same logic as in expandTask)
+				let expectedSubtasks = 0;
+				const explicitNumSubtasks = parseInt(numSubtasks, 10);
+				if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+					expectedSubtasks = explicitNumSubtasks;
+				} else if (taskAnalysis?.recommendedSubtasks) {
+					expectedSubtasks = parseInt(taskAnalysis.recommendedSubtasks, 10);
+				} else {
+					expectedSubtasks = getDefaultSubtasks(session); // Use config default
+				}
+				parentTracker.setCurrentTask(task.id, task.title, expectedSubtasks);
 			}
 
 			try {
@@ -129,7 +173,12 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot, tag: data.tag || contextTag }, // Pass the whole context object with projectRoot and resolved tag
+					{
+						...context,
+						projectRoot,
+						tag: data.tag || contextTag,
+						parentTracker
+					}, // Pass parent tracker in context
 					force
 				);
 				expandedCount++;
@@ -139,26 +188,39 @@ async function expandAllTasks(
 					allTelemetryData.push(result.telemetryData);
 				}
 
-				if (taskIndicator) {
-					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
-				}
-				logger.info(`Successfully expanded task ${task.id}.`);
-			} catch (error) {
-				failedCount++;
-				if (taskIndicator) {
-					stopLoadingIndicator(
-						taskIndicator,
-						`Failed to expand task ${task.id}.`,
-						false
+				// Add expansion line to parent tracker
+				if (parentTracker) {
+					parentTracker.addExpansionLine(
+						task.id,
+						task.title,
+						result.task?.subtasks?.length || 0,
+						'success',
+						result.telemetryData,
+						complexityScore
 					);
 				}
+
+				logger.debug(`Successfully expanded task ${task.id}.`);
+			} catch (error) {
+				failedCount++;
+
+				// Add error to parent tracker
+				if (parentTracker) {
+					parentTracker.addError(task.id, error.message);
+				}
+
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
 				// Continue to the next task
 			}
 		}
 
+		// Stop parent tracker
+		if (parentTracker) {
+			await parentTracker.stop();
+		}
+
 		// --- AGGREGATION AND DISPLAY ---
-		logger.info(
+		logger.debug(
 			`Expansion complete: ${expandedCount} expanded, ${failedCount} failed.`
 		);
 
@@ -168,7 +230,8 @@ async function expandAllTasks(
 			'expand-all-tasks'
 		);
 
-		if (outputFormat === 'text') {
+		// Only show summary box if not using parent tracker (to avoid duplication)
+		if (outputFormat === 'text' && !parentTracker) {
 			const summaryContent =
 				`${chalk.white.bold('Expansion Summary:')}\n\n` +
 				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
@@ -187,6 +250,7 @@ async function expandAllTasks(
 			);
 		}
 
+		// Display AI usage summary after parent tracker stops
 		if (outputFormat === 'text' && aggregatedTelemetryData) {
 			displayAiUsageSummary(aggregatedTelemetryData, 'cli');
 		}
@@ -203,6 +267,12 @@ async function expandAllTasks(
 	} catch (error) {
 		if (loadingIndicator)
 			stopLoadingIndicator(loadingIndicator, 'Error.', false);
+
+		// Stop parent tracker on error
+		if (parentTracker) {
+			await parentTracker.stop();
+		}
+
 		logger.error(`Error during expand all operation: ${error.message}`);
 		if (!isMCPCall && getDebugFlag(session)) {
 			console.error(error); // Log full stack in debug CLI mode

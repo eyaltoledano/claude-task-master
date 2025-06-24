@@ -26,11 +26,14 @@ export class ExpandTracker {
 		this.timeTokensBar = null;
 		this.progressBar = null;
 		this.currentTaskBar = null;
+		this.subtaskProgressBar = null; // New: Progress bar for current task's subtasks
 		this._timerInterval = null;
 
 		// Current task tracking
 		this.currentTaskId = null;
 		this.currentTaskTitle = null;
+		this.currentTaskSubtaskCount = 0;
+		this.currentTaskSubtaskProgress = 0;
 
 		// Track expansion results for summary
 		this.expansionResults = [];
@@ -40,6 +43,7 @@ export class ExpandTracker {
 		this.isStarted = false;
 		this.isFinished = false;
 		this.headerShown = false;
+		this.isEstimate = true; // Start with estimated tokens
 
 		// Time tracking for stable estimates
 		this.lastExpansionTime = null;
@@ -67,7 +71,7 @@ export class ExpandTracker {
 			0,
 			{},
 			{
-				format: `{clock} {elapsed} | Subtasks: {subtasks} | Tokens (I/O): {in}/{out} | Est: {remaining}`,
+				format: `{clock} {elapsed} | Subtasks: {subtasks} | {tokensLabel}: {in}/{out} | {remaining}`,
 				barsize: 1,
 				hideCursor: true,
 				clearOnComplete: false
@@ -127,6 +131,18 @@ export class ExpandTracker {
 				}
 			);
 			this._updateCurrentTaskBar();
+
+			// Subtask progress bar for current task
+			this.subtaskProgressBar = this.multibar.create(
+				1,
+				0,
+				{},
+				{
+					format: 'Subtask {subtasks} |{bar}| {percentage}%',
+					barCompleteChar: '\u2588',
+					barIncompleteChar: '\u2591'
+				}
+			);
 		}
 
 		this._updateTimeTokensBar();
@@ -136,15 +152,48 @@ export class ExpandTracker {
 		this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
 	}
 
-	updateTokens(tokensIn, tokensOut) {
+	updateTokens(tokensIn, tokensOut, isEstimate = true) {
 		this.tokensIn = tokensIn || 0;
 		this.tokensOut = tokensOut || 0;
+		this.isEstimate = isEstimate;
 		this._updateTimeTokensBar();
 	}
 
-	setCurrentTask(taskId, taskTitle) {
+	updateCurrentTaskSubtaskProgress(subtaskNumber) {
+		// Update subtask progress for expand-all mode
+		if (this.expandType === 'all' && this.subtaskProgressBar) {
+			this.currentTaskSubtaskProgress = subtaskNumber;
+			this.subtaskProgressBar.update(subtaskNumber, {
+				subtasks: `${subtaskNumber}/${this.currentTaskSubtaskCount}`
+			});
+
+			// Update the main progress bar to include partial progress of current task
+			if (this.progressBar && this.currentTaskSubtaskCount > 0) {
+				// Calculate fractional progress: completed tasks + (current subtask progress / total subtasks for current task)
+				const fractionalProgress =
+					this.completedExpansions +
+					subtaskNumber / this.currentTaskSubtaskCount;
+
+				// Update progress bar with fractional value
+				this.progressBar.update(fractionalProgress);
+
+				// Still show task numbers as before (e.g., "Task 1/2")
+				const currentTaskNumber = this.completedExpansions + 1;
+				this.progressBar.update(fractionalProgress, {
+					tasks: `${currentTaskNumber}/${this.numTasks}`
+				});
+			}
+
+			// Update timing estimates based on partial progress
+			this._updatePartialTimingEstimate();
+		}
+	}
+
+	setCurrentTask(taskId, taskTitle, expectedSubtasks = 0) {
 		this.currentTaskId = taskId;
 		this.currentTaskTitle = taskTitle;
+		this.currentTaskSubtaskCount = expectedSubtasks;
+		this.currentTaskSubtaskProgress = 0;
 		this._updateCurrentTaskBar();
 
 		// Update progress bar to show current task being processed (1-based indexing)
@@ -153,6 +202,14 @@ export class ExpandTracker {
 		if (currentTaskNumber <= this.numTasks) {
 			this.progressBar.update(this.completedExpansions, {
 				tasks: `${currentTaskNumber}/${this.numTasks}`
+			});
+		}
+
+		// Reset subtask progress bar
+		if (this.subtaskProgressBar && expectedSubtasks > 0) {
+			this.subtaskProgressBar.setTotal(expectedSubtasks);
+			this.subtaskProgressBar.update(0, {
+				subtasks: `0/${expectedSubtasks}`
 			});
 		}
 	}
@@ -230,7 +287,11 @@ export class ExpandTracker {
 		const now = Date.now();
 		if (this.completedExpansions > 0) {
 			const elapsed = (now - this.startTime) / 1000;
-			const currentAvgTimePerExpansion = elapsed / this.completedExpansions;
+			// Include partial progress in the average calculation
+			const effectiveCompletions = this.completedExpansions;
+			// Don't include partial progress from the task that just completed
+			// since it's now a full completion
+			const currentAvgTimePerExpansion = elapsed / effectiveCompletions;
 
 			// Use a more realistic average - don't just keep the fastest time
 			// Use exponential moving average to balance recent performance with historical data
@@ -251,6 +312,7 @@ export class ExpandTracker {
 		// Update progress bar - show current task number correctly
 		// Show the task that was just completed (1-based indexing)
 		const displayTaskNumber = this.completedExpansions;
+		// Update to exact completion value (no fractional part when task completes)
 		this.progressBar.update(this.completedExpansions, {
 			tasks: `${displayTaskNumber}/${this.numTasks}`
 		});
@@ -361,13 +423,17 @@ export class ExpandTracker {
 				? this.generatedSubtasks
 				: this.subtasksCreated;
 
+		// Show ~ prefix for estimated tokens
+		const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
+
 		this.timeTokensBar.update(1, {
 			clock: '⏱️',
 			elapsed,
 			subtasks: subtaskCount,
 			in: this.tokensIn,
 			out: this.tokensOut,
-			remaining
+			remaining,
+			tokensLabel
 		});
 	}
 
@@ -404,11 +470,11 @@ export class ExpandTracker {
 		// For single task expansion, use subtask generation data
 		if (this.expandType === 'single') {
 			if (this.generatedSubtasks === 0 || !this.avgTimePerSubtask) {
-				return '~calculating...';
+				return 'Est: ~calculating...';
 			}
 
 			const remainingSubtasks = this.numTasks - this.generatedSubtasks;
-			if (remainingSubtasks <= 0) return '~0s';
+			if (remainingSubtasks <= 0) return 'Complete!';
 
 			const now = Date.now();
 			const estimatedSeconds = Math.ceil(
@@ -426,7 +492,7 @@ export class ExpandTracker {
 				);
 
 				if (countdownSeconds === 0) {
-					return '~0s';
+					return 'Complete!';
 				}
 
 				const timeSinceLastEstimate = now - this.lastEstimateTime;
@@ -438,31 +504,39 @@ export class ExpandTracker {
 					!significantlyLower &&
 					countdownSeconds > 0
 				) {
-					return `~${this._formatDuration(countdownSeconds)}`;
+					return `Est: ~${this._formatDuration(countdownSeconds)}`;
 				}
 
 				const newEstimate = Math.min(estimatedSeconds, countdownSeconds);
 				this.lastEstimateTime = now;
 				this.lastEstimateSeconds = newEstimate;
-				return `~${this._formatDuration(newEstimate)}`;
+				return `Est: ~${this._formatDuration(newEstimate)}`;
 			}
 
 			this.lastEstimateTime = now;
 			this.lastEstimateSeconds = estimatedSeconds;
-			return `~${this._formatDuration(estimatedSeconds)}`;
+			return `Est: ~${this._formatDuration(estimatedSeconds)}`;
 		}
 
 		// For expand-all, use task expansion data
 		if (this.completedExpansions === 0 || !this.bestAvgTimePerExpansion) {
-			return '~calculating...';
+			return 'Est: ~calculating...';
 		}
 
-		const remainingTasks = this.numTasks - this.completedExpansions;
-		if (remainingTasks <= 0) return '~0s';
+		// Calculate fractional progress including current task's subtasks
+		let fractionalProgress = this.completedExpansions;
+		if (this.currentTaskSubtaskCount > 0) {
+			fractionalProgress +=
+				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+		}
+
+		const remainingProgress = this.numTasks - fractionalProgress;
+		if (remainingProgress <= 0) return 'Complete!';
 
 		const now = Date.now();
+		// Use fractional remaining progress for more accurate estimation
 		const estimatedSeconds = Math.ceil(
-			remainingTasks * this.bestAvgTimePerExpansion
+			remainingProgress * this.bestAvgTimePerExpansion
 		);
 
 		// Stabilize the estimate to avoid rapid changes and prevent increases
@@ -479,7 +553,7 @@ export class ExpandTracker {
 
 			// STICKY ZERO: Once we reach 0, stay at 0 until task actually completes
 			if (countdownSeconds === 0) {
-				return '~0s';
+				return 'Complete!';
 			}
 
 			// Only update to a new estimate if:
@@ -496,7 +570,7 @@ export class ExpandTracker {
 				countdownSeconds > 0
 			) {
 				// Continue counting down from previous estimate
-				return `~${this._formatDuration(countdownSeconds)}`;
+				return `Est: ~${this._formatDuration(countdownSeconds)}`;
 			}
 
 			// Update estimate, but ensure it's never higher than the countdown would be
@@ -504,13 +578,13 @@ export class ExpandTracker {
 			const newEstimate = Math.min(estimatedSeconds, countdownSeconds);
 			this.lastEstimateTime = now;
 			this.lastEstimateSeconds = newEstimate;
-			return `~${this._formatDuration(newEstimate)}`;
+			return `Est: ~${this._formatDuration(newEstimate)}`;
 		}
 
 		// First time estimate or no previous estimate
 		this.lastEstimateTime = now;
 		this.lastEstimateSeconds = estimatedSeconds;
-		return `~${this._formatDuration(estimatedSeconds)}`;
+		return `Est: ~${this._formatDuration(estimatedSeconds)}`;
 	}
 
 	_formatDuration(seconds) {
@@ -525,6 +599,39 @@ export class ExpandTracker {
 		const hours = Math.floor(minutes / 60);
 		const remainingMinutes = minutes % 60;
 		return `${hours}h ${remainingMinutes}m`;
+	}
+
+	_updatePartialTimingEstimate() {
+		// Update timing estimates based on partial progress during task expansion
+		if (this.expandType !== 'all' || !this.startTime) return;
+
+		const now = Date.now();
+		const elapsed = (now - this.startTime) / 1000;
+
+		// Calculate fractional progress including current task
+		let fractionalProgress = this.completedExpansions;
+		if (this.currentTaskSubtaskCount > 0) {
+			fractionalProgress +=
+				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+		}
+
+		// Only update if we have meaningful progress
+		if (fractionalProgress > 0.1) {
+			const avgTimePerTask = elapsed / fractionalProgress;
+
+			// Update the best average with exponential moving average
+			// Weight recent performance more heavily for responsiveness
+			if (this.bestAvgTimePerExpansion === null) {
+				this.bestAvgTimePerExpansion = avgTimePerTask;
+			} else {
+				// Use 80/20 weighting for more responsive updates during active expansion
+				this.bestAvgTimePerExpansion =
+					0.8 * avgTimePerTask + 0.2 * this.bestAvgTimePerExpansion;
+			}
+		}
+
+		// Trigger time bar update
+		this._updateTimeTokensBar();
 	}
 
 	getElapsedTime() {
@@ -668,13 +775,15 @@ export class ExpandTracker {
 		if (this.expandType === 'single') {
 			// Update the time/tokens bar with current stage
 			if (this.timeTokensBar) {
+				const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
 				this.timeTokensBar.update(1, {
 					clock: '⏱️',
 					elapsed: this._formatElapsedTime(),
 					subtasks: this.subtasksCreated,
 					in: this.tokensIn,
 					out: this.tokensOut,
-					remaining: stage === 'completed' ? 'Done!' : `${stage}...`
+					remaining: stage === 'completed' ? 'Done!' : `${stage}...`,
+					tokensLabel
 				});
 			}
 		}
@@ -695,8 +804,17 @@ export class ExpandTracker {
 
 	addTelemetryData(telemetryData) {
 		if (telemetryData) {
-			this.tokensIn += telemetryData.inputTokens || 0;
-			this.tokensOut += telemetryData.outputTokens || 0;
+			// For single task expansion, set the values directly (first time)
+			// For expand-all, we accumulate
+			if (this.expandType === 'single' && this.isEstimate) {
+				// Replace estimates with actual values
+				this.tokensIn = telemetryData.inputTokens || 0;
+				this.tokensOut = telemetryData.outputTokens || 0;
+				this.isEstimate = false; // Mark as actual values
+			} else {
+				this.tokensIn += telemetryData.inputTokens || 0;
+				this.tokensOut += telemetryData.outputTokens || 0;
+			}
 			this._updateTimeTokensBar();
 		}
 	}
@@ -705,6 +823,7 @@ export class ExpandTracker {
 	updateOverallProgress(stage, message) {
 		// Update the time/tokens bar with overall progress
 		if (this.timeTokensBar) {
+			const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
 			this.timeTokensBar.update(1, {
 				clock: '⏱️',
 				elapsed: this._formatElapsedTime(),
@@ -712,7 +831,8 @@ export class ExpandTracker {
 				in: this.tokensIn,
 				out: this.tokensOut,
 				remaining:
-					stage === 'completed' ? 'Done!' : this._estimateRemainingTime()
+					stage === 'completed' ? 'Done!' : this._estimateRemainingTime(),
+				tokensLabel
 			});
 		}
 	}
