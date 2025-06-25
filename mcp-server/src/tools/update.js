@@ -43,11 +43,12 @@ export function registerUpdateTool(server) {
 				.optional()
 				.describe(
 					'The directory of the project. (Optional, usually from session)'
-				)
+				),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update';
-			const { from, prompt, research, file, projectRoot } = args;
+			const { from, prompt, research, file, projectRoot, tag } = args;
 
 			try {
 				log.info(
@@ -71,7 +72,8 @@ export function registerUpdateTool(server) {
 						from: from,
 						prompt: prompt,
 						research: research,
-						projectRoot: projectRoot
+						projectRoot: projectRoot,
+						tag: tag
 					},
 					log,
 					{ session }

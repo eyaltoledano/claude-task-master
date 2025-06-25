@@ -165,7 +165,11 @@ describe('updateTasks', () => {
 
 		// Assert
 		// 1. Read JSON called
-		expect(readJSON).toHaveBeenCalledWith(mockTasksPath, '/mock/path');
+		expect(readJSON).toHaveBeenCalledWith(
+			mockTasksPath,
+			'/mock/path',
+			'master'
+		);
 
 		// 2. AI Service called with correct args
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
@@ -183,7 +187,9 @@ describe('updateTasks', () => {
 						])
 					})
 				})
-			})
+			}),
+			'/mock/path',
+			'master'
 		);
 
 		// 4. Check return value
@@ -228,7 +234,11 @@ describe('updateTasks', () => {
 		);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(mockTasksPath, '/mock/path');
+		expect(readJSON).toHaveBeenCalledWith(
+			mockTasksPath,
+			'/mock/path',
+			'master'
+		);
 		expect(generateTextService).not.toHaveBeenCalled();
 		expect(writeJSON).not.toHaveBeenCalled();
 		expect(log).toHaveBeenCalledWith(
@@ -238,5 +248,114 @@ describe('updateTasks', () => {
 
 		// Should return early with no updates
 		expect(result).toBeUndefined();
+	});
+
+	test('should preserve all tags when updating tasks in tagged context', async () => {
+		// Arrange - Simple 2-tag structure to test tag corruption fix
+		const mockTasksPath = '/mock/path/tasks.json';
+		const mockFromId = 1;
+		const mockPrompt = 'Update master tag tasks';
+
+		const mockTaggedData = {
+			master: {
+				tasks: [
+					{
+						id: 1,
+						title: 'Master Task',
+						status: 'pending',
+						details: 'Old details'
+					},
+					{
+						id: 2,
+						title: 'Master Task 2',
+						status: 'done',
+						details: 'Done task'
+					}
+				],
+				metadata: {
+					created: '2024-01-01T00:00:00.000Z',
+					description: 'Master tag tasks'
+				}
+			},
+			'feature-branch': {
+				tasks: [
+					{
+						id: 1,
+						title: 'Feature Task',
+						status: 'pending',
+						details: 'Feature work'
+					}
+				],
+				metadata: {
+					created: '2024-01-02T00:00:00.000Z',
+					description: 'Feature branch tasks'
+				}
+			}
+		};
+
+		const mockUpdatedTasks = [
+			{
+				id: 1,
+				title: 'Updated Master Task',
+				status: 'pending',
+				details: 'Updated details',
+				description: 'Updated description',
+				dependencies: [],
+				priority: 'medium',
+				testStrategy: 'Test the updated functionality',
+				subtasks: []
+			}
+		];
+
+		// Configure mocks - readJSON returns resolved view for master tag
+		readJSON.mockReturnValue({
+			...mockTaggedData.master,
+			tag: 'master',
+			_rawTaggedData: mockTaggedData
+		});
+
+		generateTextService.mockResolvedValue({
+			mainResult: JSON.stringify(mockUpdatedTasks),
+			telemetryData: { commandName: 'update-tasks', totalCost: 0.05 }
+		});
+
+		// Act
+		const result = await updateTasks(
+			mockTasksPath,
+			mockFromId,
+			mockPrompt,
+			false, // research
+			{ projectRoot: '/mock/project/root', tag: 'master' },
+			'json'
+		);
+
+		// Assert - CRITICAL: Both tags must be preserved (this would fail before the fix)
+		expect(writeJSON).toHaveBeenCalledWith(
+			mockTasksPath,
+			expect.objectContaining({
+				_rawTaggedData: expect.objectContaining({
+					master: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({ id: 1, title: 'Updated Master Task' }),
+							expect.objectContaining({ id: 2, title: 'Master Task 2' }) // Unchanged done task
+						])
+					}),
+					// CRITICAL: This tag would be missing/corrupted if the bug existed
+					'feature-branch': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({ id: 1, title: 'Feature Task' })
+						]),
+						metadata: expect.objectContaining({
+							description: 'Feature branch tasks'
+						})
+					})
+				})
+			}),
+			'/mock/project/root',
+			'master'
+		);
+
+		expect(result.success).toBe(true);
+		expect(result.updatedTasks).toEqual(mockUpdatedTasks);
 	});
 });
