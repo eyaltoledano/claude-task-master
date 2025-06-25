@@ -9,6 +9,12 @@ export function CommandPalette() {
 
 	const baseCommands = [
 		{
+			name: 'Initialize Project',
+			command: '/init',
+			description: 'Initialize a new Task Master project',
+			key: 'i'
+		},
+		{
 			name: 'Parse PRD',
 			command: '/parse',
 			description: 'Parse PRD to generate tasks',
@@ -133,7 +139,7 @@ export function CommandPalette() {
 				{/* Header */}
 				<Box marginBottom={1} justifyContent="space-between">
 					<Text color={theme.accent} bold>
-						Help
+						Commands
 					</Text>
 					<Text color={theme.textDim}>esc</Text>
 				</Box>

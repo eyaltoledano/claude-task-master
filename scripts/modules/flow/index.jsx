@@ -21,7 +21,6 @@ import { StatusScreen } from './components/StatusScreen.jsx';
 import { ParsePRDScreen } from './components/ParsePRDScreen.jsx';
 import { AnalyzeComplexityScreen } from './components/AnalyzeComplexityScreen.jsx';
 import { SessionsScreen } from './components/SessionsScreen.jsx';
-import { HelpScreen } from './components/HelpScreen.jsx';
 import { Toast } from './components/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
 import { CommandPalette } from './components/CommandPalette.jsx';
@@ -29,20 +28,6 @@ import { MCPServerManager } from './components/MCPServerManager.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
-
-const ALL_COMMANDS = [
-	{ name: '/help', description: 'Show help screen' },
-	{ name: '/parse', description: 'Parse PRD to generate tasks' },
-	{ name: '/analyze', description: 'Analyze task complexity' },
-	{ name: '/tasks', description: 'Interactive task management' },
-	{ name: '/tags', description: 'Manage task tags' },
-	{ name: '/mcp', description: 'Manage MCP servers' },
-	{ name: '/status', description: 'View project status details' },
-	{ name: '/models', description: 'Configure AI models' },
-	{ name: '/rules', description: 'Configure AI assistant rules' },
-	{ name: '/theme', description: 'Toggle theme' },
-	{ name: '/exit', description: 'Exit the application' }
-];
 
 /**
  * Main Flow App Component - OpenCode Style
@@ -78,7 +63,7 @@ function FlowApp({ backend, options = {} }) {
 	// Define available commands based on whether tasks.json exists
 	const getAvailableCommands = () => {
 		const baseCommands = [
-			{ name: '/help', description: 'Show help screen' },
+			{ name: '/init', description: 'Initialize a new Task Master project' },
 			{ name: '/parse', description: 'Parse PRD to generate tasks' },
 			{ name: '/tags', description: 'Manage task tags' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
@@ -91,7 +76,7 @@ function FlowApp({ backend, options = {} }) {
 
 		// Only include task-related commands if tasks.json exists
 		if (hasTasksFile) {
-			baseCommands.splice(2, 0, 
+			baseCommands.splice(3, 0, 
 				{ name: '/analyze', description: 'Analyze task complexity' },
 				{ name: '/tasks', description: 'Interactive task management' }
 			);
@@ -130,7 +115,11 @@ function FlowApp({ backend, options = {} }) {
 			const message =
 				options.completedSetup === 'models'
 					? '✓ Model configuration complete!'
-					: '✓ Rules configuration complete!';
+					: options.completedSetup === 'rules' 
+					? '✓ Rules configuration complete!' 
+					: options.completedSetup === 'init'
+					? '✓ Project initialization complete!'
+					: `✓ ${options.completedSetup} complete!`;
 
 			setNotification({
 				message,
@@ -192,7 +181,7 @@ function FlowApp({ backend, options = {} }) {
 			'  ╔════════════════════════════════════════════════════════════════╗'
 		);
 		console.log(
-			`  ║  Launching ${command === 'models' ? 'AI Model Configuration' : 'AI Rules Configuration'}...                      ║`
+			`  ║  Launching ${command === 'models' ? 'AI Model Configuration' : command === 'rules' ? 'AI Rules Configuration' : 'Project Initialization'}...                      ║`
 		);
 		console.log(
 			'  ║  You will return to Task Master Flow when complete.           ║'
@@ -247,8 +236,9 @@ function FlowApp({ backend, options = {} }) {
 			const command = value.substring(1).toLowerCase();
 
 			switch (command) {
-				case 'help':
-					setShowCommandPalette(true);
+				case 'init':
+					// Launch the interactive init command
+					launchSetupCommand('init', []);
 					break;
 				case 'parse':
 					setCurrentScreen('parse');
@@ -415,6 +405,9 @@ function FlowApp({ backend, options = {} }) {
 				switch (input.toLowerCase()) {
 					case 'h':
 						setShowCommandPalette(true);
+						break;
+					case 'i':
+						launchSetupCommand('init', []);
 						break;
 					case 'p':
 						setCurrentScreen('parse');
@@ -659,7 +652,6 @@ function FlowApp({ backend, options = {} }) {
 							{/* Dynamic screen rendering */}
 							{currentScreen === 'welcome' && <WelcomeScreen />}
 							{currentScreen === 'sessions' && <SessionsScreen />}
-							{currentScreen === 'help' && <HelpScreen />}
 
 							{/* Notification toast */}
 							{notification && (

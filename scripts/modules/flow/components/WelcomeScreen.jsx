@@ -62,12 +62,12 @@ export function WelcomeScreen() {
 					<Box flexDirection="column" marginBottom={1} marginTop={2}>
 						<Box flexDirection="row">
 							<Box width={12}>
-								<Text color={theme.accent}>/help</Text>
+								<Text color={theme.accent}>/init</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Show all available commands</Text>
+								<Text color={theme.text}>Initialize a new project</Text>
 							</Box>
-							<Text color={theme.textDim}>ctrl+x h</Text>
+							<Text color={theme.textDim}>ctrl+x i</Text>
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
