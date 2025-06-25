@@ -153,7 +153,7 @@ When users initialize Taskmaster on existing projects:
 4. **Tag-Based Organization**: Parse PRDs into appropriate tags (`refactor-api`, `feature-dashboard`, `tech-debt`, etc.)
 5. **Master List Curation**: Keep only the most valuable initiatives in master
 
-The parse-prd's `--append` flag enables the user to parse multple PRDs within tags or across tags. PRDs should be focused and the number of tasks they are parsed into should be strategically chosen relative to the PRD's complexity and level of detail.
+The parse-prd's `--append` flag enables the user to parse multiple PRDs within tags or across tags. PRDs should be focused and the number of tasks they are parsed into should be strategically chosen relative to the PRD's complexity and level of detail.
 
 ### Workflow Transition Examples
 
