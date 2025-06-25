@@ -49,21 +49,107 @@ export function WelcomeScreen() {
 						</Text>
 					</Box>
 
-					{/* Menu items */}
+					{/* Menu items in column format */}
 					<Box flexDirection="column" marginBottom={1} marginTop={2}>
-						<Text color={theme.text}>/help Show all available commands</Text>
-						<Text color={theme.text}>/parse Parse PRD to generate tasks</Text>
-						<Text color={theme.text}>/analyze Analyze task complexity</Text>
-						<Text color={theme.text}>/tasks Interactive task management</Text>
-						<Text color={theme.text}>/tags Manage task tags</Text>
-						<Text color={theme.text}>/mcp Manage MCP servers</Text>
-						<Text color={theme.text}>/status View project status details</Text>
-						<Text color={theme.text}>/models Configure AI models</Text>
-						<Text color={theme.text}>/rules Configure AI assistant rules</Text>
-						<Text color={theme.text}>
-							/theme Toggle theme (auto/light/dark)
-						</Text>
-						<Text color={theme.text}>/exit Exit Task Master Flow</Text>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/help</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Show all available commands</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x h</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/parse</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Parse PRD to generate tasks</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x p</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/analyze</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Analyze task complexity</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x a</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/tasks</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Interactive task management</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x t</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/tags</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Manage task tags</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x g</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/mcp</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Manage MCP servers</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x c</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/status</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>View project status details</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x s</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/models</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Configure AI models</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x m</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/rules</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Configure AI assistant rules</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x r</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/theme</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Toggle theme (auto/light/dark)</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x d</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={15}>
+								<Text color={theme.accent}>/exit</Text>
+							</Box>
+							<Box width={35}>
+								<Text color={theme.text}>Exit Task Master Flow</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x q</Text>
+						</Box>
 					</Box>
 				</Box>
 			) : (

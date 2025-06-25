@@ -68,6 +68,7 @@ function FlowApp({ backend, options = {} }) {
 	const [suggestions, setSuggestions] = useState([]);
 	const [suggestionIndex, setSuggestionIndex] = useState(0);
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
+	const [waitingForShortcut, setWaitingForShortcut] = useState(false);
 
 	const { exit } = useApp();
 
@@ -297,6 +298,94 @@ function FlowApp({ backend, options = {} }) {
 		(input, key) => {
 			if (key.ctrl && input === 'c') {
 				exit();
+			}
+
+			// Handle Ctrl+X prefix
+			if (key.ctrl && input === 'x') {
+				setWaitingForShortcut(true);
+				setNotification({
+					message: 'Waiting for command key...',
+					type: 'info',
+					duration: 2000
+				});
+				return;
+			}
+
+			// Handle follow-up key after Ctrl+X
+			if (waitingForShortcut) {
+				setWaitingForShortcut(false);
+
+				switch (input.toLowerCase()) {
+					case 'h':
+						setShowCommandPalette(true);
+						break;
+					case 'p':
+						setCurrentScreen('parse');
+						break;
+					case 'a':
+						setCurrentScreen('analyze');
+						break;
+					case 't':
+						setCurrentScreen('tasks');
+						break;
+					case 'g':
+						setCurrentScreen('tags');
+						break;
+					case 'c':
+						setCurrentScreen('mcp');
+						break;
+					case 's':
+						setCurrentScreen('status');
+						break;
+					case 'm':
+						launchSetupCommand('models', ['--setup']);
+						break;
+					case 'r':
+						launchSetupCommand('rules', ['--setup']);
+						break;
+					case 'd':
+						// Theme toggle
+						let newTheme;
+						if (currentTheme === 'auto') {
+							newTheme = 'light';
+						} else if (currentTheme === 'light') {
+							newTheme = 'dark';
+						} else {
+							newTheme = 'auto';
+						}
+
+						setTheme(newTheme);
+						setCurrentTheme(newTheme);
+
+						let themeMessage;
+						if (newTheme === 'auto') {
+							const isDark = theme === getTheme('dark');
+							themeMessage = `Switched to auto theme detection (currently using ${isDark ? 'dark mode' : 'light mode'})`;
+						} else if (newTheme === 'dark') {
+							themeMessage =
+								'Switched to dark mode (light text on dark background)';
+						} else {
+							themeMessage =
+								'Switched to light mode (dark text on light background)';
+						}
+
+						setNotification({
+							message: themeMessage,
+							type: 'success',
+							duration: 3000
+						});
+						break;
+					case 'q':
+						exit();
+						break;
+					default:
+						setNotification({
+							message: `Unknown shortcut: Ctrl+X ${input}`,
+							type: 'error',
+							duration: 2000
+						});
+				}
+				return;
 			}
 
 			if (key.escape) {
