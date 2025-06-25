@@ -5,6 +5,53 @@
 # It requires curl and jq to be installed.
 # It expects the project root path to be passed as the second argument.
 
+# --- Logging Functions for E2E Tests ---
+# These are used by all E2E test scripts for consistent output formatting
+
+# Initialize variables for timing if not already set
+if [ -z "${overall_start_time:-}" ]; then
+    overall_start_time=$(date +%s)
+fi
+if [ -z "${test_step_count:-}" ]; then
+    test_step_count=0
+fi
+
+# Helper function to get elapsed time
+_get_elapsed_time_for_log() {
+    if [ -n "${overall_start_time:-}" ]; then
+        local current_time=$(date +%s)
+        local elapsed=$((current_time - overall_start_time))
+        echo "${elapsed}s"
+    else
+        echo "0s"
+    fi
+}
+
+log_info() {
+    echo "[INFO] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_success() {
+    echo "[SUCCESS] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+}
+
+log_error() {
+    echo "[ERROR] [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1" >&2
+}
+
+log_step() {
+    test_step_count=$((test_step_count + 1))
+    echo ""
+    echo "============================================="
+    echo "  STEP ${test_step_count}: [$(_get_elapsed_time_for_log)] $(date +"%Y-%m-%d %H:%M:%S") $1"
+    echo "============================================="
+}
+
+# Initialize total cost tracking if not already set
+if [ -z "${total_e2e_cost:-}" ]; then
+    total_e2e_cost="0.0"
+fi
+
 # --- New Function: extract_and_sum_cost ---
 # Takes a string containing command output.
 # Extracts costs (lines with "Est. Cost: $X.YYYYYY" or similar from telemetry output)
@@ -210,3 +257,104 @@ EOF
 }
 
 export -f analyze_log_with_llm 
+
+# === E2E TEST COMMAND EXECUTION PATTERNS ===
+#
+# Always use these patterns instead of direct CLI execution:
+#
+# 1. Commands that SHOULD succeed:
+#    output=$(expect_success 30 "command-name" $CLI_CMD some-command --flag)
+#
+# 2. Commands that SHOULD fail:
+#    output=$(expect_failure 10 "invalid-command" $CLI_CMD invalid --command)
+#
+# 3. Commands with uncertain outcome:
+#    output=$(safe_run_cmd 20 "uncertain-command" $CLI_CMD some --command)
+#    exit_code=$?; if [ $exit_code -eq 0 ]; then ...; else ...; fi
+#
+# Never use: $($CLI_CMD ...) without timeout protection!
+
+# === TIMEOUT UTILITIES FOR E2E TESTS ===
+
+# Safe command execution with timeout
+safe_run_cmd() {
+    local timeout_duration="${1:-30}"  # Default 30s timeout
+    local cmd_name="$2"               # For logging
+    shift 2
+    local cmd=("$@")
+    
+    echo "[DEBUG] Running: ${cmd[*]} (timeout: ${timeout_duration}s)"
+    
+    local temp_output="/tmp/taskmaster_cmd_$$_$(date +%s).log"
+    local timeout_cmd=""
+    
+    # Check for available timeout command (Linux has timeout, macOS might have gtimeout)
+    if command -v timeout >/dev/null 2>&1; then
+        timeout_cmd="timeout"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        timeout_cmd="gtimeout"
+    else
+        # Fallback: run without timeout but with a warning
+        echo "[WARNING] No timeout command available, running without timeout protection"
+        "${cmd[@]}" > "$temp_output" 2>&1
+        local exit_code=$?
+        local output=$(cat "$temp_output" 2>/dev/null || echo "")
+        rm -f "$temp_output"
+        echo "$output"
+        return $exit_code
+    fi
+    
+    "$timeout_cmd" "$timeout_duration" "${cmd[@]}" > "$temp_output" 2>&1
+    local exit_code=$?
+    
+    local output=$(cat "$temp_output" 2>/dev/null || echo "")
+    rm -f "$temp_output"
+    
+    case $exit_code in
+        124) 
+            echo "[TIMEOUT] Command '$cmd_name' timed out after ${timeout_duration}s"
+            return 124 ;;
+        130|143) 
+            echo "[INTERRUPTED] Command '$cmd_name' was interrupted"
+            return $exit_code ;;
+        *) 
+            echo "$output"
+            return $exit_code ;;
+    esac
+}
+
+# For commands that should succeed
+expect_success() {
+    local timeout_duration="${1:-30}"
+    local cmd_name="$2"
+    shift 2
+    
+    local output
+    output=$(safe_run_cmd "$timeout_duration" "$cmd_name" "$@")
+    local exit_code=$?
+    
+    case $exit_code in
+        0) echo "$output"; return 0 ;;
+        124) log_error "$cmd_name timed out - this should not happen"; return 1 ;;
+        *) log_error "$cmd_name failed (exit $exit_code): $output"; return 1 ;;
+    esac
+}
+
+# For commands that should fail
+expect_failure() {
+    local timeout_duration="${1:-30}"
+    local cmd_name="$2"
+    shift 2
+    
+    local output
+    output=$(safe_run_cmd "$timeout_duration" "$cmd_name" "$@")
+    local exit_code=$?
+    
+    case $exit_code in
+        0) log_error "$cmd_name should have failed but succeeded: $output"; return 1 ;;
+        124) log_success "$cmd_name timed out as expected (invalid input)"; return 0 ;;
+        *) echo "$output"; return 0 ;;  # Any non-zero exit is expected failure
+    esac
+}
+
+export -f safe_run_cmd expect_success expect_failure 

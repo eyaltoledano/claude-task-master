@@ -1,0 +1,284 @@
+.task-item {
+	border: 1px solid #333;
+	border-radius: 8px;
+	padding: 1rem;
+	margin-bottom: 0.5rem;
+	background-color: rgba(255, 255, 255, 0.05);
+	transition: all 0.3s ease;
+}
+
+.task-item:hover {
+	border-color: #646cff;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(100, 108, 255, 0.1);
+}
+
+.task-item.level-1 {
+	margin-left: 1rem;
+	border-left: 3px solid #646cff;
+}
+
+.task-item.level-2 {
+	margin-left: 2rem;
+	border-left: 3px solid #4dabf7;
+}
+
+.task-item.level-3 {
+	margin-left: 3rem;
+	border-left: 3px solid #51cf66;
+}
+
+.task-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 0.75rem;
+	gap: 1rem;
+}
+
+.task-info {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	flex: 1;
+}
+
+.task-id {
+	font-family: "Courier New", monospace;
+	background-color: #333;
+	padding: 0.25rem 0.5rem;
+	border-radius: 4px;
+	font-size: 0.8rem;
+	font-weight: bold;
+	color: #fff;
+}
+
+.task-title {
+	margin: 0;
+	flex: 1;
+	min-width: 200px;
+	font-size: 1.1rem;
+}
+
+.status-badge,
+.priority-badge {
+	padding: 0.25rem 0.75rem;
+	border-radius: 12px;
+	font-size: 0.75rem;
+	font-weight: bold;
+	text-transform: uppercase;
+	color: #333;
+}
+
+.priority-badge {
+	opacity: 0.8;
+}
+
+.task-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.expand-button {
+	background: none;
+	border: 1px solid #646cff;
+	color: #646cff;
+	padding: 0.25rem 0.5rem;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.8rem;
+	transition: all 0.2s ease;
+}
+
+.expand-button:hover {
+	background-color: #646cff;
+	color: white;
+}
+
+.status-selector {
+	padding: 0.25rem 0.5rem;
+	border: 1px solid #333;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0.1);
+	color: inherit;
+	font-size: 0.8rem;
+	cursor: pointer;
+}
+
+.status-selector:focus {
+	outline: 2px solid #646cff;
+	outline-offset: 2px;
+}
+
+.edit-button,
+.delete-button {
+	background: none;
+	border: 1px solid transparent;
+	padding: 0.25rem;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 1rem;
+	transition: all 0.2s ease;
+}
+
+.edit-button:hover {
+	background-color: rgba(100, 108, 255, 0.1);
+	border-color: #646cff;
+}
+
+.delete-button:hover {
+	background-color: rgba(255, 107, 107, 0.1);
+	border-color: #ff6b6b;
+}
+
+.task-content {
+	margin-bottom: 0.5rem;
+}
+
+.task-description {
+	margin: 0 0 0.75rem 0;
+	opacity: 0.9;
+	line-height: 1.5;
+}
+
+.dependencies {
+	margin: 0.5rem 0;
+	padding: 0.5rem;
+	background-color: rgba(255, 255, 255, 0.05);
+	border-radius: 4px;
+	font-size: 0.9rem;
+	border-left: 3px solid #ffd93d;
+}
+
+.task-details,
+.test-strategy {
+	margin: 0.5rem 0;
+}
+
+.task-details summary,
+.test-strategy summary {
+	cursor: pointer;
+	font-weight: bold;
+	padding: 0.5rem;
+	background-color: rgba(255, 255, 255, 0.05);
+	border-radius: 4px;
+	border-left: 3px solid #646cff;
+	transition: background-color 0.2s ease;
+}
+
+.task-details summary:hover,
+.test-strategy summary:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.details-content,
+.test-strategy-content {
+	padding: 0.75rem;
+	margin-top: 0.5rem;
+	background-color: rgba(255, 255, 255, 0.03);
+	border-radius: 4px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	white-space: pre-wrap;
+	font-family: "Courier New", monospace;
+	font-size: 0.85rem;
+	line-height: 1.4;
+}
+
+.subtasks {
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.subtasks h4 {
+	margin: 0 0 0.75rem 0;
+	color: #646cff;
+	font-size: 1rem;
+}
+
+/* Status-specific styling */
+.task-item.status-done {
+	opacity: 0.7;
+}
+
+.task-item.status-done .task-title {
+	text-decoration: line-through;
+}
+
+.task-item.status-blocked {
+	border-color: #ff6b6b;
+}
+
+.task-item.status-in-progress {
+	border-color: #4dabf7;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+	.task-header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.task-info {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+	}
+
+	.task-title {
+		min-width: auto;
+	}
+
+	.task-actions {
+		justify-content: flex-start;
+		margin-top: 0.5rem;
+	}
+
+	.task-item.level-1,
+	.task-item.level-2,
+	.task-item.level-3 {
+		margin-left: 0.5rem;
+	}
+}
+
+@media (prefers-color-scheme: light) {
+	.task-item {
+		border-color: #ddd;
+		background-color: rgba(0, 0, 0, 0.02);
+	}
+
+	.task-item:hover {
+		border-color: #646cff;
+		box-shadow: 0 4px 12px rgba(100, 108, 255, 0.15);
+	}
+
+	.task-id {
+		background-color: #f5f5f5;
+		color: #333;
+	}
+
+	.status-selector {
+		border-color: #ddd;
+		background-color: rgba(0, 0, 0, 0.05);
+	}
+
+	.dependencies,
+	.task-details summary,
+	.test-strategy summary {
+		background-color: rgba(0, 0, 0, 0.03);
+	}
+
+	.details-content,
+	.test-strategy-content {
+		background-color: rgba(0, 0, 0, 0.02);
+		border-color: rgba(0, 0, 0, 0.1);
+	}
+
+	.subtasks {
+		border-top-color: rgba(0, 0, 0, 0.1);
+	}
+}

@@ -13,6 +13,7 @@ import http from 'http';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
+import open from 'open';
 
 import {
 	log,
@@ -4539,6 +4540,367 @@ Examples:
 		.on('error', function (err) {
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);
+		});
+
+	// web commands - for starting/stopping the web server
+	programInstance
+		.command('web-start')
+		.description('Start the Task Master web server')
+		.option('-p, --port <port>', 'Port to run the server on', '3001')
+		.option('-H, --host <host>', 'Host to bind the server to', 'localhost')
+		.option('--skip-websocket', 'Disable WebSocket support')
+		.option('--skip-watcher', 'Disable file watching')
+		.option('-d, --daemon', 'Run server in background (daemon mode)')
+		.option('--no-open', "Don't automatically open browser")
+		.action(async (options) => {
+			try {
+				console.log(chalk.blue('🚀 Starting Task Master web server...'));
+
+				// Use the same project root detection logic as all other CLI commands
+				const projectRoot = findProjectRoot();
+				if (!projectRoot) {
+					console.log(
+						chalk.red(
+							'❌ No Task Master project found in current directory or parent directories'
+						)
+					);
+					console.log(
+						chalk.yellow(
+							'💡 Run this command from a directory that contains .taskmaster/ folder'
+						)
+					);
+					process.exit(1);
+				}
+
+				console.log(chalk.gray(`Project root: ${projectRoot}`));
+
+				// Dynamic import of web module with conditional loading
+				try {
+					const webModule = await import('../../web/index.js');
+
+					const config = {
+						port: parseInt(options.port),
+						host: options.host,
+						enableWebSocket: !options.skipWebsocket,
+						enableFileWatcher: !options.skipWatcher,
+						projectRoot: projectRoot // Pass the detected project root
+					};
+
+					console.log(
+						chalk.gray(`Configuration: ${JSON.stringify(config, null, 2)}`)
+					);
+
+					// Use the new startExpressServer function for subtask 2.3
+					const serverInfo = await webModule.startExpressServer(
+						config,
+						options.daemon
+					);
+
+					console.log(chalk.green(`✅ Web server started successfully!`));
+					console.log(chalk.cyan(`   URL: ${serverInfo.url}`));
+					console.log(chalk.cyan(`   PID: ${serverInfo.pid}`));
+					console.log(
+						chalk.cyan(
+							`   Mode: ${serverInfo.background ? 'Background (daemon)' : 'Foreground'}`
+						)
+					);
+					console.log(
+						chalk.cyan(
+							`   WebSocket: ${serverInfo.wsServer ? 'Enabled' : 'Disabled'}`
+						)
+					);
+					console.log(
+						chalk.cyan(
+							`   File Watcher: ${serverInfo.fileWatcher ? 'Enabled' : 'Disabled'}`
+						)
+					);
+
+					// Automatic browser opening (unless disabled or in daemon mode)
+					if (!options.noOpen && !options.daemon) {
+						try {
+							console.log(chalk.blue('🌐 Opening browser...'));
+							await open(serverInfo.url);
+							console.log(chalk.green('✅ Browser opened successfully'));
+						} catch (openError) {
+							console.log(
+								chalk.yellow(
+									`⚠️  Could not open browser automatically: ${openError.message}`
+								)
+							);
+							console.log(
+								chalk.cyan(`💡 You can manually open: ${serverInfo.url}`)
+							);
+						}
+					}
+
+					if (options.daemon) {
+						console.log(
+							chalk.yellow(
+								`\n💡 Server is starting in background (daemon mode)`
+							)
+						);
+						console.log(
+							chalk.yellow(`   Use 'task-master web-status' to verify startup`)
+						);
+						console.log(
+							chalk.yellow(`   Use 'task-master web-stop' to stop it`)
+						);
+						console.log(chalk.gray(`   ${serverInfo.note || ''}`));
+					} else {
+						console.log(chalk.yellow(`\n💡 Press Ctrl+C to stop the server`));
+						// Note: No need to keep process alive with stdin.resume()
+						// The Express server and signal handlers manage the lifecycle properly
+					}
+				} catch (importError) {
+					if (importError.message.includes('dependencies')) {
+						console.log(chalk.red(`❌ ${importError.message}`));
+						console.log(chalk.yellow(`\n💡 To install web dependencies, run:`));
+						console.log(chalk.cyan(`   npm install`));
+					} else {
+						console.log(
+							chalk.red(`❌ Failed to start web server: ${importError.message}`)
+						);
+
+						// Provide helpful suggestions based on error type
+						if (importError.message.includes('Permission denied')) {
+							console.log(chalk.yellow(`\n💡 Suggestions:`));
+							console.log(
+								chalk.white(
+									`   • Try using a port number 1024 or higher (e.g., --port=3001)`
+								)
+							);
+							console.log(
+								chalk.white(
+									`   • Run with administrator privileges if port 80/443 is required`
+								)
+							);
+						} else if (
+							importError.message.includes('already in use') ||
+							importError.message.includes('already running')
+						) {
+							console.log(chalk.yellow(`\n💡 Suggestions:`));
+							console.log(
+								chalk.white(
+									`   • Use 'task-master web-status' to check server status`
+								)
+							);
+							console.log(
+								chalk.white(
+									`   • Use 'task-master web-stop' to stop the running server`
+								)
+							);
+							console.log(
+								chalk.white(`   • Try a different port with --port=<number>`)
+							);
+						} else if (importError.message.includes('not found')) {
+							console.log(chalk.yellow(`\n💡 Suggestions:`));
+							console.log(
+								chalk.white(`   • Use --host=localhost for local development`)
+							);
+							console.log(
+								chalk.white(`   • Use --host=0.0.0.0 to bind to all interfaces`)
+							);
+							console.log(
+								chalk.white(`   • Check network configuration and DNS settings`)
+							);
+						}
+
+						console.log(
+							chalk.cyan(`\n📖 For more help: task-master web-start --help`)
+						);
+					}
+					process.exit(1);
+				}
+			} catch (error) {
+				console.error(chalk.red(`❌ Error starting web server:`));
+				console.error(chalk.red(`   ${error.message}`));
+
+				// Provide helpful suggestions based on error type
+				if (error.message.includes('Permission denied')) {
+					console.log(chalk.yellow(`\n💡 Suggestions:`));
+					console.log(
+						chalk.white(
+							`   • Try using a port number 1024 or higher (e.g., --port=3001)`
+						)
+					);
+					console.log(
+						chalk.white(
+							`   • Run with administrator privileges if port 80/443 is required`
+						)
+					);
+				} else if (
+					error.message.includes('already in use') ||
+					error.message.includes('already running')
+				) {
+					console.log(chalk.yellow(`\n💡 Suggestions:`));
+					console.log(
+						chalk.white(
+							`   • Use 'task-master web-status' to check server status`
+						)
+					);
+					console.log(
+						chalk.white(
+							`   • Use 'task-master web-stop' to stop the running server`
+						)
+					);
+					console.log(
+						chalk.white(`   • Try a different port with --port=<number>`)
+					);
+				} else if (error.message.includes('not found')) {
+					console.log(chalk.yellow(`\n💡 Suggestions:`));
+					console.log(
+						chalk.white(`   • Use --host=localhost for local development`)
+					);
+					console.log(
+						chalk.white(`   • Use --host=0.0.0.0 to bind to all interfaces`)
+					);
+					console.log(
+						chalk.white(`   • Check network configuration and DNS settings`)
+					);
+				}
+
+				console.log(
+					chalk.cyan(`\n📖 For more help: task-master web-start --help`)
+				);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('web-stop')
+		.description('Stop the Task Master web server')
+		.option('-f, --force', 'Force stop server (kill if necessary)')
+		.action(async (options) => {
+			try {
+				console.log(chalk.blue('🛑 Stopping Task Master web server...'));
+
+				try {
+					const webModule = await import('../../web/index.js');
+					await webModule.stopWebInterface(options.force);
+					console.log(chalk.green('✅ Web server stopped successfully'));
+				} catch (importError) {
+					console.log(
+						chalk.yellow('⚠️  No running web server found or already stopped')
+					);
+				}
+			} catch (error) {
+				console.error(chalk.red(`❌ Error stopping web server:`));
+				console.error(chalk.red(`   ${error.message}`));
+
+				// Provide helpful suggestions based on error type
+				if (error.message.includes('No running web server found')) {
+					console.log(chalk.yellow(`\n💡 Suggestions:`));
+					console.log(
+						chalk.white(
+							`   • Use 'task-master web-status' to check server status`
+						)
+					);
+					console.log(
+						chalk.white(`   • The server may have already been stopped`)
+					);
+				} else if (error.message.includes('did not stop gracefully')) {
+					console.log(chalk.yellow(`\n💡 Suggestions:`));
+					console.log(
+						chalk.white(
+							`   • Use 'task-master web-stop --force' to force kill the server`
+						)
+					);
+					console.log(
+						chalk.white(`   • Check if the process is actually still running`)
+					);
+				}
+
+				console.log(
+					chalk.cyan(`\n📖 For more help: task-master web-stop --help`)
+				);
+				process.exit(1);
+			}
+		});
+
+	programInstance
+		.command('web-status')
+		.description('Check Task Master web server status')
+		.action(async () => {
+			try {
+				console.log(chalk.blue('📊 Checking Task Master web server status...'));
+
+				try {
+					const webModule = await import('../../web/index.js');
+					const status = webModule.getWebInterfaceStatus();
+					const deps = webModule.checkWebDependencies();
+
+					console.log(chalk.cyan('\n🖥️  Server Status:'));
+					console.log(
+						chalk.white(`   Running: ${status.isRunning ? '✅ Yes' : '❌ No'}`)
+					);
+					if (status.isRunning && status.serverInfo) {
+						console.log(
+							chalk.white(
+								`   Address: ${status.serverInfo.address?.address || status.serverInfo.host || 'unknown'}:${status.serverInfo.address?.port || status.serverInfo.port || 'unknown'}`
+							)
+						);
+						console.log(
+							chalk.white(`   PID: ${status.serverInfo.pid || 'unknown'}`)
+						);
+						console.log(
+							chalk.white(
+								`   Mode: ${status.serverInfo.background ? 'Background (daemon)' : 'Foreground'}`
+							)
+						);
+						if (status.serverInfo.startTime) {
+							console.log(
+								chalk.white(`   Started: ${status.serverInfo.startTime}`)
+							);
+						}
+					}
+					console.log(
+						chalk.white(
+							`   WebSocket: ${status.hasWebSocket ? '✅ Enabled' : '❌ Disabled'}`
+						)
+					);
+					console.log(
+						chalk.white(
+							`   File Watcher: ${status.hasFileWatcher ? '✅ Enabled' : '❌ Disabled'}`
+						)
+					);
+
+					console.log(chalk.cyan('\n📦 Dependencies:'));
+					console.log(
+						chalk.white(
+							`   Server: ${deps.server.available ? '✅ Available' : '❌ Missing'}`
+						)
+					);
+					if (deps.server.missing.length > 0) {
+						console.log(
+							chalk.red(`     Missing: ${deps.server.missing.join(', ')}`)
+						);
+					}
+					console.log(
+						chalk.white(
+							`   Build: ${deps.build.available ? '✅ Available' : '❌ Missing'}`
+						)
+					);
+					if (deps.build.missing.length > 0) {
+						console.log(
+							chalk.red(`     Missing: ${deps.build.missing.join(', ')}`)
+						);
+					}
+				} catch (importError) {
+					if (importError.message.includes('dependencies')) {
+						console.log(chalk.red(`❌ ${importError.message}`));
+						console.log(chalk.yellow(`\n💡 To install web dependencies, run:`));
+						console.log(chalk.cyan(`   npm install`));
+					} else {
+						console.log(chalk.yellow('⚠️  Web interface not available'));
+						console.log(chalk.gray(`   ${importError.message}`));
+					}
+				}
+			} catch (error) {
+				console.error(
+					chalk.red(`Error checking web server status: ${error.message}`)
+				);
+				process.exit(1);
+			}
 		});
 
 	return programInstance;

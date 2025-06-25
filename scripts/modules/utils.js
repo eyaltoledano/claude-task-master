@@ -1348,5 +1348,6 @@ export {
 	createStateJson,
 	markMigrationForNotice,
 	flattenTasksWithSubtasks,
-	ensureTagMetadata
+	ensureTagMetadata,
+	hasTaggedStructure
 };
