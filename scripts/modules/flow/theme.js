@@ -88,33 +88,25 @@ export const lightTheme = darkModeTheme;
  * @returns {boolean} true if terminal has dark background, false if light
  */
 function detectTerminalIsDark() {
-	const debug = process.env.DEBUG_THEME;
-	
 	// Check for explicit theme environment variables
 	if (process.env.TASKMASTER_THEME) {
-		if (debug) console.log('DEBUG: TASKMASTER_THEME found:', process.env.TASKMASTER_THEME);
 		return process.env.TASKMASTER_THEME === 'dark';
 	}
 
 	// Check macOS appearance setting
 	if (process.platform === 'darwin') {
-		if (debug) console.log('DEBUG: Checking macOS appearance...');
 		try {
 			const result = execSync('defaults read -g AppleInterfaceStyle 2>/dev/null', { encoding: 'utf8' }).trim();
-			if (debug) console.log('DEBUG: macOS AppleInterfaceStyle:', result);
 			// If AppleInterfaceStyle is set to 'Dark', the system is in dark mode
 			// But don't return early - terminal theme might differ from system theme
 			if (result === 'Dark') {
 				// System is in dark mode, terminal likely is too
-				if (debug) console.log('DEBUG: macOS is in dark mode, returning true');
 				return true;
 			}
 			// System is in light mode, but continue checking terminal-specific settings
-			if (debug) console.log('DEBUG: macOS is in light mode, continuing checks...');
 		} catch (e) {
 			// If the command fails, AppleInterfaceStyle is not set (light mode)
 			// Don't return here, continue with other checks
-			if (debug) console.log('DEBUG: macOS appearance check failed:', e.message);
 		}
 	}
 
@@ -122,12 +114,9 @@ function detectTerminalIsDark() {
 	const termProgram = process.env.TERM_PROGRAM || '';
 	const termProgramVersion = process.env.TERM_PROGRAM_VERSION || '';
 	
-	if (debug) console.log('DEBUG: TERM_PROGRAM:', termProgram);
-	
 	// VS Code integrated terminal
 	if (termProgram === 'vscode') {
 		// VS Code defaults to dark themes
-		if (debug) console.log('DEBUG: VS Code terminal detected, returning true');
 		return true;
 	}
 
@@ -174,13 +163,10 @@ function detectTerminalIsDark() {
 
 	// Apple Terminal specific check
 	if (termProgram === 'Apple_Terminal') {
-		if (debug) console.log('DEBUG: Apple Terminal detected');
 		// Check for Terminal appearance
 		if (process.env.TERM_APPEARANCE === 'dark') {
-			if (debug) console.log('DEBUG: TERM_APPEARANCE is dark');
 			return true;
 		} else if (process.env.TERM_APPEARANCE === 'light') {
-			if (debug) console.log('DEBUG: TERM_APPEARANCE is light');
 			return false;
 		}
 		
@@ -189,7 +175,6 @@ function detectTerminalIsDark() {
 			try {
 				const result = execSync('defaults read -g AppleInterfaceStyle 2>/dev/null', { encoding: 'utf8' }).trim();
 				if (result === 'Dark') {
-					if (debug) console.log('DEBUG: Apple Terminal with macOS dark mode, assuming dark terminal');
 					return true;
 				}
 			} catch (e) {
@@ -198,7 +183,6 @@ function detectTerminalIsDark() {
 		}
 		
 		// Default Apple Terminal to dark if we can't determine
-		if (debug) console.log('DEBUG: Apple Terminal defaulting to dark theme');
 		return true;
 	}
 
@@ -231,14 +215,6 @@ export function getTheme(userPreference) {
 
 	// Auto-detect based on terminal
 	const isDarkTerminal = detectTerminalIsDark();
-	
-	// Debug logging
-	if (process.env.DEBUG_THEME) {
-		console.log('Theme auto-detection:', {
-			isDarkTerminal,
-			selectedTheme: isDarkTerminal ? 'darkModeTheme' : 'lightModeTheme'
-		});
-	}
 	
 	// Return appropriate theme based on terminal background
 	return isDarkTerminal ? darkModeTheme : lightModeTheme;
