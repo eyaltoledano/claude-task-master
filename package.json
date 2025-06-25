@@ -79,7 +79,15 @@
 		"zod": "^3.23.8"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.25"
+		"@anthropic-ai/claude-code": "^1.0.25",
+		"@biomejs/cli-darwin-arm64": "1.9.4",
+		"@biomejs/cli-darwin-x64": "1.9.4",
+		"@biomejs/cli-linux-arm64": "1.9.4",
+		"@biomejs/cli-linux-arm64-musl": "1.9.4",
+		"@biomejs/cli-linux-x64": "1.9.4",
+		"@biomejs/cli-linux-x64-musl": "1.9.4",
+		"@biomejs/cli-win32-arm64": "1.9.4",
+		"@biomejs/cli-win32-x64": "1.9.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
