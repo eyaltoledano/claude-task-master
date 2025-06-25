@@ -11,6 +11,7 @@ import TextInput from 'ink-text-input';
 import { spawn } from 'child_process';
 import { DirectBackend } from './backends/direct-backend.js';
 import { theme, setTheme, getTheme } from './theme.js';
+import { MCPClientBackend } from './backends/mcp-client-backend.js';
 
 // Import screens
 import { WelcomeScreen } from './components/WelcomeScreen.jsx';
@@ -25,6 +26,7 @@ import { HelpScreen } from './components/HelpScreen.jsx';
 import { Toast } from './components/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
 import { CommandPalette } from './components/CommandPalette.jsx';
+import { MCPServerManager } from './components/MCPServerManager.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -35,6 +37,7 @@ const ALL_COMMANDS = [
 	{ name: '/analyze', description: 'Analyze task complexity' },
 	{ name: '/tasks', description: 'Interactive task management' },
 	{ name: '/tags', description: 'Manage task tags' },
+	{ name: '/mcp', description: 'Manage MCP servers' },
 	{ name: '/status', description: 'View project status details' },
 	{ name: '/models', description: 'Configure AI models interactively' },
 	{ name: '/rules', description: 'Configure AI coding assistant rules' },
@@ -55,6 +58,7 @@ function FlowApp({ backend, options = {} }) {
 	const [messages, setMessages] = useState([]);
 	const [currentModel, setCurrentModel] = useState('Task Master AI');
 	const [notification, setNotification] = useState(null);
+	const [currentBackend, setCurrentBackend] = useState(backend);
 	const [currentTheme, setCurrentTheme] = useState(() => {
 		// Check for saved theme preference
 		const savedTheme = process.env.TASKMASTER_THEME;
@@ -66,7 +70,6 @@ function FlowApp({ backend, options = {} }) {
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
 
 	const { exit } = useApp();
-	const inputRef = useRef();
 
 	// Autocomplete filtering effect
 	useEffect(() => {
@@ -101,8 +104,8 @@ function FlowApp({ backend, options = {} }) {
 	useEffect(() => {
 		async function init() {
 			try {
-				await backend.initialize();
-				const result = await backend.listTasks();
+				await currentBackend.initialize();
+				const result = await currentBackend.listTasks();
 				setTasks(result.tasks);
 				setCurrentTag(result.tag);
 				setLoading(false);
@@ -113,7 +116,7 @@ function FlowApp({ backend, options = {} }) {
 		}
 
 		init();
-	}, [backend]);
+	}, [currentBackend]);
 
 	// Launch external setup command
 	const launchSetupCommand = (command, args = []) => {
@@ -193,6 +196,9 @@ function FlowApp({ backend, options = {} }) {
 					break;
 				case 'tags':
 					setCurrentScreen('tags');
+					break;
+				case 'mcp':
+					setCurrentScreen('mcp');
 					break;
 				case 'status':
 					setCurrentScreen('status');
@@ -291,7 +297,7 @@ function FlowApp({ backend, options = {} }) {
 
 	// Context value
 	const contextValue = {
-		backend,
+		backend: currentBackend,
 		tasks,
 		setTasks,
 		currentTag,
@@ -314,7 +320,7 @@ function FlowApp({ backend, options = {} }) {
 		},
 		reloadTasks: async () => {
 			try {
-				const result = await backend.listTasks();
+				const result = await currentBackend.listTasks();
 				setTasks(result.tasks);
 				setCurrentTag(result.tag);
 			} catch (err) {
@@ -367,6 +373,41 @@ function FlowApp({ backend, options = {} }) {
 					<ParsePRDScreen />
 				) : currentScreen === 'analyze' ? (
 					<AnalyzeComplexityScreen />
+				) : currentScreen === 'mcp' ? (
+					<MCPServerManager
+						onBack={() => setCurrentScreen('welcome')}
+						onUseServer={async (server) => {
+							try {
+								// Create and initialize MCP client backend
+								const mcpBackend = new MCPClientBackend({ server });
+								await mcpBackend.initialize();
+
+								// Update the backend reference
+								setCurrentBackend(mcpBackend);
+
+								// Reload tasks with new backend
+								const result = await mcpBackend.listTasks();
+								setTasks(result.tasks);
+								setCurrentTag(result.tag);
+
+								setNotification({
+									message: `Switched to ${server.name}`,
+									type: 'success',
+									duration: 3000
+								});
+
+								// Go back to main screen
+								setCurrentScreen('welcome');
+							} catch (error) {
+								setNotification({
+									message: `Failed to switch backend: ${error.message}`,
+									type: 'error',
+									duration: 5000
+								});
+							}
+						}}
+						log={currentBackend.log}
+					/>
 				) : (
 					<>
 						{/* Main content area */}
@@ -419,7 +460,6 @@ function FlowApp({ backend, options = {} }) {
 										<Text color="cyan">❯ </Text>
 										<Box flexGrow={1}>
 											<TextInput
-												ref={inputRef}
 												value={inputValue}
 												onChange={setInputValue}
 												onSubmit={handleInput}

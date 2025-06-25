@@ -31,6 +31,12 @@ const commands = [
 		category: 'Tasks'
 	},
 	{
+		command: '/mcp',
+		description:
+			'Manage MCP servers - add, edit, connect to external MCP servers',
+		category: 'Configuration'
+	},
+	{
 		command: '/status',
 		description:
 			'View detailed project status - task distribution, completion rates, and tag overview',

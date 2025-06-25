@@ -19,7 +19,7 @@ export function WelcomeScreen() {
 					<Box flexDirection="column" alignItems="center" marginBottom={2}>
 						<Text color={theme.accent}>
 							████████╗ █████╗ ███████╗██╗ ██╗███╗ ███╗ █████╗
-							███████╗████████╗███████╗██████╗{' '}
+							███████╗████████╗███████╗██████╗
 						</Text>
 						<Text color={theme.accent}>
 							╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝████╗
@@ -54,6 +54,7 @@ export function WelcomeScreen() {
 						<Text color={theme.text}>/analyze Analyze task complexity</Text>
 						<Text color={theme.text}>/tasks Interactive task management</Text>
 						<Text color={theme.text}>/tags Manage task tags</Text>
+						<Text color={theme.text}>/mcp Manage MCP servers</Text>
 						<Text color={theme.text}>/status View project status details</Text>
 						<Text color={theme.text}>/models Configure AI models</Text>
 						<Text color={theme.text}>/rules Configure AI assistant rules</Text>

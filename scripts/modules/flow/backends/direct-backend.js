@@ -39,38 +39,41 @@ export class DirectBackend extends FlowBackend {
 		return true;
 	}
 
-	  async listTasks(options = {}) {
-    // Get current tag
-    const { tags } = await this.listTags();
-    const currentTag = tags.find(t => t.isCurrent)?.name || 'master';
-    const tagToUse = options.tag || currentTag;
-    
-    // Construct report path based on tag
-    const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
-    const tagSuffix = tagToUse && tagToUse !== 'master' ? `_${tagToUse}` : '';
-    const reportPath = path.join(reportDir, `task-complexity-report${tagSuffix}.json`);
-    
-    const args = {
-      tasksJsonPath: this.tasksJsonPath,
-      projectRoot: this.projectRoot,
-      status: options.status,
-      withSubtasks: true,
-      tag: options.tag,
-      reportPath: reportPath
-    };
+	async listTasks(options = {}) {
+		// Get current tag
+		const { tags } = await this.listTags();
+		const currentTag = tags.find((t) => t.isCurrent)?.name || 'master';
+		const tagToUse = options.tag || currentTag;
 
-    const result = await listTasksDirect(args, this.log);
-    if (!result.success) {
-      throw new Error(result.error.message || result.error);
-    }
+		// Construct report path based on tag
+		const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
+		const tagSuffix = tagToUse && tagToUse !== 'master' ? `_${tagToUse}` : '';
+		const reportPath = path.join(
+			reportDir,
+			`task-complexity-report${tagSuffix}.json`
+		);
 
-    this.updateTelemetry(result.data);
-    return {
-      tasks: result.data.tasks || [],
-      tag: result.data.currentTag || 'master',
-      telemetryData: result.data.telemetryData
-    };
-  }
+		const args = {
+			tasksJsonPath: this.tasksJsonPath,
+			projectRoot: this.projectRoot,
+			status: options.status,
+			withSubtasks: true,
+			tag: options.tag,
+			reportPath: reportPath
+		};
+
+		const result = await listTasksDirect(args, this.log);
+		if (!result.success) {
+			throw new Error(result.error.message || result.error);
+		}
+
+		this.updateTelemetry(result.data);
+		return {
+			tasks: result.data.tasks || [],
+			tag: result.data.currentTag || 'master',
+			telemetryData: result.data.telemetryData
+		};
+	}
 
 	async nextTask() {
 		const args = {
@@ -91,31 +94,35 @@ export class DirectBackend extends FlowBackend {
 		};
 	}
 
-	  async getTask(taskId) {
-    // Get current tag
-    const { tags } = await this.listTags();
-    const currentTag = tags.find(t => t.isCurrent)?.name || 'master';
-    
-    // Construct report path based on tag
-    const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
-    const tagSuffix = currentTag && currentTag !== 'master' ? `_${currentTag}` : '';
-    const reportPath = path.join(reportDir, `task-complexity-report${tagSuffix}.json`);
-    
-    const args = {
-      projectRoot: this.projectRoot,
-      tasksJsonPath: this.tasksJsonPath,
-      id: String(taskId),
-      reportPath: reportPath
-    };
+	async getTask(taskId) {
+		// Get current tag
+		const { tags } = await this.listTags();
+		const currentTag = tags.find((t) => t.isCurrent)?.name || 'master';
 
-    const result = await showTaskDirect(args, this.log, { session: {} });
-    if (!result.success) {
-      throw new Error(result.error.message || result.error);
-    }
+		// Construct report path based on tag
+		const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
+		const tagSuffix =
+			currentTag && currentTag !== 'master' ? `_${currentTag}` : '';
+		const reportPath = path.join(
+			reportDir,
+			`task-complexity-report${tagSuffix}.json`
+		);
 
-    this.updateTelemetry(result.data);
-    return result.data;
-  }
+		const args = {
+			projectRoot: this.projectRoot,
+			tasksJsonPath: this.tasksJsonPath,
+			id: String(taskId),
+			reportPath: reportPath
+		};
+
+		const result = await showTaskDirect(args, this.log, { session: {} });
+		if (!result.success) {
+			throw new Error(result.error.message || result.error);
+		}
+
+		this.updateTelemetry(result.data);
+		return result.data;
+	}
 
 	async setTaskStatus(taskId, status) {
 		const args = {
@@ -383,41 +390,46 @@ export class DirectBackend extends FlowBackend {
 		return result.data;
 	}
 
-	  async getModels() {
-    const args = {
-      projectRoot: this.projectRoot
-    };
+	async getModels() {
+		const args = {
+			projectRoot: this.projectRoot
+		};
 
-    const result = await modelsDirect(args, this.log);
-    if (!result.success) {
-      throw new Error(result.error.message || result.error);
-    }
+		const result = await modelsDirect(args, this.log);
+		if (!result.success) {
+			throw new Error(result.error.message || result.error);
+		}
 
-    return result.data;
-  }
+		return result.data;
+	}
 
-  async getComplexityReport(tag = null) {
-    // Get current tag if not provided
-    if (!tag) {
-      const { tags } = await this.listTags();
-      tag = tags.find(t => t.isCurrent)?.name || 'master';
-    }
-    
-    // Construct report path based on tag
-    const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
-    const tagSuffix = tag && tag !== 'master' ? `_${tag}` : '';
-    const reportPath = path.join(reportDir, `task-complexity-report${tagSuffix}.json`);
-    
-    try {
-      const fs = await import('fs');
-      if (fs.existsSync(reportPath)) {
-        const reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-        return reportData;
-      }
-    } catch (error) {
-      this.log.debug(`Could not load complexity report: ${error.message}`);
-    }
-    
-    return null;
-  }
+	async getComplexityReport(tag = null) {
+		// Get current tag if not provided
+		if (!tag) {
+			const { tags } = await this.listTags();
+			tag = tags.find((t) => t.isCurrent)?.name || 'master';
+		}
+
+		// Construct report path based on tag
+		const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
+		const tagSuffix = tag && tag !== 'master' ? `_${tag}` : '';
+		const reportPath = path.join(
+			reportDir,
+			`task-complexity-report${tagSuffix}.json`
+		);
+
+		try {
+			const fs = await import('fs');
+			if (fs.default.existsSync(reportPath)) {
+				const reportData = JSON.parse(
+					fs.default.readFileSync(reportPath, 'utf8')
+				);
+				return reportData;
+			}
+		} catch (error) {
+			this.log.debug(`Could not load complexity report: ${error.message}`);
+		}
+
+		return null;
+	}
 }
