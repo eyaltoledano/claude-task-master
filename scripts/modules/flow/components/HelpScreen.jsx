@@ -32,8 +32,7 @@ const commands = [
 	{ name: '/rules', description: 'Configure AI coding assistant rules' },
 	{
 		name: '/theme',
-		description:
-			'Cycle theme mode: auto-detect → light mode → dark mode'
+		description: 'Cycle theme mode: auto-detect → light mode → dark mode'
 	},
 	{ name: '/exit', description: 'Exit Task Master Flow' }
 ];

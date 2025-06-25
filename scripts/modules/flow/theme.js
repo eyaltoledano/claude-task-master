@@ -96,7 +96,10 @@ function detectTerminalIsDark() {
 	// Check macOS appearance setting
 	if (process.platform === 'darwin') {
 		try {
-			const result = execSync('defaults read -g AppleInterfaceStyle 2>/dev/null', { encoding: 'utf8' }).trim();
+			const result = execSync(
+				'defaults read -g AppleInterfaceStyle 2>/dev/null',
+				{ encoding: 'utf8' }
+			).trim();
 			// If AppleInterfaceStyle is set to 'Dark', the system is in dark mode
 			// But don't return early - terminal theme might differ from system theme
 			if (result === 'Dark') {
@@ -113,7 +116,7 @@ function detectTerminalIsDark() {
 	// Check for terminal-specific environment variables
 	const termProgram = process.env.TERM_PROGRAM || '';
 	const termProgramVersion = process.env.TERM_PROGRAM_VERSION || '';
-	
+
 	// VS Code integrated terminal
 	if (termProgram === 'vscode') {
 		// VS Code defaults to dark themes
@@ -156,7 +159,10 @@ function detectTerminalIsDark() {
 	}
 
 	// Check for common terminal color scheme indicators
-	if (process.env.COLORTERM === 'truecolor' || process.env.COLORTERM === '24bit') {
+	if (
+		process.env.COLORTERM === 'truecolor' ||
+		process.env.COLORTERM === '24bit'
+	) {
 		// Modern terminals with true color support typically use dark themes
 		return true;
 	}
@@ -169,11 +175,14 @@ function detectTerminalIsDark() {
 		} else if (process.env.TERM_APPEARANCE === 'light') {
 			return false;
 		}
-		
+
 		// If TERM_APPEARANCE is not set, check if we detected macOS dark mode earlier
 		if (process.platform === 'darwin') {
 			try {
-				const result = execSync('defaults read -g AppleInterfaceStyle 2>/dev/null', { encoding: 'utf8' }).trim();
+				const result = execSync(
+					'defaults read -g AppleInterfaceStyle 2>/dev/null',
+					{ encoding: 'utf8' }
+				).trim();
 				if (result === 'Dark') {
 					return true;
 				}
@@ -181,19 +190,14 @@ function detectTerminalIsDark() {
 				// Ignore error
 			}
 		}
-		
+
 		// Default Apple Terminal to dark if we can't determine
 		return true;
 	}
 
 	// Check for theme-related environment variables
-	const themeEnvVars = [
-		'TERMINAL_THEME',
-		'TERM_THEME',
-		'COLOR_THEME',
-		'THEME'
-	];
-	
+	const themeEnvVars = ['TERMINAL_THEME', 'TERM_THEME', 'COLOR_THEME', 'THEME'];
+
 	for (const envVar of themeEnvVars) {
 		const value = process.env[envVar];
 		if (value) {
@@ -215,7 +219,7 @@ export function getTheme(userPreference) {
 
 	// Auto-detect based on terminal
 	const isDarkTerminal = detectTerminalIsDark();
-	
+
 	// Return appropriate theme based on terminal background
 	return isDarkTerminal ? darkModeTheme : lightModeTheme;
 }

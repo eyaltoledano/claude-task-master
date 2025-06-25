@@ -223,20 +223,22 @@ function FlowApp({ backend, options = {} }) {
 					} else {
 						newTheme = 'auto';
 					}
-					
+
 					setTheme(newTheme);
 					setCurrentTheme(newTheme);
-					
+
 					let themeMessage;
 					if (newTheme === 'auto') {
 						const isDark = theme === getTheme('dark');
 						themeMessage = `Switched to auto theme detection (currently using ${isDark ? 'dark mode' : 'light mode'})`;
 					} else if (newTheme === 'dark') {
-						themeMessage = 'Switched to dark mode (light text on dark background)';
+						themeMessage =
+							'Switched to dark mode (light text on dark background)';
 					} else {
-						themeMessage = 'Switched to light mode (dark text on light background)';
+						themeMessage =
+							'Switched to light mode (dark text on light background)';
 					}
-					
+
 					setNotification({
 						message: themeMessage,
 						type: 'success',
