@@ -1,67 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { theme } from '../theme.js';
+import { useAppContext } from '../index.jsx';
 
-const commands = [
-	{
-		command: '/help',
-		description: 'show help',
-		category: 'General'
-	},
-	{
-		command: '/parse',
-		description: 'parse PRD to generate tasks',
-		category: 'Tasks'
-	},
-	{
-		command: '/analyze',
-		description: 'analyze task complexity',
-		category: 'Tasks'
-	},
-	{
-		command: '/tasks',
-		description: 'interactive task management',
-		category: 'Tasks'
-	},
-	{
-		command: '/tags',
-		description: 'manage task tags',
-		category: 'Tasks'
-	},
-	{
-		command: '/status',
-		description: 'view project status details',
-		category: 'Tasks'
-	},
-	{
-		command: '/mcp',
-		description: 'manage MCP servers',
-		category: 'Configuration'
-	},
-	{
-		command: '/models',
-		description: 'configure AI models',
-		category: 'Configuration'
-	},
-	{
-		command: '/rules',
-		description: 'configure AI assistant rules',
-		category: 'Configuration'
-	},
-	{
-		command: '/theme',
-		description: 'toggle theme',
-		category: 'Display'
-	},
-	{
-		command: '/exit',
-		description: 'exit Task Master Flow',
-		category: 'General'
-	}
-];
-
-export function CommandPalette({ onClose, onSelectCommand }) {
+export function CommandPalette() {
+	const { setCurrentScreen, showToast, hasTasksFile, setShowCommandPalette, handleInput } = useAppContext();
 	const [selectedIndex, setSelectedIndex] = useState(0);
+
+	const baseCommands = [
+		{
+			name: 'Parse PRD',
+			command: '/parse',
+			description: 'Parse PRD to generate tasks',
+			key: 'p'
+		}
+	];
+
+	const taskCommands = hasTasksFile ? [
+		{
+			name: 'Analyze Complexity',
+			command: '/analyze',
+			description: 'Analyze task complexity',
+			key: 'a'
+		},
+		{
+			name: 'Task Management',
+			command: '/tasks',
+			description: 'Interactive task management',
+			key: 't'
+		}
+	] : [];
+
+	const otherCommands = [
+		{
+			name: 'Tag Management',
+			command: '/tags',
+			description: 'Manage task tags',
+			key: 'g'
+		},
+		{
+			name: 'MCP Servers',
+			command: '/mcp',
+			description: 'Manage MCP servers',
+			key: 'c'
+		},
+		{
+			name: 'Project Status',
+			command: '/status',
+			description: 'View project status',
+			key: 's'
+		},
+		{
+			name: 'Configure Models',
+			command: '/models',
+			description: 'Configure AI models',
+			key: 'm'
+		},
+		{
+			name: 'Configure Rules',
+			command: '/rules',
+			description: 'Configure AI assistant rules',
+			key: 'r'
+		},
+		{
+			name: 'Toggle Theme',
+			command: '/theme',
+			description: 'Toggle theme mode',
+			key: 'd'
+		},
+		{
+			name: 'Exit',
+			command: '/exit',
+			description: 'Exit application',
+			key: 'q'
+		}
+	];
+
+	const commands = [...baseCommands, ...taskCommands, ...otherCommands];
 
 	// Calculate the maximum command width for proper alignment
 	const maxCommandWidth = Math.max(
@@ -70,7 +85,7 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 
 	useInput((input, key) => {
 		if (key.escape) {
-			onClose();
+			setShowCommandPalette(false);
 			return;
 		}
 
@@ -88,10 +103,10 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 
 		if (key.return) {
 			const selected = commands[selectedIndex];
-			if (selected.command.startsWith('/')) {
-				onSelectCommand(selected.command);
+			if (selected.command) {
+				handleInput(selected.command);
+				setShowCommandPalette(false);
 			}
-			onClose();
 			return;
 		}
 	});

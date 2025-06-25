@@ -6,6 +6,7 @@ export class MCPClientBackend extends FlowBackend {
 		super(options);
 		this.server = options.server;
 		this.client = null;
+		this._hasTasksFileCache = null; // Cache the result
 	}
 
 	async initialize() {
@@ -19,6 +20,37 @@ export class MCPClientBackend extends FlowBackend {
 		this.availableTools = new Set(tools.map((t) => t.name));
 
 		return true;
+	}
+
+	async hasTasksFile() {
+		// Use cached result if available
+		if (this._hasTasksFileCache !== null) {
+			return this._hasTasksFileCache;
+		}
+
+		// For MCP backend, we check by attempting to list tasks
+		// This is done once and cached to avoid repeated API calls
+		try {
+			if (!this.availableTools.has('get_tasks')) {
+				this._hasTasksFileCache = false;
+				return false;
+			}
+			
+			// Try to list tasks with minimal data - if successful, tasks.json exists
+			const result = await this.client.callTool('get_tasks', {
+				status: 'all',
+				withSubtasks: false
+			});
+			
+			// If we get a result with tasks array (even empty), tasks.json exists
+			const data = result.data || result;
+			this._hasTasksFileCache = data && 'tasks' in data;
+			return this._hasTasksFileCache;
+		} catch (error) {
+			// If there's an error (like "No tasks.json found"), cache and return false
+			this._hasTasksFileCache = false;
+			return false;
+		}
 	}
 
 	async listTasks(options = {}) {
@@ -250,6 +282,11 @@ export class MCPClientBackend extends FlowBackend {
 
 		// Handle both direct response and wrapped response formats
 		const data = result.data || result;
+
+		// After successful PRD parsing, tasks.json should exist
+		if (data && !data.error) {
+			this._hasTasksFileCache = true;
+		}
 
 		this.updateTelemetry(data);
 		return data;

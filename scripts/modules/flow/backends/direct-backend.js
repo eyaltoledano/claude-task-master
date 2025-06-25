@@ -39,6 +39,24 @@ export class DirectBackend extends FlowBackend {
 		return true;
 	}
 
+	/**
+	 * Check if tasks.json exists
+	 * @returns {Promise<boolean>} - True if tasks.json exists, false otherwise
+	 */
+	async hasTasksFile() {
+		try {
+			const fs = await import('fs');
+			// Check both new and legacy locations
+			const newPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
+			const legacyPath = path.join(this.projectRoot, 'tasks/tasks.json');
+			
+			return fs.default.existsSync(newPath) || fs.default.existsSync(legacyPath);
+		} catch (error) {
+			this.log.debug(`Error checking tasks.json existence: ${error.message}`);
+			return false;
+		}
+	}
+
 	async listTasks(options = {}) {
 		// Get current tag
 		const { tags } = await this.listTags();

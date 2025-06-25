@@ -4,7 +4,7 @@ import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 
 export function WelcomeScreen() {
-	const { messages } = useAppContext();
+	const { messages, hasTasksFile } = useAppContext();
 
 	return (
 		<Box flexDirection="column" flexGrow={1}>
@@ -50,6 +50,14 @@ export function WelcomeScreen() {
 						</Text>
 					</Box>
 
+					{/* Show message if no tasks.json */}
+					{!hasTasksFile && (
+						<Box flexDirection="column" marginBottom={2} alignItems="center">
+							<Text color={theme.warning}>⚠️  No tasks.json found</Text>
+							<Text color={theme.textDim}>Start by parsing a PRD with /parse or ctrl+x p</Text>
+						</Box>
+					)}
+
 					{/* Menu items in column format */}
 					<Box flexDirection="column" marginBottom={1} marginTop={2}>
 						<Box flexDirection="row">
@@ -70,24 +78,28 @@ export function WelcomeScreen() {
 							</Box>
 							<Text color={theme.textDim}>ctrl+x p</Text>
 						</Box>
-						<Box flexDirection="row">
-							<Box width={12}>
-								<Text color={theme.accent}>/analyze</Text>
-							</Box>
-							<Box width={34}>
-								<Text color={theme.text}>Analyze task complexity</Text>
-							</Box>
-							<Text color={theme.textDim}>ctrl+x a</Text>
-						</Box>
-						<Box flexDirection="row">
-							<Box width={12}>
-								<Text color={theme.accent}>/tasks</Text>
-							</Box>
-							<Box width={34}>
-								<Text color={theme.text}>Interactive task management</Text>
-							</Box>
-							<Text color={theme.textDim}>ctrl+x t</Text>
-						</Box>
+						{hasTasksFile && (
+							<>
+								<Box flexDirection="row">
+									<Box width={12}>
+										<Text color={theme.accent}>/analyze</Text>
+									</Box>
+									<Box width={34}>
+										<Text color={theme.text}>Analyze task complexity</Text>
+									</Box>
+									<Text color={theme.textDim}>ctrl+x a</Text>
+								</Box>
+								<Box flexDirection="row">
+									<Box width={12}>
+										<Text color={theme.accent}>/tasks</Text>
+									</Box>
+									<Box width={34}>
+										<Text color={theme.text}>Interactive task management</Text>
+									</Box>
+									<Text color={theme.textDim}>ctrl+x t</Text>
+								</Box>
+							</>
+						)}
 						<Box flexDirection="row">
 							<Box width={12}>
 								<Text color={theme.accent}>/tags</Text>

@@ -17,6 +17,14 @@ export class FlowBackend {
 	}
 
 	/**
+	 * Check if tasks.json file exists
+	 * @returns {Promise<boolean>}
+	 */
+	async hasTasksFile() {
+		throw new Error('hasTasksFile() must be implemented by subclass');
+	}
+
+	/**
 	 * Get all tasks for the current tag
 	 * @returns {Promise<{tasks: Array, tag: string}>}
 	 */

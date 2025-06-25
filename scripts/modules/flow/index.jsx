@@ -63,6 +63,7 @@ function FlowApp({ backend, options = {} }) {
 		const savedTheme = process.env.TASKMASTER_THEME;
 		return savedTheme || 'auto';
 	});
+	const [hasTasksFile, setHasTasksFile] = useState(false);
 
 	const [suggestions, setSuggestions] = useState([]);
 	const [suggestionIndex, setSuggestionIndex] = useState(0);
@@ -73,6 +74,31 @@ function FlowApp({ backend, options = {} }) {
 	const [inputKey, setInputKey] = useState(0);
 
 	const { exit } = useApp();
+
+	// Define available commands based on whether tasks.json exists
+	const getAvailableCommands = () => {
+		const baseCommands = [
+			{ name: '/help', description: 'Show help screen' },
+			{ name: '/parse', description: 'Parse PRD to generate tasks' },
+			{ name: '/tags', description: 'Manage task tags' },
+			{ name: '/mcp', description: 'Manage MCP servers' },
+			{ name: '/status', description: 'View project status details' },
+			{ name: '/models', description: 'Configure AI models' },
+			{ name: '/rules', description: 'Configure AI assistant rules' },
+			{ name: '/theme', description: 'Toggle theme' },
+			{ name: '/exit', description: 'Exit the application' }
+		];
+
+		// Only include task-related commands if tasks.json exists
+		if (hasTasksFile) {
+			baseCommands.splice(2, 0, 
+				{ name: '/analyze', description: 'Analyze task complexity' },
+				{ name: '/tasks', description: 'Interactive task management' }
+			);
+		}
+
+		return baseCommands;
+	};
 
 	// Initialize theme on mount
 	useEffect(() => {
@@ -87,7 +113,8 @@ function FlowApp({ backend, options = {} }) {
 	// Autocomplete filtering effect
 	useEffect(() => {
 		if (inputValue.startsWith('/')) {
-			const filtered = ALL_COMMANDS.filter((cmd) =>
+			const availableCommands = getAvailableCommands();
+			const filtered = availableCommands.filter((cmd) =>
 				cmd.name.toLowerCase().startsWith(inputValue.toLowerCase())
 			);
 			setSuggestions(filtered);
@@ -95,7 +122,7 @@ function FlowApp({ backend, options = {} }) {
 		} else {
 			setSuggestions([]);
 		}
-	}, [inputValue]);
+	}, [inputValue, hasTasksFile]);
 
 	// Check for completion message from restart
 	useEffect(() => {
@@ -129,9 +156,20 @@ function FlowApp({ backend, options = {} }) {
 
 			try {
 				await currentBackend.initialize();
-				const result = await currentBackend.listTasks();
-				setTasks(result.tasks);
-				setCurrentTag(result.tag);
+				
+				// Check if tasks.json exists
+				const hasFile = await currentBackend.hasTasksFile();
+				setHasTasksFile(hasFile);
+				
+				if (hasFile) {
+					const result = await currentBackend.listTasks();
+					setTasks(result.tasks);
+					setCurrentTag(result.tag);
+				} else {
+					// No tasks file, just set empty tasks
+					setTasks([]);
+				}
+				
 				setLoading(false);
 			} catch (err) {
 				setError(err.message);
@@ -216,10 +254,26 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('parse');
 					break;
 				case 'analyze':
-					setCurrentScreen('analyze');
+					if (hasTasksFile) {
+						setCurrentScreen('analyze');
+					} else {
+						setNotification({
+							message: 'No tasks.json found. Use /parse to create tasks first.',
+							type: 'warning',
+							duration: 3000
+						});
+					}
 					break;
 				case 'tasks':
-					setCurrentScreen('tasks');
+					if (hasTasksFile) {
+						setCurrentScreen('tasks');
+					} else {
+						setNotification({
+							message: 'No tasks.json found. Use /parse to create tasks first.',
+							type: 'warning',
+							duration: 3000
+						});
+					}
 					break;
 				case 'tags':
 					setCurrentScreen('tags');
@@ -366,10 +420,26 @@ function FlowApp({ backend, options = {} }) {
 						setCurrentScreen('parse');
 						break;
 					case 'a':
-						setCurrentScreen('analyze');
+						if (hasTasksFile) {
+							setCurrentScreen('analyze');
+						} else {
+							setNotification({
+								message: 'No tasks.json found. Use /parse to create tasks first.',
+								type: 'warning',
+								duration: 3000
+							});
+						}
 						break;
 					case 't':
-						setCurrentScreen('tasks');
+						if (hasTasksFile) {
+							setCurrentScreen('tasks');
+						} else {
+							setNotification({
+								message: 'No tasks.json found. Use /parse to create tasks first.',
+								type: 'warning',
+								duration: 3000
+							});
+						}
 						break;
 					case 'g':
 						setCurrentScreen('tags');
@@ -481,6 +551,9 @@ function FlowApp({ backend, options = {} }) {
 		currentModel,
 		setCurrentModel,
 		handleInput,
+		hasTasksFile,
+		showCommandPalette,
+		setShowCommandPalette,
 		showToast: (message) => {
 			setNotification({
 				message,
@@ -490,9 +563,17 @@ function FlowApp({ backend, options = {} }) {
 		},
 		reloadTasks: async () => {
 			try {
-				const result = await currentBackend.listTasks();
-				setTasks(result.tasks);
-				setCurrentTag(result.tag);
+				// Check if tasks.json exists first
+				const hasFile = await currentBackend.hasTasksFile();
+				setHasTasksFile(hasFile);
+				
+				if (hasFile) {
+					const result = await currentBackend.listTasks();
+					setTasks(result.tasks);
+					setCurrentTag(result.tag);
+				} else {
+					setTasks([]);
+				}
 			} catch (err) {
 				setError(err.message);
 			}
@@ -525,14 +606,7 @@ function FlowApp({ backend, options = {} }) {
 			<Box flexDirection="column" height="100%">
 				{/* Conditionally render EITHER popup OR main content */}
 				{showCommandPalette ? (
-					<CommandPalette
-						onClose={() => setShowCommandPalette(false)}
-						onSelectCommand={(cmd) => {
-							setShowCommandPalette(false);
-							setInputValue(cmd);
-							handleInput(cmd);
-						}}
-					/>
+					<CommandPalette />
 				) : currentScreen === 'tasks' ? (
 					<TaskManagementScreen />
 				) : currentScreen === 'tags' ? (

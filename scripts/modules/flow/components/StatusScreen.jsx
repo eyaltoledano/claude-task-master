@@ -213,33 +213,73 @@ export function StatusScreen() {
 									<Text color={theme.accent} bold>
 										Status Distribution
 									</Text>
-									<Box>
-										<Text color={theme.statusPending}>
-											○ {taskStats.byStatus.pending}
-										</Text>
-										<Text> </Text>
-										<Text color={theme.statusInProgress}>
-											● {taskStats.byStatus['in-progress']}
-										</Text>
-										<Text> </Text>
-										<Text color={theme.statusDone}>
-											✓ {taskStats.byStatus.done}
-										</Text>
-										{taskStats.byStatus.blocked +
-											taskStats.byStatus.cancelled +
-											taskStats.byStatus.deferred >
-											0 && (
-											<>
-												<Text> </Text>
-												<Text color={theme.textDim}>
-													⊗{' '}
-													{taskStats.byStatus.blocked +
-														taskStats.byStatus.cancelled +
-														taskStats.byStatus.deferred}
+									{/* Visual bar */}
+									{taskStats.total > 0 ? (
+										<Box flexDirection="column">
+											<Box>
+												{/* Create visual distribution bar */}
+												{(() => {
+													const total = taskStats.total;
+													const pendingPercent = Math.round((taskStats.byStatus.pending / total) * 100);
+													const inProgressPercent = Math.round((taskStats.byStatus['in-progress'] / total) * 100);
+													const donePercent = Math.round((taskStats.byStatus.done / total) * 100);
+													const otherPercent = Math.round(((taskStats.byStatus.blocked + taskStats.byStatus.cancelled + taskStats.byStatus.deferred) / total) * 100);
+													
+													// Calculate bar segments (max width 40 chars)
+													const barWidth = 40;
+													const pendingBars = Math.round((pendingPercent / 100) * barWidth);
+													const inProgressBars = Math.round((inProgressPercent / 100) * barWidth);
+													const doneBars = Math.round((donePercent / 100) * barWidth);
+													const otherBars = barWidth - pendingBars - inProgressBars - doneBars;
+													
+													return (
+														<>
+															<Text color={theme.statusPending}>{'█'.repeat(Math.max(0, pendingBars))}</Text>
+															<Text color={theme.statusInProgress}>{'█'.repeat(Math.max(0, inProgressBars))}</Text>
+															<Text color={theme.statusDone}>{'█'.repeat(Math.max(0, doneBars))}</Text>
+															{otherBars > 0 && <Text color={theme.textDim}>{'█'.repeat(Math.max(0, otherBars))}</Text>}
+														</>
+													);
+												})()}
+											</Box>
+											{/* Legend */}
+											<Box flexWrap="wrap">
+												<Text color={theme.statusPending}>
+													{taskStats.byStatus.pending} Pending
 												</Text>
-											</>
-										)}
-									</Box>
+												<Text color={theme.textDim}> ({Math.round((taskStats.byStatus.pending / taskStats.total) * 100)}%) </Text>
+												{taskStats.byStatus['in-progress'] > 0 && (
+													<>
+														<Text color={theme.textDim}>• </Text>
+														<Text color={theme.statusInProgress}>
+															{taskStats.byStatus['in-progress']} In Progress
+														</Text>
+														<Text color={theme.textDim}> ({Math.round((taskStats.byStatus['in-progress'] / taskStats.total) * 100)}%) </Text>
+													</>
+												)}
+												{taskStats.byStatus.done > 0 && (
+													<>
+														<Text color={theme.textDim}>• </Text>
+														<Text color={theme.statusDone}>
+															{taskStats.byStatus.done} Done
+														</Text>
+														<Text color={theme.textDim}> ({Math.round((taskStats.byStatus.done / taskStats.total) * 100)}%)</Text>
+													</>
+												)}
+												{(taskStats.byStatus.blocked + taskStats.byStatus.cancelled + taskStats.byStatus.deferred) > 0 && (
+													<>
+														<Text color={theme.textDim}> • </Text>
+														<Text color={theme.textDim}>
+															{taskStats.byStatus.blocked + taskStats.byStatus.cancelled + taskStats.byStatus.deferred} Other
+														</Text>
+														<Text color={theme.textDim}> ({Math.round(((taskStats.byStatus.blocked + taskStats.byStatus.cancelled + taskStats.byStatus.deferred) / taskStats.total) * 100)}%)</Text>
+													</>
+												)}
+											</Box>
+										</Box>
+									) : (
+										<Text color={theme.textDim}>No tasks</Text>
+									)}
 								</Box>
 							</Box>
 
@@ -256,19 +296,53 @@ export function StatusScreen() {
 									<Text color={theme.accent} bold>
 										Priority Distribution
 									</Text>
-									<Box>
-										<Text color={theme.priorityHigh}>
-											▲ {taskStats.byPriority.high}
-										</Text>
-										<Text> </Text>
-										<Text color={theme.priorityMedium}>
-											■ {taskStats.byPriority.medium}
-										</Text>
-										<Text> </Text>
-										<Text color={theme.priorityLow}>
-											▼ {taskStats.byPriority.low}
-										</Text>
-									</Box>
+									{/* Visual bar */}
+									{taskStats.total > 0 ? (
+										<Box flexDirection="column">
+											<Box>
+												{/* Create visual distribution bar */}
+												{(() => {
+													const total = taskStats.total;
+													const highPercent = Math.round((taskStats.byPriority.high / total) * 100);
+													const mediumPercent = Math.round((taskStats.byPriority.medium / total) * 100);
+													const lowPercent = Math.round((taskStats.byPriority.low / total) * 100);
+													
+													// Calculate bar segments (max width 40 chars)
+													const barWidth = 40;
+													const highBars = Math.round((highPercent / 100) * barWidth);
+													const mediumBars = Math.round((mediumPercent / 100) * barWidth);
+													const lowBars = barWidth - highBars - mediumBars;
+													
+													return (
+														<>
+															<Text color={theme.priorityHigh}>{'█'.repeat(Math.max(0, highBars))}</Text>
+															<Text color={theme.priorityMedium}>{'█'.repeat(Math.max(0, mediumBars))}</Text>
+															<Text color={theme.priorityLow}>{'█'.repeat(Math.max(0, lowBars))}</Text>
+														</>
+													);
+												})()}
+											</Box>
+											{/* Legend */}
+											<Box>
+												<Text color={theme.priorityHigh}>
+													{taskStats.byPriority.high} High
+												</Text>
+												<Text color={theme.textDim}> ({Math.round((taskStats.byPriority.high / taskStats.total) * 100)}%) </Text>
+												<Text color={theme.textDim}>• </Text>
+												<Text color={theme.priorityMedium}>
+													{taskStats.byPriority.medium} Medium
+												</Text>
+												<Text color={theme.textDim}> ({Math.round((taskStats.byPriority.medium / taskStats.total) * 100)}%) </Text>
+												<Text color={theme.textDim}>• </Text>
+												<Text color={theme.priorityLow}>
+													{taskStats.byPriority.low} Low
+												</Text>
+												<Text color={theme.textDim}> ({Math.round((taskStats.byPriority.low / taskStats.total) * 100)}%)</Text>
+											</Box>
+										</Box>
+									) : (
+										<Text color={theme.textDim}>No tasks</Text>
+									)}
 								</Box>
 							</Box>
 						</Box>

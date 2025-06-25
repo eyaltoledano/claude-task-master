@@ -1,69 +1,82 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
-
-const commands = [
-	{ name: '/help', description: 'Show this help screen', shortcut: 'ctrl+x h' },
-	{
-		name: '/parse',
-		description:
-			'Parse PRD to generate tasks – browse files and create task structure',
-		shortcut: 'ctrl+x p'
-	},
-	{
-		name: '/analyze',
-		description: 'Analyze task complexity – identify tasks that need breakdown',
-		shortcut: 'ctrl+x a'
-	},
-	{
-		name: '/tasks',
-		description: 'Interactive task management – view, edit, and organize tasks',
-		shortcut: 'ctrl+x t'
-	},
-	{
-		name: '/tags',
-		description:
-			'Manage task tags – create, rename, delete, and switch between tags',
-		shortcut: 'ctrl+x g'
-	},
-	{
-		name: '/mcp',
-		description: 'Manage MCP servers – connect to external Task Master servers',
-		shortcut: 'ctrl+x c'
-	},
-	{
-		name: '/status',
-		description:
-			'View detailed project status – task distribution, completion rates, and tag overview',
-		shortcut: 'ctrl+x s'
-	},
-	{
-		name: '/models',
-		description: 'Configure AI models interactively',
-		shortcut: 'ctrl+x m'
-	},
-	{
-		name: '/rules',
-		description: 'Configure AI coding assistant rules',
-		shortcut: 'ctrl+x r'
-	},
-	{
-		name: '/theme',
-		description: 'Cycle theme mode: auto-detect → light mode → dark mode',
-		shortcut: 'ctrl+x d'
-	},
-	{ name: '/exit', description: 'Exit Task Master Flow', shortcut: 'ctrl+x q' }
-];
+import { useAppContext } from '../index.jsx';
 
 export function HelpScreen() {
-	const { setCurrentScreen } = useAppContext();
+	const { setCurrentScreen, hasTasksFile } = useAppContext();
 
 	useInput((input, key) => {
 		if (key.escape) {
 			setCurrentScreen('welcome');
 		}
 	});
+
+	const baseCommands = [
+		{
+			name: '/help',
+			description: 'Show this help screen',
+			shortcut: 'Ctrl+X H'
+		},
+		{
+			name: '/parse',
+			description: 'Parse PRD to generate tasks',
+			shortcut: 'Ctrl+X P'
+		}
+	];
+
+	const taskCommands = hasTasksFile ? [
+		{
+			name: '/analyze',
+			description: 'Analyze task complexity',
+			shortcut: 'Ctrl+X A'
+		},
+		{
+			name: '/tasks',
+			description: 'Interactive task management',
+			shortcut: 'Ctrl+X T'
+		}
+	] : [];
+
+	const otherCommands = [
+		{
+			name: '/tags',
+			description: 'Manage task tags',
+			shortcut: 'Ctrl+X G'
+		},
+		{
+			name: '/mcp',
+			description: 'Manage MCP servers',
+			shortcut: 'Ctrl+X C'
+		},
+		{
+			name: '/status',
+			description: 'View project status',
+			shortcut: 'Ctrl+X S'
+		},
+		{
+			name: '/models',
+			description: 'Configure AI models',
+			shortcut: 'Ctrl+X M'
+		},
+		{
+			name: '/rules',
+			description: 'Configure AI assistant rules',
+			shortcut: 'Ctrl+X R'
+		},
+		{
+			name: '/theme',
+			description: 'Toggle theme (auto/light/dark)',
+			shortcut: 'Ctrl+X D'
+		},
+		{
+			name: '/exit',
+			description: 'Exit the application',
+			shortcut: 'Ctrl+X Q'
+		}
+	];
+
+	const allCommands = [...baseCommands, ...taskCommands, ...otherCommands];
 
 	return (
 		<Box
@@ -118,7 +131,7 @@ export function HelpScreen() {
 								Available Commands
 							</Text>
 							<Box flexDirection="column" marginTop={1}>
-								{commands.map((cmd) => (
+								{allCommands.map((cmd) => (
 									<Box key={cmd.name} flexDirection="row">
 										<Box width={15}>
 											<Text color={theme.accent}>{cmd.name}</Text>
