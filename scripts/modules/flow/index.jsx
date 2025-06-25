@@ -68,6 +68,9 @@ function FlowApp({ backend, options = {} }) {
 	const [suggestionIndex, setSuggestionIndex] = useState(0);
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
 	const [waitingForShortcut, setWaitingForShortcut] = useState(false);
+	const isWaitingForShortcutRef = useRef(false);
+	const savedInputRef = useRef('');
+	const [inputKey, setInputKey] = useState(0);
 
 	const { exit } = useApp();
 
@@ -306,6 +309,20 @@ function FlowApp({ backend, options = {} }) {
 		}
 	};
 
+	const setWaiting = (isWaiting) => {
+		isWaitingForShortcutRef.current = isWaiting;
+		setWaitingForShortcut(isWaiting);
+	};
+
+	const handleTextInputChange = (value) => {
+		// If we're in shortcut mode, don't update the input.
+		// This prevents the 'x' from 'Ctrl+X' from appearing.
+		if (isWaitingForShortcutRef.current) {
+			return;
+		}
+		setInputValue(value);
+	};
+
 	// Global keyboard shortcuts
 	useInput(
 		(input, key) => {
@@ -315,18 +332,31 @@ function FlowApp({ backend, options = {} }) {
 
 			// Handle Ctrl+X prefix
 			if (key.ctrl && input === 'x') {
-				setWaitingForShortcut(true);
-				setNotification({
-					message: 'Waiting for command key...',
-					type: 'info',
-					duration: 2000
-				});
+				// Save current input before entering shortcut mode
+				savedInputRef.current = inputValue;
+				setWaiting(true);
+				// Clear any existing input to prevent 'x' from appearing
+				setInputValue('');
 				return;
 			}
 
 			// Handle follow-up key after Ctrl+X
 			if (waitingForShortcut) {
-				setWaitingForShortcut(false);
+				// Handle escape to cancel shortcut mode
+				if (key.escape) {
+					setWaiting(false);
+					// Restore the saved input
+					const savedValue = savedInputRef.current;
+					savedInputRef.current = '';
+					setInputValue(savedValue);
+					// Force TextInput to remount with cursor at end
+					setInputKey((prev) => prev + 1);
+					return;
+				}
+
+				setWaiting(false);
+				// Clear saved input since a command was executed
+				savedInputRef.current = '';
 
 				switch (input.toLowerCase()) {
 					case 'h':
@@ -402,6 +432,13 @@ function FlowApp({ backend, options = {} }) {
 			}
 
 			if (key.escape) {
+				// If we're waiting for a shortcut, cancel it and clear input
+				if (waitingForShortcut) {
+					setWaiting(false);
+					setInputValue('');
+					return;
+				}
+
 				setCurrentScreen('welcome');
 				setSuggestions([]);
 			}
@@ -593,10 +630,13 @@ function FlowApp({ backend, options = {} }) {
 										<Text color="cyan">❯ </Text>
 										<Box flexGrow={1}>
 											<TextInput
+												key={inputKey}
 												value={inputValue}
-												onChange={setInputValue}
+												onChange={handleTextInputChange}
 												onSubmit={handleInput}
-												placeholder=""
+												placeholder={
+													waitingForShortcut ? 'Waiting for command key...' : ''
+												}
 											/>
 										</Box>
 									</Box>

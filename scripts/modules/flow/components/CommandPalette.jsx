@@ -64,7 +64,9 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 
 	// Calculate the maximum command width for proper alignment
-	const maxCommandWidth = Math.max(...commands.map(cmd => cmd.command.length));
+	const maxCommandWidth = Math.max(
+		...commands.map((cmd) => cmd.command.length)
+	);
 
 	useInput((input, key) => {
 		if (key.escape) {
