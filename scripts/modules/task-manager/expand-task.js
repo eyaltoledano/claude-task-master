@@ -762,7 +762,10 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 					}
 
 					// Call the onSubtaskProgress callback if provided (for MCP in expand-all)
-					if (context.onSubtaskProgress && typeof context.onSubtaskProgress === 'function') {
+					if (
+						context.onSubtaskProgress &&
+						typeof context.onSubtaskProgress === 'function'
+					) {
 						await context.onSubtaskProgress(currentCount);
 					}
 
