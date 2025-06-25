@@ -15,7 +15,6 @@ import { MCPClientBackend } from './backends/mcp-client-backend.js';
 
 // Import screens
 import { WelcomeScreen } from './components/WelcomeScreen.jsx';
-import { TaskListScreen } from './components/TaskListScreen.jsx';
 import { TaskManagementScreen } from './components/TaskManagementScreen.jsx';
 import { TagManagementScreen } from './components/TagManagementScreen.jsx';
 import { StatusScreen } from './components/StatusScreen.jsx';

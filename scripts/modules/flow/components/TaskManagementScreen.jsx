@@ -7,21 +7,20 @@ import { theme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { TaskTable } from './TaskTable.jsx';
+import { SimpleTable } from './SimpleTable.jsx';
 
 export function TaskManagementScreen() {
 	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
 		useAppContext();
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [expandedTasks, setExpandedTasks] = useState(new Set());
-	const [selectedTasks, setSelectedTasks] = useState(new Set());
-	const [filter, setFilter] = useState('all'); // all, pending, in-progress, done
-	const [filterMode, setFilterMode] = useState('status'); // 'status' or 'priority'
+	const [filter, setFilter] = useState('all'); // all, pending, done, in-progress
+	const [filterMode, setFilterMode] = useState('status'); // status or priority
 	const [priorityFilter, setPriorityFilter] = useState('all'); // all, high, medium, low
 	const [searchQuery, setSearchQuery] = useState('');
 	const [isSearching, setIsSearching] = useState(false);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [viewMode, setViewMode] = useState('list'); // 'list' or 'detail'
+	const [viewMode, setViewMode] = useState('list'); // list or detail
 	const [selectedTask, setSelectedTask] = useState(null);
 	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
@@ -186,16 +185,6 @@ export function TaskManagementScreen() {
 			// Enter key - show task details
 			const task = visibleTasks[selectedIndex];
 			showTaskDetail(task);
-		} else if (input === ' ') {
-			// Toggle selection
-			const task = visibleTasks[selectedIndex];
-			const newSelected = new Set(selectedTasks);
-			if (newSelected.has(task.id)) {
-				newSelected.delete(task.id);
-			} else {
-				newSelected.add(task.id);
-			}
-			setSelectedTasks(newSelected);
 		} else if (input === 's') {
 			// Switch to status filter mode
 			setFilterMode('status');
@@ -610,16 +599,44 @@ export function TaskManagementScreen() {
 
 			{/* Task List */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				<TaskTable
-					tasks={tasks}
-					visibleTasks={visibleTasks}
-					scrollOffset={scrollOffset}
-					visibleRows={VISIBLE_ROWS}
-					selectedIndex={selectedIndex}
-					getStatusSymbol={getStatusSymbol}
-					getStatusColor={getStatusColor}
-					getPriorityColor={getPriorityColor}
-					formatDependencies={formatDependencies}
+				<SimpleTable
+					data={visibleTasks.slice(scrollOffset, scrollOffset + VISIBLE_ROWS).map((task, displayIndex) => {
+						const actualIndex = displayIndex + scrollOffset;
+						const isSelected = actualIndex === selectedIndex;
+						const subtaskCount = task.level === 0 && task.subtasks ? task.subtasks.length : 0;
+						
+						return {
+							' ': isSelected ? '→' : ' ',
+							'ID': task.id,
+							'Title': task.title.length > 33 ? task.title.substring(0, 30) + '...' : task.title,
+							'Subtasks': task.level === 0 ? (subtaskCount > 0 ? `[${subtaskCount}]` : '-') : '',
+							'Complex': task.complexity ? `● ${task.complexity}` : '-',
+							'Status': `${getStatusSymbol(task.status)} ${task.status}`,
+							'Priority': task.priority,
+							'Deps': formatDependencies(task.dependencies),
+							_renderCell: (col, value) => {
+								let color = isSelected ? theme.selectionText : theme.text;
+								
+								if (col === 'Status') {
+									color = getStatusColor(task.status);
+								} else if (col === 'Priority') {
+									color = getPriorityColor(task.priority);
+								} else if (col === 'Complex' || col === 'Deps' || col === 'Subtasks') {
+									color = isSelected ? theme.selectionText : theme.textDim;
+								}
+								
+								// Add indentation for subtasks
+								if (col === 'ID' && task.level > 0) {
+									return <Text color={color} bold={isSelected}>{'  ' + value}</Text>;
+								}
+								
+								return <Text color={color} bold={isSelected}>{value}</Text>;
+							}
+						};
+					})}
+					columns={[' ', 'ID', 'Title', 'Subtasks', 'Complex', 'Status', 'Priority', 'Deps']}
+					selectedIndex={selectedIndex - scrollOffset}
+					borders={true}
 				/>
 
 				{/* Scroll indicator */}
@@ -651,7 +668,7 @@ export function TaskManagementScreen() {
 					{/* Controls */}
 					<Box marginBottom={1}>
 						<Text color={theme.text}>
-							↑↓ navigate • Enter view details • Space select • t cycle status
+							↑↓ navigate • Enter view details • t cycle status
 						</Text>
 					</Box>
 
