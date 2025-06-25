@@ -5,62 +5,57 @@ import { theme } from '../theme.js';
 const commands = [
 	{
 		command: '/help',
-		description: 'Show this help screen',
+		description: 'show help',
 		category: 'General'
 	},
 	{
 		command: '/parse',
-		description:
-			'Parse PRD to generate tasks - browse files and create task structure',
+		description: 'parse PRD to generate tasks',
 		category: 'Tasks'
 	},
 	{
 		command: '/analyze',
-		description: 'Analyze task complexity - identify tasks that need breakdown',
+		description: 'analyze task complexity',
 		category: 'Tasks'
 	},
 	{
 		command: '/tasks',
-		description: 'Interactive task management - view, edit, and organize tasks',
+		description: 'interactive task management',
 		category: 'Tasks'
 	},
 	{
 		command: '/tags',
-		description:
-			'Manage task tags - create, rename, delete, and switch between tags',
+		description: 'manage task tags',
+		category: 'Tasks'
+	},
+	{
+		command: '/status',
+		description: 'view project status details',
 		category: 'Tasks'
 	},
 	{
 		command: '/mcp',
-		description:
-			'Manage MCP servers - add, edit, connect to external MCP servers',
+		description: 'manage MCP servers',
 		category: 'Configuration'
 	},
 	{
-		command: '/status',
-		description:
-			'View detailed project status - task distribution, completion rates, and tag overview',
-		category: 'Tasks'
-	},
-	{
 		command: '/models',
-		description: 'Configure AI models interactively',
+		description: 'configure AI models',
 		category: 'Configuration'
 	},
 	{
 		command: '/rules',
-		description: 'Configure AI coding assistant rules',
+		description: 'configure AI assistant rules',
 		category: 'Configuration'
 	},
 	{
 		command: '/theme',
-		description:
-			'Toggle between light theme (for white terminals) and dark theme (for dark terminals)',
+		description: 'toggle theme',
 		category: 'Display'
 	},
 	{
 		command: '/exit',
-		description: 'Exit Task Master Flow',
+		description: 'exit Task Master Flow',
 		category: 'General'
 	}
 ];
@@ -113,8 +108,7 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 				paddingBottom={1}
 				paddingLeft={2}
 				paddingRight={2}
-				width="90%"
-				maxWidth={120}
+				width={70}
 			>
 				{/* Header */}
 				<Box marginBottom={1} justifyContent="space-between">
@@ -137,13 +131,13 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 								flexDirection="row"
 								width="100%"
 							>
-								<Box width={15}>
-									<Text color={isSelected ? theme.accent : '#4a9eff'}>
+								<Box width={20}>
+									<Text color={isSelected ? theme.accent : theme.accent}>
 										{cmd.command}
 									</Text>
 								</Box>
-								<Box flexGrow={1}>
-									<Text color={isSelected ? 'white' : theme.text} wrap="wrap">
+								<Box width={40}>
+									<Text color={isSelected ? theme.textBright : theme.text}>
 										{cmd.description}
 									</Text>
 								</Box>

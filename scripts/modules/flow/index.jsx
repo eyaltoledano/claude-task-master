@@ -39,9 +39,9 @@ const ALL_COMMANDS = [
 	{ name: '/tags', description: 'Manage task tags' },
 	{ name: '/mcp', description: 'Manage MCP servers' },
 	{ name: '/status', description: 'View project status details' },
-	{ name: '/models', description: 'Configure AI models interactively' },
-	{ name: '/rules', description: 'Configure AI coding assistant rules' },
-	{ name: '/theme', description: 'Toggle between light and dark themes' },
+	{ name: '/models', description: 'Configure AI models' },
+	{ name: '/rules', description: 'Configure AI assistant rules' },
+	{ name: '/theme', description: 'Toggle theme' },
 	{ name: '/exit', description: 'Exit the application' }
 ];
 

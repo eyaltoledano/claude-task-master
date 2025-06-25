@@ -19,14 +19,16 @@ export function CommandSuggestions({ suggestions, selectedIndex }) {
 				{suggestions.map((cmd, index) => {
 					const isSelected = index === selectedIndex;
 					return (
-						<Box key={cmd.name} paddingLeft={1}>
-							<Text
-								color={isSelected ? theme.accent : theme.text}
-								bold={isSelected}
-							>
-								{cmd.name}
-							</Text>
-							<Text color={theme.textDim}> - {cmd.description}</Text>
+						<Box key={cmd.name} paddingLeft={1} flexDirection="row">
+							<Box width={12}>
+								<Text
+									color={isSelected ? theme.accent : theme.text}
+									bold={isSelected}
+								>
+									{cmd.name}
+								</Text>
+							</Box>
+							<Text color={theme.textDim}>{cmd.description}</Text>
 						</Box>
 					);
 				})}
