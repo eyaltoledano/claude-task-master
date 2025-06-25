@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function AnalyzeComplexityScreen() {
 	const {
@@ -12,10 +13,11 @@ export function AnalyzeComplexityScreen() {
 		reloadTasks,
 		tasks
 	} = useAppContext();
-	const [step, setStep] = useState('research-prompt'); // 'research-prompt' | 'analyzing' | 'expand-prompt'
+	const [step, setStep] = useState('research-prompt'); // 'research-prompt' | 'analyzing' | 'expand-prompt' | 'expanding'
 	const [useResearch, setUseResearch] = useState(false);
 	const [analyzeResult, setAnalyzeResult] = useState(null);
 	const [error, setError] = useState(null);
+	const [expandingMessage, setExpandingMessage] = useState('');
 
 	// Handle research prompt response
 	const handleResearchResponse = async (shouldUseResearch) => {
@@ -49,8 +51,11 @@ export function AnalyzeComplexityScreen() {
 			return;
 		}
 
+		setStep('expanding');
+		
 		try {
 			if (expandOption === 'all') {
+				setExpandingMessage('Expanding all high-complexity tasks...');
 				await backend.expandAll({
 					tag: currentTag,
 					research: useResearch
@@ -61,6 +66,7 @@ export function AnalyzeComplexityScreen() {
 				const highComplexityTasks =
 					analyzeResult?.recommendations?.filter((r) => r.shouldExpand) || [];
 				if (highComplexityTasks.length > 0) {
+					setExpandingMessage(`Expanding task ${highComplexityTasks[0].taskId}...`);
 					await backend.expandTask(highComplexityTasks[0].taskId, {
 						research: useResearch
 					});
@@ -81,7 +87,7 @@ export function AnalyzeComplexityScreen() {
 
 	// Handle keyboard input
 	useInput((input, key) => {
-		if (key.escape && step !== 'analyzing') {
+		if (key.escape && step !== 'analyzing' && step !== 'expanding') {
 			setCurrentScreen('welcome');
 			return;
 		}
@@ -126,7 +132,7 @@ export function AnalyzeComplexityScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>Analyze Complexity</Text>
 				</Box>
-				{step !== 'analyzing' && (
+				{step !== 'analyzing' && step !== 'expanding' && (
 					<Text color={theme.textDim}>[ESC cancel]</Text>
 				)}
 			</Box>
@@ -172,7 +178,7 @@ export function AnalyzeComplexityScreen() {
 
 				{step === 'analyzing' && (
 					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔍 Analyzing task complexity...</Text>
+						<LoadingSpinner message="Analyzing task complexity..." type="analyze" />
 						<Text color={theme.textDim} marginTop={1}>
 							Tag: {currentTag}
 						</Text>
@@ -214,6 +220,18 @@ export function AnalyzeComplexityScreen() {
 						</Text>
 						<Text color={theme.text}>(f) First task only</Text>
 						<Text color={theme.text}>(n) No, finish here</Text>
+					</Box>
+				)}
+
+				{step === 'expanding' && (
+					<Box flexDirection="column" alignItems="center">
+						<LoadingSpinner message={expandingMessage} type="expand" />
+						<Text color={theme.textDim} marginTop={1}>
+							Research mode: {useResearch ? 'enabled' : 'disabled'}
+						</Text>
+						<Text color={theme.textDim} marginTop={2}>
+							This may take a moment...
+						</Text>
 					</Box>
 				)}
 

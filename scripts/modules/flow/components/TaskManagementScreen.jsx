@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
+import { flushSync } from 'react-dom';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { TaskTable } from './TaskTable.jsx';
 
 export function TaskManagementScreen() {
 	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
@@ -33,6 +36,11 @@ export function TaskManagementScreen() {
 	useEffect(() => {
 		reloadTasks();
 	}, []);
+
+	// Ensure proper re-render when viewMode changes
+	useEffect(() => {
+		// This effect will trigger a re-render when viewMode changes
+	}, [viewMode]);
 
 	// Filter tasks based on current filter and search
 	const filteredTasks = tasks.filter((task) => {
@@ -87,12 +95,24 @@ export function TaskManagementScreen() {
 			return;
 		}
 
+		if (key.escape) {
+			if (viewMode === 'detail') {
+				// Exit detail view
+				flushSync(() => {
+					setViewMode('list');
+					setSelectedTask(null);
+					setDetailScrollOffset(0);
+				});
+				return;
+			} else {
+				// Exit to welcome screen from list view
+				setCurrentScreen('welcome');
+				return;
+			}
+		}
+
 		if (viewMode === 'detail') {
-			if (key.escape) {
-				setViewMode('list');
-				setSelectedTask(null);
-				setDetailScrollOffset(0); // Reset scroll when leaving detail view
-			} else if (
+			if (
 				input === 'e' &&
 				selectedTask &&
 				!selectedTask.subtasks?.length
@@ -115,11 +135,7 @@ export function TaskManagementScreen() {
 			return;
 		}
 
-		if (key.escape) {
-			setCurrentScreen('welcome');
-			return;
-		}
-
+		// List view keyboard handling
 		if (key.downArrow) {
 			const newIndex = Math.min(selectedIndex + 1, visibleTasks.length - 1);
 			setSelectedIndex(newIndex);
@@ -396,7 +412,7 @@ export function TaskManagementScreen() {
 		const visibleContent = contentLines.slice(detailScrollOffset, detailScrollOffset + DETAIL_VISIBLE_ROWS);
 
 		return (
-			<Box flexDirection="column">
+			<Box key="detail-view" flexDirection="column">
 				{/* Header - Always visible at top */}
 				<Box
 					borderStyle="single"
@@ -411,7 +427,7 @@ export function TaskManagementScreen() {
 				</Box>
 
 				{/* Expand Options Dialog - Rendered at fixed position */}
-				{showExpandOptions ? (
+				{showExpandOptions && (
 					<Box marginBottom={1} marginLeft={2}>
 						<ExpandModal
 							onSelect={(withResearch) => {
@@ -421,8 +437,31 @@ export function TaskManagementScreen() {
 							onClose={() => setShowExpandOptions(false)}
 						/>
 					</Box>
-				) : (
-					/* Task Details with scrolling */
+				)}
+
+				{/* Loading indicator */}
+				{isExpanding && (
+					<Box
+						flexDirection="column"
+						justifyContent="center"
+						alignItems="center"
+						width="100%"
+						height={20}
+						marginTop={2}
+					>
+						<Box
+							borderStyle="round"
+							borderColor={theme.accent}
+							padding={2}
+							backgroundColor={theme.background || '#000000'}
+						>
+							<LoadingSpinner message="Expanding task..." type="expand" />
+						</Box>
+					</Box>
+				)}
+
+				{/* Task Details with scrolling - only show when not expanding */}
+				{!isExpanding && !showExpandOptions && (
 					<Box
 						flexDirection="column"
 						paddingLeft={2}
@@ -496,28 +535,6 @@ export function TaskManagementScreen() {
 					</Box>
 				)}
 
-				{/* Loading indicator */}
-				{isExpanding && (
-					<Box
-						position="absolute"
-						width="100%"
-						height="100%"
-						top={0}
-						left={0}
-						justifyContent="center"
-						alignItems="center"
-					>
-						<Box
-							borderStyle="double"
-							borderColor={theme.accent}
-							backgroundColor="#000000"
-							padding={2}
-						>
-							<Text color={theme.accent}>🔄 Expanding task...</Text>
-						</Box>
-					</Box>
-				)}
-
 				{/* Footer */}
 				<Box
 					borderStyle="single"
@@ -551,7 +568,7 @@ export function TaskManagementScreen() {
 
 	// Render task list view
 	return (
-		<Box flexDirection="column" height="100%">
+		<Box key="list-view" flexDirection="column" height="100%">
 			{/* Header */}
 			<Box
 				borderStyle="single"
@@ -572,122 +589,17 @@ export function TaskManagementScreen() {
 
 			{/* Task List */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				{/* Column Headers */}
-				<Box marginBottom={1}>
-					<Box width={8}>
-						<Text color={theme.text} bold>
-							ID
-						</Text>
-					</Box>
-					<Box width={35}>
-						<Text color={theme.text} bold>
-							Title
-						</Text>
-					</Box>
-					<Box width={10}>
-						<Text color={theme.text} bold>
-							Subtasks
-						</Text>
-					</Box>
-					<Box width={8}>
-						<Text color={theme.text} bold>
-							Complex
-						</Text>
-					</Box>
-					<Box width={12}>
-						<Text color={theme.text} bold>
-							Status
-						</Text>
-					</Box>
-					<Box width={10}>
-						<Text color={theme.text} bold>
-							Priority
-						</Text>
-					</Box>
-					<Box width={15}>
-						<Text color={theme.text} bold>
-							Dependencies
-						</Text>
-					</Box>
-				</Box>
-
-				{/* Task Rows */}
-				<Box flexDirection="column">
-					{visibleTasks
-						.slice(scrollOffset, scrollOffset + VISIBLE_ROWS)
-						.map((task, displayIndex) => {
-							const actualIndex = displayIndex + scrollOffset;
-							const isSelected = actualIndex === selectedIndex;
-							const isTaskSelected = selectedTasks.has(task.id);
-							const subtaskCount =
-								task.level === 0 && task.subtasks ? task.subtasks.length : 0;
-
-							return (
-								<Box
-									key={`${task.id}-${task.level}`}
-									backgroundColor={isSelected ? theme.selection : undefined}
-									paddingLeft={task.level * 2}
-								>
-									<Box width={8}>
-										<Text
-											color={isSelected ? theme.selectionText : theme.text}
-											bold={isSelected}
-										>
-											{task.id}
-										</Text>
-									</Box>
-									<Box width={35}>
-										<Text
-											color={isSelected ? theme.selectionText : theme.text}
-											bold={isSelected}
-										>
-											{task.title.length > 32
-												? task.title.substring(0, 29) + '...'
-												: task.title}
-										</Text>
-									</Box>
-									<Box width={10}>
-										<Text
-											color={isSelected ? theme.selectionText : theme.textDim}
-										>
-											{task.level === 0
-												? subtaskCount > 0
-													? `[${subtaskCount}]`
-													: '-'
-												: ''}
-										</Text>
-									</Box>
-									<Box width={8}>
-										<Text
-											color={isSelected ? theme.selectionText : theme.textDim}
-										>
-											{task.complexity ? `● ${task.complexity}` : '-'}
-										</Text>
-									</Box>
-									<Box width={12}>
-										<Text color={getStatusColor(task.status)} bold={isSelected}>
-											{getStatusSymbol(task.status)} {task.status}
-										</Text>
-									</Box>
-									<Box width={10}>
-										<Text
-											color={getPriorityColor(task.priority)}
-											bold={isSelected}
-										>
-											{task.priority}
-										</Text>
-									</Box>
-									<Box width={15}>
-										<Text
-											color={isSelected ? theme.selectionText : theme.textDim}
-										>
-											{formatDependencies(task.dependencies)}
-										</Text>
-									</Box>
-								</Box>
-							);
-						})}
-				</Box>
+				<TaskTable
+					tasks={tasks}
+					visibleTasks={visibleTasks}
+					scrollOffset={scrollOffset}
+					visibleRows={VISIBLE_ROWS}
+					selectedIndex={selectedIndex}
+					getStatusSymbol={getStatusSymbol}
+					getStatusColor={getStatusColor}
+					getPriorityColor={getPriorityColor}
+					formatDependencies={formatDependencies}
+				/>
 
 				{/* Scroll indicator */}
 				{visibleTasks.length > VISIBLE_ROWS && (

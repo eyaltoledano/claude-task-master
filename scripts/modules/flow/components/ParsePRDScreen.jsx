@@ -3,15 +3,17 @@ import { Box, Text, useInput } from 'ink';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { FileBrowser } from './FileBrowser.jsx';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function ParsePRDScreen() {
 	const { backend, currentTag, setCurrentScreen, showToast, reloadTasks } =
 		useAppContext();
-	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'error'
+	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'expanding' | 'error'
 	const [selectedFile, setSelectedFile] = useState(null);
 	const [parseResult, setParseResult] = useState(null);
 	const [analyzeResult, setAnalyzeResult] = useState(null);
 	const [error, setError] = useState(null);
+	const [expandingMessage, setExpandingMessage] = useState('');
 
 	// Handle file selection from browser
 	const handleFileSelect = async (filePath) => {
@@ -97,8 +99,11 @@ export function ParsePRDScreen() {
 			return;
 		}
 
+		setStep('expanding');
+
 		try {
 			if (expandOption === 'all') {
+				setExpandingMessage('Expanding all high-complexity tasks...');
 				await backend.expandAll({
 					tag: currentTag,
 					research: false
@@ -109,6 +114,7 @@ export function ParsePRDScreen() {
 				const highComplexityTasks =
 					analyzeResult?.recommendations?.filter((r) => r.shouldExpand) || [];
 				if (highComplexityTasks.length > 0) {
+					setExpandingMessage(`Expanding task ${highComplexityTasks[0].taskId}...`);
 					await backend.expandTask(highComplexityTasks[0].taskId, {
 						research: false
 					});
@@ -127,7 +133,7 @@ export function ParsePRDScreen() {
 
 	// Handle keyboard input for prompts
 	useInput((input, key) => {
-		if (key.escape && step !== 'parsing' && step !== 'analyzing') {
+		if (key.escape && step !== 'parsing' && step !== 'analyzing' && step !== 'expanding') {
 			setCurrentScreen('welcome');
 			return;
 		}
@@ -210,7 +216,7 @@ export function ParsePRDScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>Parse PRD</Text>
 				</Box>
-				{step !== 'parsing' && step !== 'analyzing' && (
+				{step !== 'parsing' && step !== 'analyzing' && step !== 'expanding' && (
 					<Text color={theme.textDim}>[ESC cancel]</Text>
 				)}
 			</Box>
@@ -242,7 +248,7 @@ export function ParsePRDScreen() {
 
 				{step === 'parsing' && (
 					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔄 Parsing PRD...</Text>
+						<LoadingSpinner message="Parsing PRD..." type="parse" />
 						<Text color={theme.textDim} marginTop={1}>
 							File: {selectedFile}
 						</Text>
@@ -252,7 +258,7 @@ export function ParsePRDScreen() {
 
 				{step === 'analyzing' && (
 					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔍 Analyzing task complexity...</Text>
+						<LoadingSpinner message="Analyzing task complexity..." type="analyze" />
 						<Text color={theme.textDim} marginTop={1}>
 							This may take a moment...
 						</Text>
@@ -305,6 +311,15 @@ export function ParsePRDScreen() {
 						</Text>
 						<Text color={theme.text}>(f) First task only</Text>
 						<Text color={theme.text}>(n) No, finish here</Text>
+					</Box>
+				)}
+
+				{step === 'expanding' && (
+					<Box flexDirection="column" alignItems="center">
+						<LoadingSpinner message={expandingMessage} type="expand" />
+						<Text color={theme.textDim} marginTop={1}>
+							Expanding tasks...
+						</Text>
 					</Box>
 				)}
 
