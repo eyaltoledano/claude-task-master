@@ -108,6 +108,12 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			// Mock a simple async iterator for streamTextService
+			[Symbol.asyncIterator]: async function* () {
+				yield { textDelta: 'Mock streaming response' };
+			}
 		})
 	})
 );
@@ -116,7 +122,32 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDefaultSubtasks: jest.fn(() => 3),
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getMainProvider: jest.fn(() => 'anthropic'),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getResearchProvider: jest.fn(() => 'perplexity'),
+		getResearchModelId: jest.fn(() => 'sonar-pro'),
+		getFallbackProvider: jest.fn(() => 'anthropic'),
+		getFallbackModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getParametersForRole: jest.fn(() => ({
+			maxTokens: 4000,
+			temperature: 0.7
+		})),
+		getUserId: jest.fn(() => '1234567890'),
+		MODEL_MAP: {},
+		getBaseUrlForRole: jest.fn(() => null),
+		isApiKeySet: jest.fn(() => true),
+		getOllamaBaseURL: jest.fn(() => 'http://localhost:11434'),
+		getAzureBaseURL: jest.fn(() => null),
+		getBedrockBaseURL: jest.fn(() => null),
+		getVertexProjectId: jest.fn(() => null),
+		getVertexLocation: jest.fn(() => 'us-central1'),
+		getMainTemperature: jest.fn(() => 0.7),
+		getResearchTemperature: jest.fn(() => 0.1),
+		getFallbackTemperature: jest.fn(() => 0.7),
+		getMainMaxTokens: jest.fn(() => 4000),
+		getResearchMaxTokens: jest.fn(() => 8700),
+		getFallbackMaxTokens: jest.fn(() => 4000)
 	})
 );
 
@@ -141,20 +172,60 @@ jest.unstable_mockModule(
 );
 
 // Mock external UI libraries
-jest.unstable_mockModule('chalk', () => ({
-	default: {
-		white: { bold: jest.fn((text) => text) },
-		cyan: Object.assign(
-			jest.fn((text) => text),
-			{
-				bold: jest.fn((text) => text)
+jest.unstable_mockModule('chalk', () => {
+	// Create a mock function that returns the text unchanged
+	const colorFn = jest.fn((text) => text);
+
+	// Create a chainable mock where each color method returns another chainable object
+	const createChainableMock = () => {
+		const mock = Object.assign(colorFn, {
+			bold: jest.fn((text) => text),
+			dim: jest.fn((text) => text),
+			italic: jest.fn((text) => text),
+			underline: jest.fn((text) => text),
+			inverse: jest.fn((text) => text),
+			strikethrough: jest.fn((text) => text),
+			// Colors
+			black: createChainableMock,
+			red: createChainableMock,
+			green: createChainableMock,
+			yellow: createChainableMock,
+			blue: createChainableMock,
+			magenta: createChainableMock,
+			cyan: createChainableMock,
+			white: createChainableMock,
+			gray: createChainableMock,
+			grey: createChainableMock,
+			// Special methods
+			hex: jest.fn(() => colorFn),
+			rgb: jest.fn(() => colorFn),
+			bgHex: jest.fn(() => colorFn),
+			bgRgb: jest.fn(() => colorFn)
+		});
+		// Make each property also callable
+		Object.keys(mock).forEach((key) => {
+			if (
+				typeof mock[key] === 'function' &&
+				key !== 'hex' &&
+				key !== 'rgb' &&
+				key !== 'bgHex' &&
+				key !== 'bgRgb'
+			) {
+				mock[key] = Object.assign(
+					jest.fn((text) => text),
+					mock
+				);
 			}
-		),
-		green: jest.fn((text) => text),
-		yellow: jest.fn((text) => text),
-		bold: jest.fn((text) => text)
-	}
-}));
+		});
+		return mock;
+	};
+
+	const chalk = createChainableMock();
+
+	return {
+		default: chalk
+	};
+});
 
 jest.unstable_mockModule('boxen', () => ({
 	default: jest.fn((text) => text)

@@ -22,7 +22,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getDefaultSubtasks: jest.fn(() => 5)
 	})
 );
 
