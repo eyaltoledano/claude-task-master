@@ -58,7 +58,6 @@ export function getInstalledProfiles(projectRoot) {
 			}
 		} catch (error) {
 			// Skip profiles that can't be loaded
-			continue;
 		}
 	}
 
@@ -114,11 +113,13 @@ export async function runInteractiveProfilesSetup() {
 		const hasMcpConfig = profile.mcpConfig === true;
 
 		if (!profile.includeDefaultRules) {
-			// Integration guide profiles (claude, codex) - don't include standard coding rules
+			// Integration guide profiles (claude, codex, gemini) - don't include standard coding rules
 			if (profileName === 'claude') {
 				description = 'Integration guide with Task Master slash commands';
 			} else if (profileName === 'codex') {
 				description = 'Comprehensive Task Master integration guide';
+			} else if (profileName === 'gemini') {
+				description = 'Integration guide and MCP config';
 			} else {
 				description = 'Integration guide';
 			}
@@ -198,7 +199,7 @@ export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
 
 	if (!profileConfig.includeDefaultRules) {
-		// Integration guide profiles (claude, codex)
+		// Integration guide profiles (claude, codex, gemini)
 		return `Summary for ${profileName}: Integration guide installed.`;
 	} else {
 		// Rule profiles with coding guidelines
@@ -224,7 +225,7 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 	const profileConfig = getRulesProfile(profileName);
 
 	if (!profileConfig.includeDefaultRules) {
-		// Integration guide profiles (claude, codex)
+		// Integration guide profiles (claude, codex, gemini)
 		const baseMessage = `Summary for ${profileName}: Integration guide removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;
