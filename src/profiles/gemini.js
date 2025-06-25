@@ -7,6 +7,8 @@ export const geminiProfile = createProfile({
 	displayName: 'Gemini',
 	url: 'codeassist.google',
 	docsUrl: 'github.com/google-gemini/gemini-cli',
+	profileDir: '.gemini', // Keep .gemini for settings.json
+	rulesDir: '.', // Root directory for GEMINI.md
 	mcpConfigName: 'settings.json', // Override default 'mcp.json'
 	includeDefaultRules: false,
 	fileMap: {
