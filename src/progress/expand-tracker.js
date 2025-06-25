@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
-import { getPriorityIndicator } from '../ui/priority-indicators.js';
+import { getPriorityIndicator } from '../ui/indicators.js';
 
 /**
  * Tracks progress for task expansion operations with individual task bars

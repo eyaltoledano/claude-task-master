@@ -2,24 +2,15 @@ import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
 import {
 	getCliPriorityIndicators,
-	getPriorityIndicator
-} from '../ui/priority-indicators.js';
+	getPriorityIndicator,
+	getStatusBarPriorityIndicators,
+	getPriorityColors
+} from '../ui/indicators.js';
 
 // Get centralized priority indicators
 const PRIORITY_INDICATORS = getCliPriorityIndicators();
-
-// Priority display dots for status bar (simplified single character versions)
-const PRIORITY_DOTS = {
-	high: chalk.red('⋮'),
-	medium: chalk.hex('#FF8800')(':'),
-	low: chalk.yellow('.')
-};
-
-const PRIORITY_COLORS = {
-	high: chalk.hex('#CC0000'),
-	medium: chalk.hex('#FF8800'),
-	low: chalk.yellow
-};
+const PRIORITY_DOTS = getStatusBarPriorityIndicators();
+const PRIORITY_COLORS = getPriorityColors();
 
 /**
  * Tracks progress for PRD parsing operations with multibar display

@@ -8,7 +8,7 @@ import {
 	DEFAULT_TASK_PRIORITY,
 	TASK_PRIORITY_OPTIONS
 } from '../../../src/constants/task-priorities.js';
-import { getPriorityIndicators } from '../../../src/ui/priority-indicators.js';
+import { getPriorityIndicators } from '../../../src/ui/indicators.js';
 
 import {
 	disableSilentMode,

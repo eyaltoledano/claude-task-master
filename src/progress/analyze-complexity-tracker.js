@@ -1,26 +1,16 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
+import {
+	getCliComplexityIndicators,
+	getStatusBarComplexityIndicators,
+	getComplexityColors,
+	getComplexityIndicator
+} from '../ui/indicators.js';
 
-// Complexity display dots for status bar (using proper dot indicators like priority system)
-const COMPLEXITY_DOTS = {
-	high: chalk.red('●') + chalk.red('●') + chalk.red('●'), // ●●● (7+)
-	medium:
-		chalk.hex('#FF8800')('●') + chalk.hex('#FF8800')('●') + chalk.white('○'), // ●●○ (4-6)
-	low: chalk.green('●') + chalk.white('○') + chalk.white('○') // ●○○ (1-3)
-};
-
-// Simplified single character versions for status bar
-const COMPLEXITY_STATUS_DOTS = {
-	high: chalk.red('⋮'),
-	medium: chalk.hex('#FF8800')(':'),
-	low: chalk.green('.')
-};
-
-const COMPLEXITY_COLORS = {
-	high: chalk.hex('#CC0000'),
-	medium: chalk.hex('#FF8800'),
-	low: chalk.green
-};
+// Get centralized complexity indicators
+const COMPLEXITY_DOTS = getCliComplexityIndicators();
+const COMPLEXITY_STATUS_DOTS = getStatusBarComplexityIndicators();
+const COMPLEXITY_COLORS = getComplexityColors();
 
 /**
  * Tracks progress for complexity analysis operations with individual task bars
@@ -230,9 +220,7 @@ export class AnalyzeComplexityTracker {
 	}
 
 	_getComplexityIndicator(score) {
-		if (score >= 7) return COMPLEXITY_DOTS.high;
-		if (score <= 3) return COMPLEXITY_DOTS.low;
-		return COMPLEXITY_DOTS.medium;
+		return getComplexityIndicator(score, false); // false = not status bar version
 	}
 
 	_updateTimeTokensBar() {
