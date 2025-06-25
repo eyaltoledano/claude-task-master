@@ -123,11 +123,7 @@ export function TaskManagementScreen() {
 		}
 
 		if (viewMode === 'detail') {
-			if (
-				input === 'e' &&
-				selectedTask &&
-				!selectedTask.subtasks?.length
-			) {
+			if (input === 'e' && selectedTask && !selectedTask.subtasks?.length) {
 				// Show expand options
 				setShowExpandOptions(true);
 			} else if (key.downArrow) {
@@ -206,7 +202,7 @@ export function TaskManagementScreen() {
 				setFilterMode('priority');
 				setFilter('all');
 			}
-			
+
 			// Cycle through priority filters: all → high → medium → low → all
 			const priorityOrder = ['all', 'high', 'medium', 'low'];
 			const currentIndex = priorityOrder.indexOf(priorityFilter);
@@ -361,69 +357,99 @@ export function TaskManagementScreen() {
 	if (viewMode === 'detail' && selectedTask) {
 		// Calculate total content lines for detail view
 		let contentLines = [];
-		
+
 		// Add all the content that will be displayed (excluding ID and Title which are in the header)
-		contentLines.push({ type: 'field', label: 'Status:', value: `${getStatusSymbol(selectedTask.status)} ${selectedTask.status}`, color: getStatusColor(selectedTask.status) });
-		contentLines.push({ type: 'field', label: 'Priority:', value: selectedTask.priority, color: getPriorityColor(selectedTask.priority) });
-		contentLines.push({ 
-			type: 'field', 
-			label: 'Dependencies:', 
-			value: selectedTask.dependencies && selectedTask.dependencies.length > 0
-				? selectedTask.dependencies
-						.map((dep) => {
-							const depTask = tasks.find((t) => t.id === dep);
-							return depTask?.status === 'done'
-								? `✅ ${dep}`
-								: `⏱️ ${dep}`;
-						})
-						.join(', ')
-				: '-'
+		contentLines.push({
+			type: 'field',
+			label: 'Status:',
+			value: `${getStatusSymbol(selectedTask.status)} ${selectedTask.status}`,
+			color: getStatusColor(selectedTask.status)
 		});
-		
+		contentLines.push({
+			type: 'field',
+			label: 'Priority:',
+			value: selectedTask.priority,
+			color: getPriorityColor(selectedTask.priority)
+		});
+		contentLines.push({
+			type: 'field',
+			label: 'Dependencies:',
+			value:
+				selectedTask.dependencies && selectedTask.dependencies.length > 0
+					? selectedTask.dependencies
+							.map((dep) => {
+								const depTask = tasks.find((t) => t.id === dep);
+								return depTask?.status === 'done' ? `✅ ${dep}` : `⏱️ ${dep}`;
+							})
+							.join(', ')
+					: '-'
+		});
+
 		if (selectedTask.complexity) {
-			contentLines.push({ type: 'field', label: 'Complexity:', value: `● ${selectedTask.complexity}`, color: theme.priorityMedium });
+			contentLines.push({
+				type: 'field',
+				label: 'Complexity:',
+				value: `● ${selectedTask.complexity}`,
+				color: theme.priorityMedium
+			});
 		}
-		
-		contentLines.push({ type: 'field', label: 'Description:', value: selectedTask.description });
-		
+
+		contentLines.push({
+			type: 'field',
+			label: 'Description:',
+			value: selectedTask.description
+		});
+
 		if (selectedTask.details) {
 			contentLines.push({ type: 'spacer' });
 			contentLines.push({ type: 'header', text: 'Implementation Details:' });
 			// Split details into lines for proper scrolling
 			const detailLines = selectedTask.details.split('\n');
-			detailLines.forEach(line => {
+			detailLines.forEach((line) => {
 				contentLines.push({ type: 'text', text: line });
 			});
 		}
-		
+
 		if (selectedTask.testStrategy) {
 			contentLines.push({ type: 'spacer' });
 			contentLines.push({ type: 'header', text: 'Test Strategy:' });
 			// Split test strategy into lines for proper scrolling
 			const testLines = selectedTask.testStrategy.split('\n');
-			testLines.forEach(line => {
+			testLines.forEach((line) => {
 				contentLines.push({ type: 'text', text: line });
 			});
 		}
-		
+
 		if (selectedTask.subtasks && selectedTask.subtasks.length > 0) {
 			contentLines.push({ type: 'spacer' });
-			contentLines.push({ type: 'header', text: `Subtasks (${selectedTask.subtasks.length}):` });
+			contentLines.push({
+				type: 'header',
+				text: `Subtasks (${selectedTask.subtasks.length}):`
+			});
 			selectedTask.subtasks.forEach((subtask) => {
-				contentLines.push({ 
-					type: 'subtask', 
+				contentLines.push({
+					type: 'subtask',
 					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}`,
 					color: getStatusColor(subtask.status)
 				});
 			});
 		} else {
 			contentLines.push({ type: 'spacer' });
-			contentLines.push({ type: 'warning', text: 'No subtasks found. Consider breaking down this task:' });
-			contentLines.push({ type: 'hint', text: "Press 'e' to expand this task" });
+			contentLines.push({
+				type: 'warning',
+				text: 'No subtasks found. Consider breaking down this task:'
+			});
+			contentLines.push({
+				type: 'hint',
+				text: "Press 'e' to expand this task"
+			});
 		}
-		
+
 		// Calculate visible content based on scroll offset
-		const visibleContent = contentLines.slice(detailScrollOffset, detailScrollOffset + DETAIL_VISIBLE_ROWS);
+		const visibleContent = contentLines.slice(
+			detailScrollOffset,
+			detailScrollOffset + DETAIL_VISIBLE_ROWS
+		);
 
 		return (
 			<Box key="detail-view" flexDirection="column">
@@ -514,17 +540,18 @@ export function TaskManagementScreen() {
 							} else if (line.type === 'subtask') {
 								return (
 									<Box key={index} marginTop={1} paddingLeft={2}>
-										<Text color={line.color}>
-											{line.text}
-										</Text>
+										<Text color={line.color}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'warning') {
 								return (
-									<Box key={index} borderStyle="round" borderColor={theme.warning} padding={1}>
-										<Text color={theme.warning}>
-											{line.text}
-										</Text>
+									<Box
+										key={index}
+										borderStyle="round"
+										borderColor={theme.warning}
+										padding={1}
+									>
+										<Text color={theme.warning}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'hint') {
@@ -538,14 +565,17 @@ export function TaskManagementScreen() {
 							}
 							return null;
 						})}
-						
+
 						{/* Scroll indicator */}
 						{contentLines.length > DETAIL_VISIBLE_ROWS && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
 									Lines {detailScrollOffset + 1}-
-									{Math.min(detailScrollOffset + DETAIL_VISIBLE_ROWS, contentLines.length)} of{' '}
-									{contentLines.length} • ↑↓ scroll
+									{Math.min(
+										detailScrollOffset + DETAIL_VISIBLE_ROWS,
+										contentLines.length
+									)}{' '}
+									of {contentLines.length} • ↑↓ scroll
 								</Text>
 							</Box>
 						)}
@@ -570,7 +600,9 @@ export function TaskManagementScreen() {
 							'Ctrl+X cancel'
 						) : (
 							<>
-								{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
+								{contentLines.length > DETAIL_VISIBLE_ROWS
+									? '↑↓ scroll • '
+									: ''}
 								{selectedTask.subtasks?.length ? '' : 'e expand • '}
 								ESC back
 							</>
@@ -613,41 +645,73 @@ export function TaskManagementScreen() {
 			{/* Task List */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
 				<SimpleTable
-					data={visibleTasks.slice(scrollOffset, scrollOffset + VISIBLE_ROWS).map((task, displayIndex) => {
-						const actualIndex = displayIndex + scrollOffset;
-						const isSelected = actualIndex === selectedIndex;
-						const subtaskCount = task.level === 0 && task.subtasks ? task.subtasks.length : 0;
-						
-						return {
-							' ': isSelected ? '→' : ' ',
-							'ID': task.id,
-							'Title': task.title.length > 33 ? task.title.substring(0, 30) + '...' : task.title,
-							'Subtasks': task.level === 0 ? (subtaskCount > 0 ? `[${subtaskCount}]` : '-') : '',
-							'Complex': task.complexity ? `● ${task.complexity}` : '-',
-							'Status': `${getStatusSymbol(task.status)} ${task.status}`,
-							'Priority': task.priority,
-							'Deps': formatDependencies(task.dependencies),
-							_renderCell: (col, value) => {
-								let color = isSelected ? theme.selectionText : theme.text;
-								
-								if (col === 'Status') {
-									color = getStatusColor(task.status);
-								} else if (col === 'Priority') {
-									color = getPriorityColor(task.priority);
-								} else if (col === 'Complex' || col === 'Deps' || col === 'Subtasks') {
-									color = isSelected ? theme.selectionText : theme.textDim;
+					data={visibleTasks
+						.slice(scrollOffset, scrollOffset + VISIBLE_ROWS)
+						.map((task, displayIndex) => {
+							const actualIndex = displayIndex + scrollOffset;
+							const isSelected = actualIndex === selectedIndex;
+							const subtaskCount =
+								task.level === 0 && task.subtasks ? task.subtasks.length : 0;
+
+							return {
+								' ': isSelected ? '→' : ' ',
+								ID: task.id,
+								Title:
+									task.title.length > 33
+										? task.title.substring(0, 30) + '...'
+										: task.title,
+								Subtasks:
+									task.level === 0
+										? subtaskCount > 0
+											? `[${subtaskCount}]`
+											: '-'
+										: '',
+								Complex: task.complexity ? `● ${task.complexity}` : '-',
+								Status: `${getStatusSymbol(task.status)} ${task.status}`,
+								Priority: task.priority,
+								Deps: formatDependencies(task.dependencies),
+								_renderCell: (col, value) => {
+									let color = isSelected ? theme.selectionText : theme.text;
+
+									if (col === 'Status') {
+										color = getStatusColor(task.status);
+									} else if (col === 'Priority') {
+										color = getPriorityColor(task.priority);
+									} else if (
+										col === 'Complex' ||
+										col === 'Deps' ||
+										col === 'Subtasks'
+									) {
+										color = isSelected ? theme.selectionText : theme.textDim;
+									}
+
+									// Add indentation for subtasks
+									if (col === 'ID' && task.level > 0) {
+										return (
+											<Text color={color} bold={isSelected}>
+												{'  ' + value}
+											</Text>
+										);
+									}
+
+									return (
+										<Text color={color} bold={isSelected}>
+											{value}
+										</Text>
+									);
 								}
-								
-								// Add indentation for subtasks
-								if (col === 'ID' && task.level > 0) {
-									return <Text color={color} bold={isSelected}>{'  ' + value}</Text>;
-								}
-								
-								return <Text color={color} bold={isSelected}>{value}</Text>;
-							}
-						};
-					})}
-					columns={[' ', 'ID', 'Title', 'Subtasks', 'Complex', 'Status', 'Priority', 'Deps']}
+							};
+						})}
+					columns={[
+						' ',
+						'ID',
+						'Title',
+						'Subtasks',
+						'Complex',
+						'Status',
+						'Priority',
+						'Deps'
+					]}
 					selectedIndex={selectedIndex - scrollOffset}
 					borders={true}
 				/>
@@ -681,7 +745,8 @@ export function TaskManagementScreen() {
 					{/* Controls */}
 					<Box marginBottom={1}>
 						<Text color={theme.text}>
-							↑↓ navigate • Enter view details • t cycle status • r cycle priority
+							↑↓ navigate • Enter view details • t cycle status • r cycle
+							priority
 						</Text>
 					</Box>
 

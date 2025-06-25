@@ -39,15 +39,13 @@ export function ExpandModal({ onSelect, onClose }) {
 				<Text color={theme.accent} bold>
 					Expand Task Options
 				</Text>
-				
+
 				<Text> </Text>
-				
-				<Text color={theme.text}>
-					Use research for better breakdown?
-				</Text>
-				
+
+				<Text color={theme.text}>Use research for better breakdown?</Text>
+
 				<Text> </Text>
-				
+
 				<SelectInput
 					items={items}
 					onSelect={handleSelect}
@@ -57,18 +55,16 @@ export function ExpandModal({ onSelect, onClose }) {
 						</Text>
 					)}
 					itemComponent={({ isSelected, label }) => (
-						<Text color={isSelected ? theme.accent : theme.text}>
-							{label}
-						</Text>
+						<Text color={isSelected ? theme.accent : theme.text}>{label}</Text>
 					)}
 				/>
-				
+
 				<Text> </Text>
-				
+
 				<Text color={theme.textDim}>
 					↑↓ navigate • Enter select • ESC cancel
 				</Text>
 			</Box>
 		</Box>
 	);
-} 
+}

@@ -2,29 +2,40 @@ import React from 'react';
 import { Box, Text } from 'ink';
 
 // Lightweight, dynamic table component with optional borders
-export const SimpleTable = ({ data, columns, selectedIndex = -1, borders = false }) => {
+export const SimpleTable = ({
+	data,
+	columns,
+	selectedIndex = -1,
+	borders = false
+}) => {
 	// Calculate column widths dynamically
 	const columnWidths = {};
-	columns.forEach(col => {
+	columns.forEach((col) => {
 		// Start with column header length
 		columnWidths[col] = col.length;
-		
+
 		// Check all data rows for max width
-		data.forEach(row => {
+		data.forEach((row) => {
 			const value = String(row[col] || '');
 			columnWidths[col] = Math.max(columnWidths[col], value.length);
 		});
-		
+
 		// Add some padding
 		columnWidths[col] += 2;
 	});
 
 	// Helper to create border lines
 	const createBorderLine = (left, middle, right, fill) => {
-		return left + columns.map((col, i) => {
-			const line = fill.repeat(columnWidths[col]);
-			return i === 0 ? line : middle + line;
-		}).join('') + right;
+		return (
+			left +
+			columns
+				.map((col, i) => {
+					const line = fill.repeat(columnWidths[col]);
+					return i === 0 ? line : middle + line;
+				})
+				.join('') +
+			right
+		);
 	};
 
 	// Render header with optional borders
@@ -51,7 +62,7 @@ export const SimpleTable = ({ data, columns, selectedIndex = -1, borders = false
 	// Render a data row
 	const renderRow = (row, rowIndex) => {
 		const isSelected = rowIndex === selectedIndex;
-		
+
 		return (
 			<Box key={rowIndex}>
 				{borders && <Text>│</Text>}
@@ -80,4 +91,4 @@ export const SimpleTable = ({ data, columns, selectedIndex = -1, borders = false
 			{borders && <Text>{createBorderLine('└', '┴', '┘', '─')}</Text>}
 		</Box>
 	);
-}; 
+};

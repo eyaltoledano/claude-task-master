@@ -66,7 +66,9 @@ export function AnalyzeComplexityScreen() {
 				const highComplexityTasks =
 					analyzeResult?.recommendations?.filter((r) => r.shouldExpand) || [];
 				if (highComplexityTasks.length > 0) {
-					setExpandingMessage(`Expanding task ${highComplexityTasks[0].taskId}...`);
+					setExpandingMessage(
+						`Expanding task ${highComplexityTasks[0].taskId}...`
+					);
 					await backend.expandTask(highComplexityTasks[0].taskId, {
 						research: useResearch
 					});
@@ -192,7 +194,10 @@ export function AnalyzeComplexityScreen() {
 
 				{step === 'analyzing' && (
 					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner message="Analyzing task complexity..." type="analyze" />
+						<LoadingSpinner
+							message="Analyzing task complexity..."
+							type="analyze"
+						/>
 						<Text color={theme.textDim} marginTop={1}>
 							Tag: {currentTag}
 						</Text>
