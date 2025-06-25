@@ -234,6 +234,9 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 		}
 
 		for (const sourceFile of sourceFiles) {
+			// Determine if this is an asset file (not a rule file)
+			const isAssetFile = !sourceFile.startsWith('rules/');
+
 			try {
 				// Use explicit path from fileMap - assets/ is the base directory
 				const sourcePath = path.join(assetsDir, sourceFile);
@@ -260,7 +263,6 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 				let content = fs.readFileSync(sourcePath, 'utf8');
 
 				// Apply transformations (only if this is a rule file, not an asset file)
-				const isAssetFile = !sourceFile.startsWith('rules/');
 				if (!isAssetFile) {
 					content = transformRuleContent(
 						content,
