@@ -94,11 +94,7 @@ const ToolCallDisplay = ({ toolCall }) => {
  * Main chat screen component
  */
 export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
-	console.log('[ChatScreen] Component rendering with:', { 
-		hasMcpClient: !!mcpClient, 
-		projectRoot,
-		mcpClientType: mcpClient?.constructor?.name 
-	});
+	
 	debugLog('Component rendering', { 
 		hasMcpClient: !!mcpClient, 
 		projectRoot,
@@ -120,22 +116,12 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 	// Initialize chat session and AI handler
 	const chatSession = useMemo(() => {
-		console.log('[ChatScreen] Creating ChatSession with projectRoot:', projectRoot);
 		debugLog('Creating ChatSession', { projectRoot });
 		// Pass null for sessionId (it will generate one), mcpClient, and projectRoot
 		return new ChatSession(null, mcpClient, projectRoot);
 	}, [projectRoot, mcpClient]);
 
 	const aiHandler = useMemo(() => {
-		console.log('[ChatScreen] Creating AIMessageHandler with:', {
-			hasChatSession: !!chatSession,
-			hasMcpClient: !!mcpClient
-		});
-		// Debug log the session content
-		console.log('[ChatScreen] mcpClient.session:', mcpClient?.session);
-		console.log('[ChatScreen] mcpClient.session.env:', mcpClient?.session?.env);
-		console.log('[ChatScreen] Has ANTHROPIC_API_KEY in session.env:', !!mcpClient?.session?.env?.ANTHROPIC_API_KEY);
-		
 		debugLog('Creating AIMessageHandler', {
 			hasChatSession: !!chatSession,
 			hasMcpClient: !!mcpClient,
@@ -149,7 +135,6 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 	// Initialize on mount
 	useEffect(() => {
-		console.log('[ChatScreen] useEffect - setting up refs');
 		sessionRef.current = chatSession;
 		handlerRef.current = aiHandler;
 
@@ -165,8 +150,6 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 	// Handle message submission
 	const handleSubmit = useCallback(async () => {
-		console.log('[ChatScreen] handleSubmit called with input:', input);
-		
 		if (!input.trim() || isProcessing) return;
 
 		const userInput = input.trim();
@@ -175,17 +158,46 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 		// Handle commands
 		if (userInput.startsWith('/')) {
-			console.log('[ChatScreen] Processing command:', userInput);
 			const command = userInput.slice(1).toLowerCase();
 			
 			if (command === 'clear') {
-				setMessages([]);
+				// Clear all state
+				setMessages([{
+					id: Date.now(),
+					role: 'assistant',
+					content: 'Welcome to Task Master AI Chat! I can help you manage tasks, analyze complexity, and answer questions about your project.',
+					timestamp: new Date()
+				}]);
+				setToolCalls([]);
+				setError(null);
+				setStreamingContent('');
+				accumulatedContentRef.current = '';
 				sessionRef.current?.clearMessages();
 				return;
 			}
 			
 			if (command === 'exit' || command === 'quit') {
 				onExit();
+				return;
+			}
+			
+			if (command === 'help') {
+				const helpMsg = {
+					id: Date.now(),
+					role: 'assistant',
+					content: `Available commands:
+• /clear - Clear the chat history
+• /exit or /quit - Exit the chat
+• /help - Show this help message
+
+You can ask me about:
+• Task management and organization
+• Code analysis and suggestions
+• Project structure and dependencies
+• General programming questions`,
+					timestamp: new Date()
+				};
+				setMessages(prev => [...prev, helpMsg]);
 				return;
 			}
 			
@@ -219,22 +231,17 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		};
 		setMessages(prev => [...prev, assistantMsg]);
 
-		console.log('[ChatScreen] Calling AI handler...');
-
 		try {
 			// Call AI handler
 			await handlerRef.current.handleUserMessage(userInput, {
 				onChunk: (chunk) => {
-					console.log('[ChatScreen] Received chunk:', chunk);
 					accumulatedContentRef.current += chunk;
 					setStreamingContent(accumulatedContentRef.current);
 				},
 				onToolCall: (toolCall) => {
-					console.log('[ChatScreen] Tool call:', toolCall);
 					setToolCalls(prev => [...prev, toolCall]);
 				},
 				onComplete: () => {
-					console.log('[ChatScreen] AI response complete, content length:', accumulatedContentRef.current.length);
 					// Update the assistant message with final content
 					const finalContent = accumulatedContentRef.current;
 					setMessages(prev => prev.map(msg => 
@@ -246,7 +253,6 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 					setIsProcessing(false);
 				},
 				onError: (error) => {
-					console.error('[ChatScreen] AI error:', error);
 					setError(error.message);
 					setIsProcessing(false);
 					// Remove the empty assistant message
@@ -254,7 +260,6 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 				}
 			});
 		} catch (error) {
-			console.error('[ChatScreen] Unexpected error:', error);
 			setError(error.message);
 			setIsProcessing(false);
 			// Remove the empty assistant message
@@ -361,7 +366,7 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 					{!isProcessing && messages.length > 0 && `${messages.length} messages`}
 				</Text>
 				<Text color={theme.textDim}>
-					Ctrl+C: Cancel | /clear: Clear chat | /exit: Exit
+					/clear: Clear chat | /exit: Exit
 				</Text>
 			</Box>
 		</Box>

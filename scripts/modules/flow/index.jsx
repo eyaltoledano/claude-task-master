@@ -68,6 +68,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/parse', description: 'Parse PRD to generate tasks' },
 			{ name: '/tags', description: 'Manage task tags' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
+			{ name: '/chat', description: 'Chat with AI assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
@@ -303,6 +304,9 @@ function FlowApp({ backend, options = {} }) {
 					// Launch the interactive rules setup
 					launchSetupCommand('rules', ['--setup']);
 					break;
+				case 'chat':
+					setCurrentScreen('chat');
+					break;
 				case 'exit':
 				case 'quit':
 					exit();
@@ -318,10 +322,6 @@ function FlowApp({ backend, options = {} }) {
 			}
 
 			setInputValue('');
-		} else if (trimmedValue && currentScreen === 'welcome') {
-			// For non-slash input on welcome screen, switch to chat
-			console.log('[FlowApp] Non-slash input detected, switching to chat screen');
-			setCurrentScreen('chat');
 		}
 	};
 
@@ -410,6 +410,9 @@ function FlowApp({ backend, options = {} }) {
 						setCurrentScreen('tags');
 						break;
 					case 'c':
+						setCurrentScreen('chat');
+						break;
+					case 'v':
 						setCurrentScreen('mcp');
 						break;
 					case 's':
@@ -591,6 +594,7 @@ function FlowApp({ backend, options = {} }) {
 				) : currentScreen === 'mcp' ? (
 					<MCPServerManager
 						onBack={() => setCurrentScreen('welcome')}
+						onOpenChat={() => setCurrentScreen('chat')}
 						onUseServer={async (server) => {
 							try {
 								// Create and initialize MCP client backend
@@ -679,7 +683,7 @@ function FlowApp({ backend, options = {} }) {
 												onChange={handleTextInputChange}
 												onSubmit={handleInput}
 												placeholder={
-													waitingForShortcut ? 'Waiting for command key...' : 'Chat with AI or type / for commands'
+													waitingForShortcut ? 'Waiting for command key...' : 'Type / for commands or use Ctrl+X shortcuts'
 												}
 											/>
 										</Box>

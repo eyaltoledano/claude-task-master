@@ -13,7 +13,7 @@ import {
 import { connectionPool } from '../mcp/connection-pool.js';
 import { theme } from '../theme.js';
 
-export function MCPServerManager({ onBack, onUseServer, log }) {
+export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [view, setView] = useState('list'); // 'list', 'add', 'edit', 'details'
@@ -96,6 +96,8 @@ export function MCPServerManager({ onBack, onUseServer, log }) {
 			handleToggleConnection(servers[selectedIndex]);
 		} else if (input === 'u' && servers[selectedIndex]) {
 			handleUseServer(servers[selectedIndex]);
+		} else if (input === 'c') {
+			onOpenChat();
 		} else if (key.escape || input === 'q') {
 			onBack();
 		}
@@ -270,7 +272,7 @@ export function MCPServerManager({ onBack, onUseServer, log }) {
 				<Text color={theme.textDim}>
 					A: Add Server • E: Edit • R: Remove • U: Use as Backend
 				</Text>
-				<Text color={theme.textDim}>Q/Esc: Back</Text>
+				<Text color={theme.textDim}>C: Chat with AI • Q/Esc: Back</Text>
 			</Box>
 		</Box>
 	);

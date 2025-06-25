@@ -48,6 +48,12 @@ export function CommandPalette() {
 			name: 'MCP Servers',
 			command: '/mcp',
 			description: 'Manage MCP servers',
+			key: 'v'
+		},
+		{
+			name: 'Chat with AI',
+			command: '/chat',
+			description: 'Chat with AI assistant',
 			key: 'c'
 		},
 		{

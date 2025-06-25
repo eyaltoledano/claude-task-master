@@ -116,6 +116,15 @@ export function WelcomeScreen() {
 							<Box width={34}>
 								<Text color={theme.text}>Manage MCP servers</Text>
 							</Box>
+							<Text color={theme.textDim}>ctrl+x v</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={12}>
+								<Text color={theme.accent}>/chat</Text>
+							</Box>
+							<Box width={34}>
+								<Text color={theme.text}>Chat with AI assistant</Text>
+							</Box>
 							<Text color={theme.textDim}>ctrl+x c</Text>
 						</Box>
 						<Box flexDirection="row">
