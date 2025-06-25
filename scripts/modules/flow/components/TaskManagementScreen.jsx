@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import SelectInput from 'ink-select-input';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { Toast } from './Toast.jsx';
+import { ExpandModal } from './ExpandModal.jsx';
 
 export function TaskManagementScreen() {
 	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
@@ -78,13 +80,8 @@ export function TaskManagementScreen() {
 		}
 
 		if (showExpandOptions) {
-			if (input === '1' || input === 'y') {
-				// Expand with research
-				expandTask(true);
-			} else if (input === '2' || input === 'n') {
-				// Expand without research
-				expandTask(false);
-			} else if (key.escape) {
+			// SelectInput handles its own input, but we still want ESC to work
+			if (key.escape) {
 				setShowExpandOptions(false);
 			}
 			return;
@@ -413,118 +410,89 @@ export function TaskManagementScreen() {
 					</Text>
 				</Box>
 
-				{/* Task Details with scrolling */}
-				<Box
-					flexDirection="column"
-					paddingLeft={2}
-					paddingRight={2}
-					height={DETAIL_VISIBLE_ROWS + 2}
-				>
-					{visibleContent.map((line, index) => {
-						if (line.type === 'field') {
-							return (
-								<Box key={index} flexDirection="row" marginBottom={1}>
-									<Box width={20}>
-										<Text color={theme.textDim}>{line.label}</Text>
-									</Box>
-									<Box flexGrow={1}>
-										<Text color={line.color || theme.text}>{line.value}</Text>
-									</Box>
-								</Box>
-							);
-						} else if (line.type === 'header') {
-							return (
-								<Box key={index} flexDirection="column" marginTop={1}>
-									<Text color={theme.accent} bold>
-										{line.text}
-									</Text>
-								</Box>
-							);
-						} else if (line.type === 'text') {
-							return (
-								<Box key={index} marginTop={0.5} paddingLeft={2}>
-									<Text color={theme.text}>{line.text}</Text>
-								</Box>
-							);
-						} else if (line.type === 'subtask') {
-							return (
-								<Box key={index} marginTop={1} paddingLeft={2}>
-									<Text color={line.color}>
-										{line.text}
-									</Text>
-								</Box>
-							);
-						} else if (line.type === 'warning') {
-							return (
-								<Box key={index} borderStyle="round" borderColor={theme.warning} padding={1}>
-									<Text color={theme.warning}>
-										{line.text}
-									</Text>
-								</Box>
-							);
-						} else if (line.type === 'hint') {
-							return (
-								<Box key={index} paddingLeft={1}>
-									<Text color={theme.textDim}>{line.text}</Text>
-								</Box>
-							);
-						} else if (line.type === 'spacer') {
-							return <Box key={index} height={1} />;
-						}
-						return null;
-					})}
-					
-					{/* Scroll indicator */}
-					{contentLines.length > DETAIL_VISIBLE_ROWS && (
-						<Box marginTop={1}>
-							<Text color={theme.textDim}>
-								Lines {detailScrollOffset + 1}-
-								{Math.min(detailScrollOffset + DETAIL_VISIBLE_ROWS, contentLines.length)} of{' '}
-								{contentLines.length} • ↑↓ scroll
-							</Text>
-						</Box>
-					)}
-				</Box>
-
-				{/* Expand Options Dialog */}
-				{showExpandOptions && (
+				{/* Expand Options Dialog - Rendered at fixed position */}
+				{showExpandOptions ? (
+					<Box marginBottom={1} marginLeft={2}>
+						<ExpandModal
+							onSelect={(withResearch) => {
+								setShowExpandOptions(false);
+								expandTask(withResearch);
+							}}
+							onClose={() => setShowExpandOptions(false)}
+						/>
+					</Box>
+				) : (
+					/* Task Details with scrolling */
 					<Box
-						position="absolute"
-						width="60%"
-						height={8}
-						left="20%"
-						top="40%"
-						borderStyle="round"
-						borderColor={theme.accent}
-						backgroundColor={theme.background}
+						flexDirection="column"
 						paddingLeft={2}
 						paddingRight={2}
-						paddingTop={1}
-						paddingBottom={1}
+						height={DETAIL_VISIBLE_ROWS + 2}
 					>
-						<Box flexDirection="column">
-							<Text color={theme.accent} bold>
-								Expand Task Options:
-							</Text>
+						{visibleContent.map((line, index) => {
+							if (line.type === 'field') {
+								return (
+									<Box key={index} flexDirection="row" marginBottom={1}>
+										<Box width={20}>
+											<Text color={theme.textDim}>{line.label}</Text>
+										</Box>
+										<Box flexGrow={1}>
+											<Text color={line.color || theme.text}>{line.value}</Text>
+										</Box>
+									</Box>
+								);
+							} else if (line.type === 'header') {
+								return (
+									<Box key={index} flexDirection="column" marginTop={1}>
+										<Text color={theme.accent} bold>
+											{line.text}
+										</Text>
+									</Box>
+								);
+							} else if (line.type === 'text') {
+								return (
+									<Box key={index} marginTop={0.5} paddingLeft={2}>
+										<Text color={theme.text}>{line.text}</Text>
+									</Box>
+								);
+							} else if (line.type === 'subtask') {
+								return (
+									<Box key={index} marginTop={1} paddingLeft={2}>
+										<Text color={line.color}>
+											{line.text}
+										</Text>
+									</Box>
+								);
+							} else if (line.type === 'warning') {
+								return (
+									<Box key={index} borderStyle="round" borderColor={theme.warning} padding={1}>
+										<Text color={theme.warning}>
+											{line.text}
+										</Text>
+									</Box>
+								);
+							} else if (line.type === 'hint') {
+								return (
+									<Box key={index} paddingLeft={1}>
+										<Text color={theme.textDim}>{line.text}</Text>
+									</Box>
+								);
+							} else if (line.type === 'spacer') {
+								return <Box key={index} height={1} />;
+							}
+							return null;
+						})}
+						
+						{/* Scroll indicator */}
+						{contentLines.length > DETAIL_VISIBLE_ROWS && (
 							<Box marginTop={1}>
-								<Text color={theme.text}>
-									Would you like to use research for better task breakdown?
+								<Text color={theme.textDim}>
+									Lines {detailScrollOffset + 1}-
+									{Math.min(detailScrollOffset + DETAIL_VISIBLE_ROWS, contentLines.length)} of{' '}
+									{contentLines.length} • ↑↓ scroll
 								</Text>
 							</Box>
-							<Box marginTop={1}>
-								<Text color={theme.success}>
-									1) Yes - Use research (recommended)
-								</Text>
-							</Box>
-							<Box>
-								<Text color={theme.text}>
-									2) No - Quick expand without research
-								</Text>
-							</Box>
-							<Box marginTop={1}>
-								<Text color={theme.textDim}>[ESC to cancel]</Text>
-							</Box>
-						</Box>
+						)}
 					</Box>
 				)}
 
@@ -532,17 +500,21 @@ export function TaskManagementScreen() {
 				{isExpanding && (
 					<Box
 						position="absolute"
-						width="50%"
-						height={5}
-						left="25%"
-						top="45%"
-						borderStyle="round"
-						borderColor={theme.accent}
-						backgroundColor={theme.background}
+						width="100%"
+						height="100%"
+						top={0}
+						left={0}
 						justifyContent="center"
 						alignItems="center"
 					>
-						<Text color={theme.accent}>🔄 Expanding task...</Text>
+						<Box
+							borderStyle="double"
+							borderColor={theme.accent}
+							backgroundColor="#000000"
+							padding={2}
+						>
+							<Text color={theme.accent}>🔄 Expanding task...</Text>
+						</Box>
 					</Box>
 				)}
 
