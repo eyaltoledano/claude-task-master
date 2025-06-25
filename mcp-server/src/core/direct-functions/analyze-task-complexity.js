@@ -75,7 +75,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		} else if (from || to) {
 			const fromStr = from !== undefined ? from : 'first';
 			const toStr = to !== undefined ? to : 'last';
-			reportLog(`Analyzing tasks in range: ${fromStr} to ${toStr}`, 'debug');
+			log.info(`Analyzing tasks in range: ${fromStr} to ${toStr}`);
 		}
 
 		if (research) {
@@ -176,13 +176,13 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 
 			// Count tasks by complexity (updated ranges: 1-3 low, 4-6 medium, 7+ high)
 			const highComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 7
+				(t) => t.complexityScore >= 8
 			).length;
 			const mediumComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore >= 4 && t.complexityScore < 7
+				(t) => t.complexityScore >= 5 && t.complexityScore < 8
 			).length;
 			const lowComplexityTasks = analysisArray.filter(
-				(t) => t.complexityScore < 4
+				(t) => t.complexityScore < 5
 			).length;
 
 			return {
