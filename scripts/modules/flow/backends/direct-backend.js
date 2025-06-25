@@ -21,6 +21,30 @@ import { parsePRDDirect } from '../../../../mcp-server/src/core/direct-functions
 import { analyzeTaskComplexityDirect } from '../../../../mcp-server/src/core/direct-functions/analyze-task-complexity.js';
 import { expandAllTasksDirect } from '../../../../mcp-server/src/core/direct-functions/expand-all-tasks.js';
 import { modelsDirect } from '../../../../mcp-server/src/core/direct-functions/models.js';
+import { updateTaskByIdDirect } from '../../../../mcp-server/src/core/direct-functions/update-task-by-id.js';
+import { updateSubtaskByIdDirect } from '../../../../mcp-server/src/core/direct-functions/update-subtask-by-id.js';
+
+// Map MCP tool names to direct functions
+const TOOL_FUNCTION_MAP = {
+	get_tasks: listTasksDirect,
+	next_task: nextTaskDirect,
+	get_task: showTaskDirect,
+	set_task_status: setTaskStatusDirect,
+	expand_task: expandTaskDirect,
+	add_task: addTaskDirect,
+	update_task: updateTaskByIdDirect,
+	update_subtask: updateSubtaskByIdDirect,
+	research: researchDirect,
+	list_tags: listTagsDirect,
+	use_tag: useTagDirect,
+	add_tag: addTagDirect,
+	delete_tag: deleteTagDirect,
+	rename_tag: renameTagDirect,
+	parse_prd: parsePRDDirect,
+	analyze_project_complexity: analyzeTaskComplexityDirect,
+	expand_all: expandAllTasksDirect,
+	models: modelsDirect
+};
 
 /**
  * Direct Backend - uses MCP server direct functions
@@ -32,6 +56,8 @@ export class DirectBackend extends FlowBackend {
 			options.projectRoot || findProjectRoot() || process.cwd();
 		this.log = createLogger({ console: false });
 		this.tasksJsonPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
+		// Simulated session for API key access
+		this.session = options.session || {};
 	}
 
 	async initialize() {
@@ -55,6 +81,56 @@ export class DirectBackend extends FlowBackend {
 			this.log.debug(`Error checking tasks.json existence: ${error.message}`);
 			return false;
 		}
+	}
+
+	/**
+	 * Generic tool calling method for AI integration
+	 * @param {string} toolName - Name of the MCP tool to call
+	 * @param {object} args - Arguments for the tool
+	 * @returns {Promise<object>} - Tool result
+	 */
+	async callTool(toolName, args = {}) {
+		const directFunction = TOOL_FUNCTION_MAP[toolName];
+		if (!directFunction) {
+			throw new Error(`Unknown tool: ${toolName}`);
+		}
+
+		// Build arguments with project context
+		const toolArgs = {
+			...args,
+			projectRoot: this.projectRoot,
+			tasksJsonPath: this.tasksJsonPath
+		};
+
+		// Handle special argument mappings based on tool
+		switch (toolName) {
+			case 'get_task':
+				// showTaskDirect expects 'id' not 'taskId'
+				if (args.id) {
+					toolArgs.id = String(args.id);
+				}
+				break;
+			case 'analyze_project_complexity':
+				// Set up output path for complexity report
+				const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
+				const tagSuffix = args.tag && args.tag !== 'master' ? `_${args.tag}` : '';
+				toolArgs.outputPath = path.join(reportDir, `task-complexity-report${tagSuffix}.json`);
+				toolArgs.file = this.tasksJsonPath;
+				toolArgs.output = toolArgs.outputPath;
+				break;
+		}
+
+		// Call the direct function
+		const result = await directFunction(toolArgs, this.log, { session: this.session });
+		
+		if (!result.success) {
+			throw new Error(result.error.message || result.error);
+		}
+
+		// Update telemetry if available
+		this.updateTelemetry(result.data);
+
+		return result;
 	}
 
 	async listTasks(options = {}) {

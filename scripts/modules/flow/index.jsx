@@ -25,6 +25,7 @@ import { Toast } from './components/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
 import { CommandPalette } from './components/CommandPalette.jsx';
 import { MCPServerManager } from './components/MCPServerManager.jsx';
+import { ChatScreen } from './components/ChatScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -76,7 +77,7 @@ function FlowApp({ backend, options = {} }) {
 
 		// Only include task-related commands if tasks.json exists
 		if (hasTasksFile) {
-			baseCommands.splice(3, 0, 
+			baseCommands.splice(2, 0, 
 				{ name: '/analyze', description: 'Analyze task complexity' },
 				{ name: '/tasks', description: 'Interactive task management' }
 			);
@@ -132,17 +133,6 @@ function FlowApp({ backend, options = {} }) {
 	// Initialize backend
 	useEffect(() => {
 		async function init() {
-			// Temporarily suppress console.log during initialization
-			const originalConsoleLog = console.log;
-			console.log = (...args) => {
-				// Filter out unwanted log messages
-				const message = args.join(' ');
-				if (message.includes('[INFO]') && message.includes('listTasksDirect')) {
-					return; // Suppress this specific message
-				}
-				originalConsoleLog.apply(console, args);
-			};
-
 			try {
 				await currentBackend.initialize();
 				
@@ -163,9 +153,6 @@ function FlowApp({ backend, options = {} }) {
 			} catch (err) {
 				setError(err.message);
 				setLoading(false);
-			} finally {
-				// Restore original console.log
-				console.log = originalConsoleLog;
 			}
 		}
 
@@ -221,6 +208,7 @@ function FlowApp({ backend, options = {} }) {
 	// Handle input commands
 	const handleInput = async (value) => {
 		const trimmedValue = value.trim();
+		console.log('[FlowApp] handleInput called with:', { value, trimmedValue, currentScreen });
 
 		// If we have suggestions and one is selected, use that instead
 		if (
@@ -234,6 +222,7 @@ function FlowApp({ backend, options = {} }) {
 		// Handle slash commands
 		if (value.startsWith('/')) {
 			const command = value.substring(1).toLowerCase();
+			console.log('[FlowApp] Processing slash command:', command);
 
 			switch (command) {
 				case 'init':
@@ -330,26 +319,9 @@ function FlowApp({ backend, options = {} }) {
 
 			setInputValue('');
 		} else if (trimmedValue && currentScreen === 'welcome') {
-			// Handle regular input as task operations
-			setMessages([
-				...messages,
-				{
-					type: 'user',
-					content: trimmedValue
-				}
-			]);
-
-			// TODO: Process natural language commands
-			setMessages((prev) => [
-				...prev,
-				{
-					type: 'assistant',
-					content:
-						'Task operations coming soon. Try /tasks to see your task list.'
-				}
-			]);
-
-			setInputValue('');
+			// For non-slash input on welcome screen, switch to chat
+			console.log('[FlowApp] Non-slash input detected, switching to chat screen');
+			setCurrentScreen('chat');
 		}
 	};
 
@@ -525,7 +497,7 @@ function FlowApp({ backend, options = {} }) {
 				}
 			}
 		},
-		{ isActive: !showCommandPalette && currentScreen !== 'tasks' }
+		{ isActive: !showCommandPalette && currentScreen !== 'tasks' && currentScreen !== 'chat' }
 	);
 
 	// Context value
@@ -610,6 +582,12 @@ function FlowApp({ backend, options = {} }) {
 					<ParsePRDScreen />
 				) : currentScreen === 'analyze' ? (
 					<AnalyzeComplexityScreen />
+				) : currentScreen === 'chat' ? (
+					<ChatScreen
+						mcpClient={currentBackend}
+						projectRoot={currentBackend.projectRoot}
+						onExit={() => setCurrentScreen('welcome')}
+					/>
 				) : currentScreen === 'mcp' ? (
 					<MCPServerManager
 						onBack={() => setCurrentScreen('welcome')}
@@ -701,7 +679,7 @@ function FlowApp({ backend, options = {} }) {
 												onChange={handleTextInputChange}
 												onSubmit={handleInput}
 												placeholder={
-													waitingForShortcut ? 'Waiting for command key...' : ''
+													waitingForShortcut ? 'Waiting for command key...' : 'Chat with AI or type / for commands'
 												}
 											/>
 										</Box>
@@ -746,8 +724,18 @@ export async function run(options = {}) {
 
 	let backend;
 	if (backendType === 'direct') {
+		// Create a session object that can access environment variables
+		// This mimics the MCP session behavior for API key access
+		const session = {
+			// The session object needs an env property for resolveEnvVariable to work
+			// In MCP context, this would come from mcp.json's env section
+			// For direct backend, we'll use process.env
+			env: process.env
+		};
+		
 		backend = new DirectBackend({
-			projectRoot: options.projectRoot
+			projectRoot: options.projectRoot,
+			session: session
 		});
 	} else if (backendType === 'cli') {
 		// TODO: Import and use CliBackend when ready
