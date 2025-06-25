@@ -133,7 +133,18 @@ export function ParsePRDScreen() {
 
 	// Handle keyboard input for prompts
 	useInput((input, key) => {
-		if (key.escape && step !== 'parsing' && step !== 'analyzing' && step !== 'expanding') {
+		// During long-running operations, only allow Ctrl+X to cancel
+		if (step === 'parsing' || step === 'analyzing' || step === 'expanding') {
+			if (key.ctrl && input === 'x') {
+				setStep('error');
+				setError('Operation cancelled by user');
+				return;
+			}
+			// Ignore all other keys during operations
+			return;
+		}
+
+		if (key.escape) {
 			setCurrentScreen('welcome');
 			return;
 		}
@@ -216,7 +227,9 @@ export function ParsePRDScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>Parse PRD</Text>
 				</Box>
-				{step !== 'parsing' && step !== 'analyzing' && step !== 'expanding' && (
+				{step === 'parsing' || step === 'analyzing' || step === 'expanding' ? (
+					<Text color={theme.warning}>[Ctrl+X cancel]</Text>
+				) : (
 					<Text color={theme.textDim}>[ESC cancel]</Text>
 				)}
 			</Box>
@@ -253,6 +266,9 @@ export function ParsePRDScreen() {
 							File: {selectedFile}
 						</Text>
 						<Text color={theme.textDim}>Target tag: {currentTag}</Text>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
+						</Text>
 					</Box>
 				)}
 
@@ -261,6 +277,9 @@ export function ParsePRDScreen() {
 						<LoadingSpinner message="Analyzing task complexity..." type="analyze" />
 						<Text color={theme.textDim} marginTop={1}>
 							This may take a moment...
+						</Text>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
 						</Text>
 					</Box>
 				)}
@@ -319,6 +338,9 @@ export function ParsePRDScreen() {
 						<LoadingSpinner message={expandingMessage} type="expand" />
 						<Text color={theme.textDim} marginTop={1}>
 							Expanding tasks...
+						</Text>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
 						</Text>
 					</Box>
 				)}

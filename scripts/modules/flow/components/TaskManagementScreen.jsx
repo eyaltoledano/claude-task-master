@@ -96,19 +96,31 @@ export function TaskManagementScreen() {
 		}
 
 		if (key.escape) {
+			if (isExpanding) {
+				// During expansion, ESC is disabled - must use Ctrl+X
+				return;
+			}
 			if (viewMode === 'detail') {
-				// Exit detail view
 				flushSync(() => {
 					setViewMode('list');
 					setSelectedTask(null);
+					setShowExpandOptions(false);
 					setDetailScrollOffset(0);
 				});
-				return;
 			} else {
-				// Exit to welcome screen from list view
 				setCurrentScreen('welcome');
-				return;
 			}
+			return;
+		}
+
+		// Handle Ctrl+X to cancel expansion
+		if (key.ctrl && input === 'x' && isExpanding) {
+			setIsExpanding(false);
+			setToast({
+				message: 'Expansion cancelled',
+				type: 'warning'
+			});
+			return;
 		}
 
 		if (viewMode === 'detail') {
@@ -457,6 +469,9 @@ export function TaskManagementScreen() {
 						>
 							<LoadingSpinner message="Expanding task..." type="expand" />
 						</Box>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
+						</Text>
 					</Box>
 				)}
 
@@ -549,9 +564,15 @@ export function TaskManagementScreen() {
 					flexShrink={0}
 				>
 					<Text color={theme.text}>
-						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
-						{selectedTask.subtasks?.length ? '' : 'e expand • '}
-						ESC back
+						{isExpanding ? (
+							'Ctrl+X cancel'
+						) : (
+							<>
+								{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
+								{selectedTask.subtasks?.length ? '' : 'e expand • '}
+								ESC back
+							</>
+						)}
 					</Text>
 				</Box>
 

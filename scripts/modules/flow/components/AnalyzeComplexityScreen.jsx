@@ -87,7 +87,19 @@ export function AnalyzeComplexityScreen() {
 
 	// Handle keyboard input
 	useInput((input, key) => {
-		if (key.escape && step !== 'analyzing' && step !== 'expanding') {
+		// During long-running operations, only allow Ctrl+X to cancel
+		if (step === 'analyzing' || step === 'expanding') {
+			if (key.ctrl && input === 'x') {
+				setError('Operation cancelled by user');
+				setCurrentScreen('welcome');
+				showToast('Operation cancelled');
+				return;
+			}
+			// Ignore all other keys during operations
+			return;
+		}
+
+		if (key.escape) {
 			setCurrentScreen('welcome');
 			return;
 		}
@@ -132,7 +144,9 @@ export function AnalyzeComplexityScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>Analyze Complexity</Text>
 				</Box>
-				{step !== 'analyzing' && step !== 'expanding' && (
+				{step === 'analyzing' || step === 'expanding' ? (
+					<Text color={theme.warning}>[Ctrl+X cancel]</Text>
+				) : (
 					<Text color={theme.textDim}>[ESC cancel]</Text>
 				)}
 			</Box>
@@ -188,6 +202,9 @@ export function AnalyzeComplexityScreen() {
 						<Text color={theme.textDim} marginTop={2}>
 							This may take a moment...
 						</Text>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
+						</Text>
 					</Box>
 				)}
 
@@ -231,6 +248,9 @@ export function AnalyzeComplexityScreen() {
 						</Text>
 						<Text color={theme.textDim} marginTop={2}>
 							This may take a moment...
+						</Text>
+						<Text color={theme.warning} marginTop={2}>
+							Press Ctrl+X to cancel
 						</Text>
 					</Box>
 				)}
