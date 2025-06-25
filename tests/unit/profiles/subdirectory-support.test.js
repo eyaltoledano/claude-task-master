@@ -8,10 +8,10 @@ describe('Rules Subdirectory Support Feature', () => {
 		expect(cursorProfile.supportsRulesSubdirectories).toBe(true);
 
 		// Verify that Cursor uses taskmaster subdirectories in its file mapping
-		expect(cursorProfile.fileMap['dev_workflow.mdc']).toBe(
+		expect(cursorProfile.fileMap['rules/dev_workflow.mdc']).toBe(
 			'taskmaster/dev_workflow.mdc'
 		);
-		expect(cursorProfile.fileMap['taskmaster.mdc']).toBe(
+		expect(cursorProfile.fileMap['rules/taskmaster.mdc']).toBe(
 			'taskmaster/taskmaster.mdc'
 		);
 	});
@@ -26,10 +26,10 @@ describe('Rules Subdirectory Support Feature', () => {
 
 			// Verify that these profiles do NOT use taskmaster subdirectories in their file mapping
 			const expectedExt = profile.targetExtension || '.md';
-			expect(profile.fileMap['dev_workflow.mdc']).toBe(
+			expect(profile.fileMap['rules/dev_workflow.mdc']).toBe(
 				`dev_workflow${expectedExt}`
 			);
-			expect(profile.fileMap['taskmaster.mdc']).toBe(
+			expect(profile.fileMap['rules/taskmaster.mdc']).toBe(
 				`taskmaster${expectedExt}`
 			);
 		});
