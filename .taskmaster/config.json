@@ -30,5 +30,6 @@
 		"userId": "1234567890",
 		"azureBaseURL": "https://your-endpoint.azure.com/",
 		"defaultTag": "master"
-	}
+	},
+	"claudeCode": {}
 }

@@ -48,11 +48,14 @@ const mockConsole = {
 };
 global.console = mockConsole;
 
+// --- Define Mock Function Instances ---
+const mockFindConfigPath = jest.fn(() => null); // Default to null, can be overridden in tests
+
 // Mock path-utils to prevent config file path discovery and logging
 jest.mock('../../src/utils/path-utils.js', () => ({
 	__esModule: true,
 	findProjectRoot: jest.fn(() => '/mock/project'),
-	findConfigPath: jest.fn(() => null), // Always return null to prevent config discovery
+	findConfigPath: mockFindConfigPath, // Use the mock function instance
 	findTasksPath: jest.fn(() => '/mock/tasks.json'),
 	findComplexityReportPath: jest.fn(() => null),
 	resolveTasksOutputPath: jest.fn(() => '/mock/tasks.json'),
@@ -141,7 +144,8 @@ const DEFAULT_CONFIG = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
-	}
+	},
+	claudeCode: {}
 };
 
 // Other test data (VALID_CUSTOM_CONFIG, PARTIAL_CONFIG, INVALID_PROVIDER_CONFIG)
@@ -195,6 +199,60 @@ const INVALID_PROVIDER_CONFIG = {
 	}
 };
 
+// Claude Code test data
+const VALID_CLAUDE_CODE_CONFIG = {
+	maxTurns: 5,
+	customSystemPrompt: 'You are a helpful coding assistant',
+	appendSystemPrompt: 'Always follow best practices',
+	permissionMode: 'acceptEdits',
+	allowedTools: ['Read', 'LS', 'Edit'],
+	disallowedTools: ['Write'],
+	mcpServers: {
+		'test-server': {
+			type: 'stdio',
+			command: 'node',
+			args: ['server.js'],
+			env: { NODE_ENV: 'test' }
+		}
+	},
+	commandSpecific: {
+		'add-task': {
+			maxTurns: 3,
+			permissionMode: 'plan'
+		},
+		'research': {
+			customSystemPrompt: 'You are a research assistant'
+		}
+	}
+};
+
+const INVALID_CLAUDE_CODE_CONFIG = {
+	maxTurns: 'invalid', // Should be number
+	permissionMode: 'invalid-mode', // Invalid enum value
+	allowedTools: 'not-an-array', // Should be array
+	mcpServers: {
+		'invalid-server': {
+			type: 'invalid-type', // Invalid enum value
+			url: 'not-a-valid-url' // Invalid URL format
+		}
+	},
+	commandSpecific: {
+		'invalid-command': { // Invalid command name
+			maxTurns: -1 // Invalid negative number
+		}
+	}
+};
+
+const PARTIAL_CLAUDE_CODE_CONFIG = {
+	maxTurns: 10,
+	permissionMode: 'default',
+	commandSpecific: {
+		'expand-task': {
+			customSystemPrompt: 'Focus on task breakdown'
+		}
+	}
+};
+
 // Define spies globally to be restored in afterAll
 let consoleErrorSpy;
 let consoleWarnSpy;
@@ -220,6 +278,7 @@ beforeEach(() => {
 	// Reset the external mock instances for utils
 	mockFindProjectRoot.mockReset();
 	mockLog.mockReset();
+	mockFindConfigPath.mockReset();
 
 	// --- Set up spies ON the imported 'fs' mock ---
 	fsExistsSyncSpy = jest.spyOn(fsMocked, 'existsSync');
@@ -228,6 +287,7 @@ beforeEach(() => {
 
 	// --- Default Mock Implementations ---
 	mockFindProjectRoot.mockReturnValue(MOCK_PROJECT_ROOT); // Default for utils.findProjectRoot
+	mockFindConfigPath.mockReturnValue(null); // Default to no config file found
 	fsExistsSyncSpy.mockReturnValue(true); // Assume files exist by default
 
 	// Default readFileSync: Return REAL models content, mocked config, or throw error
@@ -325,6 +385,137 @@ describe('Validation Functions', () => {
 	});
 });
 
+// --- Claude Code Validation Tests ---
+describe('Claude Code Validation', () => {
+	test('validateClaudeCodeSettings should return valid settings for correct input', () => {
+		const result = configManager.validateClaudeCodeSettings(VALID_CLAUDE_CODE_CONFIG);
+
+		expect(result).toEqual(VALID_CLAUDE_CODE_CONFIG);
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should return empty object for invalid input', () => {
+		const result = configManager.validateClaudeCodeSettings(INVALID_CLAUDE_CODE_CONFIG);
+
+		expect(result).toEqual({});
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Warning: Invalid Claude Code settings in config')
+		);
+	});
+
+	test('validateClaudeCodeSettings should handle partial valid configuration', () => {
+		const result = configManager.validateClaudeCodeSettings(PARTIAL_CLAUDE_CODE_CONFIG);
+
+		expect(result).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should return empty object for empty input', () => {
+		const result = configManager.validateClaudeCodeSettings({});
+
+		expect(result).toEqual({});
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should handle null/undefined input', () => {
+		expect(configManager.validateClaudeCodeSettings(null)).toEqual({});
+		expect(configManager.validateClaudeCodeSettings(undefined)).toEqual({});
+		expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+	});
+});
+
+// --- Claude Code Getter Tests ---
+describe('Claude Code Getter Functions', () => {
+	test('getClaudeCodeSettings should return default empty object when no config exists', () => {
+		// No config file exists, should return empty object
+		fsExistsSyncSpy.mockReturnValue(false);
+		const settings = configManager.getClaudeCodeSettings(MOCK_PROJECT_ROOT);
+
+		expect(settings).toEqual({});
+	});
+
+	test('getClaudeCodeSettings should return merged settings from config file', () => {
+		// Config file with Claude Code settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: VALID_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4o' }],
+					google: [{ id: 'gemini-1.5-pro-latest' }],
+					anthropic: [{ id: 'claude-3-opus-20240229' }, { id: 'claude-3-7-sonnet-20250219' }, { id: 'claude-3-5-sonnet' }],
+					perplexity: [{ id: 'sonar-pro' }],
+					ollama: [],
+					openrouter: []
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettings(MOCK_PROJECT_ROOT, true); // Force reload
+
+		expect(settings).toEqual(VALID_CLAUDE_CODE_CONFIG);
+	});
+
+	test('getClaudeCodeSettingsForCommand should return command-specific settings', () => {
+		// Config with command-specific settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: VALID_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (path.basename(filePath) === 'supported-models.json') return '{}';
+			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettingsForCommand('add-task', MOCK_PROJECT_ROOT, true); // Force reload
+
+		// Should merge global settings with command-specific settings
+		const expectedSettings = {
+			...VALID_CLAUDE_CODE_CONFIG,
+			...VALID_CLAUDE_CODE_CONFIG.commandSpecific['add-task']
+		};
+		expect(settings).toEqual(expectedSettings);
+	});
+
+	test('getClaudeCodeSettingsForCommand should return global settings for unknown command', () => {
+		// Config with Claude Code settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: PARTIAL_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (path.basename(filePath) === 'supported-models.json') return '{}';
+			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettingsForCommand('unknown-command', MOCK_PROJECT_ROOT, true); // Force reload
+
+		// Should return global settings only
+		expect(settings).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);
+	});
+});
+
 // --- getConfig Tests ---
 describe('getConfig Tests', () => {
 	test('should return default config if .taskmasterconfig does not exist', () => {
@@ -409,7 +600,11 @@ describe('getConfig Tests', () => {
 					...VALID_CUSTOM_CONFIG.models.fallback
 				}
 			},
-			global: { ...DEFAULT_CONFIG.global, ...VALID_CUSTOM_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...VALID_CUSTOM_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			}
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -447,7 +642,11 @@ describe('getConfig Tests', () => {
 				research: { ...DEFAULT_CONFIG.models.research },
 				fallback: { ...DEFAULT_CONFIG.models.fallback }
 			},
-			global: { ...DEFAULT_CONFIG.global, ...PARTIAL_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...PARTIAL_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			}
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, 'utf-8');
@@ -551,7 +750,11 @@ describe('getConfig Tests', () => {
 				},
 				fallback: { ...DEFAULT_CONFIG.models.fallback }
 			},
-			global: { ...DEFAULT_CONFIG.global, ...INVALID_PROVIDER_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...INVALID_PROVIDER_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			}
 		};
 		expect(config).toEqual(expectedMergedConfig);
 	});
