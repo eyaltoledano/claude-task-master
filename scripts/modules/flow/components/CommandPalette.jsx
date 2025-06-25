@@ -63,6 +63,9 @@ const commands = [
 export function CommandPalette({ onClose, onSelectCommand }) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 
+	// Calculate the maximum command width for proper alignment
+	const maxCommandWidth = Math.max(...commands.map(cmd => cmd.command.length));
+
 	useInput((input, key) => {
 		if (key.escape) {
 			onClose();
@@ -131,12 +134,12 @@ export function CommandPalette({ onClose, onSelectCommand }) {
 								flexDirection="row"
 								width="100%"
 							>
-								<Box width={20}>
+								<Box width={12}>
 									<Text color={isSelected ? theme.accent : theme.accent}>
 										{cmd.command}
 									</Text>
 								</Box>
-								<Box width={40}>
+								<Box flexGrow={1}>
 									<Text color={isSelected ? theme.textBright : theme.text}>
 										{cmd.description}
 									</Text>
