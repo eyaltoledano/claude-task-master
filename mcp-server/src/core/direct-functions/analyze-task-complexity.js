@@ -174,7 +174,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 				? coreResult.report.complexityAnalysis
 				: [];
 
-			// Count tasks by complexity (updated ranges: 1-3 low, 4-6 medium, 7+ high)
+			// Count tasks by complexity (remains the same)
 			const highComplexityTasks = analysisArray.filter(
 				(t) => t.complexityScore >= 8
 			).length;
