@@ -75,7 +75,7 @@ const DEFAULT_CONFIG = {
 		fallback: {
 			provider: 'anthropic',
 			modelId: 'claude-3-5-sonnet',
-			maxTokens: 64000,
+			maxTokens: 8192,
 			temperature: 0.2
 		}
 	},

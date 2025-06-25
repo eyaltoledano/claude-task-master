@@ -46,11 +46,11 @@ const prdSingleTaskSchema = z.object({
 	id: z.number().int().positive(),
 	title: z.string().min(1),
 	description: z.string().min(1),
-	details: z.string().optional().default(''),
-	testStrategy: z.string().optional().default(''),
-	priority: z.enum(TASK_PRIORITY_OPTIONS).default(DEFAULT_TASK_PRIORITY),
-	dependencies: z.array(z.number().int().positive()).optional().default([]),
-	status: z.string().optional().default('pending')
+	details: z.string().nullable(),
+	testStrategy: z.string().nullable(),
+	priority: z.enum(TASK_PRIORITY_OPTIONS).nullable(),
+	dependencies: z.array(z.number().int().positive()).nullable(),
+	status: z.string().nullable()
 });
 
 // Define the Zod schema for the ENTIRE expected AI response object

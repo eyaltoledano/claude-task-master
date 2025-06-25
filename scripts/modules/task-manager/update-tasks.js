@@ -35,10 +35,10 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
-		subtasks: z.array(z.any()).optional() // Keep subtasks flexible for now
+		priority: z.string().nullable(),
+		details: z.string().nullable(),
+		testStrategy: z.string().nullable(),
+		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
 	})
 	.strip(); // Allow potential extra fields during parsing if needed, then validate structure
 const updatedTaskArraySchema = z.array(updatedTaskSchema);

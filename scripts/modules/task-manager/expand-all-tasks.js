@@ -242,7 +242,7 @@ async function expandAllTasks(
 						tag: data.tag || contextTag,
 						parentTracker,
 						onSubtaskProgress // Pass the callback
-					}, // Pass parent tracker in context
+					}, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
 				expandedCount++;

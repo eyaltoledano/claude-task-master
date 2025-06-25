@@ -123,7 +123,9 @@ describe('updateTasks', () => {
 				details: 'New details 2 based on direction',
 				description: 'Updated description',
 				dependencies: [],
-				priority: 'medium'
+				priority: 'medium',
+				testStrategy: 'Unit test the updated functionality',
+				subtasks: []
 			},
 			{
 				id: 3,
@@ -132,7 +134,9 @@ describe('updateTasks', () => {
 				details: 'New details 3 based on direction',
 				description: 'Updated description',
 				dependencies: [],
-				priority: 'medium'
+				priority: 'medium',
+				testStrategy: 'Integration test the updated features',
+				subtasks: []
 			}
 		];
 

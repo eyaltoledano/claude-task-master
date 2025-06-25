@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.17.0-rc.1",
+	"version": "0.18.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -50,6 +50,7 @@
 		"@ai-sdk/xai": "^1.2.15",
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@aws-sdk/credential-providers": "^3.817.0",
+		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"@streamparser/json": "^0.0.22",
 		"ai": "^4.3.10",
@@ -74,9 +75,11 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
-		"task-master-ai": "0.17.0-rc.1",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
+	},
+	"optionalDependencies": {
+		"@anthropic-ai/claude-code": "^1.0.25"
 	},
 	"engines": {
 		"node": ">=18.0.0"

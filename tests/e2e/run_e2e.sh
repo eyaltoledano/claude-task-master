@@ -333,8 +333,8 @@ log_step() {
 
   log_step "Initializing Task Master project (non-interactive)"
   task-master init -y --name="E2E Test $TIMESTAMP" --description="Automated E2E test run"
-  if [ ! -f ".taskmasterconfig" ]; then
-    log_error "Initialization failed: .taskmasterconfig not found."
+  if [ ! -f ".taskmaster/config.json" ]; then
+    log_error "Initialization failed: .taskmaster/config.json not found."
     exit 1
   fi
   log_success "Project initialized."
@@ -344,8 +344,8 @@ log_step() {
   exit_status_prd=$?
   echo "$cmd_output_prd"
   extract_and_sum_cost "$cmd_output_prd"
-  if [ $exit_status_prd -ne 0 ] || [ ! -s "tasks/tasks.json" ]; then
-    log_error "Parsing PRD failed: tasks/tasks.json not found or is empty. Exit status: $exit_status_prd"
+  if [ $exit_status_prd -ne 0 ] || [ ! -s ".taskmaster/tasks/tasks.json" ]; then
+    log_error "Parsing PRD failed: .taskmaster/tasks/tasks.json not found or is empty. Exit status: $exit_status_prd"
     exit 1
   else
     log_success "PRD parsed successfully."
@@ -385,6 +385,95 @@ log_step() {
   log_step "Listing tasks again (after changes)"
   task-master list --with-subtasks > task_list_after_changes.log
   log_success "Task list after changes saved to task_list_after_changes.log"
+
+  # === Start New Test Section: Tag-Aware Expand Testing ===
+  log_step "Creating additional tag for expand testing"
+  task-master add-tag feature-expand --description="Tag for testing expand command with tag preservation"
+  log_success "Created feature-expand tag."
+
+  log_step "Adding task to feature-expand tag"
+  task-master add-task --tag=feature-expand --prompt="Test task for tag-aware expansion" --priority=medium
+  # Get the new task ID dynamically
+  new_expand_task_id=$(jq -r '.["feature-expand"].tasks[-1].id' .taskmaster/tasks/tasks.json)
+  log_success "Added task $new_expand_task_id to feature-expand tag."
+
+  log_step "Verifying tags exist before expand test"
+  task-master tags > tags_before_expand.log
+  tag_count_before=$(jq 'keys | length' .taskmaster/tasks/tasks.json)
+  log_success "Tag count before expand: $tag_count_before"
+
+  log_step "Expanding task in feature-expand tag (testing tag corruption fix)"
+  cmd_output_expand_tagged=$(task-master expand --tag=feature-expand --id="$new_expand_task_id" 2>&1)
+  exit_status_expand_tagged=$?
+  echo "$cmd_output_expand_tagged"
+  extract_and_sum_cost "$cmd_output_expand_tagged"
+  if [ $exit_status_expand_tagged -ne 0 ]; then
+    log_error "Tagged expand failed. Exit status: $exit_status_expand_tagged"
+  else
+    log_success "Tagged expand completed."
+  fi
+
+  log_step "Verifying tag preservation after expand"
+  task-master tags > tags_after_expand.log
+  tag_count_after=$(jq 'keys | length' .taskmaster/tasks/tasks.json)
+  
+  if [ "$tag_count_before" -eq "$tag_count_after" ]; then
+    log_success "Tag count preserved: $tag_count_after (no corruption detected)"
+  else
+    log_error "Tag corruption detected! Before: $tag_count_before, After: $tag_count_after"
+  fi
+
+  log_step "Verifying master tag still exists and has tasks"
+  master_task_count=$(jq -r '.master.tasks | length' .taskmaster/tasks/tasks.json 2>/dev/null || echo "0")
+  if [ "$master_task_count" -gt "0" ]; then
+    log_success "Master tag preserved with $master_task_count tasks"
+  else
+    log_error "Master tag corrupted or empty after tagged expand"
+  fi
+
+  log_step "Verifying feature-expand tag has expanded subtasks"
+  expanded_subtask_count=$(jq -r ".\"feature-expand\".tasks[] | select(.id == $new_expand_task_id) | .subtasks | length" .taskmaster/tasks/tasks.json 2>/dev/null || echo "0")
+  if [ "$expanded_subtask_count" -gt "0" ]; then
+    log_success "Expand successful: $expanded_subtask_count subtasks created in feature-expand tag"
+  else
+    log_error "Expand failed: No subtasks found in feature-expand tag"
+  fi
+
+  log_step "Testing force expand with tag preservation"
+  cmd_output_force_expand=$(task-master expand --tag=feature-expand --id="$new_expand_task_id" --force 2>&1)
+  exit_status_force_expand=$?
+  echo "$cmd_output_force_expand"
+  extract_and_sum_cost "$cmd_output_force_expand"
+  
+  # Verify tags still preserved after force expand
+  tag_count_after_force=$(jq 'keys | length' .taskmaster/tasks/tasks.json)
+  if [ "$tag_count_before" -eq "$tag_count_after_force" ]; then
+    log_success "Force expand preserved all tags"
+  else
+    log_error "Force expand caused tag corruption"
+  fi
+
+  log_step "Testing expand --all with tag preservation"
+  # Add another task to feature-expand for expand-all testing
+  task-master add-task --tag=feature-expand --prompt="Second task for expand-all testing" --priority=low
+  second_expand_task_id=$(jq -r '.["feature-expand"].tasks[-1].id' .taskmaster/tasks/tasks.json)
+  
+  cmd_output_expand_all=$(task-master expand --tag=feature-expand --all 2>&1)
+  exit_status_expand_all=$?
+  echo "$cmd_output_expand_all"
+  extract_and_sum_cost "$cmd_output_expand_all"
+  
+  # Verify tags preserved after expand-all
+  tag_count_after_all=$(jq 'keys | length' .taskmaster/tasks/tasks.json)
+  if [ "$tag_count_before" -eq "$tag_count_after_all" ]; then
+    log_success "Expand --all preserved all tags"
+  else
+    log_error "Expand --all caused tag corruption"
+  fi
+  
+  log_success "Completed expand --all tag preservation test."
+
+  # === End New Test Section: Tag-Aware Expand Testing ===
 
   # === Test Model Commands ===
   log_step "Checking initial model configuration"
@@ -626,7 +715,7 @@ log_step() {
 
   # Find the next available task ID dynamically instead of hardcoding 11, 12
   # Assuming tasks are added sequentially and we didn't remove any core tasks yet
-  last_task_id=$(jq '[.tasks[].id] | max' tasks/tasks.json)
+  last_task_id=$(jq '[.master.tasks[].id] | max' .taskmaster/tasks/tasks.json)
   manual_task_id=$((last_task_id + 1))
   ai_task_id=$((manual_task_id + 1))
 
@@ -747,30 +836,30 @@ log_step() {
   task-master list --with-subtasks > task_list_after_clear_all.log
   log_success "Task list after clear-all saved. (Manual/LLM check recommended to verify subtasks removed)"
 
-  log_step "Expanding Task 1 again (to have subtasks for next test)"
-  task-master expand --id=1
-  log_success "Attempted to expand Task 1 again."
-  # Verify 1.1 exists again
-  if ! jq -e '.tasks[] | select(.id == 1) | .subtasks[] | select(.id == 1)' tasks/tasks.json > /dev/null; then
-      log_error "Subtask 1.1 not found in tasks.json after re-expanding Task 1."
+  log_step "Expanding Task 3 again (to have subtasks for next test)"
+  task-master expand --id=3
+  log_success "Attempted to expand Task 3."
+  # Verify 3.1 exists 
+  if ! jq -e '.master.tasks[] | select(.id == 3) | .subtasks[] | select(.id == 1)' .taskmaster/tasks/tasks.json > /dev/null; then
+      log_error "Subtask 3.1 not found in tasks.json after expanding Task 3."
       exit 1
   fi
 
-  log_step "Adding dependency: Task 3 depends on Subtask 1.1"
-  task-master add-dependency --id=3 --depends-on=1.1
-  log_success "Added dependency 3 -> 1.1."
+  log_step "Adding dependency: Task 4 depends on Subtask 3.1"
+  task-master add-dependency --id=4 --depends-on=3.1
+  log_success "Added dependency 4 -> 3.1."
 
-  log_step "Showing Task 3 details (after adding subtask dependency)"
-  task-master show 3 > task_3_details_after_dep_add.log
-  log_success "Task 3 details saved. (Manual/LLM check recommended for dependency [1.1])"
+  log_step "Showing Task 4 details (after adding subtask dependency)"
+  task-master show 4 > task_4_details_after_dep_add.log
+  log_success "Task 4 details saved. (Manual/LLM check recommended for dependency [3.1])"
 
-  log_step "Removing dependency: Task 3 depends on Subtask 1.1"
-  task-master remove-dependency --id=3 --depends-on=1.1
-  log_success "Removed dependency 3 -> 1.1."
+  log_step "Removing dependency: Task 4 depends on Subtask 3.1"
+  task-master remove-dependency --id=4 --depends-on=3.1
+  log_success "Removed dependency 4 -> 3.1."
 
-  log_step "Showing Task 3 details (after removing subtask dependency)"
-  task-master show 3 > task_3_details_after_dep_remove.log
-  log_success "Task 3 details saved. (Manual/LLM check recommended to verify dependency removed)"
+  log_step "Showing Task 4 details (after removing subtask dependency)"
+  task-master show 4 > task_4_details_after_dep_remove.log
+  log_success "Task 4 details saved. (Manual/LLM check recommended to verify dependency removed)"
 
   # === End New Test Section ===
 
