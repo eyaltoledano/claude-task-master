@@ -26,6 +26,7 @@ import { CommandSuggestions } from './components/CommandSuggestions.jsx';
 import { CommandPalette } from './components/CommandPalette.jsx';
 import { MCPServerManager } from './components/MCPServerManager.jsx';
 import { ChatScreen } from './components/ChatScreen.jsx';
+import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -259,7 +260,7 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('tags');
 					break;
 				case 'mcp':
-					setCurrentScreen('mcp');
+					setCurrentScreen('mcp-management');
 					break;
 				case 'status':
 					setCurrentScreen('status');
@@ -413,7 +414,7 @@ function FlowApp({ backend, options = {} }) {
 						setCurrentScreen('chat');
 						break;
 					case 'v':
-						setCurrentScreen('mcp');
+						setCurrentScreen('mcp-management');
 						break;
 					case 's':
 						setCurrentScreen('status');
@@ -591,6 +592,8 @@ function FlowApp({ backend, options = {} }) {
 						projectRoot={currentBackend.projectRoot}
 						onExit={() => setCurrentScreen('welcome')}
 					/>
+				) : currentScreen === 'mcp-management' ? (
+					<MCPManagementScreen />
 				) : currentScreen === 'mcp' ? (
 					<MCPServerManager
 						onBack={() => setCurrentScreen('welcome')}
