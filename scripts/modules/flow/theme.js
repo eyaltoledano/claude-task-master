@@ -167,6 +167,45 @@ function detectTerminalIsDark() {
 		return true;
 	}
 
+	/**
+	 * Detect Apple Terminal theme by reading the default profile
+	 * @returns {boolean|null} true if dark, false if light, null if unknown
+	 */
+	function detectAppleTerminalTheme() {
+		try {
+			const profile = execSync(
+				'defaults read com.apple.Terminal "Default Window Settings" 2>/dev/null',
+				{ encoding: 'utf8' }
+			).trim();
+
+			// Map built-in Terminal.app profiles to light/dark
+			const profileMap = {
+				// Dark profiles
+				Pro: 'dark',
+				Novel: 'dark',
+				'Red Sands': 'dark',
+				'Silver Aerogel': 'dark',
+				'Solid Colors': 'dark',
+
+				// Light profiles
+				Basic: 'light',
+				Homebrew: 'light',
+				'Man Page': 'light',
+				Ocean: 'light',
+				Grass: 'light'
+				// Users can extend this mapping in their config if needed
+			};
+
+			if (profile && profileMap[profile]) {
+				return profileMap[profile] === 'dark';
+			}
+
+			return null; // Unknown profile, fall through to other heuristics
+		} catch (e) {
+			return null; // Command failed, fall through
+		}
+	}
+
 	// Apple Terminal specific check
 	if (termProgram === 'Apple_Terminal') {
 		// Check for Terminal appearance
@@ -174,6 +213,12 @@ function detectTerminalIsDark() {
 			return true;
 		} else if (process.env.TERM_APPEARANCE === 'light') {
 			return false;
+		}
+
+		// Try to detect theme from Terminal profile
+		const profileTheme = detectAppleTerminalTheme();
+		if (profileTheme !== null) {
+			return profileTheme;
 		}
 
 		// If TERM_APPEARANCE is not set, check if we detected macOS dark mode earlier
@@ -191,8 +236,10 @@ function detectTerminalIsDark() {
 			}
 		}
 
-		// Default Apple Terminal to dark if we can't determine
-		return true;
+		// If we couldn't determine the appearance, assume light on systems
+		// where AppleInterfaceStyle is not set (e.g., daytime/light mode)
+		// and TERM_APPEARANCE is undefined.
+		return false;
 	}
 
 	// Check for theme-related environment variables
