@@ -44,7 +44,17 @@ class MockProgressReporter {
 		this.progressHistory.push(entry);
 
 		if (this.enableDebug) {
+			// Skip subtask-level progress display
+			if (
+				data.type === 'subtask_generation' ||
+				data.type === 'subtask_generation_start' ||
+				data.type === 'subtask_generation_complete'
+			) {
+				return; // Don't display these
+			}
+
 			const percentage = data.total ? Math.round(data.progress * 100) : 0;
+
 			console.log(
 				chalk.blue(`[${timestamp}ms]`),
 				chalk.green(`${percentage}%`),
@@ -57,7 +67,7 @@ class MockProgressReporter {
 		return this.progressHistory;
 	}
 
-	printSummary() {
+	printSummary(showSubtaskProgress = false) {
 		console.log(chalk.green('\n=== Progress Summary ==='));
 		console.log(`Total progress reports: ${this.progressHistory.length}`);
 		console.log(
@@ -65,7 +75,18 @@ class MockProgressReporter {
 		);
 
 		this.progressHistory.forEach((entry, index) => {
+			// Skip subtask-level progress if not requested
+			if (
+				!showSubtaskProgress &&
+				(entry.type === 'subtask_generation' ||
+					entry.type === 'subtask_generation_start' ||
+					entry.type === 'subtask_generation_complete')
+			) {
+				return;
+			}
+
 			const percentage = entry.total ? Math.round(entry.progress * 100) : 0;
+
 			console.log(
 				`${index + 1}. [${entry.timestamp}ms] ${percentage}% - ${entry.message}`
 			);
@@ -118,6 +139,16 @@ class MockProgressReporter {
 				`Progress range: ${Math.min(...progressValues).toFixed(3)} - ${Math.max(...progressValues).toFixed(3)}`
 			);
 		}
+
+		// Show progress type breakdown
+		const typeBreakdown = {};
+		this.progressHistory.forEach((entry) => {
+			typeBreakdown[entry.type] = (typeBreakdown[entry.type] || 0) + 1;
+		});
+		console.log(chalk.cyan('\n=== Progress Type Breakdown ==='));
+		Object.entries(typeBreakdown).forEach(([type, count]) => {
+			console.log(`${type}: ${count}`);
+		});
 	}
 }
 
