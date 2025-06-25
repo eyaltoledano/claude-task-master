@@ -33,7 +33,7 @@ const commands = [
 	{
 		name: '/theme',
 		description:
-			'Toggle between light theme (for white terminals) and dark theme (for dark terminals)'
+			'Cycle theme mode: auto-detect → light mode → dark mode'
 	},
 	{ name: '/exit', description: 'Exit Task Master Flow' }
 ];

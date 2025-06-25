@@ -60,7 +60,7 @@ function FlowApp({ backend, options = {} }) {
 	const [notification, setNotification] = useState(null);
 	const [currentBackend, setCurrentBackend] = useState(backend);
 	const [currentTheme, setCurrentTheme] = useState(() => {
-		// Check for saved theme preference
+		// Check for saved theme preference or default to auto
 		const savedTheme = process.env.TASKMASTER_THEME;
 		return savedTheme || 'auto';
 	});
@@ -70,6 +70,16 @@ function FlowApp({ backend, options = {} }) {
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
 
 	const { exit } = useApp();
+
+	// Initialize theme on mount
+	useEffect(() => {
+		// Apply the initial theme based on auto-detection or saved preference
+		if (currentTheme === 'auto') {
+			setTheme('auto');
+		} else {
+			setTheme(currentTheme);
+		}
+	}, []);
 
 	// Autocomplete filtering effect
 	useEffect(() => {
@@ -204,14 +214,33 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('status');
 					break;
 				case 'theme':
-					// Toggle theme
-					const newTheme = theme === getTheme('light') ? 'dark' : 'light';
+					// Cycle through auto -> light -> dark -> auto
+					let newTheme;
+					if (currentTheme === 'auto') {
+						newTheme = 'light';
+					} else if (currentTheme === 'light') {
+						newTheme = 'dark';
+					} else {
+						newTheme = 'auto';
+					}
+					
 					setTheme(newTheme);
 					setCurrentTheme(newTheme);
+					
+					let themeMessage;
+					if (newTheme === 'auto') {
+						const isDark = theme === getTheme('dark');
+						themeMessage = `Switched to auto theme detection (currently using ${isDark ? 'dark mode' : 'light mode'})`;
+					} else if (newTheme === 'dark') {
+						themeMessage = 'Switched to dark mode (light text on dark background)';
+					} else {
+						themeMessage = 'Switched to light mode (dark text on light background)';
+					}
+					
 					setNotification({
-						message: `Switched to ${newTheme === 'dark' ? 'dark theme (for light terminals)' : 'light theme (for dark terminals)'}`,
+						message: themeMessage,
 						type: 'success',
-						duration: 2000
+						duration: 3000
 					});
 					break;
 				case 'models':

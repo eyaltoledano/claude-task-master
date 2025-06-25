@@ -60,7 +60,7 @@ export function WelcomeScreen() {
 						<Text color={theme.text}>/status View project status details</Text>
 						<Text color={theme.text}>/models Configure AI models</Text>
 						<Text color={theme.text}>/rules Configure AI assistant rules</Text>
-						<Text color={theme.text}>/theme Toggle light/dark theme</Text>
+						<Text color={theme.text}>/theme   Toggle theme (auto/light/dark)</Text>
 						<Text color={theme.text}>/exit Exit Task Master Flow</Text>
 					</Box>
 				</Box>
