@@ -15,6 +15,7 @@ export function WelcomeScreen() {
 					justifyContent="center"
 					alignItems="center"
 				>
+					<Text> </Text>
 					{/* ASCII Art Logo */}
 					<Box flexDirection="column" alignItems="center" marginBottom={2}>
 						<Text color={theme.accent}>
