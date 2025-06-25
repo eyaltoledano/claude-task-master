@@ -2,6 +2,10 @@
  * Tests for the analyze-task-complexity.js module
  */
 import { jest } from '@jest/globals';
+import {
+	createGetTagAwareFilePathMock,
+	createSlugifyTagForFilePathMock
+} from './setup.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
@@ -32,6 +36,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	getCurrentTag: jest.fn(() => 'master'),
 	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
+	getTagAwareFilePath: createGetTagAwareFilePathMock(),
+	slugifyTagForFilePath: createSlugifyTagForFilePathMock(),
 	markMigrationForNotice: jest.fn(),
 	performCompleteTagMigration: jest.fn(),
 	setTasksForTag: jest.fn(),
