@@ -199,6 +199,19 @@ export function TaskManagementScreen() {
 			// Cycle status of selected task
 			const task = visibleTasks[selectedIndex];
 			cycleTaskStatus(task);
+		} else if (input === 'r') {
+			// Cycle through priority filters
+			if (filterMode !== 'priority') {
+				// First switch to priority mode
+				setFilterMode('priority');
+				setFilter('all');
+			}
+			
+			// Cycle through priority filters: all → high → medium → low → all
+			const priorityOrder = ['all', 'high', 'medium', 'low'];
+			const currentIndex = priorityOrder.indexOf(priorityFilter);
+			const nextIndex = (currentIndex + 1) % priorityOrder.length;
+			setPriorityFilter(priorityOrder[nextIndex]);
 		} else if (input === '1') {
 			if (filterMode === 'status') {
 				setFilter('all');
@@ -668,7 +681,7 @@ export function TaskManagementScreen() {
 					{/* Controls */}
 					<Box marginBottom={1}>
 						<Text color={theme.text}>
-							↑↓ navigate • Enter view details • t cycle status
+							↑↓ navigate • Enter view details • t cycle status • r cycle priority
 						</Text>
 					</Box>
 

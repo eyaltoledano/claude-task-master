@@ -52,7 +52,7 @@ export function AnalyzeComplexityScreen() {
 		}
 
 		setStep('expanding');
-		
+
 		try {
 			if (expandOption === 'all') {
 				setExpandingMessage('Expanding all high-complexity tasks...');
