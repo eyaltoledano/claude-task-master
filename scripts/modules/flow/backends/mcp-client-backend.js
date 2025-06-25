@@ -310,7 +310,37 @@ export class MCPClientBackend extends FlowBackend {
 		// Handle both direct response and wrapped response formats
 		const data = result.data || result;
 
-		return data;
+		// Extract activeModels and rename modelId to model for consistency with StatusScreen
+		const activeModels = data.activeModels || data;
+		return {
+			main: activeModels.main
+				? {
+						provider: activeModels.main.provider,
+						model: activeModels.main.modelId || activeModels.main.model,
+						sweScore: activeModels.main.sweScore,
+						cost: activeModels.main.cost,
+						keyStatus: activeModels.main.keyStatus
+					}
+				: null,
+			research: activeModels.research
+				? {
+						provider: activeModels.research.provider,
+						model: activeModels.research.modelId || activeModels.research.model,
+						sweScore: activeModels.research.sweScore,
+						cost: activeModels.research.cost,
+						keyStatus: activeModels.research.keyStatus
+					}
+				: null,
+			fallback: activeModels.fallback
+				? {
+						provider: activeModels.fallback.provider,
+						model: activeModels.fallback.modelId || activeModels.fallback.model,
+						sweScore: activeModels.fallback.sweScore,
+						cost: activeModels.fallback.cost,
+						keyStatus: activeModels.fallback.keyStatus
+					}
+				: null
+		};
 	}
 
 	async getComplexityReport(tag = null) {

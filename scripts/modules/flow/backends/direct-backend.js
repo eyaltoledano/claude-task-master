@@ -400,7 +400,37 @@ export class DirectBackend extends FlowBackend {
 			throw new Error(result.error.message || result.error);
 		}
 
-		return result.data;
+		// Extract activeModels and rename modelId to model for consistency with StatusScreen
+		const activeModels = result.data.activeModels;
+		return {
+			main: activeModels.main
+				? {
+						provider: activeModels.main.provider,
+						model: activeModels.main.modelId,
+						sweScore: activeModels.main.sweScore,
+						cost: activeModels.main.cost,
+						keyStatus: activeModels.main.keyStatus
+					}
+				: null,
+			research: activeModels.research
+				? {
+						provider: activeModels.research.provider,
+						model: activeModels.research.modelId,
+						sweScore: activeModels.research.sweScore,
+						cost: activeModels.research.cost,
+						keyStatus: activeModels.research.keyStatus
+					}
+				: null,
+			fallback: activeModels.fallback
+				? {
+						provider: activeModels.fallback.provider,
+						model: activeModels.fallback.modelId,
+						sweScore: activeModels.fallback.sweScore,
+						cost: activeModels.fallback.cost,
+						keyStatus: activeModels.fallback.keyStatus
+					}
+				: null
+		};
 	}
 
 	async getComplexityReport(tag = null) {

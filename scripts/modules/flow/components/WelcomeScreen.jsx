@@ -18,32 +18,34 @@ export function WelcomeScreen() {
 					{/* ASCII Art Logo */}
 					<Box flexDirection="column" alignItems="center" marginBottom={2}>
 						<Text color={theme.accent}>
-							████████╗ █████╗ ███████╗██╗ ██╗███╗ ███╗ █████╗
-							███████╗████████╗███████╗██████╗
+							{
+								'████████╗ █████╗ ███████╗██╗  ██╗███╗   ███╗ █████╗ ███████╗████████╗███████╗██████╗ '
+							}
 						</Text>
 						<Text color={theme.accent}>
-							╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝████╗
-							████║██╔══██╗██╔════╝╚══██╔══╝██╔════╝██╔══██╗
+							{
+								'╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝████╗ ████║██╔══██╗██╔════╝╚══██╔══╝██╔════╝██╔══██╗'
+							}
 						</Text>
 						<Text color={theme.accent}>
-							{' '}
-							██║ ███████║███████╗█████╔╝ ██╔████╔██║███████║███████╗ ██║ █████╗
-							██████╔╝
+							{
+								'   ██║   ███████║███████╗█████╔╝ ██╔████╔██║███████║███████╗   ██║   █████╗  ██████╔╝'
+							}
 						</Text>
 						<Text color={theme.accent}>
-							{' '}
-							██║ ██╔══██║╚════██║██╔═██╗ ██║╚██╔╝██║██╔══██║╚════██║ ██║ ██╔══╝
-							██╔══██╗
+							{
+								'   ██║   ██╔══██║╚════██║██╔═██╗ ██║╚██╔╝██║██╔══██║╚════██║   ██║   ██╔══╝  ██╔══██╗'
+							}
 						</Text>
 						<Text color={theme.accent}>
-							{' '}
-							██║ ██║ ██║███████║██║ ██╗██║ ╚═╝ ██║██║ ██║███████║ ██║
-							███████╗██║ ██║
+							{
+								'   ██║   ██║  ██║███████║██║  ██╗██║ ╚═╝ ██║██║  ██║███████║   ██║   ███████╗██║  ██║'
+							}
 						</Text>
 						<Text color={theme.accent}>
-							{' '}
-							╚═╝ ╚═╝ ╚═╝╚══════╝╚═╝ ╚═╝╚═╝ ╚═╝╚═╝ ╚═╝╚══════╝ ╚═╝ ╚══════╝╚═╝
-							╚═╝
+							{
+								'   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝'
+							}
 						</Text>
 					</Box>
 
@@ -63,19 +65,21 @@ export function WelcomeScreen() {
 					</Box>
 				</Box>
 			) : (
-				<Box flexDirection="column" width="100%" padding={2}>
-					{/* Message history */}
-					{messages.map((msg, idx) => (
-						<Box key={idx} marginBottom={1}>
-							{msg.type === 'user' ? (
-								<Text color="cyan">❯ {msg.content}</Text>
-							) : msg.type === 'assistant' ? (
-								<Text>{msg.content}</Text>
-							) : (
-								<Text color="red">{msg.content}</Text>
-							)}
-						</Box>
-					))}
+				<Box flexDirection="column" flexGrow={1}>
+					{/* Chat messages would go here */}
+					<Box flexGrow={1} flexDirection="column" paddingLeft={1}>
+						{messages.map((msg, i) => (
+							<Box key={i} marginBottom={1}>
+								<Text
+									color={msg.type === 'user' ? theme.text : theme.accent}
+									bold={msg.type === 'assistant'}
+								>
+									{msg.type === 'user' ? '❯ ' : '◆ '}
+									{msg.content}
+								</Text>
+							</Box>
+						))}
+					</Box>
 				</Box>
 			)}
 		</Box>
