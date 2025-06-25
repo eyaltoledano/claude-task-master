@@ -21,9 +21,11 @@ export function TaskManagementScreen() {
 	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
 	const [isExpanding, setIsExpanding] = useState(false);
+	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
+	const DETAIL_VISIBLE_ROWS = 20; // Visible rows in detail view
 
 	// Reload tasks on mount
 	useEffect(() => {
@@ -92,6 +94,7 @@ export function TaskManagementScreen() {
 			if (key.escape) {
 				setViewMode('list');
 				setSelectedTask(null);
+				setDetailScrollOffset(0); // Reset scroll when leaving detail view
 			} else if (
 				input === 'e' &&
 				selectedTask &&
@@ -99,6 +102,18 @@ export function TaskManagementScreen() {
 			) {
 				// Show expand options
 				setShowExpandOptions(true);
+			} else if (key.downArrow) {
+				// Scroll down in detail view
+				setDetailScrollOffset((prev) => prev + 1);
+			} else if (key.upArrow) {
+				// Scroll up in detail view
+				setDetailScrollOffset((prev) => Math.max(0, prev - 1));
+			} else if (key.pageDown) {
+				// Page down in detail view
+				setDetailScrollOffset((prev) => prev + 10);
+			} else if (key.pageUp) {
+				// Page up in detail view
+				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
 			}
 			return;
 		}
@@ -205,6 +220,7 @@ export function TaskManagementScreen() {
 			const fullTask = await backend.getTask(task.id);
 			setSelectedTask(fullTask);
 			setViewMode('detail');
+			setDetailScrollOffset(0); // Reset scroll position when opening a new task
 		} catch (error) {
 			console.error('Failed to load task details:', error);
 		}
@@ -316,9 +332,75 @@ export function TaskManagementScreen() {
 
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
+		// Calculate total content lines for detail view
+		let contentLines = [];
+		
+		// Add all the content that will be displayed (excluding ID and Title which are in the header)
+		contentLines.push({ type: 'field', label: 'Status:', value: `${getStatusSymbol(selectedTask.status)} ${selectedTask.status}`, color: getStatusColor(selectedTask.status) });
+		contentLines.push({ type: 'field', label: 'Priority:', value: selectedTask.priority, color: getPriorityColor(selectedTask.priority) });
+		contentLines.push({ 
+			type: 'field', 
+			label: 'Dependencies:', 
+			value: selectedTask.dependencies && selectedTask.dependencies.length > 0
+				? selectedTask.dependencies
+						.map((dep) => {
+							const depTask = tasks.find((t) => t.id === dep);
+							return depTask?.status === 'done'
+								? `✅ ${dep}`
+								: `⏱️ ${dep}`;
+						})
+						.join(', ')
+				: '-'
+		});
+		
+		if (selectedTask.complexity) {
+			contentLines.push({ type: 'field', label: 'Complexity:', value: `● ${selectedTask.complexity}`, color: theme.priorityMedium });
+		}
+		
+		contentLines.push({ type: 'field', label: 'Description:', value: selectedTask.description });
+		
+		if (selectedTask.details) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: 'Implementation Details:' });
+			// Split details into lines for proper scrolling
+			const detailLines = selectedTask.details.split('\n');
+			detailLines.forEach(line => {
+				contentLines.push({ type: 'text', text: line });
+			});
+		}
+		
+		if (selectedTask.testStrategy) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: 'Test Strategy:' });
+			// Split test strategy into lines for proper scrolling
+			const testLines = selectedTask.testStrategy.split('\n');
+			testLines.forEach(line => {
+				contentLines.push({ type: 'text', text: line });
+			});
+		}
+		
+		if (selectedTask.subtasks && selectedTask.subtasks.length > 0) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: `Subtasks (${selectedTask.subtasks.length}):` });
+			selectedTask.subtasks.forEach((subtask) => {
+				contentLines.push({ 
+					type: 'subtask', 
+					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}`,
+					color: getStatusColor(subtask.status)
+				});
+			});
+		} else {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'warning', text: 'No subtasks found. Consider breaking down this task:' });
+			contentLines.push({ type: 'hint', text: "Press 'e' to expand this task" });
+		}
+		
+		// Calculate visible content based on scroll offset
+		const visibleContent = contentLines.slice(detailScrollOffset, detailScrollOffset + DETAIL_VISIBLE_ROWS);
+
 		return (
-			<Box flexDirection="column" height="100%">
-				{/* Header */}
+			<Box flexDirection="column">
+				{/* Header - Always visible at top */}
 				<Box
 					borderStyle="single"
 					borderColor={theme.border}
@@ -327,157 +409,79 @@ export function TaskManagementScreen() {
 					marginBottom={1}
 				>
 					<Text color={theme.accent} bold>
-						Task: #{selectedTask.id} - {selectedTask.title}
+						Task #{selectedTask.id} - {selectedTask.title}
 					</Text>
 				</Box>
 
-				{/* Task Details */}
+				{/* Task Details with scrolling */}
 				<Box
 					flexDirection="column"
 					paddingLeft={2}
 					paddingRight={2}
-					flexGrow={1}
+					height={DETAIL_VISIBLE_ROWS + 2}
 				>
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>ID:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={theme.text}>{selectedTask.id}</Text>
-						</Box>
-					</Box>
-
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>Title:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={theme.text}>{selectedTask.title}</Text>
-						</Box>
-					</Box>
-
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>Status:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={getStatusColor(selectedTask.status)}>
-								{getStatusSymbol(selectedTask.status)} {selectedTask.status}
-							</Text>
-						</Box>
-					</Box>
-
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>Priority:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={getPriorityColor(selectedTask.priority)}>
-								{selectedTask.priority}
-							</Text>
-						</Box>
-					</Box>
-
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>Dependencies:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={theme.text}>
-								{selectedTask.dependencies &&
-								selectedTask.dependencies.length > 0
-									? selectedTask.dependencies
-											.map((dep) => {
-												const depTask = tasks.find((t) => t.id === dep);
-												return depTask?.status === 'done'
-													? `✅ ${dep}`
-													: `⏱️ ${dep}`;
-											})
-											.join(', ')
-									: '-'}
-							</Text>
-						</Box>
-					</Box>
-
-					{selectedTask.complexity && (
-						<Box flexDirection="row" marginBottom={1}>
-							<Box width={20}>
-								<Text color={theme.textDim}>Complexity:</Text>
-							</Box>
-							<Box flexGrow={1}>
-								<Text color={theme.priorityMedium}>
-									● {selectedTask.complexity}
-								</Text>
-							</Box>
-						</Box>
-					)}
-
-					<Box flexDirection="row" marginBottom={1}>
-						<Box width={20}>
-							<Text color={theme.textDim}>Description:</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text color={theme.text}>{selectedTask.description}</Text>
-						</Box>
-					</Box>
-
-					{/* Implementation Details */}
-					{selectedTask.details && (
-						<Box flexDirection="column" marginTop={1}>
-							<Text color={theme.accent} bold>
-								Implementation Details:
-							</Text>
-							<Box
-								marginTop={1}
-								borderStyle="round"
-								borderColor={theme.border}
-								padding={1}
-							>
-								<Text color={theme.text}>{selectedTask.details}</Text>
-							</Box>
-						</Box>
-					)}
-
-					{/* Test Strategy */}
-					{selectedTask.testStrategy && (
-						<Box flexDirection="column" marginTop={1}>
-							<Text color={theme.accent} bold>
-								Test Strategy:
-							</Text>
-							<Box
-								marginTop={1}
-								borderStyle="round"
-								borderColor={theme.border}
-								padding={1}
-							>
-								<Text color={theme.text}>{selectedTask.testStrategy}</Text>
-							</Box>
-						</Box>
-					)}
-
-					{/* Subtasks */}
-					{selectedTask.subtasks && selectedTask.subtasks.length > 0 ? (
-						<Box flexDirection="column" marginTop={1}>
-							<Text color={theme.accent} bold>
-								Subtasks ({selectedTask.subtasks.length}):
-							</Text>
-							{selectedTask.subtasks.map((subtask, index) => (
-								<Box key={subtask.id} marginTop={1} paddingLeft={2}>
-									<Text color={getStatusColor(subtask.status)}>
-										{getStatusSymbol(subtask.status)} {subtask.id}:{' '}
-										{subtask.title}
+					{visibleContent.map((line, index) => {
+						if (line.type === 'field') {
+							return (
+								<Box key={index} flexDirection="row" marginBottom={1}>
+									<Box width={20}>
+										<Text color={theme.textDim}>{line.label}</Text>
+									</Box>
+									<Box flexGrow={1}>
+										<Text color={line.color || theme.text}>{line.value}</Text>
+									</Box>
+								</Box>
+							);
+						} else if (line.type === 'header') {
+							return (
+								<Box key={index} flexDirection="column" marginTop={1}>
+									<Text color={theme.accent} bold>
+										{line.text}
 									</Text>
 								</Box>
-							))}
-						</Box>
-					) : (
-						<Box flexDirection="column" marginTop={2}>
-							<Box borderStyle="round" borderColor={theme.warning} padding={1}>
-								<Text color={theme.warning}>
-									No subtasks found. Consider breaking down this task:
-								</Text>
-								<Text color={theme.textDim}>Press 'e' to expand this task</Text>
-							</Box>
+							);
+						} else if (line.type === 'text') {
+							return (
+								<Box key={index} marginTop={0.5} paddingLeft={2}>
+									<Text color={theme.text}>{line.text}</Text>
+								</Box>
+							);
+						} else if (line.type === 'subtask') {
+							return (
+								<Box key={index} marginTop={1} paddingLeft={2}>
+									<Text color={line.color}>
+										{line.text}
+									</Text>
+								</Box>
+							);
+						} else if (line.type === 'warning') {
+							return (
+								<Box key={index} borderStyle="round" borderColor={theme.warning} padding={1}>
+									<Text color={theme.warning}>
+										{line.text}
+									</Text>
+								</Box>
+							);
+						} else if (line.type === 'hint') {
+							return (
+								<Box key={index} paddingLeft={1}>
+									<Text color={theme.textDim}>{line.text}</Text>
+								</Box>
+							);
+						} else if (line.type === 'spacer') {
+							return <Box key={index} height={1} />;
+						}
+						return null;
+					})}
+					
+					{/* Scroll indicator */}
+					{contentLines.length > DETAIL_VISIBLE_ROWS && (
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>
+								Lines {detailScrollOffset + 1}-
+								{Math.min(detailScrollOffset + DETAIL_VISIBLE_ROWS, contentLines.length)} of{' '}
+								{contentLines.length} • ↑↓ scroll
+							</Text>
 						</Box>
 					)}
 				</Box>
@@ -553,9 +557,12 @@ export function TaskManagementScreen() {
 					paddingTop={1}
 					paddingLeft={1}
 					paddingRight={1}
+					flexShrink={0}
 				>
 					<Text color={theme.text}>
-						{selectedTask.subtasks?.length ? 'ESC back' : 'e expand • ESC back'}
+						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
+						{selectedTask.subtasks?.length ? '' : 'e expand • '}
+						ESC back
 					</Text>
 				</Box>
 
@@ -733,6 +740,7 @@ export function TaskManagementScreen() {
 				paddingTop={1}
 				paddingLeft={1}
 				paddingRight={1}
+				flexShrink={0}
 			>
 				<Box flexDirection="column">
 					{/* Controls */}
