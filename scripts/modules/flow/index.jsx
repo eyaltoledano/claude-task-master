@@ -114,6 +114,17 @@ function FlowApp({ backend, options = {} }) {
 	// Initialize backend
 	useEffect(() => {
 		async function init() {
+			// Temporarily suppress console.log during initialization
+			const originalConsoleLog = console.log;
+			console.log = (...args) => {
+				// Filter out unwanted log messages
+				const message = args.join(' ');
+				if (message.includes('[INFO]') && message.includes('listTasksDirect')) {
+					return; // Suppress this specific message
+				}
+				originalConsoleLog.apply(console, args);
+			};
+
 			try {
 				await currentBackend.initialize();
 				const result = await currentBackend.listTasks();
@@ -123,6 +134,9 @@ function FlowApp({ backend, options = {} }) {
 			} catch (err) {
 				setError(err.message);
 				setLoading(false);
+			} finally {
+				// Restore original console.log
+				console.log = originalConsoleLog;
 			}
 		}
 
