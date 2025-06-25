@@ -31,17 +31,20 @@ describe('Codex Profile Initialization Functionality', () => {
 		expect(codexProfile.fileMap['AGENTS.md']).toBe('AGENTS.md');
 	});
 
-	test('codex.js has minimal lifecycle functions', () => {
-		expect(codexProfileContent).toContain('function onAddRulesProfile');
-		expect(codexProfileContent).toContain('function onRemoveRulesProfile');
-		expect(codexProfileContent).toContain('function onPostConvertRulesProfile');
-		expect(codexProfileContent).toContain('Profile setup complete');
-		expect(codexProfileContent).toContain('Profile cleanup complete');
+	test('codex.js has no lifecycle functions', () => {
+		// Codex has been simplified - no lifecycle functions
+		expect(codexProfileContent).not.toContain('function onAddRulesProfile');
+		expect(codexProfileContent).not.toContain('function onRemoveRulesProfile');
+		expect(codexProfileContent).not.toContain(
+			'function onPostConvertRulesProfile'
+		);
+		expect(codexProfileContent).not.toContain('log(');
 	});
 
-	test('codex.js has proper logging', () => {
-		expect(codexProfileContent).toContain("log('debug'");
-		expect(codexProfileContent).toContain('Profile setup complete');
-		expect(codexProfileContent).toContain('Profile cleanup complete');
+	test('codex.js has minimal implementation', () => {
+		// Should just use createProfile factory
+		expect(codexProfileContent).toContain('createProfile({');
+		expect(codexProfileContent).toContain("name: 'codex'");
+		expect(codexProfileContent).toContain("'AGENTS.md': 'AGENTS.md'");
 	});
 });

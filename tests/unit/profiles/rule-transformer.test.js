@@ -17,6 +17,7 @@ describe('Rule Transformer - General', () => {
 				'cline',
 				'codex',
 				'cursor',
+				'gemini',
 				'roo',
 				'trae',
 				'vscode',
@@ -203,6 +204,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
 					expectedPath: '.cursor/mcp.json'
+				},
+				gemini: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.gemini/settings.json'
 				},
 				roo: {
 					mcpConfig: true,

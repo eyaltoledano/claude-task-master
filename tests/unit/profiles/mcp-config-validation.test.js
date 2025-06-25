@@ -17,6 +17,12 @@ describe('MCP Configuration Validation', () => {
 				expectedConfigName: 'mcp.json',
 				expectedPath: '.cursor/mcp.json'
 			},
+			gemini: {
+				shouldHaveMcp: true,
+				expectedDir: '.gemini',
+				expectedConfigName: 'settings.json',
+				expectedPath: '.gemini/settings.json'
+			},
 			roo: {
 				shouldHaveMcp: true,
 				expectedDir: '.roo',
@@ -111,6 +117,11 @@ describe('MCP Configuration Validation', () => {
 			});
 		});
 
+		test('should use custom settings.json for Gemini profile', () => {
+			const profile = getRulesProfile('gemini');
+			expect(profile.mcpConfigName).toBe('settings.json');
+		});
+
 		test('should have null config name for non-MCP profiles', () => {
 			const clineProfile = getRulesProfile('cline');
 			expect(clineProfile.mcpConfigName).toBe(null);
@@ -130,38 +141,44 @@ describe('MCP Configuration Validation', () => {
 		test('should ensure each profile has a unique directory', () => {
 			const profileDirs = new Set();
 			// Profiles that use root directory (can share the same directory)
-			const rootProfiles = ['claude', 'codex'];
+			const rootProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Root profiles can share the root directory
-				if (rootProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Root profiles can share the root directory for rules
+				if (rootProfiles.includes(profileName) && profile.rulesDir === '.') {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Other profiles should have unique directories
-				expect(profileDirs.has(profile.profileDir)).toBe(false);
-				profileDirs.add(profile.profileDir);
+				// Profile directories should be unique (except for root profiles)
+				if (!rootProfiles.includes(profileName) || profile.profileDir !== '.') {
+					expect(profileDirs.has(profile.profileDir)).toBe(false);
+					profileDirs.add(profile.profileDir);
+				}
 			});
 		});
 
 		test('should ensure profile directories follow expected naming convention', () => {
-			// Profiles that use root directory
-			const rootProfiles = ['claude', 'codex'];
+			// Profiles that use root directory for rules
+			const rootRulesProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Root profiles use root directory
-				if (rootProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Some profiles use root directory for rules
+				if (
+					rootRulesProfiles.includes(profileName) &&
+					profile.rulesDir === '.'
+				) {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Other profiles should follow the .name pattern
-				expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				// Profile directories (not rules directories) should follow the .name pattern
+				// unless they are root profiles with profileDir = '.'
+				if (profile.profileDir !== '.') {
+					expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				}
 			});
 		});
 	});
@@ -174,6 +191,7 @@ describe('MCP Configuration Validation', () => {
 			});
 
 			expect(mcpEnabledProfiles).toContain('cursor');
+			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
@@ -252,7 +270,7 @@ describe('MCP Configuration Validation', () => {
 	});
 
 	describe('MCP configuration validation', () => {
-		const mcpProfiles = ['cursor', 'roo', 'windsurf', 'vscode'];
+		const mcpProfiles = ['cursor', 'gemini', 'roo', 'windsurf', 'vscode'];
 		const nonMcpProfiles = ['claude', 'codex', 'cline', 'trae'];
 
 		test.each(mcpProfiles)(
@@ -279,13 +297,15 @@ describe('MCP Configuration Validation', () => {
 	describe('Profile structure validation', () => {
 		const mcpProfiles = [
 			'cursor',
+			'gemini',
 			'roo',
 			'windsurf',
 			'cline',
 			'trae',
 			'vscode'
 		];
-		const nonMcpProfiles = ['claude', 'codex'];
+		const profilesWithLifecycle = ['claude'];
+		const profilesWithoutLifecycle = ['codex'];
 
 		test.each(mcpProfiles)(
 			'should have file mappings for %s profile',
@@ -298,18 +318,33 @@ describe('MCP Configuration Validation', () => {
 			}
 		);
 
-		test.each(nonMcpProfiles)(
+		test.each(profilesWithLifecycle)(
 			'should have file mappings and lifecycle functions for %s profile',
 			(profileName) => {
 				const profile = getRulesProfile(profileName);
 				expect(profile).toBeDefined();
-				// These profiles now have both fileMap and lifecycle functions
+				// Claude profile has both fileMap and lifecycle functions
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
 				expect(typeof profile.onAddRulesProfile).toBe('function');
 				expect(typeof profile.onRemoveRulesProfile).toBe('function');
 				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+			}
+		);
+
+		test.each(profilesWithoutLifecycle)(
+			'should have file mappings without lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// Codex profile has fileMap but no lifecycle functions (simplified)
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(profile.onAddRulesProfile).toBeUndefined();
+				expect(profile.onRemoveRulesProfile).toBeUndefined();
+				expect(profile.onPostConvertRulesProfile).toBeUndefined();
 			}
 		);
 	});
