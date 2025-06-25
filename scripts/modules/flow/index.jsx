@@ -500,7 +500,7 @@ function FlowApp({ backend, options = {} }) {
 				}
 			}
 		},
-		{ isActive: !showCommandPalette && currentScreen !== 'tasks' && currentScreen !== 'chat' }
+		{ isActive: !showCommandPalette && currentScreen !== 'tasks' && currentScreen !== 'chat' && currentScreen !== 'status' }
 	);
 
 	// Context value
