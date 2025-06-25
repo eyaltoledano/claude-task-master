@@ -61,7 +61,7 @@ const subtaskWrapperSchema = z.object({
  */
 function generateMainSystemPrompt(subtaskCount) {
 	return `You are an AI assistant helping with task breakdown for software development.
-You need to break down a high-level task into ${subtaskCount} specific subtasks that can be implemented one by one.
+You need to break down a high-level task into ${subtaskCount > 0 ? subtaskCount : 'an appropriate number of'} specific subtasks that can be implemented one by one.
 
 Subtasks should:
 1. Be specific and actionable implementation steps
@@ -111,11 +111,11 @@ function generateMainUserPrompt(
       "details": "Implementation guidance",
       "testStrategy": "Optional testing approach"
     },
-    // ... (repeat for a total of ${subtaskCount} subtasks with sequential IDs)
+    // ... (repeat for ${subtaskCount ? 'a total of ' + subtaskCount : 'each of the'} subtasks with sequential IDs)
   ]
 }`;
 
-	return `Break down this task into exactly ${subtaskCount} specific subtasks:
+	return `Break down this task into ${subtaskCount > 0 ? 'exactly ' + subtaskCount : 'an appropriate number of'} specific subtasks:
 
 Task ID: ${task.id}
 Title: ${task.title}
@@ -159,7 +159,7 @@ function generateResearchUserPrompt(
   ]
 }`;
 
-	return `Analyze the following task and break it down into exactly ${subtaskCount} specific subtasks using your research capabilities. Assign sequential IDs starting from ${nextSubtaskId}.
+	return `Analyze the following task and break it down into ${subtaskCount > 0 ? 'exactly ' + subtaskCount : 'an appropriate number of'} specific subtasks using your research capabilities. Assign sequential IDs starting from ${nextSubtaskId}.
 
 Parent Task:
 ID: ${task.id}
@@ -531,7 +531,7 @@ async function expandTask(
 
 		// Determine final subtask count
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
-		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks >= 0) {
 			finalSubtaskCount = explicitNumSubtasks;
 			logger.info(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
@@ -545,7 +545,7 @@ async function expandTask(
 			finalSubtaskCount = getDefaultSubtasks(session);
 			logger.info(`Using default number of subtasks: ${finalSubtaskCount}`);
 		}
-		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
+		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount < 0) {
 			logger.warn(
 				`Invalid subtask count determined (${finalSubtaskCount}), defaulting to 3.`
 			);
@@ -566,7 +566,7 @@ async function expandTask(
 			}
 
 			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
+			systemPrompt = `You are an AI assistant helping with task breakdown. Generate ${finalSubtaskCount > 0 ? 'exactly ' + finalSubtaskCount : 'an appropriate number of'} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
 			logger.info(
 				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
 			);
@@ -608,7 +608,7 @@ async function expandTask(
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
-				`Generating ${finalSubtaskCount} subtasks...\n`
+				`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 			);
 		}
 

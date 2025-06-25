@@ -188,7 +188,7 @@ Your task breakdown should incorporate this research, resulting in more detailed
 		// Base system prompt for PRD parsing
 		const systemPrompt = `You are an AI assistant specialized in analyzing Product Requirements Documents (PRDs) and generating a structured, logically ordered, dependency-aware and sequenced list of development tasks in JSON format.${researchPromptAddition}
 
-Analyze the provided PRD content and generate approximately ${numTasks} top-level development tasks. If the complexity or the level of detail of the PRD is high, generate more tasks relative to the complexity of the PRD
+Analyze the provided PRD content and generate ${numTasks > 0 ? 'approximately ' + numTasks : 'an appropriate number of'} top-level development tasks. If the complexity or the level of detail of the PRD is high, generate more tasks relative to the complexity of the PRD
 Each task should represent a logical unit of work needed to implement the requirements and focus on the most direct and effective way to implement the requirements without unnecessary complexity or overengineering. Include pseudo-code, implementation details, and test strategy for each task. Find the most up to date information to implement each task.
 Assign sequential IDs starting from ${nextId}. Infer title, description, details, and test strategy for each task based *only* on the PRD content.
 Set status to 'pending', dependencies to an empty array [], and priority to 'medium' initially for all tasks.
@@ -207,7 +207,7 @@ Each task should follow this JSON structure:
 }
 
 Guidelines:
-1. Unless complexity warrants otherwise, create exactly ${numTasks} tasks, numbered sequentially starting from ${nextId}
+1. ${numTasks > 0 ? 'Unless complexity warrants otherwise' : 'Depending on the complexity'}, create ${numTasks > 0 ? 'exactly ' + numTasks : 'an appropriate number of'} tasks, numbered sequentially starting from ${nextId}
 2. Each task should be atomic and focused on a single responsibility following the most up to date best practices and standards
 3. Order tasks logically - consider dependencies and implementation sequence
 4. Early tasks should focus on setup, core functionality first, then advanced features
@@ -220,7 +220,7 @@ Guidelines:
 11. Always aim to provide the most direct path to implementation, avoiding over-engineering or roundabout approaches${research ? '\n12. For each task, include specific, actionable guidance based on current industry standards and best practices discovered through research' : ''}`;
 
 		// Build user prompt with PRD content
-		const userPrompt = `Here's the Product Requirements Document (PRD) to break down into approximately ${numTasks} tasks, starting IDs from ${nextId}:${research ? '\n\nRemember to thoroughly research current best practices and technologies before task breakdown to provide specific, actionable implementation details.' : ''}\n\n${prdContent}\n\n
+		const userPrompt = `Here's the Product Requirements Document (PRD) to break down into approximately ${numTasks > 0 ? 'approximately ' + numTasks : 'an appropriate number of'} tasks, starting IDs from ${nextId}:${research ? '\n\nRemember to thoroughly research current best practices and technologies before task breakdown to provide specific, actionable implementation details.' : ''}\n\n${prdContent}\n\n
 
 		Return your response in this format:
 {
@@ -235,7 +235,7 @@ Guidelines:
     ],
     "metadata": {
         "projectName": "PRD Implementation",
-        "totalTasks": ${numTasks},
+        "totalTasks": {number of tasks},
         "sourceFile": "${prdPath}",
         "generatedAt": "YYYY-MM-DD"
     }

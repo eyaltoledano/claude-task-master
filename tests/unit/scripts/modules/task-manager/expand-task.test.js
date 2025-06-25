@@ -116,7 +116,8 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDefaultSubtasks: jest.fn(() => 3),
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getDefaultNumTasks: jest.fn(() => 10)
 	})
 );
 
@@ -192,6 +193,10 @@ const generateTaskFiles = (
 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
 	)
 ).default;
+
+const { getDefaultSubtasks } = await import(
+	'../../../../../scripts/modules/config-manager.js'
+);
 
 // Import the module under test
 const { default: expandTask } = await import(
@@ -883,6 +888,122 @@ describe('expandTask', () => {
 				'/mock/project/root',
 				undefined
 			);
+		});
+	});
+
+	describe('Dynamic Subtask Generation', () => {
+		const tasksPath = 'tasks/tasks.json';
+		const taskId = 1;
+		const context = { session: null, mcpLog: null };
+
+		beforeEach(() => {
+			// Reset all mocks
+			jest.clearAllMocks();
+
+			// Setup default mocks
+			readJSON.mockReturnValue({
+				tasks: [
+					{
+						id: 1,
+						title: 'Test Task',
+						description: 'A test task',
+						status: 'pending',
+						subtasks: []
+					}
+				]
+			});
+
+			findTaskById.mockReturnValue({
+				id: 1,
+				title: 'Test Task',
+				description: 'A test task',
+				status: 'pending',
+				subtasks: []
+			});
+
+			findProjectRoot.mockReturnValue('/mock/project/root');
+		});
+
+		test('should accept 0 as valid numSubtasks value for dynamic generation', async () => {
+			// Act - Call with numSubtasks=0 (should not throw error)
+			const result = await expandTask(
+				tasksPath,
+				taskId,
+				0,
+				false,
+				'',
+				context,
+				false
+			);
+
+			// Assert - Should complete successfully
+			expect(result).toBeDefined();
+			expect(generateTextService).toHaveBeenCalled();
+		});
+
+		test('should use dynamic prompting when numSubtasks is 0', async () => {
+			// Act
+			await expandTask(tasksPath, taskId, 0, false, '', context, false);
+
+			// Assert - Verify generateTextService was called
+			expect(generateTextService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the system prompt
+			const callArgs = generateTextService.mock.calls[0][0];
+			expect(callArgs.systemPrompt).toContain(
+				'an appropriate number of specific subtasks'
+			);
+		});
+
+		test('should use specific count prompting when numSubtasks is positive', async () => {
+			// Act
+			await expandTask(tasksPath, taskId, 5, false, '', context, false);
+
+			// Assert - Verify generateTextService was called
+			expect(generateTextService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the system prompt
+			const callArgs = generateTextService.mock.calls[0][0];
+			expect(callArgs.systemPrompt).toContain('5 specific subtasks');
+		});
+
+		test('should reject negative numSubtasks values and fallback to default', async () => {
+			// Mock getDefaultSubtasks to return a specific value
+			getDefaultSubtasks.mockReturnValue(4);
+
+			// Act
+			await expandTask(tasksPath, taskId, -3, false, '', context, false);
+
+			// Assert - Should use default value instead of negative
+			expect(generateTextService).toHaveBeenCalled();
+			const callArgs = generateTextService.mock.calls[0][0];
+			expect(callArgs.systemPrompt).toContain('4 specific subtasks');
+		});
+
+		test('should use getDefaultSubtasks when numSubtasks is undefined', async () => {
+			// Mock getDefaultSubtasks to return a specific value
+			getDefaultSubtasks.mockReturnValue(6);
+
+			// Act - Call without specifying numSubtasks (undefined)
+			await expandTask(tasksPath, taskId, undefined, false, '', context, false);
+
+			// Assert - Should use default value
+			expect(generateTextService).toHaveBeenCalled();
+			const callArgs = generateTextService.mock.calls[0][0];
+			expect(callArgs.systemPrompt).toContain('6 specific subtasks');
+		});
+
+		test('should use getDefaultSubtasks when numSubtasks is null', async () => {
+			// Mock getDefaultSubtasks to return a specific value
+			getDefaultSubtasks.mockReturnValue(7);
+
+			// Act - Call with null numSubtasks
+			await expandTask(tasksPath, taskId, null, false, '', context, false);
+
+			// Assert - Should use default value
+			expect(generateTextService).toHaveBeenCalled();
+			const callArgs = generateTextService.mock.calls[0][0];
+			expect(callArgs.systemPrompt).toContain('7 specific subtasks');
 		});
 	});
 });

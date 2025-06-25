@@ -69,7 +69,9 @@ import {
 	ConfigurationError,
 	isConfigFilePresent,
 	getAvailableModels,
-	getBaseUrlForRole
+	getBaseUrlForRole,
+	getDefaultNumTasks,
+	getDefaultSubtasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -803,7 +805,11 @@ function registerCommands(programInstance) {
 			'Path to the PRD file (alternative to positional argument)'
 		)
 		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
-		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+		.option(
+			'-n, --num-tasks <number>',
+			'Number of tasks to generate',
+			getDefaultNumTasks()
+		)
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
 		.option(
 			'--append',
