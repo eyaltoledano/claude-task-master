@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import TextInput from 'ink-text-input';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { FileBrowser } from './FileBrowser.jsx';
@@ -8,18 +9,41 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 export function ParsePRDScreen() {
 	const { backend, currentTag, setCurrentScreen, showToast, reloadTasks } =
 		useAppContext();
-	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'expanding' | 'error'
+	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'research-prompt' | 'num-tasks-prompt' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'expanding' | 'error'
 	const [selectedFile, setSelectedFile] = useState(null);
+	const [useResearch, setUseResearch] = useState(false);
+	const [numTasks, setNumTasks] = useState('');
 	const [parseResult, setParseResult] = useState(null);
 	const [analyzeResult, setAnalyzeResult] = useState(null);
 	const [error, setError] = useState(null);
 	const [expandingMessage, setExpandingMessage] = useState('');
 
 	// Handle file selection from browser
-	const handleFileSelect = async (filePath) => {
+	const handleFileSelect = (filePath) => {
 		setSelectedFile(filePath);
+		// First ask about research
+		setStep('research-prompt');
+	};
 
-		// First, check if there are existing tasks in the current tag
+	// Handle research option selection
+	const handleResearchPrompt = (shouldUseResearch) => {
+		setUseResearch(shouldUseResearch);
+		// Then ask about number of tasks
+		setStep('num-tasks-prompt');
+	};
+
+	// Handle number of tasks submission
+	const handleNumTasksSubmit = async (value) => {
+		// Parse the number if provided, otherwise use undefined for default
+		let parsedNum = undefined;
+		if (value && value.trim() !== '') {
+			const num = parseInt(value, 10);
+			if (!isNaN(num) && num > 0) {
+				parsedNum = num;
+			}
+		}
+		
+		// Check if there are existing tasks in the current tag
 		try {
 			const taskList = await backend.listTasks({ tag: currentTag });
 			if (taskList.tasks && taskList.tasks.length > 0) {
@@ -32,19 +56,21 @@ export function ParsePRDScreen() {
 		}
 
 		// No existing tasks, proceed directly to parsing
-		await performParsing(filePath, false);
+		await performParsing(selectedFile, false, parsedNum);
 	};
 
 	// Handle parsing with force option
-	const performParsing = async (filePath, force = false) => {
+	const performParsing = async (filePath, force = false, taskCount = undefined) => {
 		setStep('parsing');
 		setError(null);
 
 		try {
-			// Parse the PRD
+			// Parse the PRD with all options
 			const result = await backend.parsePRD(filePath, {
 				tag: currentTag,
-				force: force
+				force: force,
+				research: useResearch,
+				numTasks: taskCount
 			});
 
 			setParseResult(result);
@@ -59,7 +85,15 @@ export function ParsePRDScreen() {
 	// Handle overwrite confirmation
 	const handleOverwriteConfirmation = async (shouldOverwrite) => {
 		if (shouldOverwrite) {
-			await performParsing(selectedFile, true); // force = true
+			// Parse the number again when confirming overwrite
+			let parsedNum = undefined;
+			if (numTasks && numTasks.trim() !== '') {
+				const num = parseInt(numTasks, 10);
+				if (!isNaN(num) && num > 0) {
+					parsedNum = num;
+				}
+			}
+			await performParsing(selectedFile, true, parsedNum); // force = true
 		} else {
 			setCurrentScreen('welcome');
 		}
@@ -158,6 +192,20 @@ export function ParsePRDScreen() {
 			return;
 		}
 
+		if (step === 'research-prompt') {
+			if (input === 'y' || input === 'Y') {
+				handleResearchPrompt(true);
+			} else if (input === 'n' || input === 'N') {
+				handleResearchPrompt(false);
+			}
+			return;
+		}
+
+		if (step === 'num-tasks-prompt') {
+			// Input is handled by TextInput component
+			return;
+		}
+
 		if (step === 'confirm-overwrite') {
 			if (input === 'y' || input === 'Y') {
 				handleOverwriteConfirmation(true);
@@ -243,6 +291,48 @@ export function ParsePRDScreen() {
 				justifyContent="center"
 				alignItems="center"
 			>
+				{step === 'research-prompt' && (
+					<Box flexDirection="column" alignItems="center">
+						<Text color={theme.accent}>🔍 Research Option</Text>
+						<Text color={theme.text} marginTop={1}>
+							Selected file: {selectedFile}
+						</Text>
+						<Text color={theme.textDim} marginTop={2}>
+							Would you like to use AI research while parsing?
+						</Text>
+						<Text color={theme.textDim}>
+							This provides more accurate task generation but takes longer.
+						</Text>
+						<Text color={theme.text} marginTop={2}>
+							Use research? (y/n)
+						</Text>
+					</Box>
+				)}
+
+				{step === 'num-tasks-prompt' && (
+					<Box flexDirection="column" alignItems="center">
+						<Text color={theme.accent}>📊 Number of Tasks</Text>
+						<Text color={theme.text} marginTop={1}>
+							How many tasks should be generated from this PRD?
+						</Text>
+						<Text color={theme.textDim}>
+							Leave empty for default (10 tasks)
+						</Text>
+						<Box marginTop={2}>
+							<Text color={theme.text}>Number of tasks: </Text>
+							<TextInput
+								value={numTasks}
+								onChange={setNumTasks}
+								onSubmit={handleNumTasksSubmit}
+								placeholder="10"
+							/>
+						</Box>
+						<Text color={theme.textDim} marginTop={1}>
+							Press Enter to continue or ESC to cancel
+						</Text>
+					</Box>
+				)}
+
 				{step === 'confirm-overwrite' && (
 					<Box flexDirection="column" alignItems="center">
 						<Text color={theme.warning}>⚠️ Existing Tasks Found</Text>
@@ -268,6 +358,12 @@ export function ParsePRDScreen() {
 							File: {selectedFile}
 						</Text>
 						<Text color={theme.textDim}>Target tag: {currentTag}</Text>
+						<Text color={theme.textDim}>
+							Research: {useResearch ? 'Yes' : 'No'}
+						</Text>
+						<Text color={theme.textDim}>
+							Tasks: {numTasks && numTasks.trim() !== '' ? `${numTasks} tasks` : 'Default (10 tasks)'}
+						</Text>
 						<Text color={theme.warning} marginTop={2}>
 							Press Ctrl+X to cancel
 						</Text>
@@ -294,6 +390,10 @@ export function ParsePRDScreen() {
 						<Text color={theme.success}>✓ PRD parsed successfully!</Text>
 						<Text color={theme.text} marginTop={1}>
 							Generated tasks in tag '{currentTag}'
+						</Text>
+						<Text color={theme.textDim}>
+							Using {useResearch ? 'research mode' : 'standard mode'} with{' '}
+							{numTasks && numTasks.trim() !== '' ? `${numTasks} tasks` : 'default (10 tasks)'}
 						</Text>
 						{parseResult?.message && (
 							<Text color={theme.textDim} marginTop={1}>
@@ -365,3 +465,4 @@ export function ParsePRDScreen() {
 		</Box>
 	);
 }
+
