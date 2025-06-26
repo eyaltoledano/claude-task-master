@@ -24,33 +24,33 @@ export function extractJson(text) {
 
 	// Remove explanatory text before JSON (common with AI responses)
 	jsonText = jsonText.replace(/^.*?(?=\{|\[)/s, '');
-	
+
 	// Remove explanatory text after JSON
 	const lines = jsonText.split('\n');
 	let jsonEndIndex = -1;
 	let braceCount = 0;
 	let inString = false;
 	let escapeNext = false;
-	
+
 	// Find the end of the JSON by tracking braces
 	for (let i = 0; i < jsonText.length; i++) {
 		const char = jsonText[i];
-		
+
 		if (escapeNext) {
 			escapeNext = false;
 			continue;
 		}
-		
+
 		if (char === '\\') {
 			escapeNext = true;
 			continue;
 		}
-		
+
 		if (char === '"' && !escapeNext) {
 			inString = !inString;
 			continue;
 		}
-		
+
 		if (!inString) {
 			if (char === '{' || char === '[') {
 				braceCount++;
@@ -63,7 +63,7 @@ export function extractJson(text) {
 			}
 		}
 	}
-	
+
 	if (jsonEndIndex > -1) {
 		jsonText = jsonText.substring(0, jsonEndIndex + 1);
 	}

@@ -96,7 +96,7 @@ class TaskMasterMCPServer {
 			}
 
 			// Register MCP provider with the Provider Registry
-			
+
 			// Register the unified MCP provider
 			const mcpProvider = new MCPProvider();
 			mcpProvider.setSession(session);
@@ -107,9 +107,7 @@ class TaskMasterMCPServer {
 
 			this.logger.info('MCP provider registered with Provider Registry');
 		} else {
-			this.logger.warn(
-				'No MCP sessions available, providers not registered'
-			);
+			this.logger.warn('No MCP sessions available, providers not registered');
 		}
 	}
 

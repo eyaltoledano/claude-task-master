@@ -20,7 +20,7 @@ export function createMCP(options = {}) {
 	}
 
 	// Return the provider factory function that AI SDK expects
-	const provider = function(modelId, settings = {}) {
+	const provider = function (modelId, settings = {}) {
 		if (new.target) {
 			throw new Error(
 				'The MCP model function cannot be called with the new keyword.'

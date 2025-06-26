@@ -90,15 +90,17 @@ export function isRetryableError(error) {
 	if (error instanceof MCPSamplingError && error.code === 'SAMPLING_ERROR') {
 		return true;
 	}
-	
+
 	if (error instanceof MCPSessionError && error.code === 'SESSION_ERROR') {
 		// Session errors are generally not retryable
 		return false;
 	}
-	
+
 	// Check for common retryable patterns
 	const message = error.message?.toLowerCase() || '';
-	return message.includes('timeout') || 
-		   message.includes('network') || 
-		   message.includes('temporary');
+	return (
+		message.includes('timeout') ||
+		message.includes('network') ||
+		message.includes('temporary')
+	);
 }

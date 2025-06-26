@@ -11,7 +11,9 @@ describe('MCPProvider', () => {
 
 	beforeAll(async () => {
 		// Dynamic import to avoid circular dependency issues
-		const module = await import('../../../mcp-server/src/providers/mcp-provider.js');
+		const module = await import(
+			'../../../mcp-server/src/providers/mcp-provider.js'
+		);
 		MCPProvider = module.MCPProvider;
 	});
 

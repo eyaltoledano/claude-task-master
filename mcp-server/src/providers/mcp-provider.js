@@ -33,7 +33,7 @@ export class MCPProvider extends BaseAIProvider {
 		if (!this.session) {
 			throw new Error('MCP Provider requires active MCP session');
 		}
-		
+
 		if (!this.session.clientCapabilities?.sampling) {
 			throw new Error('MCP session must have client sampling capabilities');
 		}
@@ -66,7 +66,7 @@ export class MCPProvider extends BaseAIProvider {
 	 */
 	setSession(session) {
 		this.session = session;
-		
+
 		if (!session) {
 			this.logger?.warn('Set null session on MCP Provider');
 		} else {

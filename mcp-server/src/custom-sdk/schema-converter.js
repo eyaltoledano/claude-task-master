@@ -12,7 +12,7 @@ export function convertSchemaToInstructions(schema, objectName = 'result') {
 	try {
 		// Generate example structure from schema
 		const exampleStructure = generateExampleFromSchema(schema);
-		
+
 		return `
 CRITICAL JSON GENERATION INSTRUCTIONS:
 
@@ -56,61 +56,61 @@ Begin your response immediately with the opening brace {`;
 function generateExampleFromSchema(schema) {
 	// This is a simplified schema-to-example converter
 	// For production, you might want to use a more sophisticated library
-	
+
 	if (!schema || typeof schema._def === 'undefined') {
 		return {};
 	}
 
 	const def = schema._def;
-	
+
 	switch (def.typeName) {
 		case 'ZodObject':
 			const result = {};
 			const shape = def.shape();
-			
+
 			for (const [key, fieldSchema] of Object.entries(shape)) {
 				result[key] = generateExampleFromSchema(fieldSchema);
 			}
-			
+
 			return result;
-			
+
 		case 'ZodString':
-			return "string";
-			
+			return 'string';
+
 		case 'ZodNumber':
 			return 0;
-			
+
 		case 'ZodBoolean':
 			return false;
-			
+
 		case 'ZodArray':
 			const elementExample = generateExampleFromSchema(def.type);
 			return [elementExample];
-			
+
 		case 'ZodOptional':
 			return generateExampleFromSchema(def.innerType);
-			
+
 		case 'ZodNullable':
 			return generateExampleFromSchema(def.innerType);
-			
+
 		case 'ZodEnum':
-			return def.values[0] || "enum_value";
-			
+			return def.values[0] || 'enum_value';
+
 		case 'ZodLiteral':
 			return def.value;
-			
+
 		case 'ZodUnion':
 			// Use the first option from the union
 			if (def.options && def.options.length > 0) {
 				return generateExampleFromSchema(def.options[0]);
 			}
-			return "union_value";
-			
+			return 'union_value';
+
 		case 'ZodRecord':
 			return {
-				"key": generateExampleFromSchema(def.valueType)
+				key: generateExampleFromSchema(def.valueType)
 			};
-			
+
 		default:
 			// For unknown types, return a placeholder
 			return `<${def.typeName || 'unknown'}>`;
@@ -125,10 +125,12 @@ function generateExampleFromSchema(schema) {
  */
 export function enhancePromptForJSON(prompt, jsonInstructions) {
 	const enhancedPrompt = [...prompt];
-	
+
 	// Find system message or create one
-	let systemMessageIndex = enhancedPrompt.findIndex(msg => msg.role === 'system');
-	
+	let systemMessageIndex = enhancedPrompt.findIndex(
+		(msg) => msg.role === 'system'
+	);
+
 	if (systemMessageIndex >= 0) {
 		// Append to existing system message
 		const currentContent = enhancedPrompt[systemMessageIndex].content;
@@ -143,6 +145,6 @@ export function enhancePromptForJSON(prompt, jsonInstructions) {
 			content: jsonInstructions
 		});
 	}
-	
+
 	return enhancedPrompt;
 }

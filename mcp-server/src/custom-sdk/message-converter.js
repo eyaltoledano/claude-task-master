@@ -81,11 +81,11 @@ function extractTextContent(content) {
 	if (typeof content === 'string') {
 		return content;
 	}
-	
+
 	if (Array.isArray(content)) {
 		// Handle array of content parts
 		return content
-			.map(part => {
+			.map((part) => {
 				if (typeof part === 'string') {
 					return part;
 				}
@@ -98,10 +98,10 @@ function extractTextContent(content) {
 				// Skip non-text content (images, etc.)
 				return '';
 			})
-			.filter(text => text.length > 0)
+			.filter((text) => text.length > 0)
 			.join(' ');
 	}
-	
+
 	if (content && typeof content === 'object') {
 		if (content.type === 'text' && content.text) {
 			return content.text;
@@ -110,7 +110,7 @@ function extractTextContent(content) {
 			return content.text;
 		}
 	}
-	
+
 	// Fallback
 	return String(content || '');
 }

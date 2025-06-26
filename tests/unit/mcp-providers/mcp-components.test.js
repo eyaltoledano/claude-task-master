@@ -10,7 +10,9 @@ describe('MCP Custom SDK Components', () => {
 		let messageConverter;
 
 		beforeAll(async () => {
-			const module = await import('../../../mcp-server/src/custom-sdk/message-converter.js');
+			const module = await import(
+				'../../../mcp-server/src/custom-sdk/message-converter.js'
+			);
 			messageConverter = module;
 		});
 
@@ -22,7 +24,7 @@ describe('MCP Custom SDK Components', () => {
 				];
 
 				const result = messageConverter.convertToMCPFormat(input);
-				
+
 				expect(result).toBeDefined();
 				expect(result.messages).toBeDefined();
 				expect(Array.isArray(result.messages)).toBe(true);
@@ -41,7 +43,7 @@ describe('MCP Custom SDK Components', () => {
 				};
 
 				const result = messageConverter.convertFromMCPFormat(input);
-				
+
 				expect(result).toBeDefined();
 				expect(result.text).toBe('Hello! How can I help you?');
 				expect(result.usage).toEqual({ inputTokens: 10, outputTokens: 8 });
@@ -55,7 +57,9 @@ describe('MCP Custom SDK Components', () => {
 		let languageModel;
 
 		beforeAll(async () => {
-			const module = await import('../../../mcp-server/src/custom-sdk/language-model.js');
+			const module = await import(
+				'../../../mcp-server/src/custom-sdk/language-model.js'
+			);
 			languageModel = module;
 		});
 
@@ -69,7 +73,9 @@ describe('MCP Custom SDK Components', () => {
 		let errors;
 
 		beforeAll(async () => {
-			const module = await import('../../../mcp-server/src/custom-sdk/errors.js');
+			const module = await import(
+				'../../../mcp-server/src/custom-sdk/errors.js'
+			);
 			errors = module;
 		});
 
@@ -83,7 +89,9 @@ describe('MCP Custom SDK Components', () => {
 		let index;
 
 		beforeAll(async () => {
-			const module = await import('../../../mcp-server/src/custom-sdk/index.js');
+			const module = await import(
+				'../../../mcp-server/src/custom-sdk/index.js'
+			);
 			index = module;
 		});
 
