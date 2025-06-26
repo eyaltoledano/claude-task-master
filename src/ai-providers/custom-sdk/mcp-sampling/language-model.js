@@ -4,8 +4,15 @@
 
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
-import { convertToMcpSamplingMessages, extractTextFromResponse } from './message-converter.js';
-import { createAPICallError, createAuthenticationError, createTimeoutError } from './errors.js';
+import {
+	convertToMcpSamplingMessages,
+	extractTextFromResponse
+} from './message-converter.js';
+import {
+	createAPICallError,
+	createAuthenticationError,
+	createTimeoutError
+} from './errors.js';
 
 /**
  * @typedef {import('./types.js').McpSamplingSettings} McpSamplingSettings
@@ -33,7 +40,11 @@ export class McpSamplingLanguageModel {
 		this.settings = options.settings ?? {};
 
 		// Validate model ID
-		if (!this.modelId || typeof this.modelId !== 'string' || this.modelId.trim() === '') {
+		if (
+			!this.modelId ||
+			typeof this.modelId !== 'string' ||
+			this.modelId.trim() === ''
+		) {
 			throw new NoSuchModelError({
 				modelId: this.modelId,
 				modelType: 'languageModel'
@@ -52,7 +63,7 @@ export class McpSamplingLanguageModel {
 	 */
 	validateSession() {
 		const session = this.settings.session;
-		
+
 		if (!session) {
 			throw createAuthenticationError({
 				message: 'MCP session is required but not provided',
@@ -60,7 +71,10 @@ export class McpSamplingLanguageModel {
 			});
 		}
 
-		if (!session.requestSampling || typeof session.requestSampling !== 'function') {
+		if (
+			!session.requestSampling ||
+			typeof session.requestSampling !== 'function'
+		) {
 			throw createAuthenticationError({
 				message: 'MCP session does not have requestSampling capability',
 				data: { modelId: this.modelId }
@@ -84,7 +98,7 @@ export class McpSamplingLanguageModel {
 	 */
 	generateWarnings(options) {
 		const warnings = [];
-		
+
 		// MCP Sampling supports most parameters through the session
 		// but we should warn about unsupported features
 		if (options.tools && options.tools.length > 0) {
@@ -103,7 +117,10 @@ export class McpSamplingLanguageModel {
 			});
 		}
 
-		if (options.responseFormat && options.responseFormat.type === 'json_schema') {
+		if (
+			options.responseFormat &&
+			options.responseFormat.type === 'json_schema'
+		) {
 			warnings.push({
 				type: 'unsupported-setting',
 				setting: 'responseFormat.json_schema',
@@ -122,7 +139,7 @@ export class McpSamplingLanguageModel {
 	async doGenerate(options) {
 		const session = this.validateSession();
 		const warnings = this.generateWarnings(options);
-		
+
 		// Convert messages to MCP format
 		const { messages, systemPrompt } = convertToMcpSamplingMessages(
 			options.prompt,
@@ -142,9 +159,7 @@ export class McpSamplingLanguageModel {
 		// MCP uses a preference system, not direct model selection
 		if (this.modelId) {
 			requestParams.modelPreferences = {
-				hints: [
-					{ name: this.modelId }
-				],
+				hints: [{ name: this.modelId }],
 				// Default priorities - can be overridden via settings
 				costPriority: this.settings.costPriority ?? 0.5,
 				speedPriority: this.settings.speedPriority ?? 0.5,
@@ -158,11 +173,14 @@ export class McpSamplingLanguageModel {
 
 		try {
 			// Call MCP sampling
-			const response = await session.requestSampling(requestParams, requestOptions);
-			
+			const response = await session.requestSampling(
+				requestParams,
+				requestOptions
+			);
+
 			// Extract text from response
 			const text = extractTextFromResponse(response);
-			
+
 			// Parse JSON if in object mode
 			let parsedObject = undefined;
 			if (options.mode?.type === 'object-json') {
@@ -218,7 +236,10 @@ export class McpSamplingLanguageModel {
 			}
 
 			// Handle authentication/session errors
-			if (error.message?.includes('session') || error.message?.includes('capability')) {
+			if (
+				error.message?.includes('session') ||
+				error.message?.includes('capability')
+			) {
 				throw createAuthenticationError({
 					message: error.message,
 					cause: error,

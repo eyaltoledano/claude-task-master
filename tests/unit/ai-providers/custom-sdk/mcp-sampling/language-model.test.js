@@ -58,13 +58,10 @@ const { generateId } = await import('@ai-sdk/provider-utils');
 const { convertToMcpSamplingMessages, extractTextFromResponse } = await import(
 	'../../../../../src/ai-providers/custom-sdk/mcp-sampling/message-converter.js'
 );
-const {
-	createAPICallError,
-	createAuthenticationError,
-	createTimeoutError
-} = await import(
-	'../../../../../src/ai-providers/custom-sdk/mcp-sampling/errors.js'
-);
+const { createAPICallError, createAuthenticationError, createTimeoutError } =
+	await import(
+		'../../../../../src/ai-providers/custom-sdk/mcp-sampling/errors.js'
+	);
 
 describe('McpSamplingLanguageModel', () => {
 	let mockSession;
@@ -284,7 +281,10 @@ describe('McpSamplingLanguageModel', () => {
 			expect(mockSession.requestSampling).toHaveBeenCalledWith(
 				{
 					messages: [
-						{ role: 'user', content: { type: 'text', text: 'converted message' } }
+						{
+							role: 'user',
+							content: { type: 'text', text: 'converted message' }
+						}
 					],
 					systemPrompt: 'system prompt',
 					temperature: 0.7,
@@ -400,9 +400,7 @@ describe('McpSamplingLanguageModel', () => {
 				settings: { session: mockSession }
 			});
 
-			await expect(
-				model.doGenerate({ prompt: 'Test' })
-			).rejects.toThrow();
+			await expect(model.doGenerate({ prompt: 'Test' })).rejects.toThrow();
 
 			expect(createTimeoutError).toHaveBeenCalledWith({
 				timeout: 120000,
@@ -421,9 +419,7 @@ describe('McpSamplingLanguageModel', () => {
 				settings: { session: mockSession }
 			});
 
-			await expect(
-				model.doGenerate({ prompt: 'Test' })
-			).rejects.toThrow();
+			await expect(model.doGenerate({ prompt: 'Test' })).rejects.toThrow();
 
 			expect(createAuthenticationError).toHaveBeenCalledWith({
 				message: 'Invalid session',
@@ -455,13 +451,13 @@ describe('McpSamplingLanguageModel', () => {
 				settings: { session: mockSession }
 			});
 
-			await expect(
-				model.doStream({ prompt: 'Test' })
-			).rejects.toThrow(NoSuchModelError);
+			await expect(model.doStream({ prompt: 'Test' })).rejects.toThrow(
+				NoSuchModelError
+			);
 
-			await expect(
-				model.doStream({ prompt: 'Test' })
-			).rejects.toThrow('MCP Sampling does not support streaming');
+			await expect(model.doStream({ prompt: 'Test' })).rejects.toThrow(
+				'MCP Sampling does not support streaming'
+			);
 		});
 	});
 });

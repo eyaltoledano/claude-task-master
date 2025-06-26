@@ -1,10 +1,7 @@
 import { jest } from '@jest/globals';
 
 // Import the module under test
-const {
-	convertToMcpSamplingMessages,
-	extractTextFromResponse
-} = await import(
+const { convertToMcpSamplingMessages, extractTextFromResponse } = await import(
 	'../../../../../src/ai-providers/custom-sdk/mcp-sampling/message-converter.js'
 );
 
@@ -78,9 +75,7 @@ describe('MCP Sampling Message Converter', () => {
 
 		it('should handle prompt object with messages', () => {
 			const prompt = {
-				messages: [
-					{ role: 'user', content: 'Test message' }
-				],
+				messages: [{ role: 'user', content: 'Test message' }],
 				system: 'System prompt from object'
 			};
 
@@ -177,11 +172,11 @@ describe('MCP Sampling Message Converter', () => {
 		});
 
 		it('should add JSON instructions for object mode', () => {
-			const prompt = [
-				{ role: 'user', content: 'Generate an object' }
-			];
+			const prompt = [{ role: 'user', content: 'Generate an object' }];
 
-			const result = convertToMcpSamplingMessages(prompt, { type: 'object-json' });
+			const result = convertToMcpSamplingMessages(prompt, {
+				type: 'object-json'
+			});
 
 			expect(result.messages[0].content.text).toContain(
 				'Please respond with a valid JSON object only, no additional text or markdown.'
@@ -194,7 +189,9 @@ describe('MCP Sampling Message Converter', () => {
 				{ role: 'assistant', content: 'Response' }
 			];
 
-			const result = convertToMcpSamplingMessages(prompt, { type: 'object-json' });
+			const result = convertToMcpSamplingMessages(prompt, {
+				type: 'object-json'
+			});
 
 			expect(result.messages[0].content.text).toBe('First message');
 			expect(result.messages[1].content.text).toBe('Response');

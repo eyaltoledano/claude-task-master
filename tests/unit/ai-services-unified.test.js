@@ -185,6 +185,11 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn()
+	})),
+	McpSamplingProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
 	}))
 }));
 

@@ -85,7 +85,9 @@ describe('MCP Sampling Errors', () => {
 
 			expect(error.url).toBe('mcp://sampling/test');
 			expect(error.statusCode).toBe(400);
-			expect(error.responseHeaders).toEqual({ 'content-type': 'application/json' });
+			expect(error.responseHeaders).toEqual({
+				'content-type': 'application/json'
+			});
 			expect(error.responseBody).toEqual({ error: 'Bad request' });
 			expect(error.requestBodyValues).toEqual({ prompt: 'test' });
 			expect(error.isRetryable).toBe(false);
@@ -154,7 +156,9 @@ describe('MCP Sampling Errors', () => {
 			const error = createTimeoutError();
 
 			expect(error).toBeInstanceOf(APICallError);
-			expect(error.message).toBe('MCP Sampling request timed out after 120000ms');
+			expect(error.message).toBe(
+				'MCP Sampling request timed out after 120000ms'
+			);
 			expect(error.statusCode).toBe(408);
 			expect(error.isRetryable).toBe(true);
 			// Check if data exists
@@ -176,7 +180,9 @@ describe('MCP Sampling Errors', () => {
 				operation: 'generate-text'
 			});
 
-			expect(error.message).toBe('MCP Sampling generate-text timed out after 30000ms');
+			expect(error.message).toBe(
+				'MCP Sampling generate-text timed out after 30000ms'
+			);
 			expect(error.data.timeout).toBe(30000);
 			expect(error.data.operation).toBe('generate-text');
 		});

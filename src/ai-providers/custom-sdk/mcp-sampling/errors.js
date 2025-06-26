@@ -28,12 +28,12 @@ function extractErrorMessage(error) {
  */
 function createMetadata(options = {}) {
 	const metadata = {};
-	
+
 	if (options.sessionId) metadata.sessionId = options.sessionId;
 	if (options.modelId) metadata.modelId = options.modelId;
 	if (options.operation) metadata.operation = options.operation;
 	if (options.timeout) metadata.timeout = options.timeout;
-	
+
 	return metadata;
 }
 
@@ -54,7 +54,7 @@ function createMetadata(options = {}) {
 export function createAPICallError(options) {
 	const message = options.message || 'MCP Sampling API call failed';
 	const metadata = createMetadata(options.data);
-	
+
 	return new APICallError({
 		message,
 		url: options.url || 'mcp://sampling',
@@ -102,7 +102,7 @@ export function createAuthenticationError(options = {}) {
 export function createTimeoutError(options = {}) {
 	const timeout = options.timeout || 120000;
 	const operation = options.operation || 'request';
-	
+
 	return createAPICallError({
 		message: `MCP Sampling ${operation} timed out after ${timeout}ms`,
 		statusCode: 408,
@@ -124,10 +124,12 @@ export function createTimeoutError(options = {}) {
  */
 export function isAuthenticationError(error) {
 	if (error instanceof APICallError) {
-		return error.statusCode === 401 || 
+		return (
+			error.statusCode === 401 ||
 			error.data?.errorType === 'authentication' ||
 			error.message?.toLowerCase().includes('authentication') ||
-			error.message?.toLowerCase().includes('session');
+			error.message?.toLowerCase().includes('session')
+		);
 	}
 	return false;
 }
@@ -139,10 +141,12 @@ export function isAuthenticationError(error) {
  */
 export function isTimeoutError(error) {
 	if (error instanceof APICallError) {
-		return error.statusCode === 408 || 
+		return (
+			error.statusCode === 408 ||
 			error.data?.errorType === 'timeout' ||
 			error.message?.toLowerCase().includes('timeout') ||
-			error.message?.toLowerCase().includes('timed out');
+			error.message?.toLowerCase().includes('timed out')
+		);
 	}
 	return false;
 }
