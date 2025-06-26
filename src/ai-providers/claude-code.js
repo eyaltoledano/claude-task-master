@@ -7,6 +7,7 @@
 
 import { createClaudeCode } from './custom-sdk/claude-code/index.js';
 import { BaseAIProvider } from './base-provider.js';
+import { getClaudeCodeSettingsForCommand } from '../../scripts/modules/config-manager.js';
 
 export class ClaudeCodeProvider extends BaseAIProvider {
 	constructor() {
@@ -26,6 +27,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 	/**
 	 * Creates and returns a Claude Code client instance.
 	 * @param {object} params - Parameters for client initialization
+	 * @param {string} [params.commandName] - Name of the command invoking the service
 	 * @param {string} [params.baseURL] - Optional custom API endpoint (not used by Claude Code)
 	 * @returns {Function} Claude Code client function
 	 * @throws {Error} If initialization fails
@@ -35,10 +37,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 			// Claude Code doesn't use API keys or base URLs
 			// Just return the provider factory
 			return createClaudeCode({
-				defaultSettings: {
-					// Add any default settings if needed
-					// These can be overridden per request
-				}
+				defaultSettings: getClaudeCodeSettingsForCommand(params?.commandName)
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

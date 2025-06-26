@@ -64,100 +64,81 @@ task-master set-status --id=task-001 --status=in-progress
    ```bash
    npm install @anthropic-ai/claude-code
    ```
-3. No API key is required in your environment variables or MCP configuration
+3. Run Claude Code for the first time and authenticate with your Anthropic account:
+   ```bash
+   claude
+   ```
+4. No API key is required in your environment variables or MCP configuration
 
 ## Advanced Settings
 
-The Claude Code SDK supports additional settings that provide fine-grained control over Claude's behavior. While these settings are implemented in the underlying SDK (`src/ai-providers/custom-sdk/claude-code/`), they are not currently exposed through Task Master's standard API due to architectural constraints.
+The Claude Code SDK supports additional settings that provide fine-grained control over Claude's behavior.  These settings are implemented in the underlying SDK (`src/ai-providers/custom-sdk/claude-code/`), and can be managed through Task Master's configuration file.
 
-### Supported Settings
+### Advanced Settings Usage
 
-```javascript
-const settings = {
-  // Maximum conversation turns Claude can make in a single request
-  maxTurns: 5,
-  
-  // Custom system prompt to override Claude Code's default behavior
-  customSystemPrompt: "You are a helpful assistant focused on code quality",
-  
-  // Permission mode for file system operations
-  permissionMode: 'default', // Options: 'default', 'restricted', 'permissive'
-  
-  // Explicitly allow only certain tools
-  allowedTools: ['Read', 'LS'], // Claude can only read files and list directories
-  
-  // Explicitly disallow certain tools
-  disallowedTools: ['Write', 'Edit'], // Prevent Claude from modifying files
-  
-  // MCP servers for additional tool integrations
-  mcpServers: []
-};
-```
+To update settings for Claude Code, update your `.taskmaster/config.json`:
 
-### Current Limitations
-
-Task Master uses a standardized `BaseAIProvider` interface that only passes through common parameters (modelId, messages, maxTokens, temperature) to maintain consistency across all providers. The Claude Code advanced settings are implemented in the SDK but not accessible through Task Master's high-level commands.
-
-### Future Integration Options
-
-For developers who need to use these advanced settings, there are three potential approaches:
-
-#### Option 1: Extend BaseAIProvider
-Modify the core Task Master architecture to support provider-specific settings:
+The Claude Code settings can be specified globally in the `claudeCode` section of the config, or on a per-command basis in the `commandSpecific` section:
 
 ```javascript
-// In BaseAIProvider
-const result = await generateText({
-  model: client(params.modelId),
-  messages: params.messages,
-  maxTokens: params.maxTokens,
-  temperature: params.temperature,
-  ...params.providerSettings // New: pass through provider-specific settings
-});
-```
+{
+  // "models" and "global" config...
 
-#### Option 2: Override Methods in ClaudeCodeProvider
-Create custom implementations that extract and use Claude-specific settings:
+  "claudeCode": {
+    // Maximum conversation turns Claude can make in a single request
+    "maxTurns": 5,
+    
+    // Custom system prompt to override Claude Code's default behavior
+    "customSystemPrompt": "You are a helpful assistant focused on code quality",
 
-```javascript
-// In ClaudeCodeProvider
-async generateText(params) {
-  const { maxTurns, allowedTools, disallowedTools, ...baseParams } = params;
-  
-  const client = this.getClient({
-    ...baseParams,
-    settings: { maxTurns, allowedTools, disallowedTools }
-  });
-  
-  // Continue with generation...
+    // Append additional content to the system prompt
+    "appendSystemPrompt": "Always follow coding best practices",
+    
+    // Permission mode for file system operations
+    "permissionMode": "default", // Options: "default", "acceptEdits", "plan", "bypassPermissions"
+    
+    // Explicitly allow only certain tools
+    "allowedTools": ["Read", "LS"], // Claude can only read files and list directories
+    
+    // Explicitly disallow certain tools
+    "disallowedTools": ["Write", "Edit"], // Prevent Claude from modifying files
+    
+    // MCP servers for additional tool integrations
+    "mcpServers": {
+      "mcp-server-name": {
+        "command": "npx",
+        "args": ["-y", "mcp-serve"],
+        "env": {
+          // ...
+        }
+      }
+    }
+  },
+
+  // Command-specific settings override global settings
+  "commandSpecific": {
+    "parse-prd": {
+      // Settings specific to the 'parse-prd' command
+      "maxTurns": 10,
+      "customSystemPrompt": "You are a task breakdown specialist"
+    },
+    "analyze-complexity": {
+      // Settings specific to the 'analyze-complexity' command
+      "maxTurns": 3,
+      "appendSystemPrompt": "Focus on identifying bottlenecks"
+    }
+  }
 }
 ```
 
-#### Option 3: Direct SDK Usage
-For immediate access to advanced features, developers can use the Claude Code SDK directly:
-
-```javascript
-import { createClaudeCode } from 'task-master-ai/ai-providers/custom-sdk/claude-code';
-
-const claude = createClaudeCode({
-  defaultSettings: {
-    maxTurns: 5,
-    allowedTools: ['Read', 'LS'],
-    disallowedTools: ['Write', 'Edit']
-  }
-});
-
-const model = claude('sonnet');
-const result = await generateText({
-  model,
-  messages: [{ role: 'user', content: 'Analyze this code...' }]
-});
-```
+- For a full list of Cluaude Code settings, see the [Claude Code Settings documentation](https://docs.anthropic.com/en/docs/claude-code/settings).
+- For a full list of AI powered command names, see this file: `src/constants/commands.js`
 
 ### Why These Settings Matter
 
 - **maxTurns**: Useful for complex refactoring tasks that require multiple iterations
 - **customSystemPrompt**: Allows specializing Claude for specific domains or coding standards
+- **appendSystemPrompt**: Useful for enforcing coding standards or providing additional context
 - **permissionMode**: Critical for security in production environments
 - **allowedTools/disallowedTools**: Enable read-only analysis modes or restrict access to sensitive operations
 - **mcpServers**: Future extensibility for custom tool integrations
