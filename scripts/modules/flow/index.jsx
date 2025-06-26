@@ -773,10 +773,11 @@ function FlowApp({ backend, options = {} }) {
 							{/* Bottom status bar */}
 							<Box paddingLeft={1} paddingRight={1}>
 								<Box flexGrow={1}>
-									<Text dimColor>enter </Text>
-									<Text color={theme.textDim}>send</Text>
+									<Text color={theme.text}>
+										<Text color={theme.accent}>[tag]</Text> {currentTag || 'master'}
+									</Text>
 								</Box>
-								<Text color={theme.accent}>{currentModel}</Text>
+								<Text color={theme.accent}>Task Master AI</Text>
 								<Text dimColor> v0.18.0</Text>
 							</Box>
 						</Box>
