@@ -216,6 +216,20 @@ export class AnalyzeComplexityTracker {
 		);
 
 		taskBar.update(1, { title: displayTitle });
+
+		// Add border line after each task
+		const borderBar = this.multibar.create(
+			1,
+			1,
+			{},
+			{
+				format:
+					'------+-------+-----+--------------------------------------------------',
+				barsize: 1
+			}
+		);
+		borderBar.update(1);
+
 		this._updateTimeTokensBar();
 	}
 
