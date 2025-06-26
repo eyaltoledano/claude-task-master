@@ -21,7 +21,9 @@ function ClaudeCodeScreen({
 	const { setCurrentScreen } = useAppContext();
 	const [config, setConfig] = useState(null);
 	const [sessions, setSessions] = useState([]);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(
+		initialMode !== 'subtask-implementation' // Don't show loading for subtask mode
+	);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(null);
 	const [mode, setMode] = useState(
@@ -35,10 +37,12 @@ function ClaudeCodeScreen({
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [showMenu, setShowMenu] = useState(false);
 	const [keyInsights, setKeyInsights] = useState([]);
-	const [waitingForConfig, setWaitingForConfig] = useState(false);
 	const [sessionFilter, setSessionFilter] = useState('all'); // all, active, finished
 	const [viewingSession, setViewingSession] = useState(null);
 	const [sessionMessages, setSessionMessages] = useState({});
+	const [waitingForConfig, setWaitingForConfig] = useState(
+		initialMode === 'subtask-implementation' // Start waiting for config in subtask mode
+	);
 	const abortControllerRef = useRef(null);
 	const theme = getTheme();
 
@@ -109,23 +113,31 @@ function ClaudeCodeScreen({
 	}, [highlightSessionId, sessions, filterSubtaskId, sessionFilter]);
 
 	const loadData = async () => {
-		setLoading(true);
-		try {
-			const [configResult, sessionsResult] = await Promise.all([
-				backend.getClaudeCodeConfig(),
-				backend.getClaudeCodeSessions()
-			]);
+		// Only show loading screen if we're not in an active session
+		if (mode !== 'active-session') {
+			setLoading(true);
+		}
 
+		try {
+			// Load Claude Code configuration
+			const configResult = await backend.getClaudeCodeConfig();
 			if (configResult.success) {
-				setConfig(configResult.config);
+				setConfig(configResult.config || configResult.data);
 			}
+
+			// Load existing sessions
+			const sessionsResult = await backend.getClaudeCodeSessions();
 			if (sessionsResult.success) {
-				setSessions(sessionsResult.sessions);
+				setSessions(sessionsResult.sessions || sessionsResult.data || []);
 			}
 		} catch (err) {
-			setError(err.message);
+			setError(`Failed to load data: ${err.message}`);
 		} finally {
-			setLoading(false);
+			// Only set loading to false if we're not in an active session
+			// to prevent view disruption
+			if (mode !== 'active-session') {
+				setLoading(false);
+			}
 		}
 	};
 
@@ -219,6 +231,7 @@ Additional context:
 		setLoading(false);
 		setIsProcessing(true);
 		setMessages([]);
+		setMode('active-session'); // Ensure we're in active session mode
 
 		const subtaskPrompt = buildSubtaskPrompt();
 		const systemPrompt = buildSystemPrompt();
@@ -288,6 +301,9 @@ Working directory: ${initialContext.worktreePath}
 				});
 
 				setSuccess('Claude Code session started for subtask implementation');
+
+				// Reload sessions to include this new session in the list
+				await loadData();
 			} else if (result.error) {
 				setError(result.error);
 				setTimeout(() => handleBack(), 3000);
