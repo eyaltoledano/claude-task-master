@@ -1576,7 +1576,6 @@ function registerCommands(programInstance) {
 
 			if (options.all) {
 				// --- Handle expand --all ---
-				console.log(chalk.blue('Expanding all pending tasks...'));
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(

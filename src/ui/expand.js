@@ -77,11 +77,6 @@ function displayExpandStart({
 		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
 	}
 
-	// Add tag to the model line if provided
-	if (tagName) {
-		modelLine += `\n🏷️ tag: ${tagName}`;
-	}
-
 	// Build the main content based on expansion type
 	let content = chalk.blue(`Tasks file: ${tasksFilePath}\n`);
 

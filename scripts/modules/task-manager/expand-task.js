@@ -483,7 +483,7 @@ async function expandTask(
 
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
 		if (force && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
-			logger.info(
+			logger.debug(
 				`Force flag set. Clearing existing ${task.subtasks.length} subtasks for task ${taskId}.`
 			);
 			task.subtasks = []; // Clear existing subtasks
