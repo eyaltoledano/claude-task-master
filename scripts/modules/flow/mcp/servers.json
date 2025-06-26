@@ -1,0 +1,21 @@
+[
+	{
+		"id": "local",
+		"name": "Local Task Master",
+		"scriptPath": "./mcp-server/server.js",
+		"description": "Built-in Task Master MCP server",
+		"scriptType": "node",
+		"status": "inactive",
+		"default": true,
+		"createdAt": "2025-06-26T01:37:18.966Z"
+	},
+	{
+		"name": "Context7",
+		"transport": "stdio",
+		"scope": "local",
+		"scriptPath": "npx",
+		"args": ["-y", "@upstash/context7-mcp"],
+		"env": {},
+		"default": true
+	}
+]
