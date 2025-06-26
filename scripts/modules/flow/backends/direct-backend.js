@@ -640,8 +640,10 @@ export class DirectBackend extends FlowBackend {
 					if (currentWorktree.path) {
 						worktrees.push(currentWorktree);
 					}
+					const worktreePath = line.substring(9);
 					currentWorktree = {
-						path: line.substring(9),
+						path: worktreePath,
+						name: path.basename(worktreePath),
 						isMain: false,
 						isCurrent: false
 					};
@@ -672,6 +674,7 @@ export class DirectBackend extends FlowBackend {
 				worktrees.forEach((wt) => {
 					if (wt.path === currentPath) {
 						wt.isCurrent = true;
+						wt.name = path.basename(wt.path);
 					}
 				});
 			}
@@ -700,6 +703,11 @@ export class DirectBackend extends FlowBackend {
 
 			// Get additional details
 			const details = { ...worktree };
+			
+			// Ensure name is set
+			if (!details.name) {
+				details.name = path.basename(details.path);
+			}
 
 			// Get latest commit info
 			try {
