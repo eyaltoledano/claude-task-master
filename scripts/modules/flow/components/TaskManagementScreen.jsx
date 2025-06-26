@@ -20,7 +20,7 @@ export function TaskManagementScreen() {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [isSearching, setIsSearching] = useState(false);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [viewMode, setViewMode] = useState('list'); // list, detail, or subtasks
+	const [viewMode, setViewMode] = useState('list'); // list, detail, subtasks, or subtask-detail
 	const [selectedTask, setSelectedTask] = useState(null);
 	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
@@ -30,8 +30,9 @@ export function TaskManagementScreen() {
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
 	const [complexityReport, setComplexityReport] = useState(null);
 	const [loadingComplexity, setLoadingComplexity] = useState(false);
-	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0); // For subtasks view
-	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0); // For subtasks view
+	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0);
+	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0);
+	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -124,7 +125,13 @@ export function TaskManagementScreen() {
 				// During expansion, ESC is disabled - must use Ctrl+X
 				return;
 			}
-			if (viewMode === 'subtasks') {
+			if (viewMode === 'subtask-detail') {
+				// Go back to subtasks view from subtask detail
+				flushSync(() => {
+					setViewMode('subtasks');
+					setSelectedSubtask(null);
+				});
+			} else if (viewMode === 'subtasks') {
 				// Go back to detail view from subtasks
 				flushSync(() => {
 					setViewMode('detail');
@@ -173,6 +180,12 @@ export function TaskManagementScreen() {
 				if (newIndex < subtasksScrollOffset) {
 					setSubtasksScrollOffset(newIndex);
 				}
+			} else if (key.return) {
+				// Enter key - show subtask details
+				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+				setSelectedSubtask(subtask);
+				setViewMode('subtask-detail');
+				setDetailScrollOffset(0); // Reset scroll for subtask detail view
 			} else if (input === 't') {
 				// Cycle status of selected subtask
 				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
@@ -203,6 +216,37 @@ export function TaskManagementScreen() {
 			} else if (key.pageUp) {
 				// Page up in detail view
 				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
+			}
+			return;
+		}
+
+		// Subtask detail view keyboard handling
+		if (viewMode === 'subtask-detail') {
+			if (key.downArrow) {
+				// Scroll down in subtask detail view
+				setDetailScrollOffset((prev) => prev + 1);
+			} else if (key.upArrow) {
+				// Scroll up in subtask detail view
+				setDetailScrollOffset((prev) => Math.max(0, prev - 1));
+			} else if (key.pageDown) {
+				// Page down in subtask detail view
+				setDetailScrollOffset((prev) => prev + 10);
+			} else if (key.pageUp) {
+				// Page up in subtask detail view
+				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
+			} else if (input === 'w') {
+				// Jump to worktrees screen to manage linked worktrees
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				if (worktrees.length > 0) {
+					// Navigate to worktrees screen
+					setCurrentScreen('worktrees');
+				} else {
+					setToast({
+						message: 'No worktrees linked to this subtask',
+						type: 'warning'
+					});
+				}
 			}
 			return;
 		}
@@ -931,7 +975,231 @@ export function TaskManagementScreen() {
 					flexShrink={0}
 				>
 					<Text color={theme.text}>
-						↑↓ navigate • t cycle status • ESC back to details
+						↑↓ navigate • ENTER view details • t cycle status • ESC back
+					</Text>
+				</Box>
+
+				{toast && (
+					<Toast
+						message={toast.message}
+						type={toast.type}
+						onDismiss={() => setToast(null)}
+					/>
+				)}
+			</Box>
+		);
+	}
+
+	// Render subtask detail view
+	if (viewMode === 'subtask-detail' && selectedTask && selectedSubtask) {
+		// Calculate content lines for subtask detail view
+		let subtaskContentLines = [];
+
+		// Add all the content that will be displayed
+		subtaskContentLines.push({
+			type: 'field',
+			label: 'Status:',
+			value: `${getStatusSymbol(selectedSubtask.status)} ${selectedSubtask.status}`,
+			color: getStatusColor(selectedSubtask.status)
+		});
+
+		subtaskContentLines.push({
+			type: 'field',
+			label: 'Title:',
+			value: selectedSubtask.title
+		});
+
+		if (selectedSubtask.description) {
+			subtaskContentLines.push({ type: 'spacer' });
+			subtaskContentLines.push({ type: 'header', text: 'Description:' });
+			subtaskContentLines.push({
+				type: 'text',
+				text: selectedSubtask.description
+			});
+		}
+
+		if (selectedSubtask.details) {
+			subtaskContentLines.push({ type: 'spacer' });
+			subtaskContentLines.push({
+				type: 'header',
+				text: 'Implementation Details:'
+			});
+			// Split details into lines
+			const detailLines = selectedSubtask.details.split('\n');
+			detailLines.forEach((line) => {
+				subtaskContentLines.push({ type: 'text', text: line });
+			});
+		}
+
+		// Handle dependencies
+		if (
+			selectedSubtask.dependencies &&
+			selectedSubtask.dependencies.length > 0
+		) {
+			subtaskContentLines.push({ type: 'spacer' });
+			subtaskContentLines.push({
+				type: 'field',
+				label: 'Dependencies:',
+				value: selectedSubtask.dependencies
+					.map((dep) => {
+						// For subtask dependencies, they could be other subtasks or main tasks
+						// Try to find the task/subtask and check its status
+						let depStatus = '⏱️'; // pending by default
+
+						// Check if it's a subtask dependency (format: parentId.subtaskId)
+						if (typeof dep === 'string' && dep.includes('.')) {
+							const [parentId, subId] = dep.split('.');
+							if (parseInt(parentId) === selectedTask.id) {
+								// It's a sibling subtask
+								const siblingSubtask = selectedTask.subtasks.find(
+									(st) => st.id === parseInt(subId)
+								);
+								if (siblingSubtask?.status === 'done') {
+									depStatus = '✅';
+								}
+							}
+						} else {
+							// It's a main task dependency
+							const depTask = tasks.find((t) => t.id === dep);
+							if (depTask?.status === 'done') {
+								depStatus = '✅';
+							}
+						}
+
+						return `${depStatus} ${dep}`;
+					})
+					.join(', ')
+			});
+		}
+
+		// Check for worktrees
+		const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+		const worktrees = subtaskWorktrees.get(subtaskId) || [];
+
+		if (selectedSubtask.testStrategy) {
+			subtaskContentLines.push({ type: 'spacer' });
+			subtaskContentLines.push({
+				type: 'header',
+				text: 'Test Strategy:'
+			});
+			// Split test strategy into lines
+			const testLines = selectedSubtask.testStrategy.split('\n');
+			testLines.forEach((line) => {
+				subtaskContentLines.push({ type: 'text', text: line });
+			});
+		}
+
+		subtaskContentLines.push({ type: 'spacer' });
+		subtaskContentLines.push({
+			type: 'field',
+			label: 'Git Worktrees:',
+			value:
+				worktrees.length > 0
+					? worktrees.map((wt) => `🌳 ${wt.name}`).join(', ')
+					: '-',
+			color: worktrees.length > 0 ? theme.success : theme.textDim
+		});
+
+		// Calculate visible content based on scroll offset
+		const visibleSubtaskContent = subtaskContentLines.slice(
+			detailScrollOffset,
+			detailScrollOffset + DETAIL_VISIBLE_ROWS
+		);
+
+		return (
+			<Box key="subtask-detail-view" flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Task #{selectedTask.id}</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Subtask #{selectedSubtask.id}</Text>
+					</Box>
+					<Text color={theme.textDim}>[ESC back to subtasks]</Text>
+				</Box>
+
+				{/* Subtask Details with scrolling */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					paddingLeft={2}
+					paddingRight={2}
+					height={DETAIL_VISIBLE_ROWS + 2}
+				>
+					{visibleSubtaskContent.map((line, index) => {
+						if (line.type === 'field') {
+							return (
+								<Box key={index} flexDirection="row" marginBottom={1}>
+									<Box width={20}>
+										<Text color={theme.textDim}>{line.label}</Text>
+									</Box>
+									<Box flexGrow={1}>
+										<Text color={line.color || theme.text}>{line.value}</Text>
+									</Box>
+								</Box>
+							);
+						} else if (line.type === 'header') {
+							return (
+								<Box key={index} flexDirection="column" marginTop={1}>
+									<Text color={theme.accent} bold>
+										{line.text}
+									</Text>
+								</Box>
+							);
+						} else if (line.type === 'text') {
+							return (
+								<Box key={index} marginTop={0.5} paddingLeft={2}>
+									<Text color={theme.text}>{line.text}</Text>
+								</Box>
+							);
+						} else if (line.type === 'spacer') {
+							return <Box key={index} height={1} />;
+						}
+						return null;
+					})}
+
+					{/* Scroll indicator */}
+					{subtaskContentLines.length > DETAIL_VISIBLE_ROWS && (
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>
+								Lines {detailScrollOffset + 1}-
+								{Math.min(
+									detailScrollOffset + DETAIL_VISIBLE_ROWS,
+									subtaskContentLines.length
+								)}{' '}
+								of {subtaskContentLines.length} • ↑↓ scroll
+							</Text>
+						</Box>
+					)}
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={theme.text}>
+						{subtaskContentLines.length > DETAIL_VISIBLE_ROWS
+							? '↑↓ scroll • '
+							: ''}
+						{worktrees.length > 0 ? 'w worktrees • ' : ''}
+						ESC back to subtasks
 					</Text>
 				</Box>
 
