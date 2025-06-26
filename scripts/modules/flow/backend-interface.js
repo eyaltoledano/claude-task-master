@@ -89,6 +89,24 @@ export class FlowBackend {
 	}
 
 	/**
+	 * Run research (non-streaming)
+	 * @param {Object} options
+	 * @returns {Promise<Object>}
+	 */
+	async research(options = {}) {
+		throw new Error('research() must be implemented by subclass');
+	}
+
+	/**
+	 * Update a subtask
+	 * @param {Object} options
+	 * @returns {Promise<Object>}
+	 */
+	async updateSubtask(options = {}) {
+		throw new Error('updateSubtask() must be implemented by subclass');
+	}
+
+	/**
 	 * List available tags
 	 * @returns {Promise<Array>}
 	 */

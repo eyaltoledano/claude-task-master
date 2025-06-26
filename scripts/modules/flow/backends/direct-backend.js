@@ -295,32 +295,112 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	async *researchStream(query, options = {}) {
-		const args = {
-			projectRoot: this.projectRoot,
-			query: query,
-			taskIds: options.taskIds,
-			filePaths: options.filePaths,
-			customContext: options.customContext,
-			includeProjectTree: options.includeProjectTree || false,
-			detailLevel: options.detailLevel || 'medium',
-			saveTo: options.saveTo,
-			saveFile: options.saveFile || false
-		};
+		try {
+			const { research } = await import('../../task-manager/research.js');
 
-		// For now, we'll run research non-streaming and yield the result
-		// TODO: Implement proper streaming when available
-		const result = await researchDirect(args, this.log);
-		if (!result.success) {
-			throw new Error(result.error);
+			// Create a simple async generator that yields the research result
+			const result = await research(
+				query,
+				options.taskIds || [],
+				options.filePaths || [],
+				options.customContext || '',
+				options.includeProjectTree || false,
+				options.detailLevel || 'medium',
+				options.saveTo || null,
+				options.saveToFile || false,
+				options.noFollowup || true,
+				this.projectRoot,
+				'json'
+			);
+
+			// Extract the response from the result
+			const response = result.response || result;
+
+			// Yield the response in chunks for streaming effect
+			const chunks = response.match(/.{1,100}/g) || [response];
+			for (const chunk of chunks) {
+				yield chunk;
+			}
+		} catch (error) {
+			throw new Error(`Research failed: ${error.message}`);
 		}
+	}
 
-		this.updateTelemetry(result.data);
+	async research(options = {}) {
+		try {
+			const { performResearch } = await import(
+				'../../task-manager/research.js'
+			);
 
-		// Yield the conversation in chunks
-		const conversation = result.data.conversation || '';
-		const chunks = conversation.match(/.{1,100}/g) || [];
-		for (const chunk of chunks) {
-			yield chunk;
+			const result = await performResearch(
+				options.query || '',
+				{
+					taskIds: options.taskIds || [],
+					filePaths: options.filePaths || [],
+					customContext: options.customContext || '',
+					includeProjectTree: options.includeProjectTree || false,
+					detailLevel: options.detailLevel || 'medium',
+					projectRoot: this.projectRoot,
+					saveToFile: options.saveToFile || false
+				},
+				{
+					projectRoot: this.projectRoot,
+					commandName: 'research',
+					outputType: 'mcp'
+				},
+				'json',
+				false // allowFollowUp
+			);
+
+			return {
+				success: true,
+				response: result.result,
+				telemetryData: result.telemetryData
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async updateSubtask(options = {}) {
+		try {
+			const updateSubtaskById = (
+				await import('../../task-manager/update-subtask-by-id.js')
+			).default;
+
+			const tasksPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+
+			const result = await updateSubtaskById(
+				tasksPath,
+				options.id,
+				options.prompt,
+				options.research || false,
+				{
+					projectRoot: this.projectRoot,
+					commandName: 'update-subtask',
+					outputType: 'mcp'
+				},
+				'json'
+			);
+
+			return {
+				success: true,
+				task: result.task,
+				telemetryData: result.telemetryData
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
 		}
 	}
 

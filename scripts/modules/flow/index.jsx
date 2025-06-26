@@ -31,6 +31,7 @@ import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
 import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import ClaudeCodeScreen from './components/ClaudeCodeScreen.jsx';
+import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -714,9 +715,25 @@ function FlowApp({ backend, options = {} }) {
 					<ClaudeCodeScreen
 						backend={currentBackend}
 						onBack={() => setCurrentScreen('welcome')}
+						navigationData={navigationData}
+						initialContext={navigationData?.initialContext}
+						mode={navigationData?.mode}
+						returnTo={navigationData?.returnTo}
+						returnData={navigationData?.returnData}
 					/>
 				) : currentScreen === 'mcp-management' ? (
 					<MCPManagementScreen />
+				) : currentScreen === 'worktreePrompt' ? (
+					<Box justifyContent="center" alignItems="center" height="100%">
+						<WorktreePromptModal
+							taskTitle={navigationData?.taskTitle}
+							subtaskTitle={navigationData?.subtaskTitle}
+							onSelect={
+								navigationData?.onSelect || (() => setCurrentScreen('welcome'))
+							}
+							onClose={() => setCurrentScreen('welcome')}
+						/>
+					</Box>
 				) : currentScreen === 'mcp' ? (
 					<MCPServerManager
 						onBack={() => setCurrentScreen('welcome')}

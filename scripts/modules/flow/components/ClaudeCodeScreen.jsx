@@ -6,14 +6,25 @@ import { SimpleTable } from './SimpleTable.jsx';
 import { Toast } from './Toast.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { getTheme } from '../theme.js';
+import { useAppContext } from '../index.jsx';
 
-function ClaudeCodeScreen({ backend, onBack }) {
+function ClaudeCodeScreen({
+	backend,
+	onBack,
+	mode: initialMode = 'list',
+	initialContext = null,
+	returnTo = 'welcome',
+	returnData = null
+}) {
+	const { setCurrentScreen } = useAppContext();
 	const [config, setConfig] = useState(null);
 	const [sessions, setSessions] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(null);
-	const [mode, setMode] = useState('list'); // list, menu, new-query, active-session
+	const [mode, setMode] = useState(
+		initialMode === 'subtask-implementation' ? 'active-session' : 'list'
+	);
 	const [prompt, setPrompt] = useState('');
 	const [activeSession, setActiveSession] = useState(null);
 	const [messages, setMessages] = useState([]);
@@ -21,6 +32,7 @@ function ClaudeCodeScreen({ backend, onBack }) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [showMenu, setShowMenu] = useState(false);
+	const [keyInsights, setKeyInsights] = useState([]);
 	const abortControllerRef = useRef(null);
 	const theme = getTheme();
 
@@ -29,6 +41,12 @@ function ClaudeCodeScreen({ backend, onBack }) {
 
 	useEffect(() => {
 		loadData();
+
+		// If we have initial context for subtask implementation, start the session
+		if (initialMode === 'subtask-implementation' && initialContext) {
+			startSubtaskImplementationSession();
+		}
+
 		return () => {
 			// Cleanup abort controller on unmount
 			if (abortControllerRef.current) {
@@ -56,6 +74,212 @@ function ClaudeCodeScreen({ backend, onBack }) {
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const buildSubtaskPrompt = () => {
+		const {
+			currentSubtask,
+			parentTask,
+			dependencies,
+			researchContext,
+			worktreePath
+		} = initialContext;
+
+		return `
+I'm implementing a specific subtask within a larger system. Here's the context:
+
+## Current Task: ${currentSubtask.id} - ${currentSubtask.title}
+Status: ${currentSubtask.status}
+${currentSubtask.description}
+
+### Progress So Far:
+${currentSubtask.details || 'No progress logged yet'}
+
+## Parent Task Context: ${parentTask.title}
+${parentTask.description}
+
+### Sibling Subtasks:
+${parentTask.subtasks
+	.map(
+		(st) =>
+			`- [${st.status}] ${st.id}: ${st.title}${st.id == currentSubtask.id.split('.')[1] ? ' ← CURRENT' : ''}`
+	)
+	.join('\n')}
+
+## Completed Dependencies:
+${
+	dependencies.length > 0
+		? dependencies
+				.map(
+					(dep) =>
+						`### ${dep.id}: ${dep.title}
+${dep.keyDecisions || 'No key decisions recorded'}`
+				)
+				.join('\n\n')
+		: 'No dependencies'
+}
+
+## Research Findings:
+${researchContext || 'No research context available'}
+
+Working directory: ${worktreePath}
+Please help me implement subtask ${currentSubtask.id}, maintaining consistency with the existing architecture.
+		`.trim();
+	};
+
+	const buildSystemPrompt = () => {
+		const basePrompt =
+			config?.systemPrompts?.implementation ||
+			'You are helping implement a task. Focus on clean, maintainable code.';
+
+		return `${basePrompt}
+
+Additional context:
+- You are implementing subtask ${initialContext.currentSubtask.id} of task ${initialContext.parentTask.id}
+- Maintain consistency with completed sibling subtasks
+- The working directory is ${initialContext.worktreePath}
+- Focus on practical implementation that aligns with the project structure
+		`.trim();
+	};
+
+	const startSubtaskImplementationSession = async () => {
+		if (!config) {
+			// Wait for config to load
+			setTimeout(startSubtaskImplementationSession, 100);
+			return;
+		}
+
+		setLoading(false);
+		setIsProcessing(true);
+		setMessages([]);
+
+		const subtaskPrompt = buildSubtaskPrompt();
+		const systemPrompt = buildSystemPrompt();
+
+		abortControllerRef.current = new AbortController();
+
+		try {
+			const result = await backend.claudeCodeQuery(subtaskPrompt, {
+				maxTurns: 10, // Allow more turns for implementation
+				permissionMode: config?.permissionMode || 'acceptEdits',
+				allowedTools: config?.allowedTools || ['Read', 'Write', 'Bash'],
+				systemPrompt,
+				cwd: initialContext.worktreePath,
+				abortController: abortControllerRef.current,
+				onMessage: (message) => {
+					setMessages((prev) => [...prev, message]);
+
+					// Extract key insights from Claude's responses
+					if (message.type === 'assistant') {
+						const insights = extractKeyInsights(
+							message.message.content?.[0]?.text || ''
+						);
+						if (insights.length > 0) {
+							setKeyInsights((prev) => [...prev, ...insights]);
+						}
+					}
+				}
+			});
+
+			if (result.success && result.sessionId) {
+				setActiveSession({
+					sessionId: result.sessionId,
+					prompt: subtaskPrompt,
+					timestamp: new Date().toISOString(),
+					subtaskId: initialContext.currentSubtask.id
+				});
+
+				// Save session with subtask reference
+				await backend.saveClaudeCodeSession({
+					sessionId: result.sessionId,
+					prompt: subtaskPrompt,
+					lastUpdated: new Date().toISOString(),
+					metadata: {
+						type: 'subtask-implementation',
+						subtaskId: initialContext.currentSubtask.id,
+						parentTaskId: initialContext.parentTask.id
+					}
+				});
+
+				setSuccess('Claude Code session started for subtask implementation');
+			} else if (result.error) {
+				setError(result.error);
+				setTimeout(() => handleBack(), 3000);
+			}
+		} catch (err) {
+			setError(err.message);
+			setTimeout(() => handleBack(), 3000);
+		} finally {
+			setIsProcessing(false);
+			abortControllerRef.current = null;
+		}
+	};
+
+	const extractKeyInsights = (text) => {
+		const insights = [];
+		const patterns = [
+			{ pattern: /I've implemented/i, category: 'implementation' },
+			{ pattern: /The approach I've taken/i, category: 'approach' },
+			{ pattern: /Important to note/i, category: 'important' },
+			{ pattern: /This ensures/i, category: 'reasoning' },
+			{ pattern: /I've added error handling/i, category: 'error-handling' },
+			{ pattern: /For security/i, category: 'security' },
+			{ pattern: /Performance consideration/i, category: 'performance' }
+		];
+
+		const lines = text.split('\n');
+		lines.forEach((line, idx) => {
+			patterns.forEach(({ pattern, category }) => {
+				if (pattern.test(line)) {
+					const insight = lines
+						.slice(idx, idx + 3)
+						.join('\n')
+						.trim();
+					insights.push({ category, text: insight });
+				}
+			});
+		});
+
+		return insights;
+	};
+
+	const handleBack = async () => {
+		// If we're in subtask implementation mode and have insights, save them
+		if (initialMode === 'subtask-implementation' && keyInsights.length > 0) {
+			try {
+				const insightSummary = summarizeInsights(keyInsights);
+				await backend.updateSubtask({
+					id: initialContext.currentSubtask.id,
+					prompt: `Claude Code session insights:\n${insightSummary}`,
+					research: false
+				});
+				setSuccess('Subtask updated with session insights');
+			} catch (err) {
+				console.error('Failed to update subtask:', err);
+			}
+		}
+
+		// Navigate back with return data
+		if (returnTo === 'tasks' && returnData) {
+			setCurrentScreen('tasks', returnData);
+		} else {
+			onBack();
+		}
+	};
+
+	const summarizeInsights = (insights) => {
+		const grouped = insights.reduce((acc, { category, text }) => {
+			if (!acc[category]) acc[category] = [];
+			acc[category].push(text);
+			return acc;
+		}, {});
+
+		return Object.entries(grouped)
+			.map(
+				([category, texts]) =>
+					`### ${category.charAt(0).toUpperCase() + category.slice(1)}:\n${texts.join('\n\n')}`
+			)
+			.join('\n\n');
 	};
 
 	const handleNewQuery = async () => {
@@ -184,7 +408,7 @@ function ClaudeCodeScreen({ backend, onBack }) {
 			} else if (showMenu) {
 				setShowMenu(false);
 			} else {
-				onBack();
+				handleBack();
 			}
 			return;
 		}

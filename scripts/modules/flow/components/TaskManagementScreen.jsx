@@ -305,6 +305,9 @@ export function TaskManagementScreen() {
 						type: 'warning'
 					});
 				}
+			} else if (input === 'c' || input === 'C') {
+				// Launch Claude Code session with subtask context
+				handleClaudeSession();
 			}
 			return;
 		}
@@ -500,39 +503,257 @@ export function TaskManagementScreen() {
 			'deferred',
 			'cancelled'
 		];
-		const currentIndex = statusOrder.indexOf(task.status);
-		const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+
+		const currentIndex = statusOrder.indexOf(task.status || 'pending');
+		const nextIndex = (currentIndex + 1) % statusOrder.length;
+		const newStatus = statusOrder[nextIndex];
 
 		try {
-			await backend.setTaskStatus(task.id, nextStatus);
+			await backend.setTaskStatus(task.id, newStatus);
 			await reloadTasks();
 
-			// If we're updating a subtask and in subtasks view, refresh the selectedTask
-			if (viewMode === 'subtasks' && task.id.includes('.')) {
-				// Extract parent task ID from subtask ID (e.g., "4.1" -> "4")
-				const parentTaskId = parseInt(task.id.split('.')[0]);
-				const updatedTask = await backend.getTask(parentTaskId);
+			// If we're in detail view, refresh the task details
+			if (
+				viewMode === 'detail' &&
+				selectedTask &&
+				selectedTask.id === task.id
+			) {
+				const updatedTask = await backend.getTask(task.id);
 				setSelectedTask(updatedTask);
-
-				// Show toast for subtask status update
-				setToast({
-					message: `Subtask ${task.id} status changed to ${nextStatus}`,
-					type: 'success'
-				});
-			} else {
-				// Show toast for regular task status update
-				setToast({
-					message: `Task ${task.id} status changed to ${nextStatus}`,
-					type: 'success'
-				});
 			}
-		} catch (error) {
-			console.error('Failed to update task status:', error);
+
 			setToast({
-				message: `Failed to update status: ${error.message}`,
+				message: `Task ${task.id} status changed to ${newStatus}`,
+				type: 'success'
+			});
+		} catch (error) {
+			setToast({
+				message: `Failed to update task status: ${error.message}`,
 				type: 'error'
 			});
 		}
+	};
+
+	const handleClaudeSession = async () => {
+		if (!selectedTask || !selectedSubtask) return;
+
+		try {
+			setToast({
+				message: 'Preparing Claude Code session...',
+				type: 'info'
+			});
+
+			// Check for worktree
+			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+			const worktrees = subtaskWorktrees.get(subtaskId) || [];
+			const taskWorktreeList = taskWorktrees || [];
+
+			// Try subtask worktree first, then task worktree
+			const activeWorktree = worktrees[0] || taskWorktreeList[0];
+
+			if (!activeWorktree) {
+				// Show worktree prompt
+				setCurrentScreen('worktreePrompt', {
+					taskTitle: selectedTask.title,
+					subtaskTitle: selectedSubtask.title,
+					onSelect: async (action) => {
+						if (action === 'cancel') {
+							setCurrentScreen('tasks');
+							return;
+						}
+
+						let worktreePath = null;
+
+						if (action === 'create') {
+							// Navigate to worktree creation
+							setCurrentScreen('worktrees', {
+								createFor: selectedTask,
+								returnTo: 'tasks',
+								returnData: {
+									selectedTaskId: selectedTask.id,
+									selectedSubtaskId: subtaskId
+								}
+							});
+							return;
+						} else if (action === 'select') {
+							// Show worktree selection
+							setCurrentScreen('worktrees', {
+								selectMode: true,
+								onSelect: (wt) => {
+									worktreePath = wt.path;
+									launchClaudeWithContext(worktreePath);
+								},
+								returnTo: 'tasks',
+								returnData: {
+									selectedTaskId: selectedTask.id,
+									selectedSubtaskId: subtaskId
+								}
+							});
+							return;
+						} else if (action === 'main') {
+							worktreePath = backend.projectRoot || process.cwd();
+							launchClaudeWithContext(worktreePath);
+						}
+					}
+				});
+				return;
+			}
+
+			// We have a worktree, proceed with Claude session
+			launchClaudeWithContext(activeWorktree.path);
+		} catch (error) {
+			setToast({
+				message: `Failed to start Claude session: ${error.message}`,
+				type: 'error'
+			});
+		}
+	};
+
+	const launchClaudeWithContext = async (worktreePath) => {
+		try {
+			// Gather comprehensive context
+			const context = await gatherSubtaskContext();
+
+			// Navigate to Claude Code screen with context
+			setCurrentScreen('claudeCode', {
+				mode: 'subtask-implementation',
+				initialContext: {
+					...context,
+					worktreePath
+				},
+				returnTo: 'tasks',
+				returnData: {
+					selectedTaskId: selectedTask.id,
+					selectedSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`
+				}
+			});
+		} catch (error) {
+			setToast({
+				message: `Failed to gather context: ${error.message}`,
+				type: 'error'
+			});
+		}
+	};
+
+	const gatherSubtaskContext = async () => {
+		// Get immediate dependencies
+		const dependencies = await Promise.all(
+			(selectedTask.dependencies || []).map(async (depId) => {
+				try {
+					const depTask = await backend.getTask(depId);
+					return {
+						id: depTask.id,
+						title: depTask.title,
+						description: depTask.description,
+						status: depTask.status,
+						keyDecisions: extractKeyDecisions(depTask.details)
+					};
+				} catch (error) {
+					console.error(`Failed to load dependency ${depId}:`, error);
+					return null;
+				}
+			})
+		);
+
+		// Run automatic research
+		const researchQuery = buildResearchQuery();
+		let researchContext = null;
+
+		try {
+			setToast({
+				message: 'Running research for context...',
+				type: 'info'
+			});
+
+			const researchResult = await backend.research({
+				query: researchQuery,
+				taskIds: [
+					`${selectedTask.id}.${selectedSubtask.id}`,
+					selectedTask.id,
+					...dependencies.filter((d) => d).map((d) => d.id)
+				],
+				includeProjectTree: true,
+				detailLevel: 'medium'
+			});
+
+			researchContext = researchResult.response || researchResult;
+		} catch (error) {
+			console.error('Research failed:', error);
+			// Continue without research
+		}
+
+		return {
+			currentSubtask: {
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title,
+				description: selectedSubtask.description,
+				details: selectedSubtask.details,
+				status: selectedSubtask.status
+			},
+			parentTask: {
+				id: selectedTask.id,
+				title: selectedTask.title,
+				description: selectedTask.description,
+				subtasks: selectedTask.subtasks
+			},
+			dependencies: dependencies.filter(Boolean),
+			tagContext: currentTag,
+			researchContext
+		};
+	};
+
+	const extractKeyDecisions = (details) => {
+		if (!details) return '';
+
+		const patterns = [
+			/decided to use/i,
+			/implementation approach/i,
+			/chosen.*because/i,
+			/architecture decision/i,
+			/key insight/i,
+			/important:/i
+		];
+
+		return details
+			.split('\n')
+			.filter((line) => patterns.some((p) => p.test(line)))
+			.slice(0, 5)
+			.join('\n');
+	};
+
+	const buildResearchQuery = () => {
+		const techStack = extractTechStack(
+			`${selectedSubtask.description || ''} ${selectedTask.description || ''}`
+		);
+
+		return `
+Best practices and implementation guidance for: ${selectedSubtask.title}
+Context: ${selectedTask.title}
+${techStack ? `Technologies: ${techStack}` : ''}
+Focus on: current industry standards, common pitfalls, security considerations
+		`.trim();
+	};
+
+	const extractTechStack = (text) => {
+		// Common technology patterns
+		const techPatterns = [
+			/\b(React|Vue|Angular|Svelte)\b/gi,
+			/\b(Node\.?js|Express|Fastify|Koa)\b/gi,
+			/\b(TypeScript|JavaScript|Python|Go|Rust)\b/gi,
+			/\b(PostgreSQL|MySQL|MongoDB|Redis)\b/gi,
+			/\b(AWS|Azure|GCP|Docker|Kubernetes)\b/gi,
+			/\b(GraphQL|REST|gRPC|WebSocket)\b/gi
+		];
+
+		const matches = new Set();
+		techPatterns.forEach((pattern) => {
+			const found = text.match(pattern);
+			if (found) {
+				found.forEach((tech) => matches.add(tech));
+			}
+		});
+
+		return Array.from(matches).join(', ');
 	};
 
 	const getStatusSymbol = (status) => {
@@ -1260,8 +1481,8 @@ export function TaskManagementScreen() {
 						{subtaskContentLines.length > DETAIL_VISIBLE_ROWS
 							? '↑↓ scroll • '
 							: ''}
-						{worktrees.length > 0 ? 'w worktree • ' : ''}
-						ESC back to subtasks
+						{worktrees.length > 0 ? 'w worktree • ' : ''}c Claude Code • ESC
+						back to subtasks
 					</Text>
 				</Box>
 
