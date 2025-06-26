@@ -47,7 +47,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getDefaultNumTasks: jest.fn(() => 10)
 	})
 );
 
@@ -94,13 +95,15 @@ jest.unstable_mockModule('path', () => ({
 }));
 
 // Import the mocked modules
-const { readJSON, writeJSON, log, promptYesNo } = await import(
+const { readJSON, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
 const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
+
+// Note: getDefaultNumTasks validation happens at CLI/MCP level, not in the main parse-prd module
 const generateTaskFiles = (
 	await import(
 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
@@ -432,5 +435,124 @@ describe('parsePRD', () => {
 
 		// Verify prompt was NOT called with append flag
 		expect(promptYesNo).not.toHaveBeenCalled();
+	});
+
+	describe('Dynamic Task Generation', () => {
+		test('should use dynamic prompting when numTasks is 0', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with numTasks=0 for dynamic generation
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the prompt
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+			expect(callArgs.prompt).not.toContain('approximately 0');
+		});
+
+		test('should use specific count prompting when numTasks is positive', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with specific numTasks
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 5);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the prompt
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('approximately 5');
+			expect(callArgs.prompt).not.toContain('an appropriate number of');
+		});
+
+		test('should accept 0 as valid numTasks value', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with numTasks=0 - should not throw error
+			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+
+			// Verify it completed successfully
+			expect(result).toEqual({
+				success: true,
+				tasksPath: 'tasks/tasks.json',
+				telemetryData: {}
+			});
+		});
+
+		test('should use dynamic prompting when numTasks is negative (no validation in main module)', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with negative numTasks
+			// Note: The main parse-prd.js module doesn't validate numTasks - validation happens at CLI/MCP level
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', -5);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			// Negative values are treated as <= 0, so should use dynamic prompting
+			expect(callArgs.prompt).toContain('an appropriate number of');
+			expect(callArgs.prompt).not.toContain('approximately -5');
+		});
+	});
+
+	describe('Configuration Integration', () => {
+		test('should use dynamic prompting when numTasks is null', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with null numTasks
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', null);
+
+			// Verify generateObjectService was called with dynamic prompting
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+		});
+
+		test('should use dynamic prompting when numTasks is invalid string', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with invalid numTasks (string that's not a number)
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 'invalid');
+
+			// Verify generateObjectService was called with dynamic prompting
+			// Note: The main module doesn't validate - it just uses the value as-is
+			// Since 'invalid' > 0 is false, it uses dynamic prompting
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+		});
 	});
 });
