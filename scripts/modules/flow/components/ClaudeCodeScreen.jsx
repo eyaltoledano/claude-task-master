@@ -4,6 +4,8 @@ import Spinner from 'ink-spinner';
 import TextInput from 'ink-text-input';
 import { SimpleTable } from './SimpleTable.jsx';
 import { Toast } from './Toast.jsx';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { getTheme } from '../theme.js';
 
 function ClaudeCodeScreen({ backend, onBack }) {
 	const [config, setConfig] = useState(null);
@@ -11,12 +13,19 @@ function ClaudeCodeScreen({ backend, onBack }) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(null);
-	const [mode, setMode] = useState('menu'); // menu, new-query, active-session, sessions-list
+	const [mode, setMode] = useState('list'); // list, menu, new-query, active-session
 	const [prompt, setPrompt] = useState('');
 	const [activeSession, setActiveSession] = useState(null);
 	const [messages, setMessages] = useState([]);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [selectedIndex, setSelectedIndex] = useState(0);
+	const [scrollOffset, setScrollOffset] = useState(0);
+	const [showMenu, setShowMenu] = useState(false);
 	const abortControllerRef = useRef(null);
+	const theme = getTheme();
+
+	// Constants
+	const VISIBLE_ROWS = 15;
 
 	useEffect(() => {
 		loadData();
@@ -84,13 +93,15 @@ function ClaudeCodeScreen({ backend, onBack }) {
 				});
 
 				setSuccess('Query completed successfully');
+				// Reload sessions to include the new one
+				loadData();
 			} else if (result.error) {
 				setError(result.error);
-				setMode('menu');
+				setMode('list');
 			}
 		} catch (err) {
 			setError(err.message);
-			setMode('menu');
+			setMode('list');
 		} finally {
 			setIsProcessing(false);
 			abortControllerRef.current = null;
@@ -143,11 +154,11 @@ function ClaudeCodeScreen({ backend, onBack }) {
 
 			if (!result.success && result.error) {
 				setError(result.error);
-				setMode('sessions-list');
+				setMode('list');
 			}
 		} catch (err) {
 			setError(err.message);
-			setMode('sessions-list');
+			setMode('list');
 		} finally {
 			setIsProcessing(false);
 			abortControllerRef.current = null;
@@ -167,17 +178,67 @@ function ClaudeCodeScreen({ backend, onBack }) {
 			if (isProcessing && abortControllerRef.current) {
 				handleAbort();
 			} else if (mode === 'active-session') {
-				setMode('menu');
-			} else if (mode !== 'menu') {
-				setMode('menu');
+				setMode('list');
+			} else if (mode === 'new-query') {
+				setMode('list');
+			} else if (showMenu) {
+				setShowMenu(false);
 			} else {
 				onBack();
 			}
 			return;
 		}
 
-		if (mode === 'menu') {
+		// Handle menu mode
+		if (showMenu) {
 			if (input === '1') {
+				if (!config?.enabled) {
+					setError(
+						'Claude Code is not enabled. Configure it in settings first.'
+					);
+					return;
+				}
+				setShowMenu(false);
+				setMode('new-query');
+				setPrompt('');
+			} else if (input === '2') {
+				// Continue last session
+				if (sessions.length > 0) {
+					setShowMenu(false);
+					handleResume(sessions[0].sessionId); // Most recent session
+				} else {
+					setError('No previous sessions found');
+				}
+			} else if (input === 'q') {
+				setShowMenu(false);
+			}
+			return;
+		}
+
+		// Handle list mode navigation
+		if (mode === 'list') {
+			if (key.downArrow) {
+				const newIndex = Math.min(selectedIndex + 1, sessions.length - 1);
+				setSelectedIndex(newIndex);
+
+				// Adjust scroll if needed
+				if (newIndex >= scrollOffset + VISIBLE_ROWS) {
+					setScrollOffset(newIndex - VISIBLE_ROWS + 1);
+				}
+			} else if (key.upArrow) {
+				const newIndex = Math.max(selectedIndex - 1, 0);
+				setSelectedIndex(newIndex);
+
+				// Adjust scroll if needed
+				if (newIndex < scrollOffset) {
+					setScrollOffset(newIndex);
+				}
+			} else if (key.return && sessions.length > 0) {
+				// Resume selected session
+				const session = sessions[selectedIndex];
+				handleResume(session.sessionId);
+			} else if (input === 'n') {
+				// New session
 				if (!config?.enabled) {
 					setError(
 						'Claude Code is not enabled. Configure it in settings first.'
@@ -186,23 +247,12 @@ function ClaudeCodeScreen({ backend, onBack }) {
 				}
 				setMode('new-query');
 				setPrompt('');
-			} else if (input === '2') {
-				setMode('sessions-list');
-			} else if (input === '3') {
-				// Continue last session
-				if (sessions.length > 0) {
-					handleResume(sessions[sessions.length - 1].sessionId);
-				} else {
-					setError('No previous sessions found');
-				}
-			} else if (input === 'q') {
-				onBack();
-			}
-		} else if (mode === 'sessions-list') {
-			const num = parseInt(input);
-			if (!isNaN(num) && num > 0 && num <= sessions.length) {
-				const session = sessions[sessions.length - num];
-				handleResume(session.sessionId);
+			} else if (input === 'm') {
+				// Show menu
+				setShowMenu(true);
+			} else if (input === 'r') {
+				// Refresh sessions
+				loadData();
 			}
 		} else if (mode === 'active-session' && !isProcessing) {
 			if (key.return && prompt.trim()) {
@@ -252,45 +302,110 @@ function ClaudeCodeScreen({ backend, onBack }) {
 		});
 	};
 
-	if (loading) {
+	// Show menu overlay
+	if (showMenu) {
 		return (
-			<Box flexDirection="column" padding={1}>
-				<Text color="green">
-					<Spinner type="dots" /> Loading Claude Code configuration...
-				</Text>
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Menu</Text>
+					</Box>
+				</Box>
+
+				{/* Menu Options */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					alignItems="center"
+					justifyContent="center"
+				>
+					<Box
+						borderStyle="round"
+						borderColor={theme.border}
+						padding={2}
+						flexDirection="column"
+					>
+						<Text bold color={theme.accent} marginBottom={1}>
+							Claude Code Options
+						</Text>
+						<Box flexDirection="column" gap={1}>
+							<Text>1. Start new Claude Code session</Text>
+							<Text>2. Continue last session</Text>
+							<Text>q. Close menu</Text>
+						</Box>
+					</Box>
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={theme.text}>
+						Select an option or press ESC to go back
+					</Text>
+				</Box>
 			</Box>
 		);
 	}
 
-	return (
-		<Box flexDirection="column" padding={1}>
-			<Box marginBottom={1}>
-				<Text bold color="cyan">
-					Claude Code Assistant
-				</Text>
-				{config?.enabled ? (
-					<Text color="green"> (Enabled)</Text>
-				) : (
-					<Text color="red"> (Disabled)</Text>
-				)}
+	// Loading state
+	if (loading) {
+		return (
+			<Box flexDirection="column" height="100%">
+				<Box justifyContent="center" alignItems="center" height="100%">
+					<LoadingSpinner message="Loading Claude Code sessions..." />
+				</Box>
 			</Box>
+		);
+	}
 
-			{mode === 'menu' && (
-				<Box flexDirection="column">
-					<Text>Select an option:</Text>
-					<Box marginTop={1} flexDirection="column">
-						<Text>1. Start new Claude Code session</Text>
-						<Text>2. View previous sessions</Text>
-						<Text>3. Continue last session</Text>
-						<Text>q. Back to main menu</Text>
+	// New query mode
+	if (mode === 'new-query') {
+		return (
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>New Session</Text>
 					</Box>
 				</Box>
-			)}
 
-			{mode === 'new-query' && (
-				<Box flexDirection="column">
-					<Text>Enter your prompt for Claude Code:</Text>
-					<Box marginTop={1}>
+				{/* Input Area */}
+				<Box flexGrow={1} flexDirection="column" padding={2}>
+					<Text bold marginBottom={1}>
+						Enter your prompt for Claude Code:
+					</Text>
+					<Box>
 						<Text color="cyan">❯ </Text>
 						<TextInput
 							value={prompt}
@@ -299,33 +414,65 @@ function ClaudeCodeScreen({ backend, onBack }) {
 							placeholder="Describe what you want Claude to help with..."
 						/>
 					</Box>
-					<Box marginTop={1}>
-						<Text color="gray">Press Enter to submit, Escape to cancel</Text>
+					<Box marginTop={2}>
+						<Text color={theme.textDim}>
+							Press Enter to submit, ESC to cancel
+						</Text>
 					</Box>
 				</Box>
-			)}
+			</Box>
+		);
+	}
 
-			{mode === 'active-session' && (
-				<Box flexDirection="column">
-					{activeSession && (
-						<Box marginBottom={1}>
-							<Text color="gray">Session: {activeSession.sessionId}</Text>
-						</Box>
-					)}
-
-					<Box flexDirection="column" height={20}>
-						{renderMessages()}
+	// Active session mode
+	if (mode === 'active-session') {
+		return (
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Active Session</Text>
 					</Box>
+					{activeSession && (
+						<Text color={theme.textDim}>[{activeSession.sessionId}]</Text>
+					)}
+				</Box>
 
+				{/* Messages Area */}
+				<Box flexGrow={1} flexDirection="column" padding={1} height={20}>
+					{renderMessages()}
+				</Box>
+
+				{/* Input Area */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
 					{isProcessing ? (
-						<Box marginTop={1}>
-							<Text color="yellow">
-								<Spinner type="dots" /> Processing... (Press Escape to abort)
-							</Text>
-						</Box>
+						<Text color="yellow">
+							<Spinner type="dots" /> Processing... (Press ESC to abort)
+						</Text>
 					) : (
-						<Box marginTop={1} flexDirection="column">
-							<Text>Continue the conversation:</Text>
+						<Box flexDirection="column">
+							<Text marginBottom={1}>Continue the conversation:</Text>
 							<Box>
 								<Text color="cyan">❯ </Text>
 								<TextInput
@@ -337,47 +484,118 @@ function ClaudeCodeScreen({ backend, onBack }) {
 						</Box>
 					)}
 				</Box>
-			)}
+			</Box>
+		);
+	}
 
-			{mode === 'sessions-list' && (
-				<Box flexDirection="column">
-					<Text bold marginBottom={1}>
-						Previous Sessions
+	// Sessions list view (default)
+	const visibleSessions = sessions.slice(
+		scrollOffset,
+		scrollOffset + VISIBLE_ROWS
+	);
+
+	// Prepare table data
+	const tableData = visibleSessions.map((session, displayIndex) => {
+		const actualIndex = displayIndex + scrollOffset;
+		const isSelected = actualIndex === selectedIndex;
+		const date = new Date(session.lastUpdated || session.createdAt);
+
+		return {
+			' ': isSelected ? '→' : ' ',
+			'Session ID': session.sessionId.substring(0, 8) + '...',
+			Prompt: session.prompt?.substring(0, 50) + '...' || 'No prompt',
+			Date: date.toLocaleDateString(),
+			Time: date.toLocaleTimeString(),
+			_renderCell: (col, value) => {
+				const color = isSelected ? theme.selectionText : theme.text;
+				return (
+					<Text color={color} bold={isSelected}>
+						{value}
 					</Text>
-					{sessions.length === 0 ? (
-						<Text color="gray">No sessions found</Text>
-					) : (
-						<Box flexDirection="column">
-							{sessions
-								.slice()
-								.reverse()
-								.slice(0, 10)
-								.map((session, idx) => (
-									<Box key={session.sessionId}>
-										<Text>{idx + 1}. </Text>
-										<Text color="cyan">
-											{session.prompt?.substring(0, 50)}...
-										</Text>
-										<Text color="gray">
-											{' '}
-											(
-											{new Date(
-												session.lastUpdated || session.createdAt
-											).toLocaleString()}
-											)
-										</Text>
-									</Box>
-								))}
+				);
+			}
+		};
+	});
+
+	return (
+		<Box flexDirection="column" height="100%">
+			{/* Header */}
+			<Box
+				borderStyle="single"
+				borderColor={theme.border}
+				paddingLeft={1}
+				paddingRight={1}
+				marginBottom={1}
+			>
+				<Box flexGrow={1}>
+					<Text color={theme.accent}>Task Master</Text>
+					<Text color={theme.textDim}> › </Text>
+					<Text color="white">Claude Code Sessions</Text>
+				</Box>
+				{config?.enabled ? (
+					<Text color={theme.success}>[Enabled]</Text>
+				) : (
+					<Text color={theme.error}>[Disabled]</Text>
+				)}
+			</Box>
+
+			{/* Sessions Table */}
+			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
+				{sessions.length === 0 ? (
+					<Box
+						flexDirection="column"
+						alignItems="center"
+						justifyContent="center"
+						flexGrow={1}
+					>
+						<Text color={theme.textDim}>No Claude Code sessions found</Text>
+						<Text color={theme.textDim} marginTop={1}>
+							Press 'n' to start a new session
+						</Text>
+					</Box>
+				) : (
+					<>
+						<SimpleTable
+							data={tableData}
+							columns={[' ', 'Session ID', 'Prompt', 'Date', 'Time']}
+							selectedIndex={selectedIndex - scrollOffset}
+							borders={true}
+						/>
+
+						{/* Scroll indicator */}
+						{sessions.length > VISIBLE_ROWS && (
 							<Box marginTop={1}>
-								<Text color="gray">
-									Enter number to resume session, Escape to go back
+								<Text color={theme.textDim}>
+									{scrollOffset + 1}-
+									{Math.min(scrollOffset + VISIBLE_ROWS, sessions.length)} of{' '}
+									{sessions.length} sessions
 								</Text>
 							</Box>
-						</Box>
-					)}
-				</Box>
-			)}
+						)}
+					</>
+				)}
+			</Box>
 
+			{/* Footer */}
+			<Box
+				borderStyle="single"
+				borderColor={theme.border}
+				borderTop={true}
+				borderBottom={false}
+				borderLeft={false}
+				borderRight={false}
+				paddingTop={1}
+				paddingLeft={1}
+				paddingRight={1}
+				flexShrink={0}
+			>
+				<Text color={theme.text}>
+					{sessions.length > 0 ? '↑↓ navigate • Enter resume • ' : ''}n new
+					session • m menu • r refresh • ESC back
+				</Text>
+			</Box>
+
+			{/* Toast notifications */}
 			{error && (
 				<Toast type="error" message={error} onDismiss={() => setError(null)} />
 			)}
