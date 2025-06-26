@@ -8,7 +8,6 @@ import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
-import ClaudeCodeTaskModal from './ClaudeCodeTaskModal.jsx';
 
 export function TaskManagementScreen() {
 	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
@@ -21,19 +20,18 @@ export function TaskManagementScreen() {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [isSearching, setIsSearching] = useState(false);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [viewMode, setViewMode] = useState('list'); // list or detail
+	const [viewMode, setViewMode] = useState('list'); // list, detail, or subtasks
 	const [selectedTask, setSelectedTask] = useState(null);
 	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
 	const [isExpanding, setIsExpanding] = useState(false);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
-	const [showExpandModal, setShowExpandModal] = useState(false);
-	const [showClaudeCodeModal, setShowClaudeCodeModal] = useState(false);
-	const [expandForce, setExpandForce] = useState(false);
 	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
 	const [complexityReport, setComplexityReport] = useState(null);
 	const [loadingComplexity, setLoadingComplexity] = useState(false);
+	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0); // For subtasks view
+	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0); // For subtasks view
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -126,7 +124,14 @@ export function TaskManagementScreen() {
 				// During expansion, ESC is disabled - must use Ctrl+X
 				return;
 			}
-			if (viewMode === 'detail') {
+			if (viewMode === 'subtasks') {
+				// Go back to detail view from subtasks
+				flushSync(() => {
+					setViewMode('detail');
+					setSelectedSubtaskIndex(0);
+					setSubtasksScrollOffset(0);
+				});
+			} else if (viewMode === 'detail') {
 				flushSync(() => {
 					setViewMode('list');
 					setSelectedTask(null);
@@ -149,10 +154,43 @@ export function TaskManagementScreen() {
 			return;
 		}
 
+		// Subtasks view keyboard handling
+		if (viewMode === 'subtasks') {
+			if (key.downArrow) {
+				const maxIndex = selectedTask.subtasks.length - 1;
+				const newIndex = Math.min(selectedSubtaskIndex + 1, maxIndex);
+				setSelectedSubtaskIndex(newIndex);
+
+				// Adjust scroll if needed
+				if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
+					setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
+				}
+			} else if (key.upArrow) {
+				const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
+				setSelectedSubtaskIndex(newIndex);
+
+				// Adjust scroll if needed
+				if (newIndex < subtasksScrollOffset) {
+					setSubtasksScrollOffset(newIndex);
+				}
+			} else if (input === 't') {
+				// Cycle status of selected subtask
+				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+				const subtaskId = `${selectedTask.id}.${subtask.id}`;
+				cycleTaskStatus({ ...subtask, id: subtaskId });
+			}
+			return;
+		}
+
 		if (viewMode === 'detail') {
-			if (input === 'e' && selectedTask && !selectedTask.subtasks?.length) {
-				// Show expand options
+			if (input === 'e' && selectedTask) {
+				// Show expand options - always allow expand, modal will handle confirmation
 				setShowExpandOptions(true);
+			} else if (input === 's' && selectedTask?.subtasks?.length > 0) {
+				// Switch to subtasks view if task has subtasks
+				setViewMode('subtasks');
+				setSelectedSubtaskIndex(0);
+				setSubtasksScrollOffset(0);
 			} else if (key.downArrow) {
 				// Scroll down in detail view
 				setDetailScrollOffset((prev) => prev + 1);
@@ -208,16 +246,17 @@ export function TaskManagementScreen() {
 			// Enter key - show task details
 			const task = visibleTasks[selectedIndex];
 			showTaskDetail(task);
-		} else if (input === 's') {
-			// Switch to status filter mode
-			setFilterMode('status');
-			setFilter('all');
-			setPriorityFilter('all');
-		} else if (input === 'p') {
-			// Switch to priority filter mode
-			setFilterMode('priority');
-			setPriorityFilter('all');
-			setFilter('all');
+		} else if (input === 'f') {
+			// Switch filter mode between status and priority
+			if (filterMode === 'status') {
+				setFilterMode('priority');
+				setPriorityFilter('all');
+				setFilter('all');
+			} else {
+				setFilterMode('status');
+				setFilter('all');
+				setPriorityFilter('all');
+			}
 		} else if (input === 't') {
 			// Cycle status of selected task
 			const task = visibleTasks[selectedIndex];
@@ -261,9 +300,6 @@ export function TaskManagementScreen() {
 			}
 		} else if (input === '/') {
 			setIsSearching(true);
-		} else if (input === 'l' && selectedTask) {
-			// Claude Code implementation
-			setShowClaudeCodeModal(true);
 		}
 	});
 
@@ -326,7 +362,7 @@ export function TaskManagementScreen() {
 		try {
 			await backend.expandTask(selectedTask.id, {
 				research: options.research,
-				force: false,
+				force: options.force || false,
 				num: options.num
 			});
 
@@ -353,9 +389,10 @@ export function TaskManagementScreen() {
 		const statusOrder = [
 			'pending',
 			'in-progress',
+			'review',
 			'done',
-			'blocked',
-			'deferred'
+			'deferred',
+			'cancelled'
 		];
 		const currentIndex = statusOrder.indexOf(task.status);
 		const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
@@ -363,8 +400,32 @@ export function TaskManagementScreen() {
 		try {
 			await backend.setTaskStatus(task.id, nextStatus);
 			await reloadTasks();
+
+			// If we're updating a subtask and in subtasks view, refresh the selectedTask
+			if (viewMode === 'subtasks' && task.id.includes('.')) {
+				// Extract parent task ID from subtask ID (e.g., "4.1" -> "4")
+				const parentTaskId = parseInt(task.id.split('.')[0]);
+				const updatedTask = await backend.getTask(parentTaskId);
+				setSelectedTask(updatedTask);
+
+				// Show toast for subtask status update
+				setToast({
+					message: `Subtask ${task.id} status changed to ${nextStatus}`,
+					type: 'success'
+				});
+			} else {
+				// Show toast for regular task status update
+				setToast({
+					message: `Task ${task.id} status changed to ${nextStatus}`,
+					type: 'success'
+				});
+			}
 		} catch (error) {
 			console.error('Failed to update task status:', error);
+			setToast({
+				message: `Failed to update status: ${error.message}`,
+				type: 'error'
+			});
 		}
 	};
 
@@ -376,6 +437,8 @@ export function TaskManagementScreen() {
 				return '●';
 			case 'pending':
 				return '○';
+			case 'review':
+				return '◉';
 			case 'blocked':
 				return '⊗';
 			case 'deferred':
@@ -395,6 +458,8 @@ export function TaskManagementScreen() {
 				return theme.statusInProgress;
 			case 'pending':
 				return theme.statusPending;
+			case 'review':
+				return theme.priorityMedium;
 			case 'blocked':
 				return theme.statusBlocked;
 			case 'deferred':
@@ -561,12 +626,8 @@ export function TaskManagementScreen() {
 		} else {
 			contentLines.push({ type: 'spacer' });
 			contentLines.push({
-				type: 'warning',
-				text: 'No subtasks found. Consider breaking down this task:'
-			});
-			contentLines.push({
-				type: 'hint',
-				text: "Press 'e' to expand this task"
+				type: 'info',
+				text: "No subtasks yet. Press 'e' to break down this task."
 			});
 		}
 
@@ -602,6 +663,9 @@ export function TaskManagementScreen() {
 							onClose={() => setShowExpandOptions(false)}
 							defaultNum={defaultSubtaskNum}
 							fromComplexityReport={fromComplexityReport}
+							hasExistingSubtasks={
+								selectedTask.subtasks && selectedTask.subtasks.length > 0
+							}
 						/>
 					</Box>
 				)}
@@ -681,6 +745,12 @@ export function TaskManagementScreen() {
 										<Text color={theme.warning}>{line.text}</Text>
 									</Box>
 								);
+							} else if (line.type === 'info') {
+								return (
+									<Box key={index} paddingLeft={1}>
+										<Text color={theme.textDim}>{line.text}</Text>
+									</Box>
+								);
 							} else if (line.type === 'hint') {
 								return (
 									<Box key={index} paddingLeft={1}>
@@ -730,8 +800,9 @@ export function TaskManagementScreen() {
 								{contentLines.length > DETAIL_VISIBLE_ROWS
 									? '↑↓ scroll • '
 									: ''}
-								{selectedTask.subtasks?.length ? '' : 'e expand • '}l Claude
-								Code • ESC back
+								e expand •
+								{selectedTask?.subtasks?.length > 0 ? 's subtasks • ' : ''}
+								ESC back
 							</>
 						)}
 					</Text>
@@ -744,12 +815,131 @@ export function TaskManagementScreen() {
 						onDismiss={() => setToast(null)}
 					/>
 				)}
+			</Box>
+		);
+	}
 
-				{showClaudeCodeModal && selectedTask && (
-					<ClaudeCodeTaskModal
-						task={selectedTask}
-						backend={backend}
-						onClose={() => setShowClaudeCodeModal(false)}
+	// Render subtasks view
+	if (
+		viewMode === 'subtasks' &&
+		selectedTask &&
+		selectedTask.subtasks?.length > 0
+	) {
+		const visibleSubtasks = selectedTask.subtasks.slice(
+			subtasksScrollOffset,
+			subtasksScrollOffset + VISIBLE_ROWS
+		);
+
+		return (
+			<Box key="subtasks-view" flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Task #{selectedTask.id}</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Subtasks</Text>
+					</Box>
+					<Text color={theme.textDim}>[ESC back to details]</Text>
+				</Box>
+
+				{/* Subtasks List */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					paddingLeft={1}
+					paddingRight={1}
+				>
+					<SimpleTable
+						data={visibleSubtasks.map((subtask, displayIndex) => {
+							const actualIndex = displayIndex + subtasksScrollOffset;
+							const isSelected = actualIndex === selectedSubtaskIndex;
+							const subtaskId = `${selectedTask.id}.${subtask.id}`;
+							const worktrees = subtaskWorktrees.get(subtaskId) || [];
+
+							return {
+								' ': isSelected ? '→' : ' ',
+								ID: subtaskId,
+								Title:
+									subtask.title.length > 60
+										? subtask.title.substring(0, 57) + '...'
+										: subtask.title,
+								Status: `${getStatusSymbol(subtask.status)} ${subtask.status}`,
+								Worktrees:
+									worktrees.length > 0
+										? `🌳 ${worktrees.map((wt) => wt.name).join(', ')}`
+										: '-',
+								_renderCell: (col, value) => {
+									let color = isSelected ? theme.selectionText : theme.text;
+
+									if (col === 'Status') {
+										color = getStatusColor(subtask.status);
+									} else if (col === 'Worktrees') {
+										color = isSelected
+											? theme.selectionText
+											: worktrees.length > 0
+												? theme.success
+												: theme.textDim;
+									}
+
+									return (
+										<Text color={color} bold={isSelected}>
+											{value}
+										</Text>
+									);
+								}
+							};
+						})}
+						columns={[' ', 'ID', 'Title', 'Status', 'Worktrees']}
+						selectedIndex={selectedSubtaskIndex - subtasksScrollOffset}
+						borders={true}
+					/>
+
+					{/* Scroll indicator */}
+					{selectedTask.subtasks.length > VISIBLE_ROWS && (
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>
+								{subtasksScrollOffset + 1}-
+								{Math.min(
+									subtasksScrollOffset + VISIBLE_ROWS,
+									selectedTask.subtasks.length
+								)}{' '}
+								of {selectedTask.subtasks.length} subtasks
+							</Text>
+						</Box>
+					)}
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={theme.text}>
+						↑↓ navigate • t cycle status • ESC back to details
+					</Text>
+				</Box>
+
+				{toast && (
+					<Toast
+						message={toast.message}
+						type={toast.type}
+						onDismiss={() => setToast(null)}
 					/>
 				)}
 			</Box>
@@ -891,13 +1081,7 @@ export function TaskManagementScreen() {
 						<Text
 							color={filterMode === 'status' ? theme.accent : theme.textDim}
 						>
-							s Status
-						</Text>
-						<Text color={theme.textDim}> | </Text>
-						<Text
-							color={filterMode === 'priority' ? theme.accent : theme.textDim}
-						>
-							p Priority
+							f Filter
 						</Text>
 						<Text color={theme.textDim}> • </Text>
 

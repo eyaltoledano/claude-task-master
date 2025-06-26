@@ -8,11 +8,25 @@ export function ExpandModal({
 	onSelect,
 	onClose,
 	defaultNum = 5,
-	fromComplexityReport = false
+	fromComplexityReport = false,
+	hasExistingSubtasks = false
 }) {
-	const [step, setStep] = useState('research'); // 'research' or 'number'
+	const [step, setStep] = useState(
+		hasExistingSubtasks ? 'confirm' : 'research'
+	); // 'confirm', 'research', or 'number'
 	const [useResearch, setUseResearch] = useState(false);
 	const [numSubtasks, setNumSubtasks] = useState(defaultNum.toString());
+
+	const confirmItems = [
+		{
+			label: 'Yes - Replace existing subtasks',
+			value: 'replace'
+		},
+		{
+			label: 'No - Keep existing subtasks',
+			value: 'cancel'
+		}
+	];
 
 	const researchItems = [
 		{
@@ -29,68 +43,80 @@ export function ExpandModal({
 		}
 	];
 
-	const handleResearchSelect = (item) => {
+	const handleConfirmSelect = (item) => {
 		if (item.value === 'cancel') {
 			onClose();
 		} else {
-			setUseResearch(item.value === 'research');
-			setStep('number');
+			// Proceed to research question
+			setStep('research');
 		}
 	};
 
-	const handleNumberSubmit = () => {
-		const num = parseInt(numSubtasks, 10);
+	const handleResearchSelect = (item) => {
+		if (item.value === 'cancel') {
+			onClose();
+			return;
+		}
+
+		setUseResearch(item.value === 'research');
+		setStep('number');
+	};
+
+	const handleNumberSubmit = (value) => {
+		const num = parseInt(value, 10);
 		if (!isNaN(num) && num > 0) {
-			onSelect({ research: useResearch, num });
+			onSelect({
+				research: useResearch,
+				num: num,
+				force: hasExistingSubtasks // Will force if there were existing subtasks
+			});
 		}
 	};
 
-	const handleNumberKeyPress = (key) => {
-		if (key === 'escape') {
+	const handleNumberKeyPress = (key, escape) => {
+		if (escape || key === 'escape') {
 			onClose();
 		}
 	};
+
+	if (step === 'confirm') {
+		return (
+			<Box
+				borderStyle="round"
+				borderColor={theme.warning}
+				padding={1}
+				flexDirection="column"
+			>
+				<Text color={theme.warning} bold>
+					⚠️ Warning: This task already has subtasks
+				</Text>
+				<Text color={theme.text} marginTop={1}>
+					Expanding will replace all existing subtasks.
+				</Text>
+				<Text color={theme.text}>Do you want to continue?</Text>
+				<Box marginTop={1}>
+					<SelectInput items={confirmItems} onSelect={handleConfirmSelect} />
+				</Box>
+			</Box>
+		);
+	}
 
 	if (step === 'research') {
 		return (
 			<Box
 				borderStyle="round"
 				borderColor={theme.accent}
-				width={45}
-				paddingX={1}
-				paddingY={1}
+				padding={1}
+				flexDirection="column"
 			>
-				<Box flexDirection="column">
-					<Text color={theme.accent} bold>
-						Expand Task Options
-					</Text>
-
-					<Text> </Text>
-
-					<Text color={theme.text}>Use research for better breakdown?</Text>
-
-					<Text> </Text>
-
-					<SelectInput
-						items={researchItems}
-						onSelect={handleResearchSelect}
-						indicatorComponent={({ isSelected }) => (
-							<Text color={isSelected ? theme.accent : theme.textDim}>
-								{isSelected ? '▶ ' : '  '}
-							</Text>
-						)}
-						itemComponent={({ isSelected, label }) => (
-							<Text color={isSelected ? theme.accent : theme.text}>
-								{label}
-							</Text>
-						)}
-					/>
-
-					<Text> </Text>
-
-					<Text color={theme.textDim}>
-						↑↓ navigate • Enter select • ESC cancel
-					</Text>
+				<Text color={theme.accent} bold>
+					Expand Task Options
+				</Text>
+				<Text color={theme.text} marginTop={1}>
+					Use research for better task breakdown?
+				</Text>
+				<Box marginTop={1}>
+					<SelectInput items={researchItems} onSelect={handleResearchSelect} />
 				</Box>
 			</Box>
 		);
@@ -101,40 +127,34 @@ export function ExpandModal({
 		<Box
 			borderStyle="round"
 			borderColor={theme.accent}
-			width={45}
-			paddingX={1}
-			paddingY={1}
+			padding={1}
+			flexDirection="column"
 		>
-			<Box flexDirection="column">
-				<Text color={theme.accent} bold>
-					Number of Subtasks
+			<Text color={theme.accent} bold>
+				Number of Subtasks
+			</Text>
+			<Box marginTop={1}>
+				<Text color={theme.text}>
+					How many subtasks? (default: {defaultNum}
+					{fromComplexityReport
+						? ' ✓ from complexity analysis'
+						: ' - estimated'}
+					):
 				</Text>
-
-				<Text> </Text>
-
-				<Text color={theme.text}>How many subtasks to generate?</Text>
-
+			</Box>
+			<Box marginTop={1}>
+				<Text color={theme.text}>→ </Text>
+				<TextInput
+					value={numSubtasks}
+					onChange={setNumSubtasks}
+					onSubmit={handleNumberSubmit}
+					placeholder={defaultNum.toString()}
+				/>
+			</Box>
+			<Box marginTop={1}>
 				<Text color={theme.textDim}>
-					(Recommendation: {defaultNum}{' '}
-					{fromComplexityReport ? '✓' : 'estimated'})
+					Press Enter to confirm or Escape to cancel
 				</Text>
-
-				<Text> </Text>
-
-				<Box>
-					<Text color={theme.accent}>Number: </Text>
-					<TextInput
-						value={numSubtasks}
-						onChange={setNumSubtasks}
-						onSubmit={handleNumberSubmit}
-						placeholder={defaultNum.toString()}
-						onKeyPress={handleNumberKeyPress}
-					/>
-				</Box>
-
-				<Text> </Text>
-
-				<Text color={theme.textDim}>Enter confirm • ESC cancel</Text>
 			</Box>
 		</Box>
 	);
