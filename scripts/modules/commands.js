@@ -1603,7 +1603,6 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				console.log(chalk.blue(`Expanding task ${options.id}...`));
 				try {
 					// Call the refactored expandTask function
 					await expandTask(

@@ -56,7 +56,7 @@ function displayExpandStart({
 	const isExpandAll = expandType === 'all';
 	let title = isExpandAll
 		? '🚀 Expanding All Pending Tasks'
-		: '🚀 Expanding Task';
+		: `🚀 Expanding Task ${taskId}`;
 
 	// Add complexity score to title if available
 	if (!isExpandAll && hasComplexityAnalysis && complexityScore !== undefined) {
@@ -87,8 +87,6 @@ function displayExpandStart({
 
 	if (isExpandAll) {
 		content += chalk.blue(`Pending tasks to expand: ${totalPendingTasks}\n`);
-	} else {
-		content += chalk.blue(`Task ID: ${taskId}\n`);
 	}
 
 	// Add subtask info
@@ -128,7 +126,7 @@ function displayExpandStart({
 	// Display the main boxen
 	console.log(
 		boxen(message, {
-			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			padding: { top: 1, bottom: 0, left: 2, right: 2 },
 			margin: { top: 0, bottom: 0 },
 			borderColor: 'green',
 			borderStyle: 'round'
@@ -145,10 +143,12 @@ function displayExpandStart({
 
 	// Display complexity analysis status for single task expansion
 	if (!isExpandAll) {
-		if (hasComplexityAnalysis) {
+		if (hasComplexityAnalysis && complexityScore !== undefined) {
 			console.log(
-				chalk.bold('ℹ️  Using expansion prompt from complexity report') +
-					chalk.dim(` and simplified system prompt`)
+				chalk.bold(`ℹ️  Found complexity analysis with score ${complexityScore}`)
+			);
+			console.log(
+				chalk.bold('ℹ️  Using expansion prompt from complexity report')
 			);
 		} else {
 			console.log(chalk.bold('ℹ️  No complexity analysis found'));

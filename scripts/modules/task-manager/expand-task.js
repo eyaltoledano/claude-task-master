@@ -467,7 +467,7 @@ async function expandTask(
 
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
-		logger.info(`Reading tasks from ${tasksPath}`);
+		logger.debug(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
@@ -476,7 +476,7 @@ async function expandTask(
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
 		const task = data.tasks[taskIndex];
-		logger.info(
+		logger.debug(
 			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
 		);
 		// --- End Task Loading/Filtering ---
@@ -535,7 +535,7 @@ async function expandTask(
 					(a) => a.taskId === task.id
 				);
 				if (taskAnalysis) {
-					logger.info(
+					logger.debug(
 						`Found complexity analysis for task ${task.id}: Score ${taskAnalysis.complexityScore}`
 					);
 					if (taskAnalysis.reasoning) {
@@ -561,17 +561,17 @@ async function expandTask(
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
 		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
 			finalSubtaskCount = explicitNumSubtasks;
-			logger.info(
+			logger.debug(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
 			);
 		} else if (taskAnalysis?.recommendedSubtasks) {
 			finalSubtaskCount = parseInt(taskAnalysis.recommendedSubtasks, 10);
-			logger.info(
+			logger.debug(
 				`Using subtask count from complexity report: ${finalSubtaskCount}`
 			);
 		} else {
 			finalSubtaskCount = getDefaultSubtasks(session);
-			logger.info(`Using default number of subtasks: ${finalSubtaskCount}`);
+			logger.debug(`Using default number of subtasks: ${finalSubtaskCount}`);
 		}
 		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
 			logger.warn(
