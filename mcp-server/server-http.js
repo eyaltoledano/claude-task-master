@@ -48,8 +48,8 @@ async function startServer(options) {
 
 // Set up Commander
 program
-    .name('task-master-mcp-http')
-    .description('Claude Task Master HTTP Streaming MCP Server')
+	.name('task-master-mcp-http')
+	.description('Claude Task Master HTTP Streaming MCP Server')
 	.option('-p, --port <number>', 'Port to run the server on', parseInt)
 	.action(async (options) => {
 		try {
