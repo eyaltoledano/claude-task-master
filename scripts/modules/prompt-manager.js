@@ -16,12 +16,13 @@ export class PromptManager {
 	 * Load a prompt template and render it with variables
 	 * @param {string} promptId - The prompt template ID
 	 * @param {Object} variables - Variables to inject into the template
+	 * @param {string} [variantKey] - Optional specific variant to use
 	 * @returns {Promise<{systemPrompt: string, userPrompt: string, metadata: Object}>}
 	 */
-	async loadPrompt(promptId, variables = {}) {
+	async loadPrompt(promptId, variables = {}, variantKey = null) {
 		try {
 			// Check cache first
-			const cacheKey = `${promptId}-${JSON.stringify(variables)}`;
+			const cacheKey = `${promptId}-${JSON.stringify(variables)}-${variantKey}`;
 			if (this.cache.has(cacheKey)) {
 				return this.cache.get(cacheKey);
 			}
@@ -29,8 +30,10 @@ export class PromptManager {
 			// Load template
 			const template = await this.loadTemplate(promptId);
 
-			// Select the best variant based on conditions
-			const variant = this.selectVariant(template, variables);
+			// Select the variant - use specified key or select based on conditions
+			const variant = variantKey
+				? { ...template.prompts[variantKey], name: variantKey }
+				: this.selectVariant(template, variables);
 
 			// Render the prompts with variables
 			const rendered = {
