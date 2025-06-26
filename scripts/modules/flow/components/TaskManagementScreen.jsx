@@ -31,6 +31,8 @@ export function TaskManagementScreen() {
 	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
 	const [isExpanding, setIsExpanding] = useState(false);
+	const [expandError, setExpandError] = useState(null);
+	const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
 	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
@@ -537,9 +539,19 @@ export function TaskManagementScreen() {
 	const handleClaudeSession = async () => {
 		if (!selectedTask || !selectedSubtask) return;
 
-		try {
+		// Prevent duplicate launches
+		if (isLaunchingClaude) {
 			setToast({
-				message: 'Preparing Claude Code session...',
+				message: 'Claude session already being launched...',
+				type: 'warning'
+			});
+			return;
+		}
+
+		try {
+			setIsLaunchingClaude(true);
+			setToast({
+				message: 'Gathering context and running research...',
 				type: 'info'
 			});
 
@@ -559,6 +571,7 @@ export function TaskManagementScreen() {
 					onSelect: async (action) => {
 						if (action === 'cancel') {
 							setCurrentScreen('tasks');
+							setIsLaunchingClaude(false);
 							return;
 						}
 
@@ -574,6 +587,7 @@ export function TaskManagementScreen() {
 									selectedSubtaskId: subtaskId
 								}
 							});
+							setIsLaunchingClaude(false);
 							return;
 						} else if (action === 'select') {
 							// Show worktree selection
@@ -589,6 +603,7 @@ export function TaskManagementScreen() {
 									selectedSubtaskId: subtaskId
 								}
 							});
+							setIsLaunchingClaude(false);
 							return;
 						} else if (action === 'main') {
 							worktreePath = backend.projectRoot || process.cwd();
@@ -606,13 +621,24 @@ export function TaskManagementScreen() {
 				message: `Failed to start Claude session: ${error.message}`,
 				type: 'error'
 			});
+			setIsLaunchingClaude(false);
 		}
 	};
 
 	const launchClaudeWithContext = async (worktreePath) => {
 		try {
+			setToast({
+				message: 'Gathering context and running research...',
+				type: 'info'
+			});
+
 			// Gather comprehensive context
 			const context = await gatherSubtaskContext();
+
+			setToast({
+				message: 'Launching Claude Code with full context...',
+				type: 'info'
+			});
 
 			// Navigate to Claude Code screen with context
 			setCurrentScreen('claudeCode', {
@@ -627,11 +653,15 @@ export function TaskManagementScreen() {
 					selectedSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`
 				}
 			});
+
+			// Reset flag after successful navigation
+			setIsLaunchingClaude(false);
 		} catch (error) {
 			setToast({
 				message: `Failed to gather context: ${error.message}`,
 				type: 'error'
 			});
+			setIsLaunchingClaude(false);
 		}
 	};
 

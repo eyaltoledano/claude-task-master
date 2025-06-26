@@ -33,6 +33,7 @@ function ClaudeCodeScreen({
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [showMenu, setShowMenu] = useState(false);
 	const [keyInsights, setKeyInsights] = useState([]);
+	const [waitingForConfig, setWaitingForConfig] = useState(false);
 	const abortControllerRef = useRef(null);
 	const theme = getTheme();
 
@@ -44,6 +45,10 @@ function ClaudeCodeScreen({
 
 		// If we have initial context for subtask implementation, start the session
 		if (initialMode === 'subtask-implementation' && initialContext) {
+			console.log('[ClaudeCodeScreen] Starting subtask implementation mode', {
+				subtaskId: initialContext?.currentSubtask?.id,
+				hasResearch: !!initialContext?.researchContext
+			});
 			startSubtaskImplementationSession();
 		}
 
@@ -145,16 +150,24 @@ Additional context:
 	const startSubtaskImplementationSession = async () => {
 		if (!config) {
 			// Wait for config to load
+			setWaitingForConfig(true);
 			setTimeout(startSubtaskImplementationSession, 100);
 			return;
 		}
 
+		setWaitingForConfig(false);
 		setLoading(false);
 		setIsProcessing(true);
 		setMessages([]);
 
 		const subtaskPrompt = buildSubtaskPrompt();
 		const systemPrompt = buildSystemPrompt();
+
+		console.log('[ClaudeCodeScreen] Starting Claude Code query', {
+			promptLength: subtaskPrompt.length,
+			hasResearchContext: !!initialContext?.researchContext,
+			worktreePath: initialContext?.worktreePath
+		});
 
 		abortControllerRef.current = new AbortController();
 
@@ -597,7 +610,78 @@ Additional context:
 		return (
 			<Box flexDirection="column" height="100%">
 				<Box justifyContent="center" alignItems="center" height="100%">
-					<LoadingSpinner message="Loading Claude Code sessions..." />
+					<LoadingSpinner message="Loading Claude Code..." />
+				</Box>
+			</Box>
+		);
+	}
+
+	// Waiting for config in subtask implementation mode
+	if (waitingForConfig && initialMode === 'subtask-implementation') {
+		return (
+			<Box flexDirection="column" height="100%">
+				<Box justifyContent="center" alignItems="center" height="100%">
+					<LoadingSpinner message="Preparing Claude Code environment..." />
+				</Box>
+			</Box>
+		);
+	}
+
+	// Processing subtask implementation startup
+	if (
+		isProcessing &&
+		initialMode === 'subtask-implementation' &&
+		messages.length === 0
+	) {
+		return (
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Subtask Implementation</Text>
+					</Box>
+				</Box>
+
+				<Box justifyContent="center" alignItems="center" flexGrow={1}>
+					<Box flexDirection="column" alignItems="center">
+						<LoadingSpinner message="Starting Claude Code session..." />
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>
+								Subtask: {initialContext?.currentSubtask?.title || 'Loading...'}
+							</Text>
+						</Box>
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>
+								This includes research findings and full context
+							</Text>
+						</Box>
+					</Box>
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={theme.text}>ESC to cancel</Text>
 				</Box>
 			</Box>
 		);
