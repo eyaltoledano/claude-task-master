@@ -109,6 +109,17 @@ export function WelcomeScreen() {
 							</Box>
 							<Text color={theme.textDim}>ctrl+x g</Text>
 						</Box>
+						{hasTasksFile && (
+							<Box flexDirection="row">
+								<Box width={12}>
+									<Text color={theme.accent}>/next</Text>
+								</Box>
+								<Box width={34}>
+									<Text color={theme.text}>Show next task to work on</Text>
+								</Box>
+								<Text color={theme.textDim}>ctrl+x n</Text>
+							</Box>
+						)}
 						<Box flexDirection="row">
 							<Box width={12}>
 								<Text color={theme.accent}>/mcp</Text>
@@ -127,17 +138,6 @@ export function WelcomeScreen() {
 							</Box>
 							<Text color={theme.textDim}>ctrl+x c</Text>
 						</Box>
-						{hasTasksFile && (
-							<Box flexDirection="row">
-								<Box width={12}>
-									<Text color={theme.accent}>/next</Text>
-								</Box>
-								<Box width={34}>
-									<Text color={theme.text}>Show next task to work on</Text>
-								</Box>
-								<Text color={theme.textDim}>ctrl+x n</Text>
-							</Box>
-						)}
 						<Box flexDirection="row">
 							<Box width={12}>
 								<Text color={theme.accent}>/status</Text>

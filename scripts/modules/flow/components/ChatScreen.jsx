@@ -48,6 +48,621 @@ const Message = ({ message, isStreaming = false }) => {
 };
 
 /**
+ * Parse and format taskmaster tool responses for natural display
+ */
+const formatToolResponse = (toolCall) => {
+	const theme = getCurrentTheme();
+	
+	if (!toolCall.result || toolCall.status !== 'completed') {
+		return null;
+	}
+
+	const { name, result } = toolCall;
+	
+	// Handle error responses
+	if (!result.success && result.error) {
+		return (
+			<Box flexDirection="column">
+				<Text color={theme.error}>❌ Error: {result.error.message || result.error}</Text>
+			</Box>
+		);
+	}
+	
+	// Helper to format task status with emoji
+	const getStatusEmoji = (status) => {
+		switch(status) {
+			case 'done': return '✅';
+			case 'in-progress': return '🔄';
+			case 'blocked': return '🚫';
+			case 'cancelled': return '❌';
+			case 'deferred': return '⏸️';
+			default: return '○';
+		}
+	};
+
+	// Helper to format dependencies
+	const formatDependencies = (deps) => {
+		if (!deps || deps.length === 0) return null;
+		return (
+			<Box flexDirection="column">
+				<Text color={theme.textDim}>Dependencies:</Text>
+				{deps.map((dep, idx) => (
+					<Box key={idx} marginLeft={2}>
+						<Text color={theme.text}>
+							{dep.completed ? '✅' : '⏱️'} Task {dep.id}
+							{dep.title && `: ${dep.title}`}
+						</Text>
+					</Box>
+				))}
+			</Box>
+		);
+	};
+
+	// Helper to format subtasks
+	const formatSubtasks = (subtasks) => {
+		if (!subtasks || subtasks.length === 0) return null;
+		const completed = subtasks.filter(st => st.status === 'done').length;
+		return (
+			<Box flexDirection="column">
+				<Text color={theme.textDim}>
+					Subtasks ({completed}/{subtasks.length} completed):
+				</Text>
+				{subtasks.slice(0, 5).map((subtask, idx) => (
+					<Box key={idx} marginLeft={2}>
+						<Text color={theme.text}>
+							{getStatusEmoji(subtask.status)} {subtask.id}: {subtask.title}
+						</Text>
+					</Box>
+				))}
+				{subtasks.length > 5 && (
+					<Box marginLeft={2}>
+						<Text color={theme.textDim}>... and {subtasks.length - 5} more</Text>
+					</Box>
+				)}
+			</Box>
+		);
+	};
+	
+	// Handle different taskmaster tools
+	switch (name) {
+		case 'get_tasks': {
+			if (result.data?.tasks) {
+				const tasks = result.data.tasks;
+				if (tasks.length === 0) {
+					return <Text color={theme.textDim}>No tasks found in the current tag.</Text>;
+				}
+				
+				// Group tasks by status
+				const byStatus = tasks.reduce((acc, task) => {
+					const status = task.status || 'pending';
+					if (!acc[status]) acc[status] = [];
+					acc[status].push(task);
+					return acc;
+				}, {});
+				
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>Found {tasks.length} task{tasks.length !== 1 ? 's' : ''}:</Text>
+						{Object.entries(byStatus).map(([status, statusTasks]) => (
+							<Box key={status} flexDirection="column" marginTop={1}>
+								<Text color={theme.accent}>{status.charAt(0).toUpperCase() + status.slice(1)} ({statusTasks.length}):</Text>
+								{statusTasks.slice(0, 3).map((task, idx) => (
+									<Box key={idx} marginLeft={2}>
+										<Text color={theme.text}>
+											{getStatusEmoji(task.status)} Task {task.id}: {task.title}
+											{task.priority === 'high' && <Text color={theme.error}> [HIGH]</Text>}
+										</Text>
+									</Box>
+								))}
+								{statusTasks.length > 3 && (
+									<Box marginLeft={2}>
+										<Text color={theme.textDim}>... and {statusTasks.length - 3} more</Text>
+									</Box>
+								)}
+							</Box>
+						))}
+						{result.data.tag && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>Current tag: {result.data.tag}</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'next_task': {
+			if (result.data?.task) {
+				const task = result.data.task;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>📌 Next task to work on:</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							{task.priority && (
+								<Text color={
+									task.priority === 'high' ? theme.error :
+									task.priority === 'medium' ? theme.warning :
+									theme.text
+								}>
+									Priority: {task.priority}
+								</Text>
+							)}
+							{task.description && (
+								<Box marginTop={1}>
+									<Text color={theme.text}>{task.description}</Text>
+								</Box>
+							)}
+							{task.dependencies && task.dependencies.length > 0 && (
+								<Box marginTop={1}>
+									{formatDependencies(task.dependencies)}
+								</Box>
+							)}
+							{task.subtasks && task.subtasks.length > 0 && (
+								<Box marginTop={1}>
+									{formatSubtasks(task.subtasks)}
+								</Box>
+							)}
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>💡 Tip: Use /tasks to see more details or mark as in-progress</Text>
+							</Box>
+						</Box>
+					</Box>
+				);
+			} else {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.warning}>No pending tasks found!</Text>
+						<Text color={theme.textDim}>All tasks are either completed or have unmet dependencies.</Text>
+					</Box>
+				);
+			}
+		}
+		
+		case 'get_task': {
+			if (result.data?.task) {
+				const task = result.data.task;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>📋 Task Details:</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							<Box flexDirection="row">
+								<Text color={theme.text}>Status: </Text>
+								<Text color={
+									task.status === 'done' ? theme.success :
+									task.status === 'in-progress' ? theme.warning :
+									theme.text
+								}>
+									{getStatusEmoji(task.status)} {task.status}
+								</Text>
+							</Box>
+							{task.priority && (
+								<Text color={theme.text}>
+									Priority: <Text color={
+										task.priority === 'high' ? theme.error :
+										task.priority === 'medium' ? theme.warning :
+										theme.text
+									}>{task.priority}</Text>
+								</Text>
+							)}
+							{task.description && (
+								<Box marginTop={1} flexDirection="column">
+									<Text color={theme.textDim}>Description:</Text>
+									<Box marginLeft={2}>
+										<Text color={theme.text}>{task.description}</Text>
+									</Box>
+								</Box>
+							)}
+							{task.details && (
+								<Box marginTop={1} flexDirection="column">
+									<Text color={theme.textDim}>Implementation Details:</Text>
+									<Box marginLeft={2}>
+										<Text color={theme.text}>
+											{task.details.length > 200 
+												? task.details.substring(0, 200) + '...' 
+												: task.details}
+										</Text>
+									</Box>
+								</Box>
+							)}
+							{task.testStrategy && (
+								<Box marginTop={1} flexDirection="column">
+									<Text color={theme.textDim}>Test Strategy:</Text>
+									<Box marginLeft={2}>
+										<Text color={theme.text}>
+											{task.testStrategy.length > 150 
+												? task.testStrategy.substring(0, 150) + '...' 
+												: task.testStrategy}
+										</Text>
+									</Box>
+								</Box>
+							)}
+							{task.dependencies && task.dependencies.length > 0 && (
+								<Box marginTop={1}>
+									{formatDependencies(task.dependencies)}
+								</Box>
+							)}
+							{task.subtasks && task.subtasks.length > 0 && (
+								<Box marginTop={1}>
+									{formatSubtasks(task.subtasks)}
+								</Box>
+							)}
+						</Box>
+					</Box>
+				);
+			} else {
+				return <Text color={theme.error}>Task not found.</Text>;
+			}
+		}
+		
+		case 'set_task_status': {
+			if (result.data?.task) {
+				const task = result.data.task;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Task status updated successfully!</Text>
+						<Box marginLeft={2}>
+							<Text color={theme.text}>
+								Task {task.id}: {task.title}
+							</Text>
+							<Text color={theme.text}>
+								New status: {getStatusEmoji(task.status)} {task.status}
+							</Text>
+						</Box>
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'add_task': {
+			if (result.data?.task) {
+				const task = result.data.task;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✨ New task created successfully!</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							{task.description && (
+								<Text color={theme.text}>{task.description}</Text>
+							)}
+							{task.priority && (
+								<Text color={theme.text}>Priority: {task.priority}</Text>
+							)}
+							{task.dependencies && task.dependencies.length > 0 && (
+								<Text color={theme.text}>
+									Dependencies: {task.dependencies.map(d => `Task ${d.id || d}`).join(', ')}
+								</Text>
+							)}
+						</Box>
+						{result.data.telemetryData && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									AI Model: {result.data.telemetryData.modelUsed} | 
+									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'expand_task': {
+			if (result.data?.subtasks) {
+				const subtasks = result.data.subtasks;
+				const parentTask = result.data.parentTask;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✨ Task expanded successfully!</Text>
+						{parentTask && (
+							<Box marginLeft={2}>
+								<Text color={theme.accent}>Task {parentTask.id}: {parentTask.title}</Text>
+							</Box>
+						)}
+						<Box marginLeft={2} marginTop={1}>
+							<Text color={theme.text}>Created {subtasks.length} subtask{subtasks.length !== 1 ? 's' : ''}:</Text>
+						</Box>
+						{subtasks.map((subtask, idx) => (
+							<Box key={idx} marginLeft={4}>
+								<Text color={theme.text}>
+									{getStatusEmoji(subtask.status)} {subtask.id}: {subtask.title}
+								</Text>
+							</Box>
+						))}
+						{result.data.telemetryData && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									AI Model: {result.data.telemetryData.modelUsed} | 
+									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'update_task':
+		case 'update_subtask': {
+			if (result.data?.task) {
+				const task = result.data.task;
+				const isSubtask = name === 'update_subtask';
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>
+							✓ {isSubtask ? 'Subtask' : 'Task'} updated successfully!
+						</Text>
+						<Box marginLeft={2}>
+							<Text color={theme.accent}>
+								{isSubtask ? 'Subtask' : 'Task'} {task.id}: {task.title}
+							</Text>
+							{isSubtask && (
+								<Text color={theme.textDim}>
+									Progress notes have been appended with timestamp
+								</Text>
+							)}
+						</Box>
+						{result.data.telemetryData && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									AI Model: {result.data.telemetryData.modelUsed} | 
+									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'research': {
+			if (result.data?.response) {
+				// Show more of the research response
+				const response = result.data.response;
+				const truncated = response.length > 500 ? response.substring(0, 500) + '...' : response;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>🔍 Research completed:</Text>
+						<Box marginLeft={2} marginTop={1}>
+							<Text color={theme.text}>{truncated}</Text>
+						</Box>
+						{response.length > 500 && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									(Showing first 500 characters of {response.length} total)
+								</Text>
+							</Box>
+						)}
+						{result.data.savedTo && (
+							<Box marginTop={1}>
+								<Text color={theme.success}>
+									✓ Research saved to {result.data.savedTo}
+								</Text>
+							</Box>
+						)}
+						{result.data.telemetryData && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									Research Model: {result.data.telemetryData.modelUsed} | 
+									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'list_tags': {
+			if (result.data?.tags) {
+				const tags = result.data.tags;
+				const currentTag = result.data.currentTag;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>📁 Available tags ({tags.length}):</Text>
+						{tags.map((tag, idx) => (
+							<Box key={idx} marginLeft={2}>
+								<Text color={theme.text}>
+									{tag.name === currentTag ? '▶ ' : '  '}
+									<Text color={tag.name === currentTag ? theme.accent : theme.text} bold={tag.name === currentTag}>
+										{tag.name}
+									</Text>
+									<Text color={theme.textDim}> ({tag.taskCount} tasks, {tag.completedCount} done)</Text>
+								</Text>
+								{tag.description && (
+									<Box marginLeft={4}>
+										<Text color={theme.textDim}>{tag.description}</Text>
+									</Box>
+								)}
+							</Box>
+						))}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'use_tag': {
+			if (result.data?.tag) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Switched to tag: {result.data.tag}</Text>
+						{result.data.taskCount !== undefined && (
+							<Text color={theme.textDim}>
+								This tag contains {result.data.taskCount} task{result.data.taskCount !== 1 ? 's' : ''}
+							</Text>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'add_tag': {
+			if (result.data?.tag) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✨ New tag created: {result.data.tag}</Text>
+						{result.data.copiedFrom && (
+							<Text color={theme.textDim}>
+								Tasks copied from: {result.data.copiedFrom}
+							</Text>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'analyze_project_complexity': {
+			if (result.data?.report) {
+				const report = result.data.report;
+				const highComplexity = report.tasks?.filter(t => t.complexityScore >= 8) || [];
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>📊 Complexity analysis complete!</Text>
+						{report.summary && (
+							<Box marginLeft={2} marginTop={1}>
+								<Text color={theme.text}>Average complexity: {report.summary.averageComplexity?.toFixed(1) || 'N/A'}</Text>
+								<Text color={theme.text}>Tasks needing expansion: {report.summary.tasksNeedingExpansion || 0}</Text>
+							</Box>
+						)}
+						{highComplexity.length > 0 && (
+							<Box marginTop={1} flexDirection="column">
+								<Text color={theme.warning}>High complexity tasks:</Text>
+								{highComplexity.slice(0, 3).map((task, idx) => (
+									<Box key={idx} marginLeft={2}>
+										<Text color={theme.text}>
+											Task {task.id}: {task.title} (score: {task.complexityScore})
+										</Text>
+									</Box>
+								))}
+							</Box>
+						)}
+						{result.data.telemetryData && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									AI Model: {result.data.telemetryData.modelUsed} | 
+									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'move_task': {
+			if (result.data?.movedTasks) {
+				const moves = result.data.movedTasks;
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Task{moves.length > 1 ? 's' : ''} moved successfully!</Text>
+						{moves.map((move, idx) => (
+							<Box key={idx} marginLeft={2}>
+								<Text color={theme.text}>
+									Task {move.from} → {move.to}
+								</Text>
+							</Box>
+						))}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'add_dependency':
+		case 'remove_dependency': {
+			const action = name === 'add_dependency' ? 'added' : 'removed';
+			if (result.data?.task) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Dependency {action} successfully!</Text>
+						<Box marginLeft={2}>
+							<Text color={theme.text}>
+								Task {result.data.task.id} now has {result.data.task.dependencies?.length || 0} dependencies
+							</Text>
+						</Box>
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'clear_subtasks': {
+			if (result.data?.clearedCount !== undefined) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Cleared subtasks from {result.data.clearedCount} task{result.data.clearedCount !== 1 ? 's' : ''}</Text>
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		case 'remove_task': {
+			if (result.data?.removedId) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ Task {result.data.removedId} removed successfully</Text>
+						{result.data.cleanedDependencies && result.data.cleanedDependencies > 0 && (
+							<Text color={theme.textDim}>
+								Cleaned up {result.data.cleanedDependencies} dependency reference{result.data.cleanedDependencies !== 1 ? 's' : ''}
+							</Text>
+						)}
+					</Box>
+				);
+			}
+			break;
+		}
+		
+		default:
+			// For unknown tools, show a generic success message with any data
+			if (result.success) {
+				return (
+					<Box flexDirection="column">
+						<Text color={theme.success}>✓ {formatToolName(name)} completed successfully</Text>
+						{result.data && (
+							<Box marginLeft={2}>
+								<Text color={theme.textDim}>
+									{JSON.stringify(result.data, null, 2).substring(0, 200)}
+									{JSON.stringify(result.data).length > 200 && '...'}
+								</Text>
+							</Box>
+						)}
+					</Box>
+				);
+			}
+	}
+	
+	// Fallback for unhandled cases
+	return (
+		<Box flexDirection="column">
+			<Text color={theme.warning}>Tool completed: {formatToolName(name)}</Text>
+			<Box marginLeft={2}>
+				<Text color={theme.textDim}>
+					{JSON.stringify(result.data || result, null, 2).substring(0, 200)}
+					{JSON.stringify(result.data || result).length > 200 && '...'}
+				</Text>
+			</Box>
+		</Box>
+	);
+};
+
+// Helper to format tool names
+const formatToolName = (name) => {
+	return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+/**
  * Tool call display component
  */
 const ToolCallDisplay = ({ toolCall }) => {
@@ -59,12 +674,17 @@ const ToolCallDisplay = ({ toolCall }) => {
 		failed: theme.error
 	};
 
+	// Format the tool name for display
+	const formatToolName = (name) => {
+		return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+	};
+
 	return (
 		<Box flexDirection="column" marginBottom={1}>
 			<Box>
 				<Text color={theme.accent}>🔧 </Text>
 				<Text color={statusColors[toolCall.status] || theme.text}>
-					{toolCall.name}
+					{formatToolName(toolCall.name)}
 				</Text>
 				{toolCall.status === 'executing' && (
 					<Text color={theme.info}>
@@ -73,12 +693,9 @@ const ToolCallDisplay = ({ toolCall }) => {
 					</Text>
 				)}
 			</Box>
-			{toolCall.result && (
+			{toolCall.result && toolCall.status === 'completed' && (
 				<Box marginLeft={3}>
-					<Text color={theme.textDim}>
-						{JSON.stringify(toolCall.result, null, 2).substring(0, 200)}
-						{JSON.stringify(toolCall.result).length > 200 && '...'}
-					</Text>
+					{formatToolResponse(toolCall)}
 				</Box>
 			)}
 			{toolCall.error && (

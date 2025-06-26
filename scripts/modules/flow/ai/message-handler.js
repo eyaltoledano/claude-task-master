@@ -148,7 +148,7 @@ export class AIMessageHandler {
 	 * @param {Function} onError - Callback for errors
 	 */
 	async handleUserMessage(content, { onChunk, onToolCall, onComplete, onError }) {
-		console.log(`[AIMessageHandler] Starting to handle user message: "${content}"`);
+		// console.log(`[AIMessageHandler] Starting to handle user message: "${content}"`);
 		log('info', `[AIMessageHandler] Starting to handle user message: "${content}"`);
 		debugLog('handleUserMessage called', { content, hasCallbacks: { onChunk: !!onChunk, onToolCall: !!onToolCall, onComplete: !!onComplete, onError: !!onError } });
 		
@@ -210,7 +210,7 @@ export class AIMessageHandler {
 			// Create the stream - streamTextService expects a prompt parameter
 			// Note: The AI service internally builds messages from systemPrompt and prompt
 			// We don't pass messages directly as it expects to build them itself
-			console.log('[AIMessageHandler] About to call streamTextService');
+			// console.log('[AIMessageHandler] About to call streamTextService');
 			debugLog('About to call streamTextService');
 			
 			const streamResponse = await streamTextService({
@@ -225,8 +225,8 @@ export class AIMessageHandler {
 			});
 			
 			// Don't log the full response as it might interfere with the stream
-			console.log('[AIMessageHandler] streamTextService returned successfully');
-			console.log('[AIMessageHandler] Has mainResult:', !!streamResponse.mainResult);
+			// console.log('[AIMessageHandler] streamTextService returned successfully');
+			// console.log('[AIMessageHandler] Has mainResult:', !!streamResponse.mainResult);
 			
 			debugLog('streamTextService returned', { 
 				hasResponse: !!streamResponse,
@@ -240,7 +240,7 @@ export class AIMessageHandler {
 			await this.processStream(streamResponse, { onChunk, onToolCall, onComplete, onError });
 
 		} catch (error) {
-			console.error('[AIMessageHandler] Error caught:', error.message, error.stack);
+			// console.error('[AIMessageHandler] Error caught:', error.message, error.stack);
 			log('error', `[AIMessageHandler] AI message handling error: ${error.message}`, { 
 				stack: error.stack,
 				errorType: error.constructor?.name
@@ -340,13 +340,13 @@ export class AIMessageHandler {
 				throw new Error('No stream returned from AI service');
 			}
 			
-			console.log('[processStream] Stream result type:', streamResult.constructor.name);
-			console.log('[processStream] Stream properties:', Object.keys(streamResult));
+			// console.log('[processStream] Stream result type:', streamResult.constructor.name);
+			// console.log('[processStream] Stream properties:', Object.keys(streamResult));
 			
 			// Check what streams are available
-			console.log('[processStream] Has textStream:', !!streamResult.textStream);
-			console.log('[processStream] Has fullStream:', !!streamResult.fullStream);
-			console.log('[processStream] Has baseStream:', !!streamResult.baseStream);
+			// console.log('[processStream] Has textStream:', !!streamResult.textStream);
+			// console.log('[processStream] Has fullStream:', !!streamResult.fullStream);
+			// console.log('[processStream] Has baseStream:', !!streamResult.baseStream);
 			
 			let assistantMessage = '';
 			const toolCalls = [];
@@ -367,9 +367,9 @@ export class AIMessageHandler {
 			}
 			
 			if (streamToUse) {
-				console.log(`[processStream] Using ${streamName}`);
-				console.log(`[processStream] Stream type:`, streamToUse.constructor.name);
-				console.log(`[processStream] Stream locked:`, streamToUse.locked);
+				// console.log(`[processStream] Using ${streamName}`);
+				// console.log(`[processStream] Stream type:`, streamToUse.constructor.name);
+				// console.log(`[processStream] Stream locked:`, streamToUse.locked);
 				
 				try {
 					const reader = streamToUse.getReader();
@@ -379,23 +379,23 @@ export class AIMessageHandler {
 						const { done, value } = await reader.read();
 						
 						if (done) {
-							console.log(`[processStream] ${streamName} complete after ${chunkCount} chunks`);
+							// console.log(`[processStream] ${streamName} complete after ${chunkCount} chunks`);
 							break;
 						}
 						
 						chunkCount++;
-						console.log(`[processStream] Chunk ${chunkCount} - type:`, typeof value, 'value:', value);
+						// console.log(`[processStream] Chunk ${chunkCount} - type:`, typeof value, 'value:', value);
 						
 						// Log the exact structure of the value
-						if (value) {
-							console.log('[processStream] Chunk details:', {
-								type: typeof value,
-								constructor: value.constructor?.name,
-								isUint8Array: value instanceof Uint8Array,
-								keys: typeof value === 'object' ? Object.keys(value) : 'N/A',
-								stringified: JSON.stringify(value, null, 2)
-							});
-						}
+						// if (value) {
+						// 	console.log('[processStream] Chunk details:', {
+						// 		type: typeof value,
+						// 		constructor: value.constructor?.name,
+						// 		isUint8Array: value instanceof Uint8Array,
+						// 		keys: typeof value === 'object' ? Object.keys(value) : 'N/A',
+						// 		stringified: JSON.stringify(value, null, 2)
+						// 	});
+						// }
 						
 						// Handle different value types
 						if (typeof value === 'string') {
@@ -435,7 +435,7 @@ export class AIMessageHandler {
 								}
 							} else if (value.type === 'error') {
 								// Handle error chunks
-								console.error('[processStream] Error chunk received:', value.error);
+								// console.error('[processStream] Error chunk received:', value.error);
 								debugLog('Error chunk received', { 
 									error: value.error,
 									errorName: value.error?.name,
@@ -488,7 +488,7 @@ export class AIMessageHandler {
 				throw new Error('No suitable stream found in the response');
 			}
 
-			console.log('[processStream] Final message length:', assistantMessage.length);
+			// console.log('[processStream] Final message length:', assistantMessage.length);
 
 			// Save complete assistant message
 			this.session.addMessage('assistant', assistantMessage, { toolCalls });

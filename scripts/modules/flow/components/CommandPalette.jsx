@@ -45,6 +45,12 @@ export function CommandPalette() {
 			key: 'g'
 		},
 		{
+			name: 'Next Task',
+			command: '/next',
+			description: 'Show next task to work on',
+			key: 'n'
+		},
+		{
 			name: 'MCP Servers',
 			command: '/mcp',
 			description: 'Manage MCP servers',
@@ -55,12 +61,6 @@ export function CommandPalette() {
 			command: '/chat',
 			description: 'Chat with AI assistant',
 			key: 'c'
-		},
-		{
-			name: 'Next Task',
-			command: '/next',
-			description: 'Show next task to work on',
-			key: 'n'
 		},
 		{
 			name: 'Project Status',
