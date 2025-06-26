@@ -261,9 +261,20 @@ Additional context:
 		if (initialMode === 'subtask-implementation' && keyInsights.length > 0) {
 			try {
 				const insightSummary = summarizeInsights(keyInsights);
+				const claudeSessionContent = `## Claude Code Session - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+**Subtask:** ${initialContext.currentSubtask.title}
+**Working Directory:** ${initialContext.worktreePath}
+
+### Key Insights from Implementation
+
+${insightSummary}
+
+---
+`;
 				await backend.updateSubtask({
 					id: initialContext.currentSubtask.id,
-					prompt: `Claude Code session insights:\n${insightSummary}`,
+					prompt: claudeSessionContent,
 					research: false
 				});
 				setSuccess('Subtask updated with session insights');

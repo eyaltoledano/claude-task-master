@@ -707,6 +707,43 @@ export function TaskManagementScreen() {
 			});
 
 			researchContext = researchResult.response || researchResult;
+
+			// Save research results to subtask
+			if (researchContext) {
+				try {
+					setToast({
+						message: 'Saving research to subtask...',
+						type: 'info'
+					});
+
+					const researchContent = `## Claude Code Research - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+**Query:** ${researchQuery}
+**Detail Level:** medium
+**Context:** Preparing for Claude Code implementation session
+
+### Research Results
+
+${researchContext}
+
+---
+`;
+
+					await backend.updateSubtask({
+						id: `${selectedTask.id}.${selectedSubtask.id}`,
+						prompt: researchContent,
+						research: false // Don't run research again, just append
+					});
+
+					setToast({
+						message: 'Research saved to subtask',
+						type: 'success'
+					});
+				} catch (saveError) {
+					console.error('Failed to save research to subtask:', saveError);
+					// Continue anyway - research is still in context
+				}
+			}
 		} catch (error) {
 			console.error('Research failed:', error);
 			// Continue without research
