@@ -373,6 +373,19 @@ export class ExpandTracker {
 				title: displayTitle,
 				status: statusIndicator
 			});
+
+			// Add border line after each task
+			const borderBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format:
+						'------+-----+-------+-----+-----+-------+----------------------------------',
+					barsize: 1
+				}
+			);
+			borderBar.update(1);
 		} else {
 			// For single task expansion, just store the result
 			this.expansionResults.push({
