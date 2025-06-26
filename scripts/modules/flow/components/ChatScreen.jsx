@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useInput, useStdout } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { ChatSession } from '../session/chat-session.js';
@@ -663,6 +663,135 @@ const formatToolName = (name) => {
 };
 
 /**
+ * Scrollable messages container
+ */
+const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scrollOffset, height }) => {
+	const theme = getCurrentTheme();
+	
+	// Collect all content elements
+	const contentElements = [];
+	
+	// Add messages
+	messages.forEach((msg, idx) => {
+		contentElements.push({
+			type: 'message',
+			key: `msg-${msg.id}`,
+			content: <Message key={msg.id} message={msg} />
+		});
+	});
+	
+	// Add streaming message
+	if (streamingContent) {
+		contentElements.push({
+			type: 'streaming',
+			key: 'streaming',
+			content: (
+				<Message
+					message={{
+						role: 'assistant',
+						content: streamingContent,
+						metadata: { toolCalls }
+					}}
+					isStreaming={true}
+				/>
+			)
+		});
+	}
+	
+	// Add current tool calls
+	if (!streamingContent && toolCalls.length > 0) {
+		contentElements.push({
+			type: 'toolcalls',
+			key: 'toolcalls',
+			content: (
+				<Box flexDirection="column" marginLeft={3}>
+					{toolCalls.map((toolCall, idx) => (
+						<ToolCallDisplay key={idx} toolCall={toolCall} />
+					))}
+				</Box>
+			)
+		});
+	}
+	
+	// Add error
+	if (error) {
+		contentElements.push({
+			type: 'error',
+			key: 'error',
+			content: (
+				<Box marginTop={1}>
+					<Text color={theme.error}>❌ Error: {error}</Text>
+				</Box>
+			)
+		});
+	}
+	
+	// Calculate which elements to show based on scroll
+	let currentLine = 0;
+	let visibleElements = [];
+	let skippedLines = 0;
+	
+	for (const element of contentElements) {
+		// Estimate height of this element
+		let elementHeight = 3; // Default height
+		
+		if (element.type === 'message') {
+			// Find the message to calculate its height
+			const msg = messages.find(m => `msg-${m.id}` === element.key);
+			if (msg) {
+				elementHeight = 2 + Math.ceil(msg.content.length / 80) + 1;
+				if (msg.metadata?.toolCalls) {
+					elementHeight += msg.metadata.toolCalls.length * 3;
+				}
+			}
+		} else if (element.type === 'streaming') {
+			elementHeight = 2 + Math.ceil(streamingContent.length / 80) + 1;
+		} else if (element.type === 'toolcalls') {
+			elementHeight = toolCalls.length * 3;
+		} else if (element.type === 'error') {
+			elementHeight = 2;
+		}
+		
+		// Check if this element is visible
+		if (currentLine + elementHeight > scrollOffset && currentLine < scrollOffset + height) {
+			visibleElements.push(element);
+		} else if (currentLine < scrollOffset) {
+			skippedLines = scrollOffset - currentLine;
+		}
+		
+		currentLine += elementHeight;
+	}
+	
+	// Calculate if we can scroll
+	const totalHeight = currentLine;
+	const canScrollUp = scrollOffset > 0;
+	const canScrollDown = scrollOffset + height < totalHeight;
+	
+	return (
+		<Box flexDirection="column" height={height}>
+			{/* Scroll indicator - top */}
+			{canScrollUp && (
+				<Box>
+					<Text color={theme.textDim}>↑ {skippedLines} more lines above (↑/k to scroll)</Text>
+				</Box>
+			)}
+			
+			{/* Visible content */}
+			<Box flexDirection="column" flexGrow={1}>
+				{visibleElements.map(element => element.content)}
+			</Box>
+			
+			{/* Scroll indicator - bottom */}
+			{canScrollDown && (
+				<Box>
+					<Text color={theme.textDim}>↓ More content below (↓/j to scroll)</Text>
+				</Box>
+			)}
+		</Box>
+	);
+};
+
+/**
  * Tool call display component
  */
 const ToolCallDisplay = ({ toolCall }) => {
@@ -719,12 +848,17 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 	});
 	
 	const theme = getCurrentTheme();
+	const { stdout } = useStdout();
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [streamingContent, setStreamingContent] = useState('');
 	const [toolCalls, setToolCalls] = useState([]);
 	const [error, setError] = useState(null);
+	
+	// Add scroll state
+	const [scrollOffset, setScrollOffset] = useState(0);
+	const [viewportHeight, setViewportHeight] = useState(10); // Default height
 
 	// Initialize session and handler
 	const sessionRef = useRef(null);
@@ -764,6 +898,108 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		};
 		setMessages([welcomeMsg]);
 	}, [chatSession, aiHandler]);
+
+	// Update viewport height based on terminal size
+	useEffect(() => {
+		const updateViewportHeight = () => {
+			if (stdout) {
+				// Terminal height minus:
+				// - 3 for header
+				// - 4 for input area
+				// - 2 for status bar
+				// - 2 for padding
+				const availableHeight = (stdout.rows || 24) - 11;
+				setViewportHeight(Math.max(5, availableHeight));
+			}
+		};
+		
+		updateViewportHeight();
+		
+		// Listen for resize events
+		if (stdout) {
+			stdout.on('resize', updateViewportHeight);
+			return () => stdout.off('resize', updateViewportHeight);
+		}
+	}, [stdout]);
+
+	// Calculate total content height (approximate)
+	const calculateTotalHeight = useCallback(() => {
+		let totalHeight = 0;
+		
+		// Each message takes roughly 3-4 lines minimum
+		messages.forEach(msg => {
+			// Base height for role/header
+			totalHeight += 2;
+			
+			// Content height (rough estimate: 80 chars per line)
+			const contentLines = Math.ceil(msg.content.length / 80);
+			totalHeight += contentLines;
+			
+			// Tool calls add extra height
+			if (msg.metadata?.toolCalls) {
+				totalHeight += msg.metadata.toolCalls.length * 3;
+			}
+			
+			// Margin
+			totalHeight += 1;
+		});
+		
+		// Add height for streaming content
+		if (streamingContent) {
+			totalHeight += 2 + Math.ceil(streamingContent.length / 80) + 1;
+		}
+		
+		// Add height for current tool calls
+		if (!streamingContent && toolCalls.length > 0) {
+			totalHeight += toolCalls.length * 3;
+		}
+		
+		// Add height for error
+		if (error) {
+			totalHeight += 2;
+		}
+		
+		return totalHeight;
+	}, [messages, streamingContent, toolCalls, error]);
+	
+	// Handle keyboard input for scrolling
+	useInput((input, key) => {
+		if (!isProcessing) {
+			const totalHeight = calculateTotalHeight();
+			const maxScroll = Math.max(0, totalHeight - viewportHeight + 5); // Leave some buffer
+			
+			if (key.upArrow || input === 'k') {
+				// Scroll up
+				setScrollOffset(prev => Math.max(0, prev - 1));
+			} else if (key.downArrow || input === 'j') {
+				// Scroll down
+				setScrollOffset(prev => Math.min(maxScroll, prev + 1));
+			} else if (key.pageUp) {
+				// Page up
+				setScrollOffset(prev => Math.max(0, prev - viewportHeight));
+			} else if (key.pageDown) {
+				// Page down
+				setScrollOffset(prev => Math.min(maxScroll, prev + viewportHeight));
+			} else if (input === 'g') {
+				// Go to top
+				setScrollOffset(0);
+			} else if (input === 'G') {
+				// Go to bottom
+				setScrollOffset(maxScroll);
+			}
+		}
+	});
+	
+	// Auto-scroll to bottom when new messages arrive
+	useEffect(() => {
+		const totalHeight = calculateTotalHeight();
+		const maxScroll = Math.max(0, totalHeight - viewportHeight + 5);
+		
+		// Only auto-scroll if we're already at or near the bottom
+		if (scrollOffset >= maxScroll - 5) {
+			setScrollOffset(maxScroll);
+		}
+	}, [messages, streamingContent, toolCalls, calculateTotalHeight, viewportHeight, scrollOffset]);
 
 	// Handle message submission
 	const handleSubmit = useCallback(async () => {
@@ -806,6 +1042,14 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 • /clear - Clear the chat history
 • /exit or /quit - Exit the chat
 • /help - Show this help message
+
+Scrolling:
+• ↑/k - Scroll up one line
+• ↓/j - Scroll down one line
+• Page Up - Scroll up one page
+• Page Down - Scroll down one page
+• g - Go to top
+• G - Go to bottom
 
 You can ask me about:
 • Task management and organization
@@ -920,37 +1164,14 @@ You can ask me about:
 				paddingX={1}
 				overflow="hidden"
 			>
-				{messages.map((msg) => (
-					<Message key={msg.id} message={msg} />
-				))}
-				
-				{/* Streaming message */}
-				{streamingContent && (
-					<Message
-						message={{
-							role: 'assistant',
-							content: streamingContent,
-							metadata: { toolCalls }
-						}}
-						isStreaming={true}
-					/>
-				)}
-
-				{/* Current tool calls */}
-				{!streamingContent && toolCalls.length > 0 && (
-					<Box flexDirection="column" marginLeft={3}>
-						{toolCalls.map((toolCall, idx) => (
-							<ToolCallDisplay key={idx} toolCall={toolCall} />
-						))}
-					</Box>
-				)}
-
-				{/* Error display */}
-				{error && (
-					<Box marginTop={1}>
-						<Text color={theme.error}>❌ Error: {error}</Text>
-					</Box>
-				)}
+				<ScrollableMessages
+					messages={messages}
+					streamingContent={streamingContent}
+					toolCalls={toolCalls}
+					error={error}
+					scrollOffset={scrollOffset}
+					height={viewportHeight}
+				/>
 			</Box>
 
 			{/* Input area */}
@@ -981,9 +1202,10 @@ You can ask me about:
 				<Text color={theme.textDim}>
 					{isProcessing && 'AI is processing...'}
 					{!isProcessing && messages.length > 0 && `${messages.length} messages`}
+					{!isProcessing && scrollOffset > 0 && ` (scrolled)`}
 				</Text>
 				<Text color={theme.textDim}>
-					/clear: Clear chat | /exit: Exit
+					↑↓/jk: Scroll | /clear | /exit
 				</Text>
 			</Box>
 		</Box>
