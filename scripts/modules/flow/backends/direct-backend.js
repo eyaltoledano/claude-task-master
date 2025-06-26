@@ -3,6 +3,9 @@ import { findProjectRoot } from '../../utils.js';
 import { createLogger } from '../../../../mcp-server/src/logger.js';
 import path from 'path';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+import { exec, execSync } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
 
 // Import direct functions
 import { listTasksDirect } from '../../../../mcp-server/src/core/direct-functions/list-tasks.js';
@@ -1032,8 +1035,38 @@ export class DirectBackend extends FlowBackend {
 				};
 			}
 
+			// Get all tasks to check for subtasks
+			const tasksResult = await this.listTasks();
+			const allTaskIds = new Set();
+
+			// Process each task ID and check for subtasks
+			for (const taskId of taskIds) {
+				const taskIdStr = String(taskId);
+				allTaskIds.add(taskIdStr);
+
+				// If it's not already a subtask, check if it has subtasks
+				if (!taskIdStr.includes('.')) {
+					const parentTask = tasksResult.tasks.find(
+						(t) => t.id.toString() === taskIdStr
+					);
+					if (
+						parentTask &&
+						parentTask.subtasks &&
+						parentTask.subtasks.length > 0
+					) {
+						// If includeSubtasks option is not explicitly false, add all subtasks
+						if (options.includeSubtasks !== false) {
+							for (const subtask of parentTask.subtasks) {
+								const subtaskId = `${taskIdStr}.${subtask.id}`;
+								allTaskIds.add(subtaskId);
+							}
+						}
+					}
+				}
+			}
+
 			// Parse task IDs to determine type
-			const linkedTasks = taskIds.map((id) => {
+			const linkedTasks = Array.from(allTaskIds).map((id) => {
 				const isSubtask = id.includes('.');
 				return {
 					id,
@@ -1075,7 +1108,9 @@ export class DirectBackend extends FlowBackend {
 
 			return {
 				success: true,
-				linkedTasks: config.worktrees[worktreeName].linkedTasks
+				linkedTasks: config.worktrees[worktreeName].linkedTasks,
+				addedCount: newTasks.length,
+				totalCount: config.worktrees[worktreeName].linkedTasks.length
 			};
 		} catch (error) {
 			return {
@@ -1090,26 +1125,67 @@ export class DirectBackend extends FlowBackend {
 			const config = await this.getWorktreesConfig();
 
 			if (!config.worktrees[worktreeName]) {
-				return {
-					success: false,
-					error: `No task links found for worktree '${worktreeName}'`
-				};
+				throw new Error(
+					`Worktree '${worktreeName}' not found in configuration`
+				);
 			}
 
-			// Remove the task
+			// Convert taskId to string for consistent comparison
+			const taskIdStr = String(taskId);
+
+			// Validate task/subtask exists
+			const tasksResult = await this.listTasks();
+			let taskFound = false;
+
+			// Check if it's a subtask (contains a dot)
+			if (taskIdStr.includes('.')) {
+				const [parentId, subtaskIndex] = taskIdStr.split('.');
+				const parentTask = tasksResult.tasks.find(
+					(t) => t.id.toString() === parentId
+				);
+				if (parentTask && parentTask.subtasks) {
+					const subtask = parentTask.subtasks.find(
+						(st) => st.id.toString() === subtaskIndex
+					);
+					if (subtask) taskFound = true;
+				}
+			} else {
+				// It's a regular task
+				taskFound = tasksResult.tasks.some(
+					(t) => t.id.toString() === taskIdStr
+				);
+			}
+
+			if (!taskFound) {
+				throw new Error(`Task '${taskIdStr}' not found`);
+			}
+
+			// Remove the task ID from the worktree's task list
+			const initialLength = config.worktrees[worktreeName].linkedTasks.length;
 			config.worktrees[worktreeName].linkedTasks = config.worktrees[
 				worktreeName
-			].linkedTasks.filter((t) => t.id !== taskId);
-			config.worktrees[worktreeName].lastUpdated = new Date().toISOString();
+			].linkedTasks.filter((task) => task.id !== taskIdStr);
 
-			// Save config
+			if (config.worktrees[worktreeName].linkedTasks.length === initialLength) {
+				throw new Error(
+					`Task '${taskIdStr}' is not linked to worktree '${worktreeName}'`
+				);
+			}
+
+			// Save updated config
 			await this.saveWorktreesConfig(config);
 
-			return { success: true };
+			// Sync to Git notes
+			await this.syncWorktreeToGitNotes(worktreeName);
+
+			return {
+				success: true,
+				message: `Task ${taskIdStr} unlinked from worktree ${worktreeName}`
+			};
 		} catch (error) {
 			return {
 				success: false,
-				error: `Failed to unlink task: ${error.message}`
+				error: error.message
 			};
 		}
 	}
@@ -1280,6 +1356,277 @@ export class DirectBackend extends FlowBackend {
 			return {
 				success: false,
 				error: `Failed to cleanup worktree links: ${error.message}`
+			};
+		}
+	}
+
+	// Claude Code Integration
+	async claudeCodeQuery(prompt, options = {}) {
+		try {
+			// Dynamic import to avoid loading unless needed
+			const { query } = await import('@anthropic-ai/claude-code');
+			const messages = [];
+
+			const queryOptions = {
+				prompt,
+				abortController: options.abortController || new AbortController(),
+				options: {
+					maxTurns: options.maxTurns || 3,
+					cwd: options.cwd || this.projectRoot,
+					allowedTools: options.allowedTools || ['Read', 'Write', 'Bash'],
+					permissionMode: options.permissionMode || 'acceptEdits',
+					outputFormat: 'stream-json' // Use streaming JSON for better integration
+				}
+			};
+
+			// Add system prompt if provided
+			if (options.systemPrompt) {
+				queryOptions.options.systemPrompt = options.systemPrompt;
+			}
+
+			// Add append system prompt if provided
+			if (options.appendSystemPrompt) {
+				queryOptions.options.appendSystemPrompt = options.appendSystemPrompt;
+			}
+
+			for await (const message of query(queryOptions)) {
+				messages.push(message);
+
+				// Allow real-time message handling via callback
+				if (options.onMessage) {
+					await options.onMessage(message);
+				}
+			}
+
+			return {
+				success: true,
+				messages,
+				sessionId: messages.find((m) => m.session_id)?.session_id
+			};
+		} catch (error) {
+			console.error('Claude Code query error:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async claudeCodeContinue(prompt, options = {}) {
+		try {
+			const { query } = await import('@anthropic-ai/claude-code');
+			const messages = [];
+
+			const queryOptions = {
+				prompt,
+				abortController: options.abortController || new AbortController(),
+				options: {
+					...options,
+					continue: true,
+					outputFormat: 'stream-json'
+				}
+			};
+
+			for await (const message of query(queryOptions)) {
+				messages.push(message);
+
+				if (options.onMessage) {
+					await options.onMessage(message);
+				}
+			}
+
+			return {
+				success: true,
+				messages,
+				sessionId: messages.find((m) => m.session_id)?.session_id
+			};
+		} catch (error) {
+			console.error('Claude Code continue error:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async claudeCodeResume(sessionId, prompt, options = {}) {
+		try {
+			const { query } = await import('@anthropic-ai/claude-code');
+			const messages = [];
+
+			const queryOptions = {
+				prompt,
+				abortController: options.abortController || new AbortController(),
+				options: {
+					...options,
+					resume: sessionId,
+					outputFormat: 'stream-json'
+				}
+			};
+
+			for await (const message of query(queryOptions)) {
+				messages.push(message);
+
+				if (options.onMessage) {
+					await options.onMessage(message);
+				}
+			}
+
+			return {
+				success: true,
+				messages,
+				sessionId
+			};
+		} catch (error) {
+			console.error('Claude Code resume error:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Get Claude Code configuration
+	async getClaudeCodeConfig() {
+		try {
+			const configPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'config.json'
+			);
+			const config = await fs.readFile(configPath, 'utf8');
+			const parsed = JSON.parse(config);
+
+			return {
+				success: true,
+				config: parsed.claudeCode || {
+					enabled: false,
+					permissionMode: 'acceptEdits',
+					defaultMaxTurns: 3,
+					allowedTools: ['Read', 'Write', 'Bash']
+				}
+			};
+		} catch (error) {
+			return {
+				success: true,
+				config: {
+					enabled: false,
+					permissionMode: 'acceptEdits',
+					defaultMaxTurns: 3,
+					allowedTools: ['Read', 'Write', 'Bash']
+				}
+			};
+		}
+	}
+
+	// Save Claude Code configuration
+	async saveClaudeCodeConfig(claudeConfig) {
+		try {
+			const configPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'config.json'
+			);
+			let config = {};
+
+			try {
+				const existing = await fs.readFile(configPath, 'utf8');
+				config = JSON.parse(existing);
+			} catch {
+				// Config doesn't exist yet
+			}
+
+			config.claudeCode = claudeConfig;
+
+			await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+
+			return { success: true };
+		} catch (error) {
+			console.error('Error saving Claude Code config:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Get Claude Code sessions
+	async getClaudeCodeSessions() {
+		try {
+			const sessionsPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			try {
+				const data = await fs.readFile(sessionsPath, 'utf8');
+				return {
+					success: true,
+					sessions: JSON.parse(data)
+				};
+			} catch {
+				// No sessions file yet
+				return {
+					success: true,
+					sessions: []
+				};
+			}
+		} catch (error) {
+			console.error('Error getting Claude sessions:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Save Claude Code session
+	async saveClaudeCodeSession(sessionData) {
+		try {
+			const sessionsPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+			let sessions = [];
+
+			try {
+				const existing = await fs.readFile(sessionsPath, 'utf8');
+				sessions = JSON.parse(existing);
+			} catch {
+				// No sessions file yet
+			}
+
+			// Add or update session
+			const existingIndex = sessions.findIndex(
+				(s) => s.sessionId === sessionData.sessionId
+			);
+			if (existingIndex >= 0) {
+				sessions[existingIndex] = {
+					...sessions[existingIndex],
+					...sessionData
+				};
+			} else {
+				sessions.push({
+					...sessionData,
+					createdAt: new Date().toISOString()
+				});
+			}
+
+			// Keep only last 50 sessions
+			if (sessions.length > 50) {
+				sessions = sessions.slice(-50);
+			}
+
+			await fs.writeFile(sessionsPath, JSON.stringify(sessions, null, 2));
+
+			return { success: true };
+		} catch (error) {
+			console.error('Error saving Claude session:', error);
+			return {
+				success: false,
+				error: error.message
 			};
 		}
 	}

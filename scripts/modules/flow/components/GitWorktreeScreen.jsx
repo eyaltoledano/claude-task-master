@@ -287,28 +287,14 @@ export default function GitWorktreeScreen({ backend, onBack, onExit }) {
 		return (
 			<WorktreeDetailsModal
 				worktree={worktreeDetails}
-				linkedTasks={worktreeDetails.linkedTasks || []}
+				backend={backend}
 				onClose={() => {
 					setShowDetailsModal(false);
 					setWorktreeDetails(null);
+					loadWorktrees(); // Refresh to update task counts
 				}}
-				onRemove={() => {
+				onDelete={() => {
 					setConfirmDelete(worktreeDetails);
-				}}
-				onToggleLock={() => handleToggleLock(worktreeDetails)}
-				onLinkTasks={async () => {
-					// Load available tasks
-					try {
-						const tasks = await backend.getTasks();
-						setAvailableTasks(tasks);
-						setShowLinkTasksModal(true);
-						setShowDetailsModal(false);
-					} catch (err) {
-						setToast({
-							message: `Failed to load tasks: ${err.message}`,
-							type: 'error'
-						});
-					}
 				}}
 			/>
 		);
@@ -317,39 +303,12 @@ export default function GitWorktreeScreen({ backend, onBack, onExit }) {
 	if (showLinkTasksModal && worktreeDetails) {
 		return (
 			<LinkTasksModal
-				worktreeName={worktreeDetails.name}
-				availableTasks={availableTasks}
-				onSubmit={async (taskIds) => {
-					setIsLoading(true);
-					try {
-						const result = await backend.linkWorktreeToTasks(
-							worktreeDetails.name,
-							taskIds,
-							{ syncToGit: true }
-						);
-						if (result.success) {
-							setToast({
-								message: `Linked ${taskIds.length} task(s) to worktree`,
-								type: 'success'
-							});
-							// Reload worktrees to update task counts
-							await loadWorktrees();
-							// Reload details to show new linked tasks
-							await loadWorktreeDetails(worktreeDetails);
-						} else {
-							setToast({ message: result.error, type: 'error' });
-						}
-					} catch (err) {
-						setToast({ message: err.message, type: 'error' });
-					} finally {
-						setIsLoading(false);
-						setShowLinkTasksModal(false);
-						setShowDetailsModal(true);
-					}
-				}}
-				onCancel={() => {
+				worktree={worktreeDetails}
+				backend={backend}
+				onClose={() => {
 					setShowLinkTasksModal(false);
 					setShowDetailsModal(true);
+					loadWorktrees(); // Refresh to update task counts
 				}}
 			/>
 		);

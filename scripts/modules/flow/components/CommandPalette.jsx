@@ -101,6 +101,12 @@ export function CommandPalette() {
 			key: 'd'
 		},
 		{
+			name: 'Claude Code',
+			command: '/claude',
+			description: 'Claude Code assistant',
+			key: 'l'
+		},
+		{
 			name: 'Exit',
 			command: '/exit',
 			description: 'Exit application',

@@ -8,6 +8,7 @@ import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
+import ClaudeCodeTaskModal from './ClaudeCodeTaskModal.jsx';
 
 export function TaskManagementScreen() {
 	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
@@ -26,6 +27,9 @@ export function TaskManagementScreen() {
 	const [toast, setToast] = useState(null);
 	const [isExpanding, setIsExpanding] = useState(false);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
+	const [showExpandModal, setShowExpandModal] = useState(false);
+	const [showClaudeCodeModal, setShowClaudeCodeModal] = useState(false);
+	const [expandForce, setExpandForce] = useState(false);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -234,6 +238,9 @@ export function TaskManagementScreen() {
 			}
 		} else if (input === '/') {
 			setIsSearching(true);
+		} else if (input === 'l' && selectedTask) {
+			// Claude Code implementation
+			setShowClaudeCodeModal(true);
 		}
 	});
 
@@ -603,8 +610,8 @@ export function TaskManagementScreen() {
 								{contentLines.length > DETAIL_VISIBLE_ROWS
 									? '↑↓ scroll • '
 									: ''}
-								{selectedTask.subtasks?.length ? '' : 'e expand • '}
-								ESC back
+								{selectedTask.subtasks?.length ? '' : 'e expand • '}l Claude
+								Code • ESC back
 							</>
 						)}
 					</Text>
@@ -615,6 +622,15 @@ export function TaskManagementScreen() {
 						message={toast.message}
 						type={toast.type}
 						onDismiss={() => setToast(null)}
+					/>
+				)}
+
+				{showClaudeCodeModal && selectedTask && (
+					<ClaudeCodeTaskModal
+						task={selectedTask}
+						subtask={selectedSubtask}
+						backend={backend}
+						onClose={() => setShowClaudeCodeModal(false)}
 					/>
 				)}
 			</Box>

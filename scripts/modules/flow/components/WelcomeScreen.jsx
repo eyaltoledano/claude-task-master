@@ -151,6 +151,15 @@ export function WelcomeScreen() {
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
+								<Text color={theme.accent}>/claude</Text>
+							</Box>
+							<Box width={34}>
+								<Text color={theme.text}>Claude Code assistant</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x l</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={12}>
 								<Text color={theme.accent}>/status</Text>
 							</Box>
 							<Box width={34}>

@@ -30,6 +30,7 @@ import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
 import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
+import ClaudeCodeScreen from './components/ClaudeCodeScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -75,6 +76,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			{ name: '/trees', description: 'Manage Git worktrees' },
+			{ name: '/claude', description: 'Claude Code assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
@@ -344,7 +346,10 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('chat');
 					break;
 				case 'trees':
-					setCurrentScreen('trees');
+					setCurrentScreen('worktrees');
+					break;
+				case 'claude':
+					setCurrentScreen('claude-code');
 					break;
 				case 'exit':
 				case 'quit':
@@ -454,7 +459,10 @@ function FlowApp({ backend, options = {} }) {
 						setCurrentScreen('chat');
 						break;
 					case 'w':
-						setCurrentScreen('trees');
+						setCurrentScreen('worktrees');
+						break;
+					case 'l':
+						setCurrentScreen('claude-code');
 						break;
 					case 'v':
 						setCurrentScreen('mcp-management');
@@ -576,7 +584,8 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'tasks' &&
 				currentScreen !== 'chat' &&
 				currentScreen !== 'status' &&
-				currentScreen !== 'trees'
+				currentScreen !== 'worktrees' &&
+				currentScreen !== 'claude-code'
 		}
 	);
 
@@ -676,11 +685,15 @@ function FlowApp({ backend, options = {} }) {
 						projectRoot={currentBackend.projectRoot}
 						onExit={() => setCurrentScreen('welcome')}
 					/>
-				) : currentScreen === 'trees' ? (
+				) : currentScreen === 'worktrees' ? (
 					<GitWorktreeScreen
 						backend={currentBackend}
 						onBack={() => setCurrentScreen('welcome')}
-						onExit={() => exit()}
+					/>
+				) : currentScreen === 'claude-code' ? (
+					<ClaudeCodeScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
 					/>
 				) : currentScreen === 'mcp-management' ? (
 					<MCPManagementScreen />
