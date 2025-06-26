@@ -32,6 +32,8 @@ export function TaskManagementScreen() {
 	const [expandForce, setExpandForce] = useState(false);
 	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
+	const [complexityReport, setComplexityReport] = useState(null);
+	const [loadingComplexity, setLoadingComplexity] = useState(false);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -41,6 +43,25 @@ export function TaskManagementScreen() {
 	useEffect(() => {
 		reloadTasks();
 	}, []);
+
+	// Load complexity report when tag changes or on mount
+	useEffect(() => {
+		const loadComplexityReport = async () => {
+			setLoadingComplexity(true);
+			try {
+				const report = await backend.getComplexityReport(currentTag);
+				setComplexityReport(report);
+			} catch (error) {
+				// Silently fail - complexity report is optional
+				console.debug('No complexity report available:', error.message);
+				setComplexityReport(null);
+			} finally {
+				setLoadingComplexity(false);
+			}
+		};
+
+		loadComplexityReport();
+	}, [currentTag, backend]);
 
 	// Ensure proper re-render when viewMode changes
 	useEffect(() => {
@@ -298,14 +319,15 @@ export function TaskManagementScreen() {
 		}
 	};
 
-	const expandTask = async (withResearch) => {
+	const expandTask = async (options) => {
 		setShowExpandOptions(false);
 		setIsExpanding(true);
 
 		try {
 			await backend.expandTask(selectedTask.id, {
-				research: withResearch,
-				force: false
+				research: options.research,
+				force: false,
+				num: options.num
 			});
 
 			// Reload tasks and refresh the detail view
@@ -314,7 +336,7 @@ export function TaskManagementScreen() {
 			setSelectedTask(updatedTask);
 
 			setToast({
-				message: `Task expanded ${withResearch ? 'with research' : 'without research'}`,
+				message: `Task expanded into ${options.num} subtasks ${options.research ? 'with research' : 'without research'}`,
 				type: 'success'
 			});
 		} catch (error) {
@@ -404,6 +426,41 @@ export function TaskManagementScreen() {
 
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
+		// Determine default number of subtasks based on complexity report
+		let defaultSubtaskNum = 5; // fallback default
+		let fromComplexityReport = false;
+
+		// First, try to get from complexity report
+		if (complexityReport?.complexityAnalysis) {
+			const taskAnalysis = complexityReport.complexityAnalysis.find(
+				(analysis) => analysis.taskId === selectedTask.id
+			);
+
+			if (taskAnalysis?.recommendedSubtasks) {
+				defaultSubtaskNum = taskAnalysis.recommendedSubtasks;
+				fromComplexityReport = true;
+			} else if (taskAnalysis?.complexityScore) {
+				// Estimate based on complexity score if recommendedSubtasks not available
+				const complexityScore = parseInt(taskAnalysis.complexityScore, 10);
+				if (!isNaN(complexityScore)) {
+					// Higher complexity = more subtasks (3-10 range)
+					defaultSubtaskNum = Math.min(
+						10,
+						Math.max(3, Math.round(complexityScore * 0.8))
+					);
+				}
+			}
+		} else if (selectedTask.complexity) {
+			// Fallback to task's own complexity field if no report
+			const complexityScore = parseInt(selectedTask.complexity, 10);
+			if (!isNaN(complexityScore)) {
+				defaultSubtaskNum = Math.min(
+					10,
+					Math.max(3, Math.round(complexityScore * 0.8))
+				);
+			}
+		}
+
 		// Calculate total content lines for detail view
 		let contentLines = [];
 
@@ -538,11 +595,13 @@ export function TaskManagementScreen() {
 				{showExpandOptions && (
 					<Box marginBottom={1} marginLeft={2}>
 						<ExpandModal
-							onSelect={(withResearch) => {
+							onSelect={(options) => {
 								setShowExpandOptions(false);
-								expandTask(withResearch);
+								expandTask(options);
 							}}
 							onClose={() => setShowExpandOptions(false)}
+							defaultNum={defaultSubtaskNum}
+							fromComplexityReport={fromComplexityReport}
 						/>
 					</Box>
 				)}
