@@ -1,6 +1,5 @@
 import { FlowBackend } from '../backend-interface.js';
 import { findProjectRoot } from '../../utils.js';
-import { createLogger } from '../../../../mcp-server/src/logger.js';
 import path from 'path';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 import { exec, execSync } from 'child_process';
@@ -57,7 +56,17 @@ export class DirectBackend extends FlowBackend {
 		super(options);
 		this.projectRoot =
 			options.projectRoot || findProjectRoot() || process.cwd();
-		this.log = createLogger({ console: false });
+
+		// Create a custom logger that suppresses info and debug messages for TUI
+		this.log = {
+			debug: () => {}, // Suppress debug messages
+			info: () => {}, // Suppress info messages
+			warn: (...args) => console.warn(...args),
+			error: (...args) => console.error(...args),
+			success: () => {}, // Suppress success messages
+			log: () => {} // Suppress generic log messages
+		};
+
 		this.tasksJsonPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
 		// Simulated session for API key access
 		this.session = options.session || {};
@@ -590,11 +599,7 @@ export class DirectBackend extends FlowBackend {
 	// Git worktree management methods
 	async isGitRepository() {
 		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			await execAsync('git rev-parse --is-inside-work-tree', {
+			const result = await promisify(exec)('git rev-parse --git-dir', {
 				cwd: this.projectRoot
 			});
 			return true;
@@ -605,85 +610,76 @@ export class DirectBackend extends FlowBackend {
 
 	async getRepositoryRoot() {
 		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			const { stdout } = await execAsync('git rev-parse --show-toplevel', {
+			const result = await promisify(exec)('git rev-parse --show-toplevel', {
 				cwd: this.projectRoot
 			});
-			return stdout.trim();
+			return result.stdout.trim();
 		} catch (error) {
-			throw new Error('Failed to get repository root: ' + error.message);
+			throw new Error(`Not a git repository: ${error.message}`);
 		}
 	}
 
 	async listWorktrees() {
+		// Check if it's a git repository
+		const isGit = await this.isGitRepository();
+		if (!isGit) {
+			return [];
+		}
+
 		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Pre-flight check
-			if (!(await this.isGitRepository())) {
-				throw new Error('Not in a Git repository');
-			}
-
-			const { stdout } = await execAsync('git worktree list --porcelain', {
+			const result = await promisify(exec)('git worktree list --porcelain', {
 				cwd: this.projectRoot
 			});
 
 			const worktrees = [];
-			const lines = stdout.trim().split('\n');
+			const lines = result.stdout.trim().split('\n');
 			let currentWorktree = {};
 
 			for (const line of lines) {
-				if (line === '') {
-					if (Object.keys(currentWorktree).length > 0) {
+				if (line.startsWith('worktree ')) {
+					if (currentWorktree.path) {
 						worktrees.push(currentWorktree);
-						currentWorktree = {};
 					}
-				} else if (line.startsWith('worktree ')) {
-					currentWorktree.path = line.substring(9);
-					currentWorktree.name = path.basename(currentWorktree.path);
+					currentWorktree = {
+						path: line.substring(9),
+						isMain: false,
+						isCurrent: false
+					};
 				} else if (line.startsWith('HEAD ')) {
 					currentWorktree.head = line.substring(5);
 				} else if (line.startsWith('branch ')) {
 					currentWorktree.branch = line.substring(7).replace('refs/heads/', '');
-				} else if (line === 'detached') {
-					currentWorktree.isDetached = true;
 				} else if (line === 'bare') {
 					currentWorktree.isBare = true;
+				} else if (line === '') {
+					// Empty line marks end of worktree entry
+					if (currentWorktree.path) {
+						worktrees.push(currentWorktree);
+						currentWorktree = {};
+					}
 				}
 			}
 
-			// Add last worktree if exists
-			if (Object.keys(currentWorktree).length > 0) {
+			// Don't forget the last one
+			if (currentWorktree.path) {
 				worktrees.push(currentWorktree);
 			}
 
-			// Mark current worktree
-			const currentPath = await this.getRepositoryRoot();
-
-			// Check lock status for each worktree
-			const fs = await import('fs');
-			for (const wt of worktrees) {
-				wt.isCurrent = wt.path === currentPath;
-
-				// Check if worktree is locked
-				const lockFile = path.join(
-					currentPath,
-					'.git',
-					'worktrees',
-					path.basename(wt.path),
-					'locked'
-				);
-				wt.isLocked = fs.default.existsSync(lockFile);
+			// Mark main and current worktrees
+			if (worktrees.length > 0) {
+				worktrees[0].isMain = true;
+				const currentPath = await this.getRepositoryRoot();
+				worktrees.forEach((wt) => {
+					if (wt.path === currentPath) {
+						wt.isCurrent = true;
+					}
+				});
 			}
 
 			return worktrees;
 		} catch (error) {
-			throw new Error('Failed to list worktrees: ' + error.message);
+			console.error('Error listing worktrees:', error);
+			return [];
 		}
 	}
 
