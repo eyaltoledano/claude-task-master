@@ -21,8 +21,7 @@ export const CUSTOM_PROVIDERS = {
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
 	CLAUDE_CODE: 'claude-code',
-	MCP: 'mcp',
-	MCP_AI_SDK: 'mcp-ai-sdk'
+	MCP: 'mcp'
 };
 
 // Custom providers array (for backward compatibility and iteration)

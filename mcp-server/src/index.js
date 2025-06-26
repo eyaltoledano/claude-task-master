@@ -6,8 +6,7 @@ import fs from 'fs';
 import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
-import MCPRemoteProvider from './providers/mcp-remote-provider.js';
-import { MCPAISDKProvider } from './providers/mcp-ai-sdk-provider.js';
+import { MCPProvider } from './providers/mcp-provider.js';
 
 // Load environment variables
 dotenv.config();
@@ -96,22 +95,17 @@ class TaskMasterMCPServer {
 				return;
 			}
 
-			// Register BOTH providers with the same MCP session
+			// Register MCP provider with the Provider Registry
 			
-			// 1. Register existing MCPRemoteProvider (keep existing functionality)
-			const remoteProvider = new MCPRemoteProvider(this.server);
-			remoteProvider.setSession(session);
-			
-			// 2. Register NEW AI SDK provider
-			const aiSdkProvider = new MCPAISDKProvider();
-			aiSdkProvider.setSession(session); // Same MCP session, different provider
+			// Register the unified MCP provider
+			const mcpProvider = new MCPProvider();
+			mcpProvider.setSession(session);
 
-			// Register both providers with the registry
+			// Register provider with the registry
 			const providerRegistry = ProviderRegistry.getInstance();
-			providerRegistry.registerProvider('mcp', remoteProvider); // Existing
-			providerRegistry.registerProvider('mcp-ai-sdk', aiSdkProvider); // NEW
+			providerRegistry.registerProvider('mcp', mcpProvider);
 
-			this.logger.info('Both MCP providers (remote and AI SDK) registered with Provider Registry');
+			this.logger.info('MCP provider registered with Provider Registry');
 		} else {
 			this.logger.warn(
 				'No MCP sessions available, providers not registered'

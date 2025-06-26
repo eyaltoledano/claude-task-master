@@ -1,14 +1,14 @@
-# MCP AI SDK Provider Implementation
+# MCP Provider Implementation
 
 ## Overview
 
-The MCP AI SDK Provider creates a new AI SDK-compliant custom provider that integrates with the existing Task Master MCP server infrastructure. This provider enables AI operations through MCP session sampling while following modern AI SDK patterns and **includes full support for structured object generation (generateObject)** for schema-driven features like PRD parsing and task creation.
+The MCP Provider creates a modern AI SDK-compliant custom provider that integrates with the existing Task Master MCP server infrastructure. This provider enables AI operations through MCP session sampling while following modern AI SDK patterns and **includes full support for structured object generation (generateObject)** for schema-driven features like PRD parsing and task creation.
 
 ## Architecture
 
 ### Components
 
-1. **MCPAISDKProvider** (`mcp-server/src/providers/mcp-ai-sdk-provider.js`)
+1. **MCPProvider** (`mcp-server/src/providers/mcp-provider.js`)
    - Main provider class following Claude Code pattern
    - Session-based provider (no API key required)
    - Registers with provider registry on MCP server connect
@@ -32,7 +32,7 @@ The MCP AI SDK Provider creates a new AI SDK-compliant custom provider that inte
 MCP Client Connect → MCP Server → registerRemoteProvider()
                                         ↓
                            MCPRemoteProvider (existing)
-                           MCPAISDKProvider (new) 
+                           MCPProvider 
                                         ↓
                                Provider Registry
                                         ↓
@@ -52,16 +52,12 @@ The MCP server registers **both** providers when a client connects:
 registerRemoteProvider(session) {
   if (session?.clientCapabilities?.sampling) {
     // Register existing provider
-    const remoteProvider = new MCPRemoteProvider(this.server);
-    remoteProvider.setSession(session);
-    
-    // Register new AI SDK provider
-    const aiSdkProvider = new MCPAISDKProvider();
-    aiSdkProvider.setSession(session); // Same session, different provider
+    // Register unified MCP provider
+    const mcpProvider = new MCPProvider();
+    mcpProvider.setSession(session);
     
     const providerRegistry = ProviderRegistry.getInstance();
-    providerRegistry.registerProvider('mcp', remoteProvider);
-    providerRegistry.registerProvider('mcp-ai-sdk', aiSdkProvider);
+    providerRegistry.registerProvider('mcp', mcpProvider);
   }
 }
 ```
@@ -74,9 +70,9 @@ The AI services layer includes the new provider:
 // scripts/modules/ai-services-unified.js
 const PROVIDERS = {
   // ... other providers
-  'mcp-ai-sdk': () => {
+  'mcp': () => {
     const providerRegistry = ProviderRegistry.getInstance();
-    return providerRegistry.getProvider('mcp-ai-sdk');
+    return providerRegistry.getProvider('mcp');
   }
 };
 ```
@@ -97,7 +93,7 @@ const result = convertFromMCPFormat(response);
 
 ### Overview
 
-The MCP AI SDK Provider includes full support for structured object generation, enabling schema-driven features like PRD parsing, task creation, and any operations requiring validated JSON outputs.
+The MCP Provider includes full support for structured object generation, enabling schema-driven features like PRD parsing, task creation, and any operations requiring validated JSON outputs.
 
 ### Architecture
 
@@ -247,7 +243,7 @@ Add to supported models configuration:
 
 ```json
 {
-  "mcp-ai-sdk": [
+  "mcp": [
     {
       "id": "claude-3-5-sonnet-20241022",
       "swe_score": 0.623,
@@ -263,7 +259,7 @@ Add to supported models configuration:
 
 ```bash
 # Set provider for main role
-tm models set-main --provider mcp-ai-sdk --model claude-3-5-sonnet-20241022
+tm models set-main --provider mcp --model claude-3-5-sonnet-20241022
 
 # Use in task operations
 tm add-task "Create user authentication system"
@@ -272,7 +268,7 @@ tm add-task "Create user authentication system"
 ### Programmatic Usage
 
 ```javascript
-const provider = registry.getProvider('mcp-ai-sdk');
+const provider = registry.getProvider('mcp');
 if (provider && provider.hasValidSession()) {
   const client = provider.getClient({ temperature: 0.7 });
   const model = client({ modelId: 'claude-3-5-sonnet-20241022' });
@@ -299,7 +295,7 @@ node test-mcp-components.js
 1. Start MCP server
 2. Connect Claude client
 3. Verify both providers are registered
-4. Test AI operations through mcp-ai-sdk provider
+4. Test AI operations through mcp provider
 
 ### Validation Checklist
 
@@ -324,7 +320,7 @@ node test-mcp-components.js
 ### Provider Not Found
 
 ```
-Error: Provider "mcp-ai-sdk" not found in registry
+Error: Provider "mcp" not found in registry
 ```
 
 **Solution**: Ensure MCP server is running and client is connected
@@ -332,7 +328,7 @@ Error: Provider "mcp-ai-sdk" not found in registry
 ### Session Errors
 
 ```
-Error: MCP AI SDK Provider requires active MCP session
+Error: MCP Provider requires active MCP session
 ```
 
 **Solution**: Check MCP client connection and session capabilities

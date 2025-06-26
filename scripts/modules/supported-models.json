@@ -680,21 +680,5 @@
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 100000
 		}
-	],
-	"mcp-ai-sdk": [
-		{
-			"id": "claude-3-5-sonnet-20241022",
-			"swe_score": 0.623,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 200000
-		},
-		{
-			"id": "claude-3-opus-20240229",
-			"swe_score": 0.725,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 200000
-		}
 	]
 }

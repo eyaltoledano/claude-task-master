@@ -16,7 +16,7 @@ Welcome to the Task Master documentation. Use the links below to navigate to the
 ## Advanced Features
 
 - [MCP Provider Guide](mcp-provider-guide.md) - Integration with Model Context Protocol for IDE usage
-- [MCP AI SDK Provider](mcp-ai-sdk-provider.md) - Enhanced MCP provider with structured object generation
+- [MCP Provider Implementation](mcp-provider.md) - Technical documentation for the unified MCP provider
 
 ## Examples & Licensing
 

@@ -2,16 +2,15 @@
 
 ## Overview
 
-Task Master provides **two MCP-based providers** for different use cases:
+Task Master provides a **unified MCP provider** for AI operations:
 
-1. **MCP Provider** (`mcp`) - Basic text generation using MCP client sampling
-2. **MCP AI SDK Provider** (`mcp-ai-sdk`) - **Recommended** - Full AI SDK compatibility with structured object generation
+**MCP Provider** (`mcp`) - Modern AI SDK-compatible provider with full structured object generation support
 
-The MCP providers enable Task Master to act as an MCP client, using MCP servers as AI providers alongside traditional API-based providers. This integration follows the existing provider pattern and supports all standard AI operations.
+The MCP provider enables Task Master to act as an MCP client, using MCP servers as AI providers alongside traditional API-based providers. This integration follows the existing provider pattern and supports all standard AI operations including structured object generation for PRD parsing and task creation.
 
-## MCP AI SDK Provider (Recommended)
+## MCP Provider Features
 
-The **MCP AI SDK Provider** (`mcp-ai-sdk`) is the enhanced, recommended option that provides:
+The **MCP Provider** (`mcp`) provides:
 
 ✅ **Full AI SDK Compatibility** - Complete LanguageModelV1 interface implementation  
 ✅ **Structured Object Generation** - Schema-driven outputs for PRD parsing and task creation  
@@ -22,71 +21,41 @@ The **MCP AI SDK Provider** (`mcp-ai-sdk`) is the enhanced, recommended option t
 ### Quick Setup
 
 ```bash
-# Set MCP AI SDK provider for main role  
-task-master models set-main --provider mcp-ai-sdk --model claude-3-5-sonnet-20241022
+# Set MCP provider for main role  
+task-master models set-main --provider mcp --model claude-3-5-sonnet-20241022
 ```
 
-For detailed information, see [MCP AI SDK Provider Documentation](mcp-ai-sdk-provider.md).
-
-## MCP Provider (Basic)
-
-The basic **MCP Provider** (`mcp`) provides simple text generation for users who only need basic functionality.
+For detailed information, see [MCP Provider Documentation](mcp-provider.md).
 
 ## What is MCP Provider?
 
-The MCP providers allow Task Master to:
+The MCP provider allows Task Master to:
 - Connect to MCP servers/tools as AI providers
 - Use session-based authentication instead of API keys
 - Map AI operations to MCP tool calls
 - Integrate with existing role-based provider assignment
 - Maintain compatibility with fallback chains
+- Support structured object generation for schema-driven features
 
 ## Configuration
 
-### MCP AI SDK Provider Setup (Recommended)
+### MCP Provider Setup
 
-Add MCP AI SDK provider to your `.taskmaster/config.json`:
-
-```json
-{
-  "models": {
-    "main": {
-      "provider": "mcp-ai-sdk",
-      "modelId": "claude-3-5-sonnet-20241022",
-      "maxTokens": 200000,
-      "temperature": 0.2
-    },
-    "research": {
-      "provider": "mcp-ai-sdk", 
-      "modelId": "claude-3-opus-20240229",
-      "maxTokens": 200000,
-      "temperature": 0.1
-    },
-    "fallback": {
-      "provider": "anthropic",
-      "modelId": "claude-3-5-sonnet-20241022"
-    }
-  }
-}
-```
-
-### Basic MCP Provider Setup
-
-Add basic MCP provider to your `.taskmaster/config.json`:
+Add MCP provider to your `.taskmaster/config.json`:
 
 ```json
 {
   "models": {
     "main": {
       "provider": "mcp",
-      "modelId": "mcp-sampling",
-      "maxTokens": 100000,
+      "modelId": "claude-3-5-sonnet-20241022",
+      "maxTokens": 50000,
       "temperature": 0.2
     },
     "research": {
       "provider": "mcp", 
-      "modelId": "mcp-sampling",
-      "maxTokens": 100000,
+      "modelId": "claude-3-5-sonnet-20241022",
+      "maxTokens": 8700,
       "temperature": 0.1
     },
     "fallback": {
@@ -99,9 +68,19 @@ Add basic MCP provider to your `.taskmaster/config.json`:
 
 ### Available Models
 
-**MCP AI SDK Provider Models:**
+**MCP Provider Models:**
 
 - **`claude-3-5-sonnet-20241022`** - High-performance model for general tasks
+  - **SWE Score**: 0.49
+  - **Features**: Text + Object generation
+
+- **`claude-3-opus-20240229`** - Enhanced reasoning model for complex tasks  
+  - **SWE Score**: 0.725
+  - **Features**: Text + Object generation
+
+- **`mcp-sampling`** - General text generation using MCP client sampling
+  - **SWE Score**: null
+  - **Roles**: Supports main, research, and fallback roles
   - **SWE Score**: 0.49
   - **Cost**: $0 (session-based)
   - **Max Tokens**: 200,000
@@ -118,15 +97,16 @@ Add basic MCP provider to your `.taskmaster/config.json`:
 **Basic MCP Provider Models:**
 
 - **`mcp-sampling`** - General text generation using MCP client sampling
+- **`mcp-sampling`** - General text generation using MCP client sampling
   - **SWE Score**: null
-  - **Token Limits**: NA
-  - **Cost**: Requires Github account
   - **Roles**: Supports main, research, and fallback roles
 
 ### Model ID Format
 
 MCP model IDs use a simple format:
 
+- **`claude-3-5-sonnet-20241022`** - Uses Claude 3.5 Sonnet via MCP sampling
+- **`claude-3-opus-20240229`** - Uses Claude 3 Opus via MCP sampling  
 - **`mcp-sampling`** - Uses MCP client's sampling capability for text generation
 
 ## Session Requirements
@@ -210,10 +190,11 @@ task-master parse-prd requirements.txt
 ## Architecture Details
 
 ### Provider Architecture
-**MCPRemoteProvider** (`mcp-server/src/providers/mcp-remote-provider.js`)
-   - Server-side provider for Task Master's own MCP server
+**MCPProvider** (`mcp-server/src/providers/mcp-provider.js`)
+   - Modern AI SDK-compliant provider for Task Master's MCP server
    - Auto-registers when MCP sessions connect to Task Master
-   - Enables Task Master to use its own MCP session for AI operations
+   - Enables Task Master to use MCP sessions for AI operations
+   - Supports both text generation and structured object generation
 
 ### Auto-Registration Process
 
@@ -224,12 +205,12 @@ When running as an MCP server, Task Master automatically:
 server.on("connect", (event) => {
   // Check session capabilities
   if (session.clientCapabilities?.sampling) {
-    // Create and register remote provider
-    const remoteProvider = new MCPRemoteProvider(server);
-    remoteProvider.setSession(session);
+    // Create and register MCP provider
+    const mcpProvider = new MCPProvider();
+    mcpProvider.setSession(session);
     
     // Auto-register with provider registry
-    providerRegistry.registerProvider('mcp', remoteProvider);
+    providerRegistry.registerProvider('mcp', mcpProvider);
   }
 });
 ```
@@ -241,7 +222,7 @@ This enables seamless self-referential AI operations within MCP contexts.
 The MCP provider follows the same pattern as other providers:
 
 ```javascript
-class MCPRemoteProvider extends BaseAIProvider {
+class MCPProvider extends BaseAIProvider {
   // Implements generateText, generateObject
   // Uses session context instead of API keys
   // Maps operations to MCP sampling requests
@@ -256,8 +237,8 @@ The provider automatically detects MCP sampling capability when sessions connect
 // On MCP session connect
 if (session.clientCapabilities?.sampling) {
   // Auto-register MCP provider for use
-  const remoteProvider = new MCPRemoteProvider(server);
-  remoteProvider.setSession(session);
+  const mcpProvider = new MCPProvider();
+  mcpProvider.setSession(session);
 }
 ```
 
@@ -275,8 +256,8 @@ AI operations use MCP sampling with different levels of support:
 
 **Important**: The MCP provider has **no support** for text streaming:
 
-**MCPRemoteProvider** (Task Master's MCP server):
-- **❌ No Streaming Support**: Throws error "MCP Remote Provider does not support streaming text, use generateText instead"  
+**MCPProvider**:
+- **❌ No Streaming Support**: Throws error "MCP Provider does not support streaming text, use generateText instead"  
 - **Solution**: Always use `generateText()` instead of `streamText()` with this provider
 
 **Recommendation**: For streaming functionality, configure a non-MCP fallback provider (like Anthropic or OpenAI) in your fallback role.
@@ -388,8 +369,8 @@ try {
    - Verify session has `requestSampling()` method
    - Ensure MCP client supports sampling feature
 
-3. **"MCP Remote Provider does not support streaming text, use generateText instead"**
-   - **Common Error**: Occurs when calling `streamTextService()` with MCP remote provider
+3. **"MCP Provider does not support streaming text, use generateText instead"**
+   - **Common Error**: Occurs when calling `streamTextService()` with MCP provider
    - **Solution**: Use `generateTextService()` instead of `streamTextService()`
    - **Alternative**: Configure a non-MCP fallback provider for streaming operations
 
@@ -439,14 +420,14 @@ Test MCP provider functionality:
 
 ```javascript
 // Check if MCP provider is properly registered
-import MCPRemoteProvider from './mcp-server/src/providers/mcp-remote-provider.js';
+import { MCPProvider } from './mcp-server/src/providers/mcp-provider.js';
 
 // Test session capabilities
 if (session && session.clientCapabilities && session.clientCapabilities.sampling) {
   console.log('MCP sampling available');
   
   // Test provider creation
-  const provider = new MCPRemoteProvider(server);
+  const provider = new MCPProvider();
   provider.setSession(session);
   console.log('MCP provider created successfully');
 } else {
@@ -542,7 +523,7 @@ Configure MCP sampling for different roles:
 
 ### API Reference
 
-### MCPRemoteProvider Methods
+### MCPProvider Methods
 
 - `generateText(params)` - Generate text using MCP sampling ✅ **Supported**
 - `streamText(params)` - Stream text ❌ **Not supported** (throws error)

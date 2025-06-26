@@ -34,8 +34,8 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | mcp         | mcp-sampling                                   | -         | 0          | 0           |
-| mcp-ai-sdk  | claude-3-5-sonnet-20241022                     | 0.49      | 0          | 0           |
-| mcp-ai-sdk  | claude-3-opus-20240229                         | 0.725     | 0          | 0           |
+| mcp         | claude-3-5-sonnet-20241022                     | 0.49      | 0          | 0           |
+| mcp         | claude-3-opus-20240229                         | 0.725     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -87,8 +87,8 @@
 | claude-code | opus                       | 0.725     | 0          | 0           |
 | claude-code | sonnet                     | 0.727     | 0          | 0           |
 | mcp         | mcp-sampling               | -         | 0          | 0           |
-| mcp-ai-sdk  | claude-3-5-sonnet-20241022 | 0.49      | 0          | 0           |
-| mcp-ai-sdk  | claude-3-opus-20240229     | 0.725     | 0          | 0           |
+| mcp         | claude-3-5-sonnet-20241022 | 0.49      | 0          | 0           |
+| mcp         | claude-3-opus-20240229     | 0.725     | 0          | 0           |
 
 ## Fallback Models
 
@@ -115,8 +115,8 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | mcp         | mcp-sampling                                   | -         | 0          | 0           |
-| mcp-ai-sdk  | claude-3-5-sonnet-20241022                     | 0.49      | 0          | 0           |
-| mcp-ai-sdk  | claude-3-opus-20240229                         | 0.725     | 0          | 0           |
+| mcp         | claude-3-5-sonnet-20241022                     | 0.49      | 0          | 0           |
+| mcp         | claude-3-opus-20240229                         | 0.725     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
