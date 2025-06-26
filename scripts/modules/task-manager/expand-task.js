@@ -13,6 +13,7 @@ import {
 import { generateTextService } from '../ai-services-unified.js';
 
 import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
@@ -493,9 +494,7 @@ async function expandTask(
 
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
-		let promptContent = '';
 		let complexityReasoningContext = '';
-		let systemPrompt; // Declare systemPrompt here
 
 		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
 		let taskAnalysis = null;
@@ -555,52 +554,35 @@ async function expandTask(
 		// Determine prompt content AND system prompt
 		const nextSubtaskId = (task.subtasks?.length || 0) + 1;
 
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager(projectRoot);
+
+		const promptParams = {
+			task: task,
+			finalSubtaskCount: finalSubtaskCount,
+			nextSubtaskId: nextSubtaskId,
+			additionalContext: additionalContext,
+			complexityReasoningContext: complexityReasoningContext,
+			gatheredContext: gatheredContext || '',
+			useResearch: useResearch,
+			expansionPrompt: taskAnalysis?.expansionPrompt || null
+		};
+
+		let variantKey = 'default';
 		if (taskAnalysis?.expansionPrompt) {
-			// Use prompt from complexity report
-			promptContent = taskAnalysis.expansionPrompt;
-			// Append additional context and reasoning
-			promptContent += `\n\n${additionalContext}`.trim();
-			promptContent += `${complexityReasoningContext}`.trim();
-			if (gatheredContext) {
-				promptContent += `\n\n# Project Context\n\n${gatheredContext}`;
-			}
-
-			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
+			variantKey = 'complexity-report';
 			logger.info(
-				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
+				`Using expansion prompt from complexity report for task ${task.id}.`
 			);
-			// --- End Simplified System Prompt ---
+		} else if (useResearch) {
+			variantKey = 'research';
+			logger.info(`Using research variant for task ${task.id}.`);
 		} else {
-			// Use standard prompt generation
-			let combinedAdditionalContext =
-				`${additionalContext}${complexityReasoningContext}`.trim();
-			if (gatheredContext) {
-				combinedAdditionalContext =
-					`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
-			}
-
-			if (useResearch) {
-				promptContent = generateResearchUserPrompt(
-					task,
-					finalSubtaskCount,
-					combinedAdditionalContext,
-					nextSubtaskId
-				);
-				// Use the specific research system prompt if needed, or a standard one
-				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.`; // Or keep generateResearchSystemPrompt if it exists
-			} else {
-				promptContent = generateMainUserPrompt(
-					task,
-					finalSubtaskCount,
-					combinedAdditionalContext,
-					nextSubtaskId
-				);
-				// Use the original detailed system prompt for standard generation
-				systemPrompt = generateMainSystemPrompt(finalSubtaskCount);
-			}
 			logger.info(`Using standard prompt generation for task ${task.id}.`);
 		}
+
+		const { systemPrompt, userPrompt: promptContent } =
+			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
 		// --- End Complexity Report / Prompt Logic ---
 
 		// --- AI Subtask Generation using generateTextService ---

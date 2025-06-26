@@ -140,6 +140,18 @@ jest.unstable_mockModule(
 	})
 );
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
 // Mock external UI libraries
 jest.unstable_mockModule('chalk', () => ({
 	default: {
@@ -837,6 +849,17 @@ describe('expandTask', () => {
 
 		test('should handle additional context correctly', async () => {
 			// Arrange
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt with context'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			const tasksPath = 'tasks/tasks.json';
 			const taskId = '2';
 			const additionalContext = 'Use React hooks and TypeScript';
@@ -856,11 +879,13 @@ describe('expandTask', () => {
 				false
 			);
 
-			// Assert - Should include additional context in prompt
-			expect(generateTextService).toHaveBeenCalledWith(
+			// Assert - Should pass additional context to prompt manager
+			expect(mockLoadPrompt).toHaveBeenCalledWith(
+				'expand-task',
 				expect.objectContaining({
-					prompt: expect.stringContaining('Use React hooks and TypeScript')
-				})
+					additionalContext: 'Use React hooks and TypeScript'
+				}),
+				expect.any(String)
 			);
 		});
 
