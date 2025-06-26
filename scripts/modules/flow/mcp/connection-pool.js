@@ -17,7 +17,7 @@ class MCPConnectionPool {
 			}
 
 			const client = new MCPClient({ log });
-			await client.connect(server.scriptPath);
+			await client.connect(server);
 
 			this.connections.set(server.id, client);
 			this.connectionStatus.set(server.id, 'active');

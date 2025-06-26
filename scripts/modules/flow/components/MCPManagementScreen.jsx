@@ -36,6 +36,8 @@ export function MCPManagementScreen() {
 	const [inputValue, setInputValue] = useState('');
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewportHeight, setViewportHeight] = useState(15); // Visible rows
+	const [pasteMode, setPasteMode] = useState(false);
+	const [pasteContent, setPasteContent] = useState('');
 
 	// Load MCP servers on mount
 	useEffect(() => {
@@ -194,6 +196,15 @@ export function MCPManagementScreen() {
 			setShowAddForm(true);
 			setFormField('name');
 			setInputValue('');
+			setPasteMode(false);
+			return;
+		}
+
+		if (input === 'p') {
+			setShowAddForm(true);
+			setPasteMode(true);
+			setPasteContent('');
+			setInputValue('');
 			return;
 		}
 
@@ -231,11 +242,49 @@ export function MCPManagementScreen() {
 		if (key.escape) {
 			setShowAddForm(false);
 			resetForm();
+			setPasteMode(false);
+			setPasteContent('');
+			return;
+		}
+
+		// Handle paste mode
+		if (pasteMode) {
+			if (key.return && key.ctrl) {
+				// Ctrl+Enter to submit
+				parsePastedConfig();
+				return;
+			}
+
+			if (key.return) {
+				// Regular enter adds a newline
+				setPasteContent((prev) => prev + '\n');
+				return;
+			}
+
+			if (key.backspace || key.delete) {
+				setPasteContent((prev) => prev.slice(0, -1));
+				return;
+			}
+
+			if (input) {
+				setPasteContent((prev) => prev + input);
+			}
+			return;
+		}
+
+		// Regular form mode
+		if (key.tab && key.shift) {
+			// Shift+Tab to go to previous field
+			const fields = getFormFields();
+			const currentIndex = fields.indexOf(formField);
+			const prevIndex = currentIndex > 0 ? currentIndex - 1 : fields.length - 1;
+			setFormField(fields[prevIndex]);
+			setInputValue(getFieldValue(fields[prevIndex]));
 			return;
 		}
 
 		if (key.tab) {
-			// Cycle through form fields
+			// Tab to go to next field
 			const fields = getFormFields();
 			const currentIndex = fields.indexOf(formField);
 			const nextIndex = (currentIndex + 1) % fields.length;
@@ -244,9 +293,35 @@ export function MCPManagementScreen() {
 			return;
 		}
 
+		if (key.upArrow) {
+			// Up arrow to go to previous field
+			const fields = getFormFields();
+			const currentIndex = fields.indexOf(formField);
+			if (currentIndex > 0) {
+				setFormField(fields[currentIndex - 1]);
+				setInputValue(getFieldValue(fields[currentIndex - 1]));
+			}
+			return;
+		}
+
+		if (key.downArrow) {
+			// Down arrow to go to next field
+			const fields = getFormFields();
+			const currentIndex = fields.indexOf(formField);
+			if (currentIndex < fields.length - 1) {
+				setFormField(fields[currentIndex + 1]);
+				setInputValue(getFieldValue(fields[currentIndex + 1]));
+			}
+			return;
+		}
+
 		if (key.return) {
 			if (formField === 'submit') {
 				submitForm();
+			} else if (formField === 'cancel') {
+				// Cancel and go back
+				setShowAddForm(false);
+				resetForm();
 			} else {
 				// Move to next field
 				const fields = getFormFields();
@@ -275,9 +350,9 @@ export function MCPManagementScreen() {
 		const baseFields = ['name', 'transport'];
 		
 		if (formData.transport === 'stdio') {
-			return [...baseFields, 'command', 'args', 'env', 'scope', 'submit'];
+			return [...baseFields, 'command', 'args', 'env', 'scope', 'submit', 'cancel'];
 		} else {
-			return [...baseFields, 'url', 'headers', 'scope', 'submit'];
+			return [...baseFields, 'url', 'headers', 'scope', 'submit', 'cancel'];
 		}
 	};
 
@@ -345,6 +420,8 @@ export function MCPManagementScreen() {
 
 	const submitForm = async () => {
 		try {
+			console.log('Submitting form with data:', formData); // Debug log
+
 			// Validate required fields
 			if (!formData.name) {
 				showToast('Server name is required', 'error');
@@ -377,14 +454,24 @@ export function MCPManagementScreen() {
 				serverConfig.headers = formData.headers;
 			}
 
+			// Create the full server object with ID
+			const newServer = {
+				id: `server-${Date.now()}`,
+				...serverConfig,
+				createdAt: new Date().toISOString()
+			};
+
+			console.log('Adding server:', newServer); // Debug log
+
 			// Add the server
-			await addServer(serverConfig);
+			await addServer(newServer);
 			await loadServerList();
 			
 			showToast(`Added MCP server: ${formData.name}`, 'success');
 			setShowAddForm(false);
 			resetForm();
 		} catch (err) {
+			console.error('Error adding server:', err); // Debug log
 			showToast(`Failed to add server: ${err.message}`, 'error');
 		}
 	};
@@ -402,6 +489,106 @@ export function MCPManagementScreen() {
 		});
 		setFormField('name');
 		setInputValue('');
+		setPasteMode(false);
+		setPasteContent('');
+	};
+
+	const parsePastedConfig = async () => {
+		try {
+			// Try to parse the JSON
+			const parsed = JSON.parse(pasteContent);
+			
+			// Check if it's wrapped in mcpServers object
+			const servers = parsed.mcpServers || parsed;
+			
+			// Get all server entries
+			const serverNames = Object.keys(servers);
+			if (serverNames.length === 0) {
+				showToast('No server configuration found in pasted JSON', 'error');
+				return;
+			}
+
+			let addedCount = 0;
+			const errors = [];
+
+			// Process each server
+			for (const serverName of serverNames) {
+				try {
+					const serverConfig = servers[serverName];
+					
+					// Map the pasted config to our format
+					const mappedConfig = {
+						name: serverName,
+						transport: 'stdio', // Default to stdio for command-based configs
+						command: serverConfig.command || '',
+						url: serverConfig.url || '',
+						args: serverConfig.args || [],
+						env: serverConfig.env || {},
+						headers: serverConfig.headers || {},
+						scope: 'local'
+					};
+
+					// Detect transport type
+					if (serverConfig.url) {
+						if (serverConfig.url.includes('/sse')) {
+							mappedConfig.transport = 'sse';
+						} else {
+							mappedConfig.transport = 'http';
+						}
+					}
+
+					// Create server configuration
+					const newServer = {
+						id: `server-${Date.now()}-${addedCount}`,
+						name: mappedConfig.name,
+						transport: mappedConfig.transport,
+						scope: mappedConfig.scope,
+						createdAt: new Date().toISOString()
+					};
+
+					if (mappedConfig.transport === 'stdio') {
+						newServer.scriptPath = mappedConfig.command;
+						newServer.args = mappedConfig.args;
+						newServer.env = mappedConfig.env;
+					} else {
+						newServer.url = mappedConfig.url;
+						newServer.headers = mappedConfig.headers;
+					}
+
+					// Add the server
+					await addServer(newServer);
+					addedCount++;
+				} catch (err) {
+					errors.push(`${serverName}: ${err.message}`);
+				}
+			}
+
+			// Reload server list
+			await loadServerList();
+			
+			// Show results
+			if (addedCount > 0) {
+				const message = addedCount === 1 
+					? `Added 1 MCP server`
+					: `Added ${addedCount} MCP servers`;
+				showToast(message, 'success');
+			}
+			
+			if (errors.length > 0) {
+				showToast(`Failed to add: ${errors.join(', ')}`, 'error');
+			}
+
+			if (addedCount > 0) {
+				setShowAddForm(false);
+				resetForm();
+			}
+		} catch (err) {
+			if (err instanceof SyntaxError) {
+				showToast('Invalid JSON format. Please check your configuration.', 'error');
+			} else {
+				showToast(`Failed to parse configuration: ${err.message}`, 'error');
+			}
+		}
 	};
 
 	const removeServerHandler = async (server) => {
@@ -501,7 +688,7 @@ export function MCPManagementScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>MCP Servers</Text>
 				</Box>
-				<Text color={theme.textDim}>[a add] [d remove] [space connect] [↵ details] [ESC back]</Text>
+				<Text color={theme.textDim}>[a add] [p paste] [d remove] [space connect] [↵ details] [ESC back]</Text>
 			</Box>
 
 			{/* Server table */}
@@ -635,6 +822,15 @@ export function MCPManagementScreen() {
 		const visibleTools = serverTools.slice(scrollOffset, scrollOffset + viewportHeight);
 		const showScrollIndicators = serverTools.length > viewportHeight;
 
+		// Build full command line for stdio servers
+		const getFullCommand = () => {
+			if (selectedServer.transport !== 'stdio') return null;
+			
+			const cmd = selectedServer.scriptPath || selectedServer.command || '';
+			const args = selectedServer.args || [];
+			return `${cmd} ${args.join(' ')}`.trim();
+		};
+
 		return (
 			<Box flexDirection="column" height="100%">
 				{/* Header */}
@@ -655,8 +851,13 @@ export function MCPManagementScreen() {
 					<Text color={theme.textDim}>[↵ view tool] [ESC back]</Text>
 				</Box>
 
-				{/* Server info */}
+				{/* Server info - Enhanced Debug Information */}
 				<Box paddingLeft={1} paddingRight={1} marginBottom={1} flexDirection="column">
+					{/* Basic Info */}
+					<Box>
+						<Text color={theme.textDim}>ID: </Text>
+						<Text>{selectedServer.id}</Text>
+					</Box>
 					<Box>
 						<Text color={theme.textDim}>Status: </Text>
 						<Text color={
@@ -677,15 +878,89 @@ export function MCPManagementScreen() {
 						<Text color={theme.textDim}>Scope: </Text>
 						<Text>{selectedServer.scope}</Text>
 					</Box>
+					
+					{/* Transport-specific info */}
 					{selectedServer.transport === 'stdio' ? (
-						<Box>
-							<Text color={theme.textDim}>Command: </Text>
-							<Text>{selectedServer.scriptPath || selectedServer.command}</Text>
-						</Box>
+						<>
+							<Box marginTop={1}>
+								<Text color={theme.accent}>Command Details:</Text>
+							</Box>
+							<Box>
+								<Text color={theme.textDim}>Executable: </Text>
+								<Text>{selectedServer.scriptPath || selectedServer.command || 'Not specified'}</Text>
+							</Box>
+							{selectedServer.args && selectedServer.args.length > 0 && (
+								<Box flexDirection="column">
+									<Text color={theme.textDim}>Arguments:</Text>
+									<Box paddingLeft={2}>
+										{selectedServer.args.map((arg, index) => (
+											<Box key={index}>
+												<Text color={theme.text}>[{index}] {arg}</Text>
+											</Box>
+										))}
+									</Box>
+								</Box>
+							)}
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>Full Command:</Text>
+							</Box>
+							<Box paddingLeft={2}>
+								<Text color={theme.textBright}>{getFullCommand()}</Text>
+							</Box>
+							{selectedServer.env && Object.keys(selectedServer.env).length > 0 && (
+								<Box flexDirection="column" marginTop={1}>
+									<Text color={theme.textDim}>Environment Variables:</Text>
+									<Box paddingLeft={2}>
+										{Object.entries(selectedServer.env).map(([key, value]) => (
+											<Box key={key}>
+												<Text color={theme.warning}>{key}</Text>
+												<Text>=</Text>
+												<Text color={theme.text}>{value}</Text>
+											</Box>
+										))}
+									</Box>
+								</Box>
+							)}
+						</>
 					) : (
-						<Box>
-							<Text color={theme.textDim}>URL: </Text>
-							<Text>{selectedServer.url}</Text>
+						<>
+							<Box marginTop={1}>
+								<Text color={theme.accent}>Connection Details:</Text>
+							</Box>
+							<Box>
+								<Text color={theme.textDim}>URL: </Text>
+								<Text>{selectedServer.url}</Text>
+							</Box>
+							{selectedServer.headers && Object.keys(selectedServer.headers).length > 0 && (
+								<Box flexDirection="column" marginTop={1}>
+									<Text color={theme.textDim}>Headers:</Text>
+									<Box paddingLeft={2}>
+										{Object.entries(selectedServer.headers).map(([key, value]) => (
+											<Box key={key}>
+												<Text color={theme.warning}>{key}: </Text>
+												<Text color={theme.text}>{value}</Text>
+											</Box>
+										))}
+									</Box>
+								</Box>
+							)}
+						</>
+					)}
+
+					{/* Additional Debug Info */}
+					{selectedServer.createdAt && (
+						<Box marginTop={1}>
+							<Text color={theme.textDim}>Created: </Text>
+							<Text>{new Date(selectedServer.createdAt).toLocaleString()}</Text>
+						</Box>
+					)}
+					
+					{selectedServer.error && (
+						<Box marginTop={1} flexDirection="column">
+							<Text color={theme.error}>Last Error:</Text>
+							<Box paddingLeft={2}>
+								<Text color={theme.error}>{selectedServer.error}</Text>
+							</Box>
 						</Box>
 					)}
 				</Box>
@@ -815,6 +1090,85 @@ export function MCPManagementScreen() {
 	}
 
 	function renderAddForm() {
+		if (pasteMode) {
+			return (
+				<Box flexDirection="column" height="100%">
+					{/* Header */}
+					<Box
+						borderStyle="single"
+						borderColor={theme.border}
+						paddingLeft={1}
+						paddingRight={1}
+						marginBottom={1}
+					>
+						<Box flexGrow={1}>
+							<Text color={theme.accent}>Task Master</Text>
+							<Text color={theme.textDim}> › </Text>
+							<Text color={theme.text}>Paste MCP Server Config</Text>
+						</Box>
+						<Text color={theme.textDim}>[Ctrl+↵ submit] [ESC cancel]</Text>
+					</Box>
+
+					{/* Paste area */}
+					<Box flexGrow={1} paddingLeft={2} paddingRight={2} flexDirection="column">
+						<Text color={theme.accent} bold>Paste MCP Server Configuration</Text>
+						<Box height={1} />
+						
+						<Text color={theme.textDim}>Paste your JSON configuration below:</Text>
+						<Text color={theme.textDim}>Press ESC at any time to cancel without saving.</Text>
+						<Box height={1} />
+						
+						{/* JSON input area */}
+						<Box
+							borderStyle="single"
+							borderColor={theme.border}
+							paddingLeft={1}
+							paddingRight={1}
+							paddingTop={1}
+							paddingBottom={1}
+							flexGrow={1}
+						>
+							<Box flexDirection="column">
+								{pasteContent.split('\n').map((line, index) => (
+									<Box key={index}>
+										<Text color={theme.textBright}>
+											{line}
+											{index === pasteContent.split('\n').length - 1 && 
+												!pasteContent.endsWith('\n') && 
+												<Text color={theme.accent}>_</Text>
+											}
+										</Text>
+									</Box>
+								))}
+								{pasteContent.endsWith('\n') && (
+									<Text color={theme.accent}>_</Text>
+								)}
+							</Box>
+						</Box>
+
+						{/* Help text */}
+						<Box marginTop={2} flexDirection="column">
+							<Text color={theme.textDim}>Example format:</Text>
+							<Box paddingLeft={2} marginTop={1}>
+								<Text color={theme.text}>{`{
+  "mcpServers": {
+    "weather": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/...", "mcp-weather"],
+      "env": {
+        "API_KEY": "your_key_here"
+      }
+    }
+  }
+}`}</Text>
+							</Box>
+						</Box>
+					</Box>
+				</Box>
+			);
+		}
+
+		// Regular form mode
 		const fields = getFormFields();
 
 		return (
@@ -832,7 +1186,7 @@ export function MCPManagementScreen() {
 						<Text color={theme.textDim}> › </Text>
 						<Text color={theme.text}>Add MCP Server</Text>
 					</Box>
-					<Text color={theme.textDim}>[TAB next] [↵ submit] [ESC cancel]</Text>
+					<Text color={theme.textDim}>[↑↓ navigate] [TAB/Shift+TAB cycle] [↵ submit] [ESC cancel]</Text>
 				</Box>
 
 				{/* Form */}
@@ -962,6 +1316,17 @@ export function MCPManagementScreen() {
 						>
 							{formField === 'submit' ? '▶ ' : '  '}
 							Add Server
+						</Text>
+					</Box>
+
+					{/* Cancel button */}
+					<Box marginTop={1}>
+						<Text 
+							color={formField === 'cancel' ? theme.error : theme.textDim}
+							bold={formField === 'cancel'}
+						>
+							{formField === 'cancel' ? '× ' : '  '}
+							Cancel
 						</Text>
 					</Box>
 

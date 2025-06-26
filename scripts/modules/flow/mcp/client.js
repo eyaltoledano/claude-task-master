@@ -11,32 +11,71 @@ export class MCPClient {
 		this.process = null;
 	}
 
-	async connect(serverScriptPath, options = {}) {
+	async connect(serverConfig, options = {}) {
 		try {
-			this.serverPath = serverScriptPath;
-
-			// Determine command based on file extension
-			let command, args;
-			if (serverScriptPath.endsWith('.py')) {
-				command = 'python';
-				args = [serverScriptPath];
-			} else if (serverScriptPath.endsWith('.js')) {
-				command = 'node';
-				args = [serverScriptPath];
-			} else if (serverScriptPath.endsWith('.jar')) {
-				command = 'java';
-				args = ['-jar', serverScriptPath];
+			// Handle both string path and server configuration object
+			let command, args, env;
+			
+			if (typeof serverConfig === 'string') {
+				// Legacy: just a script path
+				this.serverPath = serverConfig;
+				
+				// Determine command based on file extension
+				if (serverConfig.endsWith('.py')) {
+					command = 'python';
+					args = [serverConfig];
+				} else if (serverConfig.endsWith('.js')) {
+					command = 'node';
+					args = [serverConfig];
+				} else if (serverConfig.endsWith('.jar')) {
+					command = 'java';
+					args = ['-jar', serverConfig];
+				} else {
+					// Assume it's a binary
+					command = serverConfig;
+					args = [];
+				}
+				env = process.env;
 			} else {
-				// Assume it's a binary
-				command = serverScriptPath;
-				args = [];
+				// New: server configuration object
+				if (serverConfig.command) {
+					// Direct command execution (e.g., npx, uvx)
+					command = serverConfig.command;
+					args = serverConfig.args || [];
+					env = { ...process.env, ...(serverConfig.env || {}) };
+				} else if (serverConfig.scriptPath) {
+					// Script path execution
+					this.serverPath = serverConfig.scriptPath;
+					
+					if (serverConfig.scriptPath.endsWith('.py')) {
+						command = 'python';
+						args = [serverConfig.scriptPath];
+					} else if (serverConfig.scriptPath.endsWith('.js')) {
+						command = 'node';
+						args = [serverConfig.scriptPath];
+					} else if (serverConfig.scriptPath.endsWith('.jar')) {
+						command = 'java';
+						args = ['-jar', serverConfig.scriptPath];
+					} else {
+						// Assume it's a binary
+						command = serverConfig.scriptPath;
+						args = [];
+					}
+					// Append any additional args
+					args = [...args, ...(serverConfig.args || [])];
+					env = { ...process.env, ...(serverConfig.env || {}) };
+				} else {
+					throw new Error('Server configuration must have either command or scriptPath');
+				}
 			}
+
+			this.log.info(`Launching MCP server: ${command} ${args.join(' ')}`);
 
 			// Create the transport
 			this.transport = new StdioClientTransport({
 				command,
 				args,
-				env: process.env
+				env
 			});
 
 			// Connect the client
