@@ -2,11 +2,39 @@
 
 ## Overview
 
-The MCP (Model Context Protocol) provider enables Task Master to act as an MCP client, using MCP servers as AI providers alongside traditional API-based providers. This integration follows the existing provider pattern and supports all standard AI operations.
+Task Master provides **two MCP-based providers** for different use cases:
+
+1. **MCP Provider** (`mcp`) - Basic text generation using MCP client sampling
+2. **MCP AI SDK Provider** (`mcp-ai-sdk`) - **Recommended** - Full AI SDK compatibility with structured object generation
+
+The MCP providers enable Task Master to act as an MCP client, using MCP servers as AI providers alongside traditional API-based providers. This integration follows the existing provider pattern and supports all standard AI operations.
+
+## MCP AI SDK Provider (Recommended)
+
+The **MCP AI SDK Provider** (`mcp-ai-sdk`) is the enhanced, recommended option that provides:
+
+✅ **Full AI SDK Compatibility** - Complete LanguageModelV1 interface implementation  
+✅ **Structured Object Generation** - Schema-driven outputs for PRD parsing and task creation  
+✅ **Enhanced Error Handling** - Robust JSON extraction and validation  
+✅ **Session Management** - Automatic session detection and context handling  
+✅ **Schema Validation** - Type-safe object generation with Zod validation  
+
+### Quick Setup
+
+```bash
+# Set MCP AI SDK provider for main role  
+task-master models set-main --provider mcp-ai-sdk --model claude-3-5-sonnet-20241022
+```
+
+For detailed information, see [MCP AI SDK Provider Documentation](mcp-ai-sdk-provider.md).
+
+## MCP Provider (Basic)
+
+The basic **MCP Provider** (`mcp`) provides simple text generation for users who only need basic functionality.
 
 ## What is MCP Provider?
 
-The MCP provider allows Task Master to:
+The MCP providers allow Task Master to:
 - Connect to MCP servers/tools as AI providers
 - Use session-based authentication instead of API keys
 - Map AI operations to MCP tool calls
@@ -15,9 +43,36 @@ The MCP provider allows Task Master to:
 
 ## Configuration
 
-### Basic Setup
+### MCP AI SDK Provider Setup (Recommended)
 
-Add MCP provider to your `.taskmaster/config.json`:
+Add MCP AI SDK provider to your `.taskmaster/config.json`:
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "mcp-ai-sdk",
+      "modelId": "claude-3-5-sonnet-20241022",
+      "maxTokens": 200000,
+      "temperature": 0.2
+    },
+    "research": {
+      "provider": "mcp-ai-sdk", 
+      "modelId": "claude-3-opus-20240229",
+      "maxTokens": 200000,
+      "temperature": 0.1
+    },
+    "fallback": {
+      "provider": "anthropic",
+      "modelId": "claude-3-5-sonnet-20241022"
+    }
+  }
+}
+```
+
+### Basic MCP Provider Setup
+
+Add basic MCP provider to your `.taskmaster/config.json`:
 
 ```json
 {
@@ -44,9 +99,25 @@ Add MCP provider to your `.taskmaster/config.json`:
 
 ### Available Models
 
-The MCP provider supports sampling-based text generation:
+**MCP AI SDK Provider Models:**
 
-- **`mcp-sampling`** - General text generation using MCP client sampling (all roles)
+- **`claude-3-5-sonnet-20241022`** - High-performance model for general tasks
+  - **SWE Score**: 0.49
+  - **Cost**: $0 (session-based)
+  - **Max Tokens**: 200,000
+  - **Supported Roles**: main, research, fallback
+  - **Features**: Text + Object generation
+
+- **`claude-3-opus-20240229`** - Enhanced reasoning model for complex tasks  
+  - **SWE Score**: 0.725
+  - **Cost**: $0 (session-based)
+  - **Max Tokens**: 200,000
+  - **Supported Roles**: main, research, fallback
+  - **Features**: Text + Object generation
+
+**Basic MCP Provider Models:**
+
+- **`mcp-sampling`** - General text generation using MCP client sampling
   - **SWE Score**: null
   - **Token Limits**: NA
   - **Cost**: Requires Github account

@@ -7,6 +7,7 @@ import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import MCPRemoteProvider from './providers/mcp-remote-provider.js';
+import { MCPAISDKProvider } from './providers/mcp-ai-sdk-provider.js';
 
 // Load environment variables
 dotenv.config();
@@ -82,7 +83,7 @@ class TaskMasterMCPServer {
 	}
 
 	/**
-	 * Register the MCP remote provider with the provider registry
+	 * Register both MCP providers with the provider registry
 	 */
 	registerRemoteProvider(session) {
 		// Check if the server has at least one session
@@ -90,25 +91,30 @@ class TaskMasterMCPServer {
 			// Make sure session has required capabilities
 			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
 				this.logger.warn(
-					'MCP session missing required sampling capabilities, Remote Provider not registered'
+					'MCP session missing required sampling capabilities, providers not registered'
 				);
 				return;
 			}
 
-			// Create the remote provider with the first session
+			// Register BOTH providers with the same MCP session
+			
+			// 1. Register existing MCPRemoteProvider (keep existing functionality)
 			const remoteProvider = new MCPRemoteProvider(this.server);
-
-			// Set the session explicitly
 			remoteProvider.setSession(session);
+			
+			// 2. Register NEW AI SDK provider
+			const aiSdkProvider = new MCPAISDKProvider();
+			aiSdkProvider.setSession(session); // Same MCP session, different provider
 
-			// Register the provider with the registry
+			// Register both providers with the registry
 			const providerRegistry = ProviderRegistry.getInstance();
-			providerRegistry.registerProvider(remoteProvider.name, remoteProvider);
+			providerRegistry.registerProvider('mcp', remoteProvider); // Existing
+			providerRegistry.registerProvider('mcp-ai-sdk', aiSdkProvider); // NEW
 
-			this.logger.info('MCP Remote Provider registered with Provider Registry');
+			this.logger.info('Both MCP providers (remote and AI SDK) registered with Provider Registry');
 		} else {
 			this.logger.warn(
-				'No MCP sessions available, Remote Provider not registered'
+				'No MCP sessions available, providers not registered'
 			);
 		}
 	}

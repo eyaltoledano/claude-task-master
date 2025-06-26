@@ -468,7 +468,8 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// Check API key if needed
 			if (
 				providerName?.toLowerCase() !== 'ollama' &&
-				providerName?.toLowerCase() !== 'mcp'
+				providerName?.toLowerCase() !== 'mcp' &&
+				providerName?.toLowerCase() !== 'mcp-ai-sdk'
 			) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(

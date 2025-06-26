@@ -212,6 +212,52 @@ The MCP provider enables Task Master to use MCP servers as AI providers. This is
    - "MCP provider requires session context" → Ensure running in MCP environment
    - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
 
+### MCP AI SDK Provider
+
+The MCP AI SDK provider is an enhanced version of the MCP provider that provides full AI SDK compatibility including structured object generation. This enables advanced features like PRD parsing and schema-driven task creation.
+
+1. **Prerequisites**:
+   - An active MCP session with sampling capability
+   - MCP client with sampling support (e.g., Claude Desktop, Cursor)
+   - No API keys required (uses session-based authentication)
+
+2. **Configuration**:
+   ```json
+   {
+     "models": {
+       "main": {
+         "provider": "mcp-ai-sdk",
+         "modelId": "claude-3-5-sonnet-20241022"
+       },
+       "research": {
+         "provider": "mcp-ai-sdk", 
+         "modelId": "claude-3-opus-20240229"
+       }
+     }
+   }
+   ```
+
+3. **Available Model IDs**:
+   - `claude-3-5-sonnet-20241022` - High-performance model for general tasks (supports all roles)
+   - `claude-3-opus-20240229` - Enhanced reasoning model for complex tasks (supports all roles)
+
+4. **Features**:
+   - ✅ **Text Generation**: Standard AI text generation via MCP sampling
+   - ✅ **Object Generation**: Full schema-driven structured output generation
+   - ✅ **PRD Parsing**: Parse Product Requirements Documents into structured tasks
+   - ✅ **Task Creation**: AI-powered task creation with validation
+   - ✅ **Session Management**: Automatic session detection and context handling
+   - ✅ **Error Recovery**: Robust error handling and fallback mechanisms
+
+5. **Setup Command**:
+   ```bash
+   # Set MCP AI SDK provider for main role
+   task-master models set-main --provider mcp-ai-sdk --model claude-3-5-sonnet-20241022
+   
+   # Verify configuration
+   task-master models list
+   ```
+
 ### Google Vertex AI Configuration
 
 Google Vertex AI is Google Cloud's enterprise AI platform and requires specific configuration:
