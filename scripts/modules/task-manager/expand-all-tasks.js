@@ -10,6 +10,10 @@ import { aggregateTelemetry } from '../utils.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { createExpandTracker } from '../../../src/progress/expand-tracker.js';
+import {
+	displayExpandStart,
+	displayExpandSummary
+} from '../../../src/ui/expand.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import fs from 'fs';
 import path from 'path';
@@ -136,6 +140,20 @@ async function expandAllTasks(
 
 		// Create parent tracker for CLI mode
 		if (!isMCPCall && outputFormat === 'text') {
+			// Display the header before starting the tracker
+			displayExpandStart({
+				tagName: data.tag || contextTag,
+				totalPendingTasks: tasksToExpandCount,
+				tasksFilePath: tasksPath,
+				numSubtasks: numSubtasks || 'Auto-calculated',
+				explicitSubtasks: Boolean(numSubtasks),
+				hasComplexityAnalysis: Boolean(complexityReport),
+				force: force,
+				research: useResearch,
+				customPrompt: additionalContext,
+				expandType: 'all'
+			});
+
 			parentTracker = createExpandTracker({
 				expandType: 'all',
 				numTasks: tasksToExpandCount
@@ -326,24 +344,23 @@ async function expandAllTasks(
 			'expand-all-tasks'
 		);
 
-		// Only show summary box if not using parent tracker (to avoid duplication)
-		if (outputFormat === 'text' && !parentTracker) {
-			const summaryContent =
-				`${chalk.white.bold('Expansion Summary:')}\n\n` +
-				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
-				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
-				// Skipped count is always 0 now due to pre-filtering
-				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
-				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
-
-			console.log(
-				boxen(summaryContent, {
-					padding: 1,
-					margin: { top: 1 },
-					borderColor: failedCount > 0 ? 'red' : 'green', // Red if failures, green otherwise
-					borderStyle: 'round'
-				})
-			);
+		// Display summary for CLI mode
+		if (outputFormat === 'text' && !isMCPCall) {
+			const summary = parentTracker ? parentTracker.getSummary() : null;
+			displayExpandSummary({
+				totalTasksProcessed: tasksToExpandCount,
+				totalSubtasksCreated: summary?.totalSubtasksCreated || 0,
+				tasksSkipped: 0, // Always 0 due to pre-filtering
+				tasksWithErrors: failedCount,
+				tasksFilePath: tasksPath,
+				elapsedTime: summary?.elapsedTime || 0,
+				force: force,
+				research: useResearch,
+				explicitSubtasks: Boolean(numSubtasks),
+				hasComplexityAnalysis: Boolean(complexityReport),
+				expandType: 'all',
+				errors: summary?.errors || []
+			});
 		}
 
 		// Display AI usage summary after parent tracker stops
