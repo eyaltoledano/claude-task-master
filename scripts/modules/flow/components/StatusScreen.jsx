@@ -4,7 +4,8 @@ import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 
 export function StatusScreen() {
-	const { backend, currentTag, setCurrentScreen, tasks, currentScreen } = useAppContext();
+	const { backend, currentTag, setCurrentScreen, tasks, currentScreen } =
+		useAppContext();
 	const [tags, setTags] = useState([]);
 	const [models, setModels] = useState(null);
 	const [loading, setLoading] = useState(true);
@@ -49,17 +50,25 @@ export function StatusScreen() {
 			medium: tasks.filter((t) => t.priority === 'medium').length,
 			low: tasks.filter((t) => t.priority === 'low').length
 		},
-		withSubtasks: tasks.filter((t) => t.subtasks && t.subtasks.length > 0).length,
-		withoutSubtasks: tasks.filter((t) => !t.subtasks || t.subtasks.length === 0).length,
+		withSubtasks: tasks.filter((t) => t.subtasks && t.subtasks.length > 0)
+			.length,
+		withoutSubtasks: tasks.filter((t) => !t.subtasks || t.subtasks.length === 0)
+			.length,
 		totalSubtasks: tasks.reduce((sum, t) => sum + (t.subtasks?.length || 0), 0),
-		completionRate: tasks.length > 0
-			? Math.round((tasks.filter((t) => t.status === 'done').length / tasks.length) * 100)
-			: 0,
-		withDependencies: tasks.filter((t) => t.dependencies && t.dependencies.length > 0).length,
+		completionRate:
+			tasks.length > 0
+				? Math.round(
+						(tasks.filter((t) => t.status === 'done').length / tasks.length) *
+							100
+					)
+				: 0,
+		withDependencies: tasks.filter(
+			(t) => t.dependencies && t.dependencies.length > 0
+		).length,
 		blockedByDependencies: tasks.filter((t) => {
 			if (!t.dependencies || t.dependencies.length === 0) return false;
-			return t.dependencies.some(depId => {
-				const depTask = tasks.find(task => task.id === depId);
+			return t.dependencies.some((depId) => {
+				const depTask = tasks.find((task) => task.id === depId);
 				return depTask && depTask.status !== 'done';
 			});
 		}).length
@@ -80,7 +89,9 @@ export function StatusScreen() {
 		tasksCompletedThisWeek: Math.floor(Math.random() * 20) + 5, // Simulated
 		averageCompletionTime: '2.5 days', // Simulated
 		velocity: Math.floor(Math.random() * 10) + 5, // Simulated tasks per week
-		burndownRate: Math.round((taskStats.byStatus.done / (taskStats.total || 1)) * 100)
+		burndownRate: Math.round(
+			(taskStats.byStatus.done / (taskStats.total || 1)) * 100
+		)
 	};
 
 	// Calculate tag statistics
@@ -93,15 +104,18 @@ export function StatusScreen() {
 	// Build all content lines
 	const buildContentLines = () => {
 		const lines = [];
-		
+
 		// Dashboard Header
-		lines.push({ type: 'dashboard-header', text: 'PROJECT ANALYTICS DASHBOARD' });
+		lines.push({
+			type: 'dashboard-header',
+			text: 'PROJECT ANALYTICS DASHBOARD'
+		});
 		lines.push({ type: 'divider' });
 		lines.push({ type: 'spacer' });
-		
+
 		// Overview Section
 		lines.push({ type: 'section-header', text: 'Overview' });
-		lines.push({ 
+		lines.push({
 			type: 'overview-stats',
 			total: taskStats.total,
 			done: taskStats.byStatus.done,
@@ -111,25 +125,41 @@ export function StatusScreen() {
 			currentTag: currentTag || 'master'
 		});
 		lines.push({ type: 'spacer' });
-		
+
 		// Status Distribution
 		lines.push({ type: 'section-header', text: 'Status Distribution' });
 		if (taskStats.total > 0) {
 			// Add each status as a horizontal bar
-			const statusOrder = ['done', 'in-progress', 'pending', 'review', 'blocked', 'deferred', 'cancelled'];
-			statusOrder.forEach(status => {
+			const statusOrder = [
+				'done',
+				'in-progress',
+				'pending',
+				'review',
+				'blocked',
+				'deferred',
+				'cancelled'
+			];
+			statusOrder.forEach((status) => {
 				if (taskStats.byStatus[status] > 0) {
 					lines.push({
 						type: 'horizontal-bar',
-						label: status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '),
+						label:
+							status.charAt(0).toUpperCase() +
+							status.slice(1).replace('-', ' '),
 						value: taskStats.byStatus[status],
 						total: taskStats.total,
-						color: status === 'done' ? theme.statusDone :
-							   status === 'in-progress' ? theme.statusInProgress :
-							   status === 'pending' ? theme.statusPending :
-							   status === 'blocked' ? theme.statusBlocked :
-							   status === 'review' ? theme.warning :
-							   theme.textDim
+						color:
+							status === 'done'
+								? theme.statusDone
+								: status === 'in-progress'
+									? theme.statusInProgress
+									: status === 'pending'
+										? theme.statusPending
+										: status === 'blocked'
+											? theme.statusBlocked
+											: status === 'review'
+												? theme.warning
+												: theme.textDim
 					});
 				}
 			});
@@ -137,20 +167,23 @@ export function StatusScreen() {
 			lines.push({ type: 'text', text: 'No tasks', color: theme.textDim });
 		}
 		lines.push({ type: 'spacer' });
-		
+
 		// Priority Distribution
 		lines.push({ type: 'section-header', text: 'Priority Distribution' });
 		if (taskStats.total > 0) {
-			['high', 'medium', 'low'].forEach(priority => {
+			['high', 'medium', 'low'].forEach((priority) => {
 				if (taskStats.byPriority[priority] > 0) {
 					lines.push({
 						type: 'horizontal-bar',
 						label: priority.charAt(0).toUpperCase() + priority.slice(1),
 						value: taskStats.byPriority[priority],
 						total: taskStats.total,
-						color: priority === 'high' ? theme.priorityHigh :
-							   priority === 'medium' ? theme.priorityMedium :
-							   theme.priorityLow
+						color:
+							priority === 'high'
+								? theme.priorityHigh
+								: priority === 'medium'
+									? theme.priorityMedium
+									: theme.priorityLow
 					});
 				}
 			});
@@ -158,7 +191,7 @@ export function StatusScreen() {
 			lines.push({ type: 'text', text: 'No tasks', color: theme.textDim });
 		}
 		lines.push({ type: 'spacer' });
-		
+
 		// Task Complexity (if tasks exist)
 		if (taskStats.total > 0) {
 			lines.push({ type: 'section-header', text: 'Task Complexity' });
@@ -169,7 +202,7 @@ export function StatusScreen() {
 				{ key: 'low', label: 'Simple', color: theme.priorityLow },
 				{ key: 'veryLow', label: 'Trivial', color: theme.success }
 			];
-			
+
 			complexityOrder.forEach(({ key, label, color }) => {
 				if (complexityStats[key] > 0) {
 					lines.push({
@@ -183,48 +216,83 @@ export function StatusScreen() {
 			});
 			lines.push({ type: 'spacer' });
 		}
-		
+
 		// Progress Metrics
 		lines.push({ type: 'section-header', text: 'Progress & Velocity' });
-		lines.push({ 
+		lines.push({
 			type: 'metrics-grid',
 			metrics: [
-				{ label: 'Completed Today', value: `${progressMetrics.tasksCompletedToday} tasks`, color: theme.success },
-				{ label: 'Completed This Week', value: `${progressMetrics.tasksCompletedThisWeek} tasks`, color: theme.success },
-				{ label: 'Average Velocity', value: `${progressMetrics.velocity} tasks/week`, color: theme.accent },
-				{ label: 'Average Completion Time', value: progressMetrics.averageCompletionTime, color: theme.accent }
+				{
+					label: 'Completed Today',
+					value: `${progressMetrics.tasksCompletedToday} tasks`,
+					color: theme.success
+				},
+				{
+					label: 'Completed This Week',
+					value: `${progressMetrics.tasksCompletedThisWeek} tasks`,
+					color: theme.success
+				},
+				{
+					label: 'Average Velocity',
+					value: `${progressMetrics.velocity} tasks/week`,
+					color: theme.accent
+				},
+				{
+					label: 'Average Completion Time',
+					value: progressMetrics.averageCompletionTime,
+					color: theme.accent
+				}
 			]
 		});
 		lines.push({ type: 'spacer' });
-		
+
 		// Dependencies & Hierarchy
 		lines.push({ type: 'section-header', text: 'Task Structure' });
-		lines.push({ 
+		lines.push({
 			type: 'metrics-grid',
 			metrics: [
-				{ label: 'Tasks with Dependencies', value: `${taskStats.withDependencies} (${Math.round((taskStats.withDependencies / (taskStats.total || 1)) * 100)}%)`, color: theme.text },
-				{ label: 'Blocked by Dependencies', value: `${taskStats.blockedByDependencies} (${Math.round((taskStats.blockedByDependencies / (taskStats.total || 1)) * 100)}%)`, color: theme.statusBlocked },
-				{ label: 'Parent Tasks', value: `${taskStats.withSubtasks} (${Math.round((taskStats.withSubtasks / (taskStats.total || 1)) * 100)}%)`, color: theme.text },
-				{ label: 'Total Subtasks', value: `${taskStats.totalSubtasks}`, color: theme.text }
+				{
+					label: 'Tasks with Dependencies',
+					value: `${taskStats.withDependencies} (${Math.round((taskStats.withDependencies / (taskStats.total || 1)) * 100)}%)`,
+					color: theme.text
+				},
+				{
+					label: 'Blocked by Dependencies',
+					value: `${taskStats.blockedByDependencies} (${Math.round((taskStats.blockedByDependencies / (taskStats.total || 1)) * 100)}%)`,
+					color: theme.statusBlocked
+				},
+				{
+					label: 'Parent Tasks',
+					value: `${taskStats.withSubtasks} (${Math.round((taskStats.withSubtasks / (taskStats.total || 1)) * 100)}%)`,
+					color: theme.text
+				},
+				{
+					label: 'Total Subtasks',
+					value: `${taskStats.totalSubtasks}`,
+					color: theme.text
+				}
 			]
 		});
 		lines.push({ type: 'spacer' });
-		
+
 		// Tag Summary
 		lines.push({ type: 'section-header', text: 'Tag Summary' });
 		if (tags.length > 0) {
 			// Sort tags by completion percentage
 			const sortedTags = [...tags].sort((a, b) => {
-				const aCompletion = a.taskCount > 0 ? (a.completedTasks / a.taskCount) : 0;
-				const bCompletion = b.taskCount > 0 ? (b.completedTasks / b.taskCount) : 0;
+				const aCompletion =
+					a.taskCount > 0 ? a.completedTasks / a.taskCount : 0;
+				const bCompletion =
+					b.taskCount > 0 ? b.completedTasks / b.taskCount : 0;
 				return bCompletion - aCompletion;
 			});
-			
+
 			// Show top 5 tags as bars
 			sortedTags.slice(0, 5).forEach((tag) => {
-				const completion = tag.taskCount > 0 
-					? Math.round((tag.completedTasks / tag.taskCount) * 100) 
-					: 0;
+				const completion =
+					tag.taskCount > 0
+						? Math.round((tag.completedTasks / tag.taskCount) * 100)
+						: 0;
 				lines.push({
 					type: 'horizontal-bar',
 					label: tag.name + (tag.name === currentTag ? ' (current)' : ''),
@@ -234,10 +302,10 @@ export function StatusScreen() {
 					color: tag.name === currentTag ? theme.success : theme.accent
 				});
 			});
-			
+
 			if (tags.length > 5) {
-				lines.push({ 
-					type: 'text', 
+				lines.push({
+					type: 'text',
 					text: `...and ${tags.length - 5} more tags`,
 					color: theme.textDim
 				});
@@ -246,22 +314,34 @@ export function StatusScreen() {
 			lines.push({ type: 'text', text: 'No tags', color: theme.textDim });
 		}
 		lines.push({ type: 'spacer' });
-		
+
 		// AI Models Configuration
 		lines.push({ type: 'section-header', text: 'AI Configuration' });
 		if (models) {
-			lines.push({ 
+			lines.push({
 				type: 'model-grid',
 				models: [
-					{ role: 'Main Model', provider: models.main?.provider || 'Not configured', model: models.main?.model || 'N/A' },
-					{ role: 'Research Model', provider: models.research?.provider || 'Not configured', model: models.research?.model || 'N/A' },
-					{ role: 'Fallback Model', provider: models.fallback?.provider || 'Not configured', model: models.fallback?.model || 'N/A' }
+					{
+						role: 'Main Model',
+						provider: models.main?.provider || 'Not configured',
+						model: models.main?.model || 'N/A'
+					},
+					{
+						role: 'Research Model',
+						provider: models.research?.provider || 'Not configured',
+						model: models.research?.model || 'N/A'
+					},
+					{
+						role: 'Fallback Model',
+						provider: models.fallback?.provider || 'Not configured',
+						model: models.fallback?.model || 'N/A'
+					}
 				]
 			});
 		} else {
 			lines.push({ type: 'text', text: 'Loading...', color: theme.textDim });
 		}
-		
+
 		return lines;
 	};
 
@@ -278,35 +358,35 @@ export function StatusScreen() {
 			setCurrentScreen('welcome');
 			return;
 		}
-		
+
 		// Arrow key scrolling
 		if (key.downArrow || input === 'j') {
 			setScrollOffset((prev) => Math.min(prev + 1, maxScroll));
 			return;
 		}
-		
+
 		if (key.upArrow || input === 'k') {
 			setScrollOffset((prev) => Math.max(prev - 1, 0));
 			return;
 		}
-		
+
 		// Page navigation
 		if (key.pageDown) {
 			setScrollOffset((prev) => Math.min(prev + viewportHeight - 4, maxScroll));
 			return;
 		}
-		
+
 		if (key.pageUp) {
 			setScrollOffset((prev) => Math.max(prev - viewportHeight + 4, 0));
 			return;
 		}
-		
+
 		// Jump to top/bottom
 		if (input === 'g') {
 			setScrollOffset(0);
 			return;
 		}
-		
+
 		if (input === 'G') {
 			setScrollOffset(maxScroll);
 			return;
@@ -324,7 +404,10 @@ export function StatusScreen() {
 	}
 
 	// Get visible lines
-	const visibleLines = contentLines.slice(scrollOffset, scrollOffset + viewportHeight);
+	const visibleLines = contentLines.slice(
+		scrollOffset,
+		scrollOffset + viewportHeight
+	);
 
 	// Render a line based on its type
 	const renderLine = (line, index) => {
@@ -332,42 +415,50 @@ export function StatusScreen() {
 			case 'dashboard-header':
 				return (
 					<Box key={index} justifyContent="center">
-						<Text color={theme.accent} bold>{line.text}</Text>
+						<Text color={theme.accent} bold>
+							{line.text}
+						</Text>
 					</Box>
 				);
-			
+
 			case 'divider':
 				return (
 					<Box key={index} width="100%">
 						<Text color={theme.border}>{'─'.repeat(60)}</Text>
 					</Box>
 				);
-			
+
 			case 'section-header':
 				return (
 					<Box key={index}>
-						<Text color={theme.accent} bold>{line.text}</Text>
+						<Text color={theme.accent} bold>
+							{line.text}
+						</Text>
 					</Box>
 				);
-			
+
 			case 'text':
 				return (
 					<Box key={index}>
 						<Text color={line.color || theme.text}>{line.text}</Text>
 					</Box>
 				);
-			
+
 			case 'overview-stats':
 				return (
 					<Box key={index} flexDirection="column">
 						<Box gap={2}>
 							<Box>
 								<Text color={theme.text}>Total Tasks: </Text>
-								<Text color={theme.accent} bold>{line.total}</Text>
+								<Text color={theme.accent} bold>
+									{line.total}
+								</Text>
 							</Box>
 							<Box>
 								<Text color={theme.text}>Current Tag: </Text>
-								<Text color={theme.success} bold>{line.currentTag}</Text>
+								<Text color={theme.success} bold>
+									{line.currentTag}
+								</Text>
 							</Box>
 						</Box>
 						<Box gap={2}>
@@ -375,27 +466,40 @@ export function StatusScreen() {
 								<Text color={theme.statusDone}>✓ {line.done} done</Text>
 							</Box>
 							<Box>
-								<Text color={theme.statusInProgress}>● {line.inProgress} in progress</Text>
+								<Text color={theme.statusInProgress}>
+									● {line.inProgress} in progress
+								</Text>
 							</Box>
 							<Box>
-								<Text color={theme.statusPending}>○ {line.pending} pending</Text>
+								<Text color={theme.statusPending}>
+									○ {line.pending} pending
+								</Text>
 							</Box>
 							<Box>
 								<Text color={theme.text}>Progress: </Text>
-								<Text color={line.completion >= 75 ? theme.statusDone : line.completion >= 50 ? theme.statusInProgress : theme.statusPending} bold>
+								<Text
+									color={
+										line.completion >= 75
+											? theme.statusDone
+											: line.completion >= 50
+												? theme.statusInProgress
+												: theme.statusPending
+									}
+									bold
+								>
 									{line.completion}%
 								</Text>
 							</Box>
 						</Box>
 					</Box>
 				);
-			
+
 			case 'horizontal-bar':
 				const barWidth = 40;
 				const percentage = Math.round((line.value / line.total) * 100);
 				const filledBars = Math.round((percentage / 100) * barWidth);
 				const emptyBars = barWidth - filledBars;
-				
+
 				return (
 					<Box key={index} flexDirection="column">
 						<Box gap={1}>
@@ -403,25 +507,32 @@ export function StatusScreen() {
 								<Text color={theme.text}>{line.label}</Text>
 							</Box>
 							<Box>
-								<Text color={line.color}>{'█'.repeat(Math.max(0, filledBars))}</Text>
-								<Text color={theme.border}>{'░'.repeat(Math.max(0, emptyBars))}</Text>
+								<Text color={line.color}>
+									{'█'.repeat(Math.max(0, filledBars))}
+								</Text>
+								<Text color={theme.border}>
+									{'░'.repeat(Math.max(0, emptyBars))}
+								</Text>
 							</Box>
 							<Box>
 								<Text color={theme.textDim}>
-									{line.showCount ? `${line.value}/${line.total}` : `${line.value}`} ({percentage}%)
+									{line.showCount
+										? `${line.value}/${line.total}`
+										: `${line.value}`}{' '}
+									({percentage}%)
 								</Text>
 							</Box>
 						</Box>
 					</Box>
 				);
-			
+
 			case 'metrics-grid':
 				// Render metrics in a 2-column grid
 				const pairs = [];
 				for (let i = 0; i < line.metrics.length; i += 2) {
 					pairs.push([line.metrics[i], line.metrics[i + 1]]);
 				}
-				
+
 				return (
 					<Box key={index} flexDirection="column">
 						{pairs.map((pair, pairIndex) => (
@@ -440,7 +551,7 @@ export function StatusScreen() {
 						))}
 					</Box>
 				);
-			
+
 			case 'model-grid':
 				return (
 					<Box key={index} flexDirection="column">
@@ -455,10 +566,10 @@ export function StatusScreen() {
 						))}
 					</Box>
 				);
-			
+
 			case 'spacer':
 				return <Box key={index} height={1} />;
-			
+
 			default:
 				return null;
 		}
@@ -466,7 +577,8 @@ export function StatusScreen() {
 
 	// Show scroll indicator
 	const showScrollIndicator = maxScroll > 0;
-	const scrollPercentage = maxScroll > 0 ? Math.round((scrollOffset / maxScroll) * 100) : 0;
+	const scrollPercentage =
+		maxScroll > 0 ? Math.round((scrollOffset / maxScroll) * 100) : 0;
 
 	return (
 		<Box flexDirection="column" height="100%">
@@ -511,7 +623,9 @@ export function StatusScreen() {
 				) : (
 					<Box>
 						<Text color={theme.text}>
-							{showScrollIndicator ? '↑/↓ j/k scroll • PgUp/PgDn • g/G top/bottom • ' : ''}
+							{showScrollIndicator
+								? '↑/↓ j/k scroll • PgUp/PgDn • g/G top/bottom • '
+								: ''}
 							ESC back
 						</Text>
 					</Box>

@@ -75,8 +75,10 @@ export class DirectBackend extends FlowBackend {
 			// Check both new and legacy locations
 			const newPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
 			const legacyPath = path.join(this.projectRoot, 'tasks/tasks.json');
-			
-			return fs.default.existsSync(newPath) || fs.default.existsSync(legacyPath);
+
+			return (
+				fs.default.existsSync(newPath) || fs.default.existsSync(legacyPath)
+			);
 		} catch (error) {
 			this.log.debug(`Error checking tasks.json existence: ${error.message}`);
 			return false;
@@ -113,16 +115,22 @@ export class DirectBackend extends FlowBackend {
 			case 'analyze_project_complexity':
 				// Set up output path for complexity report
 				const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
-				const tagSuffix = args.tag && args.tag !== 'master' ? `_${args.tag}` : '';
-				toolArgs.outputPath = path.join(reportDir, `task-complexity-report${tagSuffix}.json`);
+				const tagSuffix =
+					args.tag && args.tag !== 'master' ? `_${args.tag}` : '';
+				toolArgs.outputPath = path.join(
+					reportDir,
+					`task-complexity-report${tagSuffix}.json`
+				);
 				toolArgs.file = this.tasksJsonPath;
 				toolArgs.output = toolArgs.outputPath;
 				break;
 		}
 
 		// Call the direct function
-		const result = await directFunction(toolArgs, this.log, { session: this.session });
-		
+		const result = await directFunction(toolArgs, this.log, {
+			session: this.session
+		});
+
 		if (!result.success) {
 			throw new Error(result.error.message || result.error);
 		}

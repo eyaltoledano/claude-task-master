@@ -44,7 +44,7 @@ export class ChatSession {
 	 */
 	getSystemPrompt() {
 		const toolList = this.getAvailableTools()
-			.map(t => `- ${t.name}: ${t.description}`)
+			.map((t) => `- ${t.name}: ${t.description}`)
 			.join('\n');
 
 		return `You are Task Master AI, an intelligent assistant integrated into the Task Master Flow TUI.
@@ -52,7 +52,14 @@ export class ChatSession {
 Current Context:
 - Project: ${this.context.projectRoot}
 - Active Tag: ${this.context.currentTag}
-${this.context.recentTasks.length > 0 ? `- Recent Tasks: ${this.context.recentTasks.slice(0, 5).map(t => `${t.id}: ${t.title}`).join(', ')}` : ''}
+${
+	this.context.recentTasks.length > 0
+		? `- Recent Tasks: ${this.context.recentTasks
+				.slice(0, 5)
+				.map((t) => `${t.id}: ${t.title}`)
+				.join(', ')}`
+		: ''
+}
 
 Available MCP Tools:
 ${toolList}
@@ -104,11 +111,14 @@ Guidelines:
 
 		// Get the most recent messages up to the limit
 		const recentMessages = this.messages.slice(-limit);
-		
-		return [systemMessage, ...recentMessages.map(m => ({
-			role: m.role,
-			content: m.content
-		}))];
+
+		return [
+			systemMessage,
+			...recentMessages.map((m) => ({
+				role: m.role,
+				content: m.content
+			}))
+		];
 	}
 
 	/**
@@ -151,4 +161,4 @@ Guidelines:
 		session.lastActivityAt = data.lastActivityAt || new Date().toISOString();
 		return session;
 	}
-} 
+}

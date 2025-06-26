@@ -4,7 +4,13 @@ import { theme } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 
 export function CommandPalette() {
-	const { setCurrentScreen, showToast, hasTasksFile, setShowCommandPalette, handleInput } = useAppContext();
+	const {
+		setCurrentScreen,
+		showToast,
+		hasTasksFile,
+		setShowCommandPalette,
+		handleInput
+	} = useAppContext();
 	const [selectedIndex, setSelectedIndex] = useState(0);
 
 	const baseCommands = [
@@ -22,20 +28,22 @@ export function CommandPalette() {
 		}
 	];
 
-	const taskCommands = hasTasksFile ? [
-		{
-			name: 'Analyze Complexity',
-			command: '/analyze',
-			description: 'Analyze task complexity',
-			key: 'a'
-		},
-		{
-			name: 'Task Management',
-			command: '/tasks',
-			description: 'Interactive task management',
-			key: 't'
-		}
-	] : [];
+	const taskCommands = hasTasksFile
+		? [
+				{
+					name: 'Analyze Complexity',
+					command: '/analyze',
+					description: 'Analyze task complexity',
+					key: 'a'
+				},
+				{
+					name: 'Task Management',
+					command: '/tasks',
+					description: 'Interactive task management',
+					key: 't'
+				}
+			]
+		: [];
 
 	const otherCommands = [
 		{

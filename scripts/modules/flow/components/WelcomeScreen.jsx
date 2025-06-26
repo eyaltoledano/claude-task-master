@@ -53,8 +53,10 @@ export function WelcomeScreen() {
 					{/* Show message if no tasks.json */}
 					{!hasTasksFile && (
 						<Box flexDirection="column" marginBottom={2} alignItems="center">
-							<Text color={theme.warning}>⚠️  No tasks.json found</Text>
-							<Text color={theme.textDim}>Start by parsing a PRD with /parse or ctrl+x p</Text>
+							<Text color={theme.warning}>⚠️ No tasks.json found</Text>
+							<Text color={theme.textDim}>
+								Start by parsing a PRD with /parse or ctrl+x p
+							</Text>
 						</Box>
 					)}
 

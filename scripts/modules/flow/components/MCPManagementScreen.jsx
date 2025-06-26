@@ -12,7 +12,12 @@ import {
 import { connectionPool } from '../mcp/connection-pool.js';
 
 export function MCPManagementScreen() {
-	const { setCurrentScreen, currentScreen, showToast, backend: currentBackend } = useAppContext();
+	const {
+		setCurrentScreen,
+		currentScreen,
+		showToast,
+		backend: currentBackend
+	} = useAppContext();
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [loading, setLoading] = useState(true);
@@ -62,7 +67,9 @@ export function MCPManagementScreen() {
 							const tools = await connectionPool.listTools(server.id);
 							toolCount = tools.length;
 							// Extract unique capabilities from tool names
-							capabilities = [...new Set(tools.map(t => t.name.split('_')[0]))].slice(0, 5);
+							capabilities = [
+								...new Set(tools.map((t) => t.name.split('_')[0]))
+							].slice(0, 5);
 						} catch (err) {
 							// Ignore errors getting tool count
 						}
@@ -96,10 +103,12 @@ export function MCPManagementScreen() {
 			}
 
 			const tools = await connectionPool.listTools(server.id);
-			setServerTools(tools.map(tool => ({
-				...tool,
-				description: tool.description || 'No description available'
-			})));
+			setServerTools(
+				tools.map((tool) => ({
+					...tool,
+					description: tool.description || 'No description available'
+				}))
+			);
 		} catch (err) {
 			showToast(`Failed to load tools: ${err.message}`, 'error');
 			setServerTools([]);
@@ -348,9 +357,17 @@ export function MCPManagementScreen() {
 
 	const getFormFields = () => {
 		const baseFields = ['name', 'transport'];
-		
+
 		if (formData.transport === 'stdio') {
-			return [...baseFields, 'command', 'args', 'env', 'scope', 'submit', 'cancel'];
+			return [
+				...baseFields,
+				'command',
+				'args',
+				'env',
+				'scope',
+				'submit',
+				'cancel'
+			];
 		} else {
 			return [...baseFields, 'url', 'headers', 'scope', 'submit', 'cancel'];
 		}
@@ -358,15 +375,28 @@ export function MCPManagementScreen() {
 
 	const getFieldValue = (field) => {
 		switch (field) {
-			case 'name': return formData.name;
-			case 'transport': return formData.transport;
-			case 'command': return formData.command;
-			case 'url': return formData.url;
-			case 'args': return formData.args.join(' ');
-			case 'env': return Object.entries(formData.env).map(([k, v]) => `${k}=${v}`).join(' ');
-			case 'headers': return Object.entries(formData.headers).map(([k, v]) => `${k}: ${v}`).join(', ');
-			case 'scope': return formData.scope;
-			default: return '';
+			case 'name':
+				return formData.name;
+			case 'transport':
+				return formData.transport;
+			case 'command':
+				return formData.command;
+			case 'url':
+				return formData.url;
+			case 'args':
+				return formData.args.join(' ');
+			case 'env':
+				return Object.entries(formData.env)
+					.map(([k, v]) => `${k}=${v}`)
+					.join(' ');
+			case 'headers':
+				return Object.entries(formData.headers)
+					.map(([k, v]) => `${k}: ${v}`)
+					.join(', ');
+			case 'scope':
+				return formData.scope;
+			default:
+				return '';
 		}
 	};
 
@@ -388,13 +418,13 @@ export function MCPManagementScreen() {
 				setFormData({ ...formData, url: value });
 				break;
 			case 'args':
-				setFormData({ ...formData, args: value.split(' ').filter(a => a) });
+				setFormData({ ...formData, args: value.split(' ').filter((a) => a) });
 				break;
 			case 'env':
 				// Parse KEY=value pairs
-				const envPairs = value.split(' ').filter(p => p.includes('='));
+				const envPairs = value.split(' ').filter((p) => p.includes('='));
 				const env = {};
-				envPairs.forEach(pair => {
+				envPairs.forEach((pair) => {
 					const [key, ...valueParts] = pair.split('=');
 					env[key] = valueParts.join('=');
 				});
@@ -402,9 +432,12 @@ export function MCPManagementScreen() {
 				break;
 			case 'headers':
 				// Parse Header: value pairs
-				const headerPairs = value.split(',').map(h => h.trim()).filter(h => h.includes(':'));
+				const headerPairs = value
+					.split(',')
+					.map((h) => h.trim())
+					.filter((h) => h.includes(':'));
 				const headers = {};
-				headerPairs.forEach(pair => {
+				headerPairs.forEach((pair) => {
 					const [key, ...valueParts] = pair.split(':');
 					headers[key.trim()] = valueParts.join(':').trim();
 				});
@@ -466,7 +499,7 @@ export function MCPManagementScreen() {
 			// Add the server
 			await addServer(newServer);
 			await loadServerList();
-			
+
 			showToast(`Added MCP server: ${formData.name}`, 'success');
 			setShowAddForm(false);
 			resetForm();
@@ -497,10 +530,10 @@ export function MCPManagementScreen() {
 		try {
 			// Try to parse the JSON
 			const parsed = JSON.parse(pasteContent);
-			
+
 			// Check if it's wrapped in mcpServers object
 			const servers = parsed.mcpServers || parsed;
-			
+
 			// Get all server entries
 			const serverNames = Object.keys(servers);
 			if (serverNames.length === 0) {
@@ -515,7 +548,7 @@ export function MCPManagementScreen() {
 			for (const serverName of serverNames) {
 				try {
 					const serverConfig = servers[serverName];
-					
+
 					// Map the pasted config to our format
 					const mappedConfig = {
 						name: serverName,
@@ -565,15 +598,16 @@ export function MCPManagementScreen() {
 
 			// Reload server list
 			await loadServerList();
-			
+
 			// Show results
 			if (addedCount > 0) {
-				const message = addedCount === 1 
-					? `Added 1 MCP server`
-					: `Added ${addedCount} MCP servers`;
+				const message =
+					addedCount === 1
+						? `Added 1 MCP server`
+						: `Added ${addedCount} MCP servers`;
 				showToast(message, 'success');
 			}
-			
+
 			if (errors.length > 0) {
 				showToast(`Failed to add: ${errors.join(', ')}`, 'error');
 			}
@@ -584,7 +618,10 @@ export function MCPManagementScreen() {
 			}
 		} catch (err) {
 			if (err instanceof SyntaxError) {
-				showToast('Invalid JSON format. Please check your configuration.', 'error');
+				showToast(
+					'Invalid JSON format. Please check your configuration.',
+					'error'
+				);
 			} else {
 				showToast(`Failed to parse configuration: ${err.message}`, 'error');
 			}
@@ -606,9 +643,9 @@ export function MCPManagementScreen() {
 			// Remove the server
 			await removeServer(server.id);
 			await loadServerList();
-			
+
 			showToast(`Removed MCP server: ${server.name}`, 'success');
-			
+
 			// Adjust selected index if needed
 			if (selectedIndex >= servers.length - 1) {
 				setSelectedIndex(Math.max(0, servers.length - 2));
@@ -670,7 +707,10 @@ export function MCPManagementScreen() {
 	}
 
 	// Calculate visible servers
-	const visibleServers = servers.slice(scrollOffset, scrollOffset + viewportHeight);
+	const visibleServers = servers.slice(
+		scrollOffset,
+		scrollOffset + viewportHeight
+	);
 	const showScrollIndicators = servers.length > viewportHeight;
 
 	return (
@@ -688,21 +728,53 @@ export function MCPManagementScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>MCP Servers</Text>
 				</Box>
-				<Text color={theme.textDim}>[a add] [p paste] [d remove] [space connect] [↵ details] [ESC back]</Text>
+				<Text color={theme.textDim}>
+					[a add] [p paste] [d remove] [space connect] [↵ details] [ESC back]
+				</Text>
 			</Box>
 
 			{/* Server table */}
 			<Box flexGrow={1} flexDirection="column">
 				{/* Table header */}
 				<Box paddingLeft={1} paddingRight={1} marginBottom={1}>
-					<Box width={3}><Text> </Text></Box>
-					<Box width={3}><Text color={theme.textDim} underline> </Text></Box>
-					<Box width={25}><Text color={theme.textDim} underline>Name</Text></Box>
-					<Box width={12}><Text color={theme.textDim} underline>Transport</Text></Box>
-					<Box width={12}><Text color={theme.textDim} underline>Status</Text></Box>
-					<Box width={10}><Text color={theme.textDim} underline>Scope</Text></Box>
-					<Box width={8}><Text color={theme.textDim} underline>Tools</Text></Box>
-					<Box width={30}><Text color={theme.textDim} underline>Path/URL</Text></Box>
+					<Box width={3}>
+						<Text> </Text>
+					</Box>
+					<Box width={3}>
+						<Text color={theme.textDim} underline>
+							{' '}
+						</Text>
+					</Box>
+					<Box width={25}>
+						<Text color={theme.textDim} underline>
+							Name
+						</Text>
+					</Box>
+					<Box width={12}>
+						<Text color={theme.textDim} underline>
+							Transport
+						</Text>
+					</Box>
+					<Box width={12}>
+						<Text color={theme.textDim} underline>
+							Status
+						</Text>
+					</Box>
+					<Box width={10}>
+						<Text color={theme.textDim} underline>
+							Scope
+						</Text>
+					</Box>
+					<Box width={8}>
+						<Text color={theme.textDim} underline>
+							Tools
+						</Text>
+					</Box>
+					<Box width={30}>
+						<Text color={theme.textDim} underline>
+							Path/URL
+						</Text>
+					</Box>
 				</Box>
 
 				{/* Scroll indicator (top) */}
@@ -715,13 +787,15 @@ export function MCPManagementScreen() {
 				{/* Server rows */}
 				{servers.length === 0 ? (
 					<Box paddingLeft={1}>
-						<Text color={theme.textDim}>No MCP servers configured. Press 'a' to add one.</Text>
+						<Text color={theme.textDim}>
+							No MCP servers configured. Press 'a' to add one.
+						</Text>
 					</Box>
 				) : (
 					visibleServers.map((server, visibleIndex) => {
 						const actualIndex = scrollOffset + visibleIndex;
 						const isSelected = actualIndex === selectedIndex;
-						
+
 						return (
 							<Box
 								key={server.id || server.name}
@@ -734,13 +808,20 @@ export function MCPManagementScreen() {
 									</Text>
 								</Box>
 								<Box width={3}>
-									<Text color={
-										server.status === 'active' ? theme.success :
-										server.status === 'error' ? theme.error :
-										theme.textDim
-									}>
-										{server.status === 'active' ? '●' : 
-										 server.status === 'error' ? '●' : '○'}
+									<Text
+										color={
+											server.status === 'active'
+												? theme.success
+												: server.status === 'error'
+													? theme.error
+													: theme.textDim
+										}
+									>
+										{server.status === 'active'
+											? '●'
+											: server.status === 'error'
+												? '●'
+												: '○'}
 									</Text>
 								</Box>
 								<Box width={25}>
@@ -753,13 +834,19 @@ export function MCPManagementScreen() {
 									<Text color={theme.text}>{server.transport}</Text>
 								</Box>
 								<Box width={12}>
-									<Text color={
-										server.status === 'active' ? theme.success :
-										server.status === 'authenticated' ? theme.success :
-										server.status === 'connecting' ? theme.warning :
-										server.status === 'error' ? theme.error :
-										theme.textDim
-									}>
+									<Text
+										color={
+											server.status === 'active'
+												? theme.success
+												: server.status === 'authenticated'
+													? theme.success
+													: server.status === 'connecting'
+														? theme.warning
+														: server.status === 'error'
+															? theme.error
+															: theme.textDim
+										}
+									>
 										{server.status}
 									</Text>
 								</Box>
@@ -773,10 +860,9 @@ export function MCPManagementScreen() {
 								</Box>
 								<Box width={30}>
 									<Text color={theme.textDim}>
-										{server.transport === 'stdio' 
-											? (server.scriptPath || server.command || '-')
-											: (server.url || '-')
-										}
+										{server.transport === 'stdio'
+											? server.scriptPath || server.command || '-'
+											: server.url || '-'}
 									</Text>
 								</Box>
 							</Box>
@@ -785,11 +871,14 @@ export function MCPManagementScreen() {
 				)}
 
 				{/* Scroll indicator (bottom) */}
-				{showScrollIndicators && (scrollOffset + viewportHeight < servers.length) && (
-					<Box paddingLeft={1}>
-						<Text color={theme.textDim}>↓ {servers.length - scrollOffset - viewportHeight} more below</Text>
-					</Box>
-				)}
+				{showScrollIndicators &&
+					scrollOffset + viewportHeight < servers.length && (
+						<Box paddingLeft={1}>
+							<Text color={theme.textDim}>
+								↓ {servers.length - scrollOffset - viewportHeight} more below
+							</Text>
+						</Box>
+					)}
 			</Box>
 
 			{/* Footer */}
@@ -809,9 +898,13 @@ export function MCPManagementScreen() {
 				) : (
 					<Text color={theme.textDim}>
 						{servers.length} server{servers.length !== 1 ? 's' : ''} configured
-						{servers.filter(s => s.status === 'active').length > 0 && 
-							<Text color={theme.success}> • {servers.filter(s => s.status === 'active').length} connected</Text>
-						}
+						{servers.filter((s) => s.status === 'active').length > 0 && (
+							<Text color={theme.success}>
+								{' '}
+								• {servers.filter((s) => s.status === 'active').length}{' '}
+								connected
+							</Text>
+						)}
 					</Text>
 				)}
 			</Box>
@@ -819,13 +912,16 @@ export function MCPManagementScreen() {
 	);
 
 	function renderServerDetails() {
-		const visibleTools = serverTools.slice(scrollOffset, scrollOffset + viewportHeight);
+		const visibleTools = serverTools.slice(
+			scrollOffset,
+			scrollOffset + viewportHeight
+		);
 		const showScrollIndicators = serverTools.length > viewportHeight;
 
 		// Build full command line for stdio servers
 		const getFullCommand = () => {
 			if (selectedServer.transport !== 'stdio') return null;
-			
+
 			const cmd = selectedServer.scriptPath || selectedServer.command || '';
 			const args = selectedServer.args || [];
 			return `${cmd} ${args.join(' ')}`.trim();
@@ -852,7 +948,12 @@ export function MCPManagementScreen() {
 				</Box>
 
 				{/* Server info - Enhanced Debug Information */}
-				<Box paddingLeft={1} paddingRight={1} marginBottom={1} flexDirection="column">
+				<Box
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+					flexDirection="column"
+				>
 					{/* Basic Info */}
 					<Box>
 						<Text color={theme.textDim}>ID: </Text>
@@ -860,13 +961,20 @@ export function MCPManagementScreen() {
 					</Box>
 					<Box>
 						<Text color={theme.textDim}>Status: </Text>
-						<Text color={
-							selectedServer.status === 'active' ? theme.success :
-							selectedServer.status === 'error' ? theme.error :
-							theme.textDim
-						}>
-							{selectedServer.status === 'active' ? '● ' : 
-							 selectedServer.status === 'error' ? '● ' : '○ '}
+						<Text
+							color={
+								selectedServer.status === 'active'
+									? theme.success
+									: selectedServer.status === 'error'
+										? theme.error
+										: theme.textDim
+							}
+						>
+							{selectedServer.status === 'active'
+								? '● '
+								: selectedServer.status === 'error'
+									? '● '
+									: '○ '}
 							{selectedServer.status}
 						</Text>
 					</Box>
@@ -878,7 +986,7 @@ export function MCPManagementScreen() {
 						<Text color={theme.textDim}>Scope: </Text>
 						<Text>{selectedServer.scope}</Text>
 					</Box>
-					
+
 					{/* Transport-specific info */}
 					{selectedServer.transport === 'stdio' ? (
 						<>
@@ -887,7 +995,11 @@ export function MCPManagementScreen() {
 							</Box>
 							<Box>
 								<Text color={theme.textDim}>Executable: </Text>
-								<Text>{selectedServer.scriptPath || selectedServer.command || 'Not specified'}</Text>
+								<Text>
+									{selectedServer.scriptPath ||
+										selectedServer.command ||
+										'Not specified'}
+								</Text>
 							</Box>
 							{selectedServer.args && selectedServer.args.length > 0 && (
 								<Box flexDirection="column">
@@ -895,7 +1007,9 @@ export function MCPManagementScreen() {
 									<Box paddingLeft={2}>
 										{selectedServer.args.map((arg, index) => (
 											<Box key={index}>
-												<Text color={theme.text}>[{index}] {arg}</Text>
+												<Text color={theme.text}>
+													[{index}] {arg}
+												</Text>
 											</Box>
 										))}
 									</Box>
@@ -907,20 +1021,23 @@ export function MCPManagementScreen() {
 							<Box paddingLeft={2}>
 								<Text color={theme.textBright}>{getFullCommand()}</Text>
 							</Box>
-							{selectedServer.env && Object.keys(selectedServer.env).length > 0 && (
-								<Box flexDirection="column" marginTop={1}>
-									<Text color={theme.textDim}>Environment Variables:</Text>
-									<Box paddingLeft={2}>
-										{Object.entries(selectedServer.env).map(([key, value]) => (
-											<Box key={key}>
-												<Text color={theme.warning}>{key}</Text>
-												<Text>=</Text>
-												<Text color={theme.text}>{value}</Text>
-											</Box>
-										))}
+							{selectedServer.env &&
+								Object.keys(selectedServer.env).length > 0 && (
+									<Box flexDirection="column" marginTop={1}>
+										<Text color={theme.textDim}>Environment Variables:</Text>
+										<Box paddingLeft={2}>
+											{Object.entries(selectedServer.env).map(
+												([key, value]) => (
+													<Box key={key}>
+														<Text color={theme.warning}>{key}</Text>
+														<Text>=</Text>
+														<Text color={theme.text}>{value}</Text>
+													</Box>
+												)
+											)}
+										</Box>
 									</Box>
-								</Box>
-							)}
+								)}
 						</>
 					) : (
 						<>
@@ -931,19 +1048,22 @@ export function MCPManagementScreen() {
 								<Text color={theme.textDim}>URL: </Text>
 								<Text>{selectedServer.url}</Text>
 							</Box>
-							{selectedServer.headers && Object.keys(selectedServer.headers).length > 0 && (
-								<Box flexDirection="column" marginTop={1}>
-									<Text color={theme.textDim}>Headers:</Text>
-									<Box paddingLeft={2}>
-										{Object.entries(selectedServer.headers).map(([key, value]) => (
-											<Box key={key}>
-												<Text color={theme.warning}>{key}: </Text>
-												<Text color={theme.text}>{value}</Text>
-											</Box>
-										))}
+							{selectedServer.headers &&
+								Object.keys(selectedServer.headers).length > 0 && (
+									<Box flexDirection="column" marginTop={1}>
+										<Text color={theme.textDim}>Headers:</Text>
+										<Box paddingLeft={2}>
+											{Object.entries(selectedServer.headers).map(
+												([key, value]) => (
+													<Box key={key}>
+														<Text color={theme.warning}>{key}: </Text>
+														<Text color={theme.text}>{value}</Text>
+													</Box>
+												)
+											)}
+										</Box>
 									</Box>
-								</Box>
-							)}
+								)}
 						</>
 					)}
 
@@ -954,7 +1074,7 @@ export function MCPManagementScreen() {
 							<Text>{new Date(selectedServer.createdAt).toLocaleString()}</Text>
 						</Box>
 					)}
-					
+
 					{selectedServer.error && (
 						<Box marginTop={1} flexDirection="column">
 							<Text color={theme.error}>Last Error:</Text>
@@ -968,14 +1088,26 @@ export function MCPManagementScreen() {
 				{/* Tools section */}
 				<Box flexGrow={1} flexDirection="column">
 					<Box paddingLeft={1} marginBottom={1}>
-						<Text color={theme.accent} bold>Available Tools ({serverTools.length})</Text>
+						<Text color={theme.accent} bold>
+							Available Tools ({serverTools.length})
+						</Text>
 					</Box>
 
 					{/* Tool list header */}
 					<Box paddingLeft={1} paddingRight={1} marginBottom={1}>
-						<Box width={3}><Text> </Text></Box>
-						<Box width={30}><Text color={theme.textDim} underline>Tool Name</Text></Box>
-						<Box flexGrow={1}><Text color={theme.textDim} underline>Description</Text></Box>
+						<Box width={3}>
+							<Text> </Text>
+						</Box>
+						<Box width={30}>
+							<Text color={theme.textDim} underline>
+								Tool Name
+							</Text>
+						</Box>
+						<Box flexGrow={1}>
+							<Text color={theme.textDim} underline>
+								Description
+							</Text>
+						</Box>
 					</Box>
 
 					{/* Scroll indicator (top) */}
@@ -989,8 +1121,8 @@ export function MCPManagementScreen() {
 					{serverTools.length === 0 ? (
 						<Box paddingLeft={1}>
 							<Text color={theme.textDim}>
-								{selectedServer.status === 'active' 
-									? 'No tools available from this server.' 
+								{selectedServer.status === 'active'
+									? 'No tools available from this server.'
 									: 'Server is not connected. Connect to view tools.'}
 							</Text>
 						</Box>
@@ -998,13 +1130,9 @@ export function MCPManagementScreen() {
 						visibleTools.map((tool, visibleIndex) => {
 							const actualIndex = scrollOffset + visibleIndex;
 							const isSelected = actualIndex === selectedIndex;
-							
+
 							return (
-								<Box
-									key={tool.name}
-									paddingLeft={1}
-									paddingRight={1}
-								>
+								<Box key={tool.name} paddingLeft={1} paddingRight={1}>
 									<Box width={3}>
 										<Text color={isSelected ? theme.accent : theme.textDim}>
 											{isSelected ? '→' : ' '}
@@ -1017,7 +1145,7 @@ export function MCPManagementScreen() {
 									</Box>
 									<Box flexGrow={1}>
 										<Text color={theme.textDim}>
-											{tool.description.length > 60 
+											{tool.description.length > 60
 												? tool.description.substring(0, 57) + '...'
 												: tool.description}
 										</Text>
@@ -1028,11 +1156,15 @@ export function MCPManagementScreen() {
 					)}
 
 					{/* Scroll indicator (bottom) */}
-					{showScrollIndicators && (scrollOffset + viewportHeight < serverTools.length) && (
-						<Box paddingLeft={1}>
-							<Text color={theme.textDim}>↓ {serverTools.length - scrollOffset - viewportHeight} more below</Text>
-						</Box>
-					)}
+					{showScrollIndicators &&
+						scrollOffset + viewportHeight < serverTools.length && (
+							<Box paddingLeft={1}>
+								<Text color={theme.textDim}>
+									↓ {serverTools.length - scrollOffset - viewportHeight} more
+									below
+								</Text>
+							</Box>
+						)}
 				</Box>
 			</Box>
 		);
@@ -1062,9 +1194,16 @@ export function MCPManagementScreen() {
 				</Box>
 
 				{/* Tool details */}
-				<Box flexGrow={1} paddingLeft={1} paddingRight={1} flexDirection="column">
+				<Box
+					flexGrow={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexDirection="column"
+				>
 					<Box marginBottom={1}>
-						<Text color={theme.accent} bold>Tool: {selectedTool.name}</Text>
+						<Text color={theme.accent} bold>
+							Tool: {selectedTool.name}
+						</Text>
 					</Box>
 
 					<Box marginBottom={1} flexDirection="column">
@@ -1110,14 +1249,25 @@ export function MCPManagementScreen() {
 					</Box>
 
 					{/* Paste area */}
-					<Box flexGrow={1} paddingLeft={2} paddingRight={2} flexDirection="column">
-						<Text color={theme.accent} bold>Paste MCP Server Configuration</Text>
+					<Box
+						flexGrow={1}
+						paddingLeft={2}
+						paddingRight={2}
+						flexDirection="column"
+					>
+						<Text color={theme.accent} bold>
+							Paste MCP Server Configuration
+						</Text>
 						<Box height={1} />
-						
-						<Text color={theme.textDim}>Paste your JSON configuration below:</Text>
-						<Text color={theme.textDim}>Press ESC at any time to cancel without saving.</Text>
+
+						<Text color={theme.textDim}>
+							Paste your JSON configuration below:
+						</Text>
+						<Text color={theme.textDim}>
+							Press ESC at any time to cancel without saving.
+						</Text>
 						<Box height={1} />
-						
+
 						{/* JSON input area */}
 						<Box
 							borderStyle="single"
@@ -1133,10 +1283,10 @@ export function MCPManagementScreen() {
 									<Box key={index}>
 										<Text color={theme.textBright}>
 											{line}
-											{index === pasteContent.split('\n').length - 1 && 
-												!pasteContent.endsWith('\n') && 
-												<Text color={theme.accent}>_</Text>
-											}
+											{index === pasteContent.split('\n').length - 1 &&
+												!pasteContent.endsWith('\n') && (
+													<Text color={theme.accent}>_</Text>
+												)}
 										</Text>
 									</Box>
 								))}
@@ -1186,14 +1336,23 @@ export function MCPManagementScreen() {
 						<Text color={theme.textDim}> › </Text>
 						<Text color={theme.text}>Add MCP Server</Text>
 					</Box>
-					<Text color={theme.textDim}>[↑↓ navigate] [TAB/Shift+TAB cycle] [↵ submit] [ESC cancel]</Text>
+					<Text color={theme.textDim}>
+						[↑↓ navigate] [TAB/Shift+TAB cycle] [↵ submit] [ESC cancel]
+					</Text>
 				</Box>
 
 				{/* Form */}
-				<Box flexGrow={1} paddingLeft={2} paddingRight={2} flexDirection="column">
-					<Text color={theme.accent} bold>Add New MCP Server</Text>
+				<Box
+					flexGrow={1}
+					paddingLeft={2}
+					paddingRight={2}
+					flexDirection="column"
+				>
+					<Text color={theme.accent} bold>
+						Add New MCP Server
+					</Text>
 					<Box height={1} />
-					
+
 					{/* Server Name */}
 					<Box marginBottom={1}>
 						<Box width={15}>
@@ -1210,11 +1369,15 @@ export function MCPManagementScreen() {
 					{/* Transport */}
 					<Box marginBottom={1}>
 						<Box width={15}>
-							<Text color={formField === 'transport' ? theme.accent : theme.text}>
+							<Text
+								color={formField === 'transport' ? theme.accent : theme.text}
+							>
 								Transport:
 							</Text>
 						</Box>
-						<Text color={formField === 'transport' ? theme.textBright : theme.text}>
+						<Text
+							color={formField === 'transport' ? theme.textBright : theme.text}
+						>
 							{formField === 'transport' ? inputValue : formData.transport}
 							{formField === 'transport' && <Text color={theme.accent}>_</Text>}
 						</Text>
@@ -1226,23 +1389,35 @@ export function MCPManagementScreen() {
 						<>
 							<Box marginBottom={1}>
 								<Box width={15}>
-									<Text color={formField === 'command' ? theme.accent : theme.text}>
+									<Text
+										color={formField === 'command' ? theme.accent : theme.text}
+									>
 										Command:
 									</Text>
 								</Box>
-								<Text color={formField === 'command' ? theme.textBright : theme.text}>
+								<Text
+									color={
+										formField === 'command' ? theme.textBright : theme.text
+									}
+								>
 									{formField === 'command' ? inputValue : formData.command}
-									{formField === 'command' && <Text color={theme.accent}>_</Text>}
+									{formField === 'command' && (
+										<Text color={theme.accent}>_</Text>
+									)}
 								</Text>
 							</Box>
 
 							<Box marginBottom={1}>
 								<Box width={15}>
-									<Text color={formField === 'args' ? theme.accent : theme.text}>
+									<Text
+										color={formField === 'args' ? theme.accent : theme.text}
+									>
 										Arguments:
 									</Text>
 								</Box>
-								<Text color={formField === 'args' ? theme.textBright : theme.text}>
+								<Text
+									color={formField === 'args' ? theme.textBright : theme.text}
+								>
 									{formField === 'args' ? inputValue : formData.args.join(' ')}
 									{formField === 'args' && <Text color={theme.accent}>_</Text>}
 								</Text>
@@ -1255,8 +1430,14 @@ export function MCPManagementScreen() {
 										Environment:
 									</Text>
 								</Box>
-								<Text color={formField === 'env' ? theme.textBright : theme.text}>
-									{formField === 'env' ? inputValue : Object.entries(formData.env).map(([k, v]) => `${k}=${v}`).join(' ')}
+								<Text
+									color={formField === 'env' ? theme.textBright : theme.text}
+								>
+									{formField === 'env'
+										? inputValue
+										: Object.entries(formData.env)
+												.map(([k, v]) => `${k}=${v}`)
+												.join(' ')}
 									{formField === 'env' && <Text color={theme.accent}>_</Text>}
 								</Text>
 								<Text color={theme.textDim}> (KEY=value pairs)</Text>
@@ -1273,7 +1454,9 @@ export function MCPManagementScreen() {
 										URL:
 									</Text>
 								</Box>
-								<Text color={formField === 'url' ? theme.textBright : theme.text}>
+								<Text
+									color={formField === 'url' ? theme.textBright : theme.text}
+								>
 									{formField === 'url' ? inputValue : formData.url}
 									{formField === 'url' && <Text color={theme.accent}>_</Text>}
 								</Text>
@@ -1281,13 +1464,25 @@ export function MCPManagementScreen() {
 
 							<Box marginBottom={1}>
 								<Box width={15}>
-									<Text color={formField === 'headers' ? theme.accent : theme.text}>
+									<Text
+										color={formField === 'headers' ? theme.accent : theme.text}
+									>
 										Headers:
 									</Text>
 								</Box>
-								<Text color={formField === 'headers' ? theme.textBright : theme.text}>
-									{formField === 'headers' ? inputValue : Object.entries(formData.headers).map(([k, v]) => `${k}: ${v}`).join(', ')}
-									{formField === 'headers' && <Text color={theme.accent}>_</Text>}
+								<Text
+									color={
+										formField === 'headers' ? theme.textBright : theme.text
+									}
+								>
+									{formField === 'headers'
+										? inputValue
+										: Object.entries(formData.headers)
+												.map(([k, v]) => `${k}: ${v}`)
+												.join(', ')}
+									{formField === 'headers' && (
+										<Text color={theme.accent}>_</Text>
+									)}
 								</Text>
 								<Text color={theme.textDim}> (Header: value, ...)</Text>
 							</Box>
@@ -1310,7 +1505,7 @@ export function MCPManagementScreen() {
 
 					{/* Submit button */}
 					<Box>
-						<Text 
+						<Text
 							color={formField === 'submit' ? theme.success : theme.text}
 							bold={formField === 'submit'}
 						>
@@ -1321,7 +1516,7 @@ export function MCPManagementScreen() {
 
 					{/* Cancel button */}
 					<Box marginTop={1}>
-						<Text 
+						<Text
 							color={formField === 'cancel' ? theme.error : theme.textDim}
 							bold={formField === 'cancel'}
 						>
@@ -1333,16 +1528,15 @@ export function MCPManagementScreen() {
 					{/* Help text */}
 					<Box marginTop={2}>
 						<Text color={theme.textDim}>
-							{formData.transport === 'stdio' 
+							{formData.transport === 'stdio'
 								? 'Example: command="/usr/local/bin/server" args="--port 3000" env="API_KEY=abc123"'
 								: formData.transport === 'sse'
-								? 'Example: url="https://api.example.com/sse" headers="Authorization: Bearer token"'
-								: 'Example: url="https://api.example.com/mcp" headers="X-API-Key: your-key"'
-							}
+									? 'Example: url="https://api.example.com/sse" headers="Authorization: Bearer token"'
+									: 'Example: url="https://api.example.com/mcp" headers="X-API-Key: your-key"'}
 						</Text>
 					</Box>
 				</Box>
 			</Box>
 		);
 	}
-} 
+}

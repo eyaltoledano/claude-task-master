@@ -35,13 +35,13 @@ export class MCPClientBackend extends FlowBackend {
 				this._hasTasksFileCache = false;
 				return false;
 			}
-			
+
 			// Try to list tasks with minimal data - if successful, tasks.json exists
 			const result = await this.client.callTool('get_tasks', {
 				status: 'all',
 				withSubtasks: false
 			});
-			
+
 			// If we get a result with tasks array (even empty), tasks.json exists
 			const data = result.data || result;
 			this._hasTasksFileCache = data && 'tasks' in data;

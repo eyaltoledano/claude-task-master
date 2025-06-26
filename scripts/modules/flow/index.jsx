@@ -43,7 +43,9 @@ function FlowApp({ backend, options = {} }) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [messages, setMessages] = useState([]);
-	const [currentModel, setCurrentModel] = useState('claude-3-5-sonnet-20241022');
+	const [currentModel, setCurrentModel] = useState(
+		'claude-3-5-sonnet-20241022'
+	);
 	const [notification, setNotification] = useState(null);
 	const [currentBackend, setCurrentBackend] = useState(backend);
 	const [currentTheme, setCurrentTheme] = useState('auto');
@@ -79,7 +81,9 @@ function FlowApp({ backend, options = {} }) {
 
 		// Only include task-related commands if tasks.json exists
 		if (hasTasksFile) {
-			baseCommands.splice(2, 0, 
+			baseCommands.splice(
+				2,
+				0,
 				{ name: '/analyze', description: 'Analyze task complexity' },
 				{ name: '/tasks', description: 'Interactive task management' }
 			);
@@ -118,11 +122,11 @@ function FlowApp({ backend, options = {} }) {
 			const message =
 				options.completedSetup === 'models'
 					? '✓ Model configuration complete!'
-					: options.completedSetup === 'rules' 
-					? '✓ Rules configuration complete!' 
-					: options.completedSetup === 'init'
-					? '✓ Project initialization complete!'
-					: `✓ ${options.completedSetup} complete!`;
+					: options.completedSetup === 'rules'
+						? '✓ Rules configuration complete!'
+						: options.completedSetup === 'init'
+							? '✓ Project initialization complete!'
+							: `✓ ${options.completedSetup} complete!`;
 
 			setNotification({
 				message,
@@ -137,11 +141,11 @@ function FlowApp({ backend, options = {} }) {
 		async function init() {
 			try {
 				await currentBackend.initialize();
-				
+
 				// Check if tasks.json exists
 				const hasFile = await currentBackend.hasTasksFile();
 				setHasTasksFile(hasFile);
-				
+
 				if (hasFile) {
 					const result = await currentBackend.listTasks();
 					setTasks(result.tasks);
@@ -150,7 +154,7 @@ function FlowApp({ backend, options = {} }) {
 					// No tasks file, just set empty tasks
 					setTasks([]);
 				}
-				
+
 				setLoading(false);
 			} catch (err) {
 				setError(err.message);
@@ -210,7 +214,11 @@ function FlowApp({ backend, options = {} }) {
 	// Handle input commands
 	const handleInput = async (value) => {
 		const trimmedValue = value.trim();
-		console.log('[FlowApp] handleInput called with:', { value, trimmedValue, currentScreen });
+		console.log('[FlowApp] handleInput called with:', {
+			value,
+			trimmedValue,
+			currentScreen
+		});
 
 		// If we have suggestions and one is selected, use that instead
 		if (
@@ -414,7 +422,8 @@ function FlowApp({ backend, options = {} }) {
 							setCurrentScreen('analyze');
 						} else {
 							setNotification({
-								message: 'No tasks.json found. Use /parse to create tasks first.',
+								message:
+									'No tasks.json found. Use /parse to create tasks first.',
 								type: 'warning',
 								duration: 3000
 							});
@@ -425,7 +434,8 @@ function FlowApp({ backend, options = {} }) {
 							setCurrentScreen('tasks');
 						} else {
 							setNotification({
-								message: 'No tasks.json found. Use /parse to create tasks first.',
+								message:
+									'No tasks.json found. Use /parse to create tasks first.',
 								type: 'warning',
 								duration: 3000
 							});
@@ -461,7 +471,8 @@ function FlowApp({ backend, options = {} }) {
 							})();
 						} else {
 							setNotification({
-								message: 'No tasks.json found. Use /parse to create tasks first.',
+								message:
+									'No tasks.json found. Use /parse to create tasks first.',
 								type: 'warning',
 								duration: 3000
 							});
@@ -549,7 +560,14 @@ function FlowApp({ backend, options = {} }) {
 				}
 			}
 		},
-		{ isActive: !showCommandPalette && !showNextTaskModal && currentScreen !== 'tasks' && currentScreen !== 'chat' && currentScreen !== 'status' }
+		{
+			isActive:
+				!showCommandPalette &&
+				!showNextTaskModal &&
+				currentScreen !== 'tasks' &&
+				currentScreen !== 'chat' &&
+				currentScreen !== 'status'
+		}
 	);
 
 	// Context value
@@ -583,7 +601,7 @@ function FlowApp({ backend, options = {} }) {
 				// Check if tasks.json exists first
 				const hasFile = await currentBackend.hasTasksFile();
 				setHasTasksFile(hasFile);
-				
+
 				if (hasFile) {
 					const result = await currentBackend.listTasks();
 					setTasks(result.tasks);
@@ -742,7 +760,9 @@ function FlowApp({ backend, options = {} }) {
 												onChange={handleTextInputChange}
 												onSubmit={handleInput}
 												placeholder={
-													waitingForShortcut ? 'Waiting for command key...' : 'Type / for commands or use Ctrl+X shortcuts'
+													waitingForShortcut
+														? 'Waiting for command key...'
+														: 'Type / for commands or use Ctrl+X shortcuts'
 												}
 											/>
 										</Box>
@@ -795,7 +815,7 @@ export async function run(options = {}) {
 			// For direct backend, we'll use process.env
 			env: process.env
 		};
-		
+
 		backend = new DirectBackend({
 			projectRoot: options.projectRoot,
 			session: session

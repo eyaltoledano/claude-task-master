@@ -14,7 +14,10 @@ import { tool } from 'ai';
 function debugLog(message, data = null) {
 	const timestamp = new Date().toISOString();
 	const logMessage = `[${timestamp}] ${message}${data ? ' ' + JSON.stringify(data) : ''}\n`;
-	fs.appendFileSync(path.join(process.cwd(), 'ai-handler-debug.log'), logMessage);
+	fs.appendFileSync(
+		path.join(process.cwd(), 'ai-handler-debug.log'),
+		logMessage
+	);
 }
 
 // Define the available Task Master MCP tools with Vercel AI SDK tool helper
@@ -22,70 +25,99 @@ const TASK_MASTER_TOOLS = {
 	get_tasks: tool({
 		description: 'List all tasks in the current tag context',
 		parameters: z.object({
-			status: z.string().optional().describe('Filter by status (pending, done, in-progress)'),
-			withSubtasks: z.boolean().optional().describe('Include subtasks in the list'),
-			tag: z.string().optional().describe('Specify which tag context to list from')
+			status: z
+				.string()
+				.optional()
+				.describe('Filter by status (pending, done, in-progress)'),
+			withSubtasks: z
+				.boolean()
+				.optional()
+				.describe('Include subtasks in the list'),
+			tag: z
+				.string()
+				.optional()
+				.describe('Specify which tag context to list from')
 		})
 	}),
-	
+
 	next_task: tool({
 		description: 'Get the next available task based on dependencies and status',
 		parameters: z.object({
 			tag: z.string().optional().describe('Specify which tag context to use')
 		})
 	}),
-	
+
 	get_task: tool({
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
 			id: z.string().describe('Task ID (e.g., "1" or "1.2")'),
-			tag: z.string().optional().describe('Specify which tag context to get from')
+			tag: z
+				.string()
+				.optional()
+				.describe('Specify which tag context to get from')
 		})
 	}),
-	
+
 	set_task_status: tool({
 		description: 'Update the status of a task',
 		parameters: z.object({
 			id: z.string().describe('Task ID to update'),
-			status: z.string().describe('New status (pending, in-progress, done, cancelled)'),
+			status: z
+				.string()
+				.describe('New status (pending, in-progress, done, cancelled)'),
 			tag: z.string().optional().describe('Specify which tag context')
 		})
 	}),
-	
+
 	add_task: tool({
 		description: 'Add a new task using AI to structure it',
 		parameters: z.object({
 			prompt: z.string().describe('Description of the task to create'),
-			dependencies: z.string().optional().describe('Comma-separated list of dependency IDs'),
-			priority: z.string().optional().describe('Priority level (high, medium, low)'),
-			research: z.boolean().optional().describe('Use research model for better context'),
+			dependencies: z
+				.string()
+				.optional()
+				.describe('Comma-separated list of dependency IDs'),
+			priority: z
+				.string()
+				.optional()
+				.describe('Priority level (high, medium, low)'),
+			research: z
+				.boolean()
+				.optional()
+				.describe('Use research model for better context'),
 			tag: z.string().optional().describe('Tag context to add to')
 		})
 	}),
-	
+
 	expand_task: tool({
 		description: 'Break down a task into subtasks using AI',
 		parameters: z.object({
 			id: z.string().describe('Task ID to expand'),
 			num: z.number().optional().describe('Number of subtasks to create'),
 			research: z.boolean().optional().describe('Use research model'),
-			prompt: z.string().optional().describe('Additional context for expansion'),
+			prompt: z
+				.string()
+				.optional()
+				.describe('Additional context for expansion'),
 			force: z.boolean().optional().describe('Replace existing subtasks'),
 			tag: z.string().optional().describe('Tag context')
 		})
 	}),
-	
+
 	update_task: tool({
 		description: 'Update a specific task with new information',
 		parameters: z.object({
 			id: z.string().describe('Task ID to update'),
 			prompt: z.string().describe('Changes or new information to incorporate'),
-			append: z.boolean().optional().describe('Append to details instead of replacing'),
+			append: z
+				.boolean()
+				.optional()
+				.describe('Append to details instead of replacing'),
 			research: z.boolean().optional().describe('Use research model'),
 			tag: z.string().optional().describe('Tag context')
 		})
 	}),
-	
+
 	update_subtask: tool({
 		description: 'Append timestamped notes to a subtask',
 		parameters: z.object({
@@ -95,38 +127,53 @@ const TASK_MASTER_TOOLS = {
 			tag: z.string().optional().describe('Tag context')
 		})
 	}),
-	
+
 	research: tool({
 		description: 'Perform AI-powered research with project context',
 		parameters: z.object({
 			query: z.string().describe('Research question or topic'),
-			taskIds: z.string().optional().describe('Comma-separated task IDs for context'),
-			filePaths: z.string().optional().describe('Comma-separated file paths for context'),
+			taskIds: z
+				.string()
+				.optional()
+				.describe('Comma-separated task IDs for context'),
+			filePaths: z
+				.string()
+				.optional()
+				.describe('Comma-separated file paths for context'),
 			customContext: z.string().optional().describe('Additional context'),
-			includeProjectTree: z.boolean().optional().describe('Include project structure'),
-			detailLevel: z.string().optional().describe('Detail level (low, medium, high)'),
+			includeProjectTree: z
+				.boolean()
+				.optional()
+				.describe('Include project structure'),
+			detailLevel: z
+				.string()
+				.optional()
+				.describe('Detail level (low, medium, high)'),
 			tag: z.string().optional().describe('Tag context')
 		})
 	}),
-	
+
 	list_tags: tool({
 		description: 'List all available task tags',
 		parameters: z.object({})
 	}),
-	
+
 	use_tag: tool({
 		description: 'Switch to a different tag context',
 		parameters: z.object({
 			tagName: z.string().describe('Name of the tag to switch to')
 		})
 	}),
-	
+
 	add_tag: tool({
 		description: 'Create a new tag context',
 		parameters: z.object({
 			tagName: z.string().describe('Name for the new tag'),
 			description: z.string().optional().describe('Description of the tag'),
-			copyFromCurrent: z.boolean().optional().describe('Copy tasks from current tag')
+			copyFromCurrent: z
+				.boolean()
+				.optional()
+				.describe('Copy tasks from current tag')
 		})
 	})
 };
@@ -147,11 +194,25 @@ export class AIMessageHandler {
 	 * @param {Function} onComplete - Callback when response is complete
 	 * @param {Function} onError - Callback for errors
 	 */
-	async handleUserMessage(content, { onChunk, onToolCall, onComplete, onError }) {
+	async handleUserMessage(
+		content,
+		{ onChunk, onToolCall, onComplete, onError }
+	) {
 		// console.log(`[AIMessageHandler] Starting to handle user message: "${content}"`);
-		log('info', `[AIMessageHandler] Starting to handle user message: "${content}"`);
-		debugLog('handleUserMessage called', { content, hasCallbacks: { onChunk: !!onChunk, onToolCall: !!onToolCall, onComplete: !!onComplete, onError: !!onError } });
-		
+		log(
+			'info',
+			`[AIMessageHandler] Starting to handle user message: "${content}"`
+		);
+		debugLog('handleUserMessage called', {
+			content,
+			hasCallbacks: {
+				onChunk: !!onChunk,
+				onToolCall: !!onToolCall,
+				onComplete: !!onComplete,
+				onError: !!onError
+			}
+		});
+
 		if (this.isProcessing) {
 			onError(new Error('Already processing a message'));
 			return;
@@ -167,7 +228,10 @@ export class AIMessageHandler {
 
 			// Get messages for AI context
 			const messages = this.session.getMessagesForAI();
-			log('debug', `[AIMessageHandler] Retrieved ${messages.length} messages for AI context`);
+			log(
+				'debug',
+				`[AIMessageHandler] Retrieved ${messages.length} messages for AI context`
+			);
 			debugLog('Retrieved messages for AI', { messageCount: messages.length });
 
 			// Get MCP tool definitions
@@ -176,12 +240,14 @@ export class AIMessageHandler {
 			debugLog('Configured MCP tools', { toolCount: tools.length });
 
 			// Extract system prompt and build conversation context
-			const baseSystemPrompt = messages.find(m => m.role === 'system')?.content || '';
-			const conversationMessages = messages.filter(m => m.role !== 'system');
-			
+			const baseSystemPrompt =
+				messages.find((m) => m.role === 'system')?.content || '';
+			const conversationMessages = messages.filter((m) => m.role !== 'system');
+
 			// Build conversation history into the system prompt
 			let conversationContext = '';
-			if (conversationMessages.length > 1) { // More than just the current message
+			if (conversationMessages.length > 1) {
+				// More than just the current message
 				conversationContext = '\n\nPrevious conversation:\n';
 				// Include all messages except the last one (which is the current user message)
 				for (let i = 0; i < conversationMessages.length - 1; i++) {
@@ -189,7 +255,7 @@ export class AIMessageHandler {
 					conversationContext += `${msg.role}: ${msg.content}\n`;
 				}
 			}
-			
+
 			const systemPrompt = baseSystemPrompt + conversationContext;
 
 			log('debug', 'Preparing AI stream request', {
@@ -199,7 +265,7 @@ export class AIMessageHandler {
 				hasSession: !!this.mcpClient?.session,
 				projectRoot: this.session.projectRoot
 			});
-			
+
 			debugLog('Preparing AI stream request', {
 				hasSystemPrompt: !!systemPrompt,
 				conversationLength: conversationMessages.length,
@@ -212,7 +278,7 @@ export class AIMessageHandler {
 			// We don't pass messages directly as it expects to build them itself
 			// console.log('[AIMessageHandler] About to call streamTextService');
 			debugLog('About to call streamTextService');
-			
+
 			const streamResponse = await streamTextService({
 				systemPrompt: systemPrompt,
 				prompt: content, // The current user message as the prompt
@@ -223,12 +289,12 @@ export class AIMessageHandler {
 				outputType: 'mcp',
 				role: 'main' // Add the role parameter
 			});
-			
+
 			// Don't log the full response as it might interfere with the stream
 			// console.log('[AIMessageHandler] streamTextService returned successfully');
 			// console.log('[AIMessageHandler] Has mainResult:', !!streamResponse.mainResult);
-			
-			debugLog('streamTextService returned', { 
+
+			debugLog('streamTextService returned', {
 				hasResponse: !!streamResponse,
 				mainResultType: streamResponse.mainResult?.constructor?.name
 			});
@@ -237,15 +303,26 @@ export class AIMessageHandler {
 			this.activeStream = streamResponse;
 
 			// Process the stream
-			await this.processStream(streamResponse, { onChunk, onToolCall, onComplete, onError });
-
+			await this.processStream(streamResponse, {
+				onChunk,
+				onToolCall,
+				onComplete,
+				onError
+			});
 		} catch (error) {
 			// console.error('[AIMessageHandler] Error caught:', error.message, error.stack);
-			log('error', `[AIMessageHandler] AI message handling error: ${error.message}`, { 
-				stack: error.stack,
-				errorType: error.constructor?.name
+			log(
+				'error',
+				`[AIMessageHandler] AI message handling error: ${error.message}`,
+				{
+					stack: error.stack,
+					errorType: error.constructor?.name
+				}
+			);
+			debugLog('Error in handleUserMessage', {
+				error: error.message,
+				stack: error.stack
 			});
-			debugLog('Error in handleUserMessage', { error: error.message, stack: error.stack });
 			onError(error);
 		} finally {
 			this.isProcessing = false;
@@ -299,7 +376,7 @@ export class AIMessageHandler {
 
 			// Update context if we got tasks
 			if (toolName === 'get_tasks' && result.data?.tasks) {
-				this.session.updateContext({ 
+				this.session.updateContext({
 					recentTasks: result.data.tasks.slice(0, 10)
 				});
 			}
@@ -329,32 +406,35 @@ export class AIMessageHandler {
 	/**
 	 * Process the stream response
 	 */
-	async processStream(streamResponse, { onChunk, onToolCall, onComplete, onError }) {
+	async processStream(
+		streamResponse,
+		{ onChunk, onToolCall, onComplete, onError }
+	) {
 		debugLog('processStream called', { hasStreamResponse: !!streamResponse });
-		
+
 		try {
 			// The streamTextService returns an object with mainResult containing the stream
 			const streamResult = streamResponse.mainResult;
-			
+
 			if (!streamResult) {
 				throw new Error('No stream returned from AI service');
 			}
-			
+
 			// console.log('[processStream] Stream result type:', streamResult.constructor.name);
 			// console.log('[processStream] Stream properties:', Object.keys(streamResult));
-			
+
 			// Check what streams are available
 			// console.log('[processStream] Has textStream:', !!streamResult.textStream);
 			// console.log('[processStream] Has fullStream:', !!streamResult.fullStream);
 			// console.log('[processStream] Has baseStream:', !!streamResult.baseStream);
-			
+
 			let assistantMessage = '';
 			const toolCalls = [];
 
 			// Try different stream properties
 			let streamToUse = null;
 			let streamName = '';
-			
+
 			if (streamResult.fullStream) {
 				streamToUse = streamResult.fullStream;
 				streamName = 'fullStream';
@@ -365,27 +445,27 @@ export class AIMessageHandler {
 				streamToUse = streamResult.baseStream;
 				streamName = 'baseStream';
 			}
-			
+
 			if (streamToUse) {
 				// console.log(`[processStream] Using ${streamName}`);
 				// console.log(`[processStream] Stream type:`, streamToUse.constructor.name);
 				// console.log(`[processStream] Stream locked:`, streamToUse.locked);
-				
+
 				try {
 					const reader = streamToUse.getReader();
 					let chunkCount = 0;
-					
+
 					while (true) {
 						const { done, value } = await reader.read();
-						
+
 						if (done) {
 							// console.log(`[processStream] ${streamName} complete after ${chunkCount} chunks`);
 							break;
 						}
-						
+
 						chunkCount++;
 						// console.log(`[processStream] Chunk ${chunkCount} - type:`, typeof value, 'value:', value);
-						
+
 						// Log the exact structure of the value
 						// if (value) {
 						// 	console.log('[processStream] Chunk details:', {
@@ -396,7 +476,7 @@ export class AIMessageHandler {
 						// 		stringified: JSON.stringify(value, null, 2)
 						// 	});
 						// }
-						
+
 						// Handle different value types
 						if (typeof value === 'string') {
 							assistantMessage += value;
@@ -421,10 +501,13 @@ export class AIMessageHandler {
 									status: 'pending'
 								};
 								toolCalls.push(toolCallData);
-								
+
 								try {
 									onToolCall({ ...toolCallData, status: 'executing' });
-									const result = await this.executeMCPTool(value.toolName, value.args);
+									const result = await this.executeMCPTool(
+										value.toolName,
+										value.args
+									);
 									toolCallData.result = result;
 									toolCallData.status = 'completed';
 									onToolCall(toolCallData);
@@ -436,16 +519,17 @@ export class AIMessageHandler {
 							} else if (value.type === 'error') {
 								// Handle error chunks
 								// console.error('[processStream] Error chunk received:', value.error);
-								debugLog('Error chunk received', { 
+								debugLog('Error chunk received', {
 									error: value.error,
 									errorName: value.error?.name,
 									errorMessage: value.error?.message,
 									statusCode: value.error?.statusCode,
-									responseBody: value.error?.responseBody 
+									responseBody: value.error?.responseBody
 								});
-								
+
 								// Extract error message
-								let errorMessage = 'An error occurred while processing your request.';
+								let errorMessage =
+									'An error occurred while processing your request.';
 								if (value.error) {
 									if (value.error.message) {
 										errorMessage = value.error.message;
@@ -460,23 +544,27 @@ export class AIMessageHandler {
 											errorMessage = value.error.responseBody || errorMessage;
 										}
 									}
-									
+
 									// Check for specific API key error
-									if (value.error.statusCode === 401 || errorMessage.includes('invalid x-api-key')) {
-										errorMessage = 'Authentication failed: Invalid or missing API key. Please ensure your ANTHROPIC_API_KEY is set in the .env file.';
+									if (
+										value.error.statusCode === 401 ||
+										errorMessage.includes('invalid x-api-key')
+									) {
+										errorMessage =
+											'Authentication failed: Invalid or missing API key. Please ensure your ANTHROPIC_API_KEY is set in the .env file.';
 									}
 								}
-								
+
 								// Call onError with a proper error object
 								onError(new Error(errorMessage));
-								
+
 								// Exit the stream processing
 								reader.releaseLock();
 								return;
 							}
 						}
 					}
-					
+
 					reader.releaseLock();
 				} catch (error) {
 					debugLog(`[processStream] Error reading ${streamName}:`, error);
@@ -484,7 +572,10 @@ export class AIMessageHandler {
 				}
 			} else {
 				// If no recognized stream format, log what we have
-				debugLog('[processStream] No recognized stream format. Result:', streamResult);
+				debugLog(
+					'[processStream] No recognized stream format. Result:',
+					streamResult
+				);
 				throw new Error('No suitable stream found in the response');
 			}
 
@@ -496,8 +587,8 @@ export class AIMessageHandler {
 
 			// Update session context with tool calls
 			if (toolCalls.length > 0) {
-				this.session.updateContext({ 
-					lastToolCalls: toolCalls.map(tc => ({
+				this.session.updateContext({
+					lastToolCalls: toolCalls.map((tc) => ({
 						name: tc.name,
 						status: tc.status,
 						timestamp: new Date().toISOString()
@@ -506,10 +597,12 @@ export class AIMessageHandler {
 			}
 
 			onComplete({ message: assistantMessage, toolCalls });
-			
 		} catch (error) {
-			debugLog('Error in processStream', { error: error.message, stack: error.stack });
+			debugLog('Error in processStream', {
+				error: error.message,
+				stack: error.stack
+			});
 			throw error;
 		}
 	}
-} 
+}

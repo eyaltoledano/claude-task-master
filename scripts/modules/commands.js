@@ -4545,7 +4545,10 @@ Examples:
 	programInstance
 		.command('flow')
 		.description('Launch interactive TUI for task management')
-		.option('--backend <type>', 'Backend type: direct, cli, or mcp (default: direct)')
+		.option(
+			'--backend <type>',
+			'Backend type: direct, cli, or mcp (default: direct)'
+		)
 		.action(async (options) => {
 			try {
 				const projectRoot = findProjectRoot();
@@ -4758,7 +4761,7 @@ async function runCLI(argv = process.argv) {
 	try {
 		// Check if running the flow command
 		const isFlowCommand = argv.length > 2 && argv[2] === 'flow';
-		
+
 		// Display banner if not in a pipe and not running flow command
 		if (process.stdout.isTTY && !isFlowCommand) {
 			displayBanner();

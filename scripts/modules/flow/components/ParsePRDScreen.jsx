@@ -42,7 +42,7 @@ export function ParsePRDScreen() {
 				parsedNum = num;
 			}
 		}
-		
+
 		// Check if there are existing tasks in the current tag
 		try {
 			const taskList = await backend.listTasks({ tag: currentTag });
@@ -60,7 +60,11 @@ export function ParsePRDScreen() {
 	};
 
 	// Handle parsing with force option
-	const performParsing = async (filePath, force = false, taskCount = undefined) => {
+	const performParsing = async (
+		filePath,
+		force = false,
+		taskCount = undefined
+	) => {
 		setStep('parsing');
 		setError(null);
 
@@ -362,7 +366,10 @@ export function ParsePRDScreen() {
 							Research: {useResearch ? 'Yes' : 'No'}
 						</Text>
 						<Text color={theme.textDim}>
-							Tasks: {numTasks && numTasks.trim() !== '' ? `${numTasks} tasks` : 'Default (10 tasks)'}
+							Tasks:{' '}
+							{numTasks && numTasks.trim() !== ''
+								? `${numTasks} tasks`
+								: 'Default (10 tasks)'}
 						</Text>
 						<Text color={theme.warning} marginTop={2}>
 							Press Ctrl+X to cancel
@@ -393,7 +400,9 @@ export function ParsePRDScreen() {
 						</Text>
 						<Text color={theme.textDim}>
 							Using {useResearch ? 'research mode' : 'standard mode'} with{' '}
-							{numTasks && numTasks.trim() !== '' ? `${numTasks} tasks` : 'default (10 tasks)'}
+							{numTasks && numTasks.trim() !== ''
+								? `${numTasks} tasks`
+								: 'default (10 tasks)'}
 						</Text>
 						{parseResult?.message && (
 							<Text color={theme.textDim} marginTop={1}>
@@ -465,4 +474,3 @@ export function ParsePRDScreen() {
 		</Box>
 	);
 }
-

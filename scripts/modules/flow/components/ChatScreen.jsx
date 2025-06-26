@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+	useState,
+	useEffect,
+	useRef,
+	useCallback,
+	useMemo
+} from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
@@ -12,7 +18,10 @@ import path from 'path';
 function debugLog(message, data = null) {
 	const timestamp = new Date().toISOString();
 	const logMessage = `[${timestamp}] [ChatScreen] ${message}${data ? ' ' + JSON.stringify(data) : ''}\n`;
-	fs.appendFileSync(path.join(process.cwd(), 'chat-screen-debug.log'), logMessage);
+	fs.appendFileSync(
+		path.join(process.cwd(), 'chat-screen-debug.log'),
+		logMessage
+	);
 }
 
 /**
@@ -52,31 +61,39 @@ const Message = ({ message, isStreaming = false }) => {
  */
 const formatToolResponse = (toolCall) => {
 	const theme = getCurrentTheme();
-	
+
 	if (!toolCall.result || toolCall.status !== 'completed') {
 		return null;
 	}
 
 	const { name, result } = toolCall;
-	
+
 	// Handle error responses
 	if (!result.success && result.error) {
 		return (
 			<Box flexDirection="column">
-				<Text color={theme.error}>❌ Error: {result.error.message || result.error}</Text>
+				<Text color={theme.error}>
+					❌ Error: {result.error.message || result.error}
+				</Text>
 			</Box>
 		);
 	}
-	
+
 	// Helper to format task status with emoji
 	const getStatusEmoji = (status) => {
-		switch(status) {
-			case 'done': return '✅';
-			case 'in-progress': return '🔄';
-			case 'blocked': return '🚫';
-			case 'cancelled': return '❌';
-			case 'deferred': return '⏸️';
-			default: return '○';
+		switch (status) {
+			case 'done':
+				return '✅';
+			case 'in-progress':
+				return '🔄';
+			case 'blocked':
+				return '🚫';
+			case 'cancelled':
+				return '❌';
+			case 'deferred':
+				return '⏸️';
+			default:
+				return '○';
 		}
 	};
 
@@ -101,7 +118,7 @@ const formatToolResponse = (toolCall) => {
 	// Helper to format subtasks
 	const formatSubtasks = (subtasks) => {
 		if (!subtasks || subtasks.length === 0) return null;
-		const completed = subtasks.filter(st => st.status === 'done').length;
+		const completed = subtasks.filter((st) => st.status === 'done').length;
 		return (
 			<Box flexDirection="column">
 				<Text color={theme.textDim}>
@@ -116,22 +133,28 @@ const formatToolResponse = (toolCall) => {
 				))}
 				{subtasks.length > 5 && (
 					<Box marginLeft={2}>
-						<Text color={theme.textDim}>... and {subtasks.length - 5} more</Text>
+						<Text color={theme.textDim}>
+							... and {subtasks.length - 5} more
+						</Text>
 					</Box>
 				)}
 			</Box>
 		);
 	};
-	
+
 	// Handle different taskmaster tools
 	switch (name) {
 		case 'get_tasks': {
 			if (result.data?.tasks) {
 				const tasks = result.data.tasks;
 				if (tasks.length === 0) {
-					return <Text color={theme.textDim}>No tasks found in the current tag.</Text>;
+					return (
+						<Text color={theme.textDim}>
+							No tasks found in the current tag.
+						</Text>
+					);
 				}
-				
+
 				// Group tasks by status
 				const byStatus = tasks.reduce((acc, task) => {
 					const status = task.status || 'pending';
@@ -139,31 +162,42 @@ const formatToolResponse = (toolCall) => {
 					acc[status].push(task);
 					return acc;
 				}, {});
-				
+
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>Found {tasks.length} task{tasks.length !== 1 ? 's' : ''}:</Text>
+						<Text color={theme.success}>
+							Found {tasks.length} task{tasks.length !== 1 ? 's' : ''}:
+						</Text>
 						{Object.entries(byStatus).map(([status, statusTasks]) => (
 							<Box key={status} flexDirection="column" marginTop={1}>
-								<Text color={theme.accent}>{status.charAt(0).toUpperCase() + status.slice(1)} ({statusTasks.length}):</Text>
+								<Text color={theme.accent}>
+									{status.charAt(0).toUpperCase() + status.slice(1)} (
+									{statusTasks.length}):
+								</Text>
 								{statusTasks.slice(0, 3).map((task, idx) => (
 									<Box key={idx} marginLeft={2}>
 										<Text color={theme.text}>
 											{getStatusEmoji(task.status)} Task {task.id}: {task.title}
-											{task.priority === 'high' && <Text color={theme.error}> [HIGH]</Text>}
+											{task.priority === 'high' && (
+												<Text color={theme.error}> [HIGH]</Text>
+											)}
 										</Text>
 									</Box>
 								))}
 								{statusTasks.length > 3 && (
 									<Box marginLeft={2}>
-										<Text color={theme.textDim}>... and {statusTasks.length - 3} more</Text>
+										<Text color={theme.textDim}>
+											... and {statusTasks.length - 3} more
+										</Text>
 									</Box>
 								)}
 							</Box>
 						))}
 						{result.data.tag && (
 							<Box marginTop={1}>
-								<Text color={theme.textDim}>Current tag: {result.data.tag}</Text>
+								<Text color={theme.textDim}>
+									Current tag: {result.data.tag}
+								</Text>
 							</Box>
 						)}
 					</Box>
@@ -171,7 +205,7 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'next_task': {
 			if (result.data?.task) {
 				const task = result.data.task;
@@ -179,13 +213,19 @@ const formatToolResponse = (toolCall) => {
 					<Box flexDirection="column">
 						<Text color={theme.success}>📌 Next task to work on:</Text>
 						<Box marginLeft={2} flexDirection="column">
-							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							<Text color={theme.accent} bold>
+								Task {task.id}: {task.title}
+							</Text>
 							{task.priority && (
-								<Text color={
-									task.priority === 'high' ? theme.error :
-									task.priority === 'medium' ? theme.warning :
-									theme.text
-								}>
+								<Text
+									color={
+										task.priority === 'high'
+											? theme.error
+											: task.priority === 'medium'
+												? theme.warning
+												: theme.text
+									}
+								>
 									Priority: {task.priority}
 								</Text>
 							)}
@@ -195,17 +235,15 @@ const formatToolResponse = (toolCall) => {
 								</Box>
 							)}
 							{task.dependencies && task.dependencies.length > 0 && (
-								<Box marginTop={1}>
-									{formatDependencies(task.dependencies)}
-								</Box>
+								<Box marginTop={1}>{formatDependencies(task.dependencies)}</Box>
 							)}
 							{task.subtasks && task.subtasks.length > 0 && (
-								<Box marginTop={1}>
-									{formatSubtasks(task.subtasks)}
-								</Box>
+								<Box marginTop={1}>{formatSubtasks(task.subtasks)}</Box>
 							)}
 							<Box marginTop={1}>
-								<Text color={theme.textDim}>💡 Tip: Use /tasks to see more details or mark as in-progress</Text>
+								<Text color={theme.textDim}>
+									💡 Tip: Use /tasks to see more details or mark as in-progress
+								</Text>
 							</Box>
 						</Box>
 					</Box>
@@ -214,12 +252,14 @@ const formatToolResponse = (toolCall) => {
 				return (
 					<Box flexDirection="column">
 						<Text color={theme.warning}>No pending tasks found!</Text>
-						<Text color={theme.textDim}>All tasks are either completed or have unmet dependencies.</Text>
+						<Text color={theme.textDim}>
+							All tasks are either completed or have unmet dependencies.
+						</Text>
 					</Box>
 				);
 			}
 		}
-		
+
 		case 'get_task': {
 			if (result.data?.task) {
 				const task = result.data.task;
@@ -227,24 +267,37 @@ const formatToolResponse = (toolCall) => {
 					<Box flexDirection="column">
 						<Text color={theme.success}>📋 Task Details:</Text>
 						<Box marginLeft={2} flexDirection="column">
-							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							<Text color={theme.accent} bold>
+								Task {task.id}: {task.title}
+							</Text>
 							<Box flexDirection="row">
 								<Text color={theme.text}>Status: </Text>
-								<Text color={
-									task.status === 'done' ? theme.success :
-									task.status === 'in-progress' ? theme.warning :
-									theme.text
-								}>
+								<Text
+									color={
+										task.status === 'done'
+											? theme.success
+											: task.status === 'in-progress'
+												? theme.warning
+												: theme.text
+									}
+								>
 									{getStatusEmoji(task.status)} {task.status}
 								</Text>
 							</Box>
 							{task.priority && (
 								<Text color={theme.text}>
-									Priority: <Text color={
-										task.priority === 'high' ? theme.error :
-										task.priority === 'medium' ? theme.warning :
-										theme.text
-									}>{task.priority}</Text>
+									Priority:{' '}
+									<Text
+										color={
+											task.priority === 'high'
+												? theme.error
+												: task.priority === 'medium'
+													? theme.warning
+													: theme.text
+										}
+									>
+										{task.priority}
+									</Text>
 								</Text>
 							)}
 							{task.description && (
@@ -260,8 +313,8 @@ const formatToolResponse = (toolCall) => {
 									<Text color={theme.textDim}>Implementation Details:</Text>
 									<Box marginLeft={2}>
 										<Text color={theme.text}>
-											{task.details.length > 200 
-												? task.details.substring(0, 200) + '...' 
+											{task.details.length > 200
+												? task.details.substring(0, 200) + '...'
 												: task.details}
 										</Text>
 									</Box>
@@ -272,22 +325,18 @@ const formatToolResponse = (toolCall) => {
 									<Text color={theme.textDim}>Test Strategy:</Text>
 									<Box marginLeft={2}>
 										<Text color={theme.text}>
-											{task.testStrategy.length > 150 
-												? task.testStrategy.substring(0, 150) + '...' 
+											{task.testStrategy.length > 150
+												? task.testStrategy.substring(0, 150) + '...'
 												: task.testStrategy}
 										</Text>
 									</Box>
 								</Box>
 							)}
 							{task.dependencies && task.dependencies.length > 0 && (
-								<Box marginTop={1}>
-									{formatDependencies(task.dependencies)}
-								</Box>
+								<Box marginTop={1}>{formatDependencies(task.dependencies)}</Box>
 							)}
 							{task.subtasks && task.subtasks.length > 0 && (
-								<Box marginTop={1}>
-									{formatSubtasks(task.subtasks)}
-								</Box>
+								<Box marginTop={1}>{formatSubtasks(task.subtasks)}</Box>
 							)}
 						</Box>
 					</Box>
@@ -296,13 +345,15 @@ const formatToolResponse = (toolCall) => {
 				return <Text color={theme.error}>Task not found.</Text>;
 			}
 		}
-		
+
 		case 'set_task_status': {
 			if (result.data?.task) {
 				const task = result.data.task;
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Task status updated successfully!</Text>
+						<Text color={theme.success}>
+							✓ Task status updated successfully!
+						</Text>
 						<Box marginLeft={2}>
 							<Text color={theme.text}>
 								Task {task.id}: {task.title}
@@ -316,7 +367,7 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'add_task': {
 			if (result.data?.task) {
 				const task = result.data.task;
@@ -324,7 +375,9 @@ const formatToolResponse = (toolCall) => {
 					<Box flexDirection="column">
 						<Text color={theme.success}>✨ New task created successfully!</Text>
 						<Box marginLeft={2} flexDirection="column">
-							<Text color={theme.accent} bold>Task {task.id}: {task.title}</Text>
+							<Text color={theme.accent} bold>
+								Task {task.id}: {task.title}
+							</Text>
 							{task.description && (
 								<Text color={theme.text}>{task.description}</Text>
 							)}
@@ -333,15 +386,16 @@ const formatToolResponse = (toolCall) => {
 							)}
 							{task.dependencies && task.dependencies.length > 0 && (
 								<Text color={theme.text}>
-									Dependencies: {task.dependencies.map(d => `Task ${d.id || d}`).join(', ')}
+									Dependencies:{' '}
+									{task.dependencies.map((d) => `Task ${d.id || d}`).join(', ')}
 								</Text>
 							)}
 						</Box>
 						{result.data.telemetryData && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
-									AI Model: {result.data.telemetryData.modelUsed} | 
-									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+									AI Model: {result.data.telemetryData.modelUsed} | Cost: $
+									{result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
 								</Text>
 							</Box>
 						)}
@@ -350,7 +404,7 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'expand_task': {
 			if (result.data?.subtasks) {
 				const subtasks = result.data.subtasks;
@@ -360,11 +414,16 @@ const formatToolResponse = (toolCall) => {
 						<Text color={theme.success}>✨ Task expanded successfully!</Text>
 						{parentTask && (
 							<Box marginLeft={2}>
-								<Text color={theme.accent}>Task {parentTask.id}: {parentTask.title}</Text>
+								<Text color={theme.accent}>
+									Task {parentTask.id}: {parentTask.title}
+								</Text>
 							</Box>
 						)}
 						<Box marginLeft={2} marginTop={1}>
-							<Text color={theme.text}>Created {subtasks.length} subtask{subtasks.length !== 1 ? 's' : ''}:</Text>
+							<Text color={theme.text}>
+								Created {subtasks.length} subtask
+								{subtasks.length !== 1 ? 's' : ''}:
+							</Text>
 						</Box>
 						{subtasks.map((subtask, idx) => (
 							<Box key={idx} marginLeft={4}>
@@ -376,8 +435,8 @@ const formatToolResponse = (toolCall) => {
 						{result.data.telemetryData && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
-									AI Model: {result.data.telemetryData.modelUsed} | 
-									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+									AI Model: {result.data.telemetryData.modelUsed} | Cost: $
+									{result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
 								</Text>
 							</Box>
 						)}
@@ -386,7 +445,7 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'update_task':
 		case 'update_subtask': {
 			if (result.data?.task) {
@@ -410,8 +469,8 @@ const formatToolResponse = (toolCall) => {
 						{result.data.telemetryData && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
-									AI Model: {result.data.telemetryData.modelUsed} | 
-									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+									AI Model: {result.data.telemetryData.modelUsed} | Cost: $
+									{result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
 								</Text>
 							</Box>
 						)}
@@ -420,12 +479,13 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'research': {
 			if (result.data?.response) {
 				// Show more of the research response
 				const response = result.data.response;
-				const truncated = response.length > 500 ? response.substring(0, 500) + '...' : response;
+				const truncated =
+					response.length > 500 ? response.substring(0, 500) + '...' : response;
 				return (
 					<Box flexDirection="column">
 						<Text color={theme.success}>🔍 Research completed:</Text>
@@ -449,8 +509,8 @@ const formatToolResponse = (toolCall) => {
 						{result.data.telemetryData && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
-									Research Model: {result.data.telemetryData.modelUsed} | 
-									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+									Research Model: {result.data.telemetryData.modelUsed} | Cost:
+									${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
 								</Text>
 							</Box>
 						)}
@@ -459,22 +519,30 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'list_tags': {
 			if (result.data?.tags) {
 				const tags = result.data.tags;
 				const currentTag = result.data.currentTag;
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>📁 Available tags ({tags.length}):</Text>
+						<Text color={theme.success}>
+							📁 Available tags ({tags.length}):
+						</Text>
 						{tags.map((tag, idx) => (
 							<Box key={idx} marginLeft={2}>
 								<Text color={theme.text}>
 									{tag.name === currentTag ? '▶ ' : '  '}
-									<Text color={tag.name === currentTag ? theme.accent : theme.text} bold={tag.name === currentTag}>
+									<Text
+										color={tag.name === currentTag ? theme.accent : theme.text}
+										bold={tag.name === currentTag}
+									>
 										{tag.name}
 									</Text>
-									<Text color={theme.textDim}> ({tag.taskCount} tasks, {tag.completedCount} done)</Text>
+									<Text color={theme.textDim}>
+										{' '}
+										({tag.taskCount} tasks, {tag.completedCount} done)
+									</Text>
 								</Text>
 								{tag.description && (
 									<Box marginLeft={4}>
@@ -488,15 +556,18 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'use_tag': {
 			if (result.data?.tag) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Switched to tag: {result.data.tag}</Text>
+						<Text color={theme.success}>
+							✓ Switched to tag: {result.data.tag}
+						</Text>
 						{result.data.taskCount !== undefined && (
 							<Text color={theme.textDim}>
-								This tag contains {result.data.taskCount} task{result.data.taskCount !== 1 ? 's' : ''}
+								This tag contains {result.data.taskCount} task
+								{result.data.taskCount !== 1 ? 's' : ''}
 							</Text>
 						)}
 					</Box>
@@ -504,12 +575,14 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'add_tag': {
 			if (result.data?.tag) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✨ New tag created: {result.data.tag}</Text>
+						<Text color={theme.success}>
+							✨ New tag created: {result.data.tag}
+						</Text>
 						{result.data.copiedFrom && (
 							<Text color={theme.textDim}>
 								Tasks copied from: {result.data.copiedFrom}
@@ -520,18 +593,25 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'analyze_project_complexity': {
 			if (result.data?.report) {
 				const report = result.data.report;
-				const highComplexity = report.tasks?.filter(t => t.complexityScore >= 8) || [];
+				const highComplexity =
+					report.tasks?.filter((t) => t.complexityScore >= 8) || [];
 				return (
 					<Box flexDirection="column">
 						<Text color={theme.success}>📊 Complexity analysis complete!</Text>
 						{report.summary && (
 							<Box marginLeft={2} marginTop={1}>
-								<Text color={theme.text}>Average complexity: {report.summary.averageComplexity?.toFixed(1) || 'N/A'}</Text>
-								<Text color={theme.text}>Tasks needing expansion: {report.summary.tasksNeedingExpansion || 0}</Text>
+								<Text color={theme.text}>
+									Average complexity:{' '}
+									{report.summary.averageComplexity?.toFixed(1) || 'N/A'}
+								</Text>
+								<Text color={theme.text}>
+									Tasks needing expansion:{' '}
+									{report.summary.tasksNeedingExpansion || 0}
+								</Text>
 							</Box>
 						)}
 						{highComplexity.length > 0 && (
@@ -540,7 +620,8 @@ const formatToolResponse = (toolCall) => {
 								{highComplexity.slice(0, 3).map((task, idx) => (
 									<Box key={idx} marginLeft={2}>
 										<Text color={theme.text}>
-											Task {task.id}: {task.title} (score: {task.complexityScore})
+											Task {task.id}: {task.title} (score:{' '}
+											{task.complexityScore})
 										</Text>
 									</Box>
 								))}
@@ -549,8 +630,8 @@ const formatToolResponse = (toolCall) => {
 						{result.data.telemetryData && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
-									AI Model: {result.data.telemetryData.modelUsed} | 
-									Cost: ${result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
+									AI Model: {result.data.telemetryData.modelUsed} | Cost: $
+									{result.data.telemetryData.totalCost?.toFixed(4) || '0.00'}
 								</Text>
 							</Box>
 						)}
@@ -559,13 +640,15 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'move_task': {
 			if (result.data?.movedTasks) {
 				const moves = result.data.movedTasks;
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Task{moves.length > 1 ? 's' : ''} moved successfully!</Text>
+						<Text color={theme.success}>
+							✓ Task{moves.length > 1 ? 's' : ''} moved successfully!
+						</Text>
 						{moves.map((move, idx) => (
 							<Box key={idx} marginLeft={2}>
 								<Text color={theme.text}>
@@ -578,17 +661,20 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'add_dependency':
 		case 'remove_dependency': {
 			const action = name === 'add_dependency' ? 'added' : 'removed';
 			if (result.data?.task) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Dependency {action} successfully!</Text>
+						<Text color={theme.success}>
+							✓ Dependency {action} successfully!
+						</Text>
 						<Box marginLeft={2}>
 							<Text color={theme.text}>
-								Task {result.data.task.id} now has {result.data.task.dependencies?.length || 0} dependencies
+								Task {result.data.task.id} now has{' '}
+								{result.data.task.dependencies?.length || 0} dependencies
 							</Text>
 						</Box>
 					</Box>
@@ -596,40 +682,49 @@ const formatToolResponse = (toolCall) => {
 			}
 			break;
 		}
-		
+
 		case 'clear_subtasks': {
 			if (result.data?.clearedCount !== undefined) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Cleared subtasks from {result.data.clearedCount} task{result.data.clearedCount !== 1 ? 's' : ''}</Text>
+						<Text color={theme.success}>
+							✓ Cleared subtasks from {result.data.clearedCount} task
+							{result.data.clearedCount !== 1 ? 's' : ''}
+						</Text>
 					</Box>
 				);
 			}
 			break;
 		}
-		
+
 		case 'remove_task': {
 			if (result.data?.removedId) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ Task {result.data.removedId} removed successfully</Text>
-						{result.data.cleanedDependencies && result.data.cleanedDependencies > 0 && (
-							<Text color={theme.textDim}>
-								Cleaned up {result.data.cleanedDependencies} dependency reference{result.data.cleanedDependencies !== 1 ? 's' : ''}
-							</Text>
-						)}
+						<Text color={theme.success}>
+							✓ Task {result.data.removedId} removed successfully
+						</Text>
+						{result.data.cleanedDependencies &&
+							result.data.cleanedDependencies > 0 && (
+								<Text color={theme.textDim}>
+									Cleaned up {result.data.cleanedDependencies} dependency
+									reference{result.data.cleanedDependencies !== 1 ? 's' : ''}
+								</Text>
+							)}
 					</Box>
 				);
 			}
 			break;
 		}
-		
+
 		default:
 			// For unknown tools, show a generic success message with any data
 			if (result.success) {
 				return (
 					<Box flexDirection="column">
-						<Text color={theme.success}>✓ {formatToolName(name)} completed successfully</Text>
+						<Text color={theme.success}>
+							✓ {formatToolName(name)} completed successfully
+						</Text>
 						{result.data && (
 							<Box marginLeft={2}>
 								<Text color={theme.textDim}>
@@ -642,7 +737,7 @@ const formatToolResponse = (toolCall) => {
 				);
 			}
 	}
-	
+
 	// Fallback for unhandled cases
 	return (
 		<Box flexDirection="column">
@@ -659,18 +754,25 @@ const formatToolResponse = (toolCall) => {
 
 // Helper to format tool names
 const formatToolName = (name) => {
-	return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+	return name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
 /**
  * Scrollable messages container
  */
-const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scrollOffset, height }) => {
+const ScrollableMessages = ({
+	messages,
+	streamingContent,
+	toolCalls,
+	error,
+	scrollOffset,
+	height
+}) => {
 	const theme = getCurrentTheme();
-	
+
 	// Collect all content elements
 	const contentElements = [];
-	
+
 	// Add messages
 	messages.forEach((msg, idx) => {
 		contentElements.push({
@@ -679,7 +781,7 @@ const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scro
 			content: <Message key={msg.id} message={msg} />
 		});
 	});
-	
+
 	// Add streaming message
 	if (streamingContent) {
 		contentElements.push({
@@ -697,7 +799,7 @@ const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scro
 			)
 		});
 	}
-	
+
 	// Add current tool calls
 	if (!streamingContent && toolCalls.length > 0) {
 		contentElements.push({
@@ -712,7 +814,7 @@ const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scro
 			)
 		});
 	}
-	
+
 	// Add error
 	if (error) {
 		contentElements.push({
@@ -725,19 +827,19 @@ const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scro
 			)
 		});
 	}
-	
+
 	// Calculate which elements to show based on scroll
 	let currentLine = 0;
 	let visibleElements = [];
 	let skippedLines = 0;
-	
+
 	for (const element of contentElements) {
 		// Estimate height of this element
 		let elementHeight = 3; // Default height
-		
+
 		if (element.type === 'message') {
 			// Find the message to calculate its height
-			const msg = messages.find(m => `msg-${m.id}` === element.key);
+			const msg = messages.find((m) => `msg-${m.id}` === element.key);
 			if (msg) {
 				elementHeight = 2 + Math.ceil(msg.content.length / 80) + 1;
 				if (msg.metadata?.toolCalls) {
@@ -751,40 +853,47 @@ const ScrollableMessages = ({ messages, streamingContent, toolCalls, error, scro
 		} else if (element.type === 'error') {
 			elementHeight = 2;
 		}
-		
+
 		// Check if this element is visible
-		if (currentLine + elementHeight > scrollOffset && currentLine < scrollOffset + height) {
+		if (
+			currentLine + elementHeight > scrollOffset &&
+			currentLine < scrollOffset + height
+		) {
 			visibleElements.push(element);
 		} else if (currentLine < scrollOffset) {
 			skippedLines = scrollOffset - currentLine;
 		}
-		
+
 		currentLine += elementHeight;
 	}
-	
+
 	// Calculate if we can scroll
 	const totalHeight = currentLine;
 	const canScrollUp = scrollOffset > 0;
 	const canScrollDown = scrollOffset + height < totalHeight;
-	
+
 	return (
 		<Box flexDirection="column" height={height}>
 			{/* Scroll indicator - top */}
 			{canScrollUp && (
 				<Box>
-					<Text color={theme.textDim}>↑ {skippedLines} more lines above (↑/k to scroll)</Text>
+					<Text color={theme.textDim}>
+						↑ {skippedLines} more lines above (↑/k to scroll)
+					</Text>
 				</Box>
 			)}
-			
+
 			{/* Visible content */}
 			<Box flexDirection="column" flexGrow={1}>
-				{visibleElements.map(element => element.content)}
+				{visibleElements.map((element) => element.content)}
 			</Box>
-			
+
 			{/* Scroll indicator - bottom */}
 			{canScrollDown && (
 				<Box>
-					<Text color={theme.textDim}>↓ More content below (↓/j to scroll)</Text>
+					<Text color={theme.textDim}>
+						↓ More content below (↓/j to scroll)
+					</Text>
 				</Box>
 			)}
 		</Box>
@@ -805,7 +914,7 @@ const ToolCallDisplay = ({ toolCall }) => {
 
 	// Format the tool name for display
 	const formatToolName = (name) => {
-		return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+		return name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 	};
 
 	return (
@@ -823,9 +932,7 @@ const ToolCallDisplay = ({ toolCall }) => {
 				)}
 			</Box>
 			{toolCall.result && toolCall.status === 'completed' && (
-				<Box marginLeft={3}>
-					{formatToolResponse(toolCall)}
-				</Box>
+				<Box marginLeft={3}>{formatToolResponse(toolCall)}</Box>
 			)}
 			{toolCall.error && (
 				<Box marginLeft={3}>
@@ -840,13 +947,12 @@ const ToolCallDisplay = ({ toolCall }) => {
  * Main chat screen component
  */
 export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
-	
-	debugLog('Component rendering', { 
-		hasMcpClient: !!mcpClient, 
+	debugLog('Component rendering', {
+		hasMcpClient: !!mcpClient,
 		projectRoot,
-		mcpClientType: mcpClient?.constructor?.name 
+		mcpClientType: mcpClient?.constructor?.name
 	});
-	
+
 	const theme = getCurrentTheme();
 	const { stdout } = useStdout();
 	const [input, setInput] = useState('');
@@ -855,7 +961,7 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 	const [streamingContent, setStreamingContent] = useState('');
 	const [toolCalls, setToolCalls] = useState([]);
 	const [error, setError] = useState(null);
-	
+
 	// Add scroll state
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewportHeight, setViewportHeight] = useState(10); // Default height
@@ -880,7 +986,7 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 			hasEnv: !!mcpClient?.session?.env,
 			hasAnthropicKey: !!mcpClient?.session?.env?.ANTHROPIC_API_KEY
 		});
-		
+
 		return new AIMessageHandler(chatSession, mcpClient);
 	}, [chatSession, mcpClient]);
 
@@ -893,7 +999,8 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		const welcomeMsg = {
 			id: Date.now(),
 			role: 'assistant',
-			content: 'Welcome to Task Master AI Chat! I can help you manage tasks, analyze complexity, and answer questions about your project.',
+			content:
+				'Welcome to Task Master AI Chat! I can help you manage tasks, analyze complexity, and answer questions about your project.',
 			timestamp: new Date()
 		};
 		setMessages([welcomeMsg]);
@@ -912,9 +1019,9 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 				setViewportHeight(Math.max(5, availableHeight));
 			}
 		};
-		
+
 		updateViewportHeight();
-		
+
 		// Listen for resize events
 		if (stdout) {
 			stdout.on('resize', updateViewportHeight);
@@ -925,61 +1032,61 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 	// Calculate total content height (approximate)
 	const calculateTotalHeight = useCallback(() => {
 		let totalHeight = 0;
-		
+
 		// Each message takes roughly 3-4 lines minimum
-		messages.forEach(msg => {
+		messages.forEach((msg) => {
 			// Base height for role/header
 			totalHeight += 2;
-			
+
 			// Content height (rough estimate: 80 chars per line)
 			const contentLines = Math.ceil(msg.content.length / 80);
 			totalHeight += contentLines;
-			
+
 			// Tool calls add extra height
 			if (msg.metadata?.toolCalls) {
 				totalHeight += msg.metadata.toolCalls.length * 3;
 			}
-			
+
 			// Margin
 			totalHeight += 1;
 		});
-		
+
 		// Add height for streaming content
 		if (streamingContent) {
 			totalHeight += 2 + Math.ceil(streamingContent.length / 80) + 1;
 		}
-		
+
 		// Add height for current tool calls
 		if (!streamingContent && toolCalls.length > 0) {
 			totalHeight += toolCalls.length * 3;
 		}
-		
+
 		// Add height for error
 		if (error) {
 			totalHeight += 2;
 		}
-		
+
 		return totalHeight;
 	}, [messages, streamingContent, toolCalls, error]);
-	
+
 	// Handle keyboard input for scrolling
 	useInput((input, key) => {
 		if (!isProcessing) {
 			const totalHeight = calculateTotalHeight();
 			const maxScroll = Math.max(0, totalHeight - viewportHeight + 5); // Leave some buffer
-			
+
 			if (key.upArrow || input === 'k') {
 				// Scroll up
-				setScrollOffset(prev => Math.max(0, prev - 1));
+				setScrollOffset((prev) => Math.max(0, prev - 1));
 			} else if (key.downArrow || input === 'j') {
 				// Scroll down
-				setScrollOffset(prev => Math.min(maxScroll, prev + 1));
+				setScrollOffset((prev) => Math.min(maxScroll, prev + 1));
 			} else if (key.pageUp) {
 				// Page up
-				setScrollOffset(prev => Math.max(0, prev - viewportHeight));
+				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
 			} else if (key.pageDown) {
 				// Page down
-				setScrollOffset(prev => Math.min(maxScroll, prev + viewportHeight));
+				setScrollOffset((prev) => Math.min(maxScroll, prev + viewportHeight));
 			} else if (input === 'g') {
 				// Go to top
 				setScrollOffset(0);
@@ -989,17 +1096,24 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 			}
 		}
 	});
-	
+
 	// Auto-scroll to bottom when new messages arrive
 	useEffect(() => {
 		const totalHeight = calculateTotalHeight();
 		const maxScroll = Math.max(0, totalHeight - viewportHeight + 5);
-		
+
 		// Only auto-scroll if we're already at or near the bottom
 		if (scrollOffset >= maxScroll - 5) {
 			setScrollOffset(maxScroll);
 		}
-	}, [messages, streamingContent, toolCalls, calculateTotalHeight, viewportHeight, scrollOffset]);
+	}, [
+		messages,
+		streamingContent,
+		toolCalls,
+		calculateTotalHeight,
+		viewportHeight,
+		scrollOffset
+	]);
 
 	// Handle message submission
 	const handleSubmit = useCallback(async () => {
@@ -1012,15 +1126,18 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		// Handle commands
 		if (userInput.startsWith('/')) {
 			const command = userInput.slice(1).toLowerCase();
-			
+
 			if (command === 'clear') {
 				// Clear all state
-				setMessages([{
-					id: Date.now(),
-					role: 'assistant',
-					content: 'Welcome to Task Master AI Chat! I can help you manage tasks, analyze complexity, and answer questions about your project.',
-					timestamp: new Date()
-				}]);
+				setMessages([
+					{
+						id: Date.now(),
+						role: 'assistant',
+						content:
+							'Welcome to Task Master AI Chat! I can help you manage tasks, analyze complexity, and answer questions about your project.',
+						timestamp: new Date()
+					}
+				]);
 				setToolCalls([]);
 				setError(null);
 				setStreamingContent('');
@@ -1028,12 +1145,12 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 				sessionRef.current?.clearMessages();
 				return;
 			}
-			
+
 			if (command === 'exit' || command === 'quit') {
 				onExit();
 				return;
 			}
-			
+
 			if (command === 'help') {
 				const helpMsg = {
 					id: Date.now(),
@@ -1058,10 +1175,10 @@ You can ask me about:
 • General programming questions`,
 					timestamp: new Date()
 				};
-				setMessages(prev => [...prev, helpMsg]);
+				setMessages((prev) => [...prev, helpMsg]);
 				return;
 			}
-			
+
 			// Unknown command
 			setError(`Unknown command: /${command}`);
 			return;
@@ -1074,7 +1191,7 @@ You can ask me about:
 			content: userInput,
 			timestamp: new Date()
 		};
-		setMessages(prev => [...prev, userMsg]);
+		setMessages((prev) => [...prev, userMsg]);
 
 		// Start processing
 		setIsProcessing(true);
@@ -1090,7 +1207,7 @@ You can ask me about:
 			content: '',
 			timestamp: new Date()
 		};
-		setMessages(prev => [...prev, assistantMsg]);
+		setMessages((prev) => [...prev, assistantMsg]);
 
 		try {
 			// Call AI handler
@@ -1100,16 +1217,18 @@ You can ask me about:
 					setStreamingContent(accumulatedContentRef.current);
 				},
 				onToolCall: (toolCall) => {
-					setToolCalls(prev => [...prev, toolCall]);
+					setToolCalls((prev) => [...prev, toolCall]);
 				},
 				onComplete: () => {
 					// Update the assistant message with final content
 					const finalContent = accumulatedContentRef.current;
-					setMessages(prev => prev.map(msg => 
-						msg.id === assistantMsgId 
-							? { ...msg, content: finalContent }
-							: msg
-					));
+					setMessages((prev) =>
+						prev.map((msg) =>
+							msg.id === assistantMsgId
+								? { ...msg, content: finalContent }
+								: msg
+						)
+					);
 					setStreamingContent('');
 					setIsProcessing(false);
 				},
@@ -1117,14 +1236,16 @@ You can ask me about:
 					setError(error.message);
 					setIsProcessing(false);
 					// Remove the empty assistant message
-					setMessages(prev => prev.filter(msg => msg.id !== assistantMsgId));
+					setMessages((prev) =>
+						prev.filter((msg) => msg.id !== assistantMsgId)
+					);
 				}
 			});
 		} catch (error) {
 			setError(error.message);
 			setIsProcessing(false);
 			// Remove the empty assistant message
-			setMessages(prev => prev.filter(msg => msg.id !== assistantMsgId));
+			setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
 		}
 	}, [input, isProcessing, onExit, streamingContent]);
 
@@ -1158,12 +1279,7 @@ You can ask me about:
 			</Box>
 
 			{/* Messages area */}
-			<Box
-				flexDirection="column"
-				flexGrow={1}
-				paddingX={1}
-				overflow="hidden"
-			>
+			<Box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
 				<ScrollableMessages
 					messages={messages}
 					streamingContent={streamingContent}
@@ -1181,9 +1297,7 @@ You can ask me about:
 				paddingX={1}
 				marginTop={1}
 			>
-				<Text color={theme.text}>
-					{isProcessing ? '🤖 ' : '💬 '}
-				</Text>
+				<Text color={theme.text}>{isProcessing ? '🤖 ' : '💬 '}</Text>
 				<TextInput
 					value={input}
 					onChange={setInput}
@@ -1201,13 +1315,13 @@ You can ask me about:
 			<Box justifyContent="space-between" paddingX={1} marginTop={1}>
 				<Text color={theme.textDim}>
 					{isProcessing && 'AI is processing...'}
-					{!isProcessing && messages.length > 0 && `${messages.length} messages`}
+					{!isProcessing &&
+						messages.length > 0 &&
+						`${messages.length} messages`}
 					{!isProcessing && scrollOffset > 0 && ` (scrolled)`}
 				</Text>
-				<Text color={theme.textDim}>
-					↑↓/jk: Scroll | /clear | /exit
-				</Text>
+				<Text color={theme.textDim}>↑↓/jk: Scroll | /clear | /exit</Text>
 			</Box>
 		</Box>
 	);
-}; 
+};

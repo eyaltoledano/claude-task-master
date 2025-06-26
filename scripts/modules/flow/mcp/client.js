@@ -15,11 +15,11 @@ export class MCPClient {
 		try {
 			// Handle both string path and server configuration object
 			let command, args, env;
-			
+
 			if (typeof serverConfig === 'string') {
 				// Legacy: just a script path
 				this.serverPath = serverConfig;
-				
+
 				// Determine command based on file extension
 				if (serverConfig.endsWith('.py')) {
 					command = 'python';
@@ -46,7 +46,7 @@ export class MCPClient {
 				} else if (serverConfig.scriptPath) {
 					// Script path execution
 					this.serverPath = serverConfig.scriptPath;
-					
+
 					if (serverConfig.scriptPath.endsWith('.py')) {
 						command = 'python';
 						args = [serverConfig.scriptPath];
@@ -65,7 +65,9 @@ export class MCPClient {
 					args = [...args, ...(serverConfig.args || [])];
 					env = { ...process.env, ...(serverConfig.env || {}) };
 				} else {
-					throw new Error('Server configuration must have either command or scriptPath');
+					throw new Error(
+						'Server configuration must have either command or scriptPath'
+					);
 				}
 			}
 
