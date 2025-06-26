@@ -177,8 +177,11 @@ export class ParsePrdTracker {
 		const priorityIndicator = getPriorityIndicator(normalizedPriority, false); // false = CLI context
 
 		// Format task number to be centered in column
-		const taskIdCentered = taskNumber.toString().padStart(3, ' ').padEnd(4, ' ');
-		
+		const taskIdCentered = taskNumber
+			.toString()
+			.padStart(3, ' ')
+			.padEnd(4, ' ');
+
 		// Format priority with indicator only (no text)
 		const priorityDisplay = priorityIndicator.padEnd(3, ' ');
 
@@ -193,7 +196,7 @@ export class ParsePrdTracker {
 		);
 
 		taskBar.update(1, { title: displayTitle });
-		
+
 		// Add border line after each task
 		const borderBar = this.multibar.create(
 			1,
@@ -206,7 +209,7 @@ export class ParsePrdTracker {
 			}
 		);
 		borderBar.update(1);
-		
+
 		this._updateTimeTokensBar();
 	}
 
