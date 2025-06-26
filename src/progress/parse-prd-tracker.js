@@ -34,6 +34,7 @@ export class ParsePrdTracker {
 		// State flags
 		this.isStarted = false;
 		this.isFinished = false;
+		this.headerShown = false;
 
 		// Time tracking for stable estimates
 		this.lastTaskTime = null;
@@ -91,6 +92,49 @@ export class ParsePrdTracker {
 	addTaskLine(taskNumber, title, priority = 'medium') {
 		if (!this.multibar || this.isFinished) return;
 
+		// Show header on first task
+		if (!this.headerShown) {
+			this.headerShown = true;
+
+			// Top border
+			const topBorderBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format:
+						'------+-----+----------------------------------------------------------------',
+					barsize: 1
+				}
+			);
+			topBorderBar.update(1);
+
+			// Header
+			const headerBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format: ' TASK | PRI | TITLE',
+					barsize: 1
+				}
+			);
+			headerBar.update(1);
+
+			// Bottom border
+			const bottomBorderBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format:
+						'------+-----+----------------------------------------------------------------',
+					barsize: 1
+				}
+			);
+			bottomBorderBar.update(1);
+		}
+
 		// Normalize priority
 		const normalizedPriority = ['high', 'medium', 'low'].includes(priority)
 			? priority
@@ -127,22 +171,42 @@ export class ParsePrdTracker {
 
 		// Create individual task display
 		const displayTitle =
-			title && title.length > 60
-				? title.substring(0, 57) + '...'
+			title && title.length > 57
+				? title.substring(0, 54) + '...'
 				: title || `Task ${taskNumber}`;
 		const priorityIndicator = getPriorityIndicator(normalizedPriority, false); // false = CLI context
+
+		// Format task number to be centered in column
+		const taskIdCentered = taskNumber.toString().padStart(3, ' ').padEnd(4, ' ');
+		
+		// Format priority with indicator only (no text)
+		const priorityDisplay = priorityIndicator.padEnd(3, ' ');
 
 		const taskBar = this.multibar.create(
 			1,
 			1,
 			{},
 			{
-				format: `${priorityIndicator} Task ${taskNumber}/${this.numTasks}: {title}`,
+				format: ` ${taskIdCentered} | ${priorityDisplay} | {title}`,
 				barsize: 1
 			}
 		);
 
 		taskBar.update(1, { title: displayTitle });
+		
+		// Add border line after each task
+		const borderBar = this.multibar.create(
+			1,
+			1,
+			{},
+			{
+				format:
+					'------+-----+----------------------------------------------------------------',
+				barsize: 1
+			}
+		);
+		borderBar.update(1);
+		
 		this._updateTimeTokensBar();
 	}
 
