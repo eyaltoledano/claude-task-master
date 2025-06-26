@@ -774,7 +774,8 @@ function FlowApp({ backend, options = {} }) {
 							<Box paddingLeft={1} paddingRight={1}>
 								<Box flexGrow={1}>
 									<Text color={theme.text}>
-										<Text color={theme.accent}>[tag]</Text> {currentTag || 'master'}
+										<Text color={theme.accent}>[tag]</Text>{' '}
+										{currentTag || 'master'}
 									</Text>
 								</Box>
 								<Text color={theme.accent}>Task Master AI</Text>
