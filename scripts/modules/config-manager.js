@@ -500,7 +500,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Providers that don't require API keys for authentication
 	const providersWithoutApiKeys = [
 		CUSTOM_PROVIDERS.OLLAMA,
-		CUSTOM_PROVIDERS.BEDROCK
+		CUSTOM_PROVIDERS.BEDROCK,
+		CUSTOM_PROVIDERS.MCP
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {

@@ -40,6 +40,7 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
+| mcp         | mcp-sampling                                   | -         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -69,7 +70,6 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct:free  | —         | 0          | 0           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
-| openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
@@ -97,6 +97,7 @@
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling               | -         | 0          | 0           |
 
 ## Fallback Models
 
@@ -129,6 +130,7 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
+| mcp         | mcp-sampling                                   | -         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |

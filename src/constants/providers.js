@@ -20,7 +20,8 @@ export const CUSTOM_PROVIDERS = {
 	BEDROCK: 'bedrock',
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
-	CLAUDE_CODE: 'claude-code'
+	CLAUDE_CODE: 'claude-code',
+	MCP: 'mcp'
 };
 
 // Custom providers array (for backward compatibility and iteration)
