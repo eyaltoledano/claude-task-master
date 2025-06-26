@@ -29,6 +29,7 @@ import { MCPServerManager } from './components/MCPServerManager.jsx';
 import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
+import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -73,6 +74,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
+			{ name: '/trees', description: 'Manage Git worktrees' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
@@ -341,6 +343,9 @@ function FlowApp({ backend, options = {} }) {
 				case 'chat':
 					setCurrentScreen('chat');
 					break;
+				case 'trees':
+					setCurrentScreen('trees');
+					break;
 				case 'exit':
 				case 'quit':
 					exit();
@@ -447,6 +452,9 @@ function FlowApp({ backend, options = {} }) {
 						break;
 					case 'c':
 						setCurrentScreen('chat');
+						break;
+					case 'w':
+						setCurrentScreen('trees');
 						break;
 					case 'v':
 						setCurrentScreen('mcp-management');
@@ -567,7 +575,8 @@ function FlowApp({ backend, options = {} }) {
 				!showNextTaskModal &&
 				currentScreen !== 'tasks' &&
 				currentScreen !== 'chat' &&
-				currentScreen !== 'status'
+				currentScreen !== 'status' &&
+				currentScreen !== 'trees'
 		}
 	);
 
@@ -666,6 +675,12 @@ function FlowApp({ backend, options = {} }) {
 						mcpClient={currentBackend}
 						projectRoot={currentBackend.projectRoot}
 						onExit={() => setCurrentScreen('welcome')}
+					/>
+				) : currentScreen === 'trees' ? (
+					<GitWorktreeScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+						onExit={() => exit()}
 					/>
 				) : currentScreen === 'mcp-management' ? (
 					<MCPManagementScreen />

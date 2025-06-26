@@ -536,32 +536,751 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	async getComplexityReport(tag = null) {
-		// Get current tag if not provided
-		if (!tag) {
-			const { tags } = await this.listTags();
-			tag = tags.find((t) => t.isCurrent)?.name || 'master';
-		}
-
-		// Construct report path based on tag
-		const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
+		// Determine report path based on tag
 		const tagSuffix = tag && tag !== 'master' ? `_${tag}` : '';
 		const reportPath = path.join(
-			reportDir,
+			this.projectRoot,
+			'.taskmaster',
+			'reports',
 			`task-complexity-report${tagSuffix}.json`
 		);
 
 		try {
 			const fs = await import('fs');
-			if (fs.default.existsSync(reportPath)) {
-				const reportData = JSON.parse(
-					fs.default.readFileSync(reportPath, 'utf8')
+			if (!fs.default.existsSync(reportPath)) {
+				return null;
+			}
+
+			const content = fs.default.readFileSync(reportPath, 'utf8');
+			return JSON.parse(content);
+		} catch (error) {
+			this.log.debug(`Error loading complexity report: ${error.message}`);
+			return null;
+		}
+	}
+
+	async getTasks(tag = null) {
+		try {
+			const { listTasks } = await import('../../task-manager.js');
+			const tasksPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			const result = listTasks(
+				tasksPath,
+				null, // statusFilter
+				null, // reportPath
+				false, // withSubtasks
+				'json', // outputFormat
+				tag,
+				{ projectRoot: this.projectRoot }
+			);
+			return result.tasks || [];
+		} catch (error) {
+			this.log.error(`Error getting tasks: ${error.message}`);
+			return [];
+		}
+	}
+
+	// Git worktree management methods
+	async isGitRepository() {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			await execAsync('git rev-parse --is-inside-work-tree', {
+				cwd: this.projectRoot
+			});
+			return true;
+		} catch (error) {
+			return false;
+		}
+	}
+
+	async getRepositoryRoot() {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			const { stdout } = await execAsync('git rev-parse --show-toplevel', {
+				cwd: this.projectRoot
+			});
+			return stdout.trim();
+		} catch (error) {
+			throw new Error('Failed to get repository root: ' + error.message);
+		}
+	}
+
+	async listWorktrees() {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Pre-flight check
+			if (!(await this.isGitRepository())) {
+				throw new Error('Not in a Git repository');
+			}
+
+			const { stdout } = await execAsync('git worktree list --porcelain', {
+				cwd: this.projectRoot
+			});
+
+			const worktrees = [];
+			const lines = stdout.trim().split('\n');
+			let currentWorktree = {};
+
+			for (const line of lines) {
+				if (line === '') {
+					if (Object.keys(currentWorktree).length > 0) {
+						worktrees.push(currentWorktree);
+						currentWorktree = {};
+					}
+				} else if (line.startsWith('worktree ')) {
+					currentWorktree.path = line.substring(9);
+					currentWorktree.name = path.basename(currentWorktree.path);
+				} else if (line.startsWith('HEAD ')) {
+					currentWorktree.head = line.substring(5);
+				} else if (line.startsWith('branch ')) {
+					currentWorktree.branch = line.substring(7).replace('refs/heads/', '');
+				} else if (line === 'detached') {
+					currentWorktree.isDetached = true;
+				} else if (line === 'bare') {
+					currentWorktree.isBare = true;
+				}
+			}
+
+			// Add last worktree if exists
+			if (Object.keys(currentWorktree).length > 0) {
+				worktrees.push(currentWorktree);
+			}
+
+			// Mark current worktree
+			const currentPath = await this.getRepositoryRoot();
+
+			// Check lock status for each worktree
+			const fs = await import('fs');
+			for (const wt of worktrees) {
+				wt.isCurrent = wt.path === currentPath;
+
+				// Check if worktree is locked
+				const lockFile = path.join(
+					currentPath,
+					'.git',
+					'worktrees',
+					path.basename(wt.path),
+					'locked'
 				);
-				return reportData;
+				wt.isLocked = fs.default.existsSync(lockFile);
+			}
+
+			return worktrees;
+		} catch (error) {
+			throw new Error('Failed to list worktrees: ' + error.message);
+		}
+	}
+
+	async getWorktreeDetails(worktreePath) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const fs = await import('fs');
+			const execAsync = promisify(exec);
+
+			// Get basic info from list
+			const worktrees = await this.listWorktrees();
+			const worktree = worktrees.find((wt) => wt.path === worktreePath);
+
+			if (!worktree) {
+				throw new Error('Worktree not found');
+			}
+
+			// Get additional details
+			const details = { ...worktree };
+
+			// Get latest commit info
+			try {
+				const { stdout: logOutput } = await execAsync(
+					'git log -1 --pretty=format:"%H|%an|%ae|%ad|%s" --date=iso',
+					{ cwd: worktreePath }
+				);
+				const [hash, author, email, date, subject] = logOutput.split('|');
+				details.latestCommit = {
+					hash,
+					author,
+					email,
+					date,
+					subject
+				};
+			} catch (e) {
+				// Might be a new worktree with no commits
+				details.latestCommit = null;
+			}
+
+			// Get status summary
+			try {
+				const { stdout: statusOutput } = await execAsync(
+					'git status --porcelain',
+					{ cwd: worktreePath }
+				);
+				const statusLines = statusOutput.trim().split('\n').filter(Boolean);
+				details.status = {
+					modified: statusLines.filter((l) => l.startsWith(' M')).length,
+					added: statusLines.filter((l) => l.startsWith('A ')).length,
+					deleted: statusLines.filter((l) => l.startsWith(' D')).length,
+					untracked: statusLines.filter((l) => l.startsWith('??')).length,
+					total: statusLines.length
+				};
+			} catch (e) {
+				details.status = {
+					modified: 0,
+					added: 0,
+					deleted: 0,
+					untracked: 0,
+					total: 0
+				};
+			}
+
+			// Get branch tracking info
+			try {
+				const { stdout: trackingOutput } = await execAsync(
+					'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+					{ cwd: worktreePath }
+				);
+				details.trackingBranch = trackingOutput.trim();
+
+				// Get ahead/behind counts
+				const { stdout: revListOutput } = await execAsync(
+					'git rev-list --left-right --count HEAD...@{u}',
+					{ cwd: worktreePath }
+				);
+				const [ahead, behind] = revListOutput.trim().split('\t').map(Number);
+				details.ahead = ahead;
+				details.behind = behind;
+			} catch (e) {
+				// No tracking branch
+				details.trackingBranch = null;
+				details.ahead = 0;
+				details.behind = 0;
+			}
+
+			// Check if worktree is locked
+			const adminDir = path.join(
+				await this.getRepositoryRoot(),
+				'.git',
+				'worktrees',
+				path.basename(worktreePath),
+				'locked'
+			);
+			details.isLocked = fs.default.existsSync(adminDir);
+
+			// Get disk usage
+			try {
+				const { stdout: duOutput } = await execAsync(
+					`du -sh "${worktreePath}" | cut -f1`,
+					{ shell: true }
+				);
+				details.diskUsage = duOutput.trim();
+			} catch (e) {
+				details.diskUsage = 'Unknown';
+			}
+
+			return details;
+		} catch (error) {
+			throw new Error('Failed to get worktree details: ' + error.message);
+		}
+	}
+
+	async addWorktree(name, options = {}) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Pre-flight checks
+			if (!(await this.isGitRepository())) {
+				throw new Error('Not in a Git repository');
+			}
+
+			// Sanitize name (replace spaces with dashes)
+			const sanitizedName = name.replace(/\s+/g, '-');
+
+			// Get repository name
+			const repoRoot = await this.getRepositoryRoot();
+			const repoName = path.basename(repoRoot);
+
+			// Check if worktree already exists
+			const existingWorktrees = await this.listWorktrees();
+			const worktreePath = path.join(
+				repoRoot,
+				'..',
+				`${repoName}-${sanitizedName}`
+			);
+
+			if (existingWorktrees.some((wt) => wt.path === worktreePath)) {
+				throw new Error(`Worktree already exists at ${worktreePath}`);
+			}
+
+			// Check if branch exists
+			let branchExists = false;
+			try {
+				await execAsync(
+					`git show-ref --verify --quiet refs/heads/${sanitizedName}`,
+					{
+						cwd: this.projectRoot
+					}
+				);
+				branchExists = true;
+			} catch (e) {
+				// Branch doesn't exist
+			}
+
+			// Create worktree
+			const command = branchExists
+				? `git worktree add "${worktreePath}" "${sanitizedName}"`
+				: `git worktree add "${worktreePath}" -b "${sanitizedName}"`;
+
+			const { stdout, stderr } = await execAsync(command, {
+				cwd: this.projectRoot
+			});
+
+			return {
+				success: true,
+				name: sanitizedName,
+				path: worktreePath,
+				branchCreated: !branchExists,
+				output: stdout || stderr
+			};
+		} catch (error) {
+			throw new Error('Failed to add worktree: ' + error.message);
+		}
+	}
+
+	async removeWorktree(worktreePath, options = {}) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Check if it's the current worktree
+			const currentPath = await this.getRepositoryRoot();
+			if (worktreePath === currentPath) {
+				throw new Error('Cannot remove the current worktree');
+			}
+
+			// Remove worktree
+			const forceFlag = options.force ? '--force' : '';
+			const { stdout, stderr } = await execAsync(
+				`git worktree remove ${forceFlag} "${worktreePath}"`,
+				{ cwd: this.projectRoot }
+			);
+
+			return {
+				success: true,
+				output: stdout || stderr
+			};
+		} catch (error) {
+			throw new Error('Failed to remove worktree: ' + error.message);
+		}
+	}
+
+	async pruneWorktrees(options = {}) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			const dryRunFlag = options.dryRun ? '--dry-run' : '';
+			const { stdout, stderr } = await execAsync(
+				`git worktree prune ${dryRunFlag}`,
+				{ cwd: this.projectRoot }
+			);
+
+			return {
+				success: true,
+				output: stdout || stderr
+			};
+		} catch (error) {
+			throw new Error('Failed to prune worktrees: ' + error.message);
+		}
+	}
+
+	async lockWorktree(worktreePath, reason = '') {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			const reasonFlag = reason ? `--reason "${reason}"` : '';
+			const { stdout, stderr } = await execAsync(
+				`git worktree lock ${reasonFlag} "${worktreePath}"`,
+				{ cwd: this.projectRoot }
+			);
+
+			return {
+				success: true,
+				output: stdout || stderr
+			};
+		} catch (error) {
+			throw new Error('Failed to lock worktree: ' + error.message);
+		}
+	}
+
+	async unlockWorktree(worktreePath) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			const { stdout, stderr } = await execAsync(
+				`git worktree unlock "${worktreePath}"`,
+				{ cwd: this.projectRoot }
+			);
+
+			return {
+				success: true,
+				output: stdout || stderr
+			};
+		} catch (error) {
+			throw new Error('Failed to unlock worktree: ' + error.message);
+		}
+	}
+
+	async repairWorktree(worktree) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Try to repair the worktree
+			await execAsync(`git worktree repair ${worktree.path}`);
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to repair worktree: ${error.message}`
+			};
+		}
+	}
+
+	// Worktree-Task linking methods
+	async getWorktreesConfig() {
+		try {
+			const fs = await import('fs');
+			const worktreesPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'worktrees.json'
+			);
+
+			if (!fs.default.existsSync(worktreesPath)) {
+				// Create default structure
+				const defaultConfig = {
+					version: '1.0.0',
+					worktrees: {}
+				};
+				const dir = path.dirname(worktreesPath);
+				if (!fs.default.existsSync(dir)) {
+					fs.default.mkdirSync(dir, { recursive: true });
+				}
+				fs.default.writeFileSync(
+					worktreesPath,
+					JSON.stringify(defaultConfig, null, 2)
+				);
+				return defaultConfig;
+			}
+
+			const content = fs.default.readFileSync(worktreesPath, 'utf8');
+			return JSON.parse(content);
+		} catch (error) {
+			this.log.error(`Error reading worktrees config: ${error.message}`);
+			return { version: '1.0.0', worktrees: {} };
+		}
+	}
+
+	async saveWorktreesConfig(config) {
+		try {
+			const fs = await import('fs');
+			const worktreesPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'worktrees.json'
+			);
+			fs.default.writeFileSync(worktreesPath, JSON.stringify(config, null, 2));
+			return true;
+		} catch (error) {
+			this.log.error(`Error saving worktrees config: ${error.message}`);
+			return false;
+		}
+	}
+
+	async linkWorktreeToTasks(worktreeName, taskIds, options = {}) {
+		try {
+			const config = await this.getWorktreesConfig();
+			const worktrees = await this.listWorktrees();
+			const worktree = worktrees.find((wt) => wt.name === worktreeName);
+
+			if (!worktree) {
+				return {
+					success: false,
+					error: `Worktree '${worktreeName}' not found`
+				};
+			}
+
+			// Parse task IDs to determine type
+			const linkedTasks = taskIds.map((id) => {
+				const isSubtask = id.includes('.');
+				return {
+					id,
+					type: isSubtask ? 'subtask' : 'task',
+					tag: options.tag || 'master'
+				};
+			});
+
+			// Update or create worktree entry
+			if (!config.worktrees[worktreeName]) {
+				config.worktrees[worktreeName] = {
+					path: worktree.path,
+					linkedTasks: [],
+					createdAt: new Date().toISOString(),
+					lastUpdated: new Date().toISOString(),
+					description: options.description || '',
+					status: 'active'
+				};
+			}
+
+			// Add new linked tasks (avoid duplicates)
+			const existingIds = config.worktrees[worktreeName].linkedTasks.map(
+				(t) => t.id
+			);
+			const newTasks = linkedTasks.filter((t) => !existingIds.includes(t.id));
+			config.worktrees[worktreeName].linkedTasks.push(...newTasks);
+			config.worktrees[worktreeName].lastUpdated = new Date().toISOString();
+
+			// Save config
+			await this.saveWorktreesConfig(config);
+
+			// Optionally sync to git notes
+			if (options.syncToGit) {
+				await this.syncWorktreeToGitNotes(
+					worktreeName,
+					config.worktrees[worktreeName]
+				);
+			}
+
+			return {
+				success: true,
+				linkedTasks: config.worktrees[worktreeName].linkedTasks
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to link tasks: ${error.message}`
+			};
+		}
+	}
+
+	async unlinkWorktreeTask(worktreeName, taskId) {
+		try {
+			const config = await this.getWorktreesConfig();
+
+			if (!config.worktrees[worktreeName]) {
+				return {
+					success: false,
+					error: `No task links found for worktree '${worktreeName}'`
+				};
+			}
+
+			// Remove the task
+			config.worktrees[worktreeName].linkedTasks = config.worktrees[
+				worktreeName
+			].linkedTasks.filter((t) => t.id !== taskId);
+			config.worktrees[worktreeName].lastUpdated = new Date().toISOString();
+
+			// Save config
+			await this.saveWorktreesConfig(config);
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to unlink task: ${error.message}`
+			};
+		}
+	}
+
+	async getWorktreeTasks(worktreeName) {
+		try {
+			const config = await this.getWorktreesConfig();
+
+			if (!config.worktrees[worktreeName]) {
+				return [];
+			}
+
+			// Load actual task details
+			const { listTasks } = await import('../../task-manager.js');
+			const tasksPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			const allTasks = listTasks(
+				tasksPath,
+				null, // statusFilter
+				null, // reportPath
+				false, // withSubtasks
+				'json', // outputFormat
+				config.worktrees[worktreeName].linkedTasks[0]?.tag || 'master',
+				{ projectRoot: this.projectRoot }
+			);
+
+			const linkedTaskIds = config.worktrees[worktreeName].linkedTasks.map(
+				(t) => t.id
+			);
+			const linkedTasks = [];
+
+			// Find linked tasks and subtasks
+			for (const task of allTasks.tasks) {
+				if (linkedTaskIds.includes(task.id.toString())) {
+					linkedTasks.push(task);
+				}
+				// Check subtasks
+				if (task.subtasks) {
+					for (const subtask of task.subtasks) {
+						const subtaskId = `${task.id}.${subtask.id}`;
+						if (linkedTaskIds.includes(subtaskId)) {
+							linkedTasks.push({
+								...subtask,
+								id: subtaskId,
+								parentId: task.id,
+								parentTitle: task.title
+							});
+						}
+					}
+				}
+			}
+
+			return linkedTasks;
+		} catch (error) {
+			this.log.error(`Error getting worktree tasks: ${error.message}`);
+			return [];
+		}
+	}
+
+	async getTaskWorktrees(taskId) {
+		try {
+			const config = await this.getWorktreesConfig();
+			const worktrees = [];
+
+			// Find all worktrees linked to this task
+			for (const [name, data] of Object.entries(config.worktrees)) {
+				const hasTask = data.linkedTasks.some((t) => t.id === taskId);
+				if (hasTask) {
+					worktrees.push({
+						name,
+						path: data.path,
+						description: data.description,
+						status: data.status
+					});
+				}
+			}
+
+			return worktrees;
+		} catch (error) {
+			this.log.error(`Error getting task worktrees: ${error.message}`);
+			return [];
+		}
+	}
+
+	async syncWorktreeToGitNotes(worktreeName, worktreeData) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Get the worktree's HEAD commit
+			const { stdout: headCommit } = await execAsync(
+				`git -C ${worktreeData.path} rev-parse HEAD`
+			);
+			const commit = headCommit.trim();
+
+			// Prepare notes data
+			const notesData = {
+				linkedTasks: worktreeData.linkedTasks.map((t) => t.id),
+				tag: worktreeData.linkedTasks[0]?.tag || 'master',
+				description: worktreeData.description,
+				lastUpdated: worktreeData.lastUpdated
+			};
+
+			// Add git note
+			const notesRef = 'refs/notes/taskmaster-worktrees';
+			await execAsync(
+				`git notes --ref=${notesRef} add -f -m '${JSON.stringify(notesData)}' ${commit}`
+			);
+
+			return { success: true };
+		} catch (error) {
+			// Git notes are optional, don't fail the operation
+			this.log.debug(`Failed to sync to git notes: ${error.message}`);
+			return { success: false, error: error.message };
+		}
+	}
+
+	async getWorktreeFromGitNotes(worktreeName) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Get worktree details
+			const worktrees = await this.listWorktrees();
+			const worktree = worktrees.find((wt) => wt.name === worktreeName);
+			if (!worktree) return null;
+
+			// Get HEAD commit
+			const { stdout: headCommit } = await execAsync(
+				`git -C ${worktree.path} rev-parse HEAD`
+			);
+			const commit = headCommit.trim();
+
+			// Get git note
+			const notesRef = 'refs/notes/taskmaster-worktrees';
+			try {
+				const { stdout: noteContent } = await execAsync(
+					`git notes --ref=${notesRef} show ${commit}`
+				);
+				return JSON.parse(noteContent);
+			} catch (error) {
+				// No note found
+				return null;
 			}
 		} catch (error) {
-			this.log.debug(`Could not load complexity report: ${error.message}`);
+			this.log.debug(`Failed to get git notes: ${error.message}`);
+			return null;
 		}
+	}
 
-		return null;
+	async cleanupWorktreeLinks(worktreeName) {
+		try {
+			const config = await this.getWorktreesConfig();
+
+			if (config.worktrees[worktreeName]) {
+				delete config.worktrees[worktreeName];
+				await this.saveWorktreesConfig(config);
+			}
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to cleanup worktree links: ${error.message}`
+			};
+		}
 	}
 }

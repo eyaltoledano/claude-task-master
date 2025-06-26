@@ -71,6 +71,12 @@ export function CommandPalette() {
 			key: 'c'
 		},
 		{
+			name: 'Git Worktrees',
+			command: '/trees',
+			description: 'Manage Git worktrees',
+			key: 'w'
+		},
+		{
 			name: 'Project Status',
 			command: '/status',
 			description: 'View project status',
