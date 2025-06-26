@@ -53,6 +53,7 @@ function FlowApp({ backend, options = {} }) {
 	const [currentBackend, setCurrentBackend] = useState(backend);
 	const [currentTheme, setCurrentTheme] = useState('auto');
 	const [hasTasksFile, setHasTasksFile] = useState(false);
+	const [navigationData, setNavigationData] = useState(null);
 
 	const [suggestions, setSuggestions] = useState([]);
 	const [suggestionIndex, setSuggestionIndex] = useState(0);
@@ -597,7 +598,11 @@ function FlowApp({ backend, options = {} }) {
 		currentTag,
 		setCurrentTag,
 		currentScreen,
-		setCurrentScreen,
+		setCurrentScreen: (screen, data = null) => {
+			setCurrentScreen(screen);
+			setNavigationData(data);
+		},
+		navigationData,
 		inputValue,
 		setInputValue,
 		messages,
@@ -689,6 +694,7 @@ function FlowApp({ backend, options = {} }) {
 					<GitWorktreeScreen
 						backend={currentBackend}
 						onBack={() => setCurrentScreen('welcome')}
+						navigationData={navigationData}
 					/>
 				) : currentScreen === 'claude-code' ? (
 					<ClaudeCodeScreen

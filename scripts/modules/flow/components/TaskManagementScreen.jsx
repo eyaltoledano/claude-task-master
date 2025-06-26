@@ -235,12 +235,15 @@ export function TaskManagementScreen() {
 				// Page up in subtask detail view
 				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
 			} else if (input === 'w') {
-				// Jump to worktrees screen to manage linked worktrees
+				// Jump to worktree detail page for the linked worktree
 				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
 				const worktrees = subtaskWorktrees.get(subtaskId) || [];
 				if (worktrees.length > 0) {
-					// Navigate to worktrees screen
-					setCurrentScreen('worktrees');
+					// Navigate to worktree detail page for the first linked worktree
+					setCurrentScreen('worktrees', {
+						selectedWorktree: worktrees[0],
+						showDetails: true
+					});
 				} else {
 					setToast({
 						message: 'No worktrees linked to this subtask',

@@ -8,7 +8,12 @@ import WorktreeDetailsModal from './WorktreeDetailsModal.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { getTheme } from '../theme.js';
 
-export default function GitWorktreeScreen({ backend, onBack, onExit }) {
+export default function GitWorktreeScreen({
+	backend,
+	onBack,
+	onExit,
+	navigationData
+}) {
 	const [worktrees, setWorktrees] = useState([]);
 	const [selectedWorktree, setSelectedWorktree] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +67,15 @@ export default function GitWorktreeScreen({ backend, onBack, onExit }) {
 	useEffect(() => {
 		loadWorktrees();
 	}, [loadWorktrees]);
+
+	// Handle navigation data
+	useEffect(() => {
+		if (navigationData?.selectedWorktree && navigationData?.showDetails) {
+			// Load details for the specified worktree
+			const worktree = navigationData.selectedWorktree;
+			loadWorktreeDetails(worktree);
+		}
+	}, [navigationData, loadWorktreeDetails]);
 
 	// Load details for selected worktree
 	const loadWorktreeDetails = useCallback(
@@ -292,6 +306,10 @@ export default function GitWorktreeScreen({ backend, onBack, onExit }) {
 					setShowDetailsModal(false);
 					setWorktreeDetails(null);
 					loadWorktrees(); // Refresh to update task counts
+					// If we came from navigation data, go back instead of staying on worktrees list
+					if (navigationData?.showDetails) {
+						onBack();
+					}
 				}}
 				onDelete={() => {
 					setConfirmDelete(worktreeDetails);

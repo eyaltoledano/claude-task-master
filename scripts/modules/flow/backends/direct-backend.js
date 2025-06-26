@@ -703,7 +703,7 @@ export class DirectBackend extends FlowBackend {
 
 			// Get additional details
 			const details = { ...worktree };
-			
+
 			// Ensure name is set
 			if (!details.name) {
 				details.name = path.basename(details.path);
