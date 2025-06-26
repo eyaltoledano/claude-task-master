@@ -48,50 +48,64 @@ export function registerExpandTaskTool(server) {
 				.describe('Force expansion even if subtasks exist'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
-
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
+					log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
+
+					// Validate that reportProgress is available for progress updates
+					if (typeof reportProgress !== 'function') {
+						log.warn(
+							'reportProgress not available - operation will run without progress updates'
+						);
+					}
+
+					// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+					let tasksJsonPath;
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+					} catch (error) {
+						log.error(`Error finding tasks.json: ${error.message}`);
+						return createErrorResponse(
+							`Failed to find tasks.json: ${error.message}`
+						);
+					}
+
+					const result = await expandTaskDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							id: args.id,
+							num: args.num,
+							research: args.research,
+							prompt: args.prompt,
+							force: args.force,
+							projectRoot: args.projectRoot
+						},
+						log,
+						{
+							session,
+							reportProgress:
+								typeof reportProgress === 'function'
+									? reportProgress
+									: undefined
+						}
+					);
+
+					return handleApiResult(
+						result,
+						log,
+						'Error expanding task',
+						undefined,
+						args.projectRoot
 					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
+					log.error(`Error in expand-task tool: ${error.message}`);
+					return createErrorResponse(error.message);
 				}
-
-				const result = await expandTaskDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						num: args.num,
-						research: args.research,
-						prompt: args.prompt,
-						force: args.force,
-						projectRoot: args.projectRoot,
-						tag: args.tag || 'master'
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error expanding task',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in expand-task tool: ${error.message}`);
-				return createErrorResponse(error.message);
 			}
-		})
+		)
 	});
 }

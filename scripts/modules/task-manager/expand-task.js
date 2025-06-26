@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import chalk from 'chalk';
 import { z } from 'zod';
 
 import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
@@ -10,7 +11,16 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { generateTextService } from '../ai-services-unified.js';
+import {
+	generateTextService,
+	streamTextService
+} from '../ai-services-unified.js';
+import { parseStream } from '../../../src/utils/stream-parser.js';
+import { createExpandTracker } from '../../../src/progress/expand-tracker.js';
+import {
+	displayExpandStart,
+	displayExpandSummary
+} from '../../../src/ui/expand.js';
 
 import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
@@ -18,6 +28,15 @@ import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
+
+/**
+ * Helper function to detect if expandTask is being called from expandAllTasks
+ * @returns {boolean} True if called from expand-all-tasks
+ */
+function isCalledFromExpandAll() {
+	const stack = new Error().stack;
+	return stack.includes('expandAllTasks') || stack.includes('expand-all-tasks');
+}
 
 // --- Zod Schemas (Keep from previous step) ---
 const subtaskSchema = z
@@ -80,7 +99,9 @@ For each subtask, provide:
 - testStrategy: Optional testing approach
 
 
-Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array matching the structure described. Do not include any explanatory text, markdown formatting, or code block markers.`;
+Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array matching the structure described. Do not include any explanatory text, markdown formatting, or code block markers.
+
+CRITICAL: Your response must start with { and end with }. Do not wrap the JSON in \`\`\`json\`\`\` or any other formatting.`;
 }
 
 /**
@@ -418,8 +439,15 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: contextProjectRoot,
+		tag,
+		parentTracker
+	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+	const isChildExpansion = isCalledFromExpandAll();
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
@@ -439,7 +467,7 @@ async function expandTask(
 
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
-		logger.info(`Reading tasks from ${tasksPath}`);
+		logger.debug(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
@@ -448,14 +476,14 @@ async function expandTask(
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
 		const task = data.tasks[taskIndex];
-		logger.info(
+		logger.debug(
 			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
 		);
 		// --- End Task Loading/Filtering ---
 
 		// --- Handle Force Flag: Clear existing subtasks if force=true ---
 		if (force && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
-			logger.info(
+			logger.debug(
 				`Force flag set. Clearing existing ${task.subtasks.length} subtasks for task ${taskId}.`
 			);
 			task.subtasks = []; // Clear existing subtasks
@@ -495,7 +523,7 @@ async function expandTask(
 		let finalSubtaskCount;
 		let promptContent = '';
 		let complexityReasoningContext = '';
-		let systemPrompt; // Declare systemPrompt here
+		let systemPrompt = ''; // Initialize systemPrompt here
 
 		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
 		let taskAnalysis = null;
@@ -507,7 +535,7 @@ async function expandTask(
 					(a) => a.taskId === task.id
 				);
 				if (taskAnalysis) {
-					logger.info(
+					logger.debug(
 						`Found complexity analysis for task ${task.id}: Score ${taskAnalysis.complexityScore}`
 					);
 					if (taskAnalysis.reasoning) {
@@ -533,17 +561,17 @@ async function expandTask(
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
 		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
 			finalSubtaskCount = explicitNumSubtasks;
-			logger.info(
+			logger.debug(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
 			);
 		} else if (taskAnalysis?.recommendedSubtasks) {
 			finalSubtaskCount = parseInt(taskAnalysis.recommendedSubtasks, 10);
-			logger.info(
+			logger.debug(
 				`Using subtask count from complexity report: ${finalSubtaskCount}`
 			);
 		} else {
 			finalSubtaskCount = getDefaultSubtasks(session);
-			logger.info(`Using default number of subtasks: ${finalSubtaskCount}`);
+			logger.debug(`Using default number of subtasks: ${finalSubtaskCount}`);
 		}
 		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
 			logger.warn(
@@ -566,10 +594,10 @@ async function expandTask(
 			}
 
 			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
-			logger.info(
-				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
-			);
+			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.
+
+CRITICAL: Your response must start with { and end with }. Do not wrap the JSON in \`\`\`json\`\`\` or any other formatting.`;
+
 			// --- End Simplified System Prompt ---
 		} else {
 			// Use standard prompt generation
@@ -588,7 +616,9 @@ async function expandTask(
 					nextSubtaskId
 				);
 				// Use the specific research system prompt if needed, or a standard one
-				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.`; // Or keep generateResearchSystemPrompt if it exists
+				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.
+
+CRITICAL: Your response must start with { and end with }. Do not wrap the JSON in \`\`\`json\`\`\` or any other formatting.`; // Or keep generateResearchSystemPrompt if it exists
 			} else {
 				promptContent = generateMainUserPrompt(
 					task,
@@ -603,60 +633,396 @@ async function expandTask(
 		}
 		// --- End Complexity Report / Prompt Logic ---
 
-		// --- AI Subtask Generation using generateTextService ---
+		// --- AI Subtask Generation ---
 		let generatedSubtasks = [];
-		let loadingIndicator = null;
-		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator(
-				`Generating ${finalSubtaskCount} subtasks...\n`
-			);
-		}
-
-		let responseText = '';
 		let aiServiceResponse = null;
 
+		// Determine if we should use streaming (same pattern as parse-prd)
+		const isMCP = !!mcpLog;
+		const reportProgress = context.reportProgress;
+		const shouldUseStreaming =
+			typeof reportProgress === 'function' || outputFormat === 'text';
+
+		// Initialize progress tracker for CLI mode only (not MCP, and not child expansion)
+		let progressTracker = null;
+		if (outputFormat === 'text' && !isMCP && !isChildExpansion) {
+			progressTracker = createExpandTracker({
+				expandType: 'single',
+				numTasks: finalSubtaskCount, // Track number of subtasks being generated
+				taskId: task.id,
+				taskTitle: task.title,
+				taskPriority: task.priority
+			});
+
+			// Display header
+			displayExpandStart({
+				taskId: task.id,
+				tasksFilePath: tasksPath,
+				numSubtasks: finalSubtaskCount,
+				explicitSubtasks: Boolean(numSubtasks),
+				complexityScore: taskAnalysis?.complexityScore,
+				hasComplexityAnalysis: Boolean(taskAnalysis),
+				force: force,
+				research: useResearch,
+				expandType: 'single'
+			});
+
+			progressTracker.start();
+		}
+
+		// Estimate input tokens
+		// Our prompts contain a mix of prose and JSON schemas/examples
+		// Empirically, we see ~3-4 chars per token for this type of content
+		const totalPromptLength = systemPrompt.length + promptContent.length;
+		const estimatedInputTokens = Math.ceil(totalPromptLength / 3.5);
+
+		// Debug logging to check our estimates
+		logger.debug(
+			`Prompt lengths - System: ${systemPrompt.length}, User: ${promptContent.length}, Total: ${totalPromptLength}`
+		);
+		logger.debug(`Estimated input tokens: ${estimatedInputTokens}`);
+
+		// Report initial progress for MCP
+		if (reportProgress) {
+			await reportProgress({
+				type: 'subtask_generation_start',
+				progress: 0,
+				current: 0,
+				total: finalSubtaskCount,
+				taskId: task.id,
+				taskTitle: task.title,
+				inputTokens: estimatedInputTokens,
+				message: `Starting subtask generation for Task ${task.id}${useResearch ? ' with research' : ''}... (Input: ${estimatedInputTokens} tokens)`
+			});
+		}
+
+		let loadingIndicator = null;
 		try {
 			const role = useResearch ? 'research' : 'main';
 
-			// Call generateTextService with the determined prompts and telemetry params
-			aiServiceResponse = await generateTextService({
-				prompt: promptContent,
-				systemPrompt: systemPrompt,
-				role,
-				session,
-				projectRoot,
-				commandName: 'expand-task',
-				outputType: outputFormat
-			});
-			responseText = aiServiceResponse.mainResult;
+			if (shouldUseStreaming) {
+				// Use streaming approach
+				logger.debug(`Using streaming AI service for subtask generation...`);
 
-			// Parse Subtasks
-			generatedSubtasks = parseSubtasksFromText(
-				responseText,
-				nextSubtaskId,
-				finalSubtaskCount,
-				task.id,
-				logger
-			);
-			logger.info(
-				`Successfully parsed ${generatedSubtasks.length} subtasks from AI response.`
-			);
-		} catch (error) {
-			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-			logger.error(
-				`Error during AI call or parsing for task ${taskId}: ${error.message}`, // Added task ID context
-				'error'
-			);
-			// Log raw response in debug mode if parsing failed
-			if (
-				error.message.includes('Failed to parse valid subtasks') &&
-				getDebugFlag(session)
-			) {
-				logger.error(`Raw AI Response that failed parsing:\n${responseText}`);
+				aiServiceResponse = await streamTextService({
+					prompt: promptContent,
+					systemPrompt: systemPrompt,
+					role,
+					session,
+					projectRoot,
+					commandName: 'expand-task',
+					outputType: isMCP ? 'mcp' : 'cli'
+				});
+
+				const textStream = aiServiceResponse.mainResult;
+				if (!textStream) {
+					throw new Error('No text stream received from AI service');
+				}
+
+				// Create progress callback for parseStream
+				const onProgress = async (subtask, metadata) => {
+					const { currentCount, estimatedTokens } = metadata;
+
+					// CLI progress tracker
+					if (progressTracker) {
+						// For single task expansion, update the progress bar directly
+						progressTracker.progressBar.update(currentCount, {
+							tasks: `${currentCount}/${finalSubtaskCount}`
+						});
+
+						// Track subtask generation for time estimation
+						progressTracker.updateSubtaskGeneration(currentCount);
+
+						// Update tokens with estimates during streaming (will be replaced with actuals later)
+						if (estimatedTokens) {
+							// estimatedTokens from parseStream is ONLY the output tokens (from accumulated response)
+							// Use our pre-calculated input estimate
+							const inputEstimate = estimatedInputTokens; // From our calculation above
+							const outputEstimate = estimatedTokens; // This is already just output tokens
+
+							// Show estimates with a ~ prefix to indicate they're not final
+							progressTracker.updateTokens(inputEstimate, outputEstimate);
+						}
+
+						// Add the subtask to the table display
+						const subtaskId = nextSubtaskId + currentCount - 1;
+						progressTracker.addSubtaskLine(
+							subtaskId,
+							subtask.title || `Subtask ${currentCount}`
+						);
+					}
+
+					// Update parent tracker if this is a child expansion
+					if (parentTracker && isChildExpansion) {
+						// Don't update token counts during streaming - wait for final telemetry
+						// The estimated tokens during streaming are not accurate
+
+						// Update subtask progress in parent
+						parentTracker.updateCurrentTaskSubtaskProgress(currentCount);
+					}
+
+					// Call the onSubtaskProgress callback if provided (for MCP in expand-all)
+					if (
+						context.onSubtaskProgress &&
+						typeof context.onSubtaskProgress === 'function'
+					) {
+						await context.onSubtaskProgress(currentCount);
+					}
+
+					// MCP progress reporting (following the pattern from parse-prd and analyze-complexity)
+					if (reportProgress) {
+						try {
+							// Estimate output tokens for this subtask
+							const outputTokens = estimatedTokens
+								? Math.floor(estimatedTokens / finalSubtaskCount)
+								: 0;
+
+							await reportProgress({
+								type: 'subtask_generation',
+								current: currentCount,
+								total: finalSubtaskCount,
+								taskId: task.id,
+								taskTitle: task.title,
+								subtaskId: nextSubtaskId + currentCount - 1,
+								subtaskTitle: subtask.title || `Subtask ${currentCount}`,
+								inputTokens:
+									metadata.estimatedInputTokens || estimatedInputTokens,
+								outputTokens: outputTokens,
+								message: `Generated subtask ${currentCount}/${finalSubtaskCount}: ${subtask.title || 'Processing...'}`
+							});
+						} catch (error) {
+							logger.warn(`Progress reporting failed: ${error.message}`);
+						}
+					}
+				};
+
+				// Fallback extractor for subtasks
+				const fallbackItemExtractor = (fullResponse) => {
+					return fullResponse.subtasks || [];
+				};
+
+				const parseResult = await parseStream(textStream, {
+					jsonPaths: ['$.subtasks.*'],
+					onProgress: onProgress,
+					onError: (error) => {
+						logger.debug(`JSON parsing error: ${error.message}`);
+					},
+					estimateTokens: (text) => Math.ceil(text.length / 3.5), // Match our input estimation ratio
+					expectedTotal: finalSubtaskCount,
+					fallbackItemExtractor
+				});
+
+				const { items: parsedSubtasks, usedFallback } = parseResult;
+
+				if (usedFallback) {
+					logger.info(`Fallback parsing recovered additional subtasks`);
+				}
+
+				// Validate and correct subtasks
+				generatedSubtasks = parsedSubtasks.map((subtask, index) => {
+					const correctedId = nextSubtaskId + index;
+					return {
+						...subtask,
+						id: correctedId,
+						status: 'pending',
+						dependencies: Array.isArray(subtask.dependencies)
+							? subtask.dependencies.filter(
+									(depId) => depId >= nextSubtaskId && depId < correctedId
+								)
+							: []
+					};
+				});
+
+				logger.debug(
+					`Successfully generated ${generatedSubtasks.length} subtasks via streaming`
+				);
+			} else {
+				// Use non-streaming approach (fallback)
+				if (outputFormat === 'text') {
+					loadingIndicator = startLoadingIndicator(
+						`Generating ${finalSubtaskCount} subtasks...\n`
+					);
+				}
+
+				aiServiceResponse = await generateTextService({
+					prompt: promptContent,
+					systemPrompt: systemPrompt,
+					role,
+					session,
+					projectRoot,
+					commandName: 'expand-task',
+					outputType: outputFormat
+				});
+				const responseText = aiServiceResponse.mainResult;
+
+				// Parse Subtasks
+				generatedSubtasks = parseSubtasksFromText(
+					responseText,
+					nextSubtaskId,
+					finalSubtaskCount,
+					task.id,
+					logger
+				);
+				logger.debug(
+					`Successfully parsed ${generatedSubtasks.length} subtasks from AI response.`
+				);
 			}
-			throw error;
+		} catch (streamingError) {
+			// Check if this is a streaming-specific error and fallback
+			const errorMessage = streamingError.message || '';
+			logger.debug(`Streaming error caught: ${errorMessage}`);
+			logger.debug(`Error stack: ${streamingError.stack}`);
+
+			const streamingErrorPatterns = [
+				'not async iterable',
+				'Failed to process AI text stream',
+				'Stream object is not iterable',
+				'Failed to parse AI response as JSON',
+				'No text stream received'
+			];
+			const isStreamingError =
+				shouldUseStreaming &&
+				streamingErrorPatterns.some((pattern) =>
+					errorMessage.includes(pattern)
+				);
+
+			if (isStreamingError) {
+				logger.warn(`Streaming failed, falling back to non-streaming mode...`);
+
+				// Stop progress tracker if it was started
+				if (progressTracker) {
+					await progressTracker.stop();
+					progressTracker = null;
+				}
+
+				// Show fallback message for CLI
+				if (outputFormat === 'text' && !isMCP) {
+					console.log(
+						chalk.yellow(
+							`Streaming failed, falling back to non-streaming mode...`
+						)
+					);
+				}
+
+				// Fallback to non-streaming
+				if (outputFormat === 'text') {
+					loadingIndicator = startLoadingIndicator(
+						`Generating ${finalSubtaskCount} subtasks...\n`
+					);
+				}
+
+				try {
+					const role = useResearch ? 'research' : 'main';
+					aiServiceResponse = await generateTextService({
+						prompt: promptContent,
+						systemPrompt: systemPrompt,
+						role,
+						session,
+						projectRoot,
+						commandName: 'expand-task',
+						outputType: outputFormat
+					});
+					const responseText = aiServiceResponse.mainResult;
+
+					generatedSubtasks = parseSubtasksFromText(
+						responseText,
+						nextSubtaskId,
+						finalSubtaskCount,
+						task.id,
+						logger
+					);
+					logger.debug(
+						`Successfully parsed ${generatedSubtasks.length} subtasks via fallback`
+					);
+				} catch (fallbackError) {
+					if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+					throw fallbackError;
+				}
+			} else {
+				// Not a streaming error, re-throw
+				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+				throw streamingError;
+			}
 		} finally {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+		}
+
+		// Update tracker with telemetry data if available
+		if (progressTracker && aiServiceResponse?.telemetryData) {
+			progressTracker.addTelemetryData(aiServiceResponse.telemetryData);
+		}
+
+		// Update parent tracker with telemetry data if this is a child expansion
+		if (parentTracker && isChildExpansion && aiServiceResponse?.telemetryData) {
+			parentTracker.addTelemetryData(aiServiceResponse.telemetryData);
+		}
+
+		// Stop progress tracker for CLI mode
+		if (progressTracker) {
+			// For single task expansion, manually update the final count
+			progressTracker.subtasksCreated = generatedSubtasks.length;
+			progressTracker.completedExpansions = 1;
+
+			await progressTracker.stop();
+
+			// Display summary
+			const summary = progressTracker.getSummary();
+			displayExpandSummary({
+				taskId: task.id,
+				totalSubtasksCreated: generatedSubtasks.length,
+				tasksFilePath: tasksPath,
+				elapsedTime: summary.elapsedTime,
+				force: force,
+				research: useResearch,
+				explicitSubtasks: Boolean(numSubtasks),
+				complexityScore: taskAnalysis?.complexityScore,
+				hasComplexityAnalysis: Boolean(taskAnalysis),
+				expandType: 'single'
+			});
+		}
+
+		// Final progress report for MCP
+		if (reportProgress) {
+			// Use actual telemetry if available, otherwise fall back to estimates
+			const hasValidTelemetry =
+				aiServiceResponse?.telemetryData &&
+				(aiServiceResponse.telemetryData.inputTokens > 0 ||
+					aiServiceResponse.telemetryData.outputTokens > 0);
+
+			let completionMessage;
+			if (hasValidTelemetry) {
+				// Use actual telemetry data with cost
+				const cost = aiServiceResponse.telemetryData.totalCost || 0;
+				const currency = aiServiceResponse.telemetryData.currency || 'USD';
+				completionMessage = `✅ Subtask generation completed for Task ${task.id} | Tokens (I/O): ${aiServiceResponse.telemetryData.inputTokens}/${aiServiceResponse.telemetryData.outputTokens} | Cost: ${currency === 'USD' ? '$' : currency}${cost.toFixed(4)}`;
+			} else {
+				// Use estimates and indicate they're estimates
+				const estimatedOutputTokens = generatedSubtasks.length * 150; // Rough estimate per subtask
+				completionMessage = `✅ Subtask generation completed for Task ${task.id} | ~Tokens (I/O): ${estimatedInputTokens}/${estimatedOutputTokens} | Cost: ~$0.00`;
+			}
+
+			await reportProgress({
+				type: 'subtask_generation_complete',
+				progress: finalSubtaskCount,
+				current: finalSubtaskCount,
+				total: finalSubtaskCount,
+				taskId: task.id,
+				taskTitle: task.title,
+				subtasksGenerated: generatedSubtasks.length,
+				inputTokens: hasValidTelemetry
+					? aiServiceResponse.telemetryData.inputTokens
+					: estimatedInputTokens,
+				outputTokens: hasValidTelemetry
+					? aiServiceResponse.telemetryData.outputTokens
+					: generatedSubtasks.length * 150,
+				totalCost: hasValidTelemetry
+					? aiServiceResponse.telemetryData.totalCost
+					: 0,
+				currency: hasValidTelemetry
+					? aiServiceResponse.telemetryData.currency
+					: 'USD',
+				message: completionMessage
+			});
 		}
 
 		// --- Task Update & File Writing ---
@@ -672,11 +1038,12 @@ async function expandTask(
 		writeJSON(tasksPath, data, projectRoot, tag);
 		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
-		// Display AI Usage Summary for CLI
+		// Display AI Usage Summary for CLI (skip if child expansion - parent will handle it)
 		if (
 			outputFormat === 'text' &&
 			aiServiceResponse &&
-			aiServiceResponse.telemetryData
+			aiServiceResponse.telemetryData &&
+			!isChildExpansion
 		) {
 			displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
 		}

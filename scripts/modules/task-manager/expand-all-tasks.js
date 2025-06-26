@@ -5,10 +5,18 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 import expandTask from './expand-task.js';
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
 import { aggregateTelemetry } from '../utils.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import { createExpandTracker } from '../../../src/progress/expand-tracker.js';
+import {
+	displayExpandStart,
+	displayExpandSummary
+} from '../../../src/ui/expand.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.
@@ -36,7 +44,8 @@ async function expandAllTasks(
 		session,
 		mcpLog,
 		projectRoot: providedProjectRoot,
-		tag: contextTag
+		tag: contextTag,
+		reportProgress
 	} = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
@@ -70,6 +79,7 @@ async function expandAllTasks(
 	let failedCount = 0;
 	let tasksToExpandCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
+	let parentTracker = null;
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
@@ -78,7 +88,7 @@ async function expandAllTasks(
 	}
 
 	try {
-		logger.info(`Reading tasks from ${tasksPath}`);
+		logger.debug(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot, contextTag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
@@ -91,7 +101,7 @@ async function expandAllTasks(
 				(!task.subtasks || task.subtasks.length === 0 || force) // Check subtasks/force here
 		);
 		tasksToExpandCount = tasksToExpand.length; // Get the count from the filtered array
-		logger.info(`Found ${tasksToExpandCount} tasks eligible for expansion.`);
+		logger.debug(`Found ${tasksToExpandCount} tasks eligible for expansion.`);
 		// --- End Restored Filtering Logic ---
 
 		if (loadingIndicator) {
@@ -113,15 +123,130 @@ async function expandAllTasks(
 			// --- End Fix ---
 		}
 
+		// Load complexity report for task scores
+		let complexityReport = null;
+		try {
+			const complexityReportPath = path.join(
+				projectRoot,
+				COMPLEXITY_REPORT_FILE
+			);
+			if (fs.existsSync(complexityReportPath)) {
+				complexityReport = readJSON(complexityReportPath);
+				logger.debug('Loaded complexity report for task scores');
+			}
+		} catch (error) {
+			logger.debug(`Could not load complexity report: ${error.message}`);
+		}
+
+		// Create parent tracker for CLI mode
+		if (!isMCPCall && outputFormat === 'text') {
+			// Display the header before starting the tracker
+			displayExpandStart({
+				tagName: data.tag || contextTag,
+				totalPendingTasks: tasksToExpandCount,
+				tasksFilePath: tasksPath,
+				numSubtasks: numSubtasks || 'Auto-calculated',
+				explicitSubtasks: Boolean(numSubtasks),
+				hasComplexityAnalysis: Boolean(complexityReport),
+				force: force,
+				research: useResearch,
+				customPrompt: additionalContext,
+				expandType: 'all'
+			});
+
+			parentTracker = createExpandTracker({
+				expandType: 'all',
+				numTasks: tasksToExpandCount
+			});
+			parentTracker.start();
+		}
+
+		// Report initial progress for MCP
+		if (reportProgress) {
+			await reportProgress({
+				type: 'expand_all_start',
+				progress: 0,
+				current: 0,
+				total: tasksToExpandCount,
+				message: `Starting expansion of ${tasksToExpandCount} tasks...`
+			});
+		}
+
+		// Track completed and in-progress subtasks for fractional progress
+		const totalSubtasksProcessed = 0; // Not used in current implementation
+		let currentTaskSubtaskProgress = 0;
+		let currentTaskExpectedSubtasks = 0;
+
 		// Iterate over the already filtered tasks
 		for (const task of tasksToExpand) {
-			// Start indicator for individual task expansion in CLI mode
-			let taskIndicator = null;
-			if (!isMCPCall && outputFormat === 'text') {
-				taskIndicator = startLoadingIndicator(`Expanding task ${task.id}...`);
+			// Get task analysis and complexity score
+			const taskAnalysis = complexityReport?.complexityAnalysis?.find(
+				(a) => a.taskId === task.id
+			);
+			const complexityScore = taskAnalysis?.complexityScore || null;
+
+			// Determine expected subtask count (same logic as in expandTask)
+			let expectedSubtasks = 0;
+			const explicitNumSubtasks = parseInt(numSubtasks, 10);
+			if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+				expectedSubtasks = explicitNumSubtasks;
+			} else if (taskAnalysis?.recommendedSubtasks) {
+				expectedSubtasks = parseInt(taskAnalysis.recommendedSubtasks, 10);
+			} else {
+				expectedSubtasks = getDefaultSubtasks(session); // Use config default
+			}
+
+			// Update parent tracker with current task and expected subtask count
+			if (parentTracker) {
+				parentTracker.setCurrentTask(task.id, task.title, expectedSubtasks);
+			}
+
+			// Store expected subtasks for MCP progress reporting
+			currentTaskExpectedSubtasks = expectedSubtasks;
+			currentTaskSubtaskProgress = 0;
+
+			// Report task expansion start for MCP
+			if (reportProgress) {
+				const currentTaskNumber = expandedCount + 1;
+				await reportProgress({
+					type: 'task_expansion_start',
+					progress: expandedCount / tasksToExpandCount,
+					current: expandedCount,
+					total: tasksToExpandCount,
+					taskId: task.id,
+					taskTitle: task.title,
+					taskNumber: currentTaskNumber,
+					expectedSubtasks: expectedSubtasks,
+					message: `Starting expansion of Task ${currentTaskNumber}/${tasksToExpandCount}: ${task.title}`
+				});
 			}
 
 			try {
+				// Create a callback for subtask progress updates (for MCP)
+				const onSubtaskProgress = reportProgress
+					? async (subtaskCount) => {
+							currentTaskSubtaskProgress = subtaskCount;
+							// Calculate fractional progress
+							const fractionalProgress =
+								expandedCount +
+								(currentTaskExpectedSubtasks > 0
+									? subtaskCount / currentTaskExpectedSubtasks
+									: 0);
+
+							await reportProgress({
+								type: 'subtask_progress',
+								progress: fractionalProgress / tasksToExpandCount,
+								current: fractionalProgress,
+								total: tasksToExpandCount,
+								taskId: task.id,
+								taskTitle: task.title,
+								subtaskProgress: subtaskCount,
+								subtaskTotal: currentTaskExpectedSubtasks,
+								message: `Task ${expandedCount + 1}/${tasksToExpandCount}: Generating subtask ${subtaskCount}/${currentTaskExpectedSubtasks}...`
+							});
+						}
+					: null;
+
 				// Call the refactored expandTask function AND capture result
 				const result = await expandTask(
 					tasksPath,
@@ -129,7 +254,13 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot, tag: data.tag || contextTag }, // Pass the whole context object with projectRoot and resolved tag
+					{
+						...context,
+						projectRoot,
+						tag: data.tag || contextTag,
+						parentTracker,
+						onSubtaskProgress // Pass the callback
+					}, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
 				expandedCount++;
@@ -139,26 +270,71 @@ async function expandAllTasks(
 					allTelemetryData.push(result.telemetryData);
 				}
 
-				if (taskIndicator) {
-					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
-				}
-				logger.info(`Successfully expanded task ${task.id}.`);
-			} catch (error) {
-				failedCount++;
-				if (taskIndicator) {
-					stopLoadingIndicator(
-						taskIndicator,
-						`Failed to expand task ${task.id}.`,
-						false
+				// Add expansion line to parent tracker
+				if (parentTracker) {
+					parentTracker.addExpansionLine(
+						task.id,
+						task.title,
+						result.task?.subtasks?.length || 0,
+						'success',
+						result.telemetryData,
+						complexityScore
 					);
 				}
+
+				// Report task completion for MCP
+				if (reportProgress) {
+					const currentTaskNumber = expandedCount;
+					await reportProgress({
+						type: 'task_expansion_complete',
+						progress: expandedCount / tasksToExpandCount,
+						current: expandedCount,
+						total: tasksToExpandCount,
+						taskId: task.id,
+						taskTitle: task.title,
+						taskNumber: currentTaskNumber,
+						subtasksGenerated: result.task?.subtasks?.length || 0,
+						telemetryData: result.telemetryData,
+						message: `Completed Task ${currentTaskNumber}/${tasksToExpandCount}: ${task.title} (${result.task?.subtasks?.length || 0} subtasks)`
+					});
+				}
+
+				logger.debug(`Successfully expanded task ${task.id}.`);
+			} catch (error) {
+				failedCount++;
+
+				// Add error to parent tracker
+				if (parentTracker) {
+					parentTracker.addError(task.id, error.message);
+				}
+
+				// Report task failure for MCP
+				if (reportProgress) {
+					const currentTaskNumber = expandedCount + failedCount;
+					await reportProgress({
+						type: 'task_expansion_error',
+						progress: currentTaskNumber / tasksToExpandCount,
+						current: currentTaskNumber,
+						total: tasksToExpandCount,
+						taskId: task.id,
+						taskTitle: task.title,
+						error: error.message,
+						message: `Failed to expand Task ${task.id}: ${error.message}`
+					});
+				}
+
 				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
 				// Continue to the next task
 			}
 		}
 
+		// Stop parent tracker
+		if (parentTracker) {
+			await parentTracker.stop();
+		}
+
 		// --- AGGREGATION AND DISPLAY ---
-		logger.info(
+		logger.debug(
 			`Expansion complete: ${expandedCount} expanded, ${failedCount} failed.`
 		);
 
@@ -168,27 +344,42 @@ async function expandAllTasks(
 			'expand-all-tasks'
 		);
 
-		if (outputFormat === 'text') {
-			const summaryContent =
-				`${chalk.white.bold('Expansion Summary:')}\n\n` +
-				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
-				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
-				// Skipped count is always 0 now due to pre-filtering
-				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
-				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
-
-			console.log(
-				boxen(summaryContent, {
-					padding: 1,
-					margin: { top: 1 },
-					borderColor: failedCount > 0 ? 'red' : 'green', // Red if failures, green otherwise
-					borderStyle: 'round'
-				})
-			);
+		// Display summary for CLI mode
+		if (outputFormat === 'text' && !isMCPCall) {
+			const summary = parentTracker ? parentTracker.getSummary() : null;
+			displayExpandSummary({
+				totalTasksProcessed: tasksToExpandCount,
+				totalSubtasksCreated: summary?.totalSubtasksCreated || 0,
+				tasksSkipped: 0, // Always 0 due to pre-filtering
+				tasksWithErrors: failedCount,
+				tasksFilePath: tasksPath,
+				elapsedTime: summary?.elapsedTime || 0,
+				force: force,
+				research: useResearch,
+				explicitSubtasks: Boolean(numSubtasks),
+				hasComplexityAnalysis: Boolean(complexityReport),
+				expandType: 'all',
+				errors: summary?.errors || []
+			});
 		}
 
+		// Display AI usage summary after parent tracker stops
 		if (outputFormat === 'text' && aggregatedTelemetryData) {
 			displayAiUsageSummary(aggregatedTelemetryData, 'cli');
+		}
+
+		// Report final completion for MCP
+		if (reportProgress) {
+			await reportProgress({
+				type: 'expand_all_complete',
+				progress: 1,
+				current: tasksToExpandCount,
+				total: tasksToExpandCount,
+				expandedCount: expandedCount,
+				failedCount: failedCount,
+				telemetryData: aggregatedTelemetryData,
+				message: `Expansion complete: ${expandedCount} tasks expanded, ${failedCount} failed`
+			});
 		}
 
 		// Return summary including the AGGREGATED telemetry data
@@ -203,6 +394,12 @@ async function expandAllTasks(
 	} catch (error) {
 		if (loadingIndicator)
 			stopLoadingIndicator(loadingIndicator, 'Error.', false);
+
+		// Stop parent tracker on error
+		if (parentTracker) {
+			await parentTracker.stop();
+		}
+
 		logger.error(`Error during expand all operation: ${error.message}`);
 		if (!isMCPCall && getDebugFlag(session)) {
 			console.error(error); // Log full stack in debug CLI mode

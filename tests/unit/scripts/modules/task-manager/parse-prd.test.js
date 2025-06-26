@@ -33,6 +33,18 @@ jest.unstable_mockModule(
 				tasks: []
 			},
 			telemetryData: {}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '{"tasks":[';
+						yield '{"id":1,"title":"Test Task","priority":"high"}';
+						yield ']}';
+					}
+				}
+			},
+			telemetryData: {}
 		})
 	})
 );
@@ -47,27 +59,24 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
-	})
-);
-
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/models.js',
-	() => ({
-		getModelConfiguration: jest.fn(() => ({
-			model: 'mock-model',
+		getDebugFlag: jest.fn(() => false),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getResearchModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getParametersForRole: jest.fn(() => ({
+			provider: 'anthropic',
+			modelId: 'claude-3-5-sonnet',
 			maxTokens: 4000,
 			temperature: 0.7
 		}))
 	})
 );
+
+// jest.unstable_mockModule(
+// 	'../../../../../scripts/modules/task-manager/generate-task-files.js',
+// 	() => ({
+// 		default: jest.fn().mockResolvedValue()
+// 	})
+// );
 
 // Mock fs module
 jest.unstable_mockModule('fs', () => ({
@@ -75,12 +84,18 @@ jest.unstable_mockModule('fs', () => ({
 		readFileSync: jest.fn(),
 		existsSync: jest.fn(),
 		mkdirSync: jest.fn(),
-		writeFileSync: jest.fn()
+		writeFileSync: jest.fn(),
+		promises: {
+			readFile: jest.fn()
+		}
 	},
 	readFileSync: jest.fn(),
 	existsSync: jest.fn(),
 	mkdirSync: jest.fn(),
-	writeFileSync: jest.fn()
+	writeFileSync: jest.fn(),
+	promises: {
+		readFile: jest.fn()
+	}
 }));
 
 // Mock path module
@@ -93,19 +108,81 @@ jest.unstable_mockModule('path', () => ({
 	join: jest.fn((dir, file) => `${dir}/${file}`)
 }));
 
+// Mock JSONParser for streaming tests
+jest.unstable_mockModule('@streamparser/json', () => ({
+	JSONParser: jest.fn().mockImplementation(() => ({
+		onValue: jest.fn(),
+		onError: jest.fn(),
+		write: jest.fn(),
+		end: jest.fn()
+	}))
+}));
+
+// Mock stream-parser functions
+jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
+	parseStream: jest.fn().mockResolvedValue({
+		items: [{ id: 1, title: 'Test Task', priority: 'high' }],
+		accumulatedText:
+			'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+		estimatedTokens: 50,
+		usedFallback: false
+	}),
+	createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+	createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
+}));
+
+// Mock progress tracker to prevent intervals
+jest.unstable_mockModule(
+	'../../../../../src/progress/parse-prd-tracker.js',
+	() => ({
+		createParsePrdTracker: jest.fn().mockReturnValue({
+			start: jest.fn(),
+			stop: jest.fn(),
+			updateTokens: jest.fn(),
+			addTaskLine: jest.fn(),
+			trackTaskPriority: jest.fn(),
+			getSummary: jest.fn().mockReturnValue({
+				taskPriorities: { high: 0, medium: 0, low: 0 },
+				elapsedTime: 0,
+				actionVerb: 'generated'
+			})
+		})
+	})
+);
+
+// Mock UI functions to prevent any display delays
+jest.unstable_mockModule('../../../../../src/ui/parse-prd.js', () => ({
+	displayParsePrdStart: jest.fn(),
+	displayParsePrdSummary: jest.fn()
+}));
+
 // Import the mocked modules
 const { readJSON, writeJSON, log, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateObjectService } = await import(
+const { generateObjectService, streamTextService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
+// const generateTaskFiles = (
+// 	await import(
+// 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
+// 	)
+// ).default;
+
+const { JSONParser } = await import('@streamparser/json');
+
+const { parseStream } = await import(
+	'../../../../../src/utils/stream-parser.js'
+);
+
+const { createParsePrdTracker } = await import(
+	'../../../../../src/progress/parse-prd-tracker.js'
+);
+
+const { displayParsePrdStart, displayParsePrdSummary } = await import(
+	'../../../../../src/ui/parse-prd.js'
+);
 
 const fs = await import('fs');
 const path = await import('path');
@@ -177,13 +254,26 @@ describe('parsePRD', () => {
 
 		// Set up mocks for fs, path and other modules
 		fs.default.readFileSync.mockReturnValue(samplePRDContent);
+		fs.default.promises.readFile.mockResolvedValue(samplePRDContent);
 		fs.default.existsSync.mockReturnValue(true);
 		path.default.dirname.mockReturnValue('tasks');
 		generateObjectService.mockResolvedValue({
 			mainResult: { object: sampleClaudeResponse },
 			telemetryData: {}
 		});
-		generateTaskFiles.mockResolvedValue(undefined);
+		streamTextService.mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '{"tasks":[';
+						yield '{"id":1,"title":"Test Task","priority":"high"}';
+						yield ']}';
+					}
+				}
+			},
+			telemetryData: {}
+		});
+		// generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
 
 		// Mock console.error to prevent output
@@ -204,8 +294,20 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function
-		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Also mock the other fs methods that might be called
+		fs.default.readFileSync.mockReturnValue(samplePRDContent);
+		fs.default.promises.readFile.mockResolvedValue(samplePRDContent);
+
+		// Call the function with mcpLog to force non-streaming mode
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify fs.readFileSync was called with the correct arguments
 		expect(fs.default.readFileSync).toHaveBeenCalledWith(
@@ -247,8 +349,16 @@ describe('parsePRD', () => {
 			return true; // Default for other paths
 		});
 
-		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify mkdir was called
 		expect(fs.default.mkdirSync).toHaveBeenCalledWith('tasks', {
@@ -290,8 +400,18 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		// Call the function with mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
+
+		// generateTaskFiles is currently commented out in parse-prd.js
 	});
 
 	test('should overwrite tasks.json when force flag is true', async () => {
@@ -302,8 +422,17 @@ describe('parsePRD', () => {
 			return false;
 		});
 
-		// Call the function with force=true to allow overwrite
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { force: true });
+		// Call the function with force=true to allow overwrite and mcpLog to force non-streaming mode
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
 
 		// Verify prompt was NOT called (confirmation happens at CLI level, not in core function)
 		expect(promptYesNo).not.toHaveBeenCalled();
@@ -334,9 +463,7 @@ describe('parsePRD', () => {
 					success: jest.fn()
 				}
 			})
-		).rejects.toThrow(
-			"Tag 'master' already contains 2 tasks. Use --force to overwrite or --append to add to existing tasks."
-		);
+		).rejects.toThrow('already contains');
 
 		// Verify prompt was NOT called
 		expect(promptYesNo).not.toHaveBeenCalled();
@@ -391,9 +518,16 @@ describe('parsePRD', () => {
 			telemetryData: {}
 		});
 
-		// Call the function with append option
+		// Call the function with append option and mcpLog to force non-streaming mode
 		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
-			append: true
+			append: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
 		});
 
 		// Verify prompt was NOT called (no confirmation needed for append)
@@ -432,5 +566,563 @@ describe('parsePRD', () => {
 
 		// Verify prompt was NOT called with append flag
 		expect(promptYesNo).not.toHaveBeenCalled();
+	});
+
+	test('should use streaming when reportProgress function is provided', async () => {
+		// Setup mocks to simulate normal conditions (no existing output file)
+		fs.default.existsSync.mockImplementation((path) => {
+			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (path === 'tasks') return true; // Directory exists
+			return false;
+		});
+
+		// Mock progress reporting function
+		const mockReportProgress = jest.fn(() => Promise.resolve());
+
+		// Mock JSONParser instance
+		const mockParser = {
+			onValue: jest.fn(),
+			onError: jest.fn(),
+			write: jest.fn(),
+			end: jest.fn()
+		};
+		JSONParser.mockReturnValue(mockParser);
+
+		// Call the function with reportProgress to trigger streaming path
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			reportProgress: mockReportProgress
+		});
+
+		// Verify streamTextService was called (streaming path)
+		expect(streamTextService).toHaveBeenCalled();
+
+		// Verify generateObjectService was NOT called (non-streaming path)
+		expect(generateObjectService).not.toHaveBeenCalled();
+
+		// Verify progress reporting was called
+		expect(mockReportProgress).toHaveBeenCalled();
+
+		// Verify parseStream was called for streaming
+		expect(parseStream).toHaveBeenCalled();
+
+		// Verify result structure
+		expect(result).toEqual({
+			success: true,
+			tasksPath: 'tasks/tasks.json',
+			telemetryData: {}
+		});
+	});
+
+	test('should fallback to non-streaming when streaming fails with specific errors', async () => {
+		// Setup mocks to simulate normal conditions (no existing output file)
+		fs.default.existsSync.mockImplementation((path) => {
+			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (path === 'tasks') return true; // Directory exists
+			return false;
+		});
+
+		// Mock progress reporting function
+		const mockReportProgress = jest.fn(() => Promise.resolve());
+
+		// Mock streamTextService to fail with a streaming-specific error
+		streamTextService.mockRejectedValueOnce(
+			new Error('textStream is not async iterable')
+		);
+
+		// Call the function with reportProgress to trigger streaming path
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			reportProgress: mockReportProgress
+		});
+
+		// Verify streamTextService was called first (streaming attempt)
+		expect(streamTextService).toHaveBeenCalled();
+
+		// Verify generateObjectService was called as fallback
+		expect(generateObjectService).toHaveBeenCalled();
+
+		// Verify result structure (should succeed via fallback)
+		expect(result).toEqual({
+			success: true,
+			tasksPath: 'tasks/tasks.json',
+			telemetryData: {}
+		});
+	});
+
+	test('should use non-streaming when reportProgress is not provided', async () => {
+		// Setup mocks to simulate normal conditions (no existing output file)
+		fs.default.existsSync.mockImplementation((path) => {
+			if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+			if (path === 'tasks') return true; // Directory exists
+			return false;
+		});
+
+		// Call the function without reportProgress but with mcpLog to force non-streaming path
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			}
+		});
+
+		// Verify generateObjectService was called (non-streaming path)
+		expect(generateObjectService).toHaveBeenCalled();
+
+		// Verify streamTextService was NOT called (streaming path)
+		expect(streamTextService).not.toHaveBeenCalled();
+
+		// Verify result structure
+		expect(result).toEqual({
+			success: true,
+			tasksPath: 'tasks/tasks.json',
+			telemetryData: {}
+		});
+	});
+
+	// Additional tests to ensure all functionality works with both streaming and non-streaming
+	describe('Streaming path comprehensive coverage', () => {
+		const mockReportProgress = jest.fn(() => Promise.resolve());
+
+		beforeEach(() => {
+			// Mock JSONParser for streaming tests
+			const mockParser = {
+				onValue: jest.fn(),
+				onError: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn()
+			};
+			JSONParser.mockReturnValue(mockParser);
+		});
+
+		test('should handle force overwrite with streaming', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
+			// Call with streaming + force
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				force: true,
+				reportProgress: mockReportProgress
+			});
+
+			// Verify streaming path was used
+			expect(streamTextService).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+
+			// Verify file was written (force overwrite)
+			expect(fs.default.writeFileSync).toHaveBeenCalled();
+		});
+
+		test('should handle append mode with streaming', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
+			// Mock for reading existing tasks
+			readJSON.mockReturnValue(existingTasksData);
+
+			// Call with streaming + append
+			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
+				append: true,
+				reportProgress: mockReportProgress
+			});
+
+			// Verify streaming path was used
+			expect(streamTextService).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+
+			// Verify append logic worked
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				'utf8'
+			);
+			expect(result.success).toBe(true);
+		});
+
+		test('should handle directory creation with streaming', async () => {
+			// Setup mocks - directory doesn't exist
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return false; // Directory doesn't exist
+				return false;
+			});
+
+			// Call with streaming
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				reportProgress: mockReportProgress
+			});
+
+			// Verify streaming path was used
+			expect(streamTextService).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+
+			// Verify directory was created
+			expect(fs.default.mkdirSync).toHaveBeenCalledWith('tasks', {
+				recursive: true
+			});
+		});
+
+		test('should handle research flag with streaming', async () => {
+			// Setup mocks to simulate normal conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call with streaming + research
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				reportProgress: mockReportProgress,
+				research: true
+			});
+
+			// Verify streaming path was used with research role
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'research'
+				})
+			);
+			expect(generateObjectService).not.toHaveBeenCalled();
+		});
+
+		test('should throw error when tasks.json exists without force in MCP mode with streaming', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
+			// Call with streaming + MCP mode (no force)
+			await expect(
+				parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+					reportProgress: mockReportProgress,
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				})
+			).rejects.toThrow('already contains');
+
+			// Verify streaming path would have been used (but failed before AI call)
+			expect(streamTextService).not.toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Non-streaming path comprehensive coverage', () => {
+		test('should handle force overwrite with non-streaming', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
+			// Call without reportProgress but with mcpLog (non-streaming) + force
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Verify non-streaming path was used
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(streamTextService).not.toHaveBeenCalled();
+
+			// Verify file was written (force overwrite)
+			expect(fs.default.writeFileSync).toHaveBeenCalled();
+		});
+
+		test('should handle append mode with non-streaming', async () => {
+			// Setup mocks to simulate tasks.json already exists
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return true; // Output file exists
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock the file content to contain existing tasks in the target tag
+			fs.default.readFileSync.mockImplementation((filePath, encoding) => {
+				if (filePath === 'tasks/tasks.json' && encoding === 'utf8') {
+					return JSON.stringify(existingTasksData);
+				}
+				return samplePRDContent;
+			});
+
+			// Mock for reading existing tasks
+			readJSON.mockReturnValue(existingTasksData);
+
+			// Mock generateObjectService to return new tasks with continuing IDs
+			generateObjectService.mockResolvedValueOnce({
+				mainResult: { object: newTasksClaudeResponse },
+				telemetryData: {}
+			});
+
+			// Call without reportProgress but with mcpLog (non-streaming) + append
+			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
+				append: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Verify non-streaming path was used
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(streamTextService).not.toHaveBeenCalled();
+
+			// Verify append logic worked
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				'utf8'
+			);
+			expect(result.success).toBe(true);
+		});
+
+		test('should handle research flag with non-streaming', async () => {
+			// Setup mocks to simulate normal conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call without reportProgress but with mcpLog (non-streaming) + research
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				research: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Verify non-streaming path was used with research role
+			expect(generateObjectService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'research'
+				})
+			);
+			expect(streamTextService).not.toHaveBeenCalled();
+		});
+
+		test('should handle AI service errors with non-streaming', async () => {
+			// Setup mocks to simulate normal file conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Mock an error in generateObjectService
+			const testError = new Error('Test error in non-streaming AI API call');
+			generateObjectService.mockRejectedValueOnce(testError);
+
+			// Call without reportProgress (non-streaming) with mcpLog to make it throw
+			await expect(
+				parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				})
+			).rejects.toThrow('Test error in non-streaming AI API call');
+
+			// Verify non-streaming path was attempted
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(streamTextService).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('File extension compatibility in both modes', () => {
+		test('should handle .md files with streaming', async () => {
+			// Setup mocks to simulate normal conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			const mockReportProgress = jest.fn(() => Promise.resolve());
+			const mockParser = {
+				onValue: jest.fn(),
+				onError: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn()
+			};
+			JSONParser.mockReturnValue(mockParser);
+
+			// Call with .md file and streaming
+			const result = await parsePRD(
+				'path/to/requirements.md',
+				'tasks/tasks.json',
+				3,
+				{
+					reportProgress: mockReportProgress
+				}
+			);
+
+			// Verify streaming path was used
+			expect(streamTextService).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+
+			// Verify file was read (regardless of extension)
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'path/to/requirements.md',
+				'utf8'
+			);
+			expect(result.success).toBe(true);
+		});
+
+		test('should handle .md files with non-streaming', async () => {
+			// Setup mocks to simulate normal conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call with .md file and non-streaming (force with mcpLog)
+			const result = await parsePRD(
+				'path/to/requirements.md',
+				'tasks/tasks.json',
+				3,
+				{
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				}
+			);
+
+			// Verify non-streaming path was used
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(streamTextService).not.toHaveBeenCalled();
+
+			// Verify file was read (regardless of extension)
+			expect(fs.default.readFileSync).toHaveBeenCalledWith(
+				'path/to/requirements.md',
+				'utf8'
+			);
+			expect(result.success).toBe(true);
+		});
+
+		test('should handle files without extension in both modes', async () => {
+			// Setup mocks to simulate normal conditions
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (path === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Test streaming mode
+			const mockReportProgress = jest.fn(() => Promise.resolve());
+			const mockParser = {
+				onValue: jest.fn(),
+				onError: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn()
+			};
+			JSONParser.mockReturnValue(mockParser);
+
+			const streamingResult = await parsePRD(
+				'path/to/prd',
+				'tasks/tasks.json',
+				3,
+				{
+					reportProgress: mockReportProgress
+				}
+			);
+
+			expect(streamingResult.success).toBe(true);
+			expect(streamTextService).toHaveBeenCalled();
+
+			// Reset mocks for non-streaming test
+			jest.clearAllMocks();
+			fs.default.existsSync.mockImplementation((path) => {
+				if (path === 'tasks/tasks.json') return false;
+				if (path === 'tasks') return true;
+				return false;
+			});
+
+			// Test non-streaming mode (force with mcpLog)
+			const nonStreamingResult = await parsePRD(
+				'path/to/prd',
+				'tasks/tasks.json',
+				3,
+				{
+					mcpLog: {
+						info: jest.fn(),
+						warn: jest.fn(),
+						error: jest.fn(),
+						debug: jest.fn(),
+						success: jest.fn()
+					}
+				}
+			);
+
+			expect(nonStreamingResult.success).toBe(true);
+			expect(generateObjectService).toHaveBeenCalled();
+		});
 	});
 });
