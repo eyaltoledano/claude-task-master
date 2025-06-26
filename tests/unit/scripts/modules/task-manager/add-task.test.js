@@ -123,6 +123,18 @@ jest.unstable_mockModule(
 	})
 );
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
 // Mock external UI libraries
 jest.unstable_mockModule('chalk', () => ({
 	default: {
