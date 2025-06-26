@@ -1691,8 +1691,6 @@ function registerCommands(programInstance) {
 					? options.output.replace('.json', `_${targetTag}.json`)
 					: options.output;
 
-			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
-			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
 
 			if (options.id) {
 				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));
