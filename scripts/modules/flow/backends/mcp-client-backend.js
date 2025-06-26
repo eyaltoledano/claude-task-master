@@ -10,9 +10,18 @@ export class MCPClientBackend extends FlowBackend {
 	}
 
 	async initialize() {
+		// Check if already connected
 		this.client = connectionPool.getClient(this.server.id);
+
+		// If not connected, connect now
 		if (!this.client) {
-			throw new Error('MCP server not connected');
+			console.log(`Connecting to MCP server: ${this.server.name}...`);
+			await connectionPool.connect(this.server, console);
+			this.client = connectionPool.getClient(this.server.id);
+
+			if (!this.client) {
+				throw new Error(`Failed to connect to MCP server: ${this.server.name}`);
+			}
 		}
 
 		// Verify required tools are available

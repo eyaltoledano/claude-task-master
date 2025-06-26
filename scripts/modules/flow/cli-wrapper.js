@@ -24,6 +24,12 @@ export async function launchFlow(options = {}) {
 		if (options.backend) {
 			env.TASKMASTER_BACKEND = options.backend;
 		}
+		if (options.mcpServerId) {
+			env.TASKMASTER_MCP_SERVER_ID = options.mcpServerId;
+		}
+		if (options.projectRoot) {
+			env.TASKMASTER_PROJECT_ROOT = options.projectRoot;
+		}
 
 		// Ensure terminal is interactive
 		env.FORCE_COLOR = '1';

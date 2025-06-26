@@ -11,97 +11,238 @@ Task Master Flow is an interactive Terminal User Interface (TUI) for managing ta
 - **Real-time Updates**: See changes immediately as you modify tasks
 - **Interactive Configuration**: Launch model and rules setup directly
 - **Session Tracking**: View work history and AI usage costs (preview feature)
-- **Tag Support**: Full support for Task Master's tagged task lists
+- **Tag Support**: Full support for tagged task lists system
+- **Multiple Backends**: Choose between direct, CLI, or MCP backends
 
 ## Usage
 
 ```bash
-# Launch the interactive TUI
+# Launch with default (direct) backend
 task-master flow
 
-# Or use the alias
-tm flow
+# Launch with specific backend
+task-master flow --backend direct    # Direct function calls (fastest)
+task-master flow --backend cli       # Execute CLI commands (compatible)
+task-master flow --backend mcp       # Connect to MCP servers (remote)
+
+# Launch with MCP backend and specific server
+task-master flow --backend mcp --mcp-server myserver
 ```
 
-## Interface Commands
+## Backend Options
 
-### Slash Commands (type in the input bar)
-- `/help` - Show help screen with all commands
-- `/tasks` - View and manage your task list
-- `/sessions` - View work session history
-- `/new` - Start a new work session
-- `/models` - Launch interactive AI model configuration
-- `/rules` - Launch interactive AI rules setup
-- `/exit` - Exit the application
+Task Master Flow supports three backend implementations:
 
-### Task List Shortcuts
-- `↑/↓` - Navigate through tasks
-- `n` - Cycle task status (pending → in-progress → done → ...)
-- `1-4` - Filter tasks (All/Pending/In Progress/Done)
-- `Enter` - View task details (coming soon)
-- `e` - Expand task with AI (coming soon)
-- `r` - Research task context (coming soon)
+### 1. Direct Backend (Default)
+The **direct** backend calls Task Master functions directly through the MCP server's internal APIs. This provides:
+- **Best Performance**: No process spawning overhead
+- **Real-time Updates**: Immediate feedback
+- **Full Feature Support**: All Task Master features available
+- **Recommended**: For local development
 
-### Global Shortcuts
-- `ESC` - Return to previous screen or home
-- `Ctrl+C` - Exit application
+```bash
+task-master flow --backend direct
+```
 
-## Screens
+### 2. CLI Backend
+The **cli** backend executes task-master commands as child processes. This provides:
+- **Compatibility**: Works with custom CLI configurations
+- **Process Isolation**: Each command runs in its own process
+- **Standard Output**: Uses the same output as CLI commands
+- **Use When**: You have custom CLI modifications or need process isolation
 
-### Welcome Screen
-The main screen shows the Task Master ASCII logo and available slash commands. Type commands in the input bar at the bottom to navigate.
+```bash
+task-master flow --backend cli
+```
 
-### Task List (`/tasks`)
-View all your tasks with:
-- Status indicators (○ pending, ● in-progress, ✓ done)
-- Task IDs and titles
-- Dependency information
-- Quick filtering options
+### 3. MCP Backend
+The **mcp** backend connects to remote MCP servers. This provides:
+- **Remote Management**: Control Task Master on other machines
+- **Server Flexibility**: Connect to any MCP-compatible server
+- **Multiple Projects**: Switch between different project servers
+- **Use When**: Managing remote projects or using custom MCP servers
 
-### Sessions (`/sessions`)
-Track your work sessions with:
-- Date and duration
-- Tasks completed count
-- AI usage costs
-- Session descriptions
+```bash
+# Use default MCP server
+task-master flow --backend mcp
 
-### Configuration Launchers
+# Use specific MCP server by ID
+task-master flow --backend mcp --mcp-server production
 
-#### Model Configuration (`/models`)
-Launches the interactive model setup (`task-master models --setup`) which allows you to:
-- Configure primary AI model for task generation
-- Set research model for research-backed operations
-- Define fallback model if primary fails
-- Select from pre-configured models or add custom Ollama/OpenRouter models
+# Configure servers through the Flow UI
+task-master flow
+# Then use /mcp command to manage servers
+```
 
-#### Rules Configuration (`/rules`)  
-Launches the interactive rules setup (`task-master rules setup`) which allows you to:
-- Select AI coding assistant profiles (Claude, Cursor, Windsurf, etc.)
-- Configure which rule sets to include in your project
-- Manage rule profiles after initialization
+#### Configuring MCP Servers
 
-Note: The Flow interface will temporarily exit to run the interactive setup, then automatically return to the home screen when configuration is complete. A success notification will appear briefly to confirm the configuration was saved.
+1. **Through Flow UI**:
+   - Launch Flow: `task-master flow`
+   - Type `/mcp` to open server management
+   - Press 'A' to add a new server
+   - Fill in server details (name, script path, etc.)
+   - Press Space to activate the server
+   - Press 'U' to use it as the backend
 
-### Help (`/help`)
-Comprehensive help showing all commands, shortcuts, and usage examples.
+2. **Server Configuration File**:
+   Servers are stored in `scripts/modules/flow/mcp/servers.json`:
+   ```json
+   [
+     {
+       "id": "local",
+       "name": "Local Task Master",
+       "scriptPath": "./mcp-server/server.js",
+       "description": "Built-in Task Master MCP server",
+       "scriptType": "node",
+       "default": true
+     },
+     {
+       "id": "production",
+       "name": "Production Server",
+       "scriptPath": "/path/to/remote/server.js",
+       "scriptType": "node",
+       "env": {
+         "API_KEY": "your-api-key"
+       }
+     }
+   ]
+   ```
+
+3. **Default Server**:
+   - The first server marked with `"default": true` is used when no server ID is specified
+   - If no default is set, the first server in the list is used
+
+## Slash Commands
+
+Type `/` followed by a command to navigate:
+
+- `/tasks` - View and manage tasks
+- `/session` - View session history and AI usage
+- `/models` - Configure AI models
+- `/rules` - Configure rule profiles
+- `/mcp` - Manage MCP servers
+- `/help` - Show help and keyboard shortcuts
+- `/quit` - Exit the application
+
+## Keyboard Shortcuts
+
+### Global
+- `Ctrl+X` - Show shortcuts menu
+- `Ctrl+C` or `Ctrl+Q` - Quit application
+- `Esc` - Go back / Cancel
+- `/` - Enter command mode
+
+### Task View
+- `↑↓` - Navigate tasks
+- `Enter` - View task details
+- `Space` - Toggle task status
+- `E` - Expand task into subtasks
+- `N` - Show next task to work on
+- `F` - Filter by status
+- `R` - Refresh task list
+
+### Task Details
+- `↑↓` - Navigate subtasks
+- `Space` - Toggle subtask status
+- `Esc` - Back to task list
+
+### MCP Server Management
+- `↑↓` - Navigate servers
+- `Enter` - View server details
+- `Space` - Toggle server connection
+- `A` - Add new server
+- `E` - Edit server
+- `R` - Remove server
+- `U` - Use server as backend
+
+## Session Tracking (Preview)
+
+The session view (`/session`) provides:
+- Work history with timestamps
+- AI model usage and costs
+- Task completion metrics
+- Session duration tracking
+
+**Note**: This is a preview feature for development insights.
+
+## Architecture
+
+Flow uses a layered architecture:
+
+1. **UI Layer** (`index.jsx`) - React + Ink components
+2. **Backend Interface** (`backend-interface.js`) - Abstract backend API
+3. **Backend Implementations**:
+   - `direct-backend.js` - Direct function calls
+   - `cli-backend.js` - CLI command execution
+   - `mcp-client-backend.js` - MCP server communication
+4. **Components** - Reusable UI components
+5. **Theme** - Consistent styling system
+
+## Development
+
+### Adding New Features
+
+1. Add new slash command in `CommandPalette.jsx`
+2. Create new screen component in `components/`
+3. Add navigation logic in main `App` component
+4. Update help screen with new commands
+
+### Backend Development
+
+To add support for new Task Master commands:
+
+1. Add method to `FlowBackend` interface
+2. Implement in all three backends
+3. Use in UI components
+
+### Testing Backends
+
+```bash
+# Test all backends
+node test-flow-backends.js
+
+# Visual test (interactive)
+node test-flow-visual.js
+```
+
+## Troubleshooting
+
+### "Cannot find module" Errors
+- Ensure you're in the project root directory
+- Run `npm install` to install dependencies
+- Check that `tsx` is installed globally or locally
+
+### Terminal Issues
+- Flow requires an interactive terminal (TTY)
+- Won't work in non-interactive environments
+- Use `--backend cli` if direct backend has issues
+
+### MCP Connection Issues
+- Verify server script path is correct
+- Check server logs for errors
+- Ensure required environment variables are set
+- Try connecting through the UI first to test
+
+## Future Enhancements
+
+- Real-time collaboration features
+- Task templates and automation
+- Advanced filtering and search
+- Customizable themes
+- Plugin system for extensions
 
 ## Technical Details
 
-### Backend Options
-The Flow TUI uses a modular backend system:
-- **Direct Backend** (default): Uses MCP server functions directly for best performance
-- **CLI Backend**: Executes task-master CLI commands (future)
-- **MCP Backend**: Connects to remote MCP servers (future)
-
-### Architecture
+### Backend Architecture
 ```
 flow/
 ├── index.jsx           # Main app component and context
 ├── backend-interface.js # Abstract backend interface
 ├── theme.js            # Task Master theme configuration
 ├── backends/
-│   ├── direct-backend.js # Direct function calls
-│   └── cli-backend.js    # CLI command execution
+│   ├── direct-backend.js # Direct function calls (default)
+│   ├── cli-backend.js    # CLI command execution
+│   └── mcp-client-backend.js # MCP server connections
 ├── components/
 │   ├── WelcomeScreen.jsx # Main screen with commands
 │   ├── TaskListScreen.jsx # Task management view
@@ -115,26 +256,6 @@ flow/
 - **ink-text-input**: Text input component
 - **React**: Component framework
 - **tsx**: TypeScript/JSX execution
-
-## Future Enhancements
-
-- Natural language task management
-- Real-time AI assistance integration
-- Task detail view with expand/research
-- Persistent session tracking
-- Remote MCP server support
-- Theme customization (`/theme` command)
-
-## Development
-
-To run the Flow TUI in development:
-```bash
-# Direct execution
-npx tsx scripts/modules/flow/index.jsx
-
-# Via CLI
-node scripts/dev.js flow
-```
 
 ## Credits
 

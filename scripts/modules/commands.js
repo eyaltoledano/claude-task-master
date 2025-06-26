@@ -4549,6 +4549,10 @@ Examples:
 			'--backend <type>',
 			'Backend type: direct, cli, or mcp (default: direct)'
 		)
+		.option(
+			'--mcp-server <id>',
+			'MCP server ID to use with mcp backend (default: uses default server)'
+		)
 		.action(async (options) => {
 			try {
 				const projectRoot = findProjectRoot();
@@ -4572,6 +4576,7 @@ Examples:
 				const { launchFlow } = await import('./flow/cli-wrapper.js');
 				await launchFlow({
 					backend: options.backend,
+					mcpServerId: options.mcpServer,
 					projectRoot
 				});
 			} catch (error) {

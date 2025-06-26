@@ -10,6 +10,7 @@ import { render, Text, Box, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
 import { spawn } from 'child_process';
 import { DirectBackend } from './backends/direct-backend.js';
+import { CliBackend } from './backends/cli-backend.js';
 import { theme, setTheme, getTheme } from './theme.js';
 import { MCPClientBackend } from './backends/mcp-client-backend.js';
 
@@ -809,31 +810,57 @@ export async function run(options = {}) {
 
 	let backend;
 	if (backendType === 'direct') {
-		// Create a session object that can access environment variables
-		// This mimics the MCP session behavior for API key access
-		const session = {
-			// The session object needs an env property for resolveEnvVariable to work
-			// In MCP context, this would come from mcp.json's env section
-			// For direct backend, we'll use process.env
-			env: process.env
-		};
-
 		backend = new DirectBackend({
-			projectRoot: options.projectRoot,
-			session: session
+			projectRoot: options.projectRoot || process.env.TASKMASTER_PROJECT_ROOT
 		});
 	} else if (backendType === 'cli') {
-		// TODO: Import and use CliBackend when ready
-		throw new Error('CLI backend not yet implemented');
+		backend = new CliBackend({
+			projectRoot: options.projectRoot || process.env.TASKMASTER_PROJECT_ROOT
+		});
 	} else if (backendType === 'mcp') {
-		// TODO: Import and use McpBackend when ready
-		throw new Error('MCP backend not yet implemented');
+		// For MCP backend, we need to load server configuration
+		const { loadServers, getDefaultServer, findServerById } = await import(
+			'./mcp/servers.js'
+		);
+		const servers = await loadServers();
+
+		// Get server ID from options or environment
+		const serverId =
+			options.mcpServerId || process.env.TASKMASTER_MCP_SERVER_ID;
+
+		let serverConfig;
+		if (serverId) {
+			serverConfig = findServerById(servers, serverId);
+			if (!serverConfig) {
+				throw new Error(`MCP server with ID '${serverId}' not found`);
+			}
+		} else {
+			// Use default server
+			serverConfig = getDefaultServer(servers);
+			if (!serverConfig) {
+				throw new Error(
+					'No MCP servers configured. Use Flow UI to add servers or run with --backend direct'
+				);
+			}
+		}
+
+		// Create MCP backend with server configuration
+		backend = new MCPClientBackend({
+			server: serverConfig,
+			projectRoot: options.projectRoot || process.env.TASKMASTER_PROJECT_ROOT
+		});
 	} else {
 		throw new Error(`Unknown backend type: ${backendType}`);
 	}
 
-	// Render the app
-	render(<FlowApp backend={backend} options={options} />);
+	// Initialize backend
+	await backend.initialize();
+
+	// Create app instance
+	const app = render(<FlowApp backend={backend} />);
+
+	// Wait for app to exit
+	await app.waitUntilExit();
 }
 
 // If this file is run directly, execute the run function
