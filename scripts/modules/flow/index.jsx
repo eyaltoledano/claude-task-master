@@ -67,6 +67,18 @@ function FlowApp({ backend, options = {} }) {
 
 	const { exit } = useApp();
 
+	// Handle navigation from other screens
+	const handleNavigateToTask = (task) => {
+		if (task) {
+			const navData = {
+				selectedTaskId: task.parentId ? task.parentId : task.id,
+				selectedSubtaskId: task.parentId ? task.id : null
+			};
+			setNavigationData(navData);
+			setCurrentScreen('tasks'); // Switch to task screen
+		}
+	};
+
 	// Define available commands based on whether tasks.json exists
 	const getAvailableCommands = () => {
 		const baseCommands = [
@@ -694,7 +706,9 @@ function FlowApp({ backend, options = {} }) {
 					<GitWorktreeScreen
 						backend={currentBackend}
 						onBack={() => setCurrentScreen('welcome')}
+						onExit={exit}
 						navigationData={navigationData}
+						onNavigateToTask={handleNavigateToTask}
 					/>
 				) : currentScreen === 'claude-code' ? (
 					<ClaudeCodeScreen

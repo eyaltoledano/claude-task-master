@@ -12,7 +12,8 @@ export default function GitWorktreeScreen({
 	backend,
 	onBack,
 	onExit,
-	navigationData
+	navigationData,
+	onNavigateToTask
 }) {
 	const [worktrees, setWorktrees] = useState([]);
 	const [selectedWorktree, setSelectedWorktree] = useState(null);
@@ -63,20 +64,6 @@ export default function GitWorktreeScreen({
 		}
 	}, [backend, focusedIndex]);
 
-	// Initial load
-	useEffect(() => {
-		loadWorktrees();
-	}, [loadWorktrees]);
-
-	// Handle navigation data
-	useEffect(() => {
-		if (navigationData?.selectedWorktree && navigationData?.showDetails) {
-			// Load details for the specified worktree
-			const worktree = navigationData.selectedWorktree;
-			loadWorktreeDetails(worktree);
-		}
-	}, [navigationData, loadWorktreeDetails]);
-
 	// Load details for selected worktree
 	const loadWorktreeDetails = useCallback(
 		async (worktree) => {
@@ -97,6 +84,26 @@ export default function GitWorktreeScreen({
 		},
 		[backend]
 	);
+
+	// Initial load
+	useEffect(() => {
+		loadWorktrees();
+	}, [loadWorktrees]);
+
+	// Handle navigation data - only load if we don't already have the detail modal showing
+	useEffect(() => {
+		if (
+			navigationData?.selectedWorktree &&
+			navigationData?.showDetails &&
+			!showDetailsModal
+		) {
+			// Set the worktree details immediately to avoid intermediate render
+			setWorktreeDetails(navigationData.selectedWorktree);
+			setShowDetailsModal(true);
+			// Load full details in the background
+			loadWorktreeDetails(navigationData.selectedWorktree);
+		}
+	}, [navigationData, loadWorktreeDetails, showDetailsModal]);
 
 	// Handle worktree operations
 	const handleAddWorktree = useCallback(
@@ -264,7 +271,13 @@ export default function GitWorktreeScreen({
 		);
 	}
 
-	if (showDetailsModal && worktreeDetails) {
+	// Show details modal immediately if we have navigation data
+	if (
+		(showDetailsModal && worktreeDetails) ||
+		(navigationData?.selectedWorktree && navigationData?.showDetails)
+	) {
+		const worktreeToShow = worktreeDetails || navigationData.selectedWorktree;
+
 		// Show confirmation instead of details modal when delete is requested
 		if (confirmDelete) {
 			return (
@@ -300,7 +313,7 @@ export default function GitWorktreeScreen({
 
 		return (
 			<WorktreeDetailsModal
-				worktree={worktreeDetails}
+				worktree={worktreeToShow}
 				backend={backend}
 				onClose={() => {
 					setShowDetailsModal(false);
@@ -312,8 +325,9 @@ export default function GitWorktreeScreen({
 					}
 				}}
 				onDelete={() => {
-					setConfirmDelete(worktreeDetails);
+					setConfirmDelete(worktreeToShow);
 				}}
+				onNavigateToTask={onNavigateToTask}
 			/>
 		);
 	}

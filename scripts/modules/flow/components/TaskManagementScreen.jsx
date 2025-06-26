@@ -10,8 +10,14 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
 
 export function TaskManagementScreen() {
-	const { backend, tasks, reloadTasks, setCurrentScreen, currentTag } =
-		useAppContext();
+	const {
+		backend,
+		tasks,
+		reloadTasks,
+		setCurrentScreen,
+		currentTag,
+		navigationData
+	} = useAppContext();
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [expandedTasks, setExpandedTasks] = useState(new Set());
 	const [filter, setFilter] = useState('all'); // all, pending, done, in-progress
@@ -42,6 +48,55 @@ export function TaskManagementScreen() {
 	useEffect(() => {
 		reloadTasks();
 	}, []);
+
+	// Handle navigation data
+	useEffect(() => {
+		if (navigationData?.selectedTaskId && tasks.length > 0) {
+			// Find the task in the list
+			const taskIndex = tasks.findIndex(
+				(task) => task.id === navigationData.selectedTaskId
+			);
+			if (taskIndex !== -1) {
+				// Set the selected task index
+				setSelectedIndex(taskIndex);
+				const task = tasks[taskIndex];
+
+				// Navigate to the task detail view
+				showTaskDetail(task)
+					.then((fullTask) => {
+						setSelectedTask(fullTask);
+
+						// If there's a selected subtask, navigate to it
+						if (navigationData.selectedSubtaskId && fullTask.subtasks) {
+							const subtaskIndex = fullTask.subtasks.findIndex(
+								(subtask) =>
+									`${fullTask.id}.${subtask.id}` ===
+									navigationData.selectedSubtaskId
+							);
+							if (subtaskIndex !== -1) {
+								setSelectedSubtaskIndex(subtaskIndex);
+								// Go directly to subtask detail view
+								setSelectedSubtask(fullTask.subtasks[subtaskIndex]);
+								setViewMode('subtask-detail');
+								setDetailScrollOffset(0);
+							} else {
+								// No subtask, show task detail
+								setViewMode('detail');
+								setDetailScrollOffset(0);
+							}
+						} else {
+							// No subtask requested, show task detail
+							setViewMode('detail');
+							setDetailScrollOffset(0);
+						}
+					})
+					.catch((error) => {
+						console.error('Failed to navigate to task:', error);
+						showToast('Failed to load task details', 'error');
+					});
+			}
+		}
+	}, [navigationData, tasks.length]); // Note: showTaskDetail is defined later, so we use tasks.length as a proxy
 
 	// Load complexity report when tag changes or on mount
 	useEffect(() => {
@@ -397,8 +452,12 @@ export function TaskManagementScreen() {
 			} else {
 				setSubtaskWorktrees(new Map());
 			}
+
+			// Return the full task so callers can use it
+			return fullTask;
 		} catch (error) {
 			console.error('Failed to load task details:', error);
+			throw error;
 		}
 	};
 
@@ -1201,7 +1260,7 @@ export function TaskManagementScreen() {
 						{subtaskContentLines.length > DETAIL_VISIBLE_ROWS
 							? '↑↓ scroll • '
 							: ''}
-						{worktrees.length > 0 ? 'w worktrees • ' : ''}
+						{worktrees.length > 0 ? 'w worktree • ' : ''}
 						ESC back to subtasks
 					</Text>
 				</Box>

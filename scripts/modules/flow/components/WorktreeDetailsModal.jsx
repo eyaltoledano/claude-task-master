@@ -8,7 +8,8 @@ export default function WorktreeDetailsModal({
 	worktree,
 	backend,
 	onClose,
-	onDelete
+	onDelete,
+	onNavigateToTask
 }) {
 	const [loading, setLoading] = useState(true);
 	const [details, setDetails] = useState(null);
@@ -16,6 +17,13 @@ export default function WorktreeDetailsModal({
 	const [error, setError] = useState(null);
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
+	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
+	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
+	const [scrollOffset, setScrollOffset] = useState(0);
+	const theme = getTheme();
+
+	// Constants for scrolling
+	const VISIBLE_ROWS = 20;
 
 	useEffect(() => {
 		loadDetails();
@@ -61,18 +69,65 @@ export default function WorktreeDetailsModal({
 
 	useInput((input, key) => {
 		if (key.escape) {
-			onClose();
-		} else if (input === 'd' && !confirmDelete && !worktree.isCurrent) {
-			setConfirmDelete(true);
-		} else if (confirmDelete) {
-			if (input === 'y') {
-				handleDelete();
-			} else if (input === 'n' || key.escape) {
-				setConfirmDelete(false);
+			if (viewMode === 'tasks' || viewMode === 'jump') {
+				setViewMode('details');
+			} else {
+				onClose();
 			}
-		} else if (input === 't') {
-			// 't' for link/manage tasks
-			setShowLinkTasksModal(true);
+		} else if (viewMode === 'jump') {
+			// Jump mode navigation
+			if (key.upArrow) {
+				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
+			} else if (key.downArrow) {
+				setSelectedTaskIndex(
+					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
+				);
+			} else if (key.return && linkedTasks.length > 0 && onNavigateToTask) {
+				const selectedTask = linkedTasks[selectedTaskIndex];
+				onNavigateToTask(selectedTask);
+			}
+		} else if (viewMode === 'tasks') {
+			// Task list navigation
+			if (key.upArrow) {
+				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
+			} else if (key.downArrow) {
+				setSelectedTaskIndex(
+					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
+				);
+			} else if (key.return && linkedTasks.length > 0 && onNavigateToTask) {
+				const selectedTask = linkedTasks[selectedTaskIndex];
+				onNavigateToTask(selectedTask);
+			}
+		} else if (viewMode === 'details') {
+			// Details view actions with scrolling
+			if (key.downArrow) {
+				setScrollOffset((prev) => prev + 1);
+			} else if (key.upArrow) {
+				setScrollOffset((prev) => Math.max(0, prev - 1));
+			} else if (key.pageDown) {
+				setScrollOffset((prev) => prev + 10);
+			} else if (key.pageUp) {
+				setScrollOffset((prev) => Math.max(0, prev - 10));
+			} else if (input === 'd' && !confirmDelete && !worktree.isCurrent) {
+				setConfirmDelete(true);
+			} else if (confirmDelete) {
+				if (input === 'y') {
+					handleDelete();
+				} else if (input === 'n' || key.escape) {
+					setConfirmDelete(false);
+				}
+			} else if (input === 't') {
+				// 't' for link/manage tasks
+				setShowLinkTasksModal(true);
+			} else if (input === 'v' && linkedTasks.length > 0) {
+				// 'v' to view linked tasks
+				setViewMode('tasks');
+				setSelectedTaskIndex(0);
+			} else if (input === 'j' && linkedTasks.length > 0 && onNavigateToTask) {
+				// 'j' to jump to a task
+				setViewMode('jump');
+				setSelectedTaskIndex(0);
+			}
 		}
 	});
 
@@ -96,7 +151,7 @@ export default function WorktreeDetailsModal({
 			<Box
 				flexDirection="column"
 				borderStyle="round"
-				borderColor={getTheme().border}
+				borderColor={theme.border}
 				padding={1}
 				width={80}
 			>
@@ -111,11 +166,11 @@ export default function WorktreeDetailsModal({
 			<Box
 				flexDirection="column"
 				borderStyle="round"
-				borderColor={getTheme().warning}
+				borderColor={theme.warning}
 				padding={1}
 				width={60}
 			>
-				<Text bold color={getTheme().warning}>
+				<Text bold color={theme.warning}>
 					Delete Confirmation
 				</Text>
 				<Box marginTop={1}>
@@ -133,180 +188,388 @@ export default function WorktreeDetailsModal({
 		);
 	}
 
-	// Main render
+	// Task list view
+	if (viewMode === 'tasks') {
+		return (
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.border}
+				padding={1}
+				width={80}
+			>
+				{/* Header */}
+				<Box marginBottom={1}>
+					<Text bold color={theme.primary}>
+						Linked Tasks: {worktree.name}
+					</Text>
+				</Box>
+
+				{/* Task List */}
+				{linkedTasks.length === 0 ? (
+					<Box paddingLeft={2}>
+						<Text color={theme.muted}>No tasks linked to this worktree</Text>
+					</Box>
+				) : (
+					<Box flexDirection="column">
+						{linkedTasks.map((task, index) => (
+							<Box
+								key={task.id}
+								backgroundColor={
+									index === selectedTaskIndex
+										? theme.backgroundHighlight
+										: undefined
+								}
+								paddingLeft={1}
+								paddingRight={1}
+							>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{task.parentId ? '└─ ' : '• '}
+								</Text>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{task.parentId ? `${task.id}` : `${task.id}`}
+								</Text>
+								<Text color={theme.muted}> │ </Text>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{task.title.length > 50
+										? task.title.substring(0, 50) + '...'
+										: task.title}
+								</Text>
+								{task.status === 'done' && (
+									<Text color={theme.success}> ✓</Text>
+								)}
+								{task.status === 'in-progress' && (
+									<Text color={theme.warning}> ⚡</Text>
+								)}
+							</Box>
+						))}
+					</Box>
+				)}
+
+				{/* Actions */}
+				<Box marginTop={2} gap={2}>
+					{linkedTasks.length > 0 && onNavigateToTask && (
+						<Text color={theme.muted}>[Enter] Open Task</Text>
+					)}
+					<Text color={theme.muted}>[↑↓] Navigate</Text>
+					<Text color={theme.muted}>[Esc] Back to Details</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	// Jump to task view
+	if (viewMode === 'jump') {
+		return (
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.border}
+				padding={1}
+				width={80}
+			>
+				{/* Header */}
+				<Box marginBottom={1}>
+					<Text bold color={theme.primary}>
+						Jump to Task: {worktree.name}
+					</Text>
+				</Box>
+
+				{/* Task List for jumping */}
+				{linkedTasks.length === 0 ? (
+					<Box paddingLeft={2}>
+						<Text color={theme.muted}>No tasks linked to this worktree</Text>
+					</Box>
+				) : (
+					<Box flexDirection="column">
+						{linkedTasks.map((task, index) => (
+							<Box
+								key={task.id}
+								backgroundColor={
+									index === selectedTaskIndex
+										? theme.backgroundHighlight
+										: undefined
+								}
+								paddingLeft={1}
+								paddingRight={1}
+							>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{index === selectedTaskIndex ? '▸ ' : '  '}
+								</Text>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`}
+								</Text>
+								<Text color={theme.muted}> - </Text>
+								<Text
+									color={
+										index === selectedTaskIndex ? theme.accent : theme.text
+									}
+								>
+									{task.title}
+								</Text>
+							</Box>
+						))}
+					</Box>
+				)}
+
+				{/* Actions */}
+				<Box marginTop={2} gap={2}>
+					{linkedTasks.length > 0 && (
+						<Text color={theme.muted}>[Enter] Jump to Task</Text>
+					)}
+					<Text color={theme.muted}>[↑↓] Navigate</Text>
+					<Text color={theme.muted}>[Esc] Cancel</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	// Build content for scrollable details view
+	const detailContent = [];
+	let lineIndex = 0;
+
+	// Basic Info
+	detailContent.push({ type: 'text', content: `Path: ${worktree.path}` });
+	detailContent.push({
+		type: 'text',
+		content: `Branch: ${worktree.isDetached ? '(detached HEAD)' : worktree.branch || 'N/A'}`,
+		color: worktree.isDetached ? theme.warning : theme.text
+	});
+	detailContent.push({
+		type: 'text',
+		content: `HEAD: ${worktree.head || 'N/A'}`
+	});
+
+	// Status line
+	let statusText = 'Status: ';
+	if (worktree.isCurrent) statusText += '[CURRENT] ';
+	if (worktree.isLocked) statusText += '[LOCKED] ';
+	if (worktree.isBare) statusText += '[BARE] ';
+	detailContent.push({ type: 'text', content: statusText });
+
+	detailContent.push({
+		type: 'text',
+		content: `Disk Usage: ${worktree.diskUsage || 'Unknown'}`
+	});
+	detailContent.push({ type: 'blank' });
+
+	// Additional details
+	if (details) {
+		if (details.latestCommit) {
+			detailContent.push({ type: 'header', content: 'Latest Commit:' });
+			detailContent.push({
+				type: 'text',
+				content: `  ${details.latestCommit.hash} - ${details.latestCommit.subject}`,
+				indent: 2
+			});
+			detailContent.push({
+				type: 'text',
+				content: `  by ${details.latestCommit.author} (${details.latestCommit.date})`,
+				dimColor: true,
+				indent: 2
+			});
+			detailContent.push({ type: 'blank' });
+		}
+
+		if (details.status) {
+			detailContent.push({ type: 'header', content: 'Working Tree Status:' });
+			if (details.status.modified > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  Modified: ${details.status.modified}`,
+					color: theme.warning,
+					indent: 2
+				});
+			}
+			if (details.status.added > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  Added: ${details.status.added}`,
+					color: theme.success,
+					indent: 2
+				});
+			}
+			if (details.status.deleted > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  Deleted: ${details.status.deleted}`,
+					color: theme.error,
+					indent: 2
+				});
+			}
+			if (details.status.untracked > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  Untracked: ${details.status.untracked}`,
+					color: theme.muted,
+					indent: 2
+				});
+			}
+			if (details.status.total === 0) {
+				detailContent.push({
+					type: 'text',
+					content: '  Clean (no changes)',
+					color: theme.success,
+					indent: 2
+				});
+			}
+			detailContent.push({ type: 'blank' });
+		}
+
+		if (details.trackingBranch) {
+			detailContent.push({ type: 'header', content: 'Tracking:' });
+			detailContent.push({
+				type: 'text',
+				content: `  ${details.trackingBranch}`,
+				indent: 2
+			});
+			if (details.ahead > 0 || details.behind > 0) {
+				let trackingStatus = '  ';
+				if (details.ahead > 0) trackingStatus += `↑ ${details.ahead} ahead `;
+				if (details.behind > 0) trackingStatus += `↓ ${details.behind} behind`;
+				detailContent.push({
+					type: 'text',
+					content: trackingStatus,
+					color: details.ahead > 0 ? theme.success : theme.warning,
+					indent: 2
+				});
+			}
+			detailContent.push({ type: 'blank' });
+		}
+	}
+
+	// Linked Tasks - show all of them
+	detailContent.push({
+		type: 'header',
+		content: `Linked Tasks (${linkedTasks.length}):`
+	});
+	if (linkedTasks.length === 0) {
+		detailContent.push({
+			type: 'text',
+			content: '  No tasks linked to this worktree',
+			color: theme.muted,
+			indent: 2
+		});
+	} else {
+		linkedTasks.forEach((task) => {
+			const prefix = task.parentId ? '  └─ ' : '  • ';
+			const taskType = task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`;
+			let line = `${prefix}${taskType}: ${task.title}`;
+			if (task.status === 'done') line += ' ✓';
+			if (task.status === 'in-progress') line += ' ⚡';
+
+			detailContent.push({
+				type: 'task',
+				content: line,
+				status: task.status,
+				indent: 2
+			});
+		});
+	}
+
+	// Calculate visible content based on scroll offset
+	const visibleContent = detailContent.slice(
+		scrollOffset,
+		scrollOffset + VISIBLE_ROWS
+	);
+	const totalLines = detailContent.length;
+	const maxScroll = Math.max(0, totalLines - VISIBLE_ROWS);
+
+	// Main render (details view)
 	return (
 		<Box
 			flexDirection="column"
 			borderStyle="round"
-			borderColor={getTheme().border}
+			borderColor={theme.border}
 			padding={1}
 			width={80}
+			height={VISIBLE_ROWS + 6} // Fixed height for scrolling
 		>
 			{/* Header */}
 			<Box marginBottom={1}>
-				<Text bold color={getTheme().primary}>
+				<Text bold color={theme.primary}>
 					Worktree Details: {worktree.name}
 				</Text>
 			</Box>
 
-			{/* Basic Info */}
-			<Box flexDirection="column" marginBottom={1}>
-				<Box>
-					<Text bold>Path: </Text>
-					<Text>{worktree.path}</Text>
-				</Box>
-				<Box>
-					<Text bold>Branch: </Text>
-					<Text
-						color={worktree.isDetached ? getTheme().warning : getTheme().text}
-					>
-						{worktree.isDetached ? '(detached HEAD)' : worktree.branch || 'N/A'}
-					</Text>
-				</Box>
-				<Box>
-					<Text bold>HEAD: </Text>
-					<Text>{worktree.head || 'N/A'}</Text>
-				</Box>
-				<Box>
-					<Text bold>Status: </Text>
-					<Text>
-						{worktree.isCurrent && (
-							<Text color={getTheme().success}>[CURRENT] </Text>
-						)}
-						{worktree.isLocked && (
-							<Text color={getTheme().warning}>[LOCKED] </Text>
-						)}
-						{worktree.isBare && <Text>[BARE] </Text>}
-					</Text>
-				</Box>
-				<Box>
-					<Text bold>Disk Usage: </Text>
-					<Text>{worktree.diskUsage || 'Unknown'}</Text>
-				</Box>
+			{/* Scrollable content */}
+			<Box flexDirection="column" height={VISIBLE_ROWS}>
+				{visibleContent.map((line, index) => {
+					if (line.type === 'blank') {
+						return <Box key={index} height={1} />;
+					} else if (line.type === 'header') {
+						return (
+							<Text key={index} bold color={theme.primary}>
+								{line.content}
+							</Text>
+						);
+					} else if (line.type === 'task') {
+						return (
+							<Text
+								key={index}
+								color={line.status === 'done' ? theme.success : theme.text}
+							>
+								{line.content}
+							</Text>
+						);
+					} else {
+						return (
+							<Text
+								key={index}
+								color={line.color || theme.text}
+								dimColor={line.dimColor}
+							>
+								{line.content}
+							</Text>
+						);
+					}
+				})}
 			</Box>
 
-			{/* Additional details from backend call */}
-			{details && (
-				<>
-					{details.latestCommit && (
-						<Box flexDirection="column" marginBottom={1}>
-							<Text bold color={getTheme().primary}>
-								Latest Commit:
-							</Text>
-							<Box paddingLeft={2} flexDirection="column">
-								<Text>
-									{details.latestCommit.hash} - {details.latestCommit.subject}
-								</Text>
-								<Text dimColor>
-									by {details.latestCommit.author} ({details.latestCommit.date})
-								</Text>
-							</Box>
-						</Box>
-					)}
-
-					{details.status && (
-						<Box flexDirection="column" marginBottom={1}>
-							<Text bold color={getTheme().primary}>
-								Working Tree Status:
-							</Text>
-							<Box paddingLeft={2} gap={2}>
-								{details.status.modified > 0 && (
-									<Text color={getTheme().warning}>
-										Modified: {details.status.modified}
-									</Text>
-								)}
-								{details.status.added > 0 && (
-									<Text color={getTheme().success}>
-										Added: {details.status.added}
-									</Text>
-								)}
-								{details.status.deleted > 0 && (
-									<Text color={getTheme().error}>
-										Deleted: {details.status.deleted}
-									</Text>
-								)}
-								{details.status.untracked > 0 && (
-									<Text color={getTheme().muted}>
-										Untracked: {details.status.untracked}
-									</Text>
-								)}
-								{details.status.total === 0 && (
-									<Text color={getTheme().success}>Clean (no changes)</Text>
-								)}
-							</Box>
-						</Box>
-					)}
-
-					{details.trackingBranch && (
-						<Box flexDirection="column" marginBottom={1}>
-							<Text bold color={getTheme().primary}>
-								Tracking:
-							</Text>
-							<Box paddingLeft={2}>
-								<Text>{details.trackingBranch}</Text>
-								{(details.ahead > 0 || details.behind > 0) && (
-									<Box gap={2}>
-										{details.ahead > 0 && (
-											<Text color={getTheme().success}>
-												↑ {details.ahead} ahead
-											</Text>
-										)}
-										{details.behind > 0 && (
-											<Text color={getTheme().warning}>
-												↓ {details.behind} behind
-											</Text>
-										)}
-									</Box>
-								)}
-							</Box>
-						</Box>
-					)}
-				</>
+			{/* Scroll indicator */}
+			{totalLines > VISIBLE_ROWS && (
+				<Box marginTop={1}>
+					<Text color={theme.muted}>
+						Lines {scrollOffset + 1}-
+						{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
+					</Text>
+				</Box>
 			)}
-
-			{/* Linked Tasks */}
-			<Box flexDirection="column" marginBottom={1}>
-				<Text bold color={getTheme().primary}>
-					Linked Tasks ({linkedTasks.length}):
-				</Text>
-				{linkedTasks.length === 0 ? (
-					<Box paddingLeft={2}>
-						<Text color={getTheme().muted}>
-							No tasks linked to this worktree
-						</Text>
-					</Box>
-				) : (
-					<Box paddingLeft={2} flexDirection="column">
-						{linkedTasks.slice(0, 5).map((task) => (
-							<Box key={task.id}>
-								<Text color={getTheme().accent}>
-									{task.parentId ? '└─ ' : '• '}
-								</Text>
-								<Text>
-									{task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`}:{' '}
-									{task.title}
-								</Text>
-								{task.status === 'done' && (
-									<Text color={getTheme().success}> ✓</Text>
-								)}
-							</Box>
-						))}
-						{linkedTasks.length > 5 && (
-							<Text color={getTheme().muted}>
-								... and {linkedTasks.length - 5} more
-							</Text>
-						)}
-					</Box>
-				)}
-			</Box>
 
 			{/* Actions */}
 			<Box marginTop={1} gap={2}>
-				<Text color={getTheme().muted}>[t] Link/Manage Tasks</Text>
-				{!worktree.isCurrent && (
-					<Text color={getTheme().muted}>[d] Delete</Text>
+				{totalLines > VISIBLE_ROWS && (
+					<Text color={theme.muted}>[↑↓] Scroll</Text>
 				)}
-				<Text color={getTheme().muted}>[Esc] Close</Text>
+				{linkedTasks.length > 0 && onNavigateToTask && (
+					<>
+						<Text color={theme.muted}>[v] View Tasks</Text>
+						<Text color={theme.muted}>[j] Jump to Task</Text>
+					</>
+				)}
+				<Text color={theme.muted}>[t] Link/Manage Tasks</Text>
+				{!worktree.isCurrent && <Text color={theme.muted}>[d] Delete</Text>}
+				<Text color={theme.muted}>[Esc] Close</Text>
 			</Box>
 
 			{/* Error Message */}
