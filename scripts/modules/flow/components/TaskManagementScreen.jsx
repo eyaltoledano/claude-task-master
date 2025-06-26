@@ -79,7 +79,13 @@ export function TaskManagementScreen() {
 								setSelectedSubtaskIndex(subtaskIndex);
 								// Go directly to subtask detail view
 								setSelectedSubtask(fullTask.subtasks[subtaskIndex]);
-								setViewMode('subtask-detail');
+								// Check if we have a specific view mode to navigate to
+								if (navigationData.viewMode === 'subtask-detail') {
+									setViewMode('subtask-detail');
+								} else {
+									// Default behavior - go to subtask detail
+									setViewMode('subtask-detail');
+								}
 								setDetailScrollOffset(0);
 							} else {
 								// No subtask, show task detail
@@ -310,6 +316,28 @@ export function TaskManagementScreen() {
 			} else if (input === 'c' || input === 'C') {
 				// Launch Claude Code session with subtask context
 				handleClaudeSession();
+			} else if (input === 'v' || input === 'V') {
+				// View Claude Code sessions for this subtask
+				const sessionIds = extractClaudeSessionIds(selectedSubtask.details);
+				if (sessionIds.length > 0) {
+					// Navigate to Claude Code screen with filter for this subtask
+					setCurrentScreen('claude-code', {
+						mode: 'list',
+						filterSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`,
+						highlightSessionId: sessionIds[0], // Highlight the most recent session
+						returnTo: 'tasks',
+						returnData: {
+							selectedTaskId: selectedTask.id,
+							selectedSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`,
+							viewMode: 'subtask-detail'
+						}
+					});
+				} else {
+					setToast({
+						message: 'No Claude Code sessions found for this subtask',
+						type: 'warning'
+					});
+				}
 			}
 			return;
 		}
@@ -551,7 +579,7 @@ export function TaskManagementScreen() {
 		try {
 			setIsLaunchingClaude(true);
 			setToast({
-				message: 'Gathering context and running research...',
+				message: 'Preparing Claude Code session...',
 				type: 'info'
 			});
 
@@ -635,13 +663,24 @@ export function TaskManagementScreen() {
 			// Gather comprehensive context
 			const context = await gatherSubtaskContext();
 
+			// Don't wait for the navigation - do it immediately after context is ready
 			setToast({
 				message: 'Launching Claude Code with full context...',
 				type: 'info'
 			});
 
+			console.log(
+				'[TaskManagementScreen] Navigating to claude-code screen with context:',
+				{
+					mode: 'subtask-implementation',
+					hasContext: !!context,
+					hasResearch: !!context.researchContext,
+					worktreePath
+				}
+			);
+
 			// Navigate to Claude Code screen with context
-			setCurrentScreen('claudeCode', {
+			setCurrentScreen('claude-code', {
 				mode: 'subtask-implementation',
 				initialContext: {
 					...context,
@@ -657,6 +696,10 @@ export function TaskManagementScreen() {
 			// Reset flag after successful navigation
 			setIsLaunchingClaude(false);
 		} catch (error) {
+			console.error(
+				'[TaskManagementScreen] Error in launchClaudeWithContext:',
+				error
+			);
 			setToast({
 				message: `Failed to gather context: ${error.message}`,
 				type: 'error'
@@ -821,6 +864,29 @@ Focus on: current industry standards, common pitfalls, security considerations
 		});
 
 		return Array.from(matches).join(', ');
+	};
+
+	const extractClaudeSessionIds = (details) => {
+		if (!details) return [];
+
+		const sessionIds = [];
+		// Look for session IDs in multiple formats
+		const patterns = [
+			/<claude-session[^>]+sessionId="([^"]+)"[^>]*>/gi,
+			/\*\*Session ID:\*\* ([a-f0-9-]+)/gi,
+			/Session ID: ([a-f0-9-]+)/gi
+		];
+
+		patterns.forEach((pattern) => {
+			let match;
+			while ((match = pattern.exec(details)) !== null) {
+				if (match[1] && !sessionIds.includes(match[1])) {
+					sessionIds.push(match[1]);
+				}
+			}
+		});
+
+		return sessionIds;
 	};
 
 	const getStatusSymbol = (status) => {
@@ -1548,8 +1614,11 @@ Focus on: current industry standards, common pitfalls, security considerations
 						{subtaskContentLines.length > DETAIL_VISIBLE_ROWS
 							? '↑↓ scroll • '
 							: ''}
-						{worktrees.length > 0 ? 'w worktree • ' : ''}c Claude Code • ESC
-						back to subtasks
+						{worktrees.length > 0 ? 'w worktree • ' : ''}
+						{extractClaudeSessionIds(selectedSubtask.details).length > 0
+							? 'v view sessions • '
+							: ''}
+						c Claude Code • ESC back to subtasks
 					</Text>
 				</Box>
 

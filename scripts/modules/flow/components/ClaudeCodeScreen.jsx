@@ -14,7 +14,9 @@ function ClaudeCodeScreen({
 	mode: initialMode = 'list',
 	initialContext = null,
 	returnTo = 'welcome',
-	returnData = null
+	returnData = null,
+	filterSubtaskId = null,
+	highlightSessionId = null
 }) {
 	const { setCurrentScreen } = useAppContext();
 	const [config, setConfig] = useState(null);
@@ -34,6 +36,9 @@ function ClaudeCodeScreen({
 	const [showMenu, setShowMenu] = useState(false);
 	const [keyInsights, setKeyInsights] = useState([]);
 	const [waitingForConfig, setWaitingForConfig] = useState(false);
+	const [sessionFilter, setSessionFilter] = useState('all'); // all, active, finished
+	const [viewingSession, setViewingSession] = useState(null);
+	const [sessionMessages, setSessionMessages] = useState({});
 	const abortControllerRef = useRef(null);
 	const theme = getTheme();
 
@@ -59,6 +64,49 @@ function ClaudeCodeScreen({
 			}
 		};
 	}, []);
+
+	// Auto-select highlighted session if provided
+	useEffect(() => {
+		if (highlightSessionId && sessions.length > 0) {
+			// Calculate filtered sessions here to avoid conditional hook issue
+			const filtered = sessions.filter((session) => {
+				// First apply subtask filter if provided
+				if (
+					filterSubtaskId &&
+					session.metadata?.subtaskId !== filterSubtaskId
+				) {
+					return false;
+				}
+
+				if (sessionFilter === 'all') return true;
+				if (sessionFilter === 'active') {
+					// Active sessions are those without a final result or recent activity
+					return (
+						!session.metadata?.finished ||
+						(session.lastUpdated &&
+							new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
+					);
+				}
+				if (sessionFilter === 'finished') {
+					return session.metadata?.finished === true;
+				}
+				return true;
+			});
+
+			if (filtered.length > 0) {
+				const index = filtered.findIndex(
+					(s) => s.sessionId === highlightSessionId
+				);
+				if (index >= 0) {
+					setSelectedIndex(index);
+					// Adjust scroll to show the highlighted session
+					if (index >= VISIBLE_ROWS) {
+						setScrollOffset(Math.max(0, index - Math.floor(VISIBLE_ROWS / 2)));
+					}
+				}
+			}
+		}
+	}, [highlightSessionId, sessions, filterSubtaskId, sessionFilter]);
 
 	const loadData = async () => {
 		setLoading(true);
@@ -147,6 +195,18 @@ Additional context:
 		`.trim();
 	};
 
+	const loadSessionMessages = async (sessionId) => {
+		// TODO: Implement loading session messages from backend
+		// For now, we'll use a placeholder
+		setSessionMessages((prev) => ({
+			...prev,
+			[sessionId]: [
+				{ type: 'user', content: 'Session messages will be loaded here...' },
+				{ type: 'assistant', content: 'This feature is in development.' }
+			]
+		}));
+	};
+
 	const startSubtaskImplementationSession = async () => {
 		if (!config) {
 			// Wait for config to load
@@ -214,6 +274,19 @@ Additional context:
 					}
 				});
 
+				// Update subtask with Claude session reference
+				const sessionReference = `
+<claude-session added="${new Date().toISOString()}" sessionId="${result.sessionId}">
+Claude Code session started for implementation. Session ID: ${result.sessionId}
+Working directory: ${initialContext.worktreePath}
+</claude-session>
+`;
+				await backend.updateSubtask({
+					id: initialContext.currentSubtask.id,
+					prompt: sessionReference,
+					research: false
+				});
+
 				setSuccess('Claude Code session started for subtask implementation');
 			} else if (result.error) {
 				setError(result.error);
@@ -265,6 +338,7 @@ Additional context:
 
 **Subtask:** ${initialContext.currentSubtask.title}
 **Working Directory:** ${initialContext.worktreePath}
+${activeSession ? `**Session ID:** ${activeSession.sessionId}` : ''}
 
 ### Key Insights from Implementation
 
@@ -277,6 +351,19 @@ ${insightSummary}
 					prompt: claudeSessionContent,
 					research: false
 				});
+
+				// Mark session as finished if we have one
+				if (activeSession?.sessionId) {
+					await backend.saveClaudeCodeSession({
+						sessionId: activeSession.sessionId,
+						lastUpdated: new Date().toISOString(),
+						metadata: {
+							...activeSession.metadata,
+							finished: true
+						}
+					});
+				}
+
 				setSuccess('Subtask updated with session insights');
 			} catch (err) {
 				console.error('Failed to update subtask:', err);
@@ -431,8 +518,25 @@ ${insightSummary}
 				setMode('list');
 			} else if (showMenu) {
 				setShowMenu(false);
+			} else if (viewingSession) {
+				setViewingSession(null);
 			} else {
 				handleBack();
+			}
+			return;
+		}
+
+		// Handle session detail view
+		if (viewingSession) {
+			if (
+				input === 'r' &&
+				sessions.find(
+					(s) => s.sessionId === viewingSession && !s.metadata?.finished
+				)
+			) {
+				// Resume the session
+				setViewingSession(null);
+				handleResume(viewingSession);
 			}
 			return;
 		}
@@ -466,7 +570,10 @@ ${insightSummary}
 		// Handle list mode navigation
 		if (mode === 'list') {
 			if (key.downArrow) {
-				const newIndex = Math.min(selectedIndex + 1, sessions.length - 1);
+				const newIndex = Math.min(
+					selectedIndex + 1,
+					filteredSessions.length - 1
+				);
 				setSelectedIndex(newIndex);
 
 				// Adjust scroll if needed
@@ -481,10 +588,35 @@ ${insightSummary}
 				if (newIndex < scrollOffset) {
 					setScrollOffset(newIndex);
 				}
-			} else if (key.return && sessions.length > 0) {
-				// Resume selected session
-				const session = sessions[selectedIndex];
-				handleResume(session.sessionId);
+			} else if (key.return && filteredSessions.length > 0) {
+				// View selected session details
+				const session = filteredSessions[selectedIndex];
+				setViewingSession(session.sessionId);
+				// Load session messages if needed
+				loadSessionMessages(session.sessionId);
+			} else if (input === 'f') {
+				// Cycle through filters
+				if (sessionFilter === 'all') {
+					setSessionFilter('active');
+				} else if (sessionFilter === 'active') {
+					setSessionFilter('finished');
+				} else {
+					setSessionFilter('all');
+				}
+				setSelectedIndex(0);
+				setScrollOffset(0);
+			} else if (input === '1') {
+				setSessionFilter('all');
+				setSelectedIndex(0);
+				setScrollOffset(0);
+			} else if (input === '2') {
+				setSessionFilter('active');
+				setSelectedIndex(0);
+				setScrollOffset(0);
+			} else if (input === '3') {
+				setSessionFilter('finished');
+				setSelectedIndex(0);
+				setScrollOffset(0);
 			} else if (input === 'n') {
 				// New session
 				if (!config?.enabled) {
@@ -808,7 +940,28 @@ ${insightSummary}
 	}
 
 	// Sessions list view (default)
-	const visibleSessions = sessions.slice(
+	const filteredSessions = sessions.filter((session) => {
+		// First apply subtask filter if provided
+		if (filterSubtaskId && session.metadata?.subtaskId !== filterSubtaskId) {
+			return false;
+		}
+
+		if (sessionFilter === 'all') return true;
+		if (sessionFilter === 'active') {
+			// Active sessions are those without a final result or recent activity
+			return (
+				!session.metadata?.finished ||
+				(session.lastUpdated &&
+					new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
+			);
+		}
+		if (sessionFilter === 'finished') {
+			return session.metadata?.finished === true;
+		}
+		return true;
+	});
+
+	const visibleSessions = filteredSessions.slice(
 		scrollOffset,
 		scrollOffset + VISIBLE_ROWS
 	);
@@ -818,15 +971,29 @@ ${insightSummary}
 		const actualIndex = displayIndex + scrollOffset;
 		const isSelected = actualIndex === selectedIndex;
 		const date = new Date(session.lastUpdated || session.createdAt);
+		const isActive = !session.metadata?.finished;
+		const isSubtaskSession =
+			session.metadata?.type === 'subtask-implementation';
 
 		return {
 			' ': isSelected ? '→' : ' ',
 			'Session ID': session.sessionId.substring(0, 8) + '...',
-			Prompt: session.prompt?.substring(0, 50) + '...' || 'No prompt',
+			Type: isSubtaskSession ? 'Subtask' : 'General',
+			Status: isActive ? '● Active' : '✓ Finished',
+			Prompt: session.prompt?.substring(0, 40) + '...' || 'No prompt',
 			Date: date.toLocaleDateString(),
 			Time: date.toLocaleTimeString(),
 			_renderCell: (col, value) => {
-				const color = isSelected ? theme.selectionText : theme.text;
+				let color = isSelected ? theme.selectionText : theme.text;
+
+				if (col === 'Status') {
+					if (!isSelected) {
+						color = isActive ? theme.statusInProgress : theme.statusDone;
+					}
+				} else if (col === 'Type' && isSubtaskSession && !isSelected) {
+					color = theme.accent;
+				}
+
 				return (
 					<Text color={color} bold={isSelected}>
 						{value}
@@ -835,6 +1002,116 @@ ${insightSummary}
 			}
 		};
 	});
+
+	// Session detail view
+	if (viewingSession) {
+		const session = sessions.find((s) => s.sessionId === viewingSession);
+		const sessionMessagesData = sessionMessages[viewingSession] || [];
+
+		return (
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Session Details</Text>
+					</Box>
+					<Text color={theme.textDim}>
+						[{viewingSession.substring(0, 8)}...]
+					</Text>
+				</Box>
+
+				{/* Session Info */}
+				<Box paddingLeft={2} paddingRight={2} marginBottom={1}>
+					<Box flexDirection="column">
+						<Text color={theme.textDim}>
+							Type:{' '}
+							{session?.metadata?.type === 'subtask-implementation'
+								? 'Subtask Implementation'
+								: 'General Query'}
+						</Text>
+						{session?.metadata?.subtaskId && (
+							<Text color={theme.textDim}>
+								Subtask: {session.metadata.subtaskId}
+							</Text>
+						)}
+						<Text color={theme.textDim}>
+							Started:{' '}
+							{new Date(
+								session?.createdAt || session?.lastUpdated
+							).toLocaleString()}
+						</Text>
+						<Text color={theme.textDim}>
+							Status: {session?.metadata?.finished ? 'Finished' : 'Active'}
+						</Text>
+					</Box>
+				</Box>
+
+				{/* Messages */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					paddingLeft={2}
+					paddingRight={2}
+				>
+					{sessionMessagesData.length === 0 ? (
+						<Box justifyContent="center" alignItems="center" flexGrow={1}>
+							<LoadingSpinner message="Loading session messages..." />
+						</Box>
+					) : (
+						<Box flexDirection="column">
+							{sessionMessagesData.map((msg, idx) => (
+								<Box key={idx} marginBottom={1}>
+									{msg.type === 'user' && (
+										<>
+											<Text color="cyan">User: </Text>
+											<Text>{msg.content}</Text>
+										</>
+									)}
+									{msg.type === 'assistant' && (
+										<>
+											<Text color="green">Claude: </Text>
+											<Box marginLeft={2}>
+												<Text>{msg.content}</Text>
+											</Box>
+										</>
+									)}
+								</Box>
+							))}
+						</Box>
+					)}
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={theme.text}>
+						{!session?.metadata?.finished ? 'r resume session • ' : ''}ESC back
+						to list
+					</Text>
+				</Box>
+			</Box>
+		);
+	}
 
 	return (
 		<Box flexDirection="column" height="100%">
@@ -850,6 +1127,13 @@ ${insightSummary}
 					<Text color={theme.accent}>Task Master</Text>
 					<Text color={theme.textDim}> › </Text>
 					<Text color="white">Claude Code Sessions</Text>
+					{filterSubtaskId && (
+						<>
+							<Text color={theme.textDim}> › </Text>
+							<Text color={theme.text}>Subtask {filterSubtaskId}</Text>
+						</>
+					)}
+					<Text color={theme.textDim}> [{sessionFilter}]</Text>
 				</Box>
 				{config?.enabled ? (
 					<Text color={theme.success}>[Enabled]</Text>
@@ -860,14 +1144,17 @@ ${insightSummary}
 
 			{/* Sessions Table */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				{sessions.length === 0 ? (
+				{filteredSessions.length === 0 ? (
 					<Box
 						flexDirection="column"
 						alignItems="center"
 						justifyContent="center"
 						flexGrow={1}
 					>
-						<Text color={theme.textDim}>No Claude Code sessions found</Text>
+						<Text color={theme.textDim}>
+							No {sessionFilter === 'all' ? '' : sessionFilter} Claude Code
+							sessions found
+						</Text>
 						<Text color={theme.textDim} marginTop={1}>
 							Press 'n' to start a new session
 						</Text>
@@ -876,18 +1163,29 @@ ${insightSummary}
 					<>
 						<SimpleTable
 							data={tableData}
-							columns={[' ', 'Session ID', 'Prompt', 'Date', 'Time']}
+							columns={[
+								' ',
+								'Session ID',
+								'Type',
+								'Status',
+								'Prompt',
+								'Date',
+								'Time'
+							]}
 							selectedIndex={selectedIndex - scrollOffset}
 							borders={true}
 						/>
 
 						{/* Scroll indicator */}
-						{sessions.length > VISIBLE_ROWS && (
+						{filteredSessions.length > VISIBLE_ROWS && (
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
 									{scrollOffset + 1}-
-									{Math.min(scrollOffset + VISIBLE_ROWS, sessions.length)} of{' '}
-									{sessions.length} sessions
+									{Math.min(
+										scrollOffset + VISIBLE_ROWS,
+										filteredSessions.length
+									)}{' '}
+									of {filteredSessions.length} sessions ({sessionFilter})
 								</Text>
 							</Box>
 						)}
@@ -909,8 +1207,11 @@ ${insightSummary}
 				flexShrink={0}
 			>
 				<Text color={theme.text}>
-					{sessions.length > 0 ? '↑↓ navigate • Enter resume • ' : ''}n new
-					session • m menu • r refresh • ESC back
+					{filteredSessions.length > 0 ? '↑↓ navigate • Enter view • ' : ''}f
+					filter [{sessionFilter === 'all' ? '1' : '○'}all{' '}
+					{sessionFilter === 'active' ? '2' : '○'}active{' '}
+					{sessionFilter === 'finished' ? '3' : '○'}finished] • n new • r
+					refresh • ESC back
 				</Text>
 			</Box>
 
