@@ -12,6 +12,7 @@ import { highlight } from 'cli-highlight';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { generateTextService } from '../ai-services-unified.js';
+import { getPromptManager } from '../prompt-manager.js';
 import {
 	log as consoleLog,
 	findProjectRoot,
@@ -190,14 +191,26 @@ async function performResearch(
 		const gatheredContext = contextResult.context;
 		const tokenBreakdown = contextResult.tokenBreakdown;
 
-		// Build system prompt based on detail level
-		const systemPrompt = buildResearchSystemPrompt(detailLevel, projectRoot);
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager(projectRoot);
 
-		// Build user prompt with context
-		const userPrompt = buildResearchUserPrompt(
-			query,
-			gatheredContext,
-			detailLevel
+		const promptParams = {
+			query: query,
+			gatheredContext: gatheredContext || '',
+			detailLevel: detailLevel,
+			projectInfo: {
+				root: projectRoot,
+				taskCount: finalTaskIds.length,
+				fileCount: filePaths.length
+			}
+		};
+
+		// Select variant based on detail level
+		const variantKey = detailLevel; // 'low', 'medium', or 'high'
+		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+			'research',
+			promptParams,
+			variantKey
 		);
 
 		// Count tokens for system and user prompts
