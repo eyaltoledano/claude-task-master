@@ -1691,7 +1691,6 @@ function registerCommands(programInstance) {
 					? options.output.replace('.json', `_${targetTag}.json`)
 					: options.output;
 
-
 			if (options.id) {
 				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));
 			} else if (options.from || options.to) {
