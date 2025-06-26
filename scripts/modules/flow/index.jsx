@@ -27,6 +27,7 @@ import { CommandPalette } from './components/CommandPalette.jsx';
 import { MCPServerManager } from './components/MCPServerManager.jsx';
 import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
+import { NextTaskModal } from './components/NextTaskModal.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -42,14 +43,10 @@ function FlowApp({ backend, options = {} }) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [messages, setMessages] = useState([]);
-	const [currentModel, setCurrentModel] = useState('Task Master AI');
+	const [currentModel, setCurrentModel] = useState('claude-3-5-sonnet-20241022');
 	const [notification, setNotification] = useState(null);
 	const [currentBackend, setCurrentBackend] = useState(backend);
-	const [currentTheme, setCurrentTheme] = useState(() => {
-		// Check for saved theme preference or default to auto
-		const savedTheme = process.env.TASKMASTER_THEME;
-		return savedTheme || 'auto';
-	});
+	const [currentTheme, setCurrentTheme] = useState('auto');
 	const [hasTasksFile, setHasTasksFile] = useState(false);
 
 	const [suggestions, setSuggestions] = useState([]);
@@ -59,6 +56,8 @@ function FlowApp({ backend, options = {} }) {
 	const isWaitingForShortcutRef = useRef(false);
 	const savedInputRef = useRef('');
 	const [inputKey, setInputKey] = useState(0);
+	const [nextTask, setNextTask] = useState(null);
+	const [showNextTaskModal, setShowNextTaskModal] = useState(false);
 
 	const { exit } = useApp();
 
@@ -70,6 +69,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/tags', description: 'Manage task tags' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
+			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
@@ -265,6 +265,30 @@ function FlowApp({ backend, options = {} }) {
 				case 'status':
 					setCurrentScreen('status');
 					break;
+				case 'next':
+					if (hasTasksFile) {
+						// Fetch the next task
+						(async () => {
+							try {
+								const nextTaskResult = await currentBackend.nextTask();
+								setNextTask(nextTaskResult.task || null);
+								setShowNextTaskModal(true);
+							} catch (error) {
+								setNotification({
+									message: `Error getting next task: ${error.message}`,
+									type: 'error',
+									duration: 3000
+								});
+							}
+						})();
+					} else {
+						setNotification({
+							message: 'No tasks.json found. Use /parse to create tasks first.',
+							type: 'warning',
+							duration: 3000
+						});
+					}
+					break;
 				case 'theme':
 					// Cycle through auto -> light -> dark -> auto
 					let newTheme;
@@ -419,6 +443,30 @@ function FlowApp({ backend, options = {} }) {
 					case 's':
 						setCurrentScreen('status');
 						break;
+					case 'n':
+						if (hasTasksFile) {
+							// Fetch the next task
+							(async () => {
+								try {
+									const nextTaskResult = await currentBackend.nextTask();
+									setNextTask(nextTaskResult.task || null);
+									setShowNextTaskModal(true);
+								} catch (error) {
+									setNotification({
+										message: `Error getting next task: ${error.message}`,
+										type: 'error',
+										duration: 3000
+									});
+								}
+							})();
+						} else {
+							setNotification({
+								message: 'No tasks.json found. Use /parse to create tasks first.',
+								type: 'warning',
+								duration: 3000
+							});
+						}
+						break;
 					case 'm':
 						launchSetupCommand('models', ['--setup']);
 						break;
@@ -501,7 +549,7 @@ function FlowApp({ backend, options = {} }) {
 				}
 			}
 		},
-		{ isActive: !showCommandPalette && currentScreen !== 'tasks' && currentScreen !== 'chat' && currentScreen !== 'status' }
+		{ isActive: !showCommandPalette && !showNextTaskModal && currentScreen !== 'tasks' && currentScreen !== 'chat' && currentScreen !== 'status' }
 	);
 
 	// Context value
@@ -576,6 +624,14 @@ function FlowApp({ backend, options = {} }) {
 				{/* Conditionally render EITHER popup OR main content */}
 				{showCommandPalette ? (
 					<CommandPalette />
+				) : showNextTaskModal ? (
+					<NextTaskModal
+						task={nextTask}
+						onClose={() => {
+							setShowNextTaskModal(false);
+							setNextTask(null);
+						}}
+					/>
 				) : currentScreen === 'tasks' ? (
 					<TaskManagementScreen />
 				) : currentScreen === 'tags' ? (

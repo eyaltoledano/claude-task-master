@@ -57,6 +57,12 @@ export function CommandPalette() {
 			key: 'c'
 		},
 		{
+			name: 'Next Task',
+			command: '/next',
+			description: 'Show next task to work on',
+			key: 'n'
+		},
+		{
 			name: 'Project Status',
 			command: '/status',
 			description: 'View project status',
