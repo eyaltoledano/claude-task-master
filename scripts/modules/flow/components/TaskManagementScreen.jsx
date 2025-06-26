@@ -30,6 +30,8 @@ export function TaskManagementScreen() {
 	const [showExpandModal, setShowExpandModal] = useState(false);
 	const [showClaudeCodeModal, setShowClaudeCodeModal] = useState(false);
 	const [expandForce, setExpandForce] = useState(false);
+	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
+	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -249,8 +251,48 @@ export function TaskManagementScreen() {
 			// Fetch full task details
 			const fullTask = await backend.getTask(task.id);
 			setSelectedTask(fullTask);
+
+			// Fetch worktrees linked to this task
+			try {
+				const worktrees = await backend.getTaskWorktrees(task.id);
+				setTaskWorktrees(worktrees || []);
+			} catch (error) {
+				console.error('Failed to load task worktrees:', error);
+				setTaskWorktrees([]);
+			}
+
 			setViewMode('detail');
 			setDetailScrollOffset(0); // Reset scroll position when opening a new task
+
+			// Fetch subtask worktrees if task has subtasks
+			if (fullTask.subtasks && fullTask.subtasks.length > 0) {
+				const subtaskWorktreePromises = fullTask.subtasks.map(
+					async (subtask) => {
+						const subtaskId = `${fullTask.id}.${subtask.id}`;
+						try {
+							const subtaskWorktrees =
+								await backend.getTaskWorktrees(subtaskId);
+							return { subtaskId, worktrees: subtaskWorktrees || [] };
+						} catch (error) {
+							return { subtaskId, worktrees: [] };
+						}
+					}
+				);
+
+				// Wait for all subtask worktree fetches to complete
+				const subtaskWorktreeResults = await Promise.all(
+					subtaskWorktreePromises
+				);
+				const subtaskWorktreeMap = new Map(
+					subtaskWorktreeResults.map((result) => [
+						result.subtaskId,
+						result.worktrees
+					])
+				);
+				setSubtaskWorktrees(subtaskWorktreeMap);
+			} else {
+				setSubtaskWorktrees(new Map());
+			}
 		} catch (error) {
 			console.error('Failed to load task details:', error);
 		}
@@ -392,6 +434,17 @@ export function TaskManagementScreen() {
 					: '-'
 		});
 
+		// Add worktree information
+		contentLines.push({
+			type: 'field',
+			label: 'Git Worktrees:',
+			value:
+				taskWorktrees.length > 0
+					? taskWorktrees.map((wt) => `🌳 ${wt.name}`).join(', ')
+					: '-',
+			color: taskWorktrees.length > 0 ? theme.success : theme.textDim
+		});
+
 		if (selectedTask.complexity) {
 			contentLines.push({
 				type: 'field',
@@ -433,10 +486,18 @@ export function TaskManagementScreen() {
 				type: 'header',
 				text: `Subtasks (${selectedTask.subtasks.length}):`
 			});
+
 			selectedTask.subtasks.forEach((subtask) => {
+				const subtaskId = `${selectedTask.id}.${subtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				const worktreeText =
+					worktrees.length > 0
+						? ` 🌳 ${worktrees.map((wt) => wt.name).join(', ')}`
+						: '';
+
 				contentLines.push({
 					type: 'subtask',
-					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}`,
+					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}${worktreeText}`,
 					color: getStatusColor(subtask.status)
 				});
 			});
@@ -628,7 +689,6 @@ export function TaskManagementScreen() {
 				{showClaudeCodeModal && selectedTask && (
 					<ClaudeCodeTaskModal
 						task={selectedTask}
-						subtask={selectedSubtask}
 						backend={backend}
 						onClose={() => setShowClaudeCodeModal(false)}
 					/>

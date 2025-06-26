@@ -384,3 +384,4 @@ export default function GitWorktreeScreen({ backend, onBack, onExit }) {
 		</Box>
 	);
 }
+ 

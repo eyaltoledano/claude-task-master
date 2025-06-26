@@ -70,8 +70,8 @@ export default function WorktreeDetailsModal({
 			} else if (input === 'n' || key.escape) {
 				setConfirmDelete(false);
 			}
-		} else if (input === 't' || input === 'm') {
-			// 't' for link tasks, 'm' for manage tasks
+		} else if (input === 't') {
+			// 't' for link/manage tasks
 			setShowLinkTasksModal(true);
 		}
 	});
@@ -302,7 +302,7 @@ export default function WorktreeDetailsModal({
 
 			{/* Actions */}
 			<Box marginTop={1} gap={2}>
-				<Text color={getTheme().muted}>[t/m] Manage Tasks</Text>
+				<Text color={getTheme().muted}>[t] Link/Manage Tasks</Text>
 				{!worktree.isCurrent && (
 					<Text color={getTheme().muted}>[d] Delete</Text>
 				)}
@@ -318,3 +318,4 @@ export default function WorktreeDetailsModal({
 		</Box>
 	);
 }
+ 
