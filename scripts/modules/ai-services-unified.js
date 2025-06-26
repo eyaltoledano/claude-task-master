@@ -45,7 +45,8 @@ import {
 	BedrockAIProvider,
 	AzureProvider,
 	VertexAIProvider,
-	ClaudeCodeProvider
+	ClaudeCodeProvider,
+	McpSamplingProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -60,7 +61,8 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
-	'claude-code': new ClaudeCodeProvider()
+	'claude-code': new ClaudeCodeProvider(),
+	'mcp-sampling': new McpSamplingProvider()
 };
 
 // Helper function to get cost for a specific model

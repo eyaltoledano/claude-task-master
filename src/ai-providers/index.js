@@ -14,3 +14,4 @@ export { BedrockAIProvider } from './bedrock.js';
 export { AzureProvider } from './azure.js';
 export { VertexAIProvider } from './google-vertex.js';
 export { ClaudeCodeProvider } from './claude-code.js';
+export { McpSamplingProvider } from './mcp-sampling.js';
