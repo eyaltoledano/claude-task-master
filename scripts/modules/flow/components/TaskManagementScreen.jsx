@@ -10,6 +10,7 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import TextInput from 'ink-text-input';
+import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 
 export function TaskManagementScreen() {
 	const {
@@ -46,6 +47,8 @@ export function TaskManagementScreen() {
 	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
 	const [showClaudeLauncherModal, setShowClaudeLauncherModal] = useState(false);
 	const [claudeWorktree, setClaudeWorktree] = useState(null);
+	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
+	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -72,7 +75,7 @@ export function TaskManagementScreen() {
 	// Reload tasks on mount
 	useEffect(() => {
 		reloadTasks();
-	}, []);
+	}, [reloadTasks]);
 
 	// Handle navigation data
 	useEffect(() => {
@@ -127,7 +130,9 @@ export function TaskManagementScreen() {
 					});
 			}
 		}
-	}, [navigationData, tasks.length]); // Note: showTaskDetail is defined later, so we use tasks.length as a proxy
+		// Note: showTaskDetail is defined later, so we rely on function hoisting
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [navigationData, tasks]);
 
 	// Load complexity report when tag changes or on mount
 	useEffect(() => {
@@ -147,11 +152,6 @@ export function TaskManagementScreen() {
 
 		loadComplexityReport();
 	}, [currentTag, backend]);
-
-	// Ensure proper re-render when viewMode changes
-	useEffect(() => {
-		// This effect will trigger a re-render when viewMode changes
-	}, [viewMode]);
 
 	// Filter tasks based on current filter and search
 	const filteredTasks = tasks.filter((task) => {
@@ -593,20 +593,91 @@ export function TaskManagementScreen() {
 	const handleClaudeSession = async () => {
 		if (!selectedTask || !selectedSubtask) return;
 
-		const worktrees = await backend.getTaskWorktrees(
-			`${selectedTask.id}.${selectedSubtask.id}`
-		);
+		try {
+			// Check for existing worktrees for this subtask
+			const worktrees = await backend.getTaskWorktrees(
+				`${selectedTask.id}.${selectedSubtask.id}`
+			);
 
-		if (worktrees && worktrees.length > 0) {
-			// Use the first linked worktree
-			setClaudeWorktree(worktrees[0]);
-		} else {
-			// No linked worktree, proceed with main project context
-			setClaudeWorktree(null);
+			let worktreeToUse;
+
+			if (worktrees && worktrees.length > 0) {
+				// Use the first linked worktree
+				worktreeToUse = worktrees[0];
+			} else {
+				// No linked worktree, create one automatically
+				setToast({
+					message: 'Creating worktree for subtask...',
+					type: 'info'
+				});
+
+				// Get the current branch to use as source
+				let sourceBranch = 'main'; // default fallback
+				try {
+					const { execSync } = await import('child_process');
+					sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+						cwd: backend.projectRoot,
+						encoding: 'utf8'
+					}).trim();
+				} catch (error) {
+					console.error('Failed to get current branch:', error);
+					// Try 'master' as a secondary fallback
+					sourceBranch = 'master';
+				}
+
+				// Get or create worktree
+				const result = await backend.getOrCreateWorktreeForSubtask(
+					selectedTask.id,
+					selectedSubtask.id,
+					{
+						sourceBranch,
+						subtaskTitle: selectedSubtask.title
+					}
+				);
+
+				// Check if we need user decision for branch conflict
+				if (result.needsUserDecision) {
+					// Store info for the modal
+					setBranchConflictInfo({
+						branchName: result.worktreeName,
+						branchInUseAt: result.branchInUseAt,
+						taskId: selectedTask.id,
+						subtaskId: selectedSubtask.id,
+						subtaskTitle: selectedSubtask.title,
+						sourceBranch
+					});
+					setShowBranchConflictModal(true);
+					return;
+				}
+
+				if (!result.exists && result.created) {
+					setToast({
+						message: `Created worktree: ${result.worktree.name}`,
+						type: 'success'
+					});
+				}
+
+				worktreeToUse = result.worktree;
+
+				// Update subtask worktrees state
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const updatedWorktrees = new Map(subtaskWorktrees);
+				updatedWorktrees.set(subtaskId, [result.worktree]);
+				setSubtaskWorktrees(updatedWorktrees);
+			}
+
+			// Set the worktree for Claude launcher
+			setClaudeWorktree(worktreeToUse);
+
+			// Show the Claude launcher modal in its new streamlined form
+			setShowClaudeLauncherModal(true);
+		} catch (error) {
+			console.error('Failed to setup Claude session:', error);
+			setToast({
+				message: `✗ Failed to setup Claude: ${error.message}`,
+				type: 'error'
+			});
 		}
-
-		// Show the Claude launcher modal
-		setShowClaudeLauncherModal(true);
 	};
 
 	const handleWorkOnSubtask = async () => {
@@ -619,15 +690,46 @@ export function TaskManagementScreen() {
 				type: 'info'
 			});
 
+			// Get the current branch to use as source
+			let sourceBranch = 'main'; // default fallback
+			try {
+				const { execSync } = await import('child_process');
+				sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+					cwd: backend.projectRoot,
+					encoding: 'utf8'
+				}).trim();
+			} catch (error) {
+				console.error('Failed to get current branch:', error);
+				// Try 'master' as a secondary fallback
+				sourceBranch = 'master';
+			}
+
 			// Get or create worktree for this subtask
 			const result = await backend.getOrCreateWorktreeForSubtask(
 				selectedTask.id,
 				selectedSubtask.id,
 				{
 					subtaskTitle: selectedSubtask.title,
-					sourceBranch: 'main' // Default to main, could make this configurable
+					sourceBranch
 				}
 			);
+
+			// Check if we need user decision for branch conflict
+			if (result.needsUserDecision) {
+				// Store info for the modal
+				setBranchConflictInfo({
+					branchName: result.worktreeName,
+					branchInUseAt: result.branchInUseAt,
+					taskId: selectedTask.id,
+					subtaskId: selectedSubtask.id,
+					subtaskTitle: selectedSubtask.title,
+					sourceBranch,
+					isWorkOnSubtask: true // Flag to indicate this is from 'w' key
+				});
+				setShowBranchConflictModal(true);
+				setIsExpanding(false);
+				return;
+			}
 
 			if (result.created) {
 				setToast({
@@ -994,6 +1096,93 @@ Focus on: current industry standards, common pitfalls, security considerations
 		return dependencies.join(', ');
 	};
 
+	const handleBranchConflictDecision = async (decision) => {
+		setShowBranchConflictModal(false);
+
+		if (!branchConflictInfo) return;
+
+		if (decision === 'cancel') {
+			setToast({
+				message: 'Worktree creation cancelled',
+				type: 'info'
+			});
+			setBranchConflictInfo(null);
+			return;
+		}
+
+		try {
+			setIsExpanding(true);
+			let result;
+
+			if (decision === 'use-existing') {
+				// Use the existing branch
+				setToast({
+					message: 'Using existing branch...',
+					type: 'info'
+				});
+
+				result = await backend.useExistingBranchForSubtask(
+					branchConflictInfo.taskId,
+					branchConflictInfo.subtaskId,
+					{
+						subtaskTitle: branchConflictInfo.subtaskTitle,
+						sourceBranch: branchConflictInfo.sourceBranch
+					}
+				);
+			} else if (decision === 'recreate') {
+				// Force recreate
+				setToast({
+					message: 'Removing existing branch and creating fresh...',
+					type: 'info'
+				});
+
+				result = await backend.forceCreateWorktreeForSubtask(
+					branchConflictInfo.taskId,
+					branchConflictInfo.subtaskId,
+					{
+						subtaskTitle: branchConflictInfo.subtaskTitle,
+						sourceBranch: branchConflictInfo.sourceBranch
+					}
+				);
+			}
+
+			if (result && result.worktree) {
+				// Update subtask worktrees state
+				const subtaskId = `${branchConflictInfo.taskId}.${branchConflictInfo.subtaskId}`;
+				const updatedWorktrees = new Map(subtaskWorktrees);
+				updatedWorktrees.set(subtaskId, [result.worktree]);
+				setSubtaskWorktrees(updatedWorktrees);
+
+				// Set the worktree for Claude launcher
+				setClaudeWorktree(result.worktree);
+
+				// Show the Claude launcher modal
+				setShowClaudeLauncherModal(true);
+
+				if (result.reusedBranch) {
+					setToast({
+						message: `Using existing branch: ${result.worktree.branch}`,
+						type: 'success'
+					});
+				} else {
+					setToast({
+						message: `Created fresh worktree: ${result.worktree.branch}`,
+						type: 'success'
+					});
+				}
+			}
+		} catch (error) {
+			console.error('Failed to handle branch conflict:', error);
+			setToast({
+				message: `Failed: ${error.message}`,
+				type: 'error'
+			});
+		} finally {
+			setIsExpanding(false);
+			setBranchConflictInfo(null);
+		}
+	};
+
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
 		// Determine default number of subtasks based on complexity report
@@ -1318,6 +1507,18 @@ Focus on: current industry standards, common pitfalls, security considerations
 						message={toast.message}
 						type={toast.type}
 						onDismiss={() => setToast(null)}
+					/>
+				)}
+
+				{showBranchConflictModal && branchConflictInfo && (
+					<WorktreeBranchConflictModal
+						branchName={branchConflictInfo.branchName}
+						branchInUseAt={branchConflictInfo.branchInUseAt}
+						onDecision={handleBranchConflictDecision}
+						onClose={() => {
+							setShowBranchConflictModal(false);
+							setBranchConflictInfo(null);
+						}}
 					/>
 				)}
 			</Box>
@@ -1907,6 +2108,26 @@ Focus on: current industry standards, common pitfalls, security considerations
 					</Box>
 				</Box>
 			</Box>
+
+			{toast && (
+				<Toast
+					message={toast.message}
+					type={toast.type}
+					onDismiss={() => setToast(null)}
+				/>
+			)}
+
+			{showBranchConflictModal && branchConflictInfo && (
+				<WorktreeBranchConflictModal
+					branchName={branchConflictInfo.branchName}
+					branchInUseAt={branchConflictInfo.branchInUseAt}
+					onDecision={handleBranchConflictDecision}
+					onClose={() => {
+						setShowBranchConflictModal(false);
+						setBranchConflictInfo(null);
+					}}
+				/>
+			)}
 		</Box>
 	);
 }

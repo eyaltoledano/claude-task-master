@@ -1397,13 +1397,29 @@ export class DirectBackend extends FlowBackend {
 
 			// Find all worktrees linked to this task
 			for (const [name, data] of Object.entries(config.worktrees)) {
-				const hasTask = data.linkedTasks.some((t) => t.id === taskId);
+				let hasTask = false;
+
+				// Check if it has the old linkedTasks array structure
+				if (data.linkedTasks && Array.isArray(data.linkedTasks)) {
+					hasTask = data.linkedTasks.some((t) => t.id === taskId);
+				}
+
+				// Check if it has the new linkedSubtask structure
+				if (!hasTask && data.linkedSubtask) {
+					// Check if the task ID matches the parent task ID
+					hasTask = String(data.linkedSubtask.taskId) === String(taskId);
+					// Or check if it matches the full subtask ID
+					if (!hasTask) {
+						hasTask = data.linkedSubtask.fullId === taskId;
+					}
+				}
+
 				if (hasTask) {
 					worktrees.push({
 						name,
 						path: data.path,
-						description: data.description,
-						status: data.status
+						description: data.description || data.linkedSubtask?.title || '',
+						status: data.status || 'active'
 					});
 				}
 			}
@@ -1830,6 +1846,11 @@ Branch: ${worktree.branch || 'unknown'}
 
 `;
 
+			// Add worktree-specific note for subtask worktrees
+			if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
+				content += `**Note:** This worktree was automatically created for the specific subtask implementation.\n\n`;
+			}
+
 			// Add tasks with full details
 			content += '## Tasks to Implement\n\n';
 			for (const task of tasks) {
@@ -1923,11 +1944,8 @@ Branch: ${worktree.branch || 'unknown'}
 				'Please implement the tasks listed above, following the implementation details and test strategies provided.\n';
 			content +=
 				'Ensure all code follows project conventions and includes appropriate tests.\n';
-
-			if (options.mode === 'interactive') {
-				content +=
-					'\nYou are working in interactive mode. Use appropriate Claude commands to explore, implement, and test the solution.\n';
-			}
+			content +=
+				'This context file provides a comprehensive overview of the task requirements and current project state.\n';
 
 			// Write CLAUDE.md
 			await fs.writeFile(claudeMdPath, content);
@@ -2020,8 +2038,23 @@ Branch: ${worktree.branch || 'unknown'}
 	// Launch Claude in headless mode with prompt
 	async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
 		try {
+			// Prepare context file (CLAUDE.md) first
+			const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
+				...options,
+				mode: 'headless'
+			});
+
+			// Read the CLAUDE.md content to include in the prompt
+			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
+			let claudeMdContent = '';
+			try {
+				claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
+			} catch (err) {
+				console.warn('Could not read CLAUDE.md:', err.message);
+			}
+
 			// Detect persona if not provided
-			let persona = options.persona;
+			let persona = options.persona || contextInfo.persona;
 			if (!persona && tasks.length > 0) {
 				const detectedPersonas = await detectPersona(tasks[0], worktree);
 				persona = detectedPersonas[0]?.persona || 'architect';
@@ -2031,13 +2064,37 @@ Branch: ${worktree.branch || 'unknown'}
 			const promptBuilder = new PersonaPromptBuilder(persona);
 			let fullPrompt;
 
+			// Combine CLAUDE.md content with user instructions
+			let combinedContext = '';
+			if (claudeMdContent) {
+				combinedContext = `## Implementation Context
+
+The following comprehensive context has been prepared for this task implementation:
+
+---
+
+${claudeMdContent}
+
+---
+`;
+			}
+			if (prompt) {
+				combinedContext += `
+## Additional User Instructions
+
+${prompt}
+
+---
+`;
+			}
+
 			if (tasks.length === 1) {
 				fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
-					additionalContext: prompt ? `## User Instructions\n${prompt}` : null
+					additionalContext: combinedContext || null
 				});
 			} else {
 				fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
-					additionalContext: prompt ? `## User Instructions\n${prompt}` : null
+					additionalContext: combinedContext || null
 				});
 			}
 
@@ -2216,35 +2273,41 @@ Branch: ${worktree.branch || 'unknown'}
 	 * @param {string} taskId
 	 * @param {string} subtaskId
 	 * @param {Object} options
-	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
 	 */
 	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
-		// Dynamically import WorktreeManager to avoid circular dependencies
-		const { WorktreeManager } = await import('../worktree-manager.js');
-		const manager = new WorktreeManager(this.projectRoot);
+		try {
+			// Dynamically import WorktreeManager to avoid circular dependencies
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
 
-		// Get subtask details if not provided
-		if (!options.subtaskTitle && taskId && subtaskId) {
-			try {
-				const task = await this.getTask(taskId);
-				if (task.subtasks) {
-					const subtask = task.subtasks.find(
-						(st) => String(st.id) === String(subtaskId)
-					);
-					if (subtask) {
-						options.subtaskTitle = subtask.title;
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
+						}
 					}
+				} catch (error) {
+					// Continue without title
+					this.log.debug('Could not get subtask title:', error.message);
 				}
-			} catch (error) {
-				// Continue without title
 			}
-		}
 
-		return await manager.getOrCreateWorktreeForSubtask(
-			taskId,
-			subtaskId,
-			options
-		);
+			return await manager.getOrCreateWorktreeForSubtask(
+				taskId,
+				subtaskId,
+				options
+			);
+		} catch (error) {
+			this.log.error('Error in getOrCreateWorktreeForSubtask:', error);
+			throw error;
+		}
 	}
 
 	/**
@@ -2290,5 +2353,77 @@ Branch: ${worktree.branch || 'unknown'}
 		const { WorktreeManager } = await import('../worktree-manager.js');
 		const manager = new WorktreeManager(this.projectRoot);
 		return manager.updateConfig(updates);
+	}
+
+	/**
+	 * Force create a worktree, removing any existing branch/worktree
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+	 */
+	async forceCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+		try {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
+						}
+					}
+				} catch (error) {
+					this.log.debug('Could not get subtask title:', error.message);
+				}
+			}
+
+			return await manager.forceCreateWorktree(taskId, subtaskId, options);
+		} catch (error) {
+			this.log.error('Error in forceCreateWorktreeForSubtask:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Use existing branch for worktree
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, reusedBranch: boolean}>}
+	 */
+	async useExistingBranchForSubtask(taskId, subtaskId, options = {}) {
+		try {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
+						}
+					}
+				} catch (error) {
+					this.log.debug('Could not get subtask title:', error.message);
+				}
+			}
+
+			return await manager.useExistingBranch(taskId, subtaskId, options);
+		} catch (error) {
+			this.log.error('Error in useExistingBranchForSubtask:', error);
+			throw error;
+		}
 	}
 }
