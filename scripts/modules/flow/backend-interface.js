@@ -85,6 +85,7 @@ export class FlowBackend {
 	 * @returns {AsyncIterator<string>}
 	 */
 	async *researchStream(query, options = {}) {
+		yield* []; // Satisfy linter
 		throw new Error('researchStream() must be implemented by subclass');
 	}
 
@@ -148,5 +149,75 @@ export class FlowBackend {
 			this.telemetryData.totalTokens += response.telemetryData.totalTokens || 0;
 			this.telemetryData.calls.push(response.telemetryData);
 		}
+	}
+
+	/**
+	 * Get or create a worktree for a subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+	 */
+	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+		throw new Error(
+			'getOrCreateWorktreeForSubtask() must be implemented by subclass'
+		);
+	}
+
+	/**
+	 * Get worktree for a specific subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @returns {Promise<Object|null>}
+	 */
+	async getWorktreeForSubtask(taskId, subtaskId) {
+		throw new Error('getWorktreeForSubtask() must be implemented by subclass');
+	}
+
+	/**
+	 * Get all worktrees
+	 * @returns {Promise<Array>}
+	 */
+	async getAllWorktrees() {
+		throw new Error('getAllWorktrees() must be implemented by subclass');
+	}
+
+	/**
+	 * Complete a subtask and optionally create PR
+	 * @param {string} worktreeName
+	 * @param {Object} options
+	 * @returns {Promise<Object>}
+	 */
+	async completeSubtaskWorktree(worktreeName, options = {}) {
+		throw new Error(
+			'completeSubtaskWorktree() must be implemented by subclass'
+		);
+	}
+
+	/**
+	 * Update worktree configuration
+	 * @param {Object} updates
+	 * @returns {Promise<void>}
+	 */
+	async updateWorktreeConfig(updates) {
+		throw new Error('updateWorktreeConfig() must be implemented by subclass');
+	}
+
+	/**
+	 * Get worktrees linked to a task (including subtasks)
+	 * @param {string} taskId
+	 * @returns {Promise<Array>}
+	 */
+	async getTaskWorktrees(taskId) {
+		throw new Error('getTaskWorktrees() must be implemented by subclass');
+	}
+
+	/**
+	 * Get complexity report for current tag
+	 * @param {string} tag
+	 * @returns {Promise<Object>}
+	 */
+	async getComplexityReport(tag) {
+		throw new Error('getComplexityReport() must be implemented by subclass');
 	}
 }

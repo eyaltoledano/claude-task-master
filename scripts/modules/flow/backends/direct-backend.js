@@ -2210,4 +2210,85 @@ Branch: ${worktree.branch || 'unknown'}
 			multiPersonaWorkflow: multiPersona
 		};
 	}
+
+	/**
+	 * Get or create a worktree for a subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+	 */
+	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+		// Dynamically import WorktreeManager to avoid circular dependencies
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+
+		// Get subtask details if not provided
+		if (!options.subtaskTitle && taskId && subtaskId) {
+			try {
+				const task = await this.getTask(taskId);
+				if (task.subtasks) {
+					const subtask = task.subtasks.find(
+						(st) => String(st.id) === String(subtaskId)
+					);
+					if (subtask) {
+						options.subtaskTitle = subtask.title;
+					}
+				}
+			} catch (error) {
+				// Continue without title
+			}
+		}
+
+		return await manager.getOrCreateWorktreeForSubtask(
+			taskId,
+			subtaskId,
+			options
+		);
+	}
+
+	/**
+	 * Get worktree for a specific subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @returns {Promise<Object|null>}
+	 */
+	async getWorktreeForSubtask(taskId, subtaskId) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.getWorktreeForSubtask(taskId, subtaskId);
+	}
+
+	/**
+	 * Get all worktrees
+	 * @returns {Promise<Array>}
+	 */
+	async getAllWorktrees() {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.getAllWorktrees();
+	}
+
+	/**
+	 * Complete a subtask and optionally create PR
+	 * @param {string} worktreeName
+	 * @param {Object} options
+	 * @returns {Promise<Object>}
+	 */
+	async completeSubtaskWorktree(worktreeName, options = {}) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return await manager.completeSubtask(worktreeName, options);
+	}
+
+	/**
+	 * Update worktree configuration
+	 * @param {Object} updates
+	 * @returns {Promise<void>}
+	 */
+	async updateWorktreeConfig(updates) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.updateConfig(updates);
+	}
 }

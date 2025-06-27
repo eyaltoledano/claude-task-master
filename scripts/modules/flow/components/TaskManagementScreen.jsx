@@ -321,7 +321,10 @@ export function TaskManagementScreen() {
 				// Page up in subtask detail view
 				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
 			} else if (input === 'w') {
-				// Jump to worktree detail page for the linked worktree
+				// Work on subtask - automatically create/use worktree and launch Claude
+				handleWorkOnSubtask();
+			} else if (input === 'g') {
+				// Go to worktree (if exists)
 				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
 				const worktrees = subtaskWorktrees.get(subtaskId) || [];
 				if (worktrees.length > 0) {
@@ -590,97 +593,66 @@ export function TaskManagementScreen() {
 	const handleClaudeSession = async () => {
 		if (!selectedTask || !selectedSubtask) return;
 
-		// Prevent duplicate launches
-		if (isLaunchingClaude) {
-			setToast({
-				message: 'Claude session already being launched...',
-				type: 'warning'
-			});
-			return;
+		const worktrees = await backend.getTaskWorktrees(
+			`${selectedTask.id}.${selectedSubtask.id}`
+		);
+
+		if (worktrees && worktrees.length > 0) {
+			// Use the first linked worktree
+			setClaudeWorktree(worktrees[0]);
+		} else {
+			// No linked worktree, proceed with main project context
+			setClaudeWorktree(null);
 		}
 
+		// Show the Claude launcher modal
+		setShowClaudeLauncherModal(true);
+	};
+
+	const handleWorkOnSubtask = async () => {
+		if (!selectedTask || !selectedSubtask) return;
+
 		try {
-			setIsLaunchingClaude(true);
+			setIsExpanding(true); // Reuse loading state
+			setToast({
+				message: 'Setting up worktree for subtask...',
+				type: 'info'
+			});
 
-			// Check for worktree
-			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-			const worktrees = subtaskWorktrees.get(subtaskId) || [];
-			const taskWorktreeList = taskWorktrees || [];
-
-			// Try subtask worktree first, then task worktree
-			const activeWorktree = worktrees[0] || taskWorktreeList[0];
-
-			if (!activeWorktree) {
-				// Show worktree prompt
-				setCurrentScreen('worktreePrompt', {
-					taskTitle: selectedTask.title,
+			// Get or create worktree for this subtask
+			const result = await backend.getOrCreateWorktreeForSubtask(
+				selectedTask.id,
+				selectedSubtask.id,
+				{
 					subtaskTitle: selectedSubtask.title,
-					onSelect: async (action) => {
-						if (action === 'cancel') {
-							setCurrentScreen('tasks');
-							setIsLaunchingClaude(false);
-							return;
-						}
+					sourceBranch: 'main' // Default to main, could make this configurable
+				}
+			);
 
-						let worktreePath = null;
-						let worktreeToUse = null;
-
-						if (action === 'create') {
-							// Navigate to worktree creation
-							setCurrentScreen('worktrees', {
-								createFor: selectedTask,
-								returnTo: 'tasks',
-								returnData: {
-									selectedTaskId: selectedTask.id,
-									selectedSubtaskId: subtaskId
-								}
-							});
-							setIsLaunchingClaude(false);
-							return;
-						} else if (action === 'select') {
-							// Show worktree selection
-							setCurrentScreen('worktrees', {
-								selectMode: true,
-								onSelect: (wt) => {
-									// Instead of launching directly, show the modal
-									setClaudeWorktree(wt);
-									setShowClaudeLauncherModal(true);
-									setIsLaunchingClaude(false);
-								},
-								returnTo: 'tasks',
-								returnData: {
-									selectedTaskId: selectedTask.id,
-									selectedSubtaskId: subtaskId
-								}
-							});
-							setIsLaunchingClaude(false);
-							return;
-						} else if (action === 'main') {
-							worktreePath = backend.projectRoot || process.cwd();
-							worktreeToUse = {
-								name: 'main',
-								path: worktreePath
-							};
-							// Show the modal for main branch
-							setClaudeWorktree(worktreeToUse);
-							setShowClaudeLauncherModal(true);
-							setIsLaunchingClaude(false);
-						}
-					}
+			if (result.created) {
+				setToast({
+					message: `Created worktree: ${result.worktree.branch}`,
+					type: 'success'
 				});
-				return;
 			}
 
-			// We have a worktree, show the modal
-			setClaudeWorktree(activeWorktree);
+			// Update subtask worktrees state
+			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+			const updatedWorktrees = new Map(subtaskWorktrees);
+			updatedWorktrees.set(subtaskId, [result.worktree]);
+			setSubtaskWorktrees(updatedWorktrees);
+
+			// Launch Claude in the worktree
+			setClaudeWorktree(result.worktree);
 			setShowClaudeLauncherModal(true);
-			setIsLaunchingClaude(false);
 		} catch (error) {
+			console.error('Failed to setup worktree:', error);
 			setToast({
-				message: `Failed to start Claude session: ${error.message}`,
+				message: `Failed to setup worktree: ${error.message}`,
 				type: 'error'
 			});
-			setIsLaunchingClaude(false);
+		} finally {
+			setIsExpanding(false);
 		}
 	};
 
@@ -950,10 +922,12 @@ Focus on: current industry standards, common pitfalls, security considerations
 
 		patterns.forEach((pattern) => {
 			let match;
-			while ((match = pattern.exec(details)) !== null) {
+			match = pattern.exec(details);
+			while (match !== null) {
 				if (match[1] && !sessionIds.includes(match[1])) {
 					sessionIds.push(match[1]);
 				}
+				match = pattern.exec(details);
 			}
 		});
 
@@ -1038,7 +1012,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 			} else if (taskAnalysis?.complexityScore) {
 				// Estimate based on complexity score if recommendedSubtasks not available
 				const complexityScore = parseInt(taskAnalysis.complexityScore, 10);
-				if (!isNaN(complexityScore)) {
+				if (!Number.isNaN(complexityScore)) {
 					// Higher complexity = more subtasks (3-10 range)
 					defaultSubtaskNum = Math.min(
 						10,
@@ -1049,7 +1023,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 		} else if (selectedTask.complexity) {
 			// Fallback to task's own complexity field if no report
 			const complexityScore = parseInt(selectedTask.complexity, 10);
-			if (!isNaN(complexityScore)) {
+			if (!Number.isNaN(complexityScore)) {
 				defaultSubtaskNum = Math.min(
 					10,
 					Math.max(3, Math.round(complexityScore * 0.8))
@@ -1058,7 +1032,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 		}
 
 		// Calculate total content lines for detail view
-		let contentLines = [];
+		const contentLines = [];
 
 		// Add all the content that will be displayed (excluding ID and Title which are in the header)
 		contentLines.push({
@@ -1480,41 +1454,41 @@ Focus on: current industry standards, common pitfalls, security considerations
 	// Render subtask detail view
 	if (viewMode === 'subtask-detail' && selectedTask && selectedSubtask) {
 		// Calculate content lines for subtask detail view
-		let subtaskContentLines = [];
+		const contentLines = [];
 
 		// Add all the content that will be displayed
-		subtaskContentLines.push({
+		contentLines.push({
 			type: 'field',
 			label: 'Status:',
 			value: `${getStatusSymbol(selectedSubtask.status)} ${selectedSubtask.status}`,
 			color: getStatusColor(selectedSubtask.status)
 		});
 
-		subtaskContentLines.push({
+		contentLines.push({
 			type: 'field',
 			label: 'Title:',
 			value: selectedSubtask.title
 		});
 
 		if (selectedSubtask.description) {
-			subtaskContentLines.push({ type: 'spacer' });
-			subtaskContentLines.push({ type: 'header', text: 'Description:' });
-			subtaskContentLines.push({
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: 'Description:' });
+			contentLines.push({
 				type: 'text',
 				text: selectedSubtask.description
 			});
 		}
 
 		if (selectedSubtask.details) {
-			subtaskContentLines.push({ type: 'spacer' });
-			subtaskContentLines.push({
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({
 				type: 'header',
 				text: 'Implementation Details:'
 			});
 			// Split details into lines
 			const detailLines = selectedSubtask.details.split('\n');
 			detailLines.forEach((line) => {
-				subtaskContentLines.push({ type: 'text', text: line });
+				contentLines.push({ type: 'text', text: line });
 			});
 		}
 
@@ -1523,8 +1497,8 @@ Focus on: current industry standards, common pitfalls, security considerations
 			selectedSubtask.dependencies &&
 			selectedSubtask.dependencies.length > 0
 		) {
-			subtaskContentLines.push({ type: 'spacer' });
-			subtaskContentLines.push({
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({
 				type: 'field',
 				label: 'Dependencies:',
 				value: selectedSubtask.dependencies
@@ -1564,20 +1538,20 @@ Focus on: current industry standards, common pitfalls, security considerations
 		const worktrees = subtaskWorktrees.get(subtaskId) || [];
 
 		if (selectedSubtask.testStrategy) {
-			subtaskContentLines.push({ type: 'spacer' });
-			subtaskContentLines.push({
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({
 				type: 'header',
 				text: 'Test Strategy:'
 			});
 			// Split test strategy into lines
 			const testLines = selectedSubtask.testStrategy.split('\n');
 			testLines.forEach((line) => {
-				subtaskContentLines.push({ type: 'text', text: line });
+				contentLines.push({ type: 'text', text: line });
 			});
 		}
 
-		subtaskContentLines.push({ type: 'spacer' });
-		subtaskContentLines.push({
+		contentLines.push({ type: 'spacer' });
+		contentLines.push({
 			type: 'field',
 			label: 'Git Worktrees:',
 			value:
@@ -1588,7 +1562,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 		});
 
 		// Calculate visible content based on scroll offset
-		const visibleSubtaskContent = subtaskContentLines.slice(
+		const visibleContent = contentLines.slice(
 			detailScrollOffset,
 			detailScrollOffset + DETAIL_VISIBLE_ROWS
 		);
@@ -1637,7 +1611,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 					paddingRight={2}
 					height={DETAIL_VISIBLE_ROWS + 2}
 				>
-					{visibleSubtaskContent.map((line, index) => {
+					{visibleContent.map((line, index) => {
 						if (line.type === 'field') {
 							return (
 								<Box key={index} flexDirection="row" marginBottom={1}>
@@ -1670,15 +1644,15 @@ Focus on: current industry standards, common pitfalls, security considerations
 					})}
 
 					{/* Scroll indicator */}
-					{subtaskContentLines.length > DETAIL_VISIBLE_ROWS && (
+					{contentLines.length > DETAIL_VISIBLE_ROWS && (
 						<Box marginTop={1}>
 							<Text color={theme.textDim}>
 								Lines {detailScrollOffset + 1}-
 								{Math.min(
 									detailScrollOffset + DETAIL_VISIBLE_ROWS,
-									subtaskContentLines.length
+									contentLines.length
 								)}{' '}
-								of {subtaskContentLines.length} • ↑↓ scroll
+								of {contentLines.length} • ↑↓ scroll
 							</Text>
 						</Box>
 					)}
@@ -1698,14 +1672,10 @@ Focus on: current industry standards, common pitfalls, security considerations
 					flexShrink={0}
 				>
 					<Text color={theme.text}>
-						{subtaskContentLines.length > DETAIL_VISIBLE_ROWS
-							? '↑↓ scroll • '
-							: ''}
-						{worktrees.length > 0 ? 'w worktree • ' : ''}
-						{extractClaudeSessionIds(selectedSubtask.details).length > 0
-							? 'v view sessions • '
-							: ''}
-						c Claude Code • ESC back to subtasks
+						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}w
+						work on subtask •{' '}
+						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • ESC
+						back
 					</Text>
 				</Box>
 
