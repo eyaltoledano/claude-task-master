@@ -744,14 +744,6 @@ export function ClaudeWorktreeLauncherModal({
 				<Text bold color={theme.highlight}>
 					🚀 Claude Code Session
 				</Text>
-				<Text color={theme.secondary}>
-					Worktree: {worktree.name} ({worktree.branch || worktree.name})
-				</Text>
-				{view === 'processing' && tasks[0] && (
-					<Text color={theme.muted} fontSize={12}>
-						Working on: {tasks[0].title}
-					</Text>
-				)}
 			</Box>
 
 			{error && (
