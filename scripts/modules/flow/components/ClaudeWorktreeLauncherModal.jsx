@@ -381,8 +381,8 @@ export function ClaudeWorktreeLauncherModal({
 											newLines.push(line.trim());
 										}
 									});
-									// Keep only last 20 lines
-									return newLines.slice(-20);
+									// Return all lines, no limit
+									return newLines;
 								});
 								// Update single log with last meaningful line
 								setProcessingLog(meaningfulLines[meaningfulLines.length - 1]);
@@ -396,7 +396,8 @@ export function ClaudeWorktreeLauncherModal({
 								if (!newLines.includes(message)) {
 									newLines.push(message);
 								}
-								return newLines.slice(-20);
+								// Return all lines, no limit
+								return newLines;
 							});
 							setProcessingLog(message);
 						}
@@ -712,91 +713,69 @@ export function ClaudeWorktreeLauncherModal({
 			: null;
 
 		return (
-			<Box flexDirection="column" padding={1}>
-				{/* Git Worktree Details */}
+			<Box flexDirection="column" padding={0}>
+				{/* Compact Git Worktree Box */}
 				<Box
-					marginBottom={1}
+					marginBottom={0}
 					flexDirection="column"
 					borderStyle="single"
 					borderColor={theme.border}
 					paddingX={1}
-					paddingY={0.5}
+					paddingY={0}
 				>
 					<Text bold color={theme.highlight}>
 						📁 Git Worktree: {worktree.name}
 					</Text>
-					<Box flexDirection="column" marginLeft={2}>
-						<Text color={theme.secondary}>
-							Branch: {worktree.branch || worktree.name}
-						</Text>
-						<Text color={theme.secondary}>
-							Source: {worktree.sourceBranch || 'main'}
-						</Text>
-						<Text color={theme.muted} fontSize={12}>
-							Path: {worktree.path}
-						</Text>
-					</Box>
+					<Text color={theme.secondary} fontSize={11}>
+						Branch: {worktree.branch || worktree.name} • Source: {worktree.sourceBranch || 'main'}
+					</Text>
+					<Text color={theme.muted} fontSize={10}>
+						Path: {worktree.path}
+					</Text>
 				</Box>
 
+				{/* Task info - compact */}
 				{taskInfo && (
-					<Box marginBottom={1} flexDirection="column">
+					<Box marginTop={1} marginBottom={0} flexDirection="column">
 						<Text bold color={theme.primary}>
-							{taskInfo.isSubtask
-								? `Subtask ${taskInfo.id}`
-								: `Task ${taskInfo.id}`}
-							: {taskInfo.title}
-						</Text>
-						<Text color={theme.secondary} wrap="wrap">
-							{taskInfo.description}
+							{taskInfo.isSubtask ? `Subtask ${taskInfo.id}` : `Task ${taskInfo.id}`}: {taskInfo.title}
 						</Text>
 					</Box>
 				)}
-				<Box marginBottom={1} borderStyle="single" borderColor={theme.border} />
-				<Box marginBottom={1}>
-					<Text bold color="green">
-						Processing with Claude Code...
-					</Text>
+				
+				{/* Processing status and mode/persona on same line */}
+				<Box marginTop={1} flexDirection="row" justifyContent="space-between">
+					<Box>
+						<Text bold color="green">Processing with Claude Code...</Text>
+						<LoadingSpinner />
+						<Text> Working on implementation...</Text>
+					</Box>
+					<Text dimColor fontSize={11}>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
 				</Box>
-				<Box marginBottom={1}>
-					<LoadingSpinner />
-					<Text> Working on implementation...</Text>
-				</Box>
+				
+				{/* Streaming Progress - Full view that expands */}
 				{processingLines.length > 0 && (
 					<Box
+						marginTop={1}
 						flexDirection="column"
 						borderStyle="single"
+						borderColor={theme.borderDim}
 						paddingX={1}
-						paddingY={1}
-						marginBottom={1}
-						height={12}
+						paddingY={0}
 						width="100%"
 					>
-						<Text dimColor marginBottom={1}>
-							Progress Log:
-							{processingLines.length > 10 && (
-								<Text dimColor>
-									{' '}
-									(showing last 10 of {processingLines.length} lines)
-								</Text>
-							)}
-						</Text>
-						<Box flexDirection="column" height={10}>
-							{processingLines.slice(-10).map((line, idx) => (
+						<Box flexDirection="column">
+							{processingLines.map((line, idx) => (
 								<Box
-									key={`log-${processingLines.length - 10 + idx}-${line.substring(0, 10)}`}
+									key={`log-${idx}-${line.substring(0, 20)}`}
 									width="100%"
 								>
-									<Text wrap="wrap">{line}</Text>
+									<Text wrap="wrap" fontSize={11}>{line}</Text>
 								</Box>
 							))}
 						</Box>
 					</Box>
 				)}
-				<Box>
-					<Text
-						dimColor
-					>{`Mode: headless | Persona: ${selectedPersona || 'auto-detected'}`}</Text>
-				</Box>
 			</Box>
 		);
 	};
@@ -1022,16 +1001,16 @@ export function ClaudeWorktreeLauncherModal({
 		<Box
 			flexDirection="column"
 			width={100}
-			minHeight={20}
 			borderStyle="round"
 			borderColor={theme.border}
-			paddingX={2}
-			paddingY={1}
+			paddingX={1}
+			paddingY={0}
 		>
-			<Box marginBottom={1} flexDirection="column" alignItems="center">
+			<Box marginBottom={0} flexDirection="row" justifyContent="space-between" alignItems="center">
 				<Text bold color={theme.highlight}>
-					🚀 Claude Code Session
+					🚀 Claude Code: {worktree.name}
 				</Text>
+				{view === 'processing' && <Text color={theme.muted}>Headless Mode</Text>}
 			</Box>
 
 			{error && (
