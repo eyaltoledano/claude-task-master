@@ -656,7 +656,7 @@ export function ClaudeWorktreeLauncherModal({
 					id: task.id,
 					title: task.title,
 					description: task.description || 'No description provided',
-					isSubtask: task.id.includes('.')
+					isSubtask: String(task.id).includes('.')
 				}
 			: null;
 
@@ -707,7 +707,7 @@ export function ClaudeWorktreeLauncherModal({
 					id: task.id,
 					title: task.title,
 					description: task.description || 'No description provided',
-					isSubtask: task.id.includes('.')
+					isSubtask: String(task.id).includes('.')
 				}
 			: null;
 

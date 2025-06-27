@@ -1863,11 +1863,16 @@ Branch: ${worktree.branch || 'unknown'}
 				}
 
 				if (task.details) {
-					content += `**Implementation Details:**\n${task.details}\n`;
+					content += `**Implementation Details:**\n${task.details}\n\n`;
 				}
 
-				if (task.testStrategy) {
-					content += `**Test Strategy:**\n${task.testStrategy}\n`;
+				// Check for test strategy (handle empty strings)
+				const testStrategy = task.testStrategy || task.test_strategy || null;
+				if (testStrategy !== null && testStrategy !== '') {
+					content += `**Test Strategy:**\n${testStrategy}\n\n`;
+				} else if (task.isSubtask) {
+					// For subtasks without test strategy, add a placeholder
+					content += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
 				}
 
 				if (task.dependencies && task.dependencies.length > 0) {
@@ -1878,7 +1883,14 @@ Branch: ${worktree.branch || 'unknown'}
 					content += `**Subtasks:**\n`;
 					for (const subtask of task.subtasks) {
 						content += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
+						if (subtask.details) {
+							content += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
+						}
+						if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
+							content += `  - Test Strategy: ${subtask.testStrategy}\n`;
+						}
 					}
+					content += '\n';
 				}
 
 				content += '\n---\n\n';
@@ -1947,6 +1959,12 @@ Branch: ${worktree.branch || 'unknown'}
 				'Ensure all code follows project conventions and includes appropriate tests.\n';
 			content +=
 				'This context file provides a comprehensive overview of the task requirements and current project state.\n';
+
+			// Add custom headless prompt if provided
+			if (options.headlessPrompt) {
+				content += '\n## Additional User Instructions\n\n';
+				content += options.headlessPrompt + '\n';
+			}
 
 			// Write CLAUDE.md
 			await fs.writeFile(claudeMdPath, content);
@@ -2048,7 +2066,8 @@ Branch: ${worktree.branch || 'unknown'}
 			// Prepare context file (CLAUDE.md) first
 			const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
 				...options,
-				mode: 'headless'
+				mode: 'headless',
+				headlessPrompt: prompt
 			});
 
 			// Read the CLAUDE.md content to include in the prompt
@@ -2281,15 +2300,23 @@ ${prompt}
 	 * @returns {boolean} - True if task has research
 	 */
 	hasResearchInTask(task) {
-		// Check main task details
-		if (task.details && task.details.includes('Research Session')) {
+		// Check main task details (case-insensitive)
+		if (
+			task.details &&
+			(task.details.toLowerCase().includes('research session') ||
+				task.details.includes('<info added on'))
+		) {
 			return true;
 		}
 
 		// Check subtasks if they exist
 		if (task.subtasks && Array.isArray(task.subtasks)) {
 			for (const subtask of task.subtasks) {
-				if (subtask.details && subtask.details.includes('Research Session')) {
+				if (
+					subtask.details &&
+					(subtask.details.toLowerCase().includes('research session') ||
+						subtask.details.includes('<info added on'))
+				) {
 					return true;
 				}
 			}
@@ -2345,7 +2372,18 @@ ${prompt}
 					);
 				}
 			} else {
-				logFn.info(`Task ${task.id} already has research`);
+				logFn.info(
+					`Task ${task.id} already has research - skipping research generation`
+				);
+				// Show a snippet of the existing research
+				if (task.details) {
+					const researchMatch = task.details.match(
+						/research session.*?(?=\n|$)/i
+					);
+					if (researchMatch) {
+						logFn.debug(`Existing research: "${researchMatch[0]}..."`);
+					}
+				}
 			}
 		}
 	}
