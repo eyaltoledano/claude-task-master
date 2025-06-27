@@ -16,54 +16,33 @@ export default function WorktreeDetailsModal({
 	const [details, setDetails] = useState(null);
 	const [linkedTasks, setLinkedTasks] = useState([]);
 	const [error, setError] = useState(null);
-	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
 	const [showClaudeModal, setShowClaudeModal] = useState(false);
-	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
+	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const theme = getTheme();
 
 	// Constants for scrolling
 	const VISIBLE_ROWS = 20;
 
+	// Load worktree details
 	useEffect(() => {
 		loadDetails();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const loadDetails = async () => {
 		setLoading(true);
 		try {
-			// Get worktree details
-			const detailsResult = await backend.getWorktreeDetails(worktree.path);
-			setDetails(detailsResult);
-
-			// Get linked tasks
-			const tasksResult = await backend.getWorktreeTasks(worktree.name);
-			setLinkedTasks(tasksResult);
+			const [info, tasks] = await Promise.all([
+				backend.getWorktreeDetails(worktree.path),
+				backend.getWorktreeTasks(worktree.name)
+			]);
+			setDetails(info);
+			setLinkedTasks(tasks || []);
 		} catch (err) {
 			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleDelete = async () => {
-		if (worktree.isCurrent) {
-			setError('Cannot delete the current worktree');
-			setConfirmDelete(false);
-			return;
-		}
-
-		setLoading(true);
-		try {
-			await backend.removeWorktree(worktree.path);
-			await backend.cleanupWorktreeLinks(worktree.name);
-			onClose();
-			if (onDelete) onDelete();
-		} catch (err) {
-			setError(err.message);
-			setConfirmDelete(false);
 		} finally {
 			setLoading(false);
 		}
@@ -110,14 +89,9 @@ export default function WorktreeDetailsModal({
 				setScrollOffset((prev) => prev + 10);
 			} else if (key.pageUp) {
 				setScrollOffset((prev) => Math.max(0, prev - 10));
-			} else if (input === 'd' && !confirmDelete && !worktree.isCurrent) {
-				setConfirmDelete(true);
-			} else if (confirmDelete) {
-				if (input === 'y') {
-					handleDelete();
-				} else if (input === 'n' || key.escape) {
-					setConfirmDelete(false);
-				}
+			} else if (input === 'd' && !worktree.isCurrent && onDelete) {
+				// Just call the parent's delete handler
+				onDelete();
 			} else if (input === 'l') {
 				// 'l' for link/manage tasks
 				setShowLinkTasksModal(true);
@@ -184,34 +158,6 @@ export default function WorktreeDetailsModal({
 				width={80}
 			>
 				<LoadingSpinner message="Loading worktree details..." />
-			</Box>
-		);
-	}
-
-	// Show confirmation dialog
-	if (confirmDelete) {
-		return (
-			<Box
-				flexDirection="column"
-				borderStyle="round"
-				borderColor={theme.warning}
-				padding={1}
-				width={60}
-			>
-				<Text bold color={theme.warning}>
-					Delete Confirmation
-				</Text>
-				<Box marginTop={1}>
-					<Text>
-						Are you sure you want to delete worktree '{worktree.name}'?
-					</Text>
-				</Box>
-				<Box marginTop={1}>
-					<Text dimColor>{worktree.path}</Text>
-				</Box>
-				<Box marginTop={2}>
-					<Text>Press Y to confirm, N to cancel</Text>
-				</Box>
 			</Box>
 		);
 	}

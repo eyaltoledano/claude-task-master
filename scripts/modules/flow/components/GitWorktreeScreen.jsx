@@ -1,127 +1,70 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { SimpleTable } from './SimpleTable.jsx';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { getTheme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import AddWorktreeModal from './AddWorktreeModal.jsx';
 import WorktreeDetailsModal from './WorktreeDetailsModal.jsx';
-import LinkTasksModal from './LinkTasksModal.jsx';
-import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
-import { getTheme } from '../theme.js';
 
 export default function GitWorktreeScreen({
 	backend,
+	onNavigateToTask,
 	onBack,
 	onExit,
 	navigationData,
-	onNavigateToTask
+	setCurrentScreen
 }) {
-	const [worktrees, setWorktrees] = useState([]);
-	const [selectedWorktree, setSelectedWorktree] = useState(null);
+	const theme = getTheme();
+	const [mainWorktree, setMainWorktree] = useState(null);
+	const [linkedWorktrees, setLinkedWorktrees] = useState([]);
+	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState(null);
-	const [toast, setToast] = useState(null);
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [showDetailsModal, setShowDetailsModal] = useState(false);
 	const [worktreeDetails, setWorktreeDetails] = useState(null);
-	const [focusedIndex, setFocusedIndex] = useState(0);
 	const [confirmDelete, setConfirmDelete] = useState(null);
-	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
-	const [availableTasks, setAvailableTasks] = useState([]);
-	const [showClaudeModal, setShowClaudeModal] = useState(null);
-	const [showPrompt, setShowPrompt] = useState(null);
-	const [contextDetail, setContextDetail] = useState({});
-	const theme = getTheme();
+	const [confirmForceDelete, setConfirmForceDelete] = useState(null);
+	const [toast, setToast] = useState(null);
+	const [scrollOffset, setScrollOffset] = useState(0);
+
+	// Constants for scrolling
+	const VISIBLE_ROWS = 10;
 
 	// Load worktrees
 	const loadWorktrees = useCallback(async () => {
 		setIsLoading(true);
-		setError(null);
 		try {
-			const trees = await backend.listWorktrees();
-
-			// Load task counts for each worktree
-			const treesWithTaskCounts = await Promise.all(
-				trees.map(async (wt) => {
-					try {
-						const tasks = await backend.getWorktreeTasks(wt.name);
-						return { ...wt, taskCount: tasks.length };
-					} catch (err) {
-						// If task loading fails, just show 0
-						return { ...wt, taskCount: 0 };
-					}
-				})
-			);
-
-			setWorktrees(treesWithTaskCounts);
-			if (
-				treesWithTaskCounts.length > 0 &&
-				focusedIndex >= treesWithTaskCounts.length
-			) {
-				setFocusedIndex(treesWithTaskCounts.length - 1);
+			const result = await backend.listWorktrees();
+			setMainWorktree(result.main);
+			setLinkedWorktrees(result.linked || []);
+			// Reset selection if out of bounds
+			if (selectedIndex >= result.linked.length) {
+				setSelectedIndex(Math.max(0, result.linked.length - 1));
 			}
 		} catch (err) {
-			setError(err.message);
-			setWorktrees([]);
+			setLinkedWorktrees([]);
 		} finally {
 			setIsLoading(false);
 		}
-	}, [backend, focusedIndex]);
-
-	// Load details for selected worktree
-	const loadWorktreeDetails = useCallback(
-		async (worktree) => {
-			setIsLoading(true);
-			try {
-				const details = await backend.getWorktreeDetails(worktree.path);
-				const linkedTasks = await backend.getWorktreeTasks(worktree.name);
-				setWorktreeDetails({ ...details, linkedTasks });
-				setShowDetailsModal(true);
-			} catch (err) {
-				setToast({
-					message: `Failed to load details: ${err.message}`,
-					type: 'error'
-				});
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[backend]
-	);
+	}, [selectedIndex, backend]);
 
 	// Initial load
 	useEffect(() => {
 		loadWorktrees();
 	}, [loadWorktrees]);
 
-	// Handle navigation data - only load if we don't already have the detail modal showing
-	useEffect(() => {
-		if (
-			navigationData?.selectedWorktree &&
-			navigationData?.showDetails &&
-			!showDetailsModal
-		) {
-			// Set the worktree details immediately to avoid intermediate render
-			setWorktreeDetails(navigationData.selectedWorktree);
-			setShowDetailsModal(true);
-			// Load full details in the background
-			loadWorktreeDetails(navigationData.selectedWorktree);
-		}
-	}, [navigationData, loadWorktreeDetails, showDetailsModal]);
-
 	// Handle worktree operations
 	const handleAddWorktree = useCallback(
-		async (name) => {
+		async (name, source, checkout = false) => {
 			setIsLoading(true);
 			try {
-				const result = await backend.addWorktree(name);
+				await backend.addWorktree(name, { source, checkout });
 				setToast({
-					message: `Worktree '${result.name}' created at ${result.path}`,
+					message: `Worktree '${name}' created successfully`,
 					type: 'success'
 				});
 				await loadWorktrees();
-			} catch (err) {
-				setToast({ message: err.message, type: 'error' });
+			} catch (error) {
+				setToast({ message: error.message, type: 'error' });
 			} finally {
 				setIsLoading(false);
 				setShowAddModal(false);
@@ -131,7 +74,7 @@ export default function GitWorktreeScreen({
 	);
 
 	const handleRemoveWorktree = useCallback(
-		async (worktree) => {
+		async (worktree, force = false) => {
 			if (worktree.isCurrent) {
 				setToast({
 					message: 'Cannot remove the current worktree',
@@ -143,15 +86,37 @@ export default function GitWorktreeScreen({
 			setIsLoading(true);
 			try {
 				// Remove worktree
-				await backend.removeWorktree(worktree.path);
+				const result = await backend.removeWorktree(worktree.path, { force });
 
+				// Check if result indicates force is needed
+				if (result && !result.success && result.needsForce) {
+					// Need to prompt for force deletion
+					setConfirmDelete(null); // Clear the regular confirmation
+					setConfirmForceDelete(worktree);
+					setIsLoading(false);
+					return;
+				}
+
+				// If we got here, removal was successful
 				// Clean up task links
 				await backend.cleanupWorktreeLinks(worktree.name);
 
+				const message =
+					result && result.usedForce
+						? `Worktree '${worktree.name}' force removed`
+						: `Worktree '${worktree.name}' removed`;
+
 				setToast({
-					message: `Worktree '${worktree.name}' removed`,
+					message,
 					type: 'success'
 				});
+
+				// Close any open modals and clear all confirmation states
+				setShowDetailsModal(false);
+				setWorktreeDetails(null);
+				setConfirmDelete(null);
+				setConfirmForceDelete(null);
+
 				await loadWorktrees();
 			} catch (err) {
 				setToast({ message: err.message, type: 'error' });
@@ -166,79 +131,35 @@ export default function GitWorktreeScreen({
 		setIsLoading(true);
 		try {
 			const result = await backend.pruneWorktrees();
-			setToast({ message: 'Pruned stale worktree entries', type: 'success' });
+			setToast({
+				message: result.message || 'Worktrees pruned successfully',
+				type: 'success'
+			});
 			await loadWorktrees();
-		} catch (err) {
-			setToast({ message: err.message, type: 'error' });
+		} catch (error) {
+			setToast({ message: error.message, type: 'error' });
 		} finally {
 			setIsLoading(false);
 		}
 	}, [backend, loadWorktrees]);
 
-	const handleToggleLock = useCallback(
-		async (worktree) => {
-			setIsLoading(true);
-			try {
-				if (worktree.isLocked) {
-					await backend.unlockWorktree(worktree.path);
-					setToast({
-						message: `Worktree '${worktree.name}' unlocked`,
-						type: 'success'
-					});
-				} else {
-					await backend.lockWorktree(worktree.path, 'Locked via Flow TUI');
-					setToast({
-						message: `Worktree '${worktree.name}' locked`,
-						type: 'success'
-					});
-				}
-				await loadWorktrees();
-				if (showDetailsModal && worktreeDetails) {
-					await loadWorktreeDetails(worktree);
-				}
-			} catch (err) {
-				setToast({ message: err.message, type: 'error' });
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[
-			backend,
-			loadWorktrees,
-			showDetailsModal,
-			worktreeDetails,
-			loadWorktreeDetails
-		]
-	);
-
-	const handleLaunchClaude = async (worktree) => {
-		try {
-			// Get linked tasks for this worktree
-			const tasks = await backend.getWorktreeTasks(worktree.name);
-
-			if (!tasks || tasks.length === 0) {
-				setToast({
-					message:
-						'No tasks linked to this worktree. Link tasks first with [l].',
-					type: 'error'
-				});
-				return;
-			}
-
-			// Show Claude launcher modal
-			setShowClaudeModal({ worktree, tasks });
-		} catch (err) {
-			setToast({
-				message: `Failed to prepare Claude launch: ${err.message}`,
-				type: 'error'
-			});
-		}
-	};
-
 	// Keyboard navigation
 	useInput((input, key) => {
 		// Modal handling
-		if (showAddModal || showDetailsModal || showClaudeModal || showPrompt) {
+		if (showAddModal || showDetailsModal) {
+			return;
+		}
+
+		// Handle force delete confirmation
+		if (confirmForceDelete) {
+			if (input === 'y' || input === 'Y') {
+				handleRemoveWorktree(confirmForceDelete, true);
+				setConfirmForceDelete(null);
+				setShowDetailsModal(false);
+				setWorktreeDetails(null);
+			} else if (input === 'n' || input === 'N' || key.escape) {
+				setConfirmForceDelete(null);
+			}
 			return;
 		}
 
@@ -256,223 +177,346 @@ export default function GitWorktreeScreen({
 		}
 
 		// Navigation
-		if (key.upArrow || input === 'k') {
-			setFocusedIndex((prev) => Math.max(0, prev - 1));
-		} else if (key.downArrow || input === 'j') {
-			setFocusedIndex((prev) => Math.min(worktrees.length - 1, prev + 1));
-		} else if (key.return || input === ' ') {
-			// Select worktree for details
-			if (worktrees[focusedIndex]) {
-				loadWorktreeDetails(worktrees[focusedIndex]);
+		if (key.upArrow) {
+			setSelectedIndex((prev) => {
+				const newIndex = Math.max(0, prev - 1);
+				// Adjust scroll if needed
+				if (newIndex < scrollOffset) {
+					setScrollOffset(newIndex);
+				}
+				return newIndex;
+			});
+		} else if (key.downArrow) {
+			setSelectedIndex((prev) => {
+				const newIndex = Math.min(linkedWorktrees.length - 1, prev + 1);
+				// Adjust scroll if needed
+				if (newIndex >= scrollOffset + VISIBLE_ROWS) {
+					setScrollOffset(newIndex - VISIBLE_ROWS + 1);
+				}
+				return newIndex;
+			});
+		} else if (key.pageUp) {
+			setSelectedIndex((prev) => {
+				const newIndex = Math.max(0, prev - VISIBLE_ROWS);
+				setScrollOffset(Math.max(0, scrollOffset - VISIBLE_ROWS));
+				return newIndex;
+			});
+		} else if (key.pageDown) {
+			setSelectedIndex((prev) => {
+				const newIndex = Math.min(
+					linkedWorktrees.length - 1,
+					prev + VISIBLE_ROWS
+				);
+				setScrollOffset(
+					Math.min(
+						Math.max(0, linkedWorktrees.length - VISIBLE_ROWS),
+						scrollOffset + VISIBLE_ROWS
+					)
+				);
+				return newIndex;
+			});
+		} else if (key.return && linkedWorktrees.length > 0) {
+			const selected = linkedWorktrees[selectedIndex];
+			if (selected) {
+				if (selected.isCurrent) {
+					setToast({ message: 'Already in this worktree', type: 'info' });
+				} else {
+					setToast({
+						message: `To switch worktrees: exit Flow and run 'cd ${selected.path}'`,
+						type: 'info'
+					});
+				}
 			}
-		}
-
-		// Actions
-		if (input === 'a') {
+		} else if (input === 'a') {
 			setShowAddModal(true);
-		} else if (input === 'r') {
-			loadWorktrees();
+		} else if (input === 'd' && linkedWorktrees.length > 0) {
+			const selected = linkedWorktrees[selectedIndex];
+			if (selected) {
+				if (selected.isCurrent || selected.isMain) {
+					setToast({
+						message: 'Cannot remove the current or main worktree',
+						type: 'error'
+					});
+				} else {
+					setConfirmDelete(selected);
+				}
+			}
+		} else if (input === 'v' && linkedWorktrees.length > 0) {
+			const selected = linkedWorktrees[selectedIndex];
+			if (selected) {
+				setWorktreeDetails(selected);
+				setShowDetailsModal(true);
+			}
 		} else if (input === 'p') {
 			handlePruneWorktrees();
-		} else if (input === 'c' && worktrees[focusedIndex]) {
-			handleLaunchClaude(worktrees[focusedIndex]);
-		} else if (input === 'q' || key.escape) {
+		}
+
+		// Handle escape key
+		if (key.escape && onBack) {
 			onBack();
 		}
 	});
 
-	// Prepare table data
-	const tableData = worktrees.map((wt, index) => ({
-		' ': index === focusedIndex ? '>' : ' ',
-		Name: wt.isCurrent ? `${wt.name} (current)` : wt.name,
-		Branch: wt.isDetached ? '(detached)' : wt.branch || '-',
-		Tasks: wt.taskCount || 0,
-		'🔒': wt.isLocked ? '🔒' : '',
-		Path: wt.path
-	}));
-
-	// Render
+	// Show add modal
 	if (showAddModal) {
 		return (
 			<AddWorktreeModal
-				onSubmit={handleAddWorktree}
+				onSubmit={(name) => {
+					setShowAddModal(false);
+					handleAddWorktree(name);
+				}}
 				onCancel={() => setShowAddModal(false)}
 			/>
 		);
 	}
 
-	// Show details modal immediately if we have navigation data
-	if (
-		(showDetailsModal && worktreeDetails) ||
-		(navigationData?.selectedWorktree && navigationData?.showDetails)
-	) {
-		const worktreeToShow = worktreeDetails || navigationData.selectedWorktree;
-
-		// Show confirmation instead of details modal when delete is requested
-		if (confirmDelete) {
-			return (
-				<Box
-					flexDirection="column"
-					alignItems="center"
-					justifyContent="center"
-					height="100%"
-				>
-					<Box
-						borderStyle="round"
-						borderColor={theme.warning}
-						padding={2}
-						flexDirection="column"
-						alignItems="center"
-					>
-						<Text color={theme.warning} bold>
-							Delete Confirmation
-						</Text>
-						<Box marginTop={1}>
-							<Text>Delete worktree '{confirmDelete.name}'?</Text>
-						</Box>
-						<Box marginTop={1}>
-							<Text color={theme.muted}>{confirmDelete.path}</Text>
-						</Box>
-						<Box marginTop={2}>
-							<Text color={theme.text}>Press Y to confirm, N to cancel</Text>
-						</Box>
-					</Box>
-				</Box>
-			);
-		}
-
+	// Show details modal
+	if (showDetailsModal && worktreeDetails) {
 		return (
 			<WorktreeDetailsModal
-				worktree={worktreeToShow}
+				worktree={worktreeDetails}
 				backend={backend}
 				onClose={() => {
 					setShowDetailsModal(false);
 					setWorktreeDetails(null);
-					loadWorktrees(); // Refresh to update task counts
-					// If we came from navigation data, go back instead of staying on worktrees list
-					if (navigationData?.showDetails) {
-						onBack();
-					}
 				}}
 				onDelete={() => {
-					setConfirmDelete(worktreeToShow);
+					setShowDetailsModal(false);
+					setConfirmDelete(worktreeDetails);
 				}}
 				onNavigateToTask={onNavigateToTask}
 			/>
 		);
 	}
 
-	if (showLinkTasksModal && worktreeDetails) {
-		return (
-			<LinkTasksModal
-				worktree={worktreeDetails}
-				backend={backend}
-				onClose={() => {
-					setShowLinkTasksModal(false);
-					setShowDetailsModal(true);
-					loadWorktrees(); // Refresh to update task counts
-				}}
-			/>
-		);
-	}
-
-	// Show Claude launcher modal
-	if (showClaudeModal) {
+	// Show delete confirmation
+	if (confirmDelete) {
 		return (
 			<Box
 				flexDirection="column"
-				height="100%"
-				alignItems="center"
-				justifyContent="center"
+				borderStyle="round"
+				borderColor={theme.warning}
+				padding={1}
+				width={60}
 			>
-				<ClaudeWorktreeLauncherModal
-					backend={backend}
-					worktree={showClaudeModal.worktree}
-					tasks={showClaudeModal.tasks}
-					onClose={() => setShowClaudeModal(null)}
-					onSuccess={(result) => {
-						let message = '';
-						if (result.mode === 'interactive') {
-							message = `🚀 Launched Claude (${result.persona || 'no persona'}) in ${result.worktree}`;
-						} else if (result.mode === 'headless') {
-							message = `✅ Claude completed ${result.tasks.length} task(s) with ${result.persona} persona`;
-						} else if (result.mode === 'batch') {
-							message = `🔄 Processing ${result.tasks.length} tasks in batch mode (${result.persona})`;
-						} else if (result.mode === 'batch-multi-persona') {
-							message = `🎭 Running multi-persona workflow: ${result.workflow}`;
-						}
-
-						setToast({
-							message,
-							type: 'success',
-							duration: 5000
-						});
-						setShowClaudeModal(null);
-					}}
-				/>
+				<Text bold color={theme.warning}>
+					Delete Confirmation
+				</Text>
+				<Box marginTop={1}>
+					<Text>
+						Are you sure you want to delete worktree '{confirmDelete.name}'?
+					</Text>
+				</Box>
+				<Box marginTop={1}>
+					<Text dimColor>{confirmDelete.path}</Text>
+				</Box>
+				<Box marginTop={2}>
+					<Text>Press Y to confirm, N to cancel</Text>
+				</Box>
 			</Box>
 		);
 	}
 
+	// Show force delete confirmation
+	if (confirmForceDelete) {
+		return (
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.error}
+				padding={1}
+				width={70}
+			>
+				<Text bold color={theme.error}>
+					Force Delete Required
+				</Text>
+				<Box marginTop={1}>
+					<Text>
+						Worktree '{confirmForceDelete.name}' contains modified or untracked
+						files.
+					</Text>
+				</Box>
+				<Box marginTop={1}>
+					<Text color={theme.warning}>
+						Force deletion will remove all uncommitted changes!
+					</Text>
+				</Box>
+				<Box marginTop={1}>
+					<Text dimColor>{confirmForceDelete.path}</Text>
+				</Box>
+				<Box marginTop={2}>
+					<Text>Press Y to force delete, N to cancel</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	// Calculate stats
+	const totalWorktrees = linkedWorktrees.length;
+	const stats = {
+		total: totalWorktrees,
+		active: linkedWorktrees.filter((wt) => wt.isCurrent).length,
+		detached: linkedWorktrees.filter((wt) => wt.isDetached).length,
+		locked: linkedWorktrees.filter((wt) => wt.isLocked).length
+	};
+
+	// Main render
 	return (
 		<Box flexDirection="column" height="100%">
 			{/* Header */}
-			<Box marginBottom={1}>
+			<Box
+				flexDirection="row"
+				justifyContent="space-between"
+				paddingBottom={1}
+				borderStyle="single"
+				borderBottom
+				borderColor={theme.border}
+			>
 				<Text bold color={theme.primary}>
 					Git Worktrees
 				</Text>
-			</Box>
-
-			{/* Controls */}
-			<Box marginBottom={1} gap={2}>
-				<Text color={theme.text}>
-					↑↓ navigate • Enter view • a add • d delete • l link tasks • c launch
-					claude • p prune • r refresh • ESC back
+				<Text color={theme.muted}>
+					{totalWorktrees} linked worktree{totalWorktrees !== 1 ? 's' : ''}
 				</Text>
 			</Box>
 
-			{/* Content */}
-			{isLoading ? (
-				<LoadingSpinner message="Loading worktrees..." />
-			) : error ? (
+			{/* Main Repository Info */}
+			{mainWorktree && (
 				<Box
 					flexDirection="column"
-					alignItems="center"
-					justifyContent="center"
-					flexGrow={1}
+					marginTop={1}
+					marginBottom={1}
+					paddingLeft={1}
+					paddingRight={1}
+					borderStyle="round"
+					borderColor={theme.border}
 				>
-					<Text color={theme.error}>{error}</Text>
-					<Text color={theme.muted}>Press 'q' to go back</Text>
+					<Text bold color={theme.accent}>
+						Main Repository
+					</Text>
+					<Box marginTop={1}>
+						<Text>Path: {mainWorktree.path}</Text>
+					</Box>
+					<Box>
+						<Text>
+							Branch: {mainWorktree.branch || '(detached)'}
+							{mainWorktree.isCurrent && (
+								<Text color={theme.success}> [CURRENT]</Text>
+							)}
+						</Text>
+					</Box>
 				</Box>
-			) : worktrees.length === 0 ? (
-				<Box
-					flexDirection="column"
-					alignItems="center"
-					justifyContent="center"
-					flexGrow={1}
-				>
-					<Text color={theme.muted}>No worktrees found</Text>
-					<Text color={theme.muted}>Press 'a' to add a new worktree</Text>
-				</Box>
-			) : (
-				<Box flexGrow={1} flexDirection="column">
-					<SimpleTable
-						data={tableData}
-						columns={[' ', 'Name', 'Branch', 'Tasks', '🔒', 'Path']}
-						selectedIndex={focusedIndex}
-						borders={true}
-					/>
+			)}
 
-					{worktrees[focusedIndex] && (
+			{/* Linked Worktrees Section */}
+			{linkedWorktrees.length > 0 && (
+				<Box marginTop={1} flexDirection="column">
+					<Box marginBottom={1}>
+						<Text bold color={theme.primary}>
+							Linked Worktrees ({linkedWorktrees.length})
+						</Text>
+					</Box>
+
+					{/* Table Header */}
+					<Box>
+						<Text color={theme.muted}>{'  '}Name Branch Status Path</Text>
+					</Box>
+
+					{/* Worktree List */}
+					<Box flexDirection="column">
+						{linkedWorktrees
+							.slice(scrollOffset, scrollOffset + VISIBLE_ROWS)
+							.map((worktree, index) => {
+								const actualIndex = scrollOffset + index;
+								const isSelected = selectedIndex === actualIndex;
+								const statusIcon = worktree.isLocked
+									? '🔒'
+									: worktree.isCurrent
+										? '●'
+										: worktree.isBare
+											? '○'
+											: '  ';
+
+								return (
+									<Box key={worktree.path}>
+										<Text color={isSelected ? theme.highlight : theme.text}>
+											{isSelected ? '❯ ' : '  '}
+											{statusIcon} {worktree.name.padEnd(20).slice(0, 20)}
+											{worktree.branch.padEnd(20).slice(0, 20)}
+											{(worktree.isLocked
+												? 'locked'
+												: worktree.isCurrent
+													? 'current'
+													: 'active'
+											).padEnd(12)}
+											{worktree.path.length > 40
+												? '...' + worktree.path.slice(-37)
+												: worktree.path}
+										</Text>
+									</Box>
+								);
+							})}
+					</Box>
+
+					{/* Scroll indicator */}
+					{linkedWorktrees.length > VISIBLE_ROWS && (
 						<Box marginTop={1}>
 							<Text color={theme.muted}>
-								HEAD:{' '}
-								{worktrees[focusedIndex].head?.substring(0, 8) || 'unknown'}
+								[{scrollOffset + 1}-
+								{Math.min(scrollOffset + VISIBLE_ROWS, linkedWorktrees.length)}{' '}
+								of {linkedWorktrees.length}]{scrollOffset > 0 && ' ↑'}
+								{scrollOffset + VISIBLE_ROWS < linkedWorktrees.length && ' ↓'}
 							</Text>
 						</Box>
 					)}
 				</Box>
 			)}
+
+			{/* Empty state */}
+			{linkedWorktrees.length === 0 && !isLoading && (
+				<Box marginTop={2} paddingLeft={2}>
+					<Text color={theme.muted}>
+						No linked worktrees. Press 'a' to create one.
+					</Text>
+				</Box>
+			)}
+
+			{/* Loading state */}
+			{isLoading && (
+				<Box marginTop={2} paddingLeft={2}>
+					<Text color={theme.muted}>Loading worktrees...</Text>
+				</Box>
+			)}
+
+			{/* Stats Bar */}
+			<Box
+				marginTop={1}
+				paddingTop={1}
+				borderStyle="single"
+				borderTop
+				borderColor={theme.border}
+			>
+				<Box gap={2}>
+					<Text color={theme.muted}>
+						Total: {stats.total} │ Detached: {stats.detached} │ Locked:{' '}
+						{stats.locked}
+					</Text>
+				</Box>
+			</Box>
+
+			{/* Actions */}
+			<Box marginTop={1} gap={2}>
+				<Text color={theme.muted}>[a] Add</Text>
+				{linkedWorktrees.length > 0 && (
+					<>
+						<Text color={theme.muted}>[v] View</Text>
+						<Text color={theme.muted}>[d] Delete</Text>
+						<Text color={theme.muted}>[Enter] Info</Text>
+					</>
+				)}
+				<Text color={theme.muted}>[p] Prune</Text>
+				<Text color={theme.muted}>[Esc] Back</Text>
+			</Box>
 
 			{/* Toast */}
 			{toast && (

@@ -1,20 +1,19 @@
-import { FlowBackend } from '../backend-interface.js';
-import { findProjectRoot } from '../../utils.js';
 import path from 'path';
-import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
-import { exec, execSync } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
+import { promises as fs } from 'fs';
 import os from 'os';
-import {
-	detectPersona,
-	detectMultiPersonaWorkflow
-} from '../personas/persona-detector.js';
+import { exec, execSync, spawn } from 'child_process';
+import { promisify } from 'util';
+import { query as claudeQuery } from '@anthropic-ai/claude-code';
+import { FlowBackend } from '../backend-interface.js';
+import { directFunctions } from '../../../../mcp-server/src/core/task-master-core.js';
 import {
 	PersonaPromptBuilder,
-	buildMultiPersonaPrompt
-} from '../personas/persona-prompt-builder.js';
-import { getAllPersonaIds } from '../personas/persona-definitions.js';
+	detectPersona,
+	detectMultiPersonaWorkflow,
+	getAllPersonaIds
+} from '../personas/index.js';
+import { findProjectRoot } from '../../utils.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
 // Import direct functions
 import { listTasksDirect } from '../../../../mcp-server/src/core/direct-functions/list-tasks.js';
@@ -711,69 +710,90 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	async listWorktrees() {
-		// Check if it's a git repository
-		const isGit = await this.isGitRepository();
-		if (!isGit) {
-			return [];
-		}
-
 		try {
-			const result = await promisify(exec)('git worktree list --porcelain', {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Get the main repository root
+			const mainRepoRoot = await this.getRepositoryRoot();
+
+			const { stdout } = await execAsync('git worktree list --porcelain', {
 				cwd: this.projectRoot
 			});
 
 			const worktrees = [];
-			const lines = result.stdout.trim().split('\n');
 			let currentWorktree = {};
 
-			for (const line of lines) {
-				if (line.startsWith('worktree ')) {
-					if (currentWorktree.path) {
-						worktrees.push(currentWorktree);
-					}
-					const worktreePath = line.substring(9);
-					currentWorktree = {
-						path: worktreePath,
-						name: path.basename(worktreePath),
-						isMain: false,
-						isCurrent: false
-					};
-				} else if (line.startsWith('HEAD ')) {
-					currentWorktree.head = line.substring(5);
-				} else if (line.startsWith('branch ')) {
-					currentWorktree.branch = line.substring(7).replace('refs/heads/', '');
-				} else if (line === 'bare') {
-					currentWorktree.isBare = true;
-				} else if (line === '') {
-					// Empty line marks end of worktree entry
-					if (currentWorktree.path) {
+			stdout.split('\n').forEach((line) => {
+				if (!line.trim()) {
+					if (Object.keys(currentWorktree).length > 0) {
+						// Check if this is the main worktree
+						currentWorktree.isMain = currentWorktree.path === mainRepoRoot;
 						worktrees.push(currentWorktree);
 						currentWorktree = {};
 					}
+					return;
 				}
-			}
 
-			// Don't forget the last one
-			if (currentWorktree.path) {
+				const [key, ...valueParts] = line.split(' ');
+				const value = valueParts.join(' ');
+
+				switch (key) {
+					case 'worktree':
+						currentWorktree.path = value;
+						currentWorktree.name = value.split('/').pop() || value;
+						break;
+					case 'HEAD':
+						currentWorktree.head = value;
+						break;
+					case 'branch':
+						currentWorktree.branch = value.replace('refs/heads/', '');
+						break;
+					case 'bare':
+						currentWorktree.isBare = true;
+						break;
+					case 'detached':
+						currentWorktree.isDetached = true;
+						break;
+					case 'locked':
+						currentWorktree.isLocked = true;
+						if (value) {
+							currentWorktree.lockReason = value;
+						}
+						break;
+					case 'prunable':
+						currentWorktree.isPrunable = true;
+						if (value) {
+							currentWorktree.prunableReason = value;
+						}
+						break;
+				}
+			});
+
+			// Don't forget the last worktree
+			if (Object.keys(currentWorktree).length > 0) {
+				currentWorktree.isMain = currentWorktree.path === mainRepoRoot;
 				worktrees.push(currentWorktree);
 			}
 
-			// Mark main and current worktrees
-			if (worktrees.length > 0) {
-				worktrees[0].isMain = true;
-				const currentPath = await this.getRepositoryRoot();
-				worktrees.forEach((wt) => {
-					if (wt.path === currentPath) {
-						wt.isCurrent = true;
-						wt.name = path.basename(wt.path);
-					}
-				});
-			}
+			// Get current path to mark current worktree
+			const currentPath = process.cwd();
+			worktrees.forEach((wt) => {
+				wt.isCurrent = wt.path === currentPath;
+			});
 
-			return worktrees;
+			// Separate main worktree from linked worktrees
+			const mainWorktree = worktrees.find((wt) => wt.isMain);
+			const linkedWorktrees = worktrees.filter((wt) => !wt.isMain);
+
+			return {
+				main: mainWorktree,
+				linked: linkedWorktrees,
+				all: worktrees
+			};
 		} catch (error) {
-			console.error('Error listing worktrees:', error);
-			return [];
+			throw new Error('Failed to list worktrees: ' + error.message);
 		}
 	}
 
@@ -785,7 +805,8 @@ export class DirectBackend extends FlowBackend {
 			const execAsync = promisify(exec);
 
 			// Get basic info from list
-			const worktrees = await this.listWorktrees();
+			const worktreeResult = await this.listWorktrees();
+			const worktrees = worktreeResult.all || [];
 			const worktree = worktrees.find((wt) => wt.path === worktreePath);
 
 			if (!worktree) {
@@ -912,7 +933,8 @@ export class DirectBackend extends FlowBackend {
 			const repoName = path.basename(repoRoot);
 
 			// Check if worktree already exists
-			const existingWorktrees = await this.listWorktrees();
+			const worktreeResult = await this.listWorktrees();
+			const existingWorktrees = worktreeResult.all || [];
 			const worktreePath = path.join(
 				repoRoot,
 				'..',
@@ -970,17 +992,36 @@ export class DirectBackend extends FlowBackend {
 				throw new Error('Cannot remove the current worktree');
 			}
 
-			// Remove worktree
+			// Determine if we should use force
 			const forceFlag = options.force ? '--force' : '';
-			const { stdout, stderr } = await execAsync(
-				`git worktree remove ${forceFlag} "${worktreePath}"`,
-				{ cwd: this.projectRoot }
-			);
 
-			return {
-				success: true,
-				output: stdout || stderr
-			};
+			try {
+				const { stdout, stderr } = await execAsync(
+					`git worktree remove ${forceFlag} "${worktreePath}"`,
+					{ cwd: this.projectRoot }
+				);
+
+				return {
+					success: true,
+					output: stdout || stderr,
+					usedForce: options.force || false
+				};
+			} catch (error) {
+				// Check if the error is due to modified/untracked files and we haven't tried force yet
+				if (
+					!options.force &&
+					error.message.includes('contains modified or untracked files')
+				) {
+					// Return a special response indicating force is needed
+					return {
+						success: false,
+						needsForce: true,
+						error: 'Worktree contains modified or untracked files'
+					};
+				}
+				// Re-throw other errors
+				throw error;
+			}
 		} catch (error) {
 			throw new Error('Failed to remove worktree: ' + error.message);
 		}
@@ -1120,7 +1161,8 @@ export class DirectBackend extends FlowBackend {
 	async linkWorktreeToTasks(worktreeName, taskIds, options = {}) {
 		try {
 			const config = await this.getWorktreesConfig();
-			const worktrees = await this.listWorktrees();
+			const worktreeResult = await this.listWorktrees();
+			const worktrees = worktreeResult.all || [];
 			const worktree = worktrees.find((wt) => wt.name === worktreeName);
 
 			if (!worktree) {
@@ -1293,31 +1335,31 @@ export class DirectBackend extends FlowBackend {
 				return [];
 			}
 
-			// Load actual task details
-			const { listTasks } = await import('../../task-manager.js');
+			// Load tasks directly from JSON file to get ALL fields including 'details'
 			const tasksPath = path.join(
 				this.projectRoot,
 				'.taskmaster',
 				'tasks',
 				'tasks.json'
 			);
-			const allTasks = listTasks(
-				tasksPath,
-				null, // statusFilter
-				null, // reportPath
-				false, // withSubtasks
-				'json', // outputFormat
-				config.worktrees[worktreeName].linkedTasks[0]?.tag || 'master',
-				{ projectRoot: this.projectRoot }
-			);
 
+			const tasksContent = await fs.readFile(tasksPath, 'utf8');
+			const tasksData = JSON.parse(tasksContent);
+			const tag =
+				config.worktrees[worktreeName].linkedTasks[0]?.tag || 'master';
+
+			if (!tasksData[tag]) {
+				return [];
+			}
+
+			const allTasks = tasksData[tag].tasks || [];
 			const linkedTaskIds = config.worktrees[worktreeName].linkedTasks.map(
 				(t) => t.id
 			);
 			const linkedTasks = [];
 
 			// Find linked tasks and subtasks
-			for (const task of allTasks.tasks) {
+			for (const task of allTasks) {
 				if (linkedTaskIds.includes(task.id.toString())) {
 					linkedTasks.push(task);
 				}
@@ -1326,11 +1368,15 @@ export class DirectBackend extends FlowBackend {
 					for (const subtask of task.subtasks) {
 						const subtaskId = `${task.id}.${subtask.id}`;
 						if (linkedTaskIds.includes(subtaskId)) {
+							// Include ALL fields from subtask
 							linkedTasks.push({
 								...subtask,
 								id: subtaskId,
 								parentId: task.id,
-								parentTitle: task.title
+								parentTitle: task.title,
+								// Subtasks might not have testStrategy, but ensure details is included
+								details: subtask.details,
+								testStrategy: subtask.testStrategy || ''
 							});
 						}
 					}
@@ -1410,7 +1456,8 @@ export class DirectBackend extends FlowBackend {
 			const execAsync = promisify(exec);
 
 			// Get worktree details
-			const worktrees = await this.listWorktrees();
+			const worktreeResult = await this.listWorktrees();
+			const worktrees = worktreeResult.all || [];
 			const worktree = worktrees.find((wt) => wt.name === worktreeName);
 			if (!worktree) return null;
 
@@ -1455,48 +1502,51 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
-	// Claude Code Integration
+	// Claude Code query using SDK
 	async claudeCodeQuery(prompt, options = {}) {
 		try {
-			// Dynamic import to avoid loading unless needed
-			const { query } = await import('@anthropic-ai/claude-code');
 			const messages = [];
+			const startTime = Date.now();
+			let totalCost = 0;
+			let sessionId = null;
 
 			const queryOptions = {
 				prompt,
 				abortController: options.abortController || new AbortController(),
 				options: {
-					maxTurns: options.maxTurns || 3,
-					cwd: options.cwd || this.projectRoot,
-					allowedTools: options.allowedTools || ['Read', 'Write', 'Bash'],
-					permissionMode: options.permissionMode || 'acceptEdits',
-					outputFormat: 'stream-json' // Use streaming JSON for better integration
+					...options,
+					outputFormat: options.outputFormat || 'stream-json',
+					cwd: options.cwd || this.projectRoot
 				}
 			};
 
-			// Add system prompt if provided
-			if (options.systemPrompt) {
-				queryOptions.options.systemPrompt = options.systemPrompt;
-			}
-
-			// Add append system prompt if provided
-			if (options.appendSystemPrompt) {
-				queryOptions.options.appendSystemPrompt = options.appendSystemPrompt;
-			}
-
-			for await (const message of query(queryOptions)) {
+			for await (const message of claudeQuery(queryOptions)) {
 				messages.push(message);
 
-				// Allow real-time message handling via callback
+				// Extract session ID from init message
+				if (message.type === 'system' && message.subtype === 'init') {
+					sessionId = message.session_id;
+				}
+
+				// Track costs
+				if (message.type === 'result' && message.total_cost_usd !== undefined) {
+					totalCost = message.total_cost_usd;
+				}
+
+				// Call message callback if provided
 				if (options.onMessage) {
 					await options.onMessage(message);
 				}
 			}
 
+			const duration = Date.now() - startTime;
+
 			return {
 				success: true,
 				messages,
-				sessionId: messages.find((m) => m.session_id)?.session_id
+				sessionId,
+				totalCost,
+				duration
 			};
 		} catch (error) {
 			console.error('Claude Code query error:', error);
@@ -1507,33 +1557,54 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
+	// Continue a Claude Code session using SDK
 	async claudeCodeContinue(prompt, options = {}) {
 		try {
-			const { query } = await import('@anthropic-ai/claude-code');
 			const messages = [];
+			const startTime = Date.now();
+			let totalCost = 0;
+			let sessionId = null;
 
 			const queryOptions = {
 				prompt,
 				abortController: options.abortController || new AbortController(),
 				options: {
 					...options,
-					continue: true,
-					outputFormat: 'stream-json'
+					continue: true, // Continue the last session
+					outputFormat: options.outputFormat || 'stream-json',
+					cwd: options.cwd || this.projectRoot
 				}
 			};
 
-			for await (const message of query(queryOptions)) {
+			for await (const message of claudeQuery(queryOptions)) {
 				messages.push(message);
 
+				// Extract session ID
+				if (message.type === 'system' && message.subtype === 'init') {
+					sessionId = message.session_id;
+				} else if (message.session_id) {
+					sessionId = message.session_id;
+				}
+
+				// Track costs
+				if (message.type === 'result' && message.total_cost_usd !== undefined) {
+					totalCost = message.total_cost_usd;
+				}
+
+				// Call message callback if provided
 				if (options.onMessage) {
 					await options.onMessage(message);
 				}
 			}
 
+			const duration = Date.now() - startTime;
+
 			return {
 				success: true,
 				messages,
-				sessionId: messages.find((m) => m.session_id)?.session_id
+				sessionId,
+				totalCost,
+				duration
 			};
 		} catch (error) {
 			console.error('Claude Code continue error:', error);
@@ -1544,33 +1615,46 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
+	// Resume a specific Claude Code session using SDK
 	async claudeCodeResume(sessionId, prompt, options = {}) {
 		try {
-			const { query } = await import('@anthropic-ai/claude-code');
 			const messages = [];
+			const startTime = Date.now();
+			let totalCost = 0;
 
 			const queryOptions = {
 				prompt,
 				abortController: options.abortController || new AbortController(),
 				options: {
 					...options,
-					resume: sessionId,
-					outputFormat: 'stream-json'
+					resume: sessionId, // Resume specific session
+					outputFormat: options.outputFormat || 'stream-json',
+					cwd: options.cwd || this.projectRoot
 				}
 			};
 
-			for await (const message of query(queryOptions)) {
+			for await (const message of claudeQuery(queryOptions)) {
 				messages.push(message);
 
+				// Track costs
+				if (message.type === 'result' && message.total_cost_usd !== undefined) {
+					totalCost = message.total_cost_usd;
+				}
+
+				// Call message callback if provided
 				if (options.onMessage) {
 					await options.onMessage(message);
 				}
 			}
 
+			const duration = Date.now() - startTime;
+
 			return {
 				success: true,
 				messages,
-				sessionId
+				sessionId,
+				totalCost,
+				duration
 			};
 		} catch (error) {
 			console.error('Claude Code resume error:', error);
@@ -1729,6 +1813,7 @@ export class DirectBackend extends FlowBackend {
 	// Prepare Claude context with CLAUDE.md
 	async prepareClaudeContext(worktree, tasks, options = {}) {
 		try {
+			const execAsync = promisify(exec);
 			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
 
 			// Detect persona if not provided
@@ -1738,39 +1823,65 @@ export class DirectBackend extends FlowBackend {
 				persona = detectedPersonas[0]?.persona || 'architect';
 			}
 
-			const promptBuilder = new PersonaPromptBuilder(persona);
-
 			let content = `# Task Implementation Context
 
 Generated by Task Master for worktree: ${worktree.name}
-Persona: ${persona}
+Branch: ${worktree.branch || 'unknown'}
 
 `;
 
-			// Add persona context for interactive mode
-			if (options.mode === 'interactive') {
-				content += promptBuilder.getPersonaContext() + '\n\n';
-			}
-
-			// Add task summaries
+			// Add tasks with full details
 			content += '## Tasks to Implement\n\n';
 			for (const task of tasks) {
-				content += `### Task ${task.id}: ${task.title}\n`;
-				content += `Status: ${task.status || 'pending'}\n`;
-				if (task.description) content += `\nDescription: ${task.description}\n`;
-				if (task.details) content += `\nDetails:\n${task.details}\n`;
-				if (task.testStrategy)
-					content += `\nTest Strategy:\n${task.testStrategy}\n`;
+				content += `### Task ${task.id}: ${task.title}\n\n`;
+				content += `**Status:** ${task.status}\n\n`;
+
+				if (task.description) {
+					content += `**Description:**\n${task.description}\n\n`;
+				}
+
+				if (task.details) {
+					content += `**Implementation Details:**\n${task.details}\n`;
+				}
+
+				if (task.testStrategy) {
+					content += `**Test Strategy:**\n${task.testStrategy}\n`;
+				}
+
+				if (task.dependencies && task.dependencies.length > 0) {
+					content += `**Dependencies:** ${task.dependencies.join(', ')}\n`;
+				}
+
+				if (task.subtasks && task.subtasks.length > 0) {
+					content += `**Subtasks:**\n`;
+					for (const subtask of task.subtasks) {
+						content += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
+					}
+				}
+
 				content += '\n---\n\n';
 			}
 
-			// Add project structure
-			if (options.includeStructure) {
-				content += '## Project Structure\n\n```\n';
-				const { stdout } = await execAsync(
-					`cd "${worktree.path}" && find . -type f -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | grep -v node_modules | sort`
-				);
-				content += stdout;
+			// Add project structure (filtered to relevant files)
+			if (options.includeStructure !== false) {
+				content += '## Project Structure\n\n';
+				content += '```\n';
+
+				try {
+					// Get project files, excluding common directories and files
+					const { stdout } = await execAsync(
+						`cd "${worktree.path}" && find . -type f \\( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" \\) | grep -v node_modules | grep -v "\\.git" | grep -v "dist/" | grep -v "build/" | grep -v "coverage/" | head -50 | sort`
+					);
+
+					if (stdout.trim()) {
+						content += stdout;
+					} else {
+						content += '(No project files found yet)\n';
+					}
+				} catch (err) {
+					content += '(Unable to list project files)\n';
+				}
+
 				content += '```\n\n';
 			}
 
@@ -1780,16 +1891,42 @@ Persona: ${persona}
 				const { stdout: branch } = await execAsync(
 					`cd "${worktree.path}" && git rev-parse --abbrev-ref HEAD`
 				);
-				content += `Current branch: ${branch}`;
+				content += `**Current branch:** ${branch.trim()}\n`;
 
 				const { stdout: status } = await execAsync(
 					`cd "${worktree.path}" && git status --short`
 				);
-				if (status) {
-					content += '\nUncommitted changes:\n```\n' + status + '```\n';
+				if (status.trim()) {
+					content += '\n**Uncommitted changes:**\n```\n' + status + '```\n';
+				} else {
+					content += '\n**Working directory:** Clean\n';
+				}
+
+				// Add recent commits
+				try {
+					const { stdout: commits } = await execAsync(
+						`cd "${worktree.path}" && git log --oneline -5`
+					);
+					if (commits.trim()) {
+						content += '\n**Recent commits:**\n```\n' + commits + '```\n';
+					}
+				} catch {
+					// Might be a new branch with no commits
 				}
 			} catch (err) {
 				content += 'Git information unavailable\n';
+			}
+
+			// Add instructions for Claude
+			content += '\n## Instructions\n\n';
+			content +=
+				'Please implement the tasks listed above, following the implementation details and test strategies provided.\n';
+			content +=
+				'Ensure all code follows project conventions and includes appropriate tests.\n';
+
+			if (options.mode === 'interactive') {
+				content +=
+					'\nYou are working in interactive mode. Use appropriate Claude commands to explore, implement, and test the solution.\n';
 			}
 
 			// Write CLAUDE.md
@@ -1808,6 +1945,7 @@ Persona: ${persona}
 	// Launch Claude CLI in interactive mode
 	async launchClaudeCLI(worktree, options = {}) {
 		try {
+			const execAsync = promisify(exec);
 			// Prepare context if tasks provided
 			let contextInfo = {};
 			if (options.tasks?.length > 0) {
@@ -1831,13 +1969,13 @@ Persona: ${persona}
 					command = `osascript -e 'tell application "iTerm"
 						create window with default profile
 						tell current session of current window
-							write text "cd \\"${worktree.path}\\" && claude"
+							write text "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
 						end tell
 					end tell'`;
 				} catch {
 					// Fall back to Terminal.app
 					command = `osascript -e 'tell application "Terminal"
-						do script "cd \\"${worktree.path}\\" && claude"
+						do script "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
 						activate
 					end tell'`;
 				}
@@ -1847,9 +1985,9 @@ Persona: ${persona}
 			} else {
 				// Linux - try common terminal emulators
 				const terminals = [
-					'gnome-terminal -- bash -c "cd \\"${worktree.path}\\" && claude; exec bash"',
-					'konsole -e bash -c "cd \\"${worktree.path}\\" && claude; exec bash"',
-					'xterm -e bash -c "cd \\"${worktree.path}\\" && claude; exec bash"'
+					`gnome-terminal -- bash -c "cd '${worktree.path}' && claude; exec bash"`,
+					`konsole -e bash -c "cd '${worktree.path}' && claude; exec bash"`,
+					`xterm -e bash -c "cd '${worktree.path}' && claude; exec bash"`
 				];
 
 				for (const term of terminals) {
@@ -1903,64 +2041,97 @@ Persona: ${persona}
 				});
 			}
 
-			// Launch Claude with comprehensive prompt
-			const args = [
-				'-p',
-				fullPrompt,
-				'--max-turns',
-				options.maxTurns || '10',
-				'--permission-mode',
-				options.permissionMode || 'acceptEdits',
-				'--add-dir',
-				worktree.path
-			];
+			// Use Claude Code SDK
+			const messages = [];
+			const startTime = Date.now();
+			let totalCost = 0;
+			let sessionId = null;
 
-			if (options.outputFormat) {
-				args.push('--output-format', options.outputFormat);
-			}
+			const queryOptions = {
+				prompt: fullPrompt,
+				abortController: options.abortController || new AbortController(),
+				options: {
+					maxTurns: options.maxTurns || 10,
+					permissionMode: options.permissionMode || 'acceptEdits',
+					outputFormat: options.outputFormat || 'stream-json',
+					cwd: worktree.path,
+					// Add allowed tools if provided
+					...(options.allowedTools && { allowedTools: options.allowedTools })
+				}
+			};
 
-			if (options.verbose) {
-				args.push('--verbose');
-			}
-
-			const claudeProcess = spawn('claude', args, {
-				cwd: worktree.path,
-				stdio: options.captureOutput ? 'pipe' : 'inherit'
-			});
-
+			// Handle different output formats
 			if (options.captureOutput) {
-				return new Promise((resolve, reject) => {
-					let output = '';
-					let error = '';
+				let output = '';
 
-					claudeProcess.stdout.on('data', (data) => {
-						output += data.toString();
-						if (options.onProgress) {
-							options.onProgress(data.toString());
+				for await (const message of claudeQuery(queryOptions)) {
+					messages.push(message);
+
+					// Extract session ID from init message
+					if (message.type === 'system' && message.subtype === 'init') {
+						sessionId = message.session_id;
+					}
+
+					// Track costs
+					if (
+						message.type === 'result' &&
+						message.total_cost_usd !== undefined
+					) {
+						totalCost = message.total_cost_usd;
+					}
+
+					// Build output text from assistant messages
+					if (message.type === 'assistant' && message.message?.content) {
+						const content = message.message.content;
+						if (Array.isArray(content)) {
+							for (const part of content) {
+								if (part.type === 'text') {
+									output += part.text + '\n';
+								}
+							}
+						} else if (typeof content === 'string') {
+							output += content + '\n';
 						}
-					});
+					}
 
-					claudeProcess.stderr.on('data', (data) => {
-						error += data.toString();
-					});
+					// Call progress callback if provided
+					if (options.onProgress && message.type === 'assistant') {
+						options.onProgress(output);
+					}
+				}
 
-					claudeProcess.on('close', (code) => {
-						if (code === 0) {
-							resolve({
-								success: true,
-								output,
-								persona,
-								tasksProcessed: tasks.length
-							});
-						} else {
-							reject(
-								new Error(`Claude process exited with code ${code}: ${error}`)
-							);
-						}
-					});
-				});
+				const duration = Date.now() - startTime;
+
+				return {
+					success: true,
+					output,
+					persona,
+					tasksProcessed: tasks.length,
+					sessionId,
+					totalCost,
+					duration,
+					messages
+				};
 			} else {
-				// Fire and forget
+				// Fire and forget mode - just start the process
+				const claudeProcess = spawn(
+					'claude',
+					[
+						'-p',
+						fullPrompt,
+						'--max-turns',
+						String(options.maxTurns || 10),
+						'--permission-mode',
+						options.permissionMode || 'acceptEdits',
+						'--add-dir',
+						worktree.path
+					],
+					{
+						cwd: worktree.path,
+						stdio: 'inherit'
+					}
+				);
+
 				return {
 					success: true,
 					persona,

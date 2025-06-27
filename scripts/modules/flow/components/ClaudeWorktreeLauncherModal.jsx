@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import Spinner from 'ink-spinner';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { getTheme } from '../theme.js';
 import { personaDefinitions } from '../personas/persona-definitions.js';
 
@@ -25,18 +25,27 @@ export function ClaudeWorktreeLauncherModal({
 	onClose,
 	onSuccess
 }) {
-	const [selectedTasks, setSelectedTasks] = useState([]);
+	const theme = getTheme();
+	// Initialize selectedTasks based on task count
+	const [selectedTasks, setSelectedTasks] = useState(() => {
+		// Pre-select the first task if only one is linked
+		if (tasks.length === 1) {
+			return [tasks[0].id];
+		}
+		return [];
+	});
 	const [launchMode, setLaunchMode] = useState('interactive'); // interactive, headless, batch
 	const [headlessPrompt, setHeadlessPrompt] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState(null);
-	const [streamingOutput, setStreamingOutput] = useState('');
 	const [view, setView] = useState('mode'); // mode, persona, prompt, processing
 	const [detectedPersonas, setDetectedPersonas] = useState([]);
 	const [selectedPersona, setSelectedPersona] = useState(null);
 	const [personaSelectionIndex, setPersonaSelectionIndex] = useState(0);
 	const [isDetectingPersonas, setIsDetectingPersonas] = useState(false);
-	const theme = getTheme();
+	const [selectedModeIndex, setSelectedModeIndex] = useState(0); // Track selected mode in UI - starts at 0 for interactive
+	const [processingLog, setProcessingLog] = useState('');
+	const [suggestedWorkflow, setSuggestedWorkflow] = useState(null);
 
 	const detectPersonasForSelectedTasks = useCallback(async () => {
 		setIsDetectingPersonas(true);
@@ -94,23 +103,18 @@ export function ClaudeWorktreeLauncherModal({
 		}
 	}, [selectedTasks, tasks, backend, worktree]);
 
+	// Detect personas when we switch to persona view
 	useEffect(() => {
-		// Pre-select the first task if only one is linked
-		if (tasks.length === 1) {
-			setSelectedTasks([tasks[0].id]);
-		}
-		// Pre-select all tasks if in batch mode
-		if (launchMode === 'batch' && selectedTasks.length === 0) {
-			setSelectedTasks(tasks.map((t) => t.id));
-		}
-	}, [tasks, launchMode, selectedTasks.length]);
-
-	useEffect(() => {
-		// Detect personas when tasks are selected
-		if (selectedTasks.length > 0 && !isDetectingPersonas) {
+		if (
+			view === 'persona' &&
+			selectedTasks.length > 0 &&
+			!isDetectingPersonas &&
+			detectedPersonas.length === 0
+		) {
 			detectPersonasForSelectedTasks();
 		}
-	}, [selectedTasks, isDetectingPersonas, detectPersonasForSelectedTasks]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [view, selectedTasks.length]);
 
 	useInput((input, key) => {
 		if (key.escape) {
@@ -119,14 +123,32 @@ export function ClaudeWorktreeLauncherModal({
 		}
 
 		if (view === 'mode') {
-			if (input === '1') {
+			const modeCount = tasks.length > 1 ? 3 : 2;
+
+			if (key.upArrow) {
+				setSelectedModeIndex(Math.max(0, selectedModeIndex - 1));
+			} else if (key.downArrow) {
+				setSelectedModeIndex(Math.min(modeCount - 1, selectedModeIndex + 1));
+			} else if (key.return) {
+				const modes = ['interactive', 'headless'];
+				if (tasks.length > 1) modes.push('batch');
+
+				setLaunchMode(modes[selectedModeIndex]);
+				if (modes[selectedModeIndex] === 'batch') {
+					setSelectedTasks(tasks.map((t) => t.id));
+				}
+				setView('persona');
+			} else if (input === '1') {
 				setLaunchMode('interactive');
+				setSelectedModeIndex(0);
 				setView('persona');
 			} else if (input === '2') {
 				setLaunchMode('headless');
+				setSelectedModeIndex(1);
 				setView('persona');
 			} else if (input === '3' && tasks.length > 1) {
 				setLaunchMode('batch');
+				setSelectedModeIndex(2);
 				setSelectedTasks(tasks.map((t) => t.id));
 				setView('persona');
 			}
@@ -188,21 +210,29 @@ export function ClaudeWorktreeLauncherModal({
 			);
 
 			if (launchMode === 'interactive') {
-				const result = await backend.launchClaudeCLI(worktree, {
-					tasks: selectedTaskObjects,
-					persona: selectedPersona,
-					includeStructure: true
-				});
+				// For interactive mode, we need to exit Flow first
+				// Return launch instructions instead of launching directly
+				const contextInfo = await backend.prepareClaudeContext(
+					worktree,
+					selectedTaskObjects,
+					{
+						persona: selectedPersona,
+						includeStructure: true,
+						mode: 'interactive'
+					}
+				);
 
-				if (result.success) {
-					onSuccess({
-						mode: 'interactive',
-						worktree: worktree.name,
-						tasks: selectedTasks,
-						persona: selectedPersona
-					});
-				}
+				onSuccess({
+					mode: 'interactive',
+					worktree: worktree.name,
+					worktreePath: worktree.path,
+					tasks: selectedTasks,
+					persona: selectedPersona,
+					contextInfo,
+					shouldExitFlow: true // Signal to exit Flow before launching
+				});
 			} else if (launchMode === 'headless') {
+				// Headless mode - run Claude with prompts in background
 				const result = await backend.launchClaudeHeadless(
 					worktree,
 					selectedTaskObjects,
@@ -211,22 +241,31 @@ export function ClaudeWorktreeLauncherModal({
 						persona: selectedPersona,
 						maxTurns: 10,
 						permissionMode: 'acceptEdits',
-						outputFormat: 'text',
-						captureOutput: false,
+						captureOutput: true,
+						outputFormat: 'stream-json',
 						onProgress: (output) => {
-							setStreamingOutput((prev) => prev + output);
+							// Update processing log with streaming output
+							setProcessingLog((prev) => prev + output);
 						}
 					}
 				);
 
 				if (result.success) {
+					// Format success result with SDK data
 					onSuccess({
 						mode: 'headless',
 						worktree: worktree.name,
-						tasks: selectedTasks,
-						persona: selectedPersona,
-						output: result.output
+						worktreePath: worktree.path,
+						tasks: selectedTaskObjects.map((t) => t.id),
+						persona: result.persona,
+						output: result.output,
+						sessionId: result.sessionId,
+						totalCost: result.totalCost,
+						duration: result.duration,
+						message: `Processed ${result.tasksProcessed} task(s) in ${worktree.name}`
 					});
+				} else {
+					throw new Error(result.error || 'Claude headless execution failed');
 				}
 			} else if (launchMode === 'batch') {
 				// Check if multi-persona workflow was detected
@@ -284,29 +323,49 @@ export function ClaudeWorktreeLauncherModal({
 	};
 
 	// Render functions for different views
-	const renderModeSelection = () => (
-		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Select Launch Mode
-			</Text>
-			<Box marginTop={1} flexDirection="column">
-				<Text color={launchMode === 'interactive' ? theme.success : theme.text}>
-					[1] Interactive - Open Claude in terminal for manual interaction
+	const renderModeSelection = () => {
+		const modes = [
+			{
+				id: 'interactive',
+				label: 'Interactive - Open Claude in terminal for manual interaction'
+			},
+			{
+				id: 'headless',
+				label: 'Headless - Run with specific prompt (no interaction)'
+			}
+		];
+
+		if (tasks.length > 1) {
+			modes.push({
+				id: 'batch',
+				label: 'Batch - Process all tasks automatically'
+			});
+		}
+
+		return (
+			<Box flexDirection="column">
+				<Text bold color={theme.primary}>
+					Select Launch Mode
 				</Text>
-				<Text color={launchMode === 'headless' ? theme.success : theme.text}>
-					[2] Headless - Run with specific prompt (no interaction)
-				</Text>
-				{tasks.length > 1 && (
-					<Text color={launchMode === 'batch' ? theme.success : theme.text}>
-						[3] Batch - Process all tasks automatically
+				<Box marginTop={1} flexDirection="column">
+					{modes.map((mode, index) => (
+						<Text
+							key={mode.id}
+							color={selectedModeIndex === index ? theme.success : theme.text}
+						>
+							{selectedModeIndex === index ? '▶ ' : '  '}[{index + 1}]{' '}
+							{mode.label}
+						</Text>
+					))}
+				</Box>
+				<Box marginTop={2}>
+					<Text dimColor>
+						Press number to select, ↑↓ to navigate, [Esc] to cancel
 					</Text>
-				)}
+				</Box>
 			</Box>
-			<Box marginTop={2}>
-				<Text dimColor>Press number to select, [Esc] to cancel</Text>
-			</Box>
-		</Box>
-	);
+		);
+	};
 
 	const renderPersonaSelection = () => (
 		<Box flexDirection="column">
@@ -316,7 +375,7 @@ export function ClaudeWorktreeLauncherModal({
 
 			{isDetectingPersonas ? (
 				<Box marginTop={1}>
-					<Spinner type="dots" />
+					<LoadingSpinner />
 					<Text> Analyzing tasks...</Text>
 				</Box>
 			) : (
@@ -386,31 +445,59 @@ export function ClaudeWorktreeLauncherModal({
 	);
 
 	const renderProcessing = () => (
-		<Box flexDirection="column">
-			<Box>
-				<Spinner type="dots" />
-				<Text> Launching Claude...</Text>
+		<Box flexDirection="column" padding={1}>
+			<Box marginBottom={1}>
+				<Text bold color="green">
+					Processing with Claude Code...
+				</Text>
 			</Box>
-			{streamingOutput && (
-				<Box marginTop={1} flexDirection="column">
-					<Text color={theme.secondary}>Output:</Text>
-					<Text>{streamingOutput}</Text>
+			<Box marginBottom={1}>
+				<LoadingSpinner />
+				<Text>
+					{' '}
+					{launchMode === 'batch'
+						? 'Processing multiple tasks...'
+						: 'Processing task...'}
+				</Text>
+			</Box>
+			{processingLog && (
+				<Box
+					flexDirection="column"
+					borderStyle="single"
+					paddingX={1}
+					marginBottom={1}
+					height={10}
+				>
+					<Text dimColor>Progress:</Text>
+					<Box flexDirection="column" height={8} overflowY="scroll">
+						<Text>{processingLog}</Text>
+					</Box>
 				</Box>
 			)}
+			<Box>
+				<Text
+					dimColor
+				>{`Mode: ${launchMode} | Persona: ${selectedPersona || 'auto-detected'}`}</Text>
+			</Box>
 		</Box>
 	);
 
 	return (
 		<Box
 			flexDirection="column"
-			paddingX={1}
-			paddingY={1}
+			width={80}
+			minHeight={20}
 			borderStyle="round"
 			borderColor={theme.border}
+			paddingX={2}
+			paddingY={1}
 		>
-			<Box marginBottom={1}>
+			<Box marginBottom={1} flexDirection="column" alignItems="center">
 				<Text bold color={theme.highlight}>
 					🚀 Launch Claude in {worktree.name}
+				</Text>
+				<Text color={theme.muted} fontSize={12}>
+					Task: {tasks[0]?.title || 'Unknown'}
 				</Text>
 			</Box>
 
@@ -420,10 +507,12 @@ export function ClaudeWorktreeLauncherModal({
 				</Box>
 			)}
 
-			{view === 'mode' && renderModeSelection()}
-			{view === 'persona' && renderPersonaSelection()}
-			{view === 'prompt' && renderPromptInput()}
-			{view === 'processing' && renderProcessing()}
+			<Box flexGrow={1}>
+				{view === 'mode' && renderModeSelection()}
+				{view === 'persona' && renderPersonaSelection()}
+				{view === 'prompt' && renderPromptInput()}
+				{view === 'processing' && renderProcessing()}
+			</Box>
 		</Box>
 	);
 }

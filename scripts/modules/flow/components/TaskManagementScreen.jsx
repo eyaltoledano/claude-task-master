@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { flushSync } from 'react-dom';
 import { useAppContext } from '../index.jsx';
-import { theme } from '../theme.js';
+import { getTheme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
+import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
+import TextInput from 'ink-text-input';
 
 export function TaskManagementScreen() {
 	const {
@@ -18,6 +20,7 @@ export function TaskManagementScreen() {
 		currentTag,
 		navigationData
 	} = useAppContext();
+	const theme = getTheme();
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [expandedTasks, setExpandedTasks] = useState(new Set());
 	const [filter, setFilter] = useState('all'); // all, pending, done, in-progress
@@ -41,10 +44,30 @@ export function TaskManagementScreen() {
 	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0);
 	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0);
 	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
+	const [showClaudeLauncherModal, setShowClaudeLauncherModal] = useState(false);
+	const [claudeWorktree, setClaudeWorktree] = useState(null);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
 	const DETAIL_VISIBLE_ROWS = 20; // Visible rows in detail view
+
+	// Memoize the task object for the modal to prevent re-renders
+	const modalTaskData = useMemo(() => {
+		if (!selectedTask || !selectedSubtask) return null;
+		return [
+			{
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title,
+				description: selectedSubtask.description,
+				details: selectedSubtask.details, // Include implementation details
+				testStrategy: selectedSubtask.testStrategy, // Include test strategy
+				status: selectedSubtask.status,
+				dependencies: selectedSubtask.dependencies,
+				parentId: selectedTask.id,
+				parentTitle: selectedTask.title
+			}
+		];
+	}, [selectedTask, selectedSubtask]);
 
 	// Reload tasks on mount
 	useEffect(() => {
@@ -578,10 +601,6 @@ export function TaskManagementScreen() {
 
 		try {
 			setIsLaunchingClaude(true);
-			setToast({
-				message: 'Preparing Claude Code session...',
-				type: 'info'
-			});
 
 			// Check for worktree
 			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
@@ -604,6 +623,7 @@ export function TaskManagementScreen() {
 						}
 
 						let worktreePath = null;
+						let worktreeToUse = null;
 
 						if (action === 'create') {
 							// Navigate to worktree creation
@@ -622,8 +642,10 @@ export function TaskManagementScreen() {
 							setCurrentScreen('worktrees', {
 								selectMode: true,
 								onSelect: (wt) => {
-									worktreePath = wt.path;
-									launchClaudeWithContext(worktreePath);
+									// Instead of launching directly, show the modal
+									setClaudeWorktree(wt);
+									setShowClaudeLauncherModal(true);
+									setIsLaunchingClaude(false);
 								},
 								returnTo: 'tasks',
 								returnData: {
@@ -635,15 +657,24 @@ export function TaskManagementScreen() {
 							return;
 						} else if (action === 'main') {
 							worktreePath = backend.projectRoot || process.cwd();
-							launchClaudeWithContext(worktreePath);
+							worktreeToUse = {
+								name: 'main',
+								path: worktreePath
+							};
+							// Show the modal for main branch
+							setClaudeWorktree(worktreeToUse);
+							setShowClaudeLauncherModal(true);
+							setIsLaunchingClaude(false);
 						}
 					}
 				});
 				return;
 			}
 
-			// We have a worktree, proceed with Claude session
-			launchClaudeWithContext(activeWorktree.path);
+			// We have a worktree, show the modal
+			setClaudeWorktree(activeWorktree);
+			setShowClaudeLauncherModal(true);
+			setIsLaunchingClaude(false);
 		} catch (error) {
 			setToast({
 				message: `Failed to start Claude session: ${error.message}`,
@@ -651,6 +682,46 @@ export function TaskManagementScreen() {
 			});
 			setIsLaunchingClaude(false);
 		}
+	};
+
+	const handleClaudeLauncherSuccess = async (result) => {
+		// Check if we need to exit Flow to launch Claude
+		if (result.shouldExitFlow) {
+			// Store launch information in navigation data and signal to exit
+			setCurrentScreen('exit-for-claude', {
+				launchCommand: `cd "${result.worktreePath}" && claude`,
+				worktreePath: result.worktreePath,
+				persona: result.persona,
+				tasks: result.tasks
+			});
+			return;
+		}
+
+		// Handle other launch modes
+		if (result.mode === 'interactive') {
+			// Interactive mode - the modal has already launched Claude in a terminal
+			setToast({
+				message: `Claude launched in ${result.worktree} with persona: ${result.persona || 'none'}`,
+				type: 'success'
+			});
+		} else if (result.mode === 'headless') {
+			// Headless mode - gather context and navigate to ClaudeCodeScreen
+			const worktreePath = claudeWorktree?.path || backend.projectRoot;
+			await launchClaudeWithContext(worktreePath);
+		} else if (
+			result.mode === 'batch' ||
+			result.mode === 'batch-multi-persona'
+		) {
+			// Batch mode - tasks processed
+			setToast({
+				message: `Batch processing completed for ${result.tasks?.length || 0} tasks`,
+				type: 'success'
+			});
+		}
+
+		// Close modal
+		setShowClaudeLauncherModal(false);
+		setClaudeWorktree(null);
 	};
 
 	const launchClaudeWithContext = async (worktreePath) => {
@@ -1522,6 +1593,22 @@ Focus on: current industry standards, common pitfalls, security considerations
 			detailScrollOffset + DETAIL_VISIBLE_ROWS
 		);
 
+		// If modal is open, render only the modal
+		if (showClaudeLauncherModal && claudeWorktree && modalTaskData) {
+			return (
+				<ClaudeWorktreeLauncherModal
+					backend={backend}
+					worktree={claudeWorktree}
+					tasks={modalTaskData}
+					onClose={() => {
+						setShowClaudeLauncherModal(false);
+						setClaudeWorktree(null);
+					}}
+					onSuccess={handleClaudeLauncherSuccess}
+				/>
+			);
+		}
+
 		return (
 			<Box key="subtask-detail-view" flexDirection="column" height="100%">
 				{/* Header */}
@@ -1634,6 +1721,22 @@ Focus on: current industry standards, common pitfalls, security considerations
 	}
 
 	// Render task list view
+	// If modal is open, render only the modal
+	if (showClaudeLauncherModal && claudeWorktree && modalTaskData) {
+		return (
+			<ClaudeWorktreeLauncherModal
+				backend={backend}
+				worktree={claudeWorktree}
+				tasks={modalTaskData}
+				onClose={() => {
+					setShowClaudeLauncherModal(false);
+					setClaudeWorktree(null);
+				}}
+				onSuccess={handleClaudeLauncherSuccess}
+			/>
+		);
+	}
+
 	return (
 		<Box key="list-view" flexDirection="column" height="100%">
 			{/* Header */}

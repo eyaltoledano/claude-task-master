@@ -603,6 +603,53 @@ function FlowApp({ backend, options = {} }) {
 		}
 	);
 
+	// Check for exit-for-claude screen
+	useEffect(() => {
+		if (currentScreen === 'exit-for-claude' && navigationData?.launchCommand) {
+			// Exit Flow and launch Claude after a small delay
+			const launchClaude = async () => {
+				console.log('\n🚀 Launching Claude Code...\n');
+
+				// Small delay to ensure clean exit
+				setTimeout(async () => {
+					// Import needed modules
+					const { exec } = await import('child_process');
+					const { promisify } = await import('util');
+					const execAsync = promisify(exec);
+
+					try {
+						if (process.platform === 'darwin') {
+							// macOS - use Terminal.app
+							// Escape the command for AppleScript
+							const escapedCommand = navigationData.launchCommand.replace(
+								/"/g,
+								'\\"'
+							);
+							await execAsync(
+								`osascript -e 'tell application "Terminal" to do script "${escapedCommand}"' -e 'tell application "Terminal" to activate'`
+							);
+						} else if (process.platform === 'win32') {
+							// Windows
+							await execAsync(`start cmd /k "${navigationData.launchCommand}"`);
+						} else {
+							// Linux - try common terminal emulators
+							await execAsync(
+								`gnome-terminal -- bash -c "${navigationData.launchCommand}; exec bash"`
+							);
+						}
+					} catch (err) {
+						console.error('Failed to launch Claude:', err.message);
+					}
+
+					// Exit Flow
+					exit();
+				}, 100);
+			};
+
+			launchClaude();
+		}
+	}, [currentScreen, navigationData, exit]);
+
 	// Context value
 	const contextValue = {
 		backend: currentBackend,
@@ -710,6 +757,10 @@ function FlowApp({ backend, options = {} }) {
 						onExit={exit}
 						navigationData={navigationData}
 						onNavigateToTask={handleNavigateToTask}
+						setCurrentScreen={(screen, data) => {
+							setCurrentScreen(screen);
+							setNavigationData(data);
+						}}
 					/>
 				) : currentScreen === 'claude-code' ? (
 					<ClaudeCodeScreen
