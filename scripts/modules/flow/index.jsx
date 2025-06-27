@@ -30,7 +30,7 @@ import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
 import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
-import ClaudeCodeScreen from './components/ClaudeCodeScreen.jsx';
+import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 
 // Create context for backend and app state

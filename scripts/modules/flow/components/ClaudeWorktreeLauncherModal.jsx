@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, TextInput, Spinner, useInput } from 'ink';
+import { Box, Text, useInput } from 'ink';
+import TextInput from 'ink-text-input';
+import Spinner from 'ink-spinner';
 import { getTheme } from '../theme.js';
 import { personaDefinitions } from '../personas/persona-definitions.js';
 
