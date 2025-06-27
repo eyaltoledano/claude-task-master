@@ -333,20 +333,58 @@ export function ClaudeWorktreeLauncherModal({
 			);
 
 			if (result.success) {
+				// Calculate detailed statistics
+				const turnCount =
+					result.messages?.filter((m) => m.type === 'assistant').length || 0;
+				const fileChanges =
+					result.messages?.filter(
+						(m) =>
+							m.type === 'tool_use' &&
+							['create_file', 'edit_file'].includes(m.name)
+					).length || 0;
+				const tokenCounts = result.tokenCounts || {};
+
 				// Store the result for the summary view
-				setSessionResult({
+				const sessionData = {
 					mode: 'headless',
 					worktree: worktree.name,
 					worktreePath: worktree.path,
-					tasks: selectedTaskObjects.map((t) => t.id),
-					persona: result.persona,
+					branch: worktree.branch || worktree.name,
+					sourceBranch: worktree.sourceBranch || 'main',
+					tasks: selectedTaskObjects.map((t) => ({
+						id: t.id,
+						title: t.title,
+						description: t.description
+					})),
+					persona: result.persona || selectedPersona,
 					output: result.output,
 					sessionId: result.sessionId,
 					totalCost: result.totalCost,
 					duration: result.duration,
 					messages: result.messages,
-					message: `Processed ${result.tasksProcessed} task(s) in ${worktree.name}`
-				});
+					message: `Processed ${result.tasksProcessed} task(s) in ${worktree.name}`,
+					statistics: {
+						turns: turnCount,
+						maxTurns: maxTurns,
+						fileChanges: fileChanges,
+						totalCost: result.totalCost || 0,
+						duration: result.duration || 0,
+						durationSeconds: Math.round((result.duration || 0) / 1000),
+						tokenCounts: tokenCounts,
+						toolRestrictions: toolRestrictions,
+						completedAt: new Date().toISOString()
+					}
+				};
+
+				setSessionResult(sessionData);
+
+				// Save session data to file
+				try {
+					await backend.saveClaudeSessionData(sessionData);
+				} catch (saveError) {
+					console.error('Failed to save Claude session data:', saveError);
+					// Don't block the UI flow, just log the error
+				}
 
 				// Switch to summary view
 				setView('summary');
@@ -382,11 +420,53 @@ export function ClaudeWorktreeLauncherModal({
 
 			if (result.success) {
 				// Update session result
-				setSessionResult((prev) => ({
-					...prev,
+				const updatedSessionData = {
+					...sessionResult,
 					...result,
-					messages: [...(prev.messages || []), ...(result.messages || [])]
-				}));
+					messages: [
+						...(sessionResult.messages || []),
+						...(result.messages || [])
+					],
+					statistics: {
+						...sessionResult.statistics,
+						turns:
+							(sessionResult.statistics?.turns || 0) +
+							(result.messages?.filter((m) => m.type === 'assistant').length ||
+								0),
+						fileChanges:
+							(sessionResult.statistics?.fileChanges || 0) +
+							(result.messages?.filter(
+								(m) =>
+									m.type === 'tool_use' &&
+									['create_file', 'edit_file'].includes(m.name)
+							).length || 0),
+						totalCost:
+							(sessionResult.statistics?.totalCost || 0) +
+							(result.totalCost || 0),
+						duration:
+							(sessionResult.statistics?.duration || 0) +
+							(result.duration || 0),
+						durationSeconds: Math.round(
+							((sessionResult.statistics?.duration || 0) +
+								(result.duration || 0)) /
+								1000
+						),
+						lastResumedAt: new Date().toISOString()
+					}
+				};
+
+				setSessionResult(updatedSessionData);
+
+				// Save updated session data
+				try {
+					await backend.saveClaudeSessionData(updatedSessionData);
+				} catch (saveError) {
+					console.error(
+						'Failed to save updated Claude session data:',
+						saveError
+					);
+				}
+
 				setView('summary');
 			} else {
 				throw new Error(result.error || 'Failed to resume session');
@@ -702,16 +782,53 @@ export function ClaudeWorktreeLauncherModal({
 					>
 						<Text color={theme.secondary}>Full Conversation:</Text>
 						<Box marginTop={1} flexDirection="column">
-							{sessionResult.messages?.map((msg, idx) => (
-								<Box
-									key={`msg-${msg.type}-${idx}-${msg.timestamp || idx}`}
-									marginBottom={1}
-								>
-									<Text color={theme.muted}>
-										[{msg.type}] {msg.message?.content?.substring(0, 100)}...
-									</Text>
-								</Box>
-							))}
+							{sessionResult.messages?.map((msg, idx) => {
+								// Extract text content from message
+								let contentPreview = '';
+								if (msg.message?.content) {
+									const content = msg.message.content;
+									if (Array.isArray(content)) {
+										// Handle array of content parts
+										for (const part of content) {
+											if (part.type === 'text' && part.text) {
+												contentPreview += part.text;
+												if (contentPreview.length > 100) break;
+											}
+										}
+									} else if (typeof content === 'string') {
+										// Handle string content
+										contentPreview = content;
+									} else if (content.text) {
+										// Handle object with text property
+										contentPreview = content.text;
+									}
+								} else if (msg.type === 'tool_use' && msg.name) {
+									// Handle tool use messages
+									contentPreview = `Tool: ${msg.name}`;
+									if (msg.input) {
+										contentPreview += ` - ${JSON.stringify(msg.input).substring(0, 50)}`;
+									}
+								} else if (msg.type === 'system' && msg.subtype) {
+									// Handle system messages
+									contentPreview = `System: ${msg.subtype}`;
+								}
+
+								// Truncate to 100 characters
+								if (contentPreview.length > 100) {
+									contentPreview = contentPreview.substring(0, 100) + '...';
+								}
+
+								return (
+									<Box
+										key={`msg-${msg.type}-${idx}-${msg.timestamp || idx}`}
+										marginBottom={1}
+									>
+										<Text color={theme.muted}>
+											[{msg.type}] {contentPreview || '(no content)'}
+										</Text>
+									</Box>
+								);
+							})}
 						</Box>
 					</Box>
 				) : (

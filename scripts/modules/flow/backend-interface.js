@@ -220,4 +220,13 @@ export class FlowBackend {
 	async getComplexityReport(tag) {
 		throw new Error('getComplexityReport() must be implemented by subclass');
 	}
+
+	/**
+	 * Save Claude session data to a JSON file
+	 * @param {Object} sessionData - The session data to save
+	 * @returns {Promise<string>} - Path to the saved file
+	 */
+	async saveClaudeSessionData(sessionData) {
+		throw new Error('saveClaudeSessionData() must be implemented by subclass');
+	}
 }

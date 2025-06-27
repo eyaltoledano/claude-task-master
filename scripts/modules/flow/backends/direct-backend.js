@@ -2426,4 +2426,151 @@ ${prompt}
 			throw error;
 		}
 	}
+
+	/**
+	 * Save Claude session data to a JSON file in .taskmaster folder
+	 * @param {Object} sessionData - The session data to save
+	 * @returns {Promise<void>}
+	 */
+	async saveClaudeSessionData(sessionData) {
+		try {
+			const claudeDir = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions'
+			);
+			await fs.mkdir(claudeDir, { recursive: true });
+
+			// Create a filename based on timestamp and task ID
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+			const taskIds = sessionData.tasks.map((t) => t.id).join('_');
+			const filename = `claude-session-${taskIds}-${timestamp}.json`;
+			const filePath = path.join(claudeDir, filename);
+
+			// Also save a "latest" file for easy access
+			const latestPath = path.join(claudeDir, 'claude-latest.json');
+
+			// Process conversation history for better readability
+			const processedMessages =
+				sessionData.messages?.map((msg, idx) => {
+					const processed = {
+						index: idx,
+						type: msg.type,
+						timestamp: msg.timestamp || new Date().toISOString()
+					};
+
+					// Handle different message types
+					if (msg.type === 'assistant' && msg.message) {
+						processed.content = this.extractMessageContent(msg.message.content);
+						processed.role = 'assistant';
+					} else if (msg.type === 'user' && msg.message) {
+						processed.content = this.extractMessageContent(msg.message.content);
+						processed.role = 'user';
+					} else if (msg.type === 'tool_use') {
+						processed.tool = msg.name;
+						processed.input = msg.input;
+						processed.output = msg.output;
+					} else if (msg.type === 'system') {
+						processed.subtype = msg.subtype;
+						processed.details = msg;
+					} else if (msg.type === 'result') {
+						processed.totalCost = msg.total_cost_usd;
+						processed.tokenCounts = msg.token_counts;
+					}
+
+					return processed;
+				}) || [];
+
+			// Prepare data with summary at the top
+			const dataToSave = {
+				summary: {
+					timestamp: sessionData.statistics.completedAt,
+					worktree: sessionData.worktree,
+					branch: sessionData.branch,
+					tasks: sessionData.tasks.map((t) => ({
+						id: t.id,
+						title: t.title,
+						description: t.description
+					})),
+					statistics: {
+						turns: sessionData.statistics.turns,
+						maxTurns: sessionData.statistics.maxTurns,
+						fileChanges: sessionData.statistics.fileChanges,
+						totalCost: sessionData.statistics.totalCost,
+						durationSeconds: sessionData.statistics.durationSeconds,
+						tokenCounts: sessionData.statistics.tokenCounts || {},
+						toolsUsed: this.countToolsUsed(processedMessages)
+					},
+					persona: sessionData.persona,
+					toolRestrictions: sessionData.statistics.toolRestrictions,
+					sessionId: sessionData.sessionId
+				},
+				conversation: {
+					messageCount: processedMessages.length,
+					messages: processedMessages
+				},
+				rawSession: {
+					output: sessionData.output,
+					fullData: sessionData
+				}
+			};
+
+			// Write to both files
+			await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
+			await fs.writeFile(
+				latestPath,
+				JSON.stringify(dataToSave, null, 2),
+				'utf8'
+			);
+
+			this.log.info(`Claude session data saved to: ${filePath}`);
+			return filePath;
+		} catch (error) {
+			this.log.error('Failed to save Claude session data:', error.message);
+			throw error;
+		}
+	}
+
+	/**
+	 * Extract text content from various message content formats
+	 * @private
+	 */
+	extractMessageContent(content) {
+		if (!content) return '';
+
+		if (typeof content === 'string') {
+			return content;
+		}
+
+		if (Array.isArray(content)) {
+			return content
+				.map((part) => {
+					if (part.type === 'text') return part.text;
+					if (part.type === 'code')
+						return `\`\`\`${part.language || ''}\n${part.code}\n\`\`\``;
+					return JSON.stringify(part);
+				})
+				.join('\n');
+		}
+
+		if (content.text) {
+			return content.text;
+		}
+
+		return JSON.stringify(content);
+	}
+
+	/**
+	 * Count tools used in the conversation
+	 * @private
+	 */
+	countToolsUsed(messages) {
+		const toolCounts = {};
+		messages.forEach((msg) => {
+			if (msg.type === 'tool_use' && msg.tool) {
+				toolCounts[msg.tool] = (toolCounts[msg.tool] || 0) + 1;
+			}
+		});
+		return toolCounts;
+	}
 }
