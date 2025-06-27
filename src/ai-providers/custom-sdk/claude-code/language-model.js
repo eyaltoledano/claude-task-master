@@ -128,7 +128,7 @@ export class ClaudeCodeLanguageModel {
 	 */
 	async doGenerate(options) {
 		await loadClaudeCodeModule();
-		const { messagesPrompt } = convertToClaudeCodeMessages(
+		const { messagesPrompt, jsonModeInstruction } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
 		);
@@ -140,13 +140,21 @@ export class ClaudeCodeLanguageModel {
 			);
 		}
 
+		// Prepare appendSystemPrompt with JSON instructions if needed
+		let appendSystemPrompt = this.settings.appendSystemPrompt;
+		if (jsonModeInstruction) {
+			appendSystemPrompt = appendSystemPrompt
+				? `${appendSystemPrompt}\n\n${jsonModeInstruction}`
+				: jsonModeInstruction;
+		}
+
 		const queryOptions = {
 			model: this.getModel(),
 			abortController,
 			resume: this.sessionId,
 			pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
 			customSystemPrompt: this.settings.customSystemPrompt,
-			appendSystemPrompt: this.settings.appendSystemPrompt,
+			appendSystemPrompt,
 			maxTurns: this.settings.maxTurns,
 			maxThinkingTokens: this.settings.maxThinkingTokens,
 			cwd: this.settings.cwd,
@@ -273,7 +281,7 @@ export class ClaudeCodeLanguageModel {
 	 */
 	async doStream(options) {
 		await loadClaudeCodeModule();
-		const { messagesPrompt } = convertToClaudeCodeMessages(
+		const { messagesPrompt, jsonModeInstruction } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
 		);
@@ -285,13 +293,21 @@ export class ClaudeCodeLanguageModel {
 			);
 		}
 
+		// Prepare appendSystemPrompt with JSON instructions if needed
+		let appendSystemPrompt = this.settings.appendSystemPrompt;
+		if (jsonModeInstruction) {
+			appendSystemPrompt = appendSystemPrompt
+				? `${appendSystemPrompt}\n\n${jsonModeInstruction}`
+				: jsonModeInstruction;
+		}
+
 		const queryOptions = {
 			model: this.getModel(),
 			abortController,
 			resume: this.sessionId,
 			pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
 			customSystemPrompt: this.settings.customSystemPrompt,
-			appendSystemPrompt: this.settings.appendSystemPrompt,
+			appendSystemPrompt,
 			maxTurns: this.settings.maxTurns,
 			maxThinkingTokens: this.settings.maxThinkingTokens,
 			cwd: this.settings.cwd,
