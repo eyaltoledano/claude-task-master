@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
+import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import { getTheme } from '../theme.js';
 
 export default function WorktreeDetailsModal({
@@ -17,6 +18,7 @@ export default function WorktreeDetailsModal({
 	const [error, setError] = useState(null);
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
+	const [showClaudeModal, setShowClaudeModal] = useState(false);
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
 	const [scrollOffset, setScrollOffset] = useState(0);
@@ -127,6 +129,9 @@ export default function WorktreeDetailsModal({
 				// 'j' to jump to a task
 				setViewMode('jump');
 				setSelectedTaskIndex(0);
+			} else if (input === 'c' && linkedTasks.length > 0) {
+				// 'c' to launch Claude
+				setShowClaudeModal(true);
 			}
 		}
 	});
@@ -142,6 +147,29 @@ export default function WorktreeDetailsModal({
 					loadDetails(); // Refresh details after linking
 				}}
 			/>
+		);
+	}
+
+	// Show Claude launcher modal
+	if (showClaudeModal) {
+		return (
+			<Box
+				flexDirection="column"
+				height="100%"
+				alignItems="center"
+				justifyContent="center"
+			>
+				<ClaudeWorktreeLauncherModal
+					backend={backend}
+					worktree={worktree}
+					tasks={linkedTasks}
+					onClose={() => setShowClaudeModal(false)}
+					onSuccess={(message) => {
+						setShowClaudeModal(false);
+						// Optionally show success message
+					}}
+				/>
+			</Box>
 		);
 	}
 
@@ -346,7 +374,6 @@ export default function WorktreeDetailsModal({
 
 	// Build content for scrollable details view
 	const detailContent = [];
-	let lineIndex = 0;
 
 	// Basic Info
 	detailContent.push({ type: 'text', content: `Path: ${worktree.path}` });
@@ -361,10 +388,11 @@ export default function WorktreeDetailsModal({
 	});
 
 	// Status line
-	let statusText = 'Status: ';
-	if (worktree.isCurrent) statusText += '[CURRENT] ';
-	if (worktree.isLocked) statusText += '[LOCKED] ';
-	if (worktree.isBare) statusText += '[BARE] ';
+	const statusText =
+		'Status: ' +
+		(worktree.isCurrent ? '[CURRENT] ' : '') +
+		(worktree.isLocked ? '[LOCKED] ' : '') +
+		(worktree.isBare ? '[BARE] ' : '');
 	detailContent.push({ type: 'text', content: statusText });
 
 	detailContent.push({
@@ -515,18 +543,20 @@ export default function WorktreeDetailsModal({
 			{/* Scrollable content */}
 			<Box flexDirection="column" height={VISIBLE_ROWS}>
 				{visibleContent.map((line, index) => {
+					const lineKey = `${line.type}-${scrollOffset + index}-${line.content?.substring(0, 20) || index}`;
+
 					if (line.type === 'blank') {
-						return <Box key={index} height={1} />;
+						return <Box key={lineKey} height={1} />;
 					} else if (line.type === 'header') {
 						return (
-							<Text key={index} bold color={theme.primary}>
+							<Text key={lineKey} bold color={theme.primary}>
 								{line.content}
 							</Text>
 						);
 					} else if (line.type === 'task') {
 						return (
 							<Text
-								key={index}
+								key={lineKey}
 								color={line.status === 'done' ? theme.success : theme.text}
 							>
 								{line.content}
@@ -535,7 +565,7 @@ export default function WorktreeDetailsModal({
 					} else {
 						return (
 							<Text
-								key={index}
+								key={lineKey}
 								color={line.color || theme.text}
 								dimColor={line.dimColor}
 							>
@@ -568,6 +598,9 @@ export default function WorktreeDetailsModal({
 					</>
 				)}
 				<Text color={theme.muted}>[t] Link/Manage Tasks</Text>
+				{linkedTasks.length > 0 && (
+					<Text color={theme.muted}>[c] Launch Claude</Text>
+				)}
 				{!worktree.isCurrent && <Text color={theme.muted}>[d] Delete</Text>}
 				<Text color={theme.muted}>[Esc] Close</Text>
 			</Box>

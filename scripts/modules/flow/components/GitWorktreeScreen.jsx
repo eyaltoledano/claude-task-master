@@ -6,6 +6,7 @@ import { Toast } from './Toast.jsx';
 import AddWorktreeModal from './AddWorktreeModal.jsx';
 import WorktreeDetailsModal from './WorktreeDetailsModal.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
+import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import { getTheme } from '../theme.js';
 
 export default function GitWorktreeScreen({
@@ -27,6 +28,9 @@ export default function GitWorktreeScreen({
 	const [confirmDelete, setConfirmDelete] = useState(null);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
 	const [availableTasks, setAvailableTasks] = useState([]);
+	const [showClaudeModal, setShowClaudeModal] = useState(null);
+	const [showPrompt, setShowPrompt] = useState(null);
+	const [contextDetail, setContextDetail] = useState({});
 	const theme = getTheme();
 
 	// Load worktrees
@@ -207,10 +211,34 @@ export default function GitWorktreeScreen({
 		]
 	);
 
+	const handleLaunchClaude = async (worktree) => {
+		try {
+			// Get linked tasks for this worktree
+			const tasks = await backend.getWorktreeTasks(worktree.name);
+
+			if (!tasks || tasks.length === 0) {
+				setToast({
+					message:
+						'No tasks linked to this worktree. Link tasks first with [l].',
+					type: 'error'
+				});
+				return;
+			}
+
+			// Show Claude launcher modal
+			setShowClaudeModal({ worktree, tasks });
+		} catch (err) {
+			setToast({
+				message: `Failed to prepare Claude launch: ${err.message}`,
+				type: 'error'
+			});
+		}
+	};
+
 	// Keyboard navigation
 	useInput((input, key) => {
 		// Modal handling
-		if (showAddModal || showDetailsModal) {
+		if (showAddModal || showDetailsModal || showClaudeModal || showPrompt) {
 			return;
 		}
 
@@ -246,6 +274,8 @@ export default function GitWorktreeScreen({
 			loadWorktrees();
 		} else if (input === 'p') {
 			handlePruneWorktrees();
+		} else if (input === 'c' && worktrees[focusedIndex]) {
+			handleLaunchClaude(worktrees[focusedIndex]);
 		} else if (input === 'q' || key.escape) {
 			onBack();
 		}
@@ -346,6 +376,29 @@ export default function GitWorktreeScreen({
 		);
 	}
 
+	// Show Claude launcher modal
+	if (showClaudeModal) {
+		return (
+			<Box
+				flexDirection="column"
+				height="100%"
+				alignItems="center"
+				justifyContent="center"
+			>
+				<ClaudeWorktreeLauncherModal
+					backend={backend}
+					worktree={showClaudeModal.worktree}
+					tasks={showClaudeModal.tasks}
+					onClose={() => setShowClaudeModal(null)}
+					onSuccess={(message) => {
+						setToast({ message: message, type: 'success' });
+						setShowClaudeModal(null);
+					}}
+				/>
+			</Box>
+		);
+	}
+
 	return (
 		<Box flexDirection="column" height="100%">
 			{/* Header */}
@@ -357,8 +410,9 @@ export default function GitWorktreeScreen({
 
 			{/* Controls */}
 			<Box marginBottom={1} gap={2}>
-				<Text color={theme.muted}>
-					[a] Add [p] Prune [r] Refresh [Enter] Details [q] Back
+				<Text color={theme.text}>
+					↑↓ navigate • Enter view • a add • d delete • l link tasks • c launch
+					claude • p prune • r refresh • ESC back
 				</Text>
 			</Box>
 

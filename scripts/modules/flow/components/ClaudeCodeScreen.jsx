@@ -8,7 +8,7 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { getTheme } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 
-function ClaudeCodeScreen({
+export function ClaudeCodeScreen({
 	backend,
 	onBack,
 	mode: initialMode = 'list',
@@ -67,7 +67,7 @@ function ClaudeCodeScreen({
 				abortControllerRef.current.abort();
 			}
 		};
-	}, []);
+	}, [initialMode, initialContext]);
 
 	// Auto-select highlighted session if provided
 	useEffect(() => {
@@ -167,7 +167,7 @@ ${parentTask.description}
 ${parentTask.subtasks
 	.map(
 		(st) =>
-			`- [${st.status}] ${st.id}: ${st.title}${st.id == currentSubtask.id.split('.')[1] ? ' ← CURRENT' : ''}`
+			`- [${st.status}] ${st.id}: ${st.title}${st.id === currentSubtask.id.split('.')[1] ? ' ← CURRENT' : ''}`
 	)
 	.join('\n')}
 
@@ -661,7 +661,7 @@ ${insightSummary}
 		return messages.map((msg, idx) => {
 			if (msg.type === 'system' && msg.subtype === 'init') {
 				return (
-					<Box key={idx} marginBottom={1}>
+					<Box key={`system-init-${msg.session_id}-${idx}`} marginBottom={1}>
 						<Text color="gray">
 							Session: {msg.session_id} | Model: {msg.model} | CWD: {msg.cwd}
 						</Text>
@@ -669,7 +669,7 @@ ${insightSummary}
 				);
 			} else if (msg.type === 'user') {
 				return (
-					<Box key={idx} marginBottom={1}>
+					<Box key={`user-${msg.timestamp || idx}-${idx}`} marginBottom={1}>
 						<Text color="cyan">User: </Text>
 						<Text>{msg.message.content?.[0]?.text || ''}</Text>
 					</Box>
@@ -677,7 +677,11 @@ ${insightSummary}
 			} else if (msg.type === 'assistant') {
 				const content = msg.message.content?.[0]?.text || '';
 				return (
-					<Box key={idx} marginBottom={1} flexDirection="column">
+					<Box
+						key={`assistant-${msg.timestamp || idx}-${idx}`}
+						marginBottom={1}
+						flexDirection="column"
+					>
 						<Text color="green">Claude: </Text>
 						<Box marginLeft={2}>
 							<Text>{content}</Text>
@@ -686,7 +690,10 @@ ${insightSummary}
 				);
 			} else if (msg.type === 'result') {
 				return (
-					<Box key={idx} marginTop={1}>
+					<Box
+						key={`result-${msg.subtype}-${msg.num_turns}-${idx}`}
+						marginTop={1}
+					>
 						<Text color="yellow">
 							Result: {msg.subtype} | Turns: {msg.num_turns} | Cost: $
 							{msg.total_cost_usd?.toFixed(4) || '0.0000'}
@@ -1086,7 +1093,10 @@ ${insightSummary}
 					) : (
 						<Box flexDirection="column">
 							{sessionMessagesData.map((msg, idx) => (
-								<Box key={idx} marginBottom={1}>
+								<Box
+									key={`session-msg-${viewingSession}-${msg.type}-${idx}`}
+									marginBottom={1}
+								>
 									{msg.type === 'user' && (
 										<>
 											<Text color="cyan">User: </Text>
@@ -1245,5 +1255,3 @@ ${insightSummary}
 		</Box>
 	);
 }
-
-export default ClaudeCodeScreen;

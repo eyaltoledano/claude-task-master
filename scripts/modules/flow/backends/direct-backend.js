@@ -124,7 +124,7 @@ export class DirectBackend extends FlowBackend {
 					toolArgs.id = String(args.id);
 				}
 				break;
-			case 'analyze_project_complexity':
+			case 'analyze_project_complexity': {
 				// Set up output path for complexity report
 				const reportDir = path.join(this.projectRoot, '.taskmaster', 'reports');
 				const tagSuffix =
@@ -136,6 +136,7 @@ export class DirectBackend extends FlowBackend {
 				toolArgs.file = this.tasksJsonPath;
 				toolArgs.output = toolArgs.outputPath;
 				break;
+			}
 		}
 
 		// Call the direct function
@@ -1713,5 +1714,365 @@ export class DirectBackend extends FlowBackend {
 				error: error.message
 			};
 		}
+	}
+
+	// New Claude CLI Integration Methods
+	async launchClaudeCLI(worktreePath, options = {}) {
+		try {
+			const { exec, spawn } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+			const os = await import('os');
+
+			// Validate worktree path exists
+			if (!fs.existsSync(worktreePath)) {
+				throw new Error(`Worktree path does not exist: ${worktreePath}`);
+			}
+
+			// Prepare context if task is provided
+			if (options.task) {
+				await this.prepareClaudeContext(
+					worktreePath,
+					options.task,
+					options.contextData
+				);
+			}
+
+			if (options.mode === 'headless' && options.prompt) {
+				// Headless mode with -p flag
+				this.log.info(`Launching Claude in headless mode at ${worktreePath}`);
+
+				// Build the command with proper escaping
+				const escapedPrompt = options.prompt.replace(/"/g, '\\"');
+				const args = ['-p', escapedPrompt];
+
+				if (options.outputFormat) {
+					args.push('--output-format', options.outputFormat);
+				}
+
+				// For streaming output back to the UI
+				if (options.streaming) {
+					const claudeProcess = spawn('claude', args, {
+						cwd: worktreePath,
+						stdio: ['inherit', 'pipe', 'pipe'],
+						env: { ...process.env, FORCE_COLOR: '1' }
+					});
+
+					return {
+						success: true,
+						process: claudeProcess,
+						mode: 'headless-streaming'
+					};
+				} else {
+					// For simple execution
+					const result = await execAsync(`claude -p "${escapedPrompt}"`, {
+						cwd: worktreePath,
+						maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+					});
+
+					return {
+						success: true,
+						output: result.stdout,
+						error: result.stderr,
+						mode: 'headless-blocking'
+					};
+				}
+			} else {
+				// Interactive mode - spawn Claude in a new terminal
+				this.log.info(
+					`Launching Claude in interactive mode at ${worktreePath}`
+				);
+
+				const platform = os.platform();
+				let command;
+
+				if (platform === 'darwin') {
+					// macOS - use Terminal.app or iTerm2 if available
+					try {
+						// Check if iTerm2 is available
+						await execAsync(
+							'osascript -e \'tell application "System Events" to get name of every application process\' | grep -i iterm'
+						);
+						// iTerm2 is available
+						command = `osascript -e 'tell application "iTerm"
+							create window with default profile
+							tell current session of current window
+								write text "cd \\"${worktreePath}\\" && claude"
+							end tell
+						end tell'`;
+					} catch {
+						// Fall back to Terminal.app
+						command = `osascript -e 'tell application "Terminal"
+							do script "cd \\"${worktreePath}\\" && claude"
+							activate
+						end tell'`;
+					}
+				} else if (platform === 'linux') {
+					// Linux - try different terminal emulators
+					const terminals = [
+						{
+							cmd: 'gnome-terminal',
+							args: `-- bash -c "cd '${worktreePath}' && claude; exec bash"`
+						},
+						{
+							cmd: 'konsole',
+							args: `-e bash -c "cd '${worktreePath}' && claude; exec bash"`
+						},
+						{
+							cmd: 'xterm',
+							args: `-e bash -c "cd '${worktreePath}' && claude; exec bash"`
+						}
+					];
+
+					for (const term of terminals) {
+						try {
+							await execAsync(`which ${term.cmd}`);
+							command = `${term.cmd} ${term.args}`;
+							break;
+						} catch {
+							// Try next terminal
+						}
+					}
+
+					if (!command) {
+						throw new Error('No supported terminal emulator found');
+					}
+				} else if (platform === 'win32') {
+					// Windows
+					command = `start cmd /k "cd /d \\"${worktreePath}\\" && claude"`;
+				} else {
+					throw new Error(`Unsupported platform: ${platform}`);
+				}
+
+				await execAsync(command);
+
+				return {
+					success: true,
+					mode: 'interactive',
+					worktreePath: worktreePath
+				};
+			}
+		} catch (error) {
+			this.log.error(`Failed to launch Claude CLI: ${error.message}`);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async prepareClaudeContext(worktreePath, task, additionalContext = {}) {
+		try {
+			const fs = await import('fs/promises');
+			const path = await import('path');
+
+			// Build comprehensive context for Claude
+			let claudeMdContent = `# Task Context
+
+## Current Task: ${task.id} - ${task.title}
+Status: ${task.status}
+Priority: ${task.priority || 'medium'}
+
+### Description
+${task.description || 'No description provided'}
+
+### Implementation Details
+${task.details || 'No implementation details provided'}
+`;
+
+			// Add dependencies if any
+			if (task.dependencies && task.dependencies.length > 0) {
+				claudeMdContent += `
+### Dependencies
+${task.dependencies
+	.map((dep) => {
+		if (typeof dep === 'object') {
+			return `- [${dep.completed ? '✓' : '○'}] Task ${dep.id}: ${dep.title || 'Unknown'}`;
+		}
+		return `- Task ${dep}`;
+	})
+	.join('\n')}
+`;
+			}
+
+			// Add subtasks if any
+			if (task.subtasks && task.subtasks.length > 0) {
+				claudeMdContent += `
+### Subtasks
+${task.subtasks.map((st) => `- [${st.status}] ${st.id}: ${st.title}`).join('\n')}
+`;
+			}
+
+			// Add test strategy if available
+			if (task.testStrategy) {
+				claudeMdContent += `
+### Test Strategy
+${task.testStrategy}
+`;
+			}
+
+			// Add additional context if provided
+			if (additionalContext.research) {
+				claudeMdContent += `
+### Research Findings
+${additionalContext.research}
+`;
+			}
+
+			if (additionalContext.worktree) {
+				claudeMdContent += `
+## Workspace Information
+- Worktree: ${additionalContext.worktree.name}
+- Branch: ${additionalContext.worktree.branch || 'unknown'}
+- Path: ${worktreePath}
+`;
+			}
+
+			if (additionalContext.projectContext) {
+				claudeMdContent += `
+## Project Context
+${additionalContext.projectContext}
+`;
+			}
+
+			// Add helpful commands
+			claudeMdContent += `
+## Helpful Commands
+- Run tests: npm test
+- Build project: npm run build
+- Check types: npm run typecheck
+- Format code: npm run format
+
+## Working Guidelines
+1. Focus on implementing the specific task described above
+2. Maintain consistency with existing code patterns
+3. Write tests for new functionality
+4. Update documentation as needed
+5. Commit changes with descriptive messages
+`;
+
+			// Write CLAUDE.md to worktree
+			const claudeMdPath = path.join(worktreePath, 'CLAUDE.md');
+			await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+
+			this.log.info(`Created CLAUDE.md context file at ${claudeMdPath}`);
+
+			return {
+				success: true,
+				contextPath: claudeMdPath
+			};
+		} catch (error) {
+			this.log.error(`Failed to prepare Claude context: ${error.message}`);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async launchMultipleClaudeSessions(tasks, options = {}) {
+		try {
+			const sessions = [];
+			const repoRoot = await this.getRepositoryRoot();
+			const repoName = path.basename(repoRoot);
+
+			for (const task of tasks) {
+				// Create worktree for each task
+				const worktreeName = `${repoName}-task-${task.id}`;
+				const worktreeResult = await this.addWorktree(worktreeName, {
+					branch: `task-${task.id}`
+				});
+
+				if (!worktreeResult.success) {
+					this.log.error(
+						`Failed to create worktree for task ${task.id}: ${worktreeResult.error}`
+					);
+					continue;
+				}
+
+				// Link task to worktree
+				await this.linkWorktreeToTasks(worktreeName, [task.id], {
+					includeSubtasks: true
+				});
+
+				// Launch Claude in the worktree
+				const launchResult = await this.launchClaudeCLI(worktreeResult.path, {
+					mode: options.mode || 'interactive',
+					task: task,
+					contextData: {
+						worktree: { name: worktreeName, branch: `task-${task.id}` }
+					}
+				});
+
+				if (launchResult.success) {
+					sessions.push({
+						taskId: task.id,
+						worktree: {
+							name: worktreeName,
+							path: worktreeResult.path
+						},
+						claude: launchResult
+					});
+				}
+			}
+
+			return {
+				success: true,
+				sessions: sessions,
+				totalLaunched: sessions.length,
+				totalFailed: tasks.length - sessions.length
+			};
+		} catch (error) {
+			this.log.error(
+				`Failed to launch multiple Claude sessions: ${error.message}`
+			);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	async getClaudeSessionsForWorktree(worktreeName) {
+		try {
+			// Get linked tasks for this worktree
+			const tasks = await this.getWorktreeTasks(worktreeName);
+			const sessions = [];
+
+			// Check for Claude sessions in task details
+			for (const task of tasks) {
+				const sessionIds = this.extractClaudeSessionIds(task.details || '');
+				if (sessionIds.length > 0) {
+					sessions.push({
+						taskId: task.id,
+						taskTitle: task.title,
+						sessionIds: sessionIds
+					});
+				}
+			}
+
+			return {
+				success: true,
+				sessions: sessions
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	extractClaudeSessionIds(text) {
+		const sessionPattern = /<claude-session[^>]*sessionId="([^"]+)"[^>]*>/g;
+		const ids = [];
+		let match = sessionPattern.exec(text);
+
+		while (match !== null) {
+			ids.push(match[1]);
+			match = sessionPattern.exec(text);
+		}
+
+		return ids;
 	}
 }
