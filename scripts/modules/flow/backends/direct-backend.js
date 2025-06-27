@@ -351,7 +351,8 @@ export class DirectBackend extends FlowBackend {
 					includeProjectTree: options.includeProjectTree || false,
 					detailLevel: options.detailLevel || 'medium',
 					projectRoot: this.projectRoot,
-					saveToFile: options.saveToFile || false
+					saveToFile: options.saveToFile || false,
+					saveTo: options.saveTo // Add saveTo parameter
 				},
 				{
 					projectRoot: this.projectRoot,
@@ -2038,6 +2039,12 @@ Branch: ${worktree.branch || 'unknown'}
 	// Launch Claude in headless mode with prompt
 	async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
 		try {
+			// Ensure all tasks have research before proceeding
+			await this.ensureTasksHaveResearch(tasks, worktree, {
+				...options,
+				mcpLog: options.mcpLog || options.log || this.log
+			});
+
 			// Prepare context file (CLAUDE.md) first
 			const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
 				...options,
@@ -2266,6 +2273,81 @@ ${prompt}
 			taskPersonas: detectionResults,
 			multiPersonaWorkflow: multiPersona
 		};
+	}
+
+	/**
+	 * Check if a task has research in its details
+	 * @param {Object} task - Task object
+	 * @returns {boolean} - True if task has research
+	 */
+	hasResearchInTask(task) {
+		// Check main task details
+		if (task.details && task.details.includes('Research Session')) {
+			return true;
+		}
+
+		// Check subtasks if they exist
+		if (task.subtasks && Array.isArray(task.subtasks)) {
+			for (const subtask of task.subtasks) {
+				if (subtask.details && subtask.details.includes('Research Session')) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Run research for tasks that don't have research
+	 * @param {Array} tasks - Array of tasks
+	 * @param {Object} worktree - Worktree object
+	 * @param {Object} options - Options
+	 * @returns {Promise<void>}
+	 */
+	async ensureTasksHaveResearch(tasks, worktree, options = {}) {
+		const logFn = options.mcpLog || this.log;
+
+		for (const task of tasks) {
+			if (!this.hasResearchInTask(task)) {
+				logFn.info(`Task ${task.id} has no research. Running research...`);
+
+				try {
+					// Build research query based on task
+					const researchQuery = `Task ${task.id}: ${task.title}\n\nDescription: ${task.description || 'No description'}\n\nDetails: ${task.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
+
+					// Run research
+					const researchResult = await this.research({
+						query: researchQuery,
+						taskIds: [task.id.toString()],
+						includeProjectTree: true,
+						detailLevel: 'high',
+						saveTo: task.id.toString()
+					});
+
+					if (researchResult.success) {
+						logFn.info(`Research completed and saved to task ${task.id}`);
+
+						// Reload task to get updated details with research
+						const updatedTask = await this.getTask(task.id.toString());
+						if (updatedTask) {
+							// Update the task object in the array with the new details
+							Object.assign(task, updatedTask);
+						}
+					} else {
+						logFn.warn(
+							`Research failed for task ${task.id}: ${researchResult.error}`
+						);
+					}
+				} catch (error) {
+					logFn.error(
+						`Error running research for task ${task.id}: ${error.message}`
+					);
+				}
+			} else {
+				logFn.info(`Task ${task.id} already has research`);
+			}
+		}
 	}
 
 	/**

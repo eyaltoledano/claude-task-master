@@ -35,7 +35,7 @@ export function ClaudeWorktreeLauncherModal({
 	const [headlessPrompt, setHeadlessPrompt] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState(null);
-	const [view, setView] = useState('persona'); // persona, options, prompt, processing, summary
+	const [view, setView] = useState('persona'); // persona, options, prompt, processing, research, summary
 	const [detectedPersonas, setDetectedPersonas] = useState([]);
 	const [selectedPersona, setSelectedPersona] = useState(null);
 	const [personaSelectionIndex, setPersonaSelectionIndex] = useState(0);
@@ -44,6 +44,7 @@ export function ClaudeWorktreeLauncherModal({
 	const [processingLines, setProcessingLines] = useState([]); // Store multiple lines
 	const [sessionResult, setSessionResult] = useState(null);
 	const [showFullConversation, setShowFullConversation] = useState(false);
+	const [conversationScrollOffset, setConversationScrollOffset] = useState(0);
 	const [maxTurns, setMaxTurns] = useState(15);
 	const [toolRestrictions, setToolRestrictions] = useState({
 		allowShellCommands: true, // Changed from false to true
@@ -208,6 +209,8 @@ export function ClaudeWorktreeLauncherModal({
 			if (input === 'v') {
 				// Toggle full conversation view
 				setShowFullConversation(!showFullConversation);
+				// Reset scroll when toggling
+				setConversationScrollOffset(0);
 			} else if (input === 'r') {
 				// Retry/Resume if interrupted
 				handleResume();
@@ -217,13 +220,38 @@ export function ClaudeWorktreeLauncherModal({
 			} else if (key.return) {
 				// Complete and close, create PR if requested
 				handleComplete();
+			} else if (showFullConversation) {
+				// Scroll controls when conversation is shown
+				if (key.upArrow) {
+					setConversationScrollOffset((prev) => Math.max(0, prev - 1));
+				} else if (key.downArrow) {
+					const totalMessages = sessionResult?.messages?.length || 0;
+					const visibleLines = 12; // Height minus headers
+					const maxOffset = Math.max(0, totalMessages - visibleLines);
+					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 1));
+				} else if (key.pageUp) {
+					setConversationScrollOffset((prev) => Math.max(0, prev - 10));
+				} else if (key.pageDown) {
+					const totalMessages = sessionResult?.messages?.length || 0;
+					const visibleLines = 12; // Height minus headers
+					const maxOffset = Math.max(0, totalMessages - visibleLines);
+					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 10));
+				} else if (input === 'h' || input === 'H') {
+					// Home - go to top
+					setConversationScrollOffset(0);
+				} else if (input === 'e' || input === 'E') {
+					// End - go to bottom
+					const totalMessages = sessionResult?.messages?.length || 0;
+					const visibleLines = 12;
+					const maxOffset = Math.max(0, totalMessages - visibleLines);
+					setConversationScrollOffset(maxOffset);
+				}
 			}
 		}
 	});
 
 	const handleLaunch = async () => {
 		setIsProcessing(true);
-		setView('processing');
 		setError(null);
 		setProcessingLines([]); // Clear previous lines
 
@@ -231,6 +259,22 @@ export function ClaudeWorktreeLauncherModal({
 			const selectedTaskObjects = tasks.filter((t) =>
 				selectedTasks.includes(t.id)
 			);
+
+			// Check if tasks need research
+			let needsResearch = false;
+			for (const task of selectedTaskObjects) {
+				if (!backend.hasResearchInTask || !backend.hasResearchInTask(task)) {
+					needsResearch = true;
+					break;
+				}
+			}
+
+			if (needsResearch) {
+				setView('research');
+				setProcessingLog('Checking for existing research...');
+			} else {
+				setView('processing');
+			}
 
 			// Build allowed tools list based on restrictions
 			let allowedTools = null;
@@ -278,6 +322,30 @@ export function ClaudeWorktreeLauncherModal({
 					captureOutput: true,
 					outputFormat: 'stream-json',
 					allowedTools: allowedTools,
+					log: {
+						info: (msg) => {
+							if (
+								msg.includes('has no research') ||
+								msg.includes('Running research')
+							) {
+								setView('research');
+								setProcessingLog(msg);
+							} else if (msg.includes('Research completed')) {
+								setProcessingLog(msg);
+								// Switch to processing view after research is done
+								setTimeout(() => setView('processing'), 1000);
+							} else if (msg.includes('already has research')) {
+								// If all tasks already have research, go straight to processing
+								if (view === 'research') {
+									setView('processing');
+								}
+							}
+						},
+						warn: (msg) => console.warn(msg),
+						error: (msg) => console.error(msg),
+						debug: (msg) => console.debug(msg),
+						success: (msg) => console.log(msg)
+					},
 					onProgress: (output) => {
 						// Parse streaming output and collect lines
 						if (typeof output === 'string') {
@@ -581,6 +649,56 @@ export function ClaudeWorktreeLauncherModal({
 		</Box>
 	);
 
+	const renderResearch = () => {
+		const task = tasks[0]; // Since we're processing one task at a time
+		const taskInfo = task
+			? {
+					id: task.id,
+					title: task.title,
+					description: task.description || 'No description provided',
+					isSubtask: task.id.includes('.')
+				}
+			: null;
+
+		return (
+			<Box flexDirection="column" padding={1}>
+				<Box marginBottom={1}>
+					<Text bold color={theme.primary}>
+						🔍 Preparing Research for Task Implementation
+					</Text>
+				</Box>
+
+				{taskInfo && (
+					<Box marginBottom={1} flexDirection="column">
+						<Text color={theme.secondary}>
+							{taskInfo.isSubtask
+								? `Subtask ${taskInfo.id}`
+								: `Task ${taskInfo.id}`}
+							: {taskInfo.title}
+						</Text>
+					</Box>
+				)}
+
+				<Box marginBottom={1}>
+					<LoadingSpinner />
+					<Text> Running research to gather current best practices...</Text>
+				</Box>
+
+				{processingLog && (
+					<Box marginTop={1}>
+						<Text dimColor>{processingLog}</Text>
+					</Box>
+				)}
+
+				<Box marginTop={2}>
+					<Text dimColor>
+						Research will be saved to the task before launching Claude
+					</Text>
+				</Box>
+			</Box>
+		);
+	};
+
 	const renderProcessing = () => {
 		// Get task details for display
 		const task = tasks[0]; // Since we're processing one task at a time
@@ -809,62 +927,79 @@ export function ClaudeWorktreeLauncherModal({
 				</Box>
 
 				{showFullConversation ? (
-					<Box
-						marginTop={2}
-						flexDirection="column"
-						height={15}
-						overflowY="scroll"
-					>
-						<Text color={theme.secondary}>Full Conversation:</Text>
-						<Box marginTop={1} flexDirection="column">
-							{sessionResult.messages?.map((msg, idx) => {
-								// Extract text content from message
-								let contentPreview = '';
-								if (msg.message?.content) {
-									const content = msg.message.content;
-									if (Array.isArray(content)) {
-										// Handle array of content parts
-										for (const part of content) {
-											if (part.type === 'text' && part.text) {
-												contentPreview += part.text;
-												if (contentPreview.length > 100) break;
-											}
-										}
-									} else if (typeof content === 'string') {
-										// Handle string content
-										contentPreview = content;
-									} else if (content.text) {
-										// Handle object with text property
-										contentPreview = content.text;
-									}
-								} else if (msg.type === 'tool_use' && msg.name) {
-									// Handle tool use messages
-									contentPreview = `Tool: ${msg.name}`;
-									if (msg.input) {
-										contentPreview += ` - ${JSON.stringify(msg.input).substring(0, 50)}`;
-									}
-								} else if (msg.type === 'system' && msg.subtype) {
-									// Handle system messages
-									contentPreview = `System: ${msg.subtype}`;
-								}
-
-								// Truncate to 100 characters
-								if (contentPreview.length > 100) {
-									contentPreview = contentPreview.substring(0, 100) + '...';
-								}
-
-								return (
-									<Box
-										key={`msg-${msg.type}-${idx}-${msg.timestamp || idx}`}
-										marginBottom={1}
-									>
-										<Text color={theme.muted}>
-											[{msg.type}] {contentPreview || '(no content)'}
-										</Text>
-									</Box>
-								);
-							})}
+					<Box marginTop={2} flexDirection="column">
+						<Box flexDirection="row" justifyContent="space-between">
+							<Text color={theme.secondary}>Full Conversation:</Text>
+							{sessionResult.messages?.length > 12 && (
+								<Text dimColor>
+									{conversationScrollOffset + 1}-
+									{Math.min(
+										conversationScrollOffset + 12,
+										sessionResult.messages.length
+									)}{' '}
+									of {sessionResult.messages.length}
+								</Text>
+							)}
 						</Box>
+						<Box marginTop={1} flexDirection="column" height={12}>
+							{sessionResult.messages
+								?.slice(conversationScrollOffset, conversationScrollOffset + 12)
+								.map((msg, relativeIdx) => {
+									const actualIdx = conversationScrollOffset + relativeIdx;
+									// Extract text content from message
+									let contentPreview = '';
+									if (msg.message?.content) {
+										const content = msg.message.content;
+										if (Array.isArray(content)) {
+											// Handle array of content parts
+											for (const part of content) {
+												if (part.type === 'text' && part.text) {
+													contentPreview += part.text;
+													if (contentPreview.length > 100) break;
+												}
+											}
+										} else if (typeof content === 'string') {
+											// Handle string content
+											contentPreview = content;
+										} else if (content.text) {
+											// Handle object with text property
+											contentPreview = content.text;
+										}
+									} else if (msg.type === 'tool_use' && msg.name) {
+										// Handle tool use messages
+										contentPreview = `Tool: ${msg.name}`;
+										if (msg.input) {
+											contentPreview += ` - ${JSON.stringify(msg.input).substring(0, 50)}`;
+										}
+									} else if (msg.type === 'system' && msg.subtype) {
+										// Handle system messages
+										contentPreview = `System: ${msg.subtype}`;
+									}
+
+									// Truncate to 100 characters
+									if (contentPreview.length > 100) {
+										contentPreview = contentPreview.substring(0, 100) + '...';
+									}
+
+									return (
+										<Box
+											key={`msg-${msg.type}-${actualIdx}-${msg.timestamp || actualIdx}`}
+											marginBottom={1}
+										>
+											<Text color={theme.muted}>
+												[{msg.type}] {contentPreview || '(no content)'}
+											</Text>
+										</Box>
+									);
+								})}
+						</Box>
+						{sessionResult.messages?.length > 12 && (
+							<Box marginTop={1}>
+								<Text dimColor>
+									[↑↓] Scroll line [PgUp/PgDn] Scroll page [H]ome [E]nd
+								</Text>
+							</Box>
+						)}
 					</Box>
 				) : (
 					<Box marginTop={2}>
@@ -908,6 +1043,7 @@ export function ClaudeWorktreeLauncherModal({
 			<Box flexGrow={1}>
 				{view === 'persona' && renderPersonaSelection()}
 				{view === 'prompt' && renderPromptInput()}
+				{view === 'research' && renderResearch()}
 				{view === 'processing' && renderProcessing()}
 				{view === 'options' && renderOptions()}
 				{view === 'summary' && renderSummary()}

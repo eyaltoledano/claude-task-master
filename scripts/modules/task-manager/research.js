@@ -58,7 +58,8 @@ async function performResearch(
 		includeProjectTree = false,
 		detailLevel = 'medium',
 		projectRoot: providedProjectRoot,
-		saveToFile = false
+		saveToFile = false,
+		saveTo = null // Add saveTo parameter for automatic task saving
 	} = options;
 
 	const {
@@ -282,6 +283,71 @@ async function performResearch(
 					query,
 					researchResult
 				);
+			}
+		}
+
+		// Handle automatic save to task if saveTo is provided
+		if (saveTo && (isMCP || outputFormat === 'json')) {
+			try {
+				// Import required modules
+				const { readJSON } = await import('../utils.js');
+				const updateTaskById = (await import('./update-task-by-id.js')).default;
+				const updateSubtaskById = (await import('./update-subtask-by-id.js'))
+					.default;
+
+				// Format conversation for saving
+				const conversationHistory = [
+					{
+						question: query,
+						answer: researchResult,
+						type: 'initial',
+						timestamp: new Date().toISOString()
+					}
+				];
+				const conversationThread =
+					formatConversationForSaving(conversationHistory);
+
+				// Get tasks path
+				const tasksPath = path.join(
+					projectRoot,
+					'.taskmaster',
+					'tasks',
+					'tasks.json'
+				);
+
+				// Determine if it's a task or subtask
+				const isSubtask = saveTo.includes('.');
+
+				if (isSubtask) {
+					// Save to subtask
+					await updateSubtaskById(
+						tasksPath,
+						saveTo,
+						conversationThread,
+						false, // useResearch = false for simple append
+						{ ...context, projectRoot },
+						'json' // Use json output format for non-interactive
+					);
+				} else {
+					// Save to task
+					const taskIdNum = parseInt(saveTo, 10);
+					await updateTaskById(
+						tasksPath,
+						taskIdNum,
+						conversationThread,
+						false, // useResearch = false for simple append
+						{ ...context, projectRoot },
+						'json', // Use json output format for non-interactive
+						true // appendMode = true
+					);
+				}
+
+				logFn.info(`Research saved to task ${saveTo}`);
+			} catch (error) {
+				logFn.error(
+					`Failed to save research to task ${saveTo}: ${error.message}`
+				);
+				// Don't throw - continue with the research result even if save fails
 			}
 		}
 
