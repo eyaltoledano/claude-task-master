@@ -834,22 +834,40 @@ const ScrollableMessages = ({
 	let skippedLines = 0;
 
 	for (const element of contentElements) {
-		// Estimate height of this element
+		// Estimate height of this element - more accurate calculation
 		let elementHeight = 3; // Default height
 
 		if (element.type === 'message') {
 			// Find the message to calculate its height
 			const msg = messages.find((m) => `msg-${m.id}` === element.key);
 			if (msg) {
-				elementHeight = 2 + Math.ceil(msg.content.length / 80) + 1;
+				// Better height calculation accounting for word wrapping
+				const lines = msg.content.split('\n');
+				elementHeight = 2; // Header height
+				lines.forEach((line) => {
+					// Account for line wrapping at terminal width (assume 80 chars)
+					elementHeight += Math.max(1, Math.ceil(line.length / 80));
+				});
+				elementHeight += 1; // Margin
+
 				if (msg.metadata?.toolCalls) {
-					elementHeight += msg.metadata.toolCalls.length * 3;
+					elementHeight += msg.metadata.toolCalls.length * 4; // More space for tool calls
 				}
 			}
 		} else if (element.type === 'streaming') {
-			elementHeight = 2 + Math.ceil(streamingContent.length / 80) + 1;
+			// Better calculation for streaming content
+			const lines = streamingContent.split('\n');
+			elementHeight = 2; // Header
+			lines.forEach((line) => {
+				elementHeight += Math.max(1, Math.ceil(line.length / 80));
+			});
+			elementHeight += 1; // Margin
+
+			if (toolCalls.length > 0) {
+				elementHeight += toolCalls.length * 4;
+			}
 		} else if (element.type === 'toolcalls') {
-			elementHeight = toolCalls.length * 3;
+			elementHeight = toolCalls.length * 4;
 		} else if (element.type === 'error') {
 			elementHeight = 2;
 		}
@@ -892,7 +910,8 @@ const ScrollableMessages = ({
 			{canScrollDown && (
 				<Box>
 					<Text color={theme.textDim}>
-						↓ More content below (↓/j to scroll)
+						↓ {Math.max(1, totalHeight - (scrollOffset + height))} more lines
+						below (↓/j to scroll)
 					</Text>
 				</Box>
 			)}
@@ -1011,12 +1030,12 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		const updateViewportHeight = () => {
 			if (stdout) {
 				// Terminal height minus:
-				// - 3 for header
-				// - 4 for input area
+				// - 2 for header
+				// - 3 for input area
 				// - 2 for status bar
-				// - 2 for padding
-				const availableHeight = (stdout.rows || 24) - 11;
-				setViewportHeight(Math.max(5, availableHeight));
+				// - 1 for padding
+				const availableHeight = (stdout.rows || 24) - 8;
+				setViewportHeight(Math.max(10, availableHeight));
 			}
 		};
 
@@ -1029,22 +1048,24 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		}
 	}, [stdout]);
 
-	// Calculate total content height (approximate)
+	// Calculate total content height (more accurate)
 	const calculateTotalHeight = useCallback(() => {
 		let totalHeight = 0;
 
-		// Each message takes roughly 3-4 lines minimum
+		// Each message takes variable height based on content
 		messages.forEach((msg) => {
 			// Base height for role/header
 			totalHeight += 2;
 
-			// Content height (rough estimate: 80 chars per line)
-			const contentLines = Math.ceil(msg.content.length / 80);
-			totalHeight += contentLines;
+			// Content height - split by newlines and calculate wrapped lines
+			const lines = msg.content.split('\n');
+			lines.forEach((line) => {
+				totalHeight += Math.max(1, Math.ceil(line.length / 80));
+			});
 
 			// Tool calls add extra height
 			if (msg.metadata?.toolCalls) {
-				totalHeight += msg.metadata.toolCalls.length * 3;
+				totalHeight += msg.metadata.toolCalls.length * 4;
 			}
 
 			// Margin
@@ -1053,12 +1074,17 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 		// Add height for streaming content
 		if (streamingContent) {
-			totalHeight += 2 + Math.ceil(streamingContent.length / 80) + 1;
+			totalHeight += 2; // Header
+			const lines = streamingContent.split('\n');
+			lines.forEach((line) => {
+				totalHeight += Math.max(1, Math.ceil(line.length / 80));
+			});
+			totalHeight += 1; // Margin
 		}
 
 		// Add height for current tool calls
 		if (!streamingContent && toolCalls.length > 0) {
-			totalHeight += toolCalls.length * 3;
+			totalHeight += toolCalls.length * 4;
 		}
 
 		// Add height for error
@@ -1071,9 +1097,13 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 
 	// Handle keyboard input for scrolling
 	useInput((input, key) => {
-		if (!isProcessing) {
+		if (
+			!isProcessing ||
+			(isProcessing &&
+				(key.upArrow || key.downArrow || input === 'k' || input === 'j'))
+		) {
 			const totalHeight = calculateTotalHeight();
-			const maxScroll = Math.max(0, totalHeight - viewportHeight + 5); // Leave some buffer
+			const maxScroll = Math.max(0, totalHeight - viewportHeight + 2); // Smaller buffer
 
 			if (key.upArrow || input === 'k') {
 				// Scroll up
@@ -1097,22 +1127,34 @@ export const ChatScreen = ({ mcpClient, projectRoot, onExit }) => {
 		}
 	});
 
-	// Auto-scroll to bottom when new messages arrive
+	// Auto-scroll to bottom when new content arrives during streaming
 	useEffect(() => {
-		const totalHeight = calculateTotalHeight();
-		const maxScroll = Math.max(0, totalHeight - viewportHeight + 5);
-
-		// Only auto-scroll if we're already at or near the bottom
-		if (scrollOffset >= maxScroll - 5) {
+		if (isProcessing && streamingContent) {
+			// Always scroll to bottom during streaming to show new content
+			const totalHeight = calculateTotalHeight();
+			const maxScroll = Math.max(0, totalHeight - viewportHeight + 2);
 			setScrollOffset(maxScroll);
+		}
+	}, [streamingContent, isProcessing, calculateTotalHeight, viewportHeight]);
+
+	// Auto-scroll to bottom when messages change (but not during streaming)
+	useEffect(() => {
+		if (!isProcessing) {
+			const totalHeight = calculateTotalHeight();
+			const maxScroll = Math.max(0, totalHeight - viewportHeight + 2);
+
+			// Only auto-scroll if we're already at or near the bottom
+			if (scrollOffset >= maxScroll - 5) {
+				setScrollOffset(maxScroll);
+			}
 		}
 	}, [
 		messages,
-		streamingContent,
 		toolCalls,
 		calculateTotalHeight,
 		viewportHeight,
-		scrollOffset
+		scrollOffset,
+		isProcessing
 	]);
 
 	// Handle message submission
@@ -1209,6 +1251,9 @@ You can ask me about:
 		};
 		setMessages((prev) => [...prev, assistantMsg]);
 
+		// Track tool calls for this message
+		const messageToolCalls = [];
+
 		try {
 			// Call AI handler
 			await handlerRef.current.handleUserMessage(userInput, {
@@ -1217,19 +1262,33 @@ You can ask me about:
 					setStreamingContent(accumulatedContentRef.current);
 				},
 				onToolCall: (toolCall) => {
+					// Add to both display state and message tracking
 					setToolCalls((prev) => [...prev, toolCall]);
+					messageToolCalls.push(toolCall);
 				},
 				onComplete: () => {
-					// Update the assistant message with final content
+					// Update the assistant message with final content and tool calls
 					const finalContent = accumulatedContentRef.current;
+
 					setMessages((prev) =>
 						prev.map((msg) =>
 							msg.id === assistantMsgId
-								? { ...msg, content: finalContent }
+								? {
+										...msg,
+										content: finalContent,
+										metadata: {
+											...msg.metadata,
+											toolCalls:
+												messageToolCalls.length > 0
+													? messageToolCalls
+													: undefined
+										}
+									}
 								: msg
 						)
 					);
 					setStreamingContent('');
+					setToolCalls([]); // Clear tool calls display state
 					setIsProcessing(false);
 				},
 				onError: (error) => {
