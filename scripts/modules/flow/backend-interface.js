@@ -227,6 +227,10 @@ export class FlowBackend {
 	 * @returns {Promise<string>} - Path to the saved file
 	 */
 	async saveClaudeSessionData(sessionData) {
-		throw new Error('saveClaudeSessionData() must be implemented by subclass');
+		throw new Error('saveClaudeSessionData must be implemented');
+	}
+
+	async completeSubtaskWithPR(worktreeName, options = {}) {
+		throw new Error('completeSubtaskWithPR must be implemented');
 	}
 }

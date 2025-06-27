@@ -50,6 +50,7 @@ export function ClaudeWorktreeLauncherModal({
 		allowFileOperations: true, // Changed from false to true
 		allowWebSearch: true // Changed from false to true
 	});
+	const [shouldCreatePR, setShouldCreatePR] = useState(true); // Default to creating PR
 
 	const detectPersonasForSelectedTasks = useCallback(async () => {
 		setIsDetectingPersonas(true);
@@ -210,9 +211,12 @@ export function ClaudeWorktreeLauncherModal({
 			} else if (input === 'r') {
 				// Retry/Resume if interrupted
 				handleResume();
+			} else if (input === 'p') {
+				// Toggle PR creation
+				setShouldCreatePR(!shouldCreatePR);
 			} else if (key.return) {
-				// Complete and close
-				onSuccess(sessionResult);
+				// Complete and close, create PR if requested
+				handleComplete();
 			}
 		}
 	});
@@ -477,6 +481,26 @@ export function ClaudeWorktreeLauncherModal({
 		} finally {
 			setIsProcessing(false);
 		}
+	};
+
+	const handleComplete = async () => {
+		if (shouldCreatePR && worktree) {
+			// Create PR using WorktreeManager
+			try {
+				const task = tasks[0]; // Get the first (usually only) task
+				const prDescription = `Implemented by Claude Code\n\nStatistics:\n- Turns: ${sessionResult.statistics?.turns || 0}/${sessionResult.statistics?.maxTurns || 0}\n- File Changes: ${sessionResult.statistics?.fileChanges || 0}\n- Duration: ${sessionResult.statistics?.durationSeconds || 0}s\n- Cost: $${(sessionResult.statistics?.totalCost || 0).toFixed(4)}`;
+
+				await backend.completeSubtaskWithPR(worktree.name, {
+					createPR: true,
+					prTitle: `Task ${task.id}: ${task.title}`,
+					prDescription: prDescription
+				});
+			} catch (error) {
+				console.error('Failed to create PR:', error);
+				// Continue with completion even if PR creation fails
+			}
+		}
+		onSuccess(sessionResult);
 	};
 
 	// Render functions for different views
@@ -773,6 +797,17 @@ export function ClaudeWorktreeLauncherModal({
 					</Box>
 				</Box>
 
+				{/* PR Creation Option */}
+				<Box marginTop={2} flexDirection="column">
+					<Text color={theme.text}>Next Steps:</Text>
+					<Box marginLeft={2}>
+						<Text color={shouldCreatePR ? theme.success : theme.muted}>
+							[p] Create Pull Request:{' '}
+							{shouldCreatePR ? '✓ Yes (default)' : '✗ No'}
+						</Text>
+					</Box>
+				</Box>
+
 				{showFullConversation ? (
 					<Box
 						marginTop={2}
@@ -840,7 +875,8 @@ export function ClaudeWorktreeLauncherModal({
 				<Box marginTop={2}>
 					<Text dimColor>
 						[v] {showFullConversation ? 'Hide' : 'Show'} full conversation
-						{sessionResult.sessionId && ' [r] Resume/Retry'} [Enter] Done
+						{sessionResult.sessionId && ' [r] Resume/Retry'} [p] Toggle PR
+						[Enter] {shouldCreatePR ? 'Done & Create PR' : 'Done'}
 					</Text>
 				</Box>
 			</Box>

@@ -2573,4 +2573,13 @@ ${prompt}
 		});
 		return toolCounts;
 	}
+
+	async completeSubtaskWithPR(worktreeName, options = {}) {
+		const worktreeManager = new WorktreeManager(this.projectRoot);
+		return await worktreeManager.completeSubtask(worktreeName, options);
+	}
+
+	async claudeCodeStatus(sessionId) {
+		// ... existing code ...
+	}
 }
