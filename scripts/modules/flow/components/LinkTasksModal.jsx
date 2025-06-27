@@ -61,7 +61,7 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 	// Calculate visible tasks - memoized to prevent recalculation on every render
 	const visibleTasks = useMemo(
 		() => tasks.slice(scrollOffset, scrollOffset + VISIBLE_ITEMS),
-		[tasks, scrollOffset, VISIBLE_ITEMS]
+		[tasks, scrollOffset]
 	);
 
 	const handleToggleTask = useCallback(
@@ -119,11 +119,20 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 			const linkedIds = new Set(linkedTasksResult.map((t) => String(t.id)));
 			setAlreadyLinked(linkedIds);
 
-			// Flatten tasks and subtasks into a single list
+			// Flatten tasks and subtasks into a single list, excluding done tasks
 			tasksResult.tasks.forEach((task) => {
-				// Count subtasks for parent tasks
-				if (task.subtasks && task.subtasks.length > 0) {
-					parentSubtaskMap.set(task.id.toString(), task.subtasks.length);
+				// Skip tasks that are marked as done
+				if (task.status === 'done') {
+					return;
+				}
+
+				// Count non-done subtasks for parent tasks
+				const nonDoneSubtasks = task.subtasks
+					? task.subtasks.filter((st) => st.status !== 'done')
+					: [];
+
+				if (nonDoneSubtasks.length > 0) {
+					parentSubtaskMap.set(task.id.toString(), nonDoneSubtasks.length);
 				}
 
 				allTasks.push({
@@ -131,11 +140,11 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 					title: task.title,
 					status: task.status,
 					isSubtask: false,
-					subtaskCount: task.subtasks ? task.subtasks.length : 0
+					subtaskCount: nonDoneSubtasks.length
 				});
 
-				if (task.subtasks && task.subtasks.length > 0) {
-					task.subtasks.forEach((subtask) => {
+				if (nonDoneSubtasks.length > 0) {
+					nonDoneSubtasks.forEach((subtask) => {
 						allTasks.push({
 							id: `${task.id}.${subtask.id}`,
 							title: subtask.title,
@@ -374,9 +383,12 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 			height={VISIBLE_ITEMS + 12}
 		>
 			{/* Header */}
-			<Box marginBottom={1}>
+			<Box marginBottom={1} flexDirection="column">
 				<Text bold color={theme.primary}>
 					Link Tasks to Worktree: {worktree.name}
+				</Text>
+				<Text color={theme.muted} fontSize={12}>
+					Showing only tasks not marked as done
 				</Text>
 			</Box>
 
