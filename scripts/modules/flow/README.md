@@ -14,6 +14,17 @@ Task Master Flow is an interactive Terminal User Interface (TUI) for managing ta
 - **Tag Support**: Full support for tagged task lists system
 - **Multiple Backends**: Choose between direct, CLI, or MCP backends
 
+## Key Features
+
+- **MCP Server Management**: Connect to and manage multiple MCP servers
+- **Task Management**: View, update, and manage tasks directly from the TUI
+- **Git Worktree Integration**: Create and manage git worktrees, link them to tasks
+- **Chat Sessions**: Interactive chat with context-aware AI assistance
+- **Claude Code Integration**: Launch Claude in worktrees for task implementation
+- **Persona System**: Automatic detection and application of cognitive frameworks for Claude
+- **Session Persistence**: Save and restore chat sessions
+- **Multi-Backend Support**: Works with both direct API and MCP backends
+
 ## Usage
 
 ```bash
@@ -260,3 +271,29 @@ flow/
 ## Credits
 
 Interface design inspired by [OpenCode](https://github.com/sst/opencode) - an AI coding agent built for the terminal. 
+
+### Claude Code Integration
+
+The Flow TUI provides deep integration with Claude Code for autonomous task implementation:
+
+#### Launch Modes
+1. **Interactive Mode**: Opens Claude in a new terminal for manual interaction
+2. **Headless Mode**: Runs Claude with a specific prompt (no user interaction)
+3. **Batch Mode**: Processes multiple tasks automatically
+
+#### Persona System
+The integration includes an intelligent persona system based on SuperClaude:
+
+- **Automatic Detection**: Analyzes tasks to suggest the most appropriate persona
+- **9 Specialized Personas**: Architect, Frontend, Backend, Analyzer, Security, Mentor, Refactorer, Performance, QA
+- **Cognitive Frameworks**: Each persona has unique decision-making approaches and success metrics
+- **Multi-Persona Workflows**: Complex projects can use multiple personas in sequence
+
+Example workflow:
+1. Navigate to Git Worktrees (`g`)
+2. Select a worktree with linked tasks
+3. Press `c` to launch Claude
+4. Choose launch mode and persona
+5. Claude executes with the appropriate cognitive framework
+
+See [Persona System Documentation](./personas/README.md) for detailed information. 

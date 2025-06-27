@@ -1,6 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, TextInput, Spinner, useInput } from 'ink';
 import { getTheme } from '../theme.js';
+import { personaDefinitions } from '../personas/persona-definitions.js';
+
+// Persona icons for visual identification
+const personaIcons = {
+	architect: '🏛️',
+	frontend: '🎨',
+	backend: '⚙️',
+	analyzer: '🔍',
+	security: '🔒',
+	mentor: '📚',
+	refactorer: '♻️',
+	performance: '⚡',
+	qa: '✅'
+};
 
 export function ClaudeWorktreeLauncherModal({
 	backend,
@@ -15,296 +29,399 @@ export function ClaudeWorktreeLauncherModal({
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState(null);
 	const [streamingOutput, setStreamingOutput] = useState('');
+	const [view, setView] = useState('mode'); // mode, persona, prompt, processing
+	const [detectedPersonas, setDetectedPersonas] = useState([]);
+	const [selectedPersona, setSelectedPersona] = useState(null);
+	const [personaSelectionIndex, setPersonaSelectionIndex] = useState(0);
+	const [isDetectingPersonas, setIsDetectingPersonas] = useState(false);
 	const theme = getTheme();
+
+	const detectPersonasForSelectedTasks = useCallback(async () => {
+		setIsDetectingPersonas(true);
+		try {
+			const selected = tasks.filter((t) => selectedTasks.includes(t.id));
+			const result = await backend.detectPersonasForTasks(selected, worktree);
+
+			// Aggregate personas across all tasks
+			const personaScores = {};
+			result.taskPersonas.forEach((tp) => {
+				tp.suggestedPersonas.forEach((sp) => {
+					if (!personaScores[sp.persona]) {
+						personaScores[sp.persona] = {
+							persona: sp.persona,
+							totalScore: 0,
+							totalConfidence: 0,
+							count: 0,
+							reasons: new Set()
+						};
+					}
+					personaScores[sp.persona].totalScore += sp.score;
+					personaScores[sp.persona].totalConfidence += sp.confidence;
+					personaScores[sp.persona].count += 1;
+					sp.reasons.forEach((r) => personaScores[sp.persona].reasons.add(r));
+				});
+			});
+
+			// Calculate average confidence and sort
+			const aggregated = Object.values(personaScores)
+				.map((ps) => ({
+					persona: ps.persona,
+					confidence: Math.round(ps.totalConfidence / ps.count),
+					reasons: Array.from(ps.reasons)
+				}))
+				.sort((a, b) => b.confidence - a.confidence);
+
+			setDetectedPersonas(aggregated);
+			if (aggregated.length > 0) {
+				setSelectedPersona(aggregated[0].persona);
+			}
+
+			// Check for multi-persona workflow
+			if (result.multiPersonaWorkflow) {
+				// Store for later use
+				setDetectedPersonas((prev) => {
+					const newPersonas = [...prev];
+					newPersonas._multiWorkflow = result.multiPersonaWorkflow;
+					return newPersonas;
+				});
+			}
+		} catch (err) {
+			console.error('Error detecting personas:', err);
+		} finally {
+			setIsDetectingPersonas(false);
+		}
+	}, [selectedTasks, tasks, backend, worktree]);
 
 	useEffect(() => {
 		// Pre-select the first task if only one is linked
 		if (tasks.length === 1) {
 			setSelectedTasks([tasks[0].id]);
 		}
-	}, [tasks]);
+		// Pre-select all tasks if in batch mode
+		if (launchMode === 'batch' && selectedTasks.length === 0) {
+			setSelectedTasks(tasks.map((t) => t.id));
+		}
+	}, [tasks, launchMode, selectedTasks.length]);
 
-	// Keyboard handling
+	useEffect(() => {
+		// Detect personas when tasks are selected
+		if (selectedTasks.length > 0 && !isDetectingPersonas) {
+			detectPersonasForSelectedTasks();
+		}
+	}, [selectedTasks, isDetectingPersonas, detectPersonasForSelectedTasks]);
+
 	useInput((input, key) => {
-		if (isProcessing) return;
-
 		if (key.escape) {
 			onClose();
 			return;
 		}
 
-		if (input === 'i') {
-			setLaunchMode('interactive');
-		} else if (input === 'h') {
-			setLaunchMode('headless');
-		} else if (input === 'b' && tasks.length > 1) {
-			setLaunchMode('batch');
-		} else if (input === 'l') {
-			handleLaunch();
-		} else if (input >= '1' && input <= '9') {
-			const idx = parseInt(input) - 1;
-			if (idx < tasks.length) {
-				toggleTaskSelection(tasks[idx].id);
+		if (view === 'mode') {
+			if (input === '1') {
+				setLaunchMode('interactive');
+				setView('persona');
+			} else if (input === '2') {
+				setLaunchMode('headless');
+				setView('persona');
+			} else if (input === '3' && tasks.length > 1) {
+				setLaunchMode('batch');
+				setSelectedTasks(tasks.map((t) => t.id));
+				setView('persona');
 			}
-		} else if (input === ' ') {
-			// Space to toggle current selection
-			if (tasks.length > 0) {
-				toggleTaskSelection(tasks[0].id);
+		} else if (view === 'persona') {
+			if (key.upArrow) {
+				setPersonaSelectionIndex(Math.max(0, personaSelectionIndex - 1));
+			} else if (key.downArrow) {
+				setPersonaSelectionIndex(
+					Math.min(detectedPersonas.length - 1, personaSelectionIndex + 1)
+				);
+			} else if (key.return) {
+				setSelectedPersona(
+					detectedPersonas[personaSelectionIndex]?.persona || 'architect'
+				);
+				if (launchMode === 'headless') {
+					setView('prompt');
+				} else {
+					handleLaunch();
+				}
+			} else if (key.tab && detectedPersonas.length > 1) {
+				// Cycle through detected personas
+				const nextIndex = (personaSelectionIndex + 1) % detectedPersonas.length;
+				setPersonaSelectionIndex(nextIndex);
+			} else if (input >= '1' && input <= '9') {
+				// Quick select by number
+				const index = parseInt(input) - 1;
+				const personaIds = Object.keys(personaDefinitions);
+				if (index < personaIds.length) {
+					setSelectedPersona(personaIds[index]);
+					if (launchMode === 'headless') {
+						setView('prompt');
+					} else {
+						handleLaunch();
+					}
+				}
+			} else if (input === 'p') {
+				// Manual persona selection
+				setView('manual-persona');
+			} else if (input === 'n') {
+				// No persona
+				setSelectedPersona(null);
+				if (launchMode === 'headless') {
+					setView('prompt');
+				} else {
+					handleLaunch();
+				}
 			}
 		}
 	});
 
 	const handleLaunch = async () => {
-		if (selectedTasks.length === 0) {
-			setError('Please select at least one task');
-			return;
-		}
-
-		if (
-			(launchMode === 'headless' || launchMode === 'batch') &&
-			!headlessPrompt.trim()
-		) {
-			setError('Please enter a prompt for headless mode');
-			return;
-		}
-
 		setIsProcessing(true);
+		setView('processing');
 		setError(null);
-		setStreamingOutput('');
 
 		try {
 			const selectedTaskObjects = tasks.filter((t) =>
 				selectedTasks.includes(t.id)
 			);
 
-			if (launchMode === 'batch') {
-				// Launch multiple sessions
-				const result = await backend.launchMultipleClaudeSessions(
+			if (launchMode === 'interactive') {
+				const result = await backend.launchClaudeCLI(worktree, {
+					tasks: selectedTaskObjects,
+					persona: selectedPersona,
+					includeStructure: true
+				});
+
+				if (result.success) {
+					onSuccess({
+						mode: 'interactive',
+						worktree: worktree.name,
+						tasks: selectedTasks,
+						persona: selectedPersona
+					});
+				}
+			} else if (launchMode === 'headless') {
+				const result = await backend.launchClaudeHeadless(
+					worktree,
 					selectedTaskObjects,
+					headlessPrompt,
 					{
-						mode: headlessPrompt ? 'headless' : 'interactive',
-						prompt: headlessPrompt
+						persona: selectedPersona,
+						maxTurns: 10,
+						permissionMode: 'acceptEdits',
+						outputFormat: 'text',
+						captureOutput: false,
+						onProgress: (output) => {
+							setStreamingOutput((prev) => prev + output);
+						}
 					}
 				);
 
 				if (result.success) {
-					onSuccess(`Launched ${result.totalLaunched} Claude sessions`);
-					onClose();
-				} else {
-					setError(result.error);
+					onSuccess({
+						mode: 'headless',
+						worktree: worktree.name,
+						tasks: selectedTasks,
+						persona: selectedPersona,
+						output: result.output
+					});
 				}
-			} else {
-				// Launch single session
-				const task = selectedTaskObjects[0];
-				const result = await backend.launchClaudeCLI(worktree.path, {
-					mode: launchMode,
-					task: task,
-					prompt: headlessPrompt,
-					streaming: launchMode === 'headless',
-					contextData: {
-						worktree: worktree,
-						research: task.researchFindings || '',
-						projectContext: await backend.research({
-							query: `Project structure and context for ${worktree.name}`,
-							includeProjectTree: true,
-							detailLevel: 'low'
-						})
-					}
-				});
+			} else if (launchMode === 'batch') {
+				// Check if multi-persona workflow was detected
+				if (detectedPersonas._multiWorkflow) {
+					const workflow = detectedPersonas._multiWorkflow;
+					const groups = workflow.personas.map((persona) => ({
+						tasks: selectedTaskObjects,
+						persona,
+						prompt: `Complete these tasks with ${persona} approach`
+					}));
 
-				if (result.success) {
-					if (result.mode === 'interactive') {
-						onSuccess(
-							`Launched Claude in interactive mode for ${worktree.name}`
-						);
-						onClose();
-					} else if (result.mode === 'headless-streaming' && result.process) {
-						// Handle streaming
-						handleStreamingProcess(result.process);
-					} else if (result.mode === 'headless-blocking') {
-						setStreamingOutput(result.output);
-						setTimeout(() => {
-							onSuccess('Claude session completed');
-							onClose();
-						}, 3000);
+					const result = await backend.launchMultipleClaudeSessions(
+						worktree,
+						groups,
+						{ captureOutput: true }
+					);
+
+					if (result.success) {
+						onSuccess({
+							mode: 'batch-multi-persona',
+							worktree: worktree.name,
+							workflow: workflow.workflow,
+							sessions: result.sessions
+						});
 					}
 				} else {
-					setError(result.error);
+					// Single persona batch
+					const result = await backend.launchClaudeHeadless(
+						worktree,
+						selectedTaskObjects,
+						'Process all tasks systematically',
+						{
+							persona: selectedPersona,
+							maxTurns: 15,
+							permissionMode: 'acceptEdits'
+						}
+					);
+
+					if (result.success) {
+						onSuccess({
+							mode: 'batch',
+							worktree: worktree.name,
+							tasks: selectedTasks,
+							persona: selectedPersona
+						});
+					}
 				}
 			}
 		} catch (err) {
 			setError(err.message);
+			setView('mode');
 		} finally {
-			if (launchMode !== 'headless') {
-				setIsProcessing(false);
-			}
+			setIsProcessing(false);
 		}
 	};
 
-	const handleStreamingProcess = (claudeProcess) => {
-		claudeProcess.stdout.on('data', (data) => {
-			setStreamingOutput((prev) => prev + data.toString());
-		});
+	// Render functions for different views
+	const renderModeSelection = () => (
+		<Box flexDirection="column">
+			<Text bold color={theme.primary}>
+				Select Launch Mode
+			</Text>
+			<Box marginTop={1} flexDirection="column">
+				<Text color={launchMode === 'interactive' ? theme.success : theme.text}>
+					[1] Interactive - Open Claude in terminal for manual interaction
+				</Text>
+				<Text color={launchMode === 'headless' ? theme.success : theme.text}>
+					[2] Headless - Run with specific prompt (no interaction)
+				</Text>
+				{tasks.length > 1 && (
+					<Text color={launchMode === 'batch' ? theme.success : theme.text}>
+						[3] Batch - Process all tasks automatically
+					</Text>
+				)}
+			</Box>
+			<Box marginTop={2}>
+				<Text dimColor>Press number to select, [Esc] to cancel</Text>
+			</Box>
+		</Box>
+	);
 
-		claudeProcess.stderr.on('data', (data) => {
-			setError((prev) => (prev || '') + data.toString());
-		});
+	const renderPersonaSelection = () => (
+		<Box flexDirection="column">
+			<Text bold color={theme.primary}>
+				Select Persona
+			</Text>
 
-		claudeProcess.on('close', (code) => {
-			setIsProcessing(false);
-			if (code === 0) {
-				onSuccess('Claude session completed successfully');
-				setTimeout(() => onClose(), 2000);
-			} else {
-				setError(`Claude exited with code ${code}`);
-			}
-		});
+			{isDetectingPersonas ? (
+				<Box marginTop={1}>
+					<Spinner type="dots" />
+					<Text> Analyzing tasks...</Text>
+				</Box>
+			) : (
+				<>
+					{detectedPersonas.length > 0 && (
+						<Box marginTop={1} flexDirection="column">
+							<Text color={theme.secondary}>
+								Detected Personas (by confidence):
+							</Text>
+							{detectedPersonas.map((dp, idx) => {
+								const persona = personaDefinitions[dp.persona];
+								const isSelected = idx === personaSelectionIndex;
+								return (
+									<Box key={dp.persona} marginTop={1}>
+										<Text color={isSelected ? theme.primary : theme.text}>
+											{isSelected ? '▶ ' : '  '}
+											{personaIcons[dp.persona]}{' '}
+											{persona.identity.split('|')[0]} ({dp.confidence}%)
+										</Text>
+										{isSelected && dp.reasons.length > 0 && (
+											<Box marginLeft={4}>
+												<Text dimColor fontSize={12}>
+													{dp.reasons[0]}
+												</Text>
+											</Box>
+										)}
+									</Box>
+								);
+							})}
+						</Box>
+					)}
 
-		claudeProcess.on('error', (error) => {
-			setIsProcessing(false);
-			setError(error.message);
-		});
-	};
+					<Box marginTop={2} flexDirection="column">
+						<Text dimColor>
+							[↑↓] Navigate [Enter] Accept [Tab] Next suggestion
+						</Text>
+						<Text dimColor>
+							[1-9] Quick select [p] Choose manually [n] No persona
+						</Text>
+					</Box>
+				</>
+			)}
+		</Box>
+	);
 
-	const toggleTaskSelection = (taskId) => {
-		setSelectedTasks((prev) => {
-			if (prev.includes(taskId)) {
-				return prev.filter((id) => id !== taskId);
-			}
-			return [...prev, taskId];
-		});
-	};
+	const renderPromptInput = () => (
+		<Box flexDirection="column">
+			<Text bold color={theme.primary}>
+				Enter Instructions for Claude
+			</Text>
+			<Text color={theme.secondary}>
+				Persona: {personaIcons[selectedPersona]}{' '}
+				{personaDefinitions[selectedPersona]?.identity.split('|')[0] || 'None'}
+			</Text>
+			<Box marginTop={1}>
+				<TextInput
+					value={headlessPrompt}
+					onChange={setHeadlessPrompt}
+					placeholder="Additional instructions for task implementation..."
+					onSubmit={() => handleLaunch()}
+				/>
+			</Box>
+			<Box marginTop={1}>
+				<Text dimColor>[Enter] to launch, [Esc] to cancel</Text>
+			</Box>
+		</Box>
+	);
+
+	const renderProcessing = () => (
+		<Box flexDirection="column">
+			<Box>
+				<Spinner type="dots" />
+				<Text> Launching Claude...</Text>
+			</Box>
+			{streamingOutput && (
+				<Box marginTop={1} flexDirection="column">
+					<Text color={theme.secondary}>Output:</Text>
+					<Text>{streamingOutput}</Text>
+				</Box>
+			)}
+		</Box>
+	);
 
 	return (
 		<Box
 			flexDirection="column"
+			paddingX={1}
+			paddingY={1}
 			borderStyle="round"
 			borderColor={theme.border}
-			padding={1}
-			width={80}
 		>
-			{/* Header */}
 			<Box marginBottom={1}>
-				<Text bold color={theme.primary}>
-					Launch Claude in {worktree.name}
+				<Text bold color={theme.highlight}>
+					🚀 Launch Claude in {worktree.name}
 				</Text>
 			</Box>
 
-			{/* Launch Mode Selection */}
-			<Box marginBottom={1} flexDirection="column">
-				<Text color={theme.secondary}>Select Launch Mode:</Text>
-				<Box flexDirection="row" gap={2}>
-					<Box>
-						<Text
-							color={launchMode === 'interactive' ? theme.success : theme.dim}
-							bold={launchMode === 'interactive'}
-						>
-							[I] Interactive
-						</Text>
-					</Box>
-					<Box>
-						<Text
-							color={launchMode === 'headless' ? theme.success : theme.dim}
-							bold={launchMode === 'headless'}
-						>
-							[H] Headless
-						</Text>
-					</Box>
-					{tasks.length > 1 && (
-						<Box>
-							<Text
-								color={launchMode === 'batch' ? theme.success : theme.dim}
-								bold={launchMode === 'batch'}
-							>
-								[B] Batch
-							</Text>
-						</Box>
-					)}
-				</Box>
-			</Box>
-
-			{/* Task Selection */}
-			<Box marginBottom={1} flexDirection="column">
-				<Text color={theme.secondary}>Select Task(s):</Text>
-				<Box flexDirection="column" maxHeight={10}>
-					{tasks.map((task, idx) => (
-						<Box key={task.id}>
-							<Text
-								color={
-									selectedTasks.includes(task.id) ? theme.success : theme.text
-								}
-							>
-								{selectedTasks.includes(task.id) ? '☑ ' : '☐ '}[{idx + 1}]{' '}
-								{task.id}: {task.title}
-							</Text>
-						</Box>
-					))}
-				</Box>
-			</Box>
-
-			{/* Headless Prompt */}
-			{(launchMode === 'headless' || launchMode === 'batch') && (
-				<Box marginBottom={1} flexDirection="column">
-					<Text color={theme.secondary}>Prompt:</Text>
-					<Box borderStyle="single" borderColor={theme.border} padding={1}>
-						<TextInput
-							value={headlessPrompt}
-							onChange={setHeadlessPrompt}
-							placeholder="Enter prompt for Claude..."
-						/>
-					</Box>
-				</Box>
-			)}
-
-			{/* Streaming Output */}
-			{streamingOutput && (
-				<Box
-					marginBottom={1}
-					flexDirection="column"
-					borderStyle="single"
-					borderColor={theme.border}
-					padding={1}
-					maxHeight={15}
-				>
-					<Text>{streamingOutput}</Text>
-				</Box>
-			)}
-
-			{/* Error Display */}
 			{error && (
 				<Box marginBottom={1}>
-					<Text color={theme.error}>{error}</Text>
+					<Text color={theme.error}>❌ {error}</Text>
 				</Box>
 			)}
 
-			{/* Action Buttons */}
-			<Box flexDirection="row" gap={2}>
-				{!isProcessing ? (
-					<>
-						<Box borderStyle="single" borderColor={theme.primary} paddingX={2}>
-							<Text color={theme.primary}>[L] Launch</Text>
-						</Box>
-						<Box borderStyle="single" borderColor={theme.dim} paddingX={2}>
-							<Text color={theme.dim}>[ESC] Cancel</Text>
-						</Box>
-					</>
-				) : (
-					<Box>
-						<Text color={theme.warning}>
-							<Spinner type="dots" /> Processing...
-						</Text>
-					</Box>
-				)}
-			</Box>
-
-			{/* Help Text */}
-			{!isProcessing && (
-				<Box marginTop={1}>
-					<Text dimColor>
-						[I/H/B] Change mode | [1-9] Toggle task | [L] Launch | [ESC] Cancel
-					</Text>
-				</Box>
-			)}
+			{view === 'mode' && renderModeSelection()}
+			{view === 'persona' && renderPersonaSelection()}
+			{view === 'prompt' && renderPromptInput()}
+			{view === 'processing' && renderProcessing()}
 		</Box>
 	);
 }

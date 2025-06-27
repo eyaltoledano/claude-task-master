@@ -390,8 +390,23 @@ export default function GitWorktreeScreen({
 					worktree={showClaudeModal.worktree}
 					tasks={showClaudeModal.tasks}
 					onClose={() => setShowClaudeModal(null)}
-					onSuccess={(message) => {
-						setToast({ message: message, type: 'success' });
+					onSuccess={(result) => {
+						let message = '';
+						if (result.mode === 'interactive') {
+							message = `🚀 Launched Claude (${result.persona || 'no persona'}) in ${result.worktree}`;
+						} else if (result.mode === 'headless') {
+							message = `✅ Claude completed ${result.tasks.length} task(s) with ${result.persona} persona`;
+						} else if (result.mode === 'batch') {
+							message = `🔄 Processing ${result.tasks.length} tasks in batch mode (${result.persona})`;
+						} else if (result.mode === 'batch-multi-persona') {
+							message = `🎭 Running multi-persona workflow: ${result.workflow}`;
+						}
+
+						setToast({
+							message,
+							type: 'success',
+							duration: 5000
+						});
 						setShowClaudeModal(null);
 					}}
 				/>
