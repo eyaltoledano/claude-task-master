@@ -118,8 +118,8 @@ export default function WorktreeDetailsModal({
 				} else if (input === 'n' || key.escape) {
 					setConfirmDelete(false);
 				}
-			} else if (input === 't') {
-				// 't' for link/manage tasks
+			} else if (input === 'l') {
+				// 'l' for link/manage tasks
 				setShowLinkTasksModal(true);
 			} else if (input === 'v' && linkedTasks.length > 0) {
 				// 'v' to view linked tasks
@@ -597,7 +597,7 @@ export default function WorktreeDetailsModal({
 						<Text color={theme.muted}>[j] Jump to Task</Text>
 					</>
 				)}
-				<Text color={theme.muted}>[t] Link/Manage Tasks</Text>
+				<Text color={theme.muted}>[l] Link/Manage Tasks</Text>
 				{linkedTasks.length > 0 && (
 					<Text color={theme.muted}>[c] Launch Claude</Text>
 				)}
