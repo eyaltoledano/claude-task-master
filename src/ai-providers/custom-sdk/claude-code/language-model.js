@@ -134,10 +134,10 @@ export class ClaudeCodeLanguageModel {
 		);
 
 		const abortController = new AbortController();
+		let abortListener;
 		if (options.abortSignal) {
-			options.abortSignal.addEventListener('abort', () =>
-				abortController.abort()
-			);
+			abortListener = () => abortController.abort();
+			options.abortSignal.addEventListener('abort', abortListener, { once: true });
 		}
 
 		// Prepare appendSystemPrompt with JSON instructions if needed
@@ -239,6 +239,10 @@ export class ClaudeCodeLanguageModel {
 				promptExcerpt: messagesPrompt.substring(0, 200),
 				isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED'
 			});
+		} finally {
+			if (options.abortSignal && abortListener) {
+				options.abortSignal.removeEventListener('abort', abortListener);
+			}
 		}
 
 		// Extract JSON if in object-json mode
@@ -287,10 +291,10 @@ export class ClaudeCodeLanguageModel {
 		);
 
 		const abortController = new AbortController();
+		let abortListener;
 		if (options.abortSignal) {
-			options.abortSignal.addEventListener('abort', () =>
-				abortController.abort()
-			);
+			abortListener = () => abortController.abort();
+			options.abortSignal.addEventListener('abort', abortListener, { once: true });
 		}
 
 		// Prepare appendSystemPrompt with JSON instructions if needed
@@ -455,6 +459,15 @@ export class ClaudeCodeLanguageModel {
 					});
 
 					controller.close();
+				} finally {
+					if (options.abortSignal && abortListener) {
+						options.abortSignal.removeEventListener('abort', abortListener);
+					}
+				}
+			},
+			cancel: () => {
+				if (options.abortSignal && abortListener) {
+					options.abortSignal.removeEventListener('abort', abortListener);
 				}
 			}
 		});
