@@ -68,6 +68,7 @@
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",
 		"inquirer": "^12.5.0",
+		"jsonc-parser": "^3.3.1",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
