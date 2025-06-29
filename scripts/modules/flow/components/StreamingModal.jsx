@@ -20,6 +20,10 @@ export function StreamingModal({ isOpen, onClose }) {
 	const [thinkingIndex, setThinkingIndex] = useState(0);
 	const [dots, setDots] = useState('');
 
+	// If state is idle but modal is open, show waiting state
+	const effectiveState = state.state === 'idle' && isOpen ? 'preparing' : state.state;
+	const effectiveMessage = state.state === 'idle' && isOpen ? 'Initializing...' : state.message;
+
 	useEffect(() => {
 		if (!isOpen) return;
 
@@ -55,7 +59,8 @@ export function StreamingModal({ isOpen, onClose }) {
 
 	// Animate dots for loading effect
 	useEffect(() => {
-		if (!['preparing', 'processing'].includes(state.state)) return;
+		const currentState = state.state === 'idle' && isOpen ? 'preparing' : state.state;
+		if (!['preparing', 'processing'].includes(currentState)) return;
 
 		const interval = setInterval(() => {
 			setDots(prev => {
@@ -65,7 +70,7 @@ export function StreamingModal({ isOpen, onClose }) {
 		}, 500);
 
 		return () => clearInterval(interval);
-	}, [state.state]);
+	}, [state.state, isOpen]);
 
 	// Cycle through thinking messages
 	useEffect(() => {
@@ -93,10 +98,10 @@ export function StreamingModal({ isOpen, onClose }) {
 		}
 	};
 
-	if (!isOpen || state.state === 'idle') return null;
+	if (!isOpen) return null;
 
 	const getStateIcon = () => {
-		switch (state.state) {
+		switch (effectiveState) {
 			case 'preparing':
 				return '🔄';
 			case 'processing':
@@ -113,7 +118,7 @@ export function StreamingModal({ isOpen, onClose }) {
 	};
 
 	const getStateColor = () => {
-		switch (state.state) {
+		switch (effectiveState) {
 			case 'preparing':
 				return theme.accent;
 			case 'processing':
@@ -148,8 +153,8 @@ export function StreamingModal({ isOpen, onClose }) {
 		return titles[state.operation] || 'Processing';
 	};
 
-	const isInProgress = ['preparing', 'processing'].includes(state.state);
-	const isComplete = ['completed', 'cancelled', 'error'].includes(state.state);
+	const isInProgress = ['preparing', 'processing'].includes(effectiveState);
+	const isComplete = ['completed', 'cancelled', 'error'].includes(effectiveState);
 
 
 
@@ -189,7 +194,7 @@ export function StreamingModal({ isOpen, onClose }) {
 
 					{/* Main Message */}
 					<Text color={theme.text}>
-						{state.message}{dots}
+						{effectiveMessage}{dots}
 					</Text>
 
 					{/* Thinking Message */}
@@ -214,9 +219,9 @@ export function StreamingModal({ isOpen, onClose }) {
 			{isComplete && (
 				<Box flexDirection="column" marginBottom={1}>
 					<Text color={getStateColor()}>
-						{state.message}
+						{effectiveMessage}
 					</Text>
-					{state.state === 'error' && state.context.error && (
+					{effectiveState === 'error' && state.context.error && (
 						<Text color={theme.textDim}>
 							Details: {state.context.error.message || 'Unknown error'}
 						</Text>
@@ -238,7 +243,7 @@ export function StreamingModal({ isOpen, onClose }) {
 					</Text>
 				) : (
 					<Text color={theme.textDim}>
-						Operation {state.state} • Press Enter or ESC to continue
+						Operation {effectiveState} • Press Enter or ESC to continue
 					</Text>
 				)}
 			</Box>

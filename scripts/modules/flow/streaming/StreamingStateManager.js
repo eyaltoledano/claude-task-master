@@ -263,26 +263,7 @@ export class StreamingStateManager {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
-	// Event handlers
-	onStateChange(callback) {
-		this.onStateChange = callback;
-	}
-
-	onMessage(callback) {
-		this.onMessage = callback;
-	}
-
-	onComplete(callback) {
-		this.onComplete = callback;
-	}
-
-	onError(callback) {
-		this.onError = callback;
-	}
-
-	onCancel(callback) {
-		this.onCancel = callback;
-	}
+	// Event handlers - removed method definitions since properties are used directly
 
 	// Cleanup
 	destroy() {
