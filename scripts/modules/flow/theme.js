@@ -346,6 +346,14 @@ export const Themes = {
 // Per-component theming
 export const ComponentThemes = {
   taskList: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary',
+      inverse: 'text.inverse'
+    },
+    accent: 'accent',
     header: {
       gradient: ['primary', 'secondary'],
       text: 'text.inverse'
@@ -511,6 +519,83 @@ export const ComponentThemes = {
     git: {
       clean: 'state.success.primary',
       dirty: 'state.warning.primary'
+    }
+  },
+
+  // Claude Code component themes
+  claudeSessionList: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    item: {
+      selected: 'interactive.selected',
+      highlighted: 'accent'
+    },
+    filter: {
+      active: 'accent',
+      inactive: 'text.secondary',
+      count: 'text.tertiary'
+    },
+    session: {
+      active: 'state.success.primary',
+      finished: 'text.tertiary',
+      subtask: 'state.warning.primary'
+    }
+  },
+  
+  claudeActiveSession: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    message: {
+      user: 'text.primary',
+      assistant: 'accent',
+      system: 'text.tertiary',
+      error: 'state.error.primary'
+    },
+    insight: {
+      category: 'state.warning.primary',
+      text: 'text.secondary'
+    },
+    processing: 'accent',
+    input: {
+      background: 'surface.secondary',
+      text: 'text.primary',
+      placeholder: 'text.tertiary'
+    }
+  },
+  
+  claudeSessionActions: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    action: {
+      enabled: 'text.primary',
+      disabled: 'text.disabled',
+      primary: 'accent',
+      danger: 'state.error.primary'
+    },
+    menu: {
+      border: 'accent',
+      item: 'text.primary',
+      disabled: 'text.disabled'
+    },
+    config: {
+      valid: 'state.success.primary',
+      invalid: 'state.error.primary',
+      status: 'text.tertiary'
     }
   }
 };
@@ -722,6 +807,12 @@ export class ThemeManager {
    * @returns {string} Color value
    */
   getColor(colorPath) {
+    // Ensure colorPath is a string
+    if (typeof colorPath !== 'string') {
+      console.warn('getColor called with non-string value:', colorPath);
+      return '#ffffff';
+    }
+
     const theme = this.getTheme();
     const parts = colorPath.split('.');
     let value = theme.colors;

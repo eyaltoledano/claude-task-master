@@ -3,8 +3,15 @@ import { useState, useEffect, useRef } from 'react';
 /**
  * Hook for cycling through phrases/messages at specified intervals
  * Based on Gemini CLI's usePhraseCycler implementation
+ * 
+ * @param {string|Array} phrases - Array of phrases or collection name
+ * @param {Object} options - Configuration options
  */
 export function usePhraseCycler(phrases = [], options = {}) {
+  // If phrases is a string, look it up in collections
+  const actualPhrases = typeof phrases === 'string' 
+    ? PhraseCollections[phrases] || []
+    : phrases;
   const {
     interval = 2000,
     startIndex = 0,
@@ -13,15 +20,15 @@ export function usePhraseCycler(phrases = [], options = {}) {
   } = options;
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
-  const [currentPhrase, setCurrentPhrase] = useState(phrases[startIndex] || '');
+  const [currentPhrase, setCurrentPhrase] = useState(actualPhrases[startIndex] || '');
   const intervalRef = useRef(null);
-  const phrasesRef = useRef(phrases);
+  const phrasesRef = useRef(actualPhrases);
 
   // Update phrases ref when phrases change
-  phrasesRef.current = phrases;
+  phrasesRef.current = actualPhrases;
 
   useEffect(() => {
-    if (paused || phrases.length <= 1) {
+    if (paused || actualPhrases.length <= 1) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -45,31 +52,31 @@ export function usePhraseCycler(phrases = [], options = {}) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [interval, paused, randomize, phrases.length]);
+  }, [interval, paused, randomize, actualPhrases.length]);
 
   // Update current phrase when phrases or index changes
   useEffect(() => {
-    setCurrentPhrase(phrases[currentIndex] || '');
-  }, [phrases, currentIndex]);
+    setCurrentPhrase(actualPhrases[currentIndex] || '');
+  }, [actualPhrases, currentIndex]);
 
   return {
     currentPhrase,
     currentIndex,
-    totalPhrases: phrases.length,
+    totalPhrases: actualPhrases.length,
     setIndex: (index) => {
-      if (index >= 0 && index < phrases.length) {
+      if (index >= 0 && index < actualPhrases.length) {
         setCurrentIndex(index);
-        setCurrentPhrase(phrases[index]);
+        setCurrentPhrase(actualPhrases[index]);
       }
     },
     next: () => {
-      const nextIndex = (currentIndex + 1) % phrases.length;
+      const nextIndex = (currentIndex + 1) % actualPhrases.length;
       setCurrentIndex(nextIndex);
-      setCurrentPhrase(phrases[nextIndex]);
+      setCurrentPhrase(actualPhrases[nextIndex]);
     },
     reset: () => {
       setCurrentIndex(startIndex);
-      setCurrentPhrase(phrases[startIndex] || '');
+      setCurrentPhrase(actualPhrases[startIndex] || '');
     },
   };
 }
@@ -134,5 +141,17 @@ export const PhraseCollections = {
     'Starting session...',
     'Opening workspace...',
     'Initializing environment...',
+  ],
+
+  claudeProcessing: [
+    'Claude is thinking...',
+    'Processing your request...',
+    'Analyzing code context...',
+    'Generating response...',
+    'Executing tools...',
+    'Reading project files...',
+    'Writing implementation...',
+    'Running diagnostics...',
+    'Almost ready...',
   ],
 }; 

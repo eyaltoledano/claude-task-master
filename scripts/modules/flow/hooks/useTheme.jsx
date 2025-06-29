@@ -143,32 +143,88 @@ export function useResponsiveTheme(breakpoints = {}) {
 }
 
 /**
+ * Helper function to recursively resolve color paths in a theme object
+ */
+function resolveColorPaths(obj, getColor) {
+  if (typeof obj === 'string') {
+    // If it's already a resolved color (hex, rgb, rgba), return as-is
+    if (obj.startsWith('#') || obj.startsWith('rgba') || obj.startsWith('rgb')) {
+      return obj;
+    }
+    
+    // If it's a known CSS color name that shouldn't be resolved, return as-is
+    const cssColors = ['transparent', 'white', 'black', 'red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'gray', 'grey'];
+    if (cssColors.includes(obj.toLowerCase())) {
+      return obj;
+    }
+    
+    // Try to resolve as a theme color path
+    try {
+      const resolvedColor = getColor(obj);
+      // If getColor returns a valid color (not the same string), use it
+      if (resolvedColor && typeof resolvedColor === 'string' && resolvedColor !== obj) {
+        return resolvedColor;
+      }
+    } catch (e) {
+      // If getColor fails, return the original string
+      console.warn('Failed to resolve color path:', obj, e.message);
+    }
+    
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => resolveColorPaths(item, getColor));
+  }
+  
+  if (obj && typeof obj === 'object') {
+    const resolved = {};
+    for (const [key, value] of Object.entries(obj)) {
+      resolved[key] = resolveColorPaths(value, getColor);
+    }
+    return resolved;
+  }
+  
+  return obj;
+}
+
+/**
  * Hook for component-specific theming
  */
 export function useComponentTheme(componentName, overrides = {}) {
-  const { theme, getComponentTheme } = useTheme();
+  const { theme, getComponentTheme, getColor } = useTheme();
   
   const componentTheme = getComponentTheme(componentName);
   
-  const resolvedTheme = useMemo(() => ({
-    ...componentTheme,
-    ...overrides,
-  }), [componentTheme, overrides]);
+  const resolvedTheme = useMemo(() => {
+    const merged = {
+      ...componentTheme,
+      ...overrides,
+    };
+    
+    // Recursively resolve color paths to actual color values
+    return resolveColorPaths(merged, getColor);
+  }, [componentTheme, overrides, getColor]);
 
   const getThemedProps = useCallback((props = {}) => {
     const themedProps = { ...props };
     
-    // Apply theme colors to common props
-    if (resolvedTheme.text && !props.color) {
+    // Apply theme colors to common props - but only if they're not already resolved
+    if (resolvedTheme.text && typeof resolvedTheme.text === 'string' && !props.color) {
       themedProps.color = getColor(resolvedTheme.text);
     }
     
-    if (resolvedTheme.background && !props.backgroundColor) {
+    if (resolvedTheme.background && typeof resolvedTheme.background === 'string' && !props.backgroundColor) {
       themedProps.backgroundColor = getColor(resolvedTheme.background);
     }
     
+    // For already resolved props, pass them through directly
+    if (props.backgroundColor && typeof props.backgroundColor === 'string') {
+      themedProps.backgroundColor = props.backgroundColor;
+    }
+    
     return themedProps;
-  }, [resolvedTheme]);
+  }, [resolvedTheme, getColor]);
 
   return {
     theme: resolvedTheme,
