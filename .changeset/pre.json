@@ -1,0 +1,23 @@
+{
+  "mode": "exit",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.17.1"
+  },
+  "changesets": [
+    "bright-llamas-enter",
+    "huge-moose-prove",
+    "icy-dryers-hunt",
+    "lemon-deer-hide",
+    "modern-cats-pick",
+    "nasty-berries-tan",
+    "shy-groups-fly",
+    "sour-lions-check",
+    "spicy-teams-travel",
+    "stale-cameras-sin",
+    "swift-squids-sip",
+    "tiny-dogs-change",
+    "vast-plants-exist",
+    "wet-berries-dress"
+  ]
+}

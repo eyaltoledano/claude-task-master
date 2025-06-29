@@ -3,14 +3,20 @@
 		{
 			"id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
 			"swe_score": 0.623,
-			"cost_per_1m_tokens": { "input": 3, "output": 15 },
+			"cost_per_1m_tokens": {
+				"input": 3,
+				"output": 15
+			},
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 65536
 		},
 		{
 			"id": "us.deepseek.r1-v1:0",
 			"swe_score": 0,
-			"cost_per_1m_tokens": { "input": 1.35, "output": 5.4 },
+			"cost_per_1m_tokens": {
+				"input": 1.35,
+				"output": 5.4
+			},
 			"allowed_roles": ["research"],
 			"max_tokens": 65536
 		}
@@ -648,14 +654,20 @@
 		{
 			"id": "opus",
 			"swe_score": 0.725,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 32000
 		},
 		{
 			"id": "sonnet",
 			"swe_score": 0.727,
-			"cost_per_1m_tokens": { "input": 0, "output": 0 },
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 64000
 		}

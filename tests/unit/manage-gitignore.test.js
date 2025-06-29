@@ -179,7 +179,8 @@ logs
 
 # Task files
 # tasks.json
-# tasks/ `
+# tasks/ 
+`
 				);
 				expect(mockLog).toHaveBeenCalledWith(
 					'success',
@@ -200,7 +201,8 @@ logs
 
 # Task files
 tasks.json
-tasks/ `
+tasks/ 
+`
 				);
 				expect(mockLog).toHaveBeenCalledWith(
 					'success',
@@ -432,7 +434,8 @@ tasks/ `;
 				const writtenContent = writeFileSyncSpy.mock.calls[0][1];
 				expect(writtenContent).toBe(`# Task files
 # tasks.json
-# tasks/ `);
+# tasks/ 
+`);
 			});
 		});
 	});

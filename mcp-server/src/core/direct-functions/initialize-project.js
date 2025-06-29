@@ -72,15 +72,16 @@ export async function initializeProjectDirect(args, log, context = {}) {
 			yes: true // Force yes mode
 		};
 
-		// Handle rules option just like CLI
+		// Handle rules option with MCP-specific defaults
 		if (Array.isArray(args.rules) && args.rules.length > 0) {
 			options.rules = args.rules;
+			options.rulesExplicitlyProvided = true;
 			log.info(`Including rules: ${args.rules.join(', ')}`);
 		} else {
-			options.rules = RULE_PROFILES;
-			log.info(
-				`No rule profiles specified, defaulting to: ${RULE_PROFILES.join(', ')}`
-			);
+			// For MCP initialization, default to Cursor profile only
+			options.rules = ['cursor'];
+			options.rulesExplicitlyProvided = true;
+			log.info(`No rule profiles specified, defaulting to: Cursor`);
 		}
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
