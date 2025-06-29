@@ -52,6 +52,8 @@ export function ClaudeWorktreeLauncherModal({
 		allowWebSearch: true // Changed from false to true
 	});
 	const [shouldCreatePR, setShouldCreatePR] = useState(true); // Default to creating PR
+	const [scrollOffset, setScrollOffset] = useState(0);
+	const [viewportHeight, setViewportHeight] = useState(10); // Default viewport height
 
 	const detectPersonasForSelectedTasks = useCallback(async () => {
 		setIsDetectingPersonas(true);
@@ -109,6 +111,23 @@ export function ClaudeWorktreeLauncherModal({
 		}
 	}, [selectedTasks, tasks, backend, worktree]);
 
+	// Auto-scroll to bottom when new lines are added
+	useEffect(() => {
+		if (view === 'processing' && processingLines.length > 0) {
+			// Auto-scroll to show latest content
+			const maxScroll = Math.max(0, processingLines.length - viewportHeight);
+			setScrollOffset(maxScroll);
+		}
+	}, [processingLines.length, viewportHeight, view]);
+
+	// Set viewport height based on available space
+	useEffect(() => {
+		// Reserve space for header, task info, status line, and scroll indicators
+		const reservedLines = 12;
+		const availableHeight = Math.max(5, (process.stdout.rows || 24) - reservedLines);
+		setViewportHeight(availableHeight);
+	}, []);
+
 	// Detect personas when we switch to persona view
 	useEffect(() => {
 		if (
@@ -131,6 +150,38 @@ export function ClaudeWorktreeLauncherModal({
 		if (key.escape) {
 			onClose();
 			return;
+		}
+
+		// Handle scrolling in processing view
+		if (view === 'processing' && processingLines.length > viewportHeight) {
+			if (key.upArrow || input === 'k') {
+				setScrollOffset((prev) => Math.max(0, prev - 1));
+				return;
+			}
+			if (key.downArrow || input === 'j') {
+				setScrollOffset((prev) => 
+					Math.min(prev + 1, Math.max(0, processingLines.length - viewportHeight))
+				);
+				return;
+			}
+			if (key.pageUp) {
+				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
+				return;
+			}
+			if (key.pageDown) {
+				setScrollOffset((prev) => 
+					Math.min(prev + viewportHeight, Math.max(0, processingLines.length - viewportHeight))
+				);
+				return;
+			}
+			if (input === 'g' || key.home) {
+				setScrollOffset(0);
+				return;
+			}
+			if (input === 'G' || key.end) {
+				setScrollOffset(Math.max(0, processingLines.length - viewportHeight));
+				return;
+			}
 		}
 
 		if (view === 'persona') {
@@ -254,6 +305,7 @@ export function ClaudeWorktreeLauncherModal({
 		setIsProcessing(true);
 		setError(null);
 		setProcessingLines([]); // Clear previous lines
+		setScrollOffset(0); // Reset scroll position
 
 		try {
 			const selectedTaskObjects = tasks.filter((t) =>
@@ -347,58 +399,44 @@ export function ClaudeWorktreeLauncherModal({
 						success: (msg) => console.log(msg)
 					},
 					onProgress: (output) => {
-						// Parse streaming output and collect lines
+						// Handle streaming output - show everything in real-time
 						if (typeof output === 'string') {
-							// Claude often sends the full conversation, so we need to be smart about what to show
-							const lines = output.split('\n');
-
-							// Look for specific patterns that indicate progress
-							const meaningfulLines = lines.filter((line) => {
-								const trimmed = line.trim();
-								return (
-									trimmed &&
-									(trimmed.startsWith("I'll") ||
-										trimmed.startsWith('Let me') ||
-										trimmed.startsWith('Creating') ||
-										trimmed.startsWith('Implementing') ||
-										trimmed.startsWith('Task') ||
-										trimmed.startsWith('Writing') ||
-										trimmed.startsWith('Testing') ||
-										trimmed.startsWith('✓') ||
-										trimmed.startsWith('✗') ||
-										trimmed.includes('...') ||
-										trimmed.match(/^\d+\./) || // Numbered steps
-										trimmed.match(/^[-*]/)) // Bullet points
-								);
+							// Just append the new output to what we have
+							setProcessingLines((prev) => {
+								// Split by newlines but keep empty lines for proper formatting
+								const newContent = output.split('\n');
+								
+								// If this is the first update, just set it
+								if (prev.length === 0) {
+									return newContent;
+								}
+								
+								// Otherwise, append this chunk to our running log
+								// The last line of previous content might be incomplete,
+								// so we concatenate it with the first line of new content
+								const combined = [...prev];
+								if (combined.length > 0 && newContent.length > 0) {
+									// Merge the last incomplete line with new content
+									const lastIndex = combined.length - 1;
+									combined[lastIndex] = combined[lastIndex] + newContent[0];
+									// Add the rest of the new lines
+									if (newContent.length > 1) {
+										combined.push(...newContent.slice(1));
+									}
+								} else {
+									// Just append all new content
+									combined.push(...newContent);
+								}
+								
+								return combined;
 							});
-
-							if (meaningfulLines.length > 0) {
-								setProcessingLines((prev) => {
-									const newLines = [...prev];
-									meaningfulLines.forEach((line) => {
-										// Avoid duplicates
-										if (!newLines.includes(line.trim())) {
-											newLines.push(line.trim());
-										}
-									});
-									// Return all lines, no limit
-									return newLines;
-								});
-								// Update single log with last meaningful line
-								setProcessingLog(meaningfulLines[meaningfulLines.length - 1]);
-							}
+							
+							// Update log with the latest chunk
+							setProcessingLog(output.trim());
 						} else if (output && typeof output === 'object') {
 							// Handle structured progress updates
-							const message =
-								output.message || output.text || JSON.stringify(output);
-							setProcessingLines((prev) => {
-								const newLines = [...prev];
-								if (!newLines.includes(message)) {
-									newLines.push(message);
-								}
-								// Return all lines, no limit
-								return newLines;
-							});
+							const message = output.message || output.text || JSON.stringify(output);
+							setProcessingLines((prev) => [...prev, '', message, '']);
 							setProcessingLog(message);
 						}
 					}
@@ -712,6 +750,13 @@ export function ClaudeWorktreeLauncherModal({
 				}
 			: null;
 
+		// Calculate visible lines based on viewport
+		const startIdx = scrollOffset;
+		const endIdx = Math.min(scrollOffset + viewportHeight, processingLines.length);
+		const visibleLines = processingLines.slice(startIdx, endIdx);
+		const canScrollUp = scrollOffset > 0;
+		const canScrollDown = endIdx < processingLines.length;
+
 		return (
 			<Box flexDirection="column" padding={0}>
 				{/* Compact Git Worktree Box */}
@@ -753,27 +798,42 @@ export function ClaudeWorktreeLauncherModal({
 					<Text dimColor fontSize={11}>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
 				</Box>
 				
-				{/* Streaming Progress - Full view that expands */}
-				{processingLines.length > 0 && (
+				{/* Scroll indicators */}
+				{canScrollUp && (
+					<Box marginTop={1}>
+						<Text dimColor>↑ {scrollOffset} more lines above (press ↑/k to scroll up)</Text>
+					</Box>
+				)}
+				
+				{/* Streaming Progress - Scrollable view */}
+				{visibleLines.length > 0 && (
 					<Box
 						marginTop={1}
 						flexDirection="column"
-						borderStyle="single"
-						borderColor={theme.borderDim}
-						paddingX={1}
-						paddingY={0}
 						width="100%"
+						height={viewportHeight}
 					>
-						<Box flexDirection="column">
-							{processingLines.map((line, idx) => (
-								<Box
-									key={`log-${idx}-${line.substring(0, 20)}`}
-									width="100%"
-								>
-									<Text wrap="wrap" fontSize={11}>{line}</Text>
-								</Box>
-							))}
-						</Box>
+						{visibleLines.map((line, idx) => (
+							<Text key={`log-${startIdx + idx}-${line.substring(0, 20)}`} wrap="wrap" fontSize={11}>
+								{line}
+							</Text>
+						))}
+					</Box>
+				)}
+				
+				{/* Scroll indicators */}
+				{canScrollDown && (
+					<Box marginTop={1}>
+						<Text dimColor>↓ {processingLines.length - endIdx} more lines below (press ↓/j to scroll down)</Text>
+					</Box>
+				)}
+				
+				{/* Quick scroll info */}
+				{processingLines.length > viewportHeight && (
+					<Box marginTop={1}>
+						<Text dimColor fontSize={10}>
+							Line {startIdx + 1}-{endIdx} of {processingLines.length} • [PgUp/PgDn] page • [Home/End] jump
+						</Text>
 					</Box>
 				)}
 			</Box>

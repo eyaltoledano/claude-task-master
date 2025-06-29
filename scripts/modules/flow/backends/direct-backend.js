@@ -14,6 +14,7 @@ import {
 } from '../personas/index.js';
 import { findProjectRoot } from '../../utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+import { WorktreeManager } from '../worktree-manager.js';
 
 // Import direct functions
 import { listTasksDirect } from '../../../../mcp-server/src/core/direct-functions/list-tasks.js';

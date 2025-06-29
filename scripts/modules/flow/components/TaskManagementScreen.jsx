@@ -873,38 +873,43 @@ export function TaskManagementScreen() {
 			})
 		);
 
-		// Run automatic research
+		// Check if research has already been run
+		const hasExistingResearch = selectedSubtask.details && 
+			selectedSubtask.details.includes('<info added on');
+
+		// Run automatic research only if it hasn't been done before
 		const researchQuery = buildResearchQuery();
 		let researchContext = null;
 
-		try {
-			setToast({
-				message: 'Running research for context...',
-				type: 'info'
-			});
+		if (!hasExistingResearch) {
+			try {
+				setToast({
+					message: 'Running research for context...',
+					type: 'info'
+				});
 
-			const researchResult = await backend.research({
-				query: researchQuery,
-				taskIds: [
-					`${selectedTask.id}.${selectedSubtask.id}`,
-					selectedTask.id,
-					...dependencies.filter((d) => d).map((d) => d.id)
-				],
-				includeProjectTree: true,
-				detailLevel: 'medium'
-			});
+				const researchResult = await backend.research({
+					query: researchQuery,
+					taskIds: [
+						`${selectedTask.id}.${selectedSubtask.id}`,
+						selectedTask.id,
+						...dependencies.filter((d) => d).map((d) => d.id)
+					],
+					includeProjectTree: true,
+					detailLevel: 'medium'
+				});
 
-			researchContext = researchResult.response || researchResult;
+				researchContext = researchResult.response || researchResult;
 
-			// Save research results to subtask
-			if (researchContext) {
-				try {
-					setToast({
-						message: 'Saving research to subtask...',
-						type: 'info'
-					});
+				// Save research results to subtask
+				if (researchContext) {
+					try {
+						setToast({
+							message: 'Saving research to subtask...',
+							type: 'info'
+						});
 
-					const researchContent = `## Claude Code Research - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+						const researchContent = `## Claude Code Research - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
 
 **Query:** ${researchQuery}
 **Detail Level:** medium
@@ -917,24 +922,53 @@ ${researchContext}
 ---
 `;
 
-					await backend.updateSubtask({
-						id: `${selectedTask.id}.${selectedSubtask.id}`,
-						prompt: researchContent,
-						research: false // Don't run research again, just append
-					});
+						await backend.updateSubtask({
+							id: `${selectedTask.id}.${selectedSubtask.id}`,
+							prompt: researchContent,
+							research: false // Don't run research again, just append
+						});
 
-					setToast({
-						message: 'Research saved to subtask',
-						type: 'success'
-					});
-				} catch (saveError) {
-					console.error('Failed to save research to subtask:', saveError);
-					// Continue anyway - research is still in context
+						setToast({
+							message: 'Research saved to subtask',
+							type: 'success'
+						});
+					} catch (saveError) {
+						console.error('Failed to save research to subtask:', saveError);
+						// Continue anyway - research is still in context
+					}
+				}
+			} catch (error) {
+				console.error('Research failed:', error);
+				// Continue without research
+			}
+		} else {
+			setToast({
+				message: 'Using existing research from subtask details',
+				type: 'info'
+			});
+
+			// Extract existing research from details if possible
+			// This helps pass it along to the Claude context
+			const detailLines = selectedSubtask.details.split('\n');
+			let inResearchSection = false;
+			const researchLines = [];
+
+			for (const line of detailLines) {
+				if (line.includes('### Research Results')) {
+					inResearchSection = true;
+					continue;
+				}
+				if (inResearchSection && line.startsWith('---')) {
+					break;
+				}
+				if (inResearchSection) {
+					researchLines.push(line);
 				}
 			}
-		} catch (error) {
-			console.error('Research failed:', error);
-			// Continue without research
+
+			if (researchLines.length > 0) {
+				researchContext = researchLines.join('\n').trim();
+			}
 		}
 
 		return {
@@ -1395,6 +1429,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 						paddingLeft={2}
 						paddingRight={2}
 						height={DETAIL_VISIBLE_ROWS + 2}
+						overflow="hidden"
 					>
 						{visibleContent.map((line, index) => {
 							if (line.type === 'field') {
@@ -1811,6 +1846,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 					paddingLeft={2}
 					paddingRight={2}
 					height={DETAIL_VISIBLE_ROWS + 2}
+					overflow="hidden"
 				>
 					{visibleContent.map((line, index) => {
 						if (line.type === 'field') {
