@@ -38,6 +38,7 @@ Task Master Flow is a sophisticated terminal UI that enhances your Task Master e
 - [Component Structure](./README.md#components)
 - [Backend System](./README.md#backends)
 - [Migration Reference](./theme-migration-guide.md)
+- [Testing](../tests/README.md)
 
 ## Features
 
