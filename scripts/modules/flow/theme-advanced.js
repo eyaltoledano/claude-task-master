@@ -8,6 +8,15 @@
  * - Gradient support
  * - Semantic color naming
  * - Per-component theming
+ * 
+ * Full documentation: docs/theme-system.md
+ * 
+ * Quick usage:
+ * import { theme, style, gradient, getComponentTheme } from './theme-advanced.js';
+ * 
+ * <Text color={theme.accent}>Cyan text</Text>
+ * <Text>{style('Error!', 'state.error.primary')}</Text>
+ * <Text>{gradient('Header', ['primary', 'secondary'])}</Text>
  */
 
 import { execSync } from 'child_process';
@@ -247,7 +256,7 @@ export const Themes = {
     colors: {
       ...SemanticColors,
       // Override for light theme
-      accent: '#0891b2',       // Cyan for light theme
+      accent: '#3b82f6',       // Light blue for ASCII art and commands in light theme
       background: {
         primary: '#ffffff',
         secondary: '#f9fafb',
