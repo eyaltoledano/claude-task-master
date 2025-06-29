@@ -3,6 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
+import { SimpleTable } from './SimpleTable.jsx';
 
 export function TagManagementScreen() {
 	const { backend, currentTag, setCurrentTag, setCurrentScreen, showToast } =
@@ -14,6 +15,10 @@ export function TagManagementScreen() {
 	const [sortMode, setSortMode] = useState('name'); // 'name' | 'tasks'
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(true);
+	const [scrollOffset, setScrollOffset] = useState(0);
+
+	// Constants for display
+	const VISIBLE_ROWS = 15;
 
 	// Load tags on mount
 	useEffect(() => {
@@ -75,11 +80,41 @@ export function TagManagementScreen() {
 		}
 
 		if (key.downArrow) {
-			setSelectedIndex(Math.min(selectedIndex + 1, sortedTags.length - 1));
+			const newIndex = Math.min(selectedIndex + 1, sortedTags.length - 1);
+			setSelectedIndex(newIndex);
 			setError(null);
+			
+			// Adjust scroll if needed
+			if (newIndex >= scrollOffset + VISIBLE_ROWS) {
+				setScrollOffset(newIndex - VISIBLE_ROWS + 1);
+			}
 		} else if (key.upArrow) {
-			setSelectedIndex(Math.max(selectedIndex - 1, 0));
+			const newIndex = Math.max(selectedIndex - 1, 0);
+			setSelectedIndex(newIndex);
 			setError(null);
+			
+			// Adjust scroll if needed
+			if (newIndex < scrollOffset) {
+				setScrollOffset(newIndex);
+			}
+		} else if (key.pageDown) {
+			// Page down
+			const newIndex = Math.min(
+				selectedIndex + VISIBLE_ROWS,
+				sortedTags.length - 1
+			);
+			setSelectedIndex(newIndex);
+			setScrollOffset(
+				Math.min(
+					newIndex - VISIBLE_ROWS + 1,
+					Math.max(0, sortedTags.length - VISIBLE_ROWS)
+				)
+			);
+		} else if (key.pageUp) {
+			// Page up
+			const newIndex = Math.max(selectedIndex - VISIBLE_ROWS, 0);
+			setSelectedIndex(newIndex);
+			setScrollOffset(Math.max(0, newIndex));
 		} else if (key.return) {
 			// Switch to selected tag
 			const selectedTag = sortedTags[selectedIndex];
@@ -213,6 +248,9 @@ export function TagManagementScreen() {
 		);
 	}
 
+	// Prepare visible tags
+	const visibleTags = sortedTags.slice(scrollOffset, scrollOffset + VISIBLE_ROWS);
+
 	return (
 		<Box flexDirection="column" height="100%">
 			{/* Header */}
@@ -233,119 +271,133 @@ export function TagManagementScreen() {
 
 			{/* Tag List */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				{/* Column Headers */}
-				<Box marginBottom={1}>
-					<Box width={25}>
-						<Text color={theme.text} bold>
-							Tag Name
-						</Text>
-					</Box>
-					<Box width={10}>
-						<Text color={theme.text} bold>
-							Tasks
-						</Text>
-					</Box>
-					<Box width={12}>
-						<Text color={theme.text} bold>
-							Completed
-						</Text>
-					</Box>
-					<Box width={8}>
-						<Text color={theme.text} bold>
-							%
-						</Text>
-					</Box>
-				</Box>
+				{mode === 'rename' ? (
+					// Show table with inline edit
+					<SimpleTable
+						data={visibleTags.map((tag, displayIndex) => {
+							const actualIndex = displayIndex + scrollOffset;
+							const isSelected = actualIndex === selectedIndex;
+							const isCurrent = tag.name === currentTag;
+							const percentage =
+								tag.taskCount > 0
+									? Math.round((tag.completedTasks / tag.taskCount) * 100)
+									: 0;
 
-				{/* Tag Rows */}
-				<Box flexDirection="column">
-					{sortedTags.map((tag, index) => {
-						const isSelected = index === selectedIndex;
-						const isCurrent = tag.name === currentTag;
-						const percentage =
-							tag.taskCount > 0
-								? Math.round((tag.completedTasks / tag.taskCount) * 100)
-								: 0;
+							if (isSelected && mode === 'rename') {
+								return {
+									' ': '→',
+									'Tag Name': (
+										<TextInput
+											value={inputValue}
+											onChange={setInputValue}
+											onSubmit={renameTag}
+											placeholder={tag.name}
+										/>
+									),
+									Tasks: tag.taskCount || 0,
+									Completed: tag.completedTasks || 0,
+									'%': `${percentage}%`,
+									_renderCell: (col, value) => {
+										if (col === ' ') {
+											return <Text color={theme.accent}>{value}</Text>;
+										}
+										if (col === 'Tag Name') {
+											return value;
+										}
+										return <Text color={theme.selectionText}>{value}</Text>;
+									}
+								};
+							}
 
-						if (mode === 'rename' && isSelected) {
-							// Show inline edit
-							return (
-								<Box key={tag.name} backgroundColor={theme.selection}>
-									<Box width={25}>
-										<Text>
-											<Text color={theme.accent}>▶ </Text>
-											<Text color={theme.selectionText}>
-												{isCurrent ? '● ' : ''}
-											</Text>
-											<TextInput
-												value={inputValue}
-												onChange={setInputValue}
-												onSubmit={renameTag}
-												placeholder={tag.name}
-											/>
+							return {
+								' ': isSelected ? '→' : ' ',
+								'Tag Name': isCurrent ? `● ${tag.name} (current)` : tag.name,
+								Tasks: tag.taskCount || 0,
+								Completed: tag.completedTasks || 0,
+								'%': `${percentage}%`,
+								_renderCell: (col, value) => {
+									let color = isSelected ? theme.selectionText : theme.text;
+
+									if (col === 'Tag Name' && isCurrent) {
+										color = theme.success;
+									}
+
+									return (
+										<Text color={color} bold={isSelected}>
+											{value}
 										</Text>
-									</Box>
-								</Box>
-							);
-						}
+									);
+								}
+							};
+						})}
+						columns={[' ', 'Tag Name', 'Tasks', 'Completed', '%']}
+						selectedIndex={selectedIndex - scrollOffset}
+						borders={true}
+					/>
+				) : (
+					// Normal view mode
+					<SimpleTable
+						data={visibleTags.map((tag, displayIndex) => {
+							const actualIndex = displayIndex + scrollOffset;
+							const isSelected = actualIndex === selectedIndex;
+							const isCurrent = tag.name === currentTag;
+							const percentage =
+								tag.taskCount > 0
+									? Math.round((tag.completedTasks / tag.taskCount) * 100)
+									: 0;
 
-						return (
-							<Box
-								key={tag.name}
-								backgroundColor={isSelected ? theme.selection : undefined}
-							>
-								<Box width={25}>
-									<Text>
-										{isSelected ? <Text color={theme.accent}>▶ </Text> : '  '}
-										<Text
-											color={
-												isCurrent
-													? theme.success
-													: isSelected
-														? theme.selectionText
-														: theme.text
-											}
-										>
-											{isCurrent ? '● ' : ''}
-											{tag.name}
-											{isCurrent ? ' (current)' : ''}
+							return {
+								' ': isSelected ? '→' : ' ',
+								'Tag Name': isCurrent ? `● ${tag.name} (current)` : tag.name,
+								Tasks: tag.taskCount || 0,
+								Completed: tag.completedTasks || 0,
+								'%': `${percentage}%`,
+								_renderCell: (col, value) => {
+									let color = isSelected ? theme.selectionText : theme.text;
+
+									if (col === 'Tag Name' && isCurrent) {
+										color = theme.success;
+									}
+
+									return (
+										<Text color={color} bold={isSelected}>
+											{value}
 										</Text>
-									</Text>
-								</Box>
-								<Box width={10}>
-									<Text color={isSelected ? theme.selectionText : theme.text}>
-										{tag.taskCount || 0}
-									</Text>
-								</Box>
-								<Box width={12}>
-									<Text color={isSelected ? theme.selectionText : theme.text}>
-										{tag.completedTasks || 0}
-									</Text>
-								</Box>
-								<Box width={8}>
-									<Text color={isSelected ? theme.selectionText : theme.text}>
-										{percentage}%
-									</Text>
-								</Box>
-							</Box>
-						);
-					})}
+									);
+								}
+							};
+						})}
+						columns={[' ', 'Tag Name', 'Tasks', 'Completed', '%']}
+						selectedIndex={selectedIndex - scrollOffset}
+						borders={true}
+					/>
+				)}
 
-					{/* Add new tag input */}
-					{mode === 'add' && (
-						<Box marginTop={1}>
-							<Box width={25}>
-								<Text color={theme.accent}> + </Text>
-								<TextInput
-									value={inputValue}
-									onChange={setInputValue}
-									onSubmit={addTag}
-									placeholder="new-tag-name"
-								/>
-							</Box>
+				{/* Add new tag input */}
+				{mode === 'add' && (
+					<Box marginTop={1}>
+						<Box>
+							<Text color={theme.accent}> + New tag: </Text>
+							<TextInput
+								value={inputValue}
+								onChange={setInputValue}
+								onSubmit={addTag}
+								placeholder="new-tag-name"
+							/>
 						</Box>
-					)}
-				</Box>
+					</Box>
+				)}
+
+				{/* Scroll indicator */}
+				{sortedTags.length > VISIBLE_ROWS && (
+					<Box marginTop={1}>
+						<Text color={theme.textDim}>
+							{scrollOffset + 1}-
+							{Math.min(scrollOffset + VISIBLE_ROWS, sortedTags.length)} of{' '}
+							{sortedTags.length} tags
+						</Text>
+					</Box>
+				)}
 
 				{/* Summary */}
 				<Box marginTop={1}>

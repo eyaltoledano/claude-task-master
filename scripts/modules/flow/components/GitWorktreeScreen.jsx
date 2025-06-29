@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { getTheme } from '../theme.js';
 import { Toast } from './Toast.jsx';
+import { SimpleTable } from './SimpleTable.jsx';
 import AddWorktreeModal from './AddWorktreeModal.jsx';
 import WorktreeDetailsModal from './WorktreeDetailsModal.jsx';
 
@@ -365,19 +366,18 @@ export default function GitWorktreeScreen({
 		<Box flexDirection="column" height="100%">
 			{/* Header */}
 			<Box
-				flexDirection="row"
-				justifyContent="space-between"
-				paddingBottom={1}
 				borderStyle="single"
-				borderBottom
 				borderColor={theme.border}
+				paddingLeft={1}
+				paddingRight={1}
+				marginBottom={1}
 			>
-				<Text bold color={theme.primary}>
-					Git Worktrees
-				</Text>
-				<Text color={theme.muted}>
-					{totalWorktrees} linked worktree{totalWorktrees !== 1 ? 's' : ''}
-				</Text>
+				<Box flexGrow={1}>
+					<Text color={theme.accent}>Task Master</Text>
+					<Text color={theme.textDim}> › </Text>
+					<Text color="white">Git Worktrees</Text>
+				</Box>
+				<Text color={theme.textDim}>[ESC back]</Text>
 			</Box>
 
 			{/* Main Repository Info */}
@@ -409,116 +409,133 @@ export default function GitWorktreeScreen({
 			)}
 
 			{/* Linked Worktrees Section */}
-			{linkedWorktrees.length > 0 && (
-				<Box marginTop={1} flexDirection="column">
-					<Box marginBottom={1}>
-						<Text bold color={theme.primary}>
-							Linked Worktrees ({linkedWorktrees.length})
-						</Text>
-					</Box>
-
-					{/* Table Header */}
-					<Box>
-						<Text color={theme.muted}>{'  '}Name Branch Status Path</Text>
-					</Box>
-
-					{/* Worktree List */}
-					<Box flexDirection="column">
-						{linkedWorktrees
-							.slice(scrollOffset, scrollOffset + VISIBLE_ROWS)
-							.map((worktree, index) => {
-								const actualIndex = scrollOffset + index;
-								const isSelected = selectedIndex === actualIndex;
-								const statusIcon = worktree.isLocked
-									? '🔒'
-									: worktree.isCurrent
-										? '●'
-										: worktree.isBare
-											? '○'
-											: '  ';
-
-								return (
-									<Box key={worktree.path}>
-										<Text color={isSelected ? theme.highlight : theme.text}>
-											{isSelected ? '❯ ' : '  '}
-											{statusIcon} {worktree.name.padEnd(20).slice(0, 20)}
-											{worktree.branch.padEnd(20).slice(0, 20)}
-											{(worktree.isLocked
-												? 'locked'
-												: worktree.isCurrent
-													? 'current'
-													: 'active'
-											).padEnd(12)}
-											{worktree.path.length > 40
-												? '...' + worktree.path.slice(-37)
-												: worktree.path}
-										</Text>
-									</Box>
-								);
-							})}
-					</Box>
-
-					{/* Scroll indicator */}
-					{linkedWorktrees.length > VISIBLE_ROWS && (
-						<Box marginTop={1}>
-							<Text color={theme.muted}>
-								[{scrollOffset + 1}-
-								{Math.min(scrollOffset + VISIBLE_ROWS, linkedWorktrees.length)}{' '}
-								of {linkedWorktrees.length}]{scrollOffset > 0 && ' ↑'}
-								{scrollOffset + VISIBLE_ROWS < linkedWorktrees.length && ' ↓'}
+			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
+				{linkedWorktrees.length > 0 ? (
+					<>
+						<Box marginBottom={1}>
+							<Text bold color={theme.primary}>
+								Linked Worktrees ({linkedWorktrees.length})
 							</Text>
 						</Box>
-					)}
-				</Box>
-			)}
 
-			{/* Empty state */}
-			{linkedWorktrees.length === 0 && !isLoading && (
-				<Box marginTop={2} paddingLeft={2}>
-					<Text color={theme.muted}>
-						No linked worktrees. Press 'a' to create one.
-					</Text>
-				</Box>
-			)}
+						{/* Worktree Table */}
+						<SimpleTable
+							data={linkedWorktrees
+								.slice(scrollOffset, scrollOffset + VISIBLE_ROWS)
+								.map((worktree, index) => {
+									const actualIndex = scrollOffset + index;
+									const isSelected = selectedIndex === actualIndex;
+									const statusIcon = worktree.isLocked
+										? '🔒'
+										: worktree.isCurrent
+											? '●'
+											: worktree.isBare
+												? '○'
+												: ' ';
 
-			{/* Loading state */}
-			{isLoading && (
-				<Box marginTop={2} paddingLeft={2}>
-					<Text color={theme.muted}>Loading worktrees...</Text>
-				</Box>
-			)}
+									return {
+										' ': isSelected ? '→' : ' ',
+										S: statusIcon,
+										Name: worktree.name.length > 20 
+											? worktree.name.substring(0, 17) + '...'
+											: worktree.name,
+										Branch: worktree.branch.length > 20
+											? worktree.branch.substring(0, 17) + '...'
+											: worktree.branch,
+										Status: worktree.isLocked
+											? 'locked'
+											: worktree.isCurrent
+												? 'current'
+												: 'active',
+										Path: worktree.path.length > 40
+											? '...' + worktree.path.slice(-37)
+											: worktree.path,
+										_renderCell: (col, value) => {
+											let color = isSelected ? theme.selectionText : theme.text;
 
-			{/* Stats Bar */}
-			<Box
-				marginTop={1}
-				paddingTop={1}
-				borderStyle="single"
-				borderTop
-				borderColor={theme.border}
-			>
-				<Box gap={2}>
-					<Text color={theme.muted}>
-						Total: {stats.total} │ Detached: {stats.detached} │ Locked:{' '}
-						{stats.locked}
-					</Text>
-				</Box>
-			</Box>
+											if (col === 'Status') {
+												if (value === 'current') {
+													color = theme.success;
+												} else if (value === 'locked') {
+													color = theme.warning;
+												}
+											} else if (col === 'S') {
+												if (value === '●') {
+													color = theme.success;
+												} else if (value === '🔒') {
+													color = theme.warning;
+												}
+											}
 
-			{/* Actions */}
-			<Box marginTop={1} gap={2}>
-				<Text color={theme.muted}>[a] Add</Text>
-				{linkedWorktrees.length > 0 && (
-					<>
-						<Text color={theme.muted}>[v] View</Text>
-						<Text color={theme.muted}>[d] Delete</Text>
-						<Text color={theme.muted}>[Enter] Info</Text>
+											return (
+												<Text color={color} bold={isSelected}>
+													{value}
+												</Text>
+											);
+										}
+									};
+								})}
+							columns={[' ', 'S', 'Name', 'Branch', 'Status', 'Path']}
+							selectedIndex={selectedIndex - scrollOffset}
+							borders={true}
+						/>
+
+						{/* Scroll indicator */}
+						{linkedWorktrees.length > VISIBLE_ROWS && (
+							<Box marginTop={1}>
+								<Text color={theme.textDim}>
+									{scrollOffset + 1}-
+									{Math.min(scrollOffset + VISIBLE_ROWS, linkedWorktrees.length)}{' '}
+									of {linkedWorktrees.length} worktrees
+								</Text>
+							</Box>
+						)}
 					</>
+				) : (
+					/* Empty state */
+					!isLoading && (
+						<Box marginTop={2} paddingLeft={2}>
+							<Text color={theme.textDim}>
+								No linked worktrees. Press 'a' to create one.
+							</Text>
+						</Box>
+					)
 				)}
-				<Text color={theme.muted}>[p] Prune</Text>
-				<Text color={theme.muted}>[Esc] Back</Text>
+
+				{/* Loading state */}
+				{isLoading && (
+					<Box marginTop={2} paddingLeft={2}>
+						<Text color={theme.textDim}>Loading worktrees...</Text>
+					</Box>
+				)}
 			</Box>
 
-			{/* Toast */}
+			{/* Footer */}
+			<Box
+				borderStyle="single"
+				borderColor={theme.border}
+				borderTop={true}
+				borderBottom={false}
+				borderLeft={false}
+				borderRight={false}
+				paddingTop={1}
+				paddingLeft={1}
+				paddingRight={1}
+			>
+				<Box flexDirection="column">
+					<Box>
+						<Text color={theme.text}>
+							↑↓ navigate • Enter switch • a add • d delete • v view • p prune
+						</Text>
+					</Box>
+					<Box>
+						<Text color={theme.textDim}>
+							{stats.total} worktrees • {stats.active} active • {stats.detached} detached • {stats.locked} locked
+						</Text>
+					</Box>
+				</Box>
+			</Box>
+
 			{toast && (
 				<Toast
 					message={toast.message}
