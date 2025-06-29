@@ -1,30 +1,22 @@
-import React from 'react';
-import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
-import { theme } from '../theme.js';
+import React, { useState, useEffect } from 'react';
+import { Text } from 'ink';
+import { theme } from '../theme-advanced.js';
 
-// Map operation types to appropriate spinners
-const spinnerTypes = {
-	parse: 'dots2', // For parsing operations
-	analyze: 'line', // For analysis operations
-	expand: 'arc', // For expansion operations
-	default: 'dots' // Default spinner
-};
+export const LoadingSpinner = ({ message = 'Loading...' }) => {
+	const [frame, setFrame] = useState(0);
+	const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
-export function LoadingSpinner({
-	message = 'Loading...',
-	type = 'default',
-	customType
-}) {
-	// Use custom type if provided, otherwise use mapped type
-	const spinnerType = customType || spinnerTypes[type] || spinnerTypes.default;
+	useEffect(() => {
+		const timer = setInterval(() => {
+			setFrame((prev) => (prev + 1) % frames.length);
+		}, 80);
+
+		return () => clearInterval(timer);
+	}, []);
 
 	return (
-		<Box>
-			<Text color={theme.accent}>
-				<Spinner type={spinnerType} />
-			</Text>
-			<Text> {message}</Text>
-		</Box>
+		<Text color={theme.accent}>
+			{frames[frame]} {message}
+		</Text>
 	);
-}
+};

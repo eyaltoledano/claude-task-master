@@ -1,132 +1,147 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { style, gradient } from '../theme-advanced.js';
 import { useAppContext } from '../index.jsx';
-import { theme } from '../theme.js';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function AnalyzeComplexityScreen() {
-	const {
-		backend,
-		currentTag,
-		setCurrentScreen,
-		showToast,
-		reloadTasks,
-		tasks
-	} = useAppContext();
-	const [step, setStep] = useState('research-prompt'); // 'research-prompt' | 'analyzing' | 'expand-prompt' | 'expanding'
-	const [useResearch, setUseResearch] = useState(false);
-	const [analyzeResult, setAnalyzeResult] = useState(null);
-	const [error, setError] = useState(null);
-	const [expandingMessage, setExpandingMessage] = useState('');
+	const { backend, setCurrentScreen, showToast, currentScreen } =
+		useAppContext();
+	const [state, setState] = useState({
+		status: 'idle', // idle, analyzing, completed, error
+		error: null,
+		report: null,
+		response: '',
+		hasReport: false,
+		expandOption: null // null, 'y', 'f', 'n'
+	});
 
-	// Handle research prompt response
-	const handleResearchResponse = async (shouldUseResearch) => {
-		setUseResearch(shouldUseResearch);
-		setStep('analyzing');
-		setError(null);
+	// Load existing report on mount
+	useEffect(() => {
+		loadExistingReport();
+	}, []);
 
+	const loadExistingReport = async () => {
 		try {
+			const result = await backend.complexityReport();
+			if (result.report) {
+				setState((prev) => ({
+					...prev,
+					hasReport: true,
+					report: result.report
+				}));
+			}
+		} catch (error) {
+			// No existing report, that's okay
+		}
+	};
+
+	const runAnalysis = async () => {
+		try {
+			setState((prev) => ({ ...prev, status: 'analyzing', error: null }));
+
 			const result = await backend.analyzeComplexity({
-				tag: currentTag,
-				research: shouldUseResearch
+				research: true
 			});
 
-			setAnalyzeResult(result);
-			setStep('expand-prompt');
-		} catch (err) {
-			setError(err.message);
-			// Don't immediately go back to welcome screen, show the error first
-			setTimeout(() => {
-				setCurrentScreen('welcome');
-			}, 3000);
-			showToast(`✗ Analysis failed: ${err.message}`);
+			if (!result || !result.report) {
+				throw new Error('No report data received');
+			}
+
+			setState((prev) => ({
+				...prev,
+				status: 'completed',
+				report: result.report,
+				hasReport: true
+			}));
+		} catch (error) {
+			setState((prev) => ({
+				...prev,
+				status: 'error',
+				error: error.message || 'Analysis failed'
+			}));
 		}
 	};
 
-	// Handle expand prompt response
-	const handleExpandResponse = async (expandOption) => {
-		if (expandOption === 'none') {
-			setCurrentScreen('welcome');
-			showToast(`✓ Complexity analysis complete!`);
-			return;
-		}
-
-		setStep('expanding');
-
+	const expandTasks = async (option) => {
 		try {
-			if (expandOption === 'all') {
-				setExpandingMessage('Expanding all high-complexity tasks...');
+			setState((prev) => ({ ...prev, status: 'expanding' }));
+
+			if (option === 'y') {
+				// Expand all recommended tasks
 				await backend.expandAll({
-					tag: currentTag,
-					research: useResearch
+					research: true
 				});
-				showToast(`✓ Expanded all high-complexity tasks!`);
-			} else if (expandOption === 'first') {
-				// Find first high-complexity task and expand it
-				const highComplexityTasks =
-					analyzeResult?.recommendations?.filter((r) => r.shouldExpand) || [];
-				if (highComplexityTasks.length > 0) {
-					setExpandingMessage(
-						`Expanding task ${highComplexityTasks[0].taskId}...`
-					);
-					await backend.expandTask(highComplexityTasks[0].taskId, {
-						research: useResearch
+				showToast('All recommended tasks expanded successfully!', 'success');
+			} else if (option === 'f') {
+				// Get first recommended task and expand it
+				const recommended = state.report.recommendations.filter(
+					(t) => t.shouldExpand
+				);
+				if (recommended.length > 0) {
+					await backend.expandTask({
+						id: recommended[0].id,
+						research: true
 					});
-					showToast(`✓ Expanded task ${highComplexityTasks[0].taskId}!`);
-				} else {
-					showToast(`ℹ No high-complexity tasks found to expand.`);
+					showToast(
+						`Task ${recommended[0].id} expanded successfully!`,
+						'success'
+					);
 				}
 			}
 
-			await reloadTasks();
 			setCurrentScreen('welcome');
-		} catch (err) {
-			setError(err.message);
-			setCurrentScreen('welcome');
-			showToast(`✓ Analysis complete! (Expand failed: ${err.message})`);
+		} catch (error) {
+			setState((prev) => ({
+				...prev,
+				status: 'error',
+				error: error.message || 'Expansion failed'
+			}));
 		}
 	};
 
-	// Handle keyboard input
 	useInput((input, key) => {
-		// During long-running operations, only allow Ctrl+X to cancel
-		if (step === 'analyzing' || step === 'expanding') {
-			if (key.ctrl && input === 'x') {
-				setError('Operation cancelled by user');
+		// Only handle input if this screen is active
+		if (currentScreen !== 'analyze') return;
+
+		if (state.status === 'idle' || state.status === 'error') {
+			if (key.escape || (key.ctrl && input === 'x')) {
 				setCurrentScreen('welcome');
-				showToast('Operation cancelled');
 				return;
 			}
-			// Ignore all other keys during operations
-			return;
+
+			if (state.hasReport && (input === 'v' || input === 'V')) {
+				setState((prev) => ({ ...prev, status: 'completed' }));
+				return;
+			}
+
+			if (input === 'r' || input === 'R' || key.return) {
+				runAnalysis();
+				return;
+			}
 		}
 
-		if (key.escape) {
-			setCurrentScreen('welcome');
-			return;
-		}
-
-		if (step === 'research-prompt') {
-			// Don't proceed if no tasks
-			if (tasks.length === 0) {
-				if (key.escape) {
-					setCurrentScreen('welcome');
-				}
+		if (state.status === 'completed') {
+			if (key.escape) {
+				setState((prev) => ({ ...prev, status: 'idle' }));
 				return;
 			}
 
 			if (input === 'y' || input === 'Y') {
-				handleResearchResponse(true);
-			} else if (input === 'n' || input === 'N') {
-				handleResearchResponse(false);
+				setState((prev) => ({ ...prev, expandOption: 'y' }));
+				expandTasks('y');
+				return;
 			}
-		} else if (step === 'expand-prompt') {
-			if (input === 'a' || input === 'A') {
-				handleExpandResponse('all');
-			} else if (input === 'f' || input === 'F') {
-				handleExpandResponse('first');
-			} else if (input === 'n' || input === 'N') {
-				handleExpandResponse('none');
+
+			if (input === 'f' || input === 'F') {
+				setState((prev) => ({ ...prev, expandOption: 'f' }));
+				expandTasks('f');
+				return;
+			}
+
+			if (input === 'n' || input === 'N') {
+				setCurrentScreen('welcome');
+				return;
 			}
 		}
 	});
@@ -136,136 +151,153 @@ export function AnalyzeComplexityScreen() {
 			{/* Header */}
 			<Box
 				borderStyle="single"
-				borderColor={theme.border}
+				borderColor={style('', 'border.primary')}
 				paddingLeft={1}
 				paddingRight={1}
 				marginBottom={1}
 			>
 				<Box flexGrow={1}>
-					<Text color={theme.accent}>Task Master</Text>
-					<Text color={theme.textDim}> › </Text>
-					<Text color={theme.text}>Analyze Complexity</Text>
+					<Text>{style('Task Master', 'accent')}</Text>
+					<Text>{style(' › ', 'text.secondary')}</Text>
+					<Text>{style('Analyze Complexity', 'text.primary')}</Text>
 				</Box>
-				{step === 'analyzing' || step === 'expanding' ? (
-					<Text color={theme.warning}>[Ctrl+X cancel]</Text>
-				) : (
-					<Text color={theme.textDim}>[ESC cancel]</Text>
+				{state.status === 'idle' && (
+					<Text>{style('[Ctrl+X cancel]', 'state.warning.primary')}</Text>
+				)}
+				{state.status !== 'idle' && (
+					<Text>{style('[ESC cancel]', 'text.secondary')}</Text>
 				)}
 			</Box>
 
 			{/* Content */}
-			<Box
-				flexGrow={1}
-				flexDirection="column"
-				justifyContent="center"
-				alignItems="center"
-			>
-				{step === 'research-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔍 Analyze Task Complexity</Text>
-						<Text color={theme.text} marginTop={1}>
-							Tag: {currentTag} ({tasks.length} tasks)
+			<Box flexGrow={1} paddingLeft={1} paddingRight={1}>
+				{state.status === 'idle' && (
+					<Box flexDirection="column">
+						<Box marginBottom={1}>
+							<Text>{gradient('🔍 Analyze Task Complexity', ['primary', 'accent'])}</Text>
+						</Box>
+						<Text>
+							{style('This analysis will:', 'text.primary')}
 						</Text>
-						{tasks.length === 0 ? (
-							<>
-								<Text color={theme.error} marginTop={2}>
-									No tasks found to analyze!
-								</Text>
-								<Text color={theme.textDim} marginTop={1}>
-									Please parse a PRD first using /parse
-								</Text>
-							</>
-						) : (
-							<>
-								<Text color={theme.textDim} marginTop={2}>
-									Use research mode for more accurate analysis?
-								</Text>
-								<Text color={theme.textDim} marginTop={1}>
-									(Research mode uses AI to gather additional context but takes
-									longer)
-								</Text>
-								<Text color={theme.text} marginTop={2}>
-									Use research mode? (y/n)
-								</Text>
-							</>
+						<Box marginTop={1} paddingLeft={2} flexDirection="column">
+							<Text>{style('• Evaluate each task\'s complexity', 'text.secondary')}</Text>
+							<Text>{style('• Identify tasks that need expansion', 'text.secondary')}</Text>
+							<Text>{style('• Generate expansion recommendations', 'text.secondary')}</Text>
+							<Text>{style('• Use AI research for accuracy', 'text.secondary')}</Text>
+						</Box>
+
+						{state.error && (
+							<Text marginTop={2}>
+								{style(`Error: ${state.error}`, 'state.error.primary')}
+							</Text>
 						)}
+
+						{state.hasReport && (
+							<Text marginTop={1}>
+								{style('💡 An existing report was found.', 'text.secondary')}
+							</Text>
+						)}
+
+						<Box marginTop={2} flexDirection="column" gap={1}>
+							<Text>{style('Options:', 'text.primary')}</Text>
+							<Box paddingLeft={2} flexDirection="column">
+								{state.hasReport && (
+									<Text>{style('(v) View existing report', 'text.secondary')}</Text>
+								)}
+								<Text>{style('(r) Run new analysis', 'text.secondary')}</Text>
+								<Text>{style('(ESC) Cancel', 'text.secondary')}</Text>
+							</Box>
+						</Box>
+
+						<Text marginTop={2}>
+							{style('Press a key to continue...', 'text.tertiary')}
+						</Text>
 					</Box>
 				)}
 
-				{step === 'analyzing' && (
-					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner
-							message="Analyzing task complexity..."
-							type="analyze"
-						/>
-						<Text color={theme.textDim} marginTop={1}>
-							Tag: {currentTag}
-						</Text>
-						<Text color={theme.textDim}>
-							Research mode: {useResearch ? 'enabled' : 'disabled'}
-						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							This may take a moment...
-						</Text>
-						<Text color={theme.warning} marginTop={2}>
-							Press Ctrl+X to cancel
-						</Text>
+				{state.status === 'analyzing' && (
+					<Box flexDirection="column" justifyContent="center" height="100%">
+						<Box justifyContent="center">
+							<LoadingSpinner message="Analyzing task complexity..." />
+						</Box>
+						<Box justifyContent="center" marginTop={2}>
+							<Text>{style('This may take a moment...', 'text.tertiary')}</Text>
+						</Box>
 					</Box>
 				)}
 
-				{step === 'expand-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.success}>✓ Complexity analysis complete!</Text>
-						<Text color={theme.text} marginTop={1}>
-							Found{' '}
-							{analyzeResult?.recommendations?.filter((r) => r.shouldExpand)
-								.length || 0}{' '}
-							tasks that should be expanded
+				{state.status === 'completed' && state.report && (
+					<Box flexDirection="column">
+						<Text>{style('✓ Complexity analysis complete!', 'state.success.primary')}</Text>
+						<Text marginTop={1}>
+							{style(`Analyzed ${state.report.totalTasks} tasks`, 'text.primary')}
 						</Text>
-						{analyzeResult?.summary && (
-							<Box flexDirection="column" alignItems="center" marginTop={1}>
-								<Text color={theme.textDim}>
-									Average complexity:{' '}
-									{analyzeResult.summary.averageComplexity?.toFixed(1) || 'N/A'}
+
+						{/* Summary */}
+						<Box marginTop={2} flexDirection="column">
+							<Text>{style('Summary:', 'accent')}</Text>
+							<Box paddingLeft={2} marginTop={1} flexDirection="column">
+								<Text>
+									{style(
+										`• Tasks needing expansion: ${state.report.tasksNeedingExpansion}`,
+										'text.secondary'
+									)}
 								</Text>
-								<Text color={theme.textDim}>
-									High complexity tasks:{' '}
-									{analyzeResult.summary.highComplexityCount || 0}
+								<Text>
+									{style(
+										`• Average complexity: ${state.report.averageComplexity.toFixed(1)}/10`,
+										'text.secondary'
+									)}
+								</Text>
+								<Text>
+									{style(
+										`• Highest complexity: ${state.report.highestComplexity}/10`,
+										'text.secondary'
+									)}
 								</Text>
 							</Box>
+						</Box>
+
+						{/* Next steps */}
+						<Text marginTop={2}>
+							{style('What would you like to do?', 'text.primary')}
+						</Text>
+						<Box paddingLeft={2} marginTop={1} flexDirection="column">
+							<Text>{style('(y) Expand all recommended tasks', 'text.primary')}</Text>
+							<Text>{style('(f) First task only', 'text.primary')}</Text>
+							<Text>{style('(n) No, finish here', 'text.primary')}</Text>
+						</Box>
+
+						{state.expandOption && (
+							<Box marginTop={2}>
+								<LoadingSpinner
+									message={
+										state.expandOption === 'y'
+											? 'Expanding all recommended tasks...'
+											: 'Expanding first task...'
+									}
+								/>
+							</Box>
 						)}
-						<Text color={theme.textDim} marginTop={2}>
-							Expand tasks now?
-						</Text>
-						<Text color={theme.text} marginTop={1}>
-							(a) All high-complexity tasks
-						</Text>
-						<Text color={theme.text}>(f) First task only</Text>
-						<Text color={theme.text}>(n) No, finish here</Text>
-					</Box>
-				)}
 
-				{step === 'expanding' && (
-					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner message={expandingMessage} type="expand" />
-						<Text color={theme.textDim} marginTop={1}>
-							Research mode: {useResearch ? 'enabled' : 'disabled'}
+						<Text marginTop={1}>
+							{style('(You can run `task-master complexity-report` later to view details)', 'text.tertiary')}
 						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							This may take a moment...
-						</Text>
-						<Text color={theme.warning} marginTop={2}>
-							Press Ctrl+X to cancel
+
+						<Text marginTop={2}>
+							{style('Press a key to continue...', 'text.tertiary')}
 						</Text>
 					</Box>
 				)}
 
-				{error && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.error}>✗ Error: {error}</Text>
-						<Text color={theme.textDim} marginTop={1}>
-							Press ESC to go back
-						</Text>
+				{state.status === 'error' && (
+					<Box flexDirection="column" justifyContent="center" height="100%">
+						<Box justifyContent="center">
+							<Text>{style(`✗ Error: ${state.error}`, 'state.error.primary')}</Text>
+						</Box>
+						<Box justifyContent="center" marginTop={1}>
+							<Text>{style('Press ESC to go back', 'text.secondary')}</Text>
+						</Box>
 					</Box>
 				)}
 			</Box>

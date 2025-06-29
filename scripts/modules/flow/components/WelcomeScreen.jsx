@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { useAppContext } from '../index.jsx';
-import { theme } from '../theme.js';
+import { theme } from '../theme-advanced.js';
 
 export function WelcomeScreen() {
 	const { messages, hasTasksFile } = useAppContext();
@@ -67,7 +67,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/init</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Initialize a new project</Text>
+								<Text>Initialize a new project</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x i</Text>
 						</Box>
@@ -76,7 +76,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/parse</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Parse PRD to generate tasks</Text>
+								<Text>Parse PRD to generate tasks</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x p</Text>
 						</Box>
@@ -87,7 +87,7 @@ export function WelcomeScreen() {
 										<Text color={theme.accent}>/analyze</Text>
 									</Box>
 									<Box width={34}>
-										<Text color={theme.text}>Analyze task complexity</Text>
+										<Text>Analyze task complexity</Text>
 									</Box>
 									<Text color={theme.textDim}>ctrl+x a</Text>
 								</Box>
@@ -96,7 +96,7 @@ export function WelcomeScreen() {
 										<Text color={theme.accent}>/tasks</Text>
 									</Box>
 									<Box width={34}>
-										<Text color={theme.text}>Interactive task management</Text>
+										<Text>Interactive task management</Text>
 									</Box>
 									<Text color={theme.textDim}>ctrl+x t</Text>
 								</Box>
@@ -107,7 +107,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/tags</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Manage task tags</Text>
+								<Text>Manage task tags</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x g</Text>
 						</Box>
@@ -117,7 +117,7 @@ export function WelcomeScreen() {
 									<Text color={theme.accent}>/next</Text>
 								</Box>
 								<Box width={34}>
-									<Text color={theme.text}>Show next task to work on</Text>
+									<Text>Show next task to work on</Text>
 								</Box>
 								<Text color={theme.textDim}>ctrl+x n</Text>
 							</Box>
@@ -127,7 +127,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/mcp</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Manage MCP servers</Text>
+								<Text>Manage MCP servers</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x v</Text>
 						</Box>
@@ -136,7 +136,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/chat</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Chat with AI assistant</Text>
+								<Text>Chat with AI assistant</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x c</Text>
 						</Box>
@@ -145,7 +145,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/trees</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Manage Git worktrees</Text>
+								<Text>Manage Git worktrees</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x w</Text>
 						</Box>
@@ -154,7 +154,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/claude</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Claude Code assistant</Text>
+								<Text>Claude Code assistant</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x l</Text>
 						</Box>
@@ -163,7 +163,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/status</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>View project status details</Text>
+								<Text>View project status details</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x s</Text>
 						</Box>
@@ -172,7 +172,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/models</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Configure AI models</Text>
+								<Text>Configure AI models</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x m</Text>
 						</Box>
@@ -181,7 +181,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/rules</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Configure AI assistant rules</Text>
+								<Text>Configure AI assistant rules</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x r</Text>
 						</Box>
@@ -190,7 +190,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/theme</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Toggle theme (auto/light/dark)</Text>
+								<Text>Toggle theme (auto/light/dark)</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x d</Text>
 						</Box>
@@ -199,7 +199,7 @@ export function WelcomeScreen() {
 								<Text color={theme.accent}>/exit</Text>
 							</Box>
 							<Box width={34}>
-								<Text color={theme.text}>Exit Task Master Flow</Text>
+								<Text>Exit Task Master Flow</Text>
 							</Box>
 							<Text color={theme.textDim}>ctrl+x q</Text>
 						</Box>
@@ -210,7 +210,7 @@ export function WelcomeScreen() {
 					{/* Chat messages would go here */}
 					<Box flexGrow={1} flexDirection="column" paddingLeft={1}>
 						{messages.map((msg, i) => (
-							<Box key={i} marginBottom={1}>
+							<Box key={`msg-${i}-${msg.type}-${msg.content.slice(0, 10)}`} marginBottom={1}>
 								<Text
 									color={msg.type === 'user' ? theme.text : theme.accent}
 									bold={msg.type === 'assistant'}
@@ -226,3 +226,18 @@ export function WelcomeScreen() {
 		</Box>
 	);
 }
+
+export const WelcomeHeader = ({ messages }) => {
+	return (
+		<Box flexDirection="column" gap={1}>
+			{messages.map((msg, idx) => (
+				<Text
+					key={`${msg.type}-${idx}-${msg.text.slice(0, 10)}`}
+					color={msg.type === 'user' ? theme.text : theme.accent}
+				>
+					{msg.text}
+				</Text>
+			))}
+		</Box>
+	);
+};
