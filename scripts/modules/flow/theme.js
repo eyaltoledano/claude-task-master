@@ -436,6 +436,82 @@ export const ComponentThemes = {
         text: 'state.info.text'
       }
     }
+  },
+
+  taskFilters: {
+    background: 'surface.primary',
+    border: 'border.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    filter: {
+      active: 'accent',
+      inactive: 'text.secondary'
+    },
+    search: {
+      background: 'surface.secondary',
+      placeholder: 'text.tertiary',
+      text: 'text.primary'
+    }
+  },
+
+  taskActions: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      disabled: 'text.disabled'
+    },
+    accent: 'accent',
+    action: {
+      available: 'accent',
+      disabled: 'text.disabled'
+    },
+    expanding: {
+      color: 'accent',
+      background: 'surface.secondary'
+    }
+  },
+
+  taskDetails: {
+    background: 'surface.primary',
+    border: 'border.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    header: {
+      background: 'surface.secondary',
+      text: 'text.primary'
+    },
+    scroll: {
+      indicator: 'text.tertiary',
+      background: 'surface.tertiary'
+    }
+  },
+
+  taskStats: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    status: {
+      complete: 'state.success.primary',
+      partial: 'state.warning.primary',
+      minimal: 'state.error.primary'
+    },
+    git: {
+      clean: 'state.success.primary',
+      dirty: 'state.warning.primary'
+    }
   }
 };
 
