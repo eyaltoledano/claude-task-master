@@ -209,11 +209,9 @@ export function MCPServerDetails({ server, onBack, onEdit, onUse, log }) {
 
 			<Box marginTop={2} flexDirection="column">
 				{tools.length > 0 && connectionStatus === 'active' && !searchMode && (
-					<>
-						<Text color={theme.textDim}>
-							↑↓ Select Tool • Enter: View Tool Details • /: Search Tools
-						</Text>
-					</>
+					<Text color={theme.textDim}>
+						↑↓ Select Tool • Enter: View Tool Details • /: Search Tools
+					</Text>
 				)}
 				{searchMode && (
 					<Text color={theme.textDim}>Type to search • Esc: Clear search</Text>

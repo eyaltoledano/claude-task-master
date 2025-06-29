@@ -15,7 +15,7 @@ The Task Master Flow UI includes a sophisticated theme system with automatic dar
 
 ## Overview
 
-The theme system (`scripts/modules/flow/theme-advanced.js`) provides:
+The theme system (`scripts/modules/flow/theme.js`) provides:
 
 - **Automatic theme detection** - Detects terminal dark/light mode
 - **Semantic color system** - Purpose-driven color naming
@@ -51,7 +51,7 @@ Instead of hardcoded hex values, use meaningful color names:
 ### Import Theme Utilities
 
 ```javascript
-import { theme, style, gradient, getComponentTheme } from '../theme-advanced.js';
+import { theme, style, gradient, getComponentTheme } from '../theme.js';
 ```
 
 ### Direct Color Access
@@ -194,7 +194,7 @@ statusTheme.badge.error.background    // 'state.error.background'
 ### Theme Detection & Override
 
 ```javascript
-import { getTheme, setTheme } from '../theme-advanced.js';
+import { getTheme, setTheme } from '../theme.js';
 
 // Get current theme info
 const currentTheme = getTheme();
@@ -210,7 +210,7 @@ setTheme(null);     // Back to auto-detection
 ### Direct Color Access
 
 ```javascript
-import { getColor } from '../theme-advanced.js';
+import { getColor } from '../theme.js';
 
 // Get color value using dot notation
 const primaryColor = getColor('primary');           // '#3b82f6'
@@ -221,7 +221,7 @@ const borderColor = getColor('border.primary');     // '#e5e7eb' or '#334155'
 ### Color Utilities
 
 ```javascript
-import { ColorUtils } from '../theme-advanced.js';
+import { ColorUtils } from '../theme.js';
 
 // Convert CSS color to terminal color
 const terminalRed = ColorUtils.cssToTerminal('#ff0000');
@@ -239,7 +239,7 @@ const hsl = ColorUtils.rgbToHsl(59, 130, 246); // { h: 217, s: 91, l: 60 }
 ### Custom Gradients
 
 ```javascript
-import { Gradients } from '../theme-advanced.js';
+import { Gradients } from '../theme.js';
 
 // Create custom gradient
 const colors = Gradients.create('#ff0000', '#0000ff', 10);
@@ -287,7 +287,7 @@ class ThemeManager {
 ### Welcome Screen with Theme
 
 ```javascript
-import { theme, gradient } from '../theme-advanced.js';
+import { theme, gradient } from '../theme.js';
 
 export function WelcomeScreen() {
   return (
@@ -309,7 +309,7 @@ export function WelcomeScreen() {
 ### Status Indicator
 
 ```javascript
-import { style, getComponentTheme } from '../theme-advanced.js';
+import { style, getComponentTheme } from '../theme.js';
 
 const StatusBadge = ({ status, text }) => {
   const statusTheme = getComponentTheme('status');
@@ -332,7 +332,7 @@ const StatusBadge = ({ status, text }) => {
 ### Task List with Gradients
 
 ```javascript
-import { gradient, style, getComponentTheme } from '../theme-advanced.js';
+import { gradient, style, getComponentTheme } from '../theme.js';
 
 const TaskList = ({ tasks }) => {
   const taskTheme = getComponentTheme('taskList');
@@ -359,7 +359,7 @@ const TaskList = ({ tasks }) => {
 ### Theme-Aware Component
 
 ```javascript
-import { getTheme, style } from '../theme-advanced.js';
+import { getTheme, style } from '../theme.js';
 
 const ThemeAwareBox = ({ children }) => {
   const theme = getTheme();
@@ -395,11 +395,11 @@ import { theme } from './theme.js';
 <Text color={theme.accent}>{text}</Text>
 
 // New way (works the same!)
-import { theme } from './theme-advanced.js';
+import { theme } from './theme.js';
 <Text color={theme.accent}>{text}</Text>
 
 // Or use semantic colors
-import { style } from './theme-advanced.js';
+import { style } from './theme.js';
 <Text color={style('', 'accent')}>{text}</Text>
 ```
 

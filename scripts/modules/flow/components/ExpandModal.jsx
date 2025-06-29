@@ -64,7 +64,7 @@ export function ExpandModal({
 
 	const handleNumberSubmit = (value) => {
 		const num = parseInt(value, 10);
-		if (!isNaN(num) && num > 0) {
+		if (!Number.isNaN(num) && num > 0) {
 			onSelect({
 				research: useResearch,
 				num: num,
@@ -73,8 +73,8 @@ export function ExpandModal({
 		}
 	};
 
-	const handleNumberKeyPress = (key, escape) => {
-		if (escape || key === 'escape') {
+	const handleNumberKeyPress = (key, isEscapeKey) => {
+		if (isEscapeKey || key === 'escape') {
 			onClose();
 		}
 	};

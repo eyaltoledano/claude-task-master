@@ -38,7 +38,7 @@ export function ParsePRDScreen() {
 		let parsedNum = undefined;
 		if (value && value.trim() !== '') {
 			const num = parseInt(value, 10);
-			if (!isNaN(num) && num > 0) {
+			if (!Number.isNaN(num) && num > 0) {
 				parsedNum = num;
 			}
 		}
@@ -93,7 +93,7 @@ export function ParsePRDScreen() {
 			let parsedNum = undefined;
 			if (numTasks && numTasks.trim() !== '') {
 				const num = parseInt(numTasks, 10);
-				if (!isNaN(num) && num > 0) {
+				if (!Number.isNaN(num) && num > 0) {
 					parsedNum = num;
 				}
 			}

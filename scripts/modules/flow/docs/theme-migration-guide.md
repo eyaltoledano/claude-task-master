@@ -1,6 +1,128 @@
-# Theme System Migration Guide
+# Theme Migration Guide
 
-This guide helps you migrate from the old theme system to the new advanced theme system inspired by Gemini CLI.
+This guide documents the completed migration of Task Master Flow components to the unified theme system.
+
+## Migration Status
+
+### ✅ Fully Migrated (28 components)
+- AnalyzeComplexityScreen - uses `style`, `gradient`
+- CommandPalette - uses `style`, `getComponentTheme`  
+- LoadingSpinner - uses `theme` proxy
+- StatusScreen - uses `style`, `gradient`, `getComponentTheme`, `getColor`
+- WelcomeScreen - uses `theme` proxy
+- ThemeDemo - demonstration component
+- FileBrowser - uses `theme` proxy
+- NextTaskModal - uses `theme` proxy
+- TaskListPopup - uses `theme` proxy
+- TagManagementScreen - uses `theme` proxy
+- MCPServerDetails - uses `theme` proxy
+- ExpandModal - uses `theme` proxy
+- MCPToolViewer - uses `theme` proxy
+- ParsePRDScreen - uses `theme` proxy
+- MCPServerForm - uses `theme` proxy
+- WorktreeBranchConflictModal - uses `theme` proxy
+- MCPManagementScreen - uses `theme` proxy (has linter errors)
+- CommandSuggestions - uses `theme` proxy
+- MCPServerManager - uses `theme` proxy (has linter errors)
+- GitWorktreeScreen - uses `getTheme()`
+- AddWorktreeModal - uses `getTheme()`
+- WorktreeDetailsModal - uses `getTheme()`
+- LinkTasksModal - uses `getTheme()`
+- ClaudeWorktreeLauncherModal - uses `getTheme()`
+- ChatScreen - uses `getCurrentTheme()` (has linter errors)
+- WorktreePromptModal - uses `getCurrentTheme()`
+- ClaudeCodeScreen - uses `getTheme()`
+- TaskManagementScreen - uses `getTheme()` (has linter errors)
+
+### ⚠️ Linter Errors (Need Fixing)
+Several migrated components have linter errors unrelated to the theme migration:
+- MCPManagementScreen - switch clause declarations, array index keys
+- MCPServerManager - useless catch clause
+- ChatScreen - multiple array index keys, unused variable
+- TaskManagementScreen - multiple array index keys
+
+These errors existed before migration and should be fixed separately.
+
+## Migration Steps
+
+### Step 1: Update Import Statement
+
+**Old:**
+```javascript
+import { theme } from '../theme.js';
+// or
+import { getTheme } from '../theme.js';
+// or
+import { getCurrentTheme } from '../theme.js';
+```
+
+**New:**
+```javascript
+import { theme } from '../theme.js';
+// or
+import { getTheme } from '../theme.js';
+// or
+import { getCurrentTheme } from '../theme.js';
+// or for advanced features:
+import { style, gradient, getComponentTheme } from '../theme.js';
+```
+
+### Step 2: Update Color Usage
+
+The theme proxy object provides backward compatibility for most common properties:
+
+**Direct Properties (work as-is):**
+- `theme.accent` - Accent color
+- `theme.text` - Primary text color
+- `theme.textDim` - Secondary text color
+- `theme.border` - Border color
+- `theme.success`, `theme.error`, `theme.warning`, `theme.info` - Status colors
+- `theme.selection`, `theme.selectionText` - Selection colors
+
+**For Advanced Usage:**
+```javascript
+// Style text with semantic colors
+<Text>{style('Hello', 'primary')}</Text>
+
+// Apply gradients
+<Text>{gradient('Rainbow text', ['primary', 'secondary'])}</Text>
+
+// Get component-specific theme
+const taskTheme = getComponentTheme('taskList');
+```
+
+## Common Patterns
+
+### Pattern 1: Simple Color Usage
+Most components just use theme colors directly and only need the import changed:
+
+```javascript
+// Works with just import change
+<Text color={theme.accent}>Title</Text>
+<Box borderColor={theme.border}>Content</Box>
+```
+
+### Pattern 2: Theme Function Usage
+Components using `getTheme()` or `getCurrentTheme()` work with just the import change:
+
+```javascript
+const theme = getTheme(); // Works as before
+// or
+const theme = getCurrentTheme(); // Also works
+```
+
+### Pattern 3: Advanced Features
+For components that need gradient or advanced theming:
+
+```javascript
+import { gradient, style, getComponentTheme } from '../theme.js';
+
+// Use gradient for headers
+<Text>{gradient('Welcome', ['primary', 'secondary'])}</Text>
+
+// Use semantic styling
+<Text>{style('Error!', 'state.error.primary')}</Text>
+```
 
 ## Key Improvements
 
@@ -21,7 +143,7 @@ import { theme, getCurrentTheme } from './theme.js';
 
 **New:**
 ```javascript
-import { themeManager, style, gradient, getComponentTheme } from './theme-advanced.js';
+import { themeManager, style, gradient, getComponentTheme } from './theme.js';
 ```
 
 ### 2. Color Access
@@ -133,7 +255,7 @@ const rainbow = gradient('Rainbow Text', ['#ff0000', '#00ff00', '#0000ff']);
 
 ### Color Manipulation
 ```javascript
-import { ColorUtils } from './theme-advanced.js';
+import { ColorUtils } from './theme.js';
 
 // Adjust brightness
 const lighter = ColorUtils.adjustBrightness('#0066cc', 20); // 20% lighter

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { style, gradient, getComponentTheme, getColor } from '../theme-advanced.js';
+import { style, gradient, getComponentTheme, getColor } from '../theme.js';
 
 export const StatusScreen = ({ projectInfo, tasksInfo, modelsInfo, mcpInfo }) => {
 	const taskTheme = getComponentTheme('taskList');

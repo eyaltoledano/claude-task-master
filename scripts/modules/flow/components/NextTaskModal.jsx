@@ -258,8 +258,8 @@ export function NextTaskModal({ task, onClose }) {
 		const completedCount = task.subtasks.filter(
 			(st) => st.status === 'done'
 		).length;
-		const subtaskElements = task.subtasks.map((subtask, idx) => (
-			<Box key={`subtask-${idx}`}>
+		const subtaskElements = task.subtasks.map((subtask) => (
+			<Box key={`subtask-${subtask.id}`}>
 				<Text color={subtask.status === 'done' ? theme.success : theme.text}>
 					{subtask.status === 'done' ? '✅' : '○'} {subtask.id}: {subtask.title}
 				</Text>

@@ -18,7 +18,7 @@ Task Master Flow is a sophisticated terminal UI that enhances your Task Master e
 
 - **[README](./README.md)** - Getting started with Task Master Flow, basic usage, and key features
 - **[Theme System](./theme-system.md)** - Complete guide to the Flow theme system, including customization and advanced features
-- **[Theme Migration Guide](./theme-migration-guide.md)** - Guide for updating components to use the new theme system
+- **[Theme Migration Reference](./theme-migration-guide.md)** - Reference documenting the completed theme system migration
 
 ### Quick Links
 
@@ -37,7 +37,7 @@ Task Master Flow is a sophisticated terminal UI that enhances your Task Master e
 - [Architecture Overview](./README.md#architecture)
 - [Component Structure](./README.md#components)
 - [Backend System](./README.md#backends)
-- [Migrating Components](./theme-migration-guide.md)
+- [Migration Reference](./theme-migration-guide.md)
 
 ## Features
 
