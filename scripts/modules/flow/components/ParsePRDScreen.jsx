@@ -5,18 +5,20 @@ import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { FileBrowser } from './FileBrowser.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { StreamingModal } from './StreamingModal.jsx';
+import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function ParsePRDScreen() {
 	const { backend, currentTag, setCurrentScreen, showToast, reloadTasks } =
 		useAppContext();
 	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'research-prompt' | 'num-tasks-prompt' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'expanding' | 'error'
+	const [showStreamingModal, setShowStreamingModal] = useState(false);
 	const [selectedFile, setSelectedFile] = useState(null);
 	const [useResearch, setUseResearch] = useState(false);
 	const [numTasks, setNumTasks] = useState('');
 	const [parseResult, setParseResult] = useState(null);
 	const [analyzeResult, setAnalyzeResult] = useState(null);
 	const [error, setError] = useState(null);
-	const [expandingMessage, setExpandingMessage] = useState('');
 
 	// Handle file selection from browser
 	const handleFileSelect = (filePath) => {
@@ -65,24 +67,55 @@ export function ParsePRDScreen() {
 		force = false,
 		taskCount = undefined
 	) => {
-		setStep('parsing');
+		setShowStreamingModal(true);
 		setError(null);
 
 		try {
-			// Parse the PRD with all options
-			const result = await backend.parsePRD(filePath, {
-				tag: currentTag,
-				force: force,
-				research: useResearch,
-				numTasks: taskCount
+			// Use streaming state manager for parsing
+			const result = await streamingStateManager.startOperation('parse_prd', {
+				execute: async (signal, callbacks) => {
+					// Simulate thinking messages during parsing
+					let thinkingIndex = 0;
+					const config = streamingStateManager.getOperationConfig('parse_prd');
+					
+					const thinkingInterval = setInterval(() => {
+						if (config.thinkingMessages?.[thinkingIndex]) {
+							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+						}
+					}, 2000);
+
+					try {
+						// Execute the actual parsing
+						const parseResult = await backend.parsePRD(filePath, {
+							tag: currentTag,
+							force: force,
+							research: useResearch,
+							numTasks: taskCount
+						});
+
+						clearInterval(thinkingInterval);
+						return parseResult;
+					} catch (error) {
+						clearInterval(thinkingInterval);
+						throw error;
+					}
+				}
 			});
 
 			setParseResult(result);
 			await reloadTasks();
+			setShowStreamingModal(false);
 			setStep('success');
 		} catch (err) {
-			setError(err.message);
-			setStep('error');
+			setShowStreamingModal(false);
+			if (err.message !== 'Operation cancelled') {
+				setError(err.message);
+				setStep('error');
+			} else {
+				// User cancelled, go back to file selection
+				setStep('file-browser');
+			}
 		}
 	};
 
@@ -111,21 +144,53 @@ export function ParsePRDScreen() {
 			return;
 		}
 
-		setStep('analyzing');
+		setShowStreamingModal(true);
 		setError(null);
 
 		try {
-			const result = await backend.analyzeComplexity({
-				tag: currentTag,
-				research: false // Default to no research for post-parse analysis
+			// Use streaming state manager for analysis
+			const result = await streamingStateManager.startOperation('analyze_complexity', {
+				execute: async (signal, callbacks) => {
+					// Simulate thinking messages during analysis
+					let thinkingIndex = 0;
+					const config = streamingStateManager.getOperationConfig('analyze_complexity');
+					
+					const thinkingInterval = setInterval(() => {
+						if (config.thinkingMessages?.[thinkingIndex]) {
+							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+						}
+					}, 2000);
+
+					try {
+						// Execute the actual analysis
+						const analysisResult = await backend.analyzeComplexity({
+							tag: currentTag,
+							research: false // Default to no research for post-parse analysis
+						});
+
+						clearInterval(thinkingInterval);
+						return analysisResult;
+					} catch (error) {
+						clearInterval(thinkingInterval);
+						throw error;
+					}
+				}
 			});
 
 			setAnalyzeResult(result);
+			setShowStreamingModal(false);
 			setStep('expand-prompt');
 		} catch (err) {
-			setError(err.message);
-			setCurrentScreen('welcome');
-			showToast(`✓ Parsed PRD successfully! (Analysis failed: ${err.message})`);
+			setShowStreamingModal(false);
+			if (err.message !== 'Operation cancelled') {
+				setError(err.message);
+				setCurrentScreen('welcome');
+				showToast(`✓ Parsed PRD successfully! (Analysis failed: ${err.message})`);
+			} else {
+				// User cancelled, go back to success step
+				setStep('success');
+			}
 		}
 	};
 
@@ -137,14 +202,37 @@ export function ParsePRDScreen() {
 			return;
 		}
 
-		setStep('expanding');
+		setShowStreamingModal(true);
 
 		try {
 			if (expandOption === 'all') {
-				setExpandingMessage('Expanding all high-complexity tasks...');
-				await backend.expandAll({
-					tag: currentTag,
-					research: false
+				// Use streaming state manager for expand all
+				await streamingStateManager.startOperation('expand_all', {
+					execute: async (signal, callbacks) => {
+						// Simulate thinking messages during expansion
+						let thinkingIndex = 0;
+						const config = streamingStateManager.getOperationConfig('expand_all');
+						
+						const thinkingInterval = setInterval(() => {
+							if (config.thinkingMessages?.[thinkingIndex]) {
+								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+								thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+							}
+						}, 2000);
+
+						try {
+							const expandResult = await backend.expandAll({
+								tag: currentTag,
+								research: false
+							});
+
+							clearInterval(thinkingInterval);
+							return expandResult;
+						} catch (error) {
+							clearInterval(thinkingInterval);
+							throw error;
+						}
+					}
 				});
 				showToast(`✓ Expanded all high-complexity tasks!`);
 			} else if (expandOption === 'first') {
@@ -152,35 +240,57 @@ export function ParsePRDScreen() {
 				const highComplexityTasks =
 					analyzeResult?.recommendations?.filter((r) => r.shouldExpand) || [];
 				if (highComplexityTasks.length > 0) {
-					setExpandingMessage(
-						`Expanding task ${highComplexityTasks[0].taskId}...`
-					);
-					await backend.expandTask(highComplexityTasks[0].taskId, {
-						research: false
+					// Use streaming state manager for single task expansion
+					await streamingStateManager.startOperation('expand_task', {
+						execute: async (signal, callbacks) => {
+							// Simulate thinking messages during expansion
+							let thinkingIndex = 0;
+							const config = streamingStateManager.getOperationConfig('expand_task');
+							
+							const thinkingInterval = setInterval(() => {
+								if (config.thinkingMessages?.[thinkingIndex]) {
+									callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+									thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+								}
+							}, 2000);
+
+							try {
+								const expandResult = await backend.expandTask(highComplexityTasks[0].taskId, {
+									research: false
+								});
+
+								clearInterval(thinkingInterval);
+								return expandResult;
+							} catch (error) {
+								clearInterval(thinkingInterval);
+								throw error;
+							}
+						}
 					});
 					showToast(`✓ Expanded task ${highComplexityTasks[0].taskId}!`);
 				}
 			}
 
 			await reloadTasks();
+			setShowStreamingModal(false);
 			setCurrentScreen('welcome');
 		} catch (err) {
-			setError(err.message);
-			setCurrentScreen('welcome');
-			showToast(`✓ Parse complete! (Expand failed: ${err.message})`);
+			setShowStreamingModal(false);
+			if (err.message !== 'Operation cancelled') {
+				setError(err.message);
+				setCurrentScreen('welcome');
+				showToast(`✓ Parse complete! (Expand failed: ${err.message})`);
+			} else {
+				// User cancelled, go back to expand prompt
+				setStep('expand-prompt');
+			}
 		}
 	};
 
 	// Handle keyboard input for prompts
 	useInput((input, key) => {
-		// During long-running operations, only allow Ctrl+X to cancel
-		if (step === 'parsing' || step === 'analyzing' || step === 'expanding') {
-			if (key.ctrl && input === 'x') {
-				setStep('error');
-				setError('Operation cancelled by user');
-				return;
-			}
-			// Ignore all other keys during operations
+		// During streaming operations, keyboard input is handled by StreamingModal
+		if (showStreamingModal) {
 			return;
 		}
 
@@ -281,11 +391,7 @@ export function ParsePRDScreen() {
 					<Text color={theme.textDim}> › </Text>
 					<Text color={theme.text}>Parse PRD</Text>
 				</Box>
-				{step === 'parsing' || step === 'analyzing' || step === 'expanding' ? (
-					<Text color={theme.warning}>[Ctrl+X cancel]</Text>
-				) : (
-					<Text color={theme.textDim}>[ESC cancel]</Text>
-				)}
+				<Text color={theme.textDim}>[ESC cancel]</Text>
 			</Box>
 
 			{/* Content */}
@@ -355,42 +461,7 @@ export function ParsePRDScreen() {
 					</Box>
 				)}
 
-				{step === 'parsing' && (
-					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner message="Parsing PRD..." type="parse" />
-						<Text color={theme.textDim} marginTop={1}>
-							File: {selectedFile}
-						</Text>
-						<Text color={theme.textDim}>Target tag: {currentTag}</Text>
-						<Text color={theme.textDim}>
-							Research: {useResearch ? 'Yes' : 'No'}
-						</Text>
-						<Text color={theme.textDim}>
-							Tasks:{' '}
-							{numTasks && numTasks.trim() !== ''
-								? `${numTasks} tasks`
-								: 'Default (10 tasks)'}
-						</Text>
-						<Text color={theme.warning} marginTop={2}>
-							Press Ctrl+X to cancel
-						</Text>
-					</Box>
-				)}
 
-				{step === 'analyzing' && (
-					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner
-							message="Analyzing task complexity..."
-							type="analyze"
-						/>
-						<Text color={theme.textDim} marginTop={1}>
-							This may take a moment...
-						</Text>
-						<Text color={theme.warning} marginTop={2}>
-							Press Ctrl+X to cancel
-						</Text>
-					</Box>
-				)}
 
 				{step === 'success' && (
 					<Box flexDirection="column" alignItems="center">
@@ -447,17 +518,7 @@ export function ParsePRDScreen() {
 					</Box>
 				)}
 
-				{step === 'expanding' && (
-					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner message={expandingMessage} type="expand" />
-						<Text color={theme.textDim} marginTop={1}>
-							Expanding tasks...
-						</Text>
-						<Text color={theme.warning} marginTop={2}>
-							Press Ctrl+X to cancel
-						</Text>
-					</Box>
-				)}
+
 
 				{step === 'error' && (
 					<Box flexDirection="column" alignItems="center">
@@ -471,6 +532,12 @@ export function ParsePRDScreen() {
 					</Box>
 				)}
 			</Box>
+
+			{/* Streaming Modal */}
+			<StreamingModal 
+				isOpen={showStreamingModal} 
+				onClose={() => setShowStreamingModal(false)} 
+			/>
 		</Box>
 	);
 }

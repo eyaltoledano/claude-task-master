@@ -11,6 +11,8 @@ import { SimpleTable } from './SimpleTable.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
+import { StreamingModal } from './StreamingModal.jsx';
+import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function TaskManagementScreen() {
 	const {
@@ -49,6 +51,7 @@ export function TaskManagementScreen() {
 	const [claudeWorktree, setClaudeWorktree] = useState(null);
 	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
 	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
+	const [showStreamingModal, setShowStreamingModal] = useState(false);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -195,6 +198,11 @@ export function TaskManagementScreen() {
 	useInput((input, key) => {
 		if (isSearching) {
 			// Handle search mode input separately
+			return;
+		}
+
+		// During streaming operations, keyboard input is handled by StreamingModal
+		if (showStreamingModal) {
 			return;
 		}
 
@@ -522,13 +530,37 @@ export function TaskManagementScreen() {
 
 	const expandTask = async (options) => {
 		setShowExpandOptions(false);
-		setIsExpanding(true);
+		setShowStreamingModal(true);
 
 		try {
-			await backend.expandTask(selectedTask.id, {
-				research: options.research,
-				force: options.force || false,
-				num: options.num
+			// Use streaming state manager for expansion
+			await streamingStateManager.startOperation('expand_task', {
+				execute: async (signal, callbacks) => {
+					// Simulate thinking messages during expansion
+					let thinkingIndex = 0;
+					const config = streamingStateManager.getOperationConfig('expand_task');
+					
+					const thinkingInterval = setInterval(() => {
+						if (config.thinkingMessages?.[thinkingIndex]) {
+							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+						}
+					}, 2000);
+
+					try {
+						const expandResult = await backend.expandTask(selectedTask.id, {
+							research: options.research,
+							force: options.force || false,
+							num: options.num
+						});
+
+						clearInterval(thinkingInterval);
+						return expandResult;
+					} catch (error) {
+						clearInterval(thinkingInterval);
+						throw error;
+					}
+				}
 			});
 
 			// Reload tasks and refresh the detail view
@@ -536,15 +568,25 @@ export function TaskManagementScreen() {
 			const updatedTask = await backend.getTask(selectedTask.id);
 			setSelectedTask(updatedTask);
 
+			setShowStreamingModal(false);
 			setToast({
 				message: `Task expanded into ${options.num} subtasks ${options.research ? 'with research' : 'without research'}`,
 				type: 'success'
 			});
 		} catch (error) {
-			setToast({
-				message: `Failed to expand task: ${error.message}`,
-				type: 'error'
-			});
+			setShowStreamingModal(false);
+			if (error.message !== 'Operation cancelled') {
+				setToast({
+					message: `Failed to expand task: ${error.message}`,
+					type: 'error'
+				});
+			} else {
+				// User cancelled, show cancel message
+				setToast({
+					message: 'Task expansion cancelled',
+					type: 'warning'
+				});
+			}
 		} finally {
 			setIsExpanding(false);
 		}
@@ -2164,6 +2206,12 @@ Focus on: current industry standards, common pitfalls, security considerations
 					}}
 				/>
 			)}
+
+			{/* Streaming Modal */}
+			<StreamingModal 
+				isOpen={showStreamingModal} 
+				onClose={() => setShowStreamingModal(false)} 
+			/>
 		</Box>
 	);
 }

@@ -3,6 +3,8 @@ import { Box, Text, useInput } from 'ink';
 import { style, gradient } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { StreamingModal } from './StreamingModal.jsx';
+import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function AnalyzeComplexityScreen() {
 	const { backend, setCurrentScreen, showToast, currentScreen } =
@@ -15,6 +17,7 @@ export function AnalyzeComplexityScreen() {
 		hasReport: false,
 		expandOption: null // null, 'y', 'f', 'n'
 	});
+	const [showStreamingModal, setShowStreamingModal] = useState(false);
 
 	// Load existing report on mount
 	useEffect(() => {
@@ -38,16 +41,44 @@ export function AnalyzeComplexityScreen() {
 
 	const runAnalysis = async () => {
 		try {
-			setState((prev) => ({ ...prev, status: 'analyzing', error: null }));
+			setShowStreamingModal(true);
+			setState((prev) => ({ ...prev, error: null }));
 
-			const result = await backend.analyzeComplexity({
-				research: true
+			// Use streaming state manager for analysis
+			const result = await streamingStateManager.startOperation('analyze_complexity', {
+				execute: async (signal, callbacks) => {
+					// Simulate thinking messages during analysis
+					let thinkingIndex = 0;
+					const config = streamingStateManager.getOperationConfig('analyze_complexity');
+					
+					const thinkingInterval = setInterval(() => {
+						if (config.thinkingMessages?.[thinkingIndex]) {
+							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+						}
+					}, 2000);
+
+					try {
+						// Execute the actual analysis
+						const analysisResult = await backend.analyzeComplexity({
+							research: true
+						});
+
+						clearInterval(thinkingInterval);
+						
+						if (!analysisResult || !analysisResult.report) {
+							throw new Error('No report data received');
+						}
+						
+						return analysisResult;
+					} catch (error) {
+						clearInterval(thinkingInterval);
+						throw error;
+					}
+				}
 			});
 
-			if (!result || !result.report) {
-				throw new Error('No report data received');
-			}
-
+			setShowStreamingModal(false);
 			setState((prev) => ({
 				...prev,
 				status: 'completed',
@@ -55,22 +86,51 @@ export function AnalyzeComplexityScreen() {
 				hasReport: true
 			}));
 		} catch (error) {
-			setState((prev) => ({
-				...prev,
-				status: 'error',
-				error: error.message || 'Analysis failed'
-			}));
+			setShowStreamingModal(false);
+			if (error.message !== 'Operation cancelled') {
+				setState((prev) => ({
+					...prev,
+					status: 'error',
+					error: error.message || 'Analysis failed'
+				}));
+			} else {
+				// User cancelled, stay in idle state
+				setState((prev) => ({ ...prev, status: 'idle' }));
+			}
 		}
 	};
 
 	const expandTasks = async (option) => {
 		try {
-			setState((prev) => ({ ...prev, status: 'expanding' }));
+			setShowStreamingModal(true);
 
 			if (option === 'y') {
-				// Expand all recommended tasks
-				await backend.expandAll({
-					research: true
+				// Use streaming state manager for expand all
+				await streamingStateManager.startOperation('expand_all', {
+					execute: async (signal, callbacks) => {
+						// Simulate thinking messages during expansion
+						let thinkingIndex = 0;
+						const config = streamingStateManager.getOperationConfig('expand_all');
+						
+						const thinkingInterval = setInterval(() => {
+							if (config.thinkingMessages?.[thinkingIndex]) {
+								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+								thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+							}
+						}, 2000);
+
+						try {
+							const expandResult = await backend.expandAll({
+								research: true
+							});
+
+							clearInterval(thinkingInterval);
+							return expandResult;
+						} catch (error) {
+							clearInterval(thinkingInterval);
+							throw error;
+						}
+					}
 				});
 				showToast('All recommended tasks expanded successfully!', 'success');
 			} else if (option === 'f') {
@@ -79,9 +139,33 @@ export function AnalyzeComplexityScreen() {
 					(t) => t.shouldExpand
 				);
 				if (recommended.length > 0) {
-					await backend.expandTask({
-						id: recommended[0].id,
-						research: true
+					// Use streaming state manager for single task expansion
+					await streamingStateManager.startOperation('expand_task', {
+						execute: async (signal, callbacks) => {
+							// Simulate thinking messages during expansion
+							let thinkingIndex = 0;
+							const config = streamingStateManager.getOperationConfig('expand_task');
+							
+							const thinkingInterval = setInterval(() => {
+								if (config.thinkingMessages?.[thinkingIndex]) {
+									callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+									thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+								}
+							}, 2000);
+
+							try {
+								const expandResult = await backend.expandTask({
+									id: recommended[0].id,
+									research: true
+								});
+
+								clearInterval(thinkingInterval);
+								return expandResult;
+							} catch (error) {
+								clearInterval(thinkingInterval);
+								throw error;
+							}
+						}
 					});
 					showToast(
 						`Task ${recommended[0].id} expanded successfully!`,
@@ -90,19 +174,31 @@ export function AnalyzeComplexityScreen() {
 				}
 			}
 
+			setShowStreamingModal(false);
 			setCurrentScreen('welcome');
 		} catch (error) {
-			setState((prev) => ({
-				...prev,
-				status: 'error',
-				error: error.message || 'Expansion failed'
-			}));
+			setShowStreamingModal(false);
+			if (error.message !== 'Operation cancelled') {
+				setState((prev) => ({
+					...prev,
+					status: 'error',
+					error: error.message || 'Expansion failed'
+				}));
+			} else {
+				// User cancelled, stay in completed state
+				setState((prev) => ({ ...prev, expandOption: null }));
+			}
 		}
 	};
 
 	useInput((input, key) => {
 		// Only handle input if this screen is active
 		if (currentScreen !== 'analyze') return;
+		
+		// During streaming operations, keyboard input is handled by StreamingModal
+		if (showStreamingModal) {
+			return;
+		}
 
 		if (state.status === 'idle' || state.status === 'error') {
 			if (key.escape || (key.ctrl && input === 'x')) {
@@ -215,16 +311,7 @@ export function AnalyzeComplexityScreen() {
 					</Box>
 				)}
 
-				{state.status === 'analyzing' && (
-					<Box flexDirection="column" justifyContent="center" height="100%">
-						<Box justifyContent="center">
-							<LoadingSpinner message="Analyzing task complexity..." />
-						</Box>
-						<Box justifyContent="center" marginTop={2}>
-							<Text>{style('This may take a moment...', 'text.tertiary')}</Text>
-						</Box>
-					</Box>
-				)}
+
 
 				{state.status === 'completed' && state.report && (
 					<Box flexDirection="column">
@@ -301,6 +388,12 @@ export function AnalyzeComplexityScreen() {
 					</Box>
 				)}
 			</Box>
+
+			{/* Streaming Modal */}
+			<StreamingModal 
+				isOpen={showStreamingModal} 
+				onClose={() => setShowStreamingModal(false)} 
+			/>
 		</Box>
 	);
 }
