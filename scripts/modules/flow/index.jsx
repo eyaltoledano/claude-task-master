@@ -479,9 +479,6 @@ function FlowApp({ backend, options = {} }) {
 					case 'l':
 						setCurrentScreen('claude-code');
 						break;
-					case 'o':
-						setCurrentScreen('demo');
-						break;
 					case 'v':
 						setCurrentScreen('mcp-management');
 						break;
@@ -779,8 +776,6 @@ function FlowApp({ backend, options = {} }) {
 						/>
 					) : currentScreen === 'mcp-management' ? (
 						<MCPManagementScreen />
-					) : currentScreen === 'demo' ? (
-						<ResponsiveDemo />
 					) : currentScreen === 'worktreePrompt' ? (
 						<Box justifyContent="center" alignItems="center" height="100%">
 							<WorktreePromptModal
