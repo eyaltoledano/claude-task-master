@@ -58,7 +58,7 @@ export class WatchManager extends EventEmitter {
         this.projectPath = path.resolve(projectPath);
         this.options = {
             cacheStrategy: CacheStrategy.BALANCED,
-            enableGitIntegration: true,
+            enableGitIntegration: false, // Disabled by default for safety
             enablePreemptiveAnalysis: true,
             maxConcurrentAnalysis: 3,
             dependencyAnalysisDepth: 3,
@@ -491,6 +491,7 @@ export class WatchManager extends EventEmitter {
 
     /**
      * Set up git integration including hooks
+     * SAFE: Only runs if git repo exists, preserves existing hooks
      */
     async _setupGitIntegration() {
         try {
@@ -501,50 +502,177 @@ export class WatchManager extends EventEmitter {
                 return;
             }
             
-            // Install git hooks for better integration
+            // Install git hooks safely (preserves existing hooks)
             await this._installGitHooks();
             
-            console.debug('[WatchManager] Git integration configured');
+            console.debug('[WatchManager] Git integration configured safely');
             
         } catch (error) {
             console.warn(`[WatchManager] Failed to setup git integration: ${error.message}`);
+            // Git integration is optional - system will work without it
         }
     }
 
     /**
      * Install git hooks for file watching integration
+     * SAFELY preserves existing hooks and makes integration optional
      */
     async _installGitHooks() {
         try {
             const hooksDir = path.join(this.projectPath, '.git', 'hooks');
             
-            // Pre-commit hook to pause watching
-            const preCommitHook = `#!/bin/sh
-# Task Master AST file watching integration
-# Temporarily pause file watching during commit
-echo "Pausing AST file watching during commit..."
-`;
+            // Check if hooks directory exists
+            if (!await fs.pathExists(hooksDir)) {
+                await fs.ensureDir(hooksDir);
+            }
             
-            const preCommitPath = path.join(hooksDir, 'pre-commit');
-            await fs.writeFile(preCommitPath, preCommitHook);
-            await fs.chmod(preCommitPath, '755');
-            
-            // Post-commit hook to resume watching
-            const postCommitHook = `#!/bin/sh
-# Task Master AST file watching integration
-# Resume file watching after commit
-echo "Resuming AST file watching after commit..."
-`;
-            
-            const postCommitPath = path.join(hooksDir, 'post-commit');
-            await fs.writeFile(postCommitPath, postCommitHook);
-            await fs.chmod(postCommitPath, '755');
+            // Install hooks safely (preserving existing ones)
+            await this._installHookSafely('pre-commit', this._generatePreCommitHook());
+            await this._installHookSafely('post-commit', this._generatePostCommitHook());
             
             this.gitHooksInstalled = true;
-            console.debug('[WatchManager] Git hooks installed');
+            console.debug('[WatchManager] Git hooks installed safely');
             
         } catch (error) {
             console.warn(`[WatchManager] Failed to install git hooks: ${error.message}`);
+            // Git hooks are optional - don't fail the entire system
+        }
+    }
+    
+    /**
+     * Safely install a git hook, preserving existing content
+     */
+    async _installHookSafely(hookName, hookContent) {
+        const hookPath = path.join(this.projectPath, '.git', 'hooks', hookName);
+        const taskMasterMarker = '# === TASK MASTER AST INTEGRATION ===';
+        const taskMasterEndMarker = '# === END TASK MASTER AST INTEGRATION ===';
+        
+        try {
+            let existingContent = '';
+            let hasExistingHook = false;
+            
+            // Check if hook already exists
+            if (await fs.pathExists(hookPath)) {
+                existingContent = await fs.readFile(hookPath, 'utf8');
+                hasExistingHook = true;
+                
+                // Check if our integration is already present
+                if (existingContent.includes(taskMasterMarker)) {
+                    console.debug(`[WatchManager] Task Master integration already present in ${hookName} hook`);
+                    return;
+                }
+            }
+            
+            let newContent;
+            
+            if (hasExistingHook) {
+                // Preserve existing hook and append our integration
+                newContent = existingContent.trimEnd() + '\n\n' + 
+                           taskMasterMarker + '\n' + 
+                           hookContent + '\n' + 
+                           taskMasterEndMarker + '\n';
+            } else {
+                // Create new hook with just our content
+                newContent = '#!/bin/sh\n\n' + 
+                           taskMasterMarker + '\n' + 
+                           hookContent + '\n' + 
+                           taskMasterEndMarker + '\n';
+            }
+            
+            await fs.writeFile(hookPath, newContent);
+            await fs.chmod(hookPath, '755');
+            
+            console.debug(`[WatchManager] ${hookName} hook updated with Task Master integration`);
+            
+        } catch (error) {
+            console.warn(`[WatchManager] Failed to install ${hookName} hook: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Generate pre-commit hook content
+     */
+    _generatePreCommitHook() {
+        return `# Task Master AST file watching integration
+# Temporarily pause file watching during commit operations
+if command -v node >/dev/null 2>&1; then
+    # Only run if Node.js is available and this is a Task Master project
+    if [ -f ".taskmaster/config.json" ]; then
+        echo "⏸️  Pausing AST file watching during commit..."
+        # Signal could be sent to the watch manager process here
+        # For now, just a friendly message
+    fi
+fi`;
+    }
+    
+    /**
+     * Generate post-commit hook content  
+     */
+    _generatePostCommitHook() {
+        return `# Task Master AST file watching integration
+# Resume file watching after commit operations
+if command -v node >/dev/null 2>&1; then
+    # Only run if Node.js is available and this is a Task Master project
+    if [ -f ".taskmaster/config.json" ]; then
+        echo "▶️  Resuming AST file watching after commit..."
+        # Signal could be sent to the watch manager process here
+        # For now, just a friendly message
+    fi
+fi`;
+    }
+    
+    /**
+     * Uninstall Task Master git hooks safely
+     */
+    async _uninstallGitHooks() {
+        try {
+            const hooksDir = path.join(this.projectPath, '.git', 'hooks');
+            const taskMasterMarker = '# === TASK MASTER AST INTEGRATION ===';
+            const taskMasterEndMarker = '# === END TASK MASTER AST INTEGRATION ===';
+            
+            for (const hookName of ['pre-commit', 'post-commit']) {
+                const hookPath = path.join(hooksDir, hookName);
+                
+                if (await fs.pathExists(hookPath)) {
+                    const content = await fs.readFile(hookPath, 'utf8');
+                    
+                    // Check if our integration is present
+                    if (content.includes(taskMasterMarker)) {
+                        // Remove our section
+                        const lines = content.split('\n');
+                        const startIndex = lines.findIndex(line => line.includes(taskMasterMarker));
+                        const endIndex = lines.findIndex(line => line.includes(taskMasterEndMarker));
+                        
+                        if (startIndex !== -1 && endIndex !== -1) {
+                            // Remove our lines (including markers)
+                            lines.splice(startIndex, endIndex - startIndex + 1);
+                            
+                            // Clean up any extra blank lines
+                            while (lines.length > 0 && lines[lines.length - 1].trim() === '') {
+                                lines.pop();
+                            }
+                            
+                            const cleanedContent = lines.join('\n');
+                            
+                            if (cleanedContent.trim() === '#!/bin/sh' || cleanedContent.trim() === '') {
+                                // If only shebang or empty, remove the file
+                                await fs.remove(hookPath);
+                                console.debug(`[WatchManager] Removed empty ${hookName} hook`);
+                            } else {
+                                // Write back the cleaned content
+                                await fs.writeFile(hookPath, cleanedContent + '\n');
+                                console.debug(`[WatchManager] Cleaned Task Master integration from ${hookName} hook`);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            this.gitHooksInstalled = false;
+            console.debug('[WatchManager] Task Master git hooks uninstalled safely');
+            
+        } catch (error) {
+            console.warn(`[WatchManager] Failed to uninstall git hooks: ${error.message}`);
         }
     }
 
@@ -590,6 +718,11 @@ echo "Resuming AST file watching after commit..."
         
         try {
             await this.stopWatching();
+            
+            // Clean up git hooks if they were installed
+            if (this.gitHooksInstalled && this.options.enableGitIntegration) {
+                await this._uninstallGitHooks();
+            }
             
             // Clean up any remaining resources
             this.removeAllListeners();
