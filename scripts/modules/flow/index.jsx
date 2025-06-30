@@ -850,7 +850,7 @@ function FlowApp({ backend, options = {} }) {
 									<Box flexDirection="column">
 										<Box
 											borderStyle="single"
-											borderColor={theme.border}
+											borderColor={theme.text.tertiary}
 											borderBottom={false}
 											paddingLeft={1}
 											paddingRight={1}
@@ -867,7 +867,7 @@ function FlowApp({ backend, options = {} }) {
 								<Box flexDirection="column">
 									<Box
 										borderStyle="single"
-										borderColor={theme.border}
+										borderColor={theme.text.tertiary}
 										paddingLeft={1}
 										paddingRight={1}
 									>
