@@ -1,5 +1,6 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import { fileURLToPath } from 'url';
 import os from 'os';
 import { exec, execSync, spawn } from 'child_process';
 import { promisify } from 'util';
@@ -1686,6 +1687,29 @@ export class DirectBackend extends FlowBackend {
 	// Get Claude Code configuration
 	async getClaudeCodeConfig() {
 		try {
+			// First try Flow-specific config
+			const flowConfigPath = path.join(
+				path.dirname(fileURLToPath(import.meta.url)),
+				'../flow-config.json'
+			);
+			console.log('[DEBUG] Trying Flow config path:', flowConfigPath);
+			try {
+				const flowConfig = await fs.readFile(flowConfigPath, 'utf8');
+				const flowParsed = JSON.parse(flowConfig);
+				console.log('[DEBUG] Flow config loaded:', flowParsed);
+				if (flowParsed.claudeCode) {
+					console.log('[DEBUG] Returning Flow claudeCode config:', flowParsed.claudeCode);
+					return {
+						success: true,
+						config: flowParsed.claudeCode
+					};
+				}
+			} catch (flowError) {
+				console.log('[DEBUG] Flow config error:', flowError.message);
+				// Flow config doesn't exist or doesn't have claudeCode, continue to taskmaster config
+			}
+
+			// Fall back to taskmaster config
 			const configPath = path.join(
 				this.projectRoot,
 				'.taskmaster',
@@ -1719,6 +1743,31 @@ export class DirectBackend extends FlowBackend {
 	// Save Claude Code configuration
 	async saveClaudeCodeConfig(claudeConfig) {
 		try {
+			// First try to save to Flow-specific config
+			const flowConfigPath = path.join(
+				path.dirname(fileURLToPath(import.meta.url)),
+				'../flow-config.json'
+			);
+			
+			try {
+				let flowConfig = {};
+				try {
+					const existing = await fs.readFile(flowConfigPath, 'utf8');
+					flowConfig = JSON.parse(existing);
+				} catch {
+					// Flow config doesn't exist yet
+				}
+				
+				flowConfig.claudeCode = claudeConfig;
+				await fs.writeFile(flowConfigPath, JSON.stringify(flowConfig, null, 2));
+				
+				return { success: true };
+			} catch (flowError) {
+				// If Flow config save fails, fall back to taskmaster config
+				console.warn('Could not save to Flow config, falling back to taskmaster config:', flowError.message);
+			}
+
+			// Fall back to taskmaster config
 			const configPath = path.join(
 				this.projectRoot,
 				'.taskmaster',
