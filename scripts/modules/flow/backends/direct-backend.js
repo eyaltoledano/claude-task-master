@@ -1692,20 +1692,16 @@ export class DirectBackend extends FlowBackend {
 				path.dirname(fileURLToPath(import.meta.url)),
 				'../flow-config.json'
 			);
-			console.log('[DEBUG] Trying Flow config path:', flowConfigPath);
 			try {
 				const flowConfig = await fs.readFile(flowConfigPath, 'utf8');
 				const flowParsed = JSON.parse(flowConfig);
-				console.log('[DEBUG] Flow config loaded:', flowParsed);
 				if (flowParsed.claudeCode) {
-					console.log('[DEBUG] Returning Flow claudeCode config:', flowParsed.claudeCode);
 					return {
 						success: true,
 						config: flowParsed.claudeCode
 					};
 				}
 			} catch (flowError) {
-				console.log('[DEBUG] Flow config error:', flowError.message);
 				// Flow config doesn't exist or doesn't have claudeCode, continue to taskmaster config
 			}
 
