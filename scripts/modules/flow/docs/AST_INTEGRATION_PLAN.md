@@ -61,7 +61,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 
 ### **Extensible Parser System**:
 ```javascript
-// scripts/modules/ast/parsers/
+// scripts/modules/flow/ast/parsers/
 ├── base-parser.js           // Common interface
 ├── javascript-parser.js     // JS/TS parsing
 ├── python-parser.js         // Python parsing
@@ -76,7 +76,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 **Status**: 🔄 In Progress (Core Parsing Complete)
 
 ### 1.1 AST Parsing Module ✅ **COMPLETED**
-**Location**: `scripts/modules/ast/`
+**Location**: `scripts/modules/flow/ast/`
 
 #### Core Infrastructure:
 - [x] `language-detector.js` - Multi-language detection with content analysis and shebang support
@@ -138,7 +138,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
   - [x] `getSupportedExtensions()` - Get file extensions for languages
 
 ### 1.3 Cache Management System
-**Location**: `scripts/modules/ast/cache/`
+**Location**: `scripts/modules/flow/ast/cache/`
 
 #### Multi-Language Cache Structure:
 - [ ] `cache-manager.js` - Cache operations and invalidation
@@ -180,7 +180,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 **Status**: ⏳ Not Started
 
 ### 2.1 Context Enhancement Engine
-**Location**: `scripts/modules/ast/context/`
+**Location**: `scripts/modules/flow/ast/context/`
 
 #### Core Context Modules:
 - [ ] `context-builder.js` - Assemble AST data for Claude
@@ -189,7 +189,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 - [ ] `complexity-scorer.js` - Calculate code complexity metrics
 
 ### 2.2 Language-Specific Analysis
-**Location**: `scripts/modules/ast/analyzers/`
+**Location**: `scripts/modules/flow/ast/analyzers/`
 
 #### Per-Language Analyzers:
 - [ ] `javascript-analyzer.js` - JS/TS specific patterns
@@ -224,7 +224,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 **Status**: ⏳ Not Started
 
 ### 3.1 Universal File Watching
-**Location**: `scripts/modules/ast/watchers/`
+**Location**: `scripts/modules/flow/ast/watchers/`
 
 #### Language-Agnostic Watching:
 - [ ] `file-watcher.js` - Universal file change detection
@@ -239,7 +239,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 - [ ] Configuration-driven language support
 
 ### 3.2 Smart Invalidation
-**Location**: `scripts/modules/ast/cache/`
+**Location**: `scripts/modules/flow/ast/cache/`
 
 #### Invalidation Strategies:
 - [ ] `content-hasher.js` - Generate content-based cache keys
@@ -263,7 +263,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 - [ ] `performance-config.js` - Performance tuning options
 
 ### 4.2 Performance Optimization
-**Location**: `scripts/modules/ast/performance/`
+**Location**: `scripts/modules/flow/ast/performance/`
 
 #### Performance Features:
 - [ ] `lazy-loading.js` - Load parsers on demand
@@ -272,7 +272,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 - [ ] `performance-monitor.js` - Track parsing performance
 
 ### 4.3 Error Handling & Fallbacks
-**Location**: `scripts/modules/ast/error-handling/`
+**Location**: `scripts/modules/flow/ast/error-handling/`
 
 #### Robust Error Handling:
 - [ ] `parser-fallbacks.js` - Graceful degradation
@@ -287,7 +287,7 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 **Status**: ⏳ Not Started
 
 ### 5.1 Advanced Analysis Features
-**Location**: `scripts/modules/ast/advanced/`
+**Location**: `scripts/modules/flow/ast/advanced/`
 
 #### Advanced Capabilities:
 - [ ] `cross-language-analysis.js` - Analyze multi-language projects
