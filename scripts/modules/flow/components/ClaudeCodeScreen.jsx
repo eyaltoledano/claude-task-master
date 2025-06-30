@@ -45,16 +45,7 @@ export function ClaudeCodeScreen({
 	const { theme } = useComponentTheme('claudeCodeScreen');
 	const { width, height, isNarrow, isWide } = useTerminalSize();
 	
-	// Debug theme colors
-	useEffect(() => {
-		console.log('[ClaudeCodeScreen] Theme debug:', {
-			themeKeys: Object.keys(theme),
-			border: theme.border,
-			accent: theme.accent,
-			text: theme.text,
-			background: safeTheme.background
-		});
-	}, [theme]);
+
 
 	// Safe color accessor with fallbacks and backwards compatibility
 	const getColor = (colorPath, fallback = '#ffffff') => {
@@ -96,10 +87,7 @@ export function ClaudeCodeScreen({
 	// Constants - now responsive to terminal size
 	const VISIBLE_ROWS = Math.max(10, Math.min(25, height - 10)); // Dynamic rows based on terminal height
 
-	// Log terminal size and responsive calculations
-	useEffect(() => {
-		console.log('[ClaudeCodeScreen] Terminal size updated:', { width, height, VISIBLE_ROWS, isNarrow, isWide });
-	}, [width, height, VISIBLE_ROWS, isNarrow, isWide]);
+
 
 	useEffect(() => {
 		loadData();
