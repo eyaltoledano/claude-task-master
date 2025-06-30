@@ -3,15 +3,15 @@ import { Box, Text, useInput } from 'ink';
 import { style, getComponentTheme } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 
-export const CommandPalette = ({ 
-	input, 
-	suggestions, 
-	selectedIndex, 
+export const CommandPalette = ({
+	input,
+	suggestions,
+	selectedIndex,
 	onSelect,
-	onClose 
+	onClose
 }) => {
 	const cmdTheme = getComponentTheme('modal');
-	
+
 	return (
 		<Box
 			flexDirection="column"
@@ -27,19 +27,19 @@ export const CommandPalette = ({
 				<Text>{style(input, 'text.primary')}</Text>
 				<Text>{style('_', 'text.tertiary')}</Text>
 			</Box>
-			
+
 			{/* Suggestions list */}
 			{suggestions.length > 0 && (
 				<Box flexDirection="column">
 					{suggestions.map((suggestion, index) => {
 						const isSelected = index === selectedIndex;
-						const textColor = isSelected 
+						const textColor = isSelected
 							? cmdTheme.selectedText || 'text.inverse'
 							: 'text.primary';
 						const bgColor = isSelected
 							? cmdTheme.selectedBackground || 'interactive.selected'
 							: 'transparent';
-							
+
 						return (
 							<Box
 								key={`cmd-${suggestion.command}-${index}`}
@@ -48,11 +48,11 @@ export const CommandPalette = ({
 								paddingRight={1}
 							>
 								<Box width={20}>
-									<Text color={style('', textColor)}>
-										{suggestion.command}
-									</Text>
+									<Text color={style('', textColor)}>{suggestion.command}</Text>
 								</Box>
-								<Text color={style('', isSelected ? textColor : 'text.secondary')}>
+								<Text
+									color={style('', isSelected ? textColor : 'text.secondary')}
+								>
 									{suggestion.description}
 								</Text>
 							</Box>
@@ -60,7 +60,7 @@ export const CommandPalette = ({
 					})}
 				</Box>
 			)}
-			
+
 			{/* Help text */}
 			<Box marginTop={1}>
 				<Text>{style('Enter: Select • ESC: Cancel', 'text.tertiary')}</Text>

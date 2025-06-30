@@ -21,11 +21,14 @@ export function ClaudeSessionList({
 	initialSessionFilter = 'all'
 }) {
 	const { theme: safeTheme } = useComponentTheme('claudeSessionList');
-	
+
 	// Self-contained state management
-	const [selectedIndex, setSelectedIndex, selectedIndexRef] = useStateAndRef(initialSelectedIndex);
-	const [scrollOffset, setScrollOffset, scrollOffsetRef] = useStateAndRef(initialScrollOffset);
-	const [sessionFilter, setSessionFilter] = React.useState(initialSessionFilter);
+	const [selectedIndex, setSelectedIndex, selectedIndexRef] =
+		useStateAndRef(initialSelectedIndex);
+	const [scrollOffset, setScrollOffset, scrollOffsetRef] =
+		useStateAndRef(initialScrollOffset);
+	const [sessionFilter, setSessionFilter] =
+		React.useState(initialSessionFilter);
 
 	// Filter sessions based on current filter
 	const filteredSessions = React.useMemo(() => {
@@ -53,11 +56,19 @@ export function ClaudeSessionList({
 
 	// Reset selection when filtered sessions change
 	React.useEffect(() => {
-		if (selectedIndex >= filteredSessions.length && filteredSessions.length > 0) {
+		if (
+			selectedIndex >= filteredSessions.length &&
+			filteredSessions.length > 0
+		) {
 			setSelectedIndex(0);
 			setScrollOffset(0);
 		}
-	}, [filteredSessions.length, selectedIndex, setSelectedIndex, setScrollOffset]);
+	}, [
+		filteredSessions.length,
+		selectedIndex,
+		setSelectedIndex,
+		setScrollOffset
+	]);
 
 	// Keyboard navigation handling
 	useInput((input, key) => {
@@ -137,7 +148,8 @@ export function ClaudeSessionList({
 		const isSelected = actualIndex === selectedIndex;
 		const date = new Date(session.lastUpdated || session.createdAt);
 		const isActive = !session.metadata?.finished;
-		const isSubtaskSession = session.metadata?.type === 'subtask-implementation';
+		const isSubtaskSession =
+			session.metadata?.type === 'subtask-implementation';
 
 		return {
 			' ': isSelected ? '→' : ' ',
@@ -148,11 +160,15 @@ export function ClaudeSessionList({
 			Date: date.toLocaleDateString(),
 			Time: date.toLocaleTimeString(),
 			_renderCell: (col, value) => {
-				let color = isSelected ? (safeTheme.item?.selected || '#0f172a') : (safeTheme.text?.primary || '#f1f5f9');
+				let color = isSelected
+					? safeTheme.item?.selected || '#0f172a'
+					: safeTheme.text?.primary || '#f1f5f9';
 
 				if (col === 'Status') {
 					if (!isSelected) {
-						color = isActive ? (safeTheme.session?.active || '#60a5fa') : (safeTheme.session?.finished || '#34d399');
+						color = isActive
+							? safeTheme.session?.active || '#60a5fa'
+							: safeTheme.session?.finished || '#34d399';
 					}
 				} else if (col === 'Type' && isSubtaskSession && !isSelected) {
 					color = safeTheme.session?.subtask || '#22d3ee';
@@ -184,15 +200,22 @@ export function ClaudeSessionList({
 					{filterSubtaskId && (
 						<>
 							<Text color={safeTheme.text?.secondary || '#cbd5e1'}> › </Text>
-							<Text color={safeTheme.text?.primary || '#f1f5f9'}>Subtask {filterSubtaskId}</Text>
+							<Text color={safeTheme.text?.primary || '#f1f5f9'}>
+								Subtask {filterSubtaskId}
+							</Text>
 						</>
 					)}
-					<Text color={safeTheme.text?.secondary || '#cbd5e1'}> [{sessionFilter}]</Text>
+					<Text color={safeTheme.text?.secondary || '#cbd5e1'}>
+						{' '}
+						[{sessionFilter}]
+					</Text>
 				</Box>
 				{config?.enabled ? (
 					<Text color={safeTheme.session?.active || '#34d399'}>[Enabled]</Text>
 				) : (
-					<Text color={safeTheme.session?.finished || '#f87171'}>[Disabled]</Text>
+					<Text color={safeTheme.session?.finished || '#f87171'}>
+						[Disabled]
+					</Text>
 				)}
 			</Box>
 
@@ -234,8 +257,14 @@ export function ClaudeSessionList({
 						{filteredSessions.length > visibleRows && (
 							<Box marginTop={1}>
 								<Text color={safeTheme.text?.tertiary || '#cbd5e1'}>
-									Showing {scrollOffset + 1}-{Math.min(scrollOffset + visibleRows, filteredSessions.length)} of {filteredSessions.length} sessions
-									{selectedIndex < filteredSessions.length - visibleRows && ' • ↓ for more'}
+									Showing {scrollOffset + 1}-
+									{Math.min(
+										scrollOffset + visibleRows,
+										filteredSessions.length
+									)}{' '}
+									of {filteredSessions.length} sessions
+									{selectedIndex < filteredSessions.length - visibleRows &&
+										' • ↓ for more'}
 								</Text>
 							</Box>
 						)}
@@ -257,13 +286,12 @@ export function ClaudeSessionList({
 				flexShrink={0}
 			>
 				<Text color={safeTheme.text?.primary || '#f1f5f9'}>
-					{filteredSessions.length > 0 
+					{filteredSessions.length > 0
 						? 'Enter to view • r resume active • d details • '
-						: ''
-					}
+						: ''}
 					n new • f filter • r refresh • ESC back
 				</Text>
 			</Box>
 		</Box>
 	);
-} 
+}

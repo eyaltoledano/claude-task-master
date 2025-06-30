@@ -167,13 +167,19 @@ export class WorktreeManager {
 
 		// Check if worktree directory already exists on disk (but not in our config)
 		if (fs.existsSync(worktreePath)) {
-			logger.info(`Worktree directory already exists at ${worktreePath}, cleaning up...`);
+			logger.info(
+				`Worktree directory already exists at ${worktreePath}, cleaning up...`
+			);
 			try {
 				// Try to remove the existing worktree directory
 				await fs.remove(worktreePath);
 			} catch (error) {
-				logger.error(`Failed to clean up existing worktree directory: ${error.message}`);
-				throw new Error(`Worktree directory already exists at ${worktreePath} and could not be cleaned up`);
+				logger.error(
+					`Failed to clean up existing worktree directory: ${error.message}`
+				);
+				throw new Error(
+					`Worktree directory already exists at ${worktreePath} and could not be cleaned up`
+				);
 			}
 		}
 
@@ -238,7 +244,9 @@ export class WorktreeManager {
 
 		// Check if worktree directory already exists and clean it up
 		if (fs.existsSync(worktreePath)) {
-			logger.info(`Worktree directory ${worktreePath} already exists, cleaning up...`);
+			logger.info(
+				`Worktree directory ${worktreePath} already exists, cleaning up...`
+			);
 			try {
 				// Try to remove via git first
 				execSync(`git worktree remove --force "${worktreePath}"`, {
@@ -250,8 +258,12 @@ export class WorktreeManager {
 				try {
 					await fs.remove(worktreePath);
 				} catch (fsError) {
-					logger.error(`Failed to clean up existing worktree directory: ${fsError.message}`);
-					throw new Error(`Worktree directory already exists at ${worktreePath} and could not be cleaned up`);
+					logger.error(
+						`Failed to clean up existing worktree directory: ${fsError.message}`
+					);
+					throw new Error(
+						`Worktree directory already exists at ${worktreePath} and could not be cleaned up`
+					);
 				}
 			}
 		}

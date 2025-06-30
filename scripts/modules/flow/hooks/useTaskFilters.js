@@ -59,7 +59,11 @@ export function useTaskFilters() {
 	const filterTasks = (tasks) => {
 		return tasks.filter((task) => {
 			// Apply status filter
-			if (filterMode === FILTER_MODES.STATUS && filter !== 'all' && task.status !== filter) {
+			if (
+				filterMode === FILTER_MODES.STATUS &&
+				filter !== 'all' &&
+				task.status !== filter
+			) {
 				return false;
 			}
 
@@ -100,7 +104,7 @@ export function useTaskFilters() {
 		priorityFilter,
 		searchQuery,
 		isSearching,
-		
+
 		// Actions
 		setFilter,
 		setFilterMode,
@@ -112,12 +116,12 @@ export function useTaskFilters() {
 		setPriorityFilterValue,
 		cyclePriorityFilter,
 		resetFilters,
-		
+
 		// Computed
 		filterTasks,
-		
+
 		// Constants for UI
 		isStatusMode: filterMode === FILTER_MODES.STATUS,
 		isPriorityMode: filterMode === FILTER_MODES.PRIORITY
 	};
-} 
+}

@@ -83,7 +83,7 @@ export function TagManagementScreen() {
 			const newIndex = Math.min(selectedIndex + 1, sortedTags.length - 1);
 			setSelectedIndex(newIndex);
 			setError(null);
-			
+
 			// Adjust scroll if needed
 			if (newIndex >= scrollOffset + VISIBLE_ROWS) {
 				setScrollOffset(newIndex - VISIBLE_ROWS + 1);
@@ -92,7 +92,7 @@ export function TagManagementScreen() {
 			const newIndex = Math.max(selectedIndex - 1, 0);
 			setSelectedIndex(newIndex);
 			setError(null);
-			
+
 			// Adjust scroll if needed
 			if (newIndex < scrollOffset) {
 				setScrollOffset(newIndex);
@@ -249,7 +249,10 @@ export function TagManagementScreen() {
 	}
 
 	// Prepare visible tags
-	const visibleTags = sortedTags.slice(scrollOffset, scrollOffset + VISIBLE_ROWS);
+	const visibleTags = sortedTags.slice(
+		scrollOffset,
+		scrollOffset + VISIBLE_ROWS
+	);
 
 	return (
 		<Box flexDirection="column" height="100%">

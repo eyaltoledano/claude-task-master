@@ -74,22 +74,36 @@ export default function WorktreeDetailsModal({
 					...baseProps,
 					title: `Linked Tasks: ${worktree.name}`,
 					preset: 'default',
-					keyboardHints: linkedTasks.length > 0 && onNavigateToTask 
-						? ['↑↓ navigate', 'j/k vim nav', 'ENTER open task', 'ESC back to details']
-						: ['ESC back to details']
+					keyboardHints:
+						linkedTasks.length > 0 && onNavigateToTask
+							? [
+									'↑↓ navigate',
+									'j/k vim nav',
+									'ENTER open task',
+									'ESC back to details'
+								]
+							: ['ESC back to details']
 				};
 			case 'jump':
 				return {
 					...baseProps,
 					title: `Jump to Task: ${worktree.name}`,
 					preset: 'info',
-					keyboardHints: linkedTasks.length > 0 
-						? ['↑↓ navigate', 'j/k vim nav', 'ENTER jump to task', 'ESC cancel']
-						: ['ESC cancel']
+					keyboardHints:
+						linkedTasks.length > 0
+							? [
+									'↑↓ navigate',
+									'j/k vim nav',
+									'ENTER jump to task',
+									'ESC cancel'
+								]
+							: ['ESC cancel']
 				};
-			default: { // details
+			default: {
+				// details
 				const hints = ['ESC close'];
-				if (details && details.length > VISIBLE_ROWS) hints.unshift('↑↓ scroll');
+				if (details && details.length > VISIBLE_ROWS)
+					hints.unshift('↑↓ scroll');
 				if (linkedTasks.length > 0 && onNavigateToTask) {
 					hints.unshift('v view tasks', 'g jump to task');
 				}
@@ -127,7 +141,9 @@ export default function WorktreeDetailsModal({
 
 		down: () => {
 			if (viewMode === 'jump' || viewMode === 'tasks') {
-				setSelectedTaskIndex(Math.min(linkedTasks.length - 1, selectedTaskIndex + 1));
+				setSelectedTaskIndex(
+					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
+				);
 			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => prev + 1);
 			}
@@ -151,7 +167,11 @@ export default function WorktreeDetailsModal({
 		},
 
 		return: () => {
-			if ((viewMode === 'jump' || viewMode === 'tasks') && linkedTasks.length > 0 && onNavigateToTask) {
+			if (
+				(viewMode === 'jump' || viewMode === 'tasks') &&
+				linkedTasks.length > 0 &&
+				onNavigateToTask
+			) {
 				const selectedTask = linkedTasks[selectedTaskIndex];
 				onNavigateToTask(selectedTask);
 			}
@@ -179,7 +199,11 @@ export default function WorktreeDetailsModal({
 
 		// Use 'g' for jump to avoid conflict with 'j' vim navigation
 		g: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0 && onNavigateToTask) {
+			if (
+				viewMode === 'details' &&
+				linkedTasks.length > 0 &&
+				onNavigateToTask
+			) {
 				setViewMode('jump');
 				setSelectedTaskIndex(0);
 			}
@@ -551,7 +575,8 @@ export default function WorktreeDetailsModal({
 					<Box marginTop={1}>
 						<Text color={theme.muted}>
 							Lines {scrollOffset + 1}-
-							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
+							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of{' '}
+							{totalLines}
 						</Text>
 					</Box>
 				)}

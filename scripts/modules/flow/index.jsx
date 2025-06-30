@@ -34,7 +34,6 @@ import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 
-
 // Create context for backend and app state
 const AppContext = createContext();
 
@@ -726,185 +725,186 @@ function FlowApp({ backend, options = {} }) {
 		<AppContext.Provider value={contextValue}>
 			<OverflowProvider>
 				<Box flexDirection="column" height="100%">
-				{/* Conditionally render EITHER popup OR main content */}
-				{showCommandPalette ? (
-					<CommandPalette />
-				) : showNextTaskModal ? (
-					<NextTaskModal
-						task={nextTask}
-						onClose={() => {
-							setShowNextTaskModal(false);
-							setNextTask(null);
-						}}
-					/>
-				) : currentScreen === 'tasks' ? (
-					<TaskManagementScreen />
-				) : currentScreen === 'tags' ? (
-					<TagManagementScreen />
-				) : currentScreen === 'status' ? (
-					<StatusScreen />
-				) : currentScreen === 'parse' ? (
-					<ParsePRDScreen />
-				) : currentScreen === 'analyze' ? (
-					<AnalyzeComplexityScreen />
-				) : currentScreen === 'chat' ? (
-					<ChatScreen
-						mcpClient={currentBackend}
-						projectRoot={currentBackend.projectRoot}
-						onExit={() => setCurrentScreen('welcome')}
-					/>
-				) : currentScreen === 'worktrees' ? (
-					<GitWorktreeScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						onExit={exit}
-						navigationData={navigationData}
-						onNavigateToTask={handleNavigateToTask}
-						setCurrentScreen={(screen, data) => {
-							setCurrentScreen(screen);
-							setNavigationData(data);
-						}}
-					/>
-				) : currentScreen === 'claude-code' ? (
-					<ClaudeCodeScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						navigationData={navigationData}
-						initialContext={navigationData?.initialContext}
-						mode={navigationData?.mode}
-						returnTo={navigationData?.returnTo}
-						returnData={navigationData?.returnData}
-					/>
-				) : currentScreen === 'mcp-management' ? (
-					<MCPManagementScreen />
-				) : currentScreen === 'worktreePrompt' ? (
-					<Box justifyContent="center" alignItems="center" height="100%">
-						<WorktreePromptModal
-							taskTitle={navigationData?.taskTitle}
-							subtaskTitle={navigationData?.subtaskTitle}
-							onSelect={
-								navigationData?.onSelect || (() => setCurrentScreen('welcome'))
-							}
-							onClose={() => setCurrentScreen('welcome')}
+					{/* Conditionally render EITHER popup OR main content */}
+					{showCommandPalette ? (
+						<CommandPalette />
+					) : showNextTaskModal ? (
+						<NextTaskModal
+							task={nextTask}
+							onClose={() => {
+								setShowNextTaskModal(false);
+								setNextTask(null);
+							}}
 						/>
-					</Box>
-				) : currentScreen === 'mcp' ? (
-					<MCPServerManager
-						onBack={() => setCurrentScreen('welcome')}
-						onOpenChat={() => setCurrentScreen('chat')}
-						onUseServer={async (server) => {
-							try {
-								// Create and initialize MCP client backend
-								const mcpBackend = new MCPClientBackend({ server });
-								await mcpBackend.initialize();
-
-								// Update the backend reference
-								setCurrentBackend(mcpBackend);
-
-								// Reload tasks with new backend
-								const result = await mcpBackend.listTasks();
-								setTasks(result.tasks);
-								setCurrentTag(result.tag);
-
-								setNotification({
-									message: `Switched to ${server.name}`,
-									type: 'success',
-									duration: 3000
-								});
-
-								// Go back to main screen
-								setCurrentScreen('welcome');
-							} catch (error) {
-								setNotification({
-									message: `Failed to switch backend: ${error.message}`,
-									type: 'error',
-									duration: 5000
-								});
-							}
-						}}
-						log={currentBackend.log}
-					/>
-				) : (
-					<>
-						{/* Main content area */}
-						<Box flexGrow={1} flexDirection="column">
-							{/* Dynamic screen rendering */}
-							{currentScreen === 'welcome' && <WelcomeScreen />}
-							{currentScreen === 'sessions' && <SessionsScreen />}
-
-							{/* Notification toast */}
-							{notification && (
-								<Toast
-									message={notification.message}
-									type={notification.type}
-									duration={notification.duration}
-									onDismiss={() => setNotification(null)}
-								/>
-							)}
+					) : currentScreen === 'tasks' ? (
+						<TaskManagementScreen />
+					) : currentScreen === 'tags' ? (
+						<TagManagementScreen />
+					) : currentScreen === 'status' ? (
+						<StatusScreen />
+					) : currentScreen === 'parse' ? (
+						<ParsePRDScreen />
+					) : currentScreen === 'analyze' ? (
+						<AnalyzeComplexityScreen />
+					) : currentScreen === 'chat' ? (
+						<ChatScreen
+							mcpClient={currentBackend}
+							projectRoot={currentBackend.projectRoot}
+							onExit={() => setCurrentScreen('welcome')}
+						/>
+					) : currentScreen === 'worktrees' ? (
+						<GitWorktreeScreen
+							backend={currentBackend}
+							onBack={() => setCurrentScreen('welcome')}
+							onExit={exit}
+							navigationData={navigationData}
+							onNavigateToTask={handleNavigateToTask}
+							setCurrentScreen={(screen, data) => {
+								setCurrentScreen(screen);
+								setNavigationData(data);
+							}}
+						/>
+					) : currentScreen === 'claude-code' ? (
+						<ClaudeCodeScreen
+							backend={currentBackend}
+							onBack={() => setCurrentScreen('welcome')}
+							navigationData={navigationData}
+							initialContext={navigationData?.initialContext}
+							mode={navigationData?.mode}
+							returnTo={navigationData?.returnTo}
+							returnData={navigationData?.returnData}
+						/>
+					) : currentScreen === 'mcp-management' ? (
+						<MCPManagementScreen />
+					) : currentScreen === 'worktreePrompt' ? (
+						<Box justifyContent="center" alignItems="center" height="100%">
+							<WorktreePromptModal
+								taskTitle={navigationData?.taskTitle}
+								subtaskTitle={navigationData?.subtaskTitle}
+								onSelect={
+									navigationData?.onSelect ||
+									(() => setCurrentScreen('welcome'))
+								}
+								onClose={() => setCurrentScreen('welcome')}
+							/>
 						</Box>
+					) : currentScreen === 'mcp' ? (
+						<MCPServerManager
+							onBack={() => setCurrentScreen('welcome')}
+							onOpenChat={() => setCurrentScreen('chat')}
+							onUseServer={async (server) => {
+								try {
+									// Create and initialize MCP client backend
+									const mcpBackend = new MCPClientBackend({ server });
+									await mcpBackend.initialize();
 
-						{/* Bottom input bar */}
-						<Box flexDirection="column" flexShrink={0}>
-							{/* Command suggestions */}
-							{suggestions.length > 0 && (
+									// Update the backend reference
+									setCurrentBackend(mcpBackend);
+
+									// Reload tasks with new backend
+									const result = await mcpBackend.listTasks();
+									setTasks(result.tasks);
+									setCurrentTag(result.tag);
+
+									setNotification({
+										message: `Switched to ${server.name}`,
+										type: 'success',
+										duration: 3000
+									});
+
+									// Go back to main screen
+									setCurrentScreen('welcome');
+								} catch (error) {
+									setNotification({
+										message: `Failed to switch backend: ${error.message}`,
+										type: 'error',
+										duration: 5000
+									});
+								}
+							}}
+							log={currentBackend.log}
+						/>
+					) : (
+						<>
+							{/* Main content area */}
+							<Box flexGrow={1} flexDirection="column">
+								{/* Dynamic screen rendering */}
+								{currentScreen === 'welcome' && <WelcomeScreen />}
+								{currentScreen === 'sessions' && <SessionsScreen />}
+
+								{/* Notification toast */}
+								{notification && (
+									<Toast
+										message={notification.message}
+										type={notification.type}
+										duration={notification.duration}
+										onDismiss={() => setNotification(null)}
+									/>
+								)}
+							</Box>
+
+							{/* Bottom input bar */}
+							<Box flexDirection="column" flexShrink={0}>
+								{/* Command suggestions */}
+								{suggestions.length > 0 && (
+									<Box flexDirection="column">
+										<Box
+											borderStyle="single"
+											borderColor={theme.border}
+											borderBottom={false}
+											paddingLeft={1}
+											paddingRight={1}
+										>
+											<CommandSuggestions
+												suggestions={suggestions}
+												selectedIndex={suggestionIndex}
+											/>
+										</Box>
+									</Box>
+								)}
+
+								{/* Input bar */}
 								<Box flexDirection="column">
 									<Box
 										borderStyle="single"
 										borderColor={theme.border}
-										borderBottom={false}
 										paddingLeft={1}
 										paddingRight={1}
 									>
-										<CommandSuggestions
-											suggestions={suggestions}
-											selectedIndex={suggestionIndex}
-										/>
-									</Box>
-								</Box>
-							)}
-
-							{/* Input bar */}
-							<Box flexDirection="column">
-								<Box
-									borderStyle="single"
-									borderColor={theme.border}
-									paddingLeft={1}
-									paddingRight={1}
-								>
-									<Box width="100%">
-										<Text color="cyan">❯ </Text>
-										<Box flexGrow={1}>
-											<TextInput
-												key={inputKey}
-												value={inputValue}
-												onChange={handleTextInputChange}
-												onSubmit={handleInput}
-												placeholder={
-													waitingForShortcut
-														? 'Waiting for command key...'
-														: 'Type / for commands or use Ctrl+X shortcuts'
-												}
-											/>
+										<Box width="100%">
+											<Text color="cyan">❯ </Text>
+											<Box flexGrow={1}>
+												<TextInput
+													key={inputKey}
+													value={inputValue}
+													onChange={handleTextInputChange}
+													onSubmit={handleInput}
+													placeholder={
+														waitingForShortcut
+															? 'Waiting for command key...'
+															: 'Type / for commands or use Ctrl+X shortcuts'
+													}
+												/>
+											</Box>
 										</Box>
 									</Box>
 								</Box>
-							</Box>
 
-							{/* Bottom status bar */}
-							<Box paddingLeft={1} paddingRight={1}>
-								<Box flexGrow={1}>
-									<Text color={theme.text}>
-										<Text color={theme.accent}>[tag]</Text>{' '}
-										{currentTag || 'master'}
-									</Text>
+								{/* Bottom status bar */}
+								<Box paddingLeft={1} paddingRight={1}>
+									<Box flexGrow={1}>
+										<Text color={theme.text}>
+											<Text color={theme.accent}>[tag]</Text>{' '}
+											{currentTag || 'master'}
+										</Text>
+									</Box>
+									<Text color={theme.accent}>Task Master AI</Text>
+									<Text dimColor> v0.18.0</Text>
 								</Box>
-								<Text color={theme.accent}>Task Master AI</Text>
-								<Text dimColor> v0.18.0</Text>
 							</Box>
-						</Box>
-					</>
-				)}
-			</Box>
+						</>
+					)}
+				</Box>
 			</OverflowProvider>
 		</AppContext.Provider>
 	);

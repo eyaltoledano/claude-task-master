@@ -96,7 +96,10 @@ export class StreamingStateManager {
 
 			return result;
 		} catch (error) {
-			if (error.message === 'Operation cancelled' || this.abortController.signal.aborted) {
+			if (
+				error.message === 'Operation cancelled' ||
+				this.abortController.signal.aborted
+			) {
 				this.setState('cancelled', 'Operation cancelled by user');
 				this.onCancel?.();
 			} else {
@@ -113,7 +116,8 @@ export class StreamingStateManager {
 	// Process queued operations
 	async processQueue() {
 		if (this.operationQueue.length > 0 && !this.isProcessing) {
-			const { operationType, options, resolve, reject } = this.operationQueue.shift();
+			const { operationType, options, resolve, reject } =
+				this.operationQueue.shift();
 			try {
 				const result = await this.executeOperation(operationType, options);
 				resolve(result);
@@ -202,7 +206,8 @@ export class StreamingStateManager {
 			parse_prd: {
 				phases: ['analyzing', 'generating', 'structuring'],
 				preparingMessage: 'Preparing to parse Product Requirements Document...',
-				processingMessage: 'Analyzing document structure and generating tasks...',
+				processingMessage:
+					'Analyzing document structure and generating tasks...',
 				completedMessage: 'Successfully generated tasks from PRD',
 				thinkingMessages: [
 					'Reading through the document sections...',
@@ -249,18 +254,20 @@ export class StreamingStateManager {
 			}
 		};
 
-		return configs[operationType] || {
-			phases: ['processing'],
-			preparingMessage: 'Preparing operation...',
-			processingMessage: 'Processing...',
-			completedMessage: 'Operation completed',
-			thinkingMessages: ['Working on your request...']
-		};
+		return (
+			configs[operationType] || {
+				phases: ['processing'],
+				preparingMessage: 'Preparing operation...',
+				processingMessage: 'Processing...',
+				completedMessage: 'Operation completed',
+				thinkingMessages: ['Working on your request...']
+			}
+		);
 	}
 
 	// Utility delay function
 	delay(ms) {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	// Event handlers - removed method definitions since properties are used directly
@@ -274,4 +281,4 @@ export class StreamingStateManager {
 }
 
 // Global instance
-export const streamingStateManager = new StreamingStateManager(); 
+export const streamingStateManager = new StreamingStateManager();

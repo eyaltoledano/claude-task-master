@@ -6,6 +6,6 @@ import { getComponentTheme } from '../theme.js';
  * @returns {Object} Theme object for the component
  */
 export function useComponentTheme(componentName) {
-  const theme = getComponentTheme(componentName);
-  return { theme };
-} 
+	const theme = getComponentTheme(componentName);
+	return { theme };
+}

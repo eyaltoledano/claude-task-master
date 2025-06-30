@@ -5,13 +5,13 @@
  * Run with: node scripts/modules/flow/tests/test-theme.js
  */
 
-import { 
-  themeManager, 
-  style, 
-  gradient, 
-  getComponentTheme,
-  ColorUtils,
-  Gradients
+import {
+	themeManager,
+	style,
+	gradient,
+	getComponentTheme,
+	ColorUtils,
+	Gradients
 } from '../theme.js';
 
 console.log('\n🎨 Task Master Theme System Demo\n');
@@ -22,9 +22,15 @@ console.log(`Detected theme: ${theme.name} (${theme.type})`);
 console.log(`Terminal: ${process.env.TERM_PROGRAM || 'Unknown'}\n`);
 
 // 2. Gradient Text Demo
-console.log(gradient('═══════════════════════════════════════', ['primary', 'secondary']));
-console.log(gradient('  Task Master Flow - Theme System  ', ['primary', 'accent']));
-console.log(gradient('═══════════════════════════════════════', ['secondary', 'primary']));
+console.log(
+	gradient('═══════════════════════════════════════', ['primary', 'secondary'])
+);
+console.log(
+	gradient('  Task Master Flow - Theme System  ', ['primary', 'accent'])
+);
+console.log(
+	gradient('═══════════════════════════════════════', ['secondary', 'primary'])
+);
 console.log();
 
 // 3. Semantic Colors Demo
@@ -56,15 +62,35 @@ console.log();
 console.log('🔧 Color Utilities:');
 const baseColor = '#0ea5e9';
 console.log(`  Base color: ${style('████', baseColor)}`);
-console.log(`  20% lighter: ${style('████', ColorUtils.adjustBrightness(baseColor, 20))}`);
-console.log(`  20% darker: ${style('████', ColorUtils.adjustBrightness(baseColor, -20))}`);
+console.log(
+	`  20% lighter: ${style('████', ColorUtils.adjustBrightness(baseColor, 20))}`
+);
+console.log(
+	`  20% darker: ${style('████', ColorUtils.adjustBrightness(baseColor, -20))}`
+);
 console.log();
 
 // 7. Multi-color Gradients
 console.log('🌈 Advanced Gradients:');
-const rainbowColors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#8b00ff'];
-const rainbowGradient = Gradients.create(rainbowColors[0], rainbowColors[5], 40);
-console.log(Gradients.applyToText('  Rainbow gradient text effect!          ', rainbowGradient));
+const rainbowColors = [
+	'#ff0000',
+	'#ff7f00',
+	'#ffff00',
+	'#00ff00',
+	'#0000ff',
+	'#8b00ff'
+];
+const rainbowGradient = Gradients.create(
+	rainbowColors[0],
+	rainbowColors[5],
+	40
+);
+console.log(
+	Gradients.applyToText(
+		'  Rainbow gradient text effect!          ',
+		rainbowGradient
+	)
+);
 console.log();
 
 // 8. Theme Override Demo
@@ -88,30 +114,74 @@ console.log();
 
 // 9. Complex Gradient Examples
 console.log('✨ Complex Gradients:');
-const complexGradient1 = gradient('Task Master: Next Generation CLI', ['primary', 'secondary', 'accent']);
+const complexGradient1 = gradient('Task Master: Next Generation CLI', [
+	'primary',
+	'secondary',
+	'accent'
+]);
 console.log(`  ${complexGradient1}`);
 
-const complexGradient2 = gradient('Building Better Developer Tools', ['state.success.primary', 'state.info.primary']);
+const complexGradient2 = gradient('Building Better Developer Tools', [
+	'state.success.primary',
+	'state.info.primary'
+]);
 console.log(`  ${complexGradient2}`);
 console.log();
 
 // 10. Practical Example - Task Display
 console.log('📋 Practical Example - Task Display:');
-console.log(gradient('┌─────────────────────────────────────┐', ['border.primary', 'border.focus']));
-console.log(style('│ ', 'border.primary') + style('Task #42: ', 'text.secondary') + style('Implement Advanced Theme System', 'text.primary') + style(' │', 'border.primary'));
-console.log(style('│ ', 'border.primary') + style('Status: ', 'text.secondary') + style('In Progress', 'state.info.primary') + '                    ' + style('│', 'border.primary'));
-console.log(style('│ ', 'border.primary') + style('Priority: ', 'text.secondary') + style('High', 'state.error.primary') + '                          ' + style('│', 'border.primary'));
-console.log(gradient('└─────────────────────────────────────┘', ['border.focus', 'border.primary']));
+console.log(
+	gradient('┌─────────────────────────────────────┐', [
+		'border.primary',
+		'border.focus'
+	])
+);
+console.log(
+	style('│ ', 'border.primary') +
+		style('Task #42: ', 'text.secondary') +
+		style('Implement Advanced Theme System', 'text.primary') +
+		style(' │', 'border.primary')
+);
+console.log(
+	style('│ ', 'border.primary') +
+		style('Status: ', 'text.secondary') +
+		style('In Progress', 'state.info.primary') +
+		'                    ' +
+		style('│', 'border.primary')
+);
+console.log(
+	style('│ ', 'border.primary') +
+		style('Priority: ', 'text.secondary') +
+		style('High', 'state.error.primary') +
+		'                          ' +
+		style('│', 'border.primary')
+);
+console.log(
+	gradient('└─────────────────────────────────────┘', [
+		'border.focus',
+		'border.primary'
+	])
+);
 console.log();
 
 // Color palette display
 console.log('🎨 Current Theme Palette:');
 const currentTheme = themeManager.getTheme();
-console.log(`  Primary: ${style('████', 'primary')} ${themeManager.getColor('primary')}`);
-console.log(`  Secondary: ${style('████', 'secondary')} ${themeManager.getColor('secondary')}`);
-console.log(`  Tertiary: ${style('████', 'tertiary')} ${themeManager.getColor('tertiary')}`);
-console.log(`  Accent: ${style('████', 'accent')} ${themeManager.getColor('accent')}`);
+console.log(
+	`  Primary: ${style('████', 'primary')} ${themeManager.getColor('primary')}`
+);
+console.log(
+	`  Secondary: ${style('████', 'secondary')} ${themeManager.getColor('secondary')}`
+);
+console.log(
+	`  Tertiary: ${style('████', 'tertiary')} ${themeManager.getColor('tertiary')}`
+);
+console.log(
+	`  Accent: ${style('████', 'accent')} ${themeManager.getColor('accent')}`
+);
 console.log();
 
-console.log(gradient('═══════════════════════════════════════', ['primary', 'secondary']));
-console.log('\n✅ Theme system test complete!\n'); 
+console.log(
+	gradient('═══════════════════════════════════════', ['primary', 'secondary'])
+);
+console.log('\n✅ Theme system test complete!\n');

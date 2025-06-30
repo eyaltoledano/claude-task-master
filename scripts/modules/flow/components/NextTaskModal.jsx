@@ -306,8 +306,7 @@ export function NextTaskModal({ task, onClose }) {
 							management
 						</Text>
 						<Text color={theme.text}>
-							• Press <Text color={theme.accent}>/chat</Text> to discuss with
-							AI
+							• Press <Text color={theme.accent}>/chat</Text> to discuss with AI
 						</Text>
 						{!task.subtasks || task.subtasks.length === 0 ? (
 							<Text color={theme.text}>
@@ -348,7 +347,7 @@ export function NextTaskModal({ task, onClose }) {
 			showCloseHint={false} // We'll show custom scroll hint
 		>
 			{scrollableContent}
-			
+
 			{/* Custom scroll indicator */}
 			<Box justifyContent="center" marginTop={1}>
 				<Text color={theme.textDim}>

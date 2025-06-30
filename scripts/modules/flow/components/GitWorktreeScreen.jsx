@@ -436,20 +436,23 @@ export default function GitWorktreeScreen({
 									return {
 										' ': isSelected ? '→' : ' ',
 										S: statusIcon,
-										Name: worktree.name.length > 20 
-											? worktree.name.substring(0, 17) + '...'
-											: worktree.name,
-										Branch: worktree.branch.length > 20
-											? worktree.branch.substring(0, 17) + '...'
-											: worktree.branch,
+										Name:
+											worktree.name.length > 20
+												? worktree.name.substring(0, 17) + '...'
+												: worktree.name,
+										Branch:
+											worktree.branch.length > 20
+												? worktree.branch.substring(0, 17) + '...'
+												: worktree.branch,
 										Status: worktree.isLocked
 											? 'locked'
 											: worktree.isCurrent
 												? 'current'
 												: 'active',
-										Path: worktree.path.length > 40
-											? '...' + worktree.path.slice(-37)
-											: worktree.path,
+										Path:
+											worktree.path.length > 40
+												? '...' + worktree.path.slice(-37)
+												: worktree.path,
 										_renderCell: (col, value) => {
 											let color = isSelected ? theme.selectionText : theme.text;
 
@@ -485,7 +488,10 @@ export default function GitWorktreeScreen({
 							<Box marginTop={1}>
 								<Text color={theme.textDim}>
 									{scrollOffset + 1}-
-									{Math.min(scrollOffset + VISIBLE_ROWS, linkedWorktrees.length)}{' '}
+									{Math.min(
+										scrollOffset + VISIBLE_ROWS,
+										linkedWorktrees.length
+									)}{' '}
 									of {linkedWorktrees.length} worktrees
 								</Text>
 							</Box>
@@ -530,7 +536,8 @@ export default function GitWorktreeScreen({
 					</Box>
 					<Box>
 						<Text color={theme.textDim}>
-							{stats.total} worktrees • {stats.active} active • {stats.detached} detached • {stats.locked} locked
+							{stats.total} worktrees • {stats.active} active • {stats.detached}{' '}
+							detached • {stats.locked} locked
 						</Text>
 					</Box>
 				</Box>

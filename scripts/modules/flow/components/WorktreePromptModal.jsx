@@ -48,9 +48,11 @@ export function WorktreePromptModal({
 		escape: handleCancel,
 		return: handleSelect,
 		downArrow: () => setSelectedOption((prev) => (prev + 1) % options.length),
-		upArrow: () => setSelectedOption((prev) => (prev - 1 + options.length) % options.length),
+		upArrow: () =>
+			setSelectedOption((prev) => (prev - 1 + options.length) % options.length),
 		j: () => setSelectedOption((prev) => (prev + 1) % options.length), // vim-style
-		k: () => setSelectedOption((prev) => (prev - 1 + options.length) % options.length) // vim-style
+		k: () =>
+			setSelectedOption((prev) => (prev - 1 + options.length) % options.length) // vim-style
 	};
 
 	useKeypress(handlers);

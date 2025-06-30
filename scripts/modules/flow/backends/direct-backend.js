@@ -1744,7 +1744,7 @@ export class DirectBackend extends FlowBackend {
 				path.dirname(fileURLToPath(import.meta.url)),
 				'../flow-config.json'
 			);
-			
+
 			try {
 				let flowConfig = {};
 				try {
@@ -1753,14 +1753,17 @@ export class DirectBackend extends FlowBackend {
 				} catch {
 					// Flow config doesn't exist yet
 				}
-				
+
 				flowConfig.claudeCode = claudeConfig;
 				await fs.writeFile(flowConfigPath, JSON.stringify(flowConfig, null, 2));
-				
+
 				return { success: true };
 			} catch (flowError) {
 				// If Flow config save fails, fall back to taskmaster config
-				console.warn('Could not save to Flow config, falling back to taskmaster config:', flowError.message);
+				console.warn(
+					'Could not save to Flow config, falling back to taskmaster config:',
+					flowError.message
+				);
 			}
 
 			// Fall back to taskmaster config
@@ -1804,11 +1807,11 @@ export class DirectBackend extends FlowBackend {
 			try {
 				const data = await fs.readFile(indexPath, 'utf8');
 				const sessions = JSON.parse(data);
-				
+
 				// Convert index format to display format
-				const displaySessions = sessions.map(session => ({
+				const displaySessions = sessions.map((session) => ({
 					sessionId: session.sessionId,
-					prompt: session.subtaskInfo 
+					prompt: session.subtaskInfo
 						? `${session.subtaskInfo.fullId}: ${session.subtaskInfo.title}`
 						: 'General Claude Session',
 					lastUpdated: session.timestamp,
@@ -1860,7 +1863,7 @@ export class DirectBackend extends FlowBackend {
 			try {
 				const data = await fs.readFile(indexPath, 'utf8');
 				const sessions = JSON.parse(data);
-				sessionInfo = sessions.find(s => s.sessionId === sessionId);
+				sessionInfo = sessions.find((s) => s.sessionId === sessionId);
 			} catch {
 				return {
 					success: false,
@@ -2733,7 +2736,7 @@ ${prompt}
 			const isSubtask = primaryTask.id.includes('.');
 			let parentTaskId = null;
 			let subtaskId = null;
-			
+
 			if (isSubtask) {
 				const [parent, sub] = primaryTask.id.split('.');
 				parentTaskId = parent;
@@ -2748,13 +2751,15 @@ ${prompt}
 					worktree: sessionData.worktree,
 					branch: sessionData.branch,
 					// Enhanced task information
-					subtaskInfo: isSubtask ? {
-						parentTaskId,
-						subtaskId,
-						fullId: primaryTask.id,
-						title: primaryTask.title,
-						description: primaryTask.description
-					} : null,
+					subtaskInfo: isSubtask
+						? {
+								parentTaskId,
+								subtaskId,
+								fullId: primaryTask.id,
+								title: primaryTask.title,
+								description: primaryTask.description
+							}
+						: null,
 					tasks: sessionData.tasks.map((t) => ({
 						id: t.id,
 						title: t.title,
@@ -2833,7 +2838,7 @@ ${prompt}
 			}
 
 			// Remove existing entry if it exists
-			index = index.filter(s => s.sessionId !== sessionInfo.sessionId);
+			index = index.filter((s) => s.sessionId !== sessionInfo.sessionId);
 
 			// Add new entry
 			index.unshift(sessionInfo); // Add to beginning (newest first)
@@ -2926,7 +2931,10 @@ ${prompt}
 
 			// Get worktree info
 			const worktreeName = `task-${subtaskInfo.fullId}`;
-			const worktree = await this.getWorktreeForSubtask(subtaskInfo.parentTaskId, subtaskInfo.subtaskId);
+			const worktree = await this.getWorktreeForSubtask(
+				subtaskInfo.parentTaskId,
+				subtaskInfo.subtaskId
+			);
 
 			if (!worktree) {
 				return {
@@ -2936,8 +2944,10 @@ ${prompt}
 			}
 
 			// Create PR using worktree manager
-			const prTitle = options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
-			const prDescription = options.prDescription || this.generatePRDescription(session);
+			const prTitle =
+				options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
+			const prDescription =
+				options.prDescription || this.generatePRDescription(session);
 
 			const prResult = await this.completeSubtaskWithPR(worktreeName, {
 				createPR: true,
@@ -2992,7 +3002,7 @@ ${prompt}
 			}
 
 			// Find and update session in index
-			const sessionIndex = index.findIndex(s => s.sessionId === sessionId);
+			const sessionIndex = index.findIndex((s) => s.sessionId === sessionId);
 			if (sessionIndex >= 0) {
 				index[sessionIndex].prInfo = prInfo;
 				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
@@ -3012,9 +3022,16 @@ ${prompt}
 					const sessionData = await fs.readFile(sessionPath, 'utf8');
 					const fullSession = JSON.parse(sessionData);
 					fullSession.summary.prInfo = prInfo;
-					await fs.writeFile(sessionPath, JSON.stringify(fullSession, null, 2), 'utf8');
+					await fs.writeFile(
+						sessionPath,
+						JSON.stringify(fullSession, null, 2),
+						'utf8'
+					);
 				} catch (error) {
-					this.log.error('Failed to update session file with PR info:', error.message);
+					this.log.error(
+						'Failed to update session file with PR info:',
+						error.message
+					);
 				}
 			}
 		} catch (error) {
@@ -3026,7 +3043,7 @@ ${prompt}
 	generatePRDescription(session) {
 		const stats = session.summary.statistics;
 		const subtask = session.summary.subtaskInfo;
-		
+
 		let description = `Implemented by Claude Code\n\n`;
 		description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
 		if (subtask.description) {

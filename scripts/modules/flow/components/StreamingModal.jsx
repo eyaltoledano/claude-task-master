@@ -24,8 +24,10 @@ export function StreamingModal({ isOpen, onClose }) {
 	const { theme } = useComponentTheme('modal');
 
 	// If state is idle but modal is open, show waiting state
-	const effectiveState = state.state === 'idle' && isOpen ? 'preparing' : state.state;
-	const effectiveMessage = state.state === 'idle' && isOpen ? 'Initializing...' : state.message;
+	const effectiveState =
+		state.state === 'idle' && isOpen ? 'preparing' : state.state;
+	const effectiveMessage =
+		state.state === 'idle' && isOpen ? 'Initializing...' : state.message;
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -62,11 +64,12 @@ export function StreamingModal({ isOpen, onClose }) {
 
 	// Animate dots for loading effect
 	useEffect(() => {
-		const currentState = state.state === 'idle' && isOpen ? 'preparing' : state.state;
+		const currentState =
+			state.state === 'idle' && isOpen ? 'preparing' : state.state;
 		if (!['preparing', 'processing'].includes(currentState)) return;
 
 		const interval = setInterval(() => {
-			setDots(prev => {
+			setDots((prev) => {
 				if (prev.length >= 3) return '';
 				return prev + '.';
 			});
@@ -79,11 +82,13 @@ export function StreamingModal({ isOpen, onClose }) {
 	useEffect(() => {
 		if (state.state !== 'processing' || !state.context.operationType) return;
 
-		const config = streamingStateManager.getOperationConfig(state.context.operationType);
+		const config = streamingStateManager.getOperationConfig(
+			state.context.operationType
+		);
 		if (!config.thinkingMessages?.length) return;
 
 		const interval = setInterval(() => {
-			setThinkingIndex(prev => (prev + 1) % config.thinkingMessages.length);
+			setThinkingIndex((prev) => (prev + 1) % config.thinkingMessages.length);
 		}, 3000);
 
 		return () => clearInterval(interval);
@@ -96,7 +101,10 @@ export function StreamingModal({ isOpen, onClose }) {
 	};
 
 	const handleClose = () => {
-		if (state.state === 'idle' || ['completed', 'cancelled', 'error'].includes(state.state)) {
+		if (
+			state.state === 'idle' ||
+			['completed', 'cancelled', 'error'].includes(state.state)
+		) {
 			onClose();
 		}
 	};
@@ -136,7 +144,9 @@ export function StreamingModal({ isOpen, onClose }) {
 	const getCurrentThinkingMessage = () => {
 		if (state.state !== 'processing' || !state.context.operationType) return '';
 
-		const config = streamingStateManager.getOperationConfig(state.context.operationType);
+		const config = streamingStateManager.getOperationConfig(
+			state.context.operationType
+		);
 		if (!config.thinkingMessages?.length) return '';
 
 		return config.thinkingMessages[thinkingIndex];
@@ -153,10 +163,14 @@ export function StreamingModal({ isOpen, onClose }) {
 	};
 
 	const isInProgress = ['preparing', 'processing'].includes(effectiveState);
-	const isComplete = ['completed', 'cancelled', 'error'].includes(effectiveState);
+	const isComplete = ['completed', 'cancelled', 'error'].includes(
+		effectiveState
+	);
 
 	const modalTitle = `${getStateIcon()} ${getOperationTitle()}${
-		state.formattedElapsedTime !== '0s' ? ` • ${state.formattedElapsedTime}` : ''
+		state.formattedElapsedTime !== '0s'
+			? ` • ${state.formattedElapsedTime}`
+			: ''
 	}`;
 
 	return (
@@ -175,13 +189,16 @@ export function StreamingModal({ isOpen, onClose }) {
 						{/* Current Phase */}
 						{state.currentPhase && (
 							<Text color={theme.textDim}>
-								Phase: {state.currentPhase.charAt(0).toUpperCase() + state.currentPhase.slice(1)}
+								Phase:{' '}
+								{state.currentPhase.charAt(0).toUpperCase() +
+									state.currentPhase.slice(1)}
 							</Text>
 						)}
 
 						{/* Main Message */}
 						<Text color={theme.text}>
-							{effectiveMessage}{dots}
+							{effectiveMessage}
+							{dots}
 						</Text>
 
 						{/* Thinking Message */}
@@ -194,9 +211,7 @@ export function StreamingModal({ isOpen, onClose }) {
 						{/* Cancel Instructions */}
 						{state.canCancel && (
 							<Box marginTop={1}>
-								<Text color={theme.warning}>
-									Press ESC to cancel operation
-								</Text>
+								<Text color={theme.warning}>Press ESC to cancel operation</Text>
 							</Box>
 						)}
 					</Box>
@@ -205,9 +220,7 @@ export function StreamingModal({ isOpen, onClose }) {
 				{/* Completion Message */}
 				{isComplete && (
 					<Box flexDirection="column" marginBottom={2}>
-						<Text color={theme.text}>
-							{effectiveMessage}
-						</Text>
+						<Text color={theme.text}>{effectiveMessage}</Text>
 						{effectiveState === 'error' && state.context.error && (
 							<Text color={theme.textDim}>
 								Details: {state.context.error.message || 'Unknown error'}
@@ -226,7 +239,8 @@ export function StreamingModal({ isOpen, onClose }) {
 				>
 					{isInProgress ? (
 						<Text color={theme.textDim}>
-							Operation in progress... {state.canCancel ? '[ESC] Cancel' : 'Please wait'}
+							Operation in progress...{' '}
+							{state.canCancel ? '[ESC] Cancel' : 'Please wait'}
 						</Text>
 					) : (
 						<Text color={theme.textDim}>
@@ -237,4 +251,4 @@ export function StreamingModal({ isOpen, onClose }) {
 			</Box>
 		</BaseModal>
 	);
-} 
+}

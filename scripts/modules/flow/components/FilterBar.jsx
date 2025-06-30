@@ -49,9 +49,7 @@ export function FilterBar({
 			<Box paddingX={1} borderStyle="round" borderColor={theme.border}>
 				<Box flexDirection="row" alignItems="center">
 					<Text color={theme.text}>Filter: </Text>
-					<Text
-						color={isStatusMode ? theme.accent : theme.textDim}
-					>
+					<Text color={isStatusMode ? theme.accent : theme.textDim}>
 						f Filter
 					</Text>
 					<Text color={theme.textDim}> ({filterMode}) </Text>
@@ -67,16 +65,12 @@ export function FilterBar({
 								1 All
 							</Text>
 							<Text color={theme.textDim}> </Text>
-							<Text
-								color={filter === 'pending' ? theme.accent : theme.textDim}
-							>
+							<Text color={filter === 'pending' ? theme.accent : theme.textDim}>
 								2 Pending
 							</Text>
 							<Text color={theme.textDim}> </Text>
 							<Text
-								color={
-									filter === 'in-progress' ? theme.accent : theme.textDim
-								}
+								color={filter === 'in-progress' ? theme.accent : theme.textDim}
 							>
 								3 Progress
 							</Text>
@@ -88,17 +82,13 @@ export function FilterBar({
 					) : (
 						<>
 							<Text
-								color={
-									priorityFilter === 'all' ? theme.accent : theme.textDim
-								}
+								color={priorityFilter === 'all' ? theme.accent : theme.textDim}
 							>
 								1 All
 							</Text>
 							<Text color={theme.textDim}> </Text>
 							<Text
-								color={
-									priorityFilter === 'high' ? theme.accent : theme.textDim
-								}
+								color={priorityFilter === 'high' ? theme.accent : theme.textDim}
 							>
 								2 High
 							</Text>
@@ -112,9 +102,7 @@ export function FilterBar({
 							</Text>
 							<Text color={theme.textDim}> </Text>
 							<Text
-								color={
-									priorityFilter === 'low' ? theme.accent : theme.textDim
-								}
+								color={priorityFilter === 'low' ? theme.accent : theme.textDim}
 							>
 								4 Low
 							</Text>
@@ -132,4 +120,4 @@ export function FilterBar({
 			)}
 		</Box>
 	);
-} 
+}

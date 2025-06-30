@@ -180,8 +180,8 @@ export const TASK_MANAGEMENT_CONSTANTS = {
 	},
 	VIEW_MODES: {
 		LIST: 'list',
-		DETAIL: 'detail', 
+		DETAIL: 'detail',
 		SUBTASKS: 'subtasks',
 		SUBTASK_DETAIL: 'subtask-detail'
 	}
-}; 
+};

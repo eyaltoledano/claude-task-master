@@ -78,11 +78,12 @@ export function ParsePRDScreen() {
 					// Simulate thinking messages during parsing
 					let thinkingIndex = 0;
 					const config = streamingStateManager.getOperationConfig('parse_prd');
-					
+
 					const thinkingInterval = setInterval(() => {
 						if (config.thinkingMessages?.[thinkingIndex]) {
 							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+							thinkingIndex =
+								(thinkingIndex + 1) % config.thinkingMessages.length;
 						}
 					}, 2000);
 
@@ -150,34 +151,39 @@ export function ParsePRDScreen() {
 
 		try {
 			// Use streaming state manager for analysis
-			const result = await streamingStateManager.startOperation('analyze_complexity', {
-				execute: async (signal, callbacks) => {
-					// Simulate thinking messages during analysis
-					let thinkingIndex = 0;
-					const config = streamingStateManager.getOperationConfig('analyze_complexity');
-					
-					const thinkingInterval = setInterval(() => {
-						if (config.thinkingMessages?.[thinkingIndex]) {
-							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+			const result = await streamingStateManager.startOperation(
+				'analyze_complexity',
+				{
+					execute: async (signal, callbacks) => {
+						// Simulate thinking messages during analysis
+						let thinkingIndex = 0;
+						const config =
+							streamingStateManager.getOperationConfig('analyze_complexity');
+
+						const thinkingInterval = setInterval(() => {
+							if (config.thinkingMessages?.[thinkingIndex]) {
+								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+								thinkingIndex =
+									(thinkingIndex + 1) % config.thinkingMessages.length;
+							}
+						}, 2000);
+
+						try {
+							// Execute the actual analysis
+							const analysisResult = await backend.analyzeComplexity({
+								tag: currentTag,
+								research: false // Default to no research for post-parse analysis
+							});
+
+							clearInterval(thinkingInterval);
+							return analysisResult;
+						} catch (error) {
+							clearInterval(thinkingInterval);
+							throw error;
 						}
-					}, 2000);
-
-					try {
-						// Execute the actual analysis
-						const analysisResult = await backend.analyzeComplexity({
-							tag: currentTag,
-							research: false // Default to no research for post-parse analysis
-						});
-
-						clearInterval(thinkingInterval);
-						return analysisResult;
-					} catch (error) {
-						clearInterval(thinkingInterval);
-						throw error;
 					}
 				}
-			});
+			);
 
 			setAnalyzeResult(result);
 			setShowStreamingModal(false);
@@ -187,7 +193,9 @@ export function ParsePRDScreen() {
 			if (err.message !== 'Operation cancelled') {
 				setError(err.message);
 				setCurrentScreen('welcome');
-				showToast(`✓ Parsed PRD successfully! (Analysis failed: ${err.message})`);
+				showToast(
+					`✓ Parsed PRD successfully! (Analysis failed: ${err.message})`
+				);
 			} else {
 				// User cancelled, go back to success step
 				setStep('success');
@@ -212,12 +220,14 @@ export function ParsePRDScreen() {
 					execute: async (signal, callbacks) => {
 						// Simulate thinking messages during expansion
 						let thinkingIndex = 0;
-						const config = streamingStateManager.getOperationConfig('expand_all');
-						
+						const config =
+							streamingStateManager.getOperationConfig('expand_all');
+
 						const thinkingInterval = setInterval(() => {
 							if (config.thinkingMessages?.[thinkingIndex]) {
 								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-								thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+								thinkingIndex =
+									(thinkingIndex + 1) % config.thinkingMessages.length;
 							}
 						}, 2000);
 
@@ -246,19 +256,24 @@ export function ParsePRDScreen() {
 						execute: async (signal, callbacks) => {
 							// Simulate thinking messages during expansion
 							let thinkingIndex = 0;
-							const config = streamingStateManager.getOperationConfig('expand_task');
-							
+							const config =
+								streamingStateManager.getOperationConfig('expand_task');
+
 							const thinkingInterval = setInterval(() => {
 								if (config.thinkingMessages?.[thinkingIndex]) {
 									callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-									thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+									thinkingIndex =
+										(thinkingIndex + 1) % config.thinkingMessages.length;
 								}
 							}, 2000);
 
 							try {
-								const expandResult = await backend.expandTask(highComplexityTasks[0].taskId, {
-									research: false
-								});
+								const expandResult = await backend.expandTask(
+									highComplexityTasks[0].taskId,
+									{
+										research: false
+									}
+								);
 
 								clearInterval(thinkingInterval);
 								return expandResult;
@@ -462,8 +477,6 @@ export function ParsePRDScreen() {
 					</Box>
 				)}
 
-
-
 				{step === 'success' && (
 					<Box flexDirection="column" alignItems="center">
 						<Text color={theme.success}>✓ PRD parsed successfully!</Text>
@@ -519,8 +532,6 @@ export function ParsePRDScreen() {
 					</Box>
 				)}
 
-
-
 				{step === 'error' && (
 					<Box flexDirection="column" alignItems="center">
 						<Text color={theme.error}>✗ Error: {error}</Text>
@@ -535,9 +546,9 @@ export function ParsePRDScreen() {
 			</Box>
 
 			{/* Streaming Modal */}
-			<StreamingModal 
-				isOpen={showStreamingModal} 
-				onClose={() => setShowStreamingModal(false)} 
+			<StreamingModal
+				isOpen={showStreamingModal}
+				onClose={() => setShowStreamingModal(false)}
 			/>
 		</Box>
 	);

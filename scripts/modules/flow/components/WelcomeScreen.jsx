@@ -210,7 +210,10 @@ export function WelcomeScreen() {
 					{/* Chat messages would go here */}
 					<Box flexGrow={1} flexDirection="column" paddingLeft={1}>
 						{messages.map((msg, i) => (
-							<Box key={`msg-${i}-${msg.type}-${msg.content.slice(0, 10)}`} marginBottom={1}>
+							<Box
+								key={`msg-${i}-${msg.type}-${msg.content.slice(0, 10)}`}
+								marginBottom={1}
+							>
 								<Text
 									color={msg.type === 'user' ? theme.text : theme.accent}
 									bold={msg.type === 'assistant'}

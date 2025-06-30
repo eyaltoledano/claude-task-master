@@ -16,30 +16,30 @@ import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function TaskManagementScreen() {
-  const {
-    backend,
-    tasks,
-    reloadTasks,
-    setCurrentScreen,
-    currentTag,
-    navigationData
-  } = useAppContext();
+	const {
+		backend,
+		tasks,
+		reloadTasks,
+		setCurrentScreen,
+		currentTag,
+		navigationData
+	} = useAppContext();
 	const theme = getTheme();
 	const [selectedIndex, setSelectedIndex] = useState(0);
-  const [expandedTasks, setExpandedTasks] = useState(new Set());
+	const [expandedTasks, setExpandedTasks] = useState(new Set());
 	const [filter, setFilter] = useState('all'); // all, pending, done, in-progress
 	const [filterMode, setFilterMode] = useState('status'); // status or priority
 	const [priorityFilter, setPriorityFilter] = useState('all'); // all, high, medium, low
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [scrollOffset, setScrollOffset] = useState(0);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [isSearching, setIsSearching] = useState(false);
+	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewMode, setViewMode] = useState('list'); // list, detail, subtasks, or subtask-detail
 	const [selectedTask, setSelectedTask] = useState(null);
-  const [showExpandOptions, setShowExpandOptions] = useState(false);
+	const [showExpandOptions, setShowExpandOptions] = useState(false);
 	const [toast, setToast] = useState(null);
-  const [isExpanding, setIsExpanding] = useState(false);
-  const [expandError, setExpandError] = useState(null);
-  const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
+	const [isExpanding, setIsExpanding] = useState(false);
+	const [expandError, setExpandError] = useState(null);
+	const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
 	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
@@ -48,11 +48,11 @@ export function TaskManagementScreen() {
 	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0);
 	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0);
 	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
-  const [showClaudeLauncherModal, setShowClaudeLauncherModal] = useState(false);
-  const [claudeWorktree, setClaudeWorktree] = useState(null);
-  const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
-  const [branchConflictInfo, setBranchConflictInfo] = useState(null);
-  const [showStreamingModal, setShowStreamingModal] = useState(false);
+	const [showClaudeLauncherModal, setShowClaudeLauncherModal] = useState(false);
+	const [claudeWorktree, setClaudeWorktree] = useState(null);
+	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
+	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
+	const [showStreamingModal, setShowStreamingModal] = useState(false);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -157,43 +157,43 @@ export function TaskManagementScreen() {
 		loadComplexityReport();
 	}, [currentTag, backend]);
 
-  // Filter tasks based on current filter and search
+	// Filter tasks based on current filter and search
 	const filteredTasks = tasks.filter((task) => {
-      // Apply status filter
-      if (filterMode === 'status' && filter !== 'all' && task.status !== filter) {
-        return false;
-      }
+		// Apply status filter
+		if (filterMode === 'status' && filter !== 'all' && task.status !== filter) {
+			return false;
+		}
 
-      // Apply priority filter
-      if (
-        filterMode === 'priority' &&
-        priorityFilter !== 'all' &&
-        task.priority !== priorityFilter
-      ) {
-        return false;
-      }
+		// Apply priority filter
+		if (
+			filterMode === 'priority' &&
+			priorityFilter !== 'all' &&
+			task.priority !== priorityFilter
+		) {
+			return false;
+		}
 
-      // Apply search filter
-      if (
-        searchQuery &&
-        !task.title.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return false;
-      }
+		// Apply search filter
+		if (
+			searchQuery &&
+			!task.title.toLowerCase().includes(searchQuery.toLowerCase())
+		) {
+			return false;
+		}
 
-      return true;
-    });
+		return true;
+	});
 
-  // Build flat list of visible tasks (including expanded subtasks)
+	// Build flat list of visible tasks (including expanded subtasks)
 	const visibleTasks = [];
-    filteredTasks.forEach((task) => {
+	filteredTasks.forEach((task) => {
 		visibleTasks.push({ ...task, level: 0 });
-      if (expandedTasks.has(task.id) && task.subtasks) {
-        task.subtasks.forEach((subtask) => {
+		if (expandedTasks.has(task.id) && task.subtasks) {
+			task.subtasks.forEach((subtask) => {
 				visibleTasks.push({ ...subtask, level: 1, parentId: task.id });
-        });
-      }
-    });
+			});
+		}
+	});
 
 	// Handle keyboard input
 	useInput((input, key) => {
@@ -220,35 +220,35 @@ export function TaskManagementScreen() {
 				// During expansion, ESC is disabled - must use Ctrl+X
 				return;
 			}
-      if (viewMode === 'subtask-detail') {
+			if (viewMode === 'subtask-detail') {
 				// Go back to subtasks view from subtask detail
-        flushSync(() => {
-          setViewMode('subtasks');
-          setSelectedSubtask(null);
-        });
-      } else if (viewMode === 'subtasks') {
+				flushSync(() => {
+					setViewMode('subtasks');
+					setSelectedSubtask(null);
+				});
+			} else if (viewMode === 'subtasks') {
 				// Go back to detail view from subtasks
-        flushSync(() => {
-          setViewMode('detail');
-          setSelectedSubtaskIndex(0);
-          setSubtasksScrollOffset(0);
-        });
-      } else if (viewMode === 'detail') {
-        flushSync(() => {
-          setViewMode('list');
-          setSelectedTask(null);
-          setShowExpandOptions(false);
-          setDetailScrollOffset(0);
-        });
-      } else {
-        setCurrentScreen('welcome');
-      }
+				flushSync(() => {
+					setViewMode('detail');
+					setSelectedSubtaskIndex(0);
+					setSubtasksScrollOffset(0);
+				});
+			} else if (viewMode === 'detail') {
+				flushSync(() => {
+					setViewMode('list');
+					setSelectedTask(null);
+					setShowExpandOptions(false);
+					setDetailScrollOffset(0);
+				});
+			} else {
+				setCurrentScreen('welcome');
+			}
 			return;
 		}
 
 		// Handle Ctrl+X to cancel expansion
 		if (key.ctrl && input === 'x' && isExpanding) {
-        setIsExpanding(false);
+			setIsExpanding(false);
 			setToast({
 				message: 'Expansion cancelled',
 				type: 'warning'
@@ -259,17 +259,17 @@ export function TaskManagementScreen() {
 		// Subtasks view keyboard handling
 		if (viewMode === 'subtasks') {
 			if (key.downArrow) {
-        const maxIndex = selectedTask.subtasks.length - 1;
-        const newIndex = Math.min(selectedSubtaskIndex + 1, maxIndex);
-        setSelectedSubtaskIndex(newIndex);
+				const maxIndex = selectedTask.subtasks.length - 1;
+				const newIndex = Math.min(selectedSubtaskIndex + 1, maxIndex);
+				setSelectedSubtaskIndex(newIndex);
 
 				// Adjust scroll if needed
 				if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
 					setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
 				}
 			} else if (key.upArrow) {
-        const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
-        setSelectedSubtaskIndex(newIndex);
+				const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
+				setSelectedSubtaskIndex(newIndex);
 
 				// Adjust scroll if needed
 				if (newIndex < subtasksScrollOffset) {
@@ -277,9 +277,9 @@ export function TaskManagementScreen() {
 				}
 			} else if (key.return) {
 				// Enter key - show subtask details
-        const subtask = selectedTask.subtasks[selectedSubtaskIndex];
-          setSelectedSubtask(subtask);
-          setViewMode('subtask-detail');
+				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+				setSelectedSubtask(subtask);
+				setViewMode('subtask-detail');
 				setDetailScrollOffset(0); // Reset scroll for subtask detail view
 			} else if (input === 't') {
 				// Cycle status of selected subtask
@@ -296,9 +296,9 @@ export function TaskManagementScreen() {
 				setShowExpandOptions(true);
 			} else if (input === 's' && selectedTask?.subtasks?.length > 0) {
 				// Switch to subtasks view if task has subtasks
-        setViewMode('subtasks');
-        setSelectedSubtaskIndex(0);
-        setSubtasksScrollOffset(0);
+				setViewMode('subtasks');
+				setSelectedSubtaskIndex(0);
+				setSubtasksScrollOffset(0);
 			} else if (key.downArrow) {
 				// Scroll down in detail view
 				setDetailScrollOffset((prev) => prev + 1);
@@ -422,7 +422,7 @@ export function TaskManagementScreen() {
 				setFilterMode('priority');
 				setPriorityFilter('all');
 				setFilter('all');
-              } else {
+			} else {
 				setFilterMode('status');
 				setFilter('all');
 				setPriorityFilter('all');
@@ -447,7 +447,7 @@ export function TaskManagementScreen() {
 		} else if (input === '1') {
 			if (filterMode === 'status') {
 				setFilter('all');
-            } else {
+			} else {
 				setPriorityFilter('all');
 			}
 		} else if (input === '2') {
@@ -473,34 +473,34 @@ export function TaskManagementScreen() {
 		}
 	});
 
-  const showTaskDetail = async (task) => {
-    try {
+	const showTaskDetail = async (task) => {
+		try {
 			// Fetch full task details
-      const fullTask = await backend.getTask(task.id);
-      setSelectedTask(fullTask);
+			const fullTask = await backend.getTask(task.id);
+			setSelectedTask(fullTask);
 
 			// Fetch worktrees linked to this task
-      try {
-        const worktrees = await backend.getTaskWorktrees(task.id);
-        setTaskWorktrees(worktrees || []);
-      } catch (error) {
-        console.error('Failed to load task worktrees:', error);
-        setTaskWorktrees([]);
-      }
+			try {
+				const worktrees = await backend.getTaskWorktrees(task.id);
+				setTaskWorktrees(worktrees || []);
+			} catch (error) {
+				console.error('Failed to load task worktrees:', error);
+				setTaskWorktrees([]);
+			}
 
-      setViewMode('detail');
+			setViewMode('detail');
 			setDetailScrollOffset(0); // Reset scroll position when opening a new task
 
 			// Fetch subtask worktrees if task has subtasks
-      if (fullTask.subtasks && fullTask.subtasks.length > 0) {
-        const subtaskWorktreePromises = fullTask.subtasks.map(
-          async (subtask) => {
-            const subtaskId = `${fullTask.id}.${subtask.id}`;
-            try {
+			if (fullTask.subtasks && fullTask.subtasks.length > 0) {
+				const subtaskWorktreePromises = fullTask.subtasks.map(
+					async (subtask) => {
+						const subtaskId = `${fullTask.id}.${subtask.id}`;
+						try {
 							const subtaskWorktrees =
 								await backend.getTaskWorktrees(subtaskId);
 							return { subtaskId, worktrees: subtaskWorktrees || [] };
-            } catch (error) {
+						} catch (error) {
 							return { subtaskId, worktrees: [] };
 						}
 					}
@@ -522,14 +522,14 @@ export function TaskManagementScreen() {
 			}
 
 			// Return the full task so callers can use it
-      return fullTask;
-    } catch (error) {
-      console.error('Failed to load task details:', error);
-      throw error;
-    }
-  };
+			return fullTask;
+		} catch (error) {
+			console.error('Failed to load task details:', error);
+			throw error;
+		}
+	};
 
-  const expandTask = async (options) => {
+	const expandTask = async (options) => {
 		setShowExpandOptions(false);
 		setShowStreamingModal(true);
 
@@ -539,12 +539,14 @@ export function TaskManagementScreen() {
 				execute: async (signal, callbacks) => {
 					// Simulate thinking messages during expansion
 					let thinkingIndex = 0;
-					const config = streamingStateManager.getOperationConfig('expand_task');
-					
+					const config =
+						streamingStateManager.getOperationConfig('expand_task');
+
 					const thinkingInterval = setInterval(() => {
 						if (config.thinkingMessages?.[thinkingIndex]) {
 							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+							thinkingIndex =
+								(thinkingIndex + 1) % config.thinkingMessages.length;
 						}
 					}, 2000);
 
@@ -566,15 +568,15 @@ export function TaskManagementScreen() {
 
 			// Reload tasks and refresh the detail view
 			await reloadTasks();
-      const updatedTask = await backend.getTask(selectedTask.id);
-      setSelectedTask(updatedTask);
-      
+			const updatedTask = await backend.getTask(selectedTask.id);
+			setSelectedTask(updatedTask);
+
 			setShowStreamingModal(false);
 			setToast({
 				message: `Task expanded into ${options.num} subtasks ${options.research ? 'with research' : 'without research'}`,
 				type: 'success'
 			});
-    } catch (error) {
+		} catch (error) {
 			setShowStreamingModal(false);
 			if (error.message !== 'Operation cancelled') {
 				setToast({
@@ -588,12 +590,12 @@ export function TaskManagementScreen() {
 					type: 'warning'
 				});
 			}
-    } finally {
-      setIsExpanding(false);
-    }
-  };
+		} finally {
+			setIsExpanding(false);
+		}
+	};
 
-  const cycleTaskStatus = async (task) => {
+	const cycleTaskStatus = async (task) => {
 		const statusOrder = [
 			'pending',
 			'in-progress',
@@ -609,23 +611,23 @@ export function TaskManagementScreen() {
 
 		try {
 			await backend.setTaskStatus(task.id, newStatus);
-      await reloadTasks();
-      
+			await reloadTasks();
+
 			// If we're in detail view, refresh the task details
 			if (
 				viewMode === 'detail' &&
 				selectedTask &&
 				selectedTask.id === task.id
 			) {
-        const updatedTask = await backend.getTask(task.id);
-        setSelectedTask(updatedTask);
-      }
-      
+				const updatedTask = await backend.getTask(task.id);
+				setSelectedTask(updatedTask);
+			}
+
 			setToast({
 				message: `Task ${task.id} status changed to ${newStatus}`,
 				type: 'success'
 			});
-    } catch (error) {
+		} catch (error) {
 			setToast({
 				message: `Failed to update task status: ${error.message}`,
 				type: 'error'
@@ -857,7 +859,8 @@ export function TaskManagementScreen() {
 		);
 
 		// Check if research has already been run
-		const hasExistingResearch = selectedSubtask.details && 
+		const hasExistingResearch =
+			selectedSubtask.details &&
 			selectedSubtask.details.includes('<info added on');
 
 		// Run automatic research only if it hasn't been done before
@@ -956,10 +959,10 @@ ${researchContext}
 
 		return {
 			currentSubtask: {
-        id: `${selectedTask.id}.${selectedSubtask.id}`,
-        title: selectedSubtask.title,
-        description: selectedSubtask.description,
-        details: selectedSubtask.details,
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title,
+				description: selectedSubtask.description,
+				details: selectedSubtask.details,
 				status: selectedSubtask.status
 			},
 			parentTask: {
@@ -1348,7 +1351,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 			detailScrollOffset + DETAIL_VISIBLE_ROWS
 		);
 
-      return (
+		return (
 			<Box key="detail-view" flexDirection="column">
 				{/* Header - Always visible at top */}
 				<Box
@@ -1472,7 +1475,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 							} else if (line.type === 'spacer') {
 								return <Box key={index} height={1} />;
 							}
-    return null;
+							return null;
 						})}
 
 						{/* Scroll indicator */}
@@ -1564,7 +1567,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 					paddingRight={1}
 					marginBottom={1}
 				>
-      <Box flexGrow={1}>
+					<Box flexGrow={1}>
 						<Text color={theme.accent}>Task Master</Text>
 						<Text color={theme.textDim}> › </Text>
 						<Text color="white">Task #{selectedTask.id}</Text>
@@ -1572,7 +1575,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 						<Text color={theme.text}>Subtasks</Text>
 					</Box>
 					<Text color={theme.textDim}>[ESC back to details]</Text>
-      </Box>
+				</Box>
 
 				{/* Subtasks List */}
 				<Box
@@ -2128,10 +2131,10 @@ Focus on: current industry standards, common pitfalls, security considerations
 				</Box>
 			</Box>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
+			{toast && (
+				<Toast
+					message={toast.message}
+					type={toast.type}
 					onDismiss={() => setToast(null)}
 				/>
 			)}
@@ -2149,17 +2152,13 @@ Focus on: current industry standards, common pitfalls, security considerations
 			)}
 
 			{/* Streaming Modal */}
-			<StreamingModal 
-				isOpen={showStreamingModal} 
-				onClose={() => setShowStreamingModal(false)} 
+			<StreamingModal
+				isOpen={showStreamingModal}
+				onClose={() => setShowStreamingModal(false)}
 			/>
 
 			{/* Overflow Indicator */}
-			<OverflowIndicator 
-				position="bottom-right"
-				showCount={true}
-				symbol="⋯"
-			/>
-    </Box>
-  );
-} 
+			<OverflowIndicator position="bottom-right" showCount={true} symbol="⋯" />
+		</Box>
+	);
+}

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { SimpleTable } from './SimpleTable.jsx';
-import { 
-	getStatusSymbol, 
-	getStatusColor, 
-	getPriorityColor, 
-	formatDependencies, 
-	TASK_MANAGEMENT_CONSTANTS 
+import {
+	getStatusSymbol,
+	getStatusColor,
+	getPriorityColor,
+	formatDependencies,
+	TASK_MANAGEMENT_CONSTANTS
 } from './TaskManagementUtils.js';
 
 /**
@@ -32,7 +32,7 @@ export function TaskListView({
 	};
 
 	// Define table columns (simple string array)
-	const columns = complexityReport 
+	const columns = complexityReport
 		? ['ID', 'Title', 'Status', 'Priority', 'Dependencies', 'Complexity']
 		: ['ID', 'Title', 'Status', 'Priority', 'Dependencies'];
 
@@ -43,12 +43,12 @@ export function TaskListView({
 			const globalIndex = scrollOffset + index;
 			const isSelected = globalIndex === selectedIndex;
 			const isSubtask = task.level === 1;
-			
+
 			// Get complexity data if available
 			const complexityData = complexityReport?.complexityAnalysis?.find(
-				analysis => analysis.taskId === task.id
+				(analysis) => analysis.taskId === task.id
 			);
-			
+
 			const row = {
 				ID: task.id,
 				Title: task.title,
@@ -66,14 +66,19 @@ export function TaskListView({
 			// Custom rendering function for colors and selection
 			row._renderCell = (columnName, value, selected) => {
 				let color = selected ? theme.accent : theme.text;
-				
+
 				if (columnName === 'Status') {
 					color = selected ? theme.accent : getStatusColor(task.status, theme);
 				} else if (columnName === 'Priority') {
-					color = selected ? theme.accent : getPriorityColor(task.priority, theme);
+					color = selected
+						? theme.accent
+						: getPriorityColor(task.priority, theme);
 				} else if (columnName === 'Dependencies') {
 					color = selected ? theme.accent : theme.textDim;
-				} else if (columnName === 'Complexity' && complexityData?.complexityScore) {
+				} else if (
+					columnName === 'Complexity' &&
+					complexityData?.complexityScore
+				) {
 					if (selected) {
 						color = theme.accent;
 					} else {
@@ -106,4 +111,4 @@ export function TaskListView({
 			/>
 		</Box>
 	);
-} 
+}

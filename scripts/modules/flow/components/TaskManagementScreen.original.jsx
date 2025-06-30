@@ -538,12 +538,14 @@ export function TaskManagementScreen() {
 				execute: async (signal, callbacks) => {
 					// Simulate thinking messages during expansion
 					let thinkingIndex = 0;
-					const config = streamingStateManager.getOperationConfig('expand_task');
-					
+					const config =
+						streamingStateManager.getOperationConfig('expand_task');
+
 					const thinkingInterval = setInterval(() => {
 						if (config.thinkingMessages?.[thinkingIndex]) {
 							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+							thinkingIndex =
+								(thinkingIndex + 1) % config.thinkingMessages.length;
 						}
 					}, 2000);
 
@@ -916,7 +918,8 @@ export function TaskManagementScreen() {
 		);
 
 		// Check if research has already been run
-		const hasExistingResearch = selectedSubtask.details && 
+		const hasExistingResearch =
+			selectedSubtask.details &&
 			selectedSubtask.details.includes('<info added on');
 
 		// Run automatic research only if it hasn't been done before
@@ -2208,9 +2211,9 @@ Focus on: current industry standards, common pitfalls, security considerations
 			)}
 
 			{/* Streaming Modal */}
-			<StreamingModal 
-				isOpen={showStreamingModal} 
-				onClose={() => setShowStreamingModal(false)} 
+			<StreamingModal
+				isOpen={showStreamingModal}
+				onClose={() => setShowStreamingModal(false)}
 			/>
 		</Box>
 	);

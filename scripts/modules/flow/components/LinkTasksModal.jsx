@@ -265,16 +265,26 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 			preset: 'default',
 			width: 80,
 			height: VISIBLE_ITEMS + 12,
-			keyboardHints: mode === 'input' 
-				? ['ENTER submit', 'ESC cancel']
-				: ['↑↓ navigate', 'SPACE toggle', 'j/k vim nav', 'a all', 'n none', 'i input', 'ENTER confirm', 'ESC cancel'],
+			keyboardHints:
+				mode === 'input'
+					? ['ENTER submit', 'ESC cancel']
+					: [
+							'↑↓ navigate',
+							'SPACE toggle',
+							'j/k vim nav',
+							'a all',
+							'n none',
+							'i input',
+							'ENTER confirm',
+							'ESC cancel'
+						],
 			onClose
 		};
 	};
 
 	const keyHandlers = {
 		escape: onClose,
-		
+
 		// Browse mode navigation
 		up: () => {
 			if (mode === 'browse') {
@@ -288,7 +298,7 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 				});
 			}
 		},
-		
+
 		down: () => {
 			if (mode === 'browse') {
 				setSelectedIndex((prevIndex) => {
@@ -308,7 +318,7 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 				keyHandlers.down();
 			}
 		},
-		
+
 		k: () => {
 			if (mode === 'browse') {
 				keyHandlers.up();
@@ -444,7 +454,8 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 				{/* Note about subtasks */}
 				<Box marginBottom={1}>
 					<Text color={theme.info}>
-						Note: Selecting a parent task automatically includes all its subtasks
+						Note: Selecting a parent task automatically includes all its
+						subtasks
 					</Text>
 				</Box>
 

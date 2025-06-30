@@ -1,26 +1,26 @@
 {
-  "claudeCode": {
-    "enabled": true,
-    "permissionMode": "acceptEdits",
-    "defaultMaxTurns": 3,
-    "allowedTools": ["Read", "Write", "Bash"],
-    "systemPrompts": {
-      "default": "You are Claude Code, an AI assistant helping with software development.",
-      "subtask": "You are Claude Code, helping implement a specific subtask. Focus on the task requirements and context provided."
-    }
-  },
-  "theme": {
-    "default": "auto"
-  },
-  "worktrees": {
-    "maxRecent": 10
-  },
-  "tasks": {
-    "defaultView": "list",
-    "visibleRows": 20
-  },
-  "chat": {
-    "maxHistory": 100,
-    "streamingEnabled": true
-  }
-} 
+	"claudeCode": {
+		"enabled": true,
+		"permissionMode": "acceptEdits",
+		"defaultMaxTurns": 3,
+		"allowedTools": ["Read", "Write", "Bash"],
+		"systemPrompts": {
+			"default": "You are Claude Code, an AI assistant helping with software development.",
+			"subtask": "You are Claude Code, helping implement a specific subtask. Focus on the task requirements and context provided."
+		}
+	},
+	"theme": {
+		"default": "auto"
+	},
+	"worktrees": {
+		"maxRecent": 10
+	},
+	"tasks": {
+		"defaultView": "list",
+		"visibleRows": 20
+	},
+	"chat": {
+		"maxHistory": 100,
+		"streamingEnabled": true
+	}
+}

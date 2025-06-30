@@ -47,38 +47,43 @@ export function AnalyzeComplexityScreen() {
 			setState((prev) => ({ ...prev, error: null }));
 
 			// Use streaming state manager for analysis
-			const result = await streamingStateManager.startOperation('analyze_complexity', {
-				execute: async (signal, callbacks) => {
-					// Simulate thinking messages during analysis
-					let thinkingIndex = 0;
-					const config = streamingStateManager.getOperationConfig('analyze_complexity');
-					
-					const thinkingInterval = setInterval(() => {
-						if (config.thinkingMessages?.[thinkingIndex]) {
-							callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-							thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
-						}
-					}, 2000);
+			const result = await streamingStateManager.startOperation(
+				'analyze_complexity',
+				{
+					execute: async (signal, callbacks) => {
+						// Simulate thinking messages during analysis
+						let thinkingIndex = 0;
+						const config =
+							streamingStateManager.getOperationConfig('analyze_complexity');
 
-					try {
-						// Execute the actual analysis
-						const analysisResult = await backend.analyzeComplexity({
-							research: true
-						});
+						const thinkingInterval = setInterval(() => {
+							if (config.thinkingMessages?.[thinkingIndex]) {
+								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
+								thinkingIndex =
+									(thinkingIndex + 1) % config.thinkingMessages.length;
+							}
+						}, 2000);
 
-						clearInterval(thinkingInterval);
-						
-						if (!analysisResult || !analysisResult.report) {
-							throw new Error('No report data received');
+						try {
+							// Execute the actual analysis
+							const analysisResult = await backend.analyzeComplexity({
+								research: true
+							});
+
+							clearInterval(thinkingInterval);
+
+							if (!analysisResult || !analysisResult.report) {
+								throw new Error('No report data received');
+							}
+
+							return analysisResult;
+						} catch (error) {
+							clearInterval(thinkingInterval);
+							throw error;
 						}
-						
-						return analysisResult;
-					} catch (error) {
-						clearInterval(thinkingInterval);
-						throw error;
 					}
 				}
-			});
+			);
 
 			setShowStreamingModal(false);
 			setState((prev) => ({
@@ -112,12 +117,14 @@ export function AnalyzeComplexityScreen() {
 					execute: async (signal, callbacks) => {
 						// Simulate thinking messages during expansion
 						let thinkingIndex = 0;
-						const config = streamingStateManager.getOperationConfig('expand_all');
-						
+						const config =
+							streamingStateManager.getOperationConfig('expand_all');
+
 						const thinkingInterval = setInterval(() => {
 							if (config.thinkingMessages?.[thinkingIndex]) {
 								callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-								thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+								thinkingIndex =
+									(thinkingIndex + 1) % config.thinkingMessages.length;
 							}
 						}, 2000);
 
@@ -146,12 +153,14 @@ export function AnalyzeComplexityScreen() {
 						execute: async (signal, callbacks) => {
 							// Simulate thinking messages during expansion
 							let thinkingIndex = 0;
-							const config = streamingStateManager.getOperationConfig('expand_task');
-							
+							const config =
+								streamingStateManager.getOperationConfig('expand_task');
+
 							const thinkingInterval = setInterval(() => {
 								if (config.thinkingMessages?.[thinkingIndex]) {
 									callbacks.onThinking(config.thinkingMessages[thinkingIndex]);
-									thinkingIndex = (thinkingIndex + 1) % config.thinkingMessages.length;
+									thinkingIndex =
+										(thinkingIndex + 1) % config.thinkingMessages.length;
 								}
 							}, 2000);
 
@@ -196,7 +205,7 @@ export function AnalyzeComplexityScreen() {
 	useInput((input, key) => {
 		// Only handle input if this screen is active
 		if (currentScreen !== 'analyze') return;
-		
+
 		// During streaming operations, keyboard input is handled by StreamingModal
 		if (showStreamingModal) {
 			return;
@@ -272,16 +281,30 @@ export function AnalyzeComplexityScreen() {
 				{state.status === 'idle' && (
 					<Box flexDirection="column">
 						<Box marginBottom={1}>
-							<Text>{gradient('🔍 Analyze Task Complexity', ['primary', 'accent'])}</Text>
+							<Text>
+								{gradient('🔍 Analyze Task Complexity', ['primary', 'accent'])}
+							</Text>
 						</Box>
-						<Text>
-							{style('This analysis will:', 'text.primary')}
-						</Text>
+						<Text>{style('This analysis will:', 'text.primary')}</Text>
 						<Box marginTop={1} paddingLeft={2} flexDirection="column">
-							<Text>{style('• Evaluate each task\'s complexity', 'text.secondary')}</Text>
-							<Text>{style('• Identify tasks that need expansion', 'text.secondary')}</Text>
-							<Text>{style('• Generate expansion recommendations', 'text.secondary')}</Text>
-							<Text>{style('• Use AI research for accuracy', 'text.secondary')}</Text>
+							<Text>
+								{style("• Evaluate each task's complexity", 'text.secondary')}
+							</Text>
+							<Text>
+								{style(
+									'• Identify tasks that need expansion',
+									'text.secondary'
+								)}
+							</Text>
+							<Text>
+								{style(
+									'• Generate expansion recommendations',
+									'text.secondary'
+								)}
+							</Text>
+							<Text>
+								{style('• Use AI research for accuracy', 'text.secondary')}
+							</Text>
 						</Box>
 
 						{state.error && (
@@ -300,7 +323,9 @@ export function AnalyzeComplexityScreen() {
 							<Text>{style('Options:', 'text.primary')}</Text>
 							<Box paddingLeft={2} flexDirection="column">
 								{state.hasReport && (
-									<Text>{style('(v) View existing report', 'text.secondary')}</Text>
+									<Text>
+										{style('(v) View existing report', 'text.secondary')}
+									</Text>
 								)}
 								<Text>{style('(r) Run new analysis', 'text.secondary')}</Text>
 								<Text>{style('(ESC) Cancel', 'text.secondary')}</Text>
@@ -313,13 +338,19 @@ export function AnalyzeComplexityScreen() {
 					</Box>
 				)}
 
-
-
 				{state.status === 'completed' && state.report && (
 					<Box flexDirection="column">
-						<Text>{style('✓ Complexity analysis complete!', 'state.success.primary')}</Text>
+						<Text>
+							{style(
+								'✓ Complexity analysis complete!',
+								'state.success.primary'
+							)}
+						</Text>
 						<Text marginTop={1}>
-							{style(`Analyzed ${state.report.totalTasks} tasks`, 'text.primary')}
+							{style(
+								`Analyzed ${state.report.totalTasks} tasks`,
+								'text.primary'
+							)}
 						</Text>
 
 						{/* Summary */}
@@ -352,7 +383,9 @@ export function AnalyzeComplexityScreen() {
 							{style('What would you like to do?', 'text.primary')}
 						</Text>
 						<Box paddingLeft={2} marginTop={1} flexDirection="column">
-							<Text>{style('(y) Expand all recommended tasks', 'text.primary')}</Text>
+							<Text>
+								{style('(y) Expand all recommended tasks', 'text.primary')}
+							</Text>
 							<Text>{style('(f) First task only', 'text.primary')}</Text>
 							<Text>{style('(n) No, finish here', 'text.primary')}</Text>
 						</Box>
@@ -370,7 +403,10 @@ export function AnalyzeComplexityScreen() {
 						)}
 
 						<Text marginTop={1}>
-							{style('(You can run `task-master complexity-report` later to view details)', 'text.tertiary')}
+							{style(
+								'(You can run `task-master complexity-report` later to view details)',
+								'text.tertiary'
+							)}
 						</Text>
 
 						<Text marginTop={2}>
@@ -382,7 +418,9 @@ export function AnalyzeComplexityScreen() {
 				{state.status === 'error' && (
 					<Box flexDirection="column" justifyContent="center" height="100%">
 						<Box justifyContent="center">
-							<Text>{style(`✗ Error: ${state.error}`, 'state.error.primary')}</Text>
+							<Text>
+								{style(`✗ Error: ${state.error}`, 'state.error.primary')}
+							</Text>
 						</Box>
 						<Box justifyContent="center" marginTop={1}>
 							<Text>{style('Press ESC to go back', 'text.secondary')}</Text>
@@ -392,17 +430,13 @@ export function AnalyzeComplexityScreen() {
 			</Box>
 
 			{/* Streaming Modal */}
-			<StreamingModal 
-				isOpen={showStreamingModal} 
-				onClose={() => setShowStreamingModal(false)} 
+			<StreamingModal
+				isOpen={showStreamingModal}
+				onClose={() => setShowStreamingModal(false)}
 			/>
 
 			{/* Overflow Indicator */}
-			<OverflowIndicator 
-				position="bottom-right"
-				showCount={false}
-				symbol="⋯"
-			/>
+			<OverflowIndicator position="bottom-right" showCount={false} symbol="⋯" />
 		</Box>
 	);
 }

@@ -6,7 +6,13 @@ import { SimpleTable } from './SimpleTable.jsx';
 import { Toast } from './Toast.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { ClaudeSessionList } from './ClaudeSessionList.jsx';
-import { useComponentTheme, useTerminalSize, useConsoleMessages, useStateAndRef, usePhraseCycler } from '../hooks/index.js';
+import {
+	useComponentTheme,
+	useTerminalSize,
+	useConsoleMessages,
+	useStateAndRef,
+	usePhraseCycler
+} from '../hooks/index.js';
 import { useAppContext } from '../index.jsx';
 import { OverflowableText } from './OverflowableText.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';
@@ -47,15 +53,18 @@ export function ClaudeCodeScreen({
 	const abortControllerRef = useRef(null);
 	const { theme } = useComponentTheme('claudeCodeScreen');
 	const { width, height, isNarrow, isWide } = useTerminalSize();
-	
-
 
 	// Safe color accessor with fallbacks and backwards compatibility
 	const getColor = (colorPath, fallback = '#ffffff') => {
 		if (typeof colorPath === 'string' && colorPath.length > 0) {
 			return colorPath;
 		}
-		console.warn('[ClaudeCodeScreen] Invalid color path:', colorPath, 'using fallback:', fallback);
+		console.warn(
+			'[ClaudeCodeScreen] Invalid color path:',
+			colorPath,
+			'using fallback:',
+			fallback
+		);
 		return fallback;
 	};
 
@@ -70,7 +79,7 @@ export function ClaudeCodeScreen({
 		error: getColor(resolvedTheme.error, '#f87171'),
 		warning: getColor(resolvedTheme.warning, '#fbbf24'),
 		info: getColor(resolvedTheme.info, '#60a5fa'),
-		
+
 		// Text colors
 		text: getColor(resolvedTheme.text?.primary, '#f1f5f9'),
 		textDim: getColor(resolvedTheme.text?.secondary, '#cbd5e1'),
@@ -82,15 +91,15 @@ export function ClaudeCodeScreen({
 		statusInProgress: '#60a5fa',
 		statusPending: '#fbbf24',
 		statusBlocked: '#f87171',
-		selectionText: '#0f172a',
+		selectionText: '#0f172a'
 	};
-	const { messages: consoleMessages, clearMessages: clearConsoleMessages } = useConsoleMessages();
-	const { currentPhrase: loadingPhrase, isActive: isPhraseCycling } = usePhraseCycler('claudeProcessing', isProcessing);
+	const { messages: consoleMessages, clearMessages: clearConsoleMessages } =
+		useConsoleMessages();
+	const { currentPhrase: loadingPhrase, isActive: isPhraseCycling } =
+		usePhraseCycler('claudeProcessing', isProcessing);
 
 	// Constants - now responsive to terminal size
 	const VISIBLE_ROWS = Math.max(10, Math.min(25, height - 10)); // Dynamic rows based on terminal height
-
-
 
 	useEffect(() => {
 		loadData();
@@ -115,9 +124,14 @@ export function ClaudeCodeScreen({
 	// Auto-select highlighted session if provided - now handled by ClaudeSessionList component
 	const initialSelectedIndex = React.useMemo(() => {
 		if (highlightSessionId && sessions.length > 0) {
-			console.log('[ClaudeCodeScreen] Setting initial highlighted session:', { highlightSessionId, sessionsCount: sessions.length });
+			console.log('[ClaudeCodeScreen] Setting initial highlighted session:', {
+				highlightSessionId,
+				sessionsCount: sessions.length
+			});
 			// Return the index to be used as initial state in ClaudeSessionList
-			const index = sessions.findIndex(s => s.sessionId === highlightSessionId);
+			const index = sessions.findIndex(
+				(s) => s.sessionId === highlightSessionId
+			);
 			return index >= 0 ? index : 0;
 		}
 		return 0;
@@ -128,7 +142,7 @@ export function ClaudeCodeScreen({
 		if (mode !== 'active-session') {
 			setLoading(true);
 		}
-		
+
 		console.log('[ClaudeCodeScreen] Loading data, mode:', mode);
 
 		try {
@@ -224,20 +238,20 @@ Additional context:
 		try {
 			// Reset scroll offset when loading a new session
 			setSessionScrollOffset(0);
-			
+
 			setSessionMessages((prev) => ({
 				...prev,
 				[sessionId]: [] // Clear existing messages while loading
 			}));
 
 			const result = await backend.getClaudeSessionDetails(sessionId);
-			
+
 			if (result.success && result.session) {
 				const session = result.session;
-				
+
 				// Extract messages from the conversation
 				const messages = session.conversation?.messages || [];
-				
+
 				// Format messages for display
 				const formattedMessages = messages.map((msg, index) => {
 					if (msg.type === 'system') {
@@ -249,7 +263,7 @@ Additional context:
 					} else if (msg.type === 'assistant') {
 						// Handle assistant messages
 						let content = '';
-						
+
 						if (typeof msg.content === 'string') {
 							// Check if content is a JSON string (tool use)
 							try {
@@ -273,7 +287,7 @@ Additional context:
 								}
 							}
 						}
-						
+
 						return {
 							type: 'assistant',
 							content: content || '(No content)',
@@ -282,7 +296,7 @@ Additional context:
 					} else if (msg.type === 'user') {
 						// Handle user messages (including tool results)
 						let content = '';
-						
+
 						if (typeof msg.content === 'string') {
 							// Check if content is a JSON string (tool result)
 							try {
@@ -292,9 +306,10 @@ Additional context:
 										content = `❌ Tool Error: ${parsed.content}`;
 									} else {
 										// Truncate long tool results
-										const resultContent = typeof parsed.content === 'string' 
-											? parsed.content 
-											: JSON.stringify(parsed.content, null, 2);
+										const resultContent =
+											typeof parsed.content === 'string'
+												? parsed.content
+												: JSON.stringify(parsed.content, null, 2);
 										content = `✅ Tool Result: ${resultContent.substring(0, 500)}${resultContent.length > 500 ? '...' : ''}`;
 									}
 								} else {
@@ -307,14 +322,14 @@ Additional context:
 						} else {
 							content = msg.content || '(No content)';
 						}
-						
+
 						return {
 							type: 'user',
 							content: content,
 							timestamp: msg.timestamp
 						};
 					}
-					
+
 					// Handle other message types
 					return {
 						type: msg.type,
@@ -332,9 +347,9 @@ Additional context:
 				setSessionMessages((prev) => ({
 					...prev,
 					[sessionId]: [
-						{ 
-							type: 'error', 
-							content: `Failed to load session: ${result.error || 'Unknown error'}` 
+						{
+							type: 'error',
+							content: `Failed to load session: ${result.error || 'Unknown error'}`
 						}
 					]
 				}));
@@ -344,9 +359,9 @@ Additional context:
 			setSessionMessages((prev) => ({
 				...prev,
 				[sessionId]: [
-					{ 
-						type: 'error', 
-						content: `Error loading session: ${error.message}` 
+					{
+						type: 'error',
+						content: `Error loading session: ${error.message}`
 					}
 				]
 			}));
@@ -682,7 +697,7 @@ ${insightSummary}
 			const totalMessages = sessionMessagesData.length;
 			const maxVisibleMessages = height - 8; // Account for header, info, footer
 			const maxScrollOffset = Math.max(0, totalMessages - maxVisibleMessages);
-			
+
 			if (key.upArrow && sessionScrollOffset > 0) {
 				setSessionScrollOffset(sessionScrollOffset - 1);
 				return;
@@ -781,10 +796,7 @@ ${insightSummary}
 	};
 
 	const renderResultMessage = (msg, idx) => (
-		<Box
-			key={`result-${msg.subtype}-${msg.num_turns}-${idx}`}
-			marginTop={1}
-		>
+		<Box key={`result-${msg.subtype}-${msg.num_turns}-${idx}`} marginTop={1}>
 			<Text color="yellow">
 				Result: {msg.subtype} | Turns: {msg.num_turns} | Cost: $
 				{msg.total_cost_usd?.toFixed(4) || '0.0000'}
@@ -1028,11 +1040,17 @@ ${insightSummary}
 				</Box>
 
 				{/* Messages Area */}
-				<Box flexGrow={1} flexDirection="column" padding={1} height={20} position="relative">
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					padding={1}
+					height={20}
+					position="relative"
+				>
 					{renderMessages()}
-					
+
 					{/* Overflow indicator for active session */}
-					<OverflowIndicator 
+					<OverflowIndicator
 						position="top-right"
 						showCount={false}
 						symbol="⋯"
@@ -1078,18 +1096,19 @@ ${insightSummary}
 	if (viewingSession) {
 		const session = sessions.find((s) => s.sessionId === viewingSession);
 		const sessionMessagesData = sessionMessages[viewingSession] || [];
-		
+
 		// Calculate scroll parameters for session messages
 		const totalMessages = sessionMessagesData.length;
 		const maxVisibleMessages = height - 8; // Account for header, info, footer
 		const canScroll = totalMessages > maxVisibleMessages;
 		const maxScrollOffset = Math.max(0, totalMessages - maxVisibleMessages);
-		
 
-		
 		// Get visible messages for current scroll position
-		const visibleMessages = canScroll 
-			? sessionMessagesData.slice(sessionScrollOffset, sessionScrollOffset + maxVisibleMessages)
+		const visibleMessages = canScroll
+			? sessionMessagesData.slice(
+					sessionScrollOffset,
+					sessionScrollOffset + maxVisibleMessages
+				)
 			: sessionMessagesData;
 
 		return (
@@ -1156,10 +1175,12 @@ ${insightSummary}
 							{/* Scroll indicator - top */}
 							{canScroll && sessionScrollOffset > 0 && (
 								<Box justifyContent="center" marginBottom={1}>
-									<Text color={safeTheme.textDim}>▲ {sessionScrollOffset} messages above</Text>
+									<Text color={safeTheme.textDim}>
+										▲ {sessionScrollOffset} messages above
+									</Text>
 								</Box>
 							)}
-							
+
 							{/* Visible messages */}
 							{visibleMessages.map((msg, idx) => (
 								<Box
@@ -1219,7 +1240,9 @@ ${insightSummary}
 											</Box>
 										</>
 									)}
-									{!['user', 'assistant', 'system', 'error'].includes(msg.type) && (
+									{!['user', 'assistant', 'system', 'error'].includes(
+										msg.type
+									) && (
 										<>
 											<Text color="yellow">{msg.type}: </Text>
 											<Box marginLeft={2}>
@@ -1234,11 +1257,13 @@ ${insightSummary}
 									)}
 								</Box>
 							))}
-							
+
 							{/* Scroll indicator - bottom */}
 							{canScroll && sessionScrollOffset < maxScrollOffset && (
 								<Box justifyContent="center" marginTop={1}>
-									<Text color={safeTheme.textDim}>▼ {maxScrollOffset - sessionScrollOffset} messages below</Text>
+									<Text color={safeTheme.textDim}>
+										▼ {maxScrollOffset - sessionScrollOffset} messages below
+									</Text>
 								</Box>
 							)}
 						</Box>
@@ -1264,12 +1289,9 @@ ${insightSummary}
 						{!session?.metadata?.finished ? 'r resume session • ' : ''}ESC back
 						to list
 					</Text>
-					
+
 					{/* Overflow indicator */}
-					<OverflowIndicator 
-						position="bottom-right"
-						showCount={true}
-					/>
+					<OverflowIndicator position="bottom-right" showCount={true} />
 				</Box>
 			</Box>
 		);
@@ -1299,7 +1321,9 @@ ${insightSummary}
 				}}
 				onNewSession={() => {
 					if (!config?.enabled) {
-						setError('Claude Code is not enabled. Configure it in settings first.');
+						setError(
+							'Claude Code is not enabled. Configure it in settings first.'
+						);
 						return;
 					}
 					setMode('new-query');
@@ -1312,7 +1336,7 @@ ${insightSummary}
 					handleBack();
 				}}
 			/>
-			
+
 			{/* Toast notifications */}
 			{error && (
 				<Toast type="error" message={error} onDismiss={() => setError(null)} />

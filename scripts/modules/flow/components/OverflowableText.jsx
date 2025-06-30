@@ -5,7 +5,7 @@ import { ShowMore } from './ShowMore.jsx';
 
 /**
  * OverflowableText - A smart wrapper for text content that might need truncation
- * 
+ *
  * @param {string} id - Unique identifier for this content block
  * @param {string} content - The full text content to display
  * @param {number} maxLines - Maximum lines to show before truncating (default: 10)
@@ -13,21 +13,21 @@ import { ShowMore } from './ShowMore.jsx';
  * @param {boolean} dimWhenCollapsed - Whether to dim text when collapsed (default: false)
  * @param {Object} textProps - Additional props to pass to Text component
  */
-export function OverflowableText({ 
-	id, 
-	content, 
-	maxLines = 10, 
+export function OverflowableText({
+	id,
+	content,
+	maxLines = 10,
 	color,
 	dimWhenCollapsed = false,
 	textProps = {},
-	...boxProps 
+	...boxProps
 }) {
-	const { 
-		registerComponent, 
-		unregisterComponent, 
-		updateOverflowState, 
-		toggleExpanded, 
-		getOverflowState 
+	const {
+		registerComponent,
+		unregisterComponent,
+		updateOverflowState,
+		toggleExpanded,
+		getOverflowState
 	} = useOverflow();
 
 	const [isInitialized, setIsInitialized] = useState(false);
@@ -39,9 +39,9 @@ export function OverflowableText({
 	// Calculate content metrics
 	const contentMetrics = useMemo(() => {
 		if (!content) {
-			return { 
-				lines: [], 
-				totalLines: 0, 
+			return {
+				lines: [],
+				totalLines: 0,
 				shouldTruncate: false,
 				visibleLines: [],
 				truncatedContent: ''
@@ -52,11 +52,10 @@ export function OverflowableText({
 		const lines = content.split('\n');
 		const totalLines = lines.length;
 		const shouldTruncate = totalLines > maxLines;
-		
+
 		// Determine visible lines
-		const visibleLines = shouldTruncate && !isExpanded 
-			? lines.slice(0, maxLines)
-			: lines;
+		const visibleLines =
+			shouldTruncate && !isExpanded ? lines.slice(0, maxLines) : lines;
 
 		// Create truncated content string
 		const truncatedContent = visibleLines.join('\n');
@@ -89,7 +88,14 @@ export function OverflowableText({
 				maxLines
 			});
 		}
-	}, [id, contentMetrics.shouldTruncate, contentMetrics.totalLines, maxLines, updateOverflowState, isInitialized]);
+	}, [
+		id,
+		contentMetrics.shouldTruncate,
+		contentMetrics.totalLines,
+		maxLines,
+		updateOverflowState,
+		isInitialized
+	]);
 
 	// Handle expand/collapse toggle
 	const handleToggle = () => {
@@ -102,7 +108,9 @@ export function OverflowableText({
 	}
 
 	// Determine text color
-	const textColor = color || (dimWhenCollapsed && isOverflowing && !isExpanded ? 'gray' : undefined);
+	const textColor =
+		color ||
+		(dimWhenCollapsed && isOverflowing && !isExpanded ? 'gray' : undefined);
 
 	return (
 		<Box flexDirection="column" {...boxProps}>
@@ -118,10 +126,13 @@ export function OverflowableText({
 				<ShowMore
 					isExpanded={isExpanded}
 					onToggle={handleToggle}
-					hiddenLines={contentMetrics.totalLines - (isExpanded ? contentMetrics.totalLines : maxLines)}
+					hiddenLines={
+						contentMetrics.totalLines -
+						(isExpanded ? contentMetrics.totalLines : maxLines)
+					}
 					totalLines={contentMetrics.totalLines}
 				/>
 			)}
 		</Box>
 	);
-} 
+}

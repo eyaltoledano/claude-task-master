@@ -5,25 +5,25 @@ import { useComponentTheme } from '../hooks/index.js';
 
 /**
  * OverflowIndicator - Global indicator showing when content is overflowing
- * 
+ *
  * This component displays a subtle indicator when there are overflowing
  * content blocks that can be expanded. It's typically placed in a footer
  * or corner of the screen.
- * 
+ *
  * @param {string} position - Position of indicator: 'bottom-right', 'bottom-left', 'top-right', 'top-left'
  * @param {boolean} showCount - Whether to show the count of overflowing items
  * @param {string} symbol - Symbol to display (default: "...")
  * @param {string} message - Custom message template (default: "{count} items can be expanded")
  */
-export function OverflowIndicator({ 
+export function OverflowIndicator({
 	position = 'bottom-right',
 	showCount = true,
-	symbol = "⋯",
-	message = "{count} more content available"
+	symbol = '⋯',
+	message = '{count} more content available'
 }) {
 	const { hasOverflowingContent, getOverflowCount } = useOverflow();
 	const { theme } = useComponentTheme('overflowIndicator');
-	
+
 	// Safe color accessor with fallbacks
 	const getColor = (colorPath, fallback = '#ffffff') => {
 		if (typeof colorPath === 'string' && colorPath.length > 0) {
@@ -46,11 +46,12 @@ export function OverflowIndicator({
 	}
 
 	const overflowCount = getOverflowCount();
-	
+
 	// Generate display text
-	const displayText = showCount && overflowCount > 0
-		? message.replace('{count}', overflowCount.toString())
-		: symbol;
+	const displayText =
+		showCount && overflowCount > 0
+			? message.replace('{count}', overflowCount.toString())
+			: symbol;
 
 	// Determine positioning styles
 	const getPositionStyles = () => {
@@ -84,12 +85,10 @@ export function OverflowIndicator({
 				paddingX={1}
 				paddingY={0}
 				backgroundColor={colors.background}
-				borderStyle={showCount ? "round" : undefined}
+				borderStyle={showCount ? 'round' : undefined}
 				borderColor={showCount ? colors.border : undefined}
 			>
-				<Text color={colors.indicator}>
-					{symbol}
-				</Text>
+				<Text color={colors.indicator}>{symbol}</Text>
 				{showCount && overflowCount > 0 && (
 					<Text color={colors.text} marginLeft={1}>
 						{overflowCount} expandable
@@ -98,4 +97,4 @@ export function OverflowIndicator({
 			</Box>
 		</Box>
 	);
-} 
+}

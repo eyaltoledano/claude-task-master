@@ -28,7 +28,7 @@ export function ClaudeWorktreeLauncherModal({
 	onSuccess
 }) {
 	const { theme } = useComponentTheme('modal');
-	
+
 	// Always select the task automatically for single task scenarios
 	const [selectedTasks] = useState(() => {
 		// For subtasks, we always process just the one
@@ -127,7 +127,10 @@ export function ClaudeWorktreeLauncherModal({
 	useEffect(() => {
 		// Reserve space for header, task info, status line, and scroll indicators
 		const reservedLines = 12;
-		const availableHeight = Math.max(5, (process.stdout.rows || 24) - reservedLines);
+		const availableHeight = Math.max(
+			5,
+			(process.stdout.rows || 24) - reservedLines
+		);
 		setViewportHeight(availableHeight);
 	}, []);
 
@@ -163,16 +166,30 @@ export function ClaudeWorktreeLauncherModal({
 					...baseProps,
 					title: '🚀 Claude Code: Select Persona',
 					preset: 'info',
-					keyboardHints: isDetectingPersonas 
+					keyboardHints: isDetectingPersonas
 						? ['ESC cancel']
-						: ['↑↓ navigate', 'ENTER accept', 'TAB next', '1-9 quick select', 'p manual', 'n none', 'ESC cancel']
+						: [
+								'↑↓ navigate',
+								'ENTER accept',
+								'TAB next',
+								'1-9 quick select',
+								'p manual',
+								'n none',
+								'ESC cancel'
+							]
 				};
 			case 'options':
 				return {
 					...baseProps,
 					title: `🚀 Claude Code: Configure Session`,
 					preset: 'default',
-					keyboardHints: ['1-3 toggle restrictions', '+/- adjust turns', 'ENTER continue', 'BACKSPACE back', 'ESC cancel']
+					keyboardHints: [
+						'1-3 toggle restrictions',
+						'+/- adjust turns',
+						'ENTER continue',
+						'BACKSPACE back',
+						'ESC cancel'
+					]
 				};
 			case 'prompt':
 				return {
@@ -193,18 +210,37 @@ export function ClaudeWorktreeLauncherModal({
 					...baseProps,
 					title: `🚀 Claude Code: Processing`,
 					preset: 'default',
-					keyboardHints: processingLines.length > viewportHeight 
-						? ['↑↓/j/k scroll', 'PgUp/PgDn page', 'Home/End jump', 'ESC cancel']
-						: ['ESC cancel']
+					keyboardHints:
+						processingLines.length > viewportHeight
+							? [
+									'↑↓/j/k scroll',
+									'PgUp/PgDn page',
+									'Home/End jump',
+									'ESC cancel'
+								]
+							: ['ESC cancel']
 				};
 			case 'summary':
 				return {
 					...baseProps,
 					title: '🚀 Claude Code: Task Complete',
 					preset: 'success',
-					keyboardHints: showFullConversation 
-						? ['v hide conversation', 'p toggle PR', 'ENTER done', '↑↓ scroll', 'H/E home/end', 'ESC cancel']
-						: ['v show conversation', 'p toggle PR', 'ENTER done', 'r resume', 'ESC cancel']
+					keyboardHints: showFullConversation
+						? [
+								'v hide conversation',
+								'p toggle PR',
+								'ENTER done',
+								'↑↓ scroll',
+								'H/E home/end',
+								'ESC cancel'
+							]
+						: [
+								'v show conversation',
+								'p toggle PR',
+								'ENTER done',
+								'r resume',
+								'ESC cancel'
+							]
 				};
 			default:
 				return {
@@ -232,8 +268,11 @@ export function ClaudeWorktreeLauncherModal({
 
 		down: () => {
 			if (view === 'processing' && processingLines.length > viewportHeight) {
-				setScrollOffset((prev) => 
-					Math.min(prev + 1, Math.max(0, processingLines.length - viewportHeight))
+				setScrollOffset((prev) =>
+					Math.min(
+						prev + 1,
+						Math.max(0, processingLines.length - viewportHeight)
+					)
 				);
 			} else if (view === 'persona') {
 				setPersonaSelectionIndex(
@@ -271,8 +310,11 @@ export function ClaudeWorktreeLauncherModal({
 
 		pageDown: () => {
 			if (view === 'processing' && processingLines.length > viewportHeight) {
-				setScrollOffset((prev) => 
-					Math.min(prev + viewportHeight, Math.max(0, processingLines.length - viewportHeight))
+				setScrollOffset((prev) =>
+					Math.min(
+						prev + viewportHeight,
+						Math.max(0, processingLines.length - viewportHeight)
+					)
 				);
 			} else if (view === 'summary' && showFullConversation) {
 				const totalMessages = sessionResult?.messages?.length || 0;
@@ -327,15 +369,15 @@ export function ClaudeWorktreeLauncherModal({
 		},
 
 		// Number keys for quick selection
-		'1': () => handleNumberKey('1'),
-		'2': () => handleNumberKey('2'),
-		'3': () => handleNumberKey('3'),
-		'4': () => handleNumberKey('4'),
-		'5': () => handleNumberKey('5'),
-		'6': () => handleNumberKey('6'),
-		'7': () => handleNumberKey('7'),
-		'8': () => handleNumberKey('8'),
-		'9': () => handleNumberKey('9'),
+		1: () => handleNumberKey('1'),
+		2: () => handleNumberKey('2'),
+		3: () => handleNumberKey('3'),
+		4: () => handleNumberKey('4'),
+		5: () => handleNumberKey('5'),
+		6: () => handleNumberKey('6'),
+		7: () => handleNumberKey('7'),
+		8: () => handleNumberKey('8'),
+		9: () => handleNumberKey('9'),
 
 		// Letter keys
 		p: () => {
@@ -439,12 +481,12 @@ export function ClaudeWorktreeLauncherModal({
 
 			// Handle worktree creation if needed
 			let actualWorktree = worktree;
-			
+
 			if (!actualWorktree && selectedTaskObjects.length > 0) {
 				// No worktree exists, create one for the subtask
 				const task = selectedTaskObjects[0];
 				const [parentId, subtaskId] = task.id.split('.');
-				
+
 				setView('research'); // Show research view during worktree creation
 				setProcessingLog('Creating worktree for subtask...');
 
@@ -474,7 +516,9 @@ export function ClaudeWorktreeLauncherModal({
 
 				// Check if we need user decision for branch conflict
 				if (result.needsUserDecision) {
-					setError(`Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`);
+					setError(
+						`Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`
+					);
 					setView('persona');
 					return;
 				}
@@ -486,9 +530,9 @@ export function ClaudeWorktreeLauncherModal({
 				}
 
 				actualWorktree = result.worktree;
-				
+
 				// Brief delay to show the worktree creation message
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				await new Promise((resolve) => setTimeout(resolve, 1000));
 			}
 
 			// Check if tasks need research
@@ -584,12 +628,12 @@ export function ClaudeWorktreeLauncherModal({
 							setProcessingLines((prev) => {
 								// Split by newlines but keep empty lines for proper formatting
 								const newContent = output.split('\n');
-								
+
 								// If this is the first update, just set it
 								if (prev.length === 0) {
 									return newContent;
 								}
-								
+
 								// Otherwise, append this chunk to our running log
 								// The last line of previous content might be incomplete,
 								// so we concatenate it with the first line of new content
@@ -606,15 +650,16 @@ export function ClaudeWorktreeLauncherModal({
 									// Just append all new content
 									combined.push(...newContent);
 								}
-								
+
 								return combined;
 							});
-							
+
 							// Update log with the latest chunk
 							setProcessingLog(output.trim());
 						} else if (output && typeof output === 'object') {
 							// Handle structured progress updates
-							const message = output.message || output.text || JSON.stringify(output);
+							const message =
+								output.message || output.text || JSON.stringify(output);
 							setProcessingLines((prev) => [...prev, '', message, '']);
 							setProcessingLog(message);
 						}
@@ -645,15 +690,18 @@ export function ClaudeWorktreeLauncherModal({
 		setView('processing');
 
 		try {
-			const result = await backend.resumeClaudeSession(sessionResult.sessionId, {
-				maxTurns: maxTurns,
-				onProgress: (output) => {
-					if (typeof output === 'string') {
-						setProcessingLines((prev) => [...prev, output]);
-						setProcessingLog(output.trim());
+			const result = await backend.resumeClaudeSession(
+				sessionResult.sessionId,
+				{
+					maxTurns: maxTurns,
+					onProgress: (output) => {
+						if (typeof output === 'string') {
+							setProcessingLines((prev) => [...prev, output]);
+							setProcessingLog(output.trim());
+						}
 					}
 				}
-			});
+			);
 
 			if (result.success) {
 				setSessionResult(result);
@@ -804,7 +852,10 @@ export function ClaudeWorktreeLauncherModal({
 
 		// Calculate visible lines based on viewport
 		const startIdx = scrollOffset;
-		const endIdx = Math.min(scrollOffset + viewportHeight, processingLines.length);
+		const endIdx = Math.min(
+			scrollOffset + viewportHeight,
+			processingLines.length
+		);
 		const visibleLines = processingLines.slice(startIdx, endIdx);
 		const canScrollUp = scrollOffset > 0;
 		const canScrollDown = endIdx < processingLines.length;
@@ -822,10 +873,17 @@ export function ClaudeWorktreeLauncherModal({
 						paddingY={0}
 					>
 						<Text bold color={theme.highlight}>
-							📁 Git Worktree: {worktree?.name || sessionResult?.worktree || 'Creating...'}
+							📁 Git Worktree:{' '}
+							{worktree?.name || sessionResult?.worktree || 'Creating...'}
 						</Text>
 						<Text color={theme.secondary} fontSize={11}>
-							Branch: {worktree?.branch || worktree?.name || sessionResult?.branch || 'TBD'} • Source: {worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
+							Branch:{' '}
+							{worktree?.branch ||
+								worktree?.name ||
+								sessionResult?.branch ||
+								'TBD'}{' '}
+							• Source:{' '}
+							{worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
 						</Text>
 						<Text color={theme.muted} fontSize={10}>
 							Path: {worktree?.path || sessionResult?.worktreePath || 'TBD'}
@@ -837,28 +895,38 @@ export function ClaudeWorktreeLauncherModal({
 				{taskInfo && (
 					<Box marginTop={1} marginBottom={0} flexDirection="column">
 						<Text bold color={theme.primary}>
-							{taskInfo.isSubtask ? `Subtask ${taskInfo.id}` : `Task ${taskInfo.id}`}: {taskInfo.title}
+							{taskInfo.isSubtask
+								? `Subtask ${taskInfo.id}`
+								: `Task ${taskInfo.id}`}
+							: {taskInfo.title}
 						</Text>
 					</Box>
 				)}
-				
+
 				{/* Processing status and mode/persona on same line */}
 				<Box marginTop={1} flexDirection="row" justifyContent="space-between">
 					<Box>
-						<Text bold color="green">Processing with Claude Code...</Text>
+						<Text bold color="green">
+							Processing with Claude Code...
+						</Text>
 						<LoadingSpinner />
 						<Text> Working on implementation...</Text>
 					</Box>
-					<Text dimColor fontSize={11}>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
+					<Text
+						dimColor
+						fontSize={11}
+					>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
 				</Box>
-				
+
 				{/* Scroll indicators */}
 				{canScrollUp && (
 					<Box marginTop={1}>
-						<Text dimColor>↑ {scrollOffset} more lines above (press ↑/k to scroll up)</Text>
+						<Text dimColor>
+							↑ {scrollOffset} more lines above (press ↑/k to scroll up)
+						</Text>
 					</Box>
 				)}
-				
+
 				{/* Streaming Progress - Scrollable view */}
 				{visibleLines.length > 0 && (
 					<Box
@@ -868,25 +936,33 @@ export function ClaudeWorktreeLauncherModal({
 						height={viewportHeight}
 					>
 						{visibleLines.map((line, idx) => (
-							<Text key={`log-${startIdx + idx}-${line.substring(0, 20)}`} wrap="wrap" fontSize={11}>
+							<Text
+								key={`log-${startIdx + idx}-${line.substring(0, 20)}`}
+								wrap="wrap"
+								fontSize={11}
+							>
 								{line}
 							</Text>
 						))}
 					</Box>
 				)}
-				
+
 				{/* Scroll indicators */}
 				{canScrollDown && (
 					<Box marginTop={1}>
-						<Text dimColor>↓ {processingLines.length - endIdx} more lines below (press ↓/j to scroll down)</Text>
+						<Text dimColor>
+							↓ {processingLines.length - endIdx} more lines below (press ↓/j to
+							scroll down)
+						</Text>
 					</Box>
 				)}
-				
+
 				{/* Quick scroll info */}
 				{processingLines.length > viewportHeight && (
 					<Box marginTop={1}>
 						<Text dimColor fontSize={10}>
-							Line {startIdx + 1}-{endIdx} of {processingLines.length} • [PgUp/PgDn] page • [Home/End] jump
+							Line {startIdx + 1}-{endIdx} of {processingLines.length} •
+							[PgUp/PgDn] page • [Home/End] jump
 						</Text>
 					</Box>
 				)}
@@ -965,14 +1041,20 @@ export function ClaudeWorktreeLauncherModal({
 					paddingY={0.5}
 				>
 					<Text bold color={theme.highlight}>
-						📁 Git Worktree: {worktree?.name || sessionResult?.worktree || 'Unknown'}
+						📁 Git Worktree:{' '}
+						{worktree?.name || sessionResult?.worktree || 'Unknown'}
 					</Text>
 					<Box flexDirection="column" marginLeft={2}>
 						<Text color={theme.secondary}>
-							Branch: {worktree?.branch || worktree?.name || sessionResult?.branch || 'Unknown'}
+							Branch:{' '}
+							{worktree?.branch ||
+								worktree?.name ||
+								sessionResult?.branch ||
+								'Unknown'}
 						</Text>
 						<Text color={theme.secondary}>
-							Source: {worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
+							Source:{' '}
+							{worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
 						</Text>
 						<Text color={theme.muted} fontSize={12}>
 							Path: {worktree?.path || sessionResult?.worktreePath || 'Unknown'}

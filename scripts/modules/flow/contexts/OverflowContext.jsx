@@ -5,7 +5,7 @@ const OverflowContext = createContext();
 
 /**
  * OverflowProvider - Provides overflow state management to the entire app
- * 
+ *
  * State structure:
  * {
  *   'component-id': {
@@ -21,7 +21,7 @@ export function OverflowProvider({ children }) {
 
 	// Register a component with the overflow system
 	const registerComponent = useCallback((id, config = {}) => {
-		setOverflowState(prev => {
+		setOverflowState((prev) => {
 			const newState = new Map(prev);
 			newState.set(id, {
 				isOverflowing: false,
@@ -36,7 +36,7 @@ export function OverflowProvider({ children }) {
 
 	// Unregister a component from the overflow system
 	const unregisterComponent = useCallback((id) => {
-		setOverflowState(prev => {
+		setOverflowState((prev) => {
 			const newState = new Map(prev);
 			newState.delete(id);
 			return newState;
@@ -45,7 +45,7 @@ export function OverflowProvider({ children }) {
 
 	// Update overflow state for a specific component
 	const updateOverflowState = useCallback((id, updates) => {
-		setOverflowState(prev => {
+		setOverflowState((prev) => {
 			const newState = new Map(prev);
 			const current = newState.get(id) || {};
 			newState.set(id, { ...current, ...updates });
@@ -55,26 +55,31 @@ export function OverflowProvider({ children }) {
 
 	// Toggle expanded state for a component
 	const toggleExpanded = useCallback((id) => {
-		setOverflowState(prev => {
+		setOverflowState((prev) => {
 			const newState = new Map(prev);
 			const current = newState.get(id) || {};
-			newState.set(id, { 
-				...current, 
-				isExpanded: !current.isExpanded 
+			newState.set(id, {
+				...current,
+				isExpanded: !current.isExpanded
 			});
 			return newState;
 		});
 	}, []);
 
 	// Get overflow state for a specific component
-	const getOverflowState = useCallback((id) => {
-		return overflowState.get(id) || {
-			isOverflowing: false,
-			isExpanded: false,
-			maxLines: 10,
-			totalLines: 0
-		};
-	}, [overflowState]);
+	const getOverflowState = useCallback(
+		(id) => {
+			return (
+				overflowState.get(id) || {
+					isOverflowing: false,
+					isExpanded: false,
+					maxLines: 10,
+					totalLines: 0
+				}
+			);
+		},
+		[overflowState]
+	);
 
 	// Check if any component is currently overflowing
 	const hasOverflowingContent = useCallback(() => {
@@ -117,7 +122,7 @@ export function OverflowProvider({ children }) {
 
 /**
  * useOverflow - Hook to access overflow context
- * 
+ *
  * @returns {Object} Overflow context methods and state
  */
 export function useOverflow() {
@@ -129,4 +134,4 @@ export function useOverflow() {
 }
 
 // Export the context for advanced usage
-export { OverflowContext }; 
+export { OverflowContext };

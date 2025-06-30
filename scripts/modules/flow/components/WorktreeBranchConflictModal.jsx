@@ -42,11 +42,11 @@ export function WorktreeBranchConflictModal({
 
 	const keyHandlers = {
 		escape: onClose,
-		
+
 		up: () => {
 			setSelectedOption((prev) => (prev > 0 ? prev - 1 : options.length - 1));
 		},
-		
+
 		down: () => {
 			setSelectedOption((prev) => (prev < options.length - 1 ? prev + 1 : 0));
 		},
@@ -54,7 +54,7 @@ export function WorktreeBranchConflictModal({
 		// Vim-style navigation
 		j: () => keyHandlers.down(),
 		k: () => keyHandlers.up(),
-		
+
 		return: () => {
 			onDecision(options[selectedOption].key);
 		},
@@ -72,7 +72,13 @@ export function WorktreeBranchConflictModal({
 		preset: 'warning',
 		width: 80,
 		height: 15,
-		keyboardHints: ['↑↓ navigate', 'j/k vim nav', '1-3 quick select', 'ENTER confirm', 'ESC cancel']
+		keyboardHints: [
+			'↑↓ navigate',
+			'j/k vim nav',
+			'1-3 quick select',
+			'ENTER confirm',
+			'ESC cancel'
+		]
 	};
 
 	return (

@@ -126,7 +126,11 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 			if (msg.type === 'assistant') {
 				const content = msg.message.content?.[0]?.text || '';
 				return (
-					<Box key={`assistant-${idx}-${content.slice(0, 20)}`} marginBottom={1} flexDirection="column">
+					<Box
+						key={`assistant-${idx}-${content.slice(0, 20)}`}
+						marginBottom={1}
+						flexDirection="column"
+					>
 						<Text color={theme.success}>Claude: </Text>
 						<Box marginLeft={2} width={80}>
 							<Text wrap="wrap">{content}</Text>
@@ -150,7 +154,7 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 	// Get modal properties based on current mode
 	const getModalProps = () => {
 		const taskInfo = subtask || task;
-		
+
 		switch (mode) {
 			case 'processing':
 				return {
@@ -181,11 +185,13 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 					<Box marginBottom={2}>
 						<Text color={theme.textDim}>{taskInfo.title}</Text>
 					</Box>
-					
+
 					<Box marginBottom={2}>
-						<Text color={theme.text}>Customize the prompt for Claude Code:</Text>
+						<Text color={theme.text}>
+							Customize the prompt for Claude Code:
+						</Text>
 					</Box>
-					
+
 					<Box marginBottom={2} flexDirection="column">
 						<TextInput
 							value={prompt}
@@ -194,9 +200,11 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 							showCursor={!isProcessing}
 						/>
 					</Box>
-					
+
 					<Box justifyContent="center">
-						<Text color={theme.textDim}>Press Enter to start, Escape to cancel</Text>
+						<Text color={theme.textDim}>
+							Press Enter to start, Escape to cancel
+						</Text>
 					</Box>
 				</Box>
 			);
@@ -210,11 +218,11 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 							<Spinner type="dots" /> Claude Code is working on your task...
 						</Text>
 					</Box>
-					
+
 					<Box flexDirection="column" height={15} marginBottom={2}>
 						{renderMessages()}
 					</Box>
-					
+
 					<Box justifyContent="center">
 						<Text color={theme.textDim}>Press Escape to abort</Text>
 					</Box>
@@ -226,15 +234,13 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 			return (
 				<Box flexDirection="column">
 					<Box marginBottom={2}>
-						<Text color={theme.success}>
-							✓ Implementation Complete
-						</Text>
+						<Text color={theme.success}>✓ Implementation Complete</Text>
 					</Box>
-					
+
 					<Box flexDirection="column" height={20} marginBottom={2}>
 						{renderMessages()}
 					</Box>
-					
+
 					<Box justifyContent="center">
 						<Text color={theme.textDim}>Press q or Escape to close</Text>
 					</Box>
