@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 import { Toast } from './Toast.jsx';
 
 function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
@@ -12,6 +15,7 @@ function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
 	const [success, setSuccess] = useState(null);
 	const [mode, setMode] = useState('prompt'); // prompt, processing, results
 	const [abortController, setAbortController] = useState(null);
+	const { theme } = useComponentTheme('modal');
 
 	useEffect(() => {
 		// Pre-populate prompt with task context
@@ -93,32 +97,37 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 		}
 	};
 
-	useInput((input, key) => {
-		if (key.escape) {
-			if (isProcessing && abortController) {
-				handleAbort();
-			} else {
-				onClose();
-			}
-			return;
+	const handleClose = () => {
+		if (isProcessing && abortController) {
+			handleAbort();
+		} else {
+			onClose();
 		}
+	};
 
-		if (mode === 'prompt' && key.return) {
-			handleSubmit();
-		} else if (mode === 'results') {
-			if (input === 'q' || key.escape) {
+	const handlers = {
+		escape: handleClose,
+		return: () => {
+			if (mode === 'prompt') {
+				handleSubmit();
+			}
+		},
+		q: () => {
+			if (mode === 'results') {
 				onClose();
 			}
 		}
-	});
+	};
+
+	useKeypress(handlers);
 
 	const renderMessages = () => {
 		return messages.map((msg, idx) => {
 			if (msg.type === 'assistant') {
 				const content = msg.message.content?.[0]?.text || '';
 				return (
-					<Box key={idx} marginBottom={1} flexDirection="column">
-						<Text color="green">Claude: </Text>
+					<Box key={`assistant-${idx}-${content.slice(0, 20)}`} marginBottom={1} flexDirection="column">
+						<Text color={theme.success}>Claude: </Text>
 						<Box marginLeft={2} width={80}>
 							<Text wrap="wrap">{content}</Text>
 						</Box>
@@ -126,8 +135,8 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 				);
 			} else if (msg.type === 'result') {
 				return (
-					<Box key={idx} marginTop={1}>
-						<Text color="yellow">
+					<Box key={`result-${idx}-${msg.num_turns || 0}`} marginTop={1}>
+						<Text color={theme.warning}>
 							Completed: {msg.num_turns} turns | Cost: $
 							{msg.total_cost_usd?.toFixed(4) || '0.0000'}
 						</Text>
@@ -138,29 +147,46 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 		});
 	};
 
+	// Get modal properties based on current mode
+	const getModalProps = () => {
+		const taskInfo = subtask || task;
+		
+		switch (mode) {
+			case 'processing':
+				return {
+					title: `Claude Code: Processing Task ${taskInfo.id}`,
+					preset: 'info'
+				};
+			case 'results':
+				return {
+					title: `Claude Code: Task ${taskInfo.id} Complete`,
+					preset: 'success'
+				};
+			default:
+				return {
+					title: `Claude Code: Implement Task ${taskInfo.id}`,
+					preset: 'default'
+				};
+		}
+	};
+
+	const modalProps = getModalProps();
 	const taskInfo = subtask || task;
 
-	return (
-		<Box
-			flexDirection="column"
-			padding={1}
-			borderStyle="round"
-			borderColor="cyan"
-		>
-			<Box marginBottom={1}>
-				<Text bold color="cyan">
-					Claude Code: Implement Task {taskInfo.id}
-				</Text>
-			</Box>
-
-			<Box marginBottom={1}>
-				<Text color="gray">{taskInfo.title}</Text>
-			</Box>
-
-			{mode === 'prompt' && (
+	// Render mode-specific content
+	const renderContent = () => {
+		if (mode === 'prompt') {
+			return (
 				<Box flexDirection="column">
-					<Text>Customize the prompt for Claude Code:</Text>
-					<Box marginTop={1} flexDirection="column">
+					<Box marginBottom={2}>
+						<Text color={theme.textDim}>{taskInfo.title}</Text>
+					</Box>
+					
+					<Box marginBottom={2}>
+						<Text color={theme.text}>Customize the prompt for Claude Code:</Text>
+					</Box>
+					
+					<Box marginBottom={2} flexDirection="column">
 						<TextInput
 							value={prompt}
 							onChange={setPrompt}
@@ -168,41 +194,69 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 							showCursor={!isProcessing}
 						/>
 					</Box>
-					<Box marginTop={1}>
-						<Text color="gray">Press Enter to start, Escape to cancel</Text>
+					
+					<Box justifyContent="center">
+						<Text color={theme.textDim}>Press Enter to start, Escape to cancel</Text>
 					</Box>
 				</Box>
-			)}
+			);
+		}
 
-			{mode === 'processing' && (
+		if (mode === 'processing') {
+			return (
 				<Box flexDirection="column">
-					<Box marginBottom={1}>
-						<Text color="yellow">
+					<Box marginBottom={2}>
+						<Text color={theme.warning}>
 							<Spinner type="dots" /> Claude Code is working on your task...
 						</Text>
 					</Box>
-					<Box flexDirection="column" height={15}>
+					
+					<Box flexDirection="column" height={15} marginBottom={2}>
 						{renderMessages()}
 					</Box>
-					<Box marginTop={1}>
-						<Text color="gray">Press Escape to abort</Text>
+					
+					<Box justifyContent="center">
+						<Text color={theme.textDim}>Press Escape to abort</Text>
 					</Box>
 				</Box>
-			)}
+			);
+		}
 
-			{mode === 'results' && (
+		if (mode === 'results') {
+			return (
 				<Box flexDirection="column">
-					<Text color="green" marginBottom={1}>
-						✓ Implementation Complete
-					</Text>
-					<Box flexDirection="column" height={20}>
+					<Box marginBottom={2}>
+						<Text color={theme.success}>
+							✓ Implementation Complete
+						</Text>
+					</Box>
+					
+					<Box flexDirection="column" height={20} marginBottom={2}>
 						{renderMessages()}
 					</Box>
-					<Box marginTop={1}>
-						<Text color="gray">Press q or Escape to close</Text>
+					
+					<Box justifyContent="center">
+						<Text color={theme.textDim}>Press q or Escape to close</Text>
 					</Box>
 				</Box>
-			)}
+			);
+		}
+
+		return null;
+	};
+
+	return (
+		<>
+			<BaseModal
+				title={modalProps.title}
+				onClose={handleClose}
+				width="90%"
+				height="auto"
+				preset={modalProps.preset}
+				showCloseHint={false} // We show custom hints
+			>
+				{renderContent()}
+			</BaseModal>
 
 			{error && (
 				<Toast type="error" message={error} onDismiss={() => setError(null)} />
@@ -214,7 +268,7 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 					onDismiss={() => setSuccess(null)}
 				/>
 			)}
-		</Box>
+		</>
 	);
 }
 

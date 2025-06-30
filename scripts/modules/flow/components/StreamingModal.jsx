@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
-import { theme } from '../theme.js';
 
 export function StreamingModal({ isOpen, onClose }) {
 	const [state, setState] = useState({
@@ -19,6 +21,7 @@ export function StreamingModal({ isOpen, onClose }) {
 
 	const [thinkingIndex, setThinkingIndex] = useState(0);
 	const [dots, setDots] = useState('');
+	const { theme } = useComponentTheme('modal');
 
 	// If state is idle but modal is open, show waiting state
 	const effectiveState = state.state === 'idle' && isOpen ? 'preparing' : state.state;
@@ -39,23 +42,23 @@ export function StreamingModal({ isOpen, onClose }) {
 		};
 	}, [isOpen]);
 
-	// Handle ESC key for cancellation
-	useInput((input, key) => {
-		if (!isOpen) return;
-		
-		if (key.escape && state.canCancel) {
-			handleCancel();
+	// Handle keyboard input
+	const handlers = {
+		escape: () => {
+			if (state.canCancel) {
+				handleCancel();
+			} else if (['completed', 'cancelled', 'error'].includes(state.state)) {
+				handleClose();
+			}
+		},
+		return: () => {
+			if (['completed', 'cancelled', 'error'].includes(state.state)) {
+				handleClose();
+			}
 		}
+	};
 
-		if (key.escape && ['completed', 'cancelled', 'error'].includes(state.state)) {
-			handleClose();
-		}
-
-		// Handle Enter for closing when complete
-		if (key.return && ['completed', 'cancelled', 'error'].includes(state.state)) {
-			handleClose();
-		}
-	}, { isActive: isOpen });
+	useKeypress(isOpen ? handlers : {});
 
 	// Animate dots for loading effect
 	useEffect(() => {
@@ -117,20 +120,16 @@ export function StreamingModal({ isOpen, onClose }) {
 		}
 	};
 
-	const getStateColor = () => {
+	const getModalPreset = () => {
 		switch (effectiveState) {
-			case 'preparing':
-				return theme.accent;
-			case 'processing':
-				return theme.primary;
 			case 'completed':
-				return theme.success;
+				return 'success';
 			case 'cancelled':
-				return theme.warning;
+				return 'warning';
 			case 'error':
-				return theme.error;
+				return 'error';
 			default:
-				return theme.accent;
+				return 'info';
 		}
 	};
 
@@ -156,97 +155,86 @@ export function StreamingModal({ isOpen, onClose }) {
 	const isInProgress = ['preparing', 'processing'].includes(effectiveState);
 	const isComplete = ['completed', 'cancelled', 'error'].includes(effectiveState);
 
-
+	const modalTitle = `${getStateIcon()} ${getOperationTitle()}${
+		state.formattedElapsedTime !== '0s' ? ` • ${state.formattedElapsedTime}` : ''
+	}`;
 
 	return (
-		<Box
-			flexDirection="column"
-			borderStyle="double"
-			borderColor={getStateColor()}
-			padding={1}
+		<BaseModal
+			title={modalTitle}
+			onClose={handleClose}
 			width="80%"
-			alignSelf="center"
+			height="auto"
+			preset={getModalPreset()}
+			showCloseHint={false} // We'll show custom hints
 		>
-			{/* Header */}
-			<Box justifyContent="space-between" marginBottom={1}>
-				<Box>
-					<Text color={getStateColor()}>
-						{getStateIcon()} {getOperationTitle()}
-					</Text>
-					{state.formattedElapsedTime !== '0s' && (
-						<Text color={theme.textDim}> • {state.formattedElapsedTime}</Text>
-					)}
-				</Box>
-				{isComplete && (
-					<Text color={theme.textDim}>[Enter/ESC to close]</Text>
-				)}
-			</Box>
-
-			{/* Progress Indicator */}
-			{isInProgress && (
-				<Box flexDirection="column" marginBottom={1}>
-					{/* Current Phase */}
-					{state.currentPhase && (
-						<Text color={theme.textDim}>
-							Phase: {state.currentPhase.charAt(0).toUpperCase() + state.currentPhase.slice(1)}
-						</Text>
-					)}
-
-					{/* Main Message */}
-					<Text color={theme.text}>
-						{effectiveMessage}{dots}
-					</Text>
-
-					{/* Thinking Message */}
-					{getCurrentThinkingMessage() && (
-						<Text color={theme.textDim} italic>
-							💭 {getCurrentThinkingMessage()}
-						</Text>
-					)}
-
-					{/* Cancel Instructions */}
-					{state.canCancel && (
-						<Box marginTop={1}>
-							<Text color={theme.warning}>
-								Press ESC to cancel operation
+			<Box flexDirection="column">
+				{/* Progress Indicator */}
+				{isInProgress && (
+					<Box flexDirection="column" marginBottom={2}>
+						{/* Current Phase */}
+						{state.currentPhase && (
+							<Text color={theme.textDim}>
+								Phase: {state.currentPhase.charAt(0).toUpperCase() + state.currentPhase.slice(1)}
 							</Text>
-						</Box>
-					)}
-				</Box>
-			)}
+						)}
 
-			{/* Completion Message */}
-			{isComplete && (
-				<Box flexDirection="column" marginBottom={1}>
-					<Text color={getStateColor()}>
-						{effectiveMessage}
-					</Text>
-					{effectiveState === 'error' && state.context.error && (
+						{/* Main Message */}
+						<Text color={theme.text}>
+							{effectiveMessage}{dots}
+						</Text>
+
+						{/* Thinking Message */}
+						{getCurrentThinkingMessage() && (
+							<Text color={theme.textDim} italic>
+								💭 {getCurrentThinkingMessage()}
+							</Text>
+						)}
+
+						{/* Cancel Instructions */}
+						{state.canCancel && (
+							<Box marginTop={1}>
+								<Text color={theme.warning}>
+									Press ESC to cancel operation
+								</Text>
+							</Box>
+						)}
+					</Box>
+				)}
+
+				{/* Completion Message */}
+				{isComplete && (
+					<Box flexDirection="column" marginBottom={2}>
+						<Text color={theme.text}>
+							{effectiveMessage}
+						</Text>
+						{effectiveState === 'error' && state.context.error && (
+							<Text color={theme.textDim}>
+								Details: {state.context.error.message || 'Unknown error'}
+							</Text>
+						)}
+					</Box>
+				)}
+
+				{/* Status Bar */}
+				<Box
+					borderStyle="single"
+					borderTop
+					borderColor={theme.border}
+					paddingTop={1}
+					justifyContent="center"
+				>
+					{isInProgress ? (
 						<Text color={theme.textDim}>
-							Details: {state.context.error.message || 'Unknown error'}
+							Operation in progress... {state.canCancel ? '[ESC] Cancel' : 'Please wait'}
+						</Text>
+					) : (
+						<Text color={theme.textDim}>
+							Operation {effectiveState} • [Enter/ESC] Close
 						</Text>
 					)}
 				</Box>
-			)}
-
-			{/* Status Bar */}
-			<Box
-				borderStyle="single"
-				borderTop
-				borderColor={theme.border}
-				paddingTop={1}
-				justifyContent="center"
-			>
-				{isInProgress ? (
-					<Text color={theme.textDim}>
-						Operation in progress... {state.canCancel ? '[ESC] Cancel' : 'Please wait'}
-					</Text>
-				) : (
-					<Text color={theme.textDim}>
-						Operation {effectiveState} • Press Enter or ESC to continue
-					</Text>
-				)}
 			</Box>
-		</Box>
+		</BaseModal>
 	);
 } 

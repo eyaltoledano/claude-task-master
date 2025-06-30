@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
-import { getTheme } from '../theme.js';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 
 export default function WorktreeDetailsModal({
 	worktree,
@@ -21,7 +23,7 @@ export default function WorktreeDetailsModal({
 	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const theme = getTheme();
+	const theme = useComponentTheme('modal');
 
 	// Constants for scrolling
 	const VISIBLE_ROWS = 20;
@@ -48,67 +50,149 @@ export default function WorktreeDetailsModal({
 		}
 	};
 
-	useInput((input, key) => {
-		if (key.escape) {
+	// Dynamic modal props based on current mode
+	const getModalProps = () => {
+		if (loading) {
+			return {
+				title: 'Loading Worktree Details',
+				preset: 'info',
+				width: 80,
+				height: 10,
+				onClose
+			};
+		}
+
+		const baseProps = {
+			width: 80,
+			height: VISIBLE_ROWS + 6,
+			onClose
+		};
+
+		switch (viewMode) {
+			case 'tasks':
+				return {
+					...baseProps,
+					title: `Linked Tasks: ${worktree.name}`,
+					preset: 'default',
+					keyboardHints: linkedTasks.length > 0 && onNavigateToTask 
+						? ['↑↓ navigate', 'j/k vim nav', 'ENTER open task', 'ESC back to details']
+						: ['ESC back to details']
+				};
+			case 'jump':
+				return {
+					...baseProps,
+					title: `Jump to Task: ${worktree.name}`,
+					preset: 'info',
+					keyboardHints: linkedTasks.length > 0 
+						? ['↑↓ navigate', 'j/k vim nav', 'ENTER jump to task', 'ESC cancel']
+						: ['ESC cancel']
+				};
+			default: { // details
+				const hints = ['ESC close'];
+				if (details && details.length > VISIBLE_ROWS) hints.unshift('↑↓ scroll');
+				if (linkedTasks.length > 0 && onNavigateToTask) {
+					hints.unshift('v view tasks', 'g jump to task');
+				}
+				hints.unshift('l link/manage tasks');
+				if (linkedTasks.length > 0) hints.unshift('c launch Claude');
+				if (!worktree.isCurrent) hints.unshift('d delete');
+
+				return {
+					...baseProps,
+					title: `Worktree Details: ${worktree.name}`,
+					preset: error ? 'error' : 'default',
+					keyboardHints: hints
+				};
+			}
+		}
+	};
+
+	const keyHandlers = {
+		escape: () => {
 			if (viewMode === 'tasks' || viewMode === 'jump') {
 				setViewMode('details');
 			} else {
 				onClose();
 			}
-		} else if (viewMode === 'jump') {
-			// Jump mode navigation
-			if (key.upArrow) {
+		},
+
+		// Navigation for all modes
+		up: () => {
+			if (viewMode === 'jump' || viewMode === 'tasks') {
 				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
-			} else if (key.downArrow) {
-				setSelectedTaskIndex(
-					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
-				);
-			} else if (key.return && linkedTasks.length > 0 && onNavigateToTask) {
-				const selectedTask = linkedTasks[selectedTaskIndex];
-				onNavigateToTask(selectedTask);
-			}
-		} else if (viewMode === 'tasks') {
-			// Task list navigation
-			if (key.upArrow) {
-				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
-			} else if (key.downArrow) {
-				setSelectedTaskIndex(
-					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
-				);
-			} else if (key.return && linkedTasks.length > 0 && onNavigateToTask) {
-				const selectedTask = linkedTasks[selectedTaskIndex];
-				onNavigateToTask(selectedTask);
-			}
-		} else if (viewMode === 'details') {
-			// Details view actions with scrolling
-			if (key.downArrow) {
-				setScrollOffset((prev) => prev + 1);
-			} else if (key.upArrow) {
+			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
-			} else if (key.pageDown) {
+			}
+		},
+
+		down: () => {
+			if (viewMode === 'jump' || viewMode === 'tasks') {
+				setSelectedTaskIndex(Math.min(linkedTasks.length - 1, selectedTaskIndex + 1));
+			} else if (viewMode === 'details') {
+				setScrollOffset((prev) => prev + 1);
+			}
+		},
+
+		// Vim-style navigation
+		j: () => keyHandlers.down(),
+		k: () => keyHandlers.up(),
+
+		// Page navigation for details view
+		pageDown: () => {
+			if (viewMode === 'details') {
 				setScrollOffset((prev) => prev + 10);
-			} else if (key.pageUp) {
+			}
+		},
+
+		pageUp: () => {
+			if (viewMode === 'details') {
 				setScrollOffset((prev) => Math.max(0, prev - 10));
-			} else if (input === 'd' && !worktree.isCurrent && onDelete) {
-				// Just call the parent's delete handler
+			}
+		},
+
+		return: () => {
+			if ((viewMode === 'jump' || viewMode === 'tasks') && linkedTasks.length > 0 && onNavigateToTask) {
+				const selectedTask = linkedTasks[selectedTaskIndex];
+				onNavigateToTask(selectedTask);
+			}
+		},
+
+		// Action keys (details view only)
+		d: () => {
+			if (viewMode === 'details' && !worktree.isCurrent && onDelete) {
 				onDelete();
-			} else if (input === 'l') {
-				// 'l' for link/manage tasks
+			}
+		},
+
+		l: () => {
+			if (viewMode === 'details') {
 				setShowLinkTasksModal(true);
-			} else if (input === 'v' && linkedTasks.length > 0) {
-				// 'v' to view linked tasks
+			}
+		},
+
+		v: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
 				setViewMode('tasks');
 				setSelectedTaskIndex(0);
-			} else if (input === 'j' && linkedTasks.length > 0 && onNavigateToTask) {
-				// 'j' to jump to a task
+			}
+		},
+
+		// Use 'g' for jump to avoid conflict with 'j' vim navigation
+		g: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0 && onNavigateToTask) {
 				setViewMode('jump');
 				setSelectedTaskIndex(0);
-			} else if (input === 'c' && linkedTasks.length > 0) {
-				// 'c' to launch Claude
+			}
+		},
+
+		c: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
 				setShowClaudeModal(true);
 			}
 		}
-	});
+	};
+
+	useKeypress(keyHandlers);
 
 	// Show link tasks modal
 	if (showLinkTasksModal) {
@@ -147,174 +231,128 @@ export default function WorktreeDetailsModal({
 		);
 	}
 
-	// Show loading state
+	// Loading state
 	if (loading) {
 		return (
-			<Box
-				flexDirection="column"
-				borderStyle="round"
-				borderColor={theme.border}
-				padding={1}
-				width={80}
-			>
+			<BaseModal {...getModalProps()}>
 				<LoadingSpinner message="Loading worktree details..." />
-			</Box>
+			</BaseModal>
 		);
 	}
 
 	// Task list view
 	if (viewMode === 'tasks') {
 		return (
-			<Box
-				flexDirection="column"
-				borderStyle="round"
-				borderColor={theme.border}
-				padding={1}
-				width={80}
-			>
-				{/* Header */}
-				<Box marginBottom={1}>
-					<Text bold color={theme.primary}>
-						Linked Tasks: {worktree.name}
-					</Text>
-				</Box>
-
-				{/* Task List */}
-				{linkedTasks.length === 0 ? (
-					<Box paddingLeft={2}>
-						<Text color={theme.muted}>No tasks linked to this worktree</Text>
-					</Box>
-				) : (
-					<Box flexDirection="column">
-						{linkedTasks.map((task, index) => (
-							<Box
-								key={task.id}
-								backgroundColor={
-									index === selectedTaskIndex
-										? theme.backgroundHighlight
-										: undefined
-								}
-								paddingLeft={1}
-								paddingRight={1}
-							>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
+			<BaseModal {...getModalProps()}>
+				<Box flexDirection="column">
+					{/* Task List */}
+					{linkedTasks.length === 0 ? (
+						<Box paddingLeft={2}>
+							<Text color={theme.muted}>No tasks linked to this worktree</Text>
+						</Box>
+					) : (
+						<Box flexDirection="column">
+							{linkedTasks.map((task, index) => (
+								<Box
+									key={task.id}
+									backgroundColor={
+										index === selectedTaskIndex
+											? theme.backgroundHighlight
+											: undefined
 									}
+									paddingLeft={1}
+									paddingRight={1}
 								>
-									{task.parentId ? '└─ ' : '• '}
-								</Text>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
-									}
-								>
-									{task.parentId ? `${task.id}` : `${task.id}`}
-								</Text>
-								<Text color={theme.muted}> │ </Text>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
-									}
-								>
-									{task.title.length > 50
-										? task.title.substring(0, 50) + '...'
-										: task.title}
-								</Text>
-								{task.status === 'done' && (
-									<Text color={theme.success}> ✓</Text>
-								)}
-								{task.status === 'in-progress' && (
-									<Text color={theme.warning}> ⚡</Text>
-								)}
-							</Box>
-						))}
-					</Box>
-				)}
-
-				{/* Actions */}
-				<Box marginTop={2} gap={2}>
-					{linkedTasks.length > 0 && onNavigateToTask && (
-						<Text color={theme.muted}>[Enter] Open Task</Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{task.parentId ? '└─ ' : '• '}
+									</Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{task.parentId ? `${task.id}` : `${task.id}`}
+									</Text>
+									<Text color={theme.muted}> │ </Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{task.title.length > 50
+											? task.title.substring(0, 50) + '...'
+											: task.title}
+									</Text>
+									{task.status === 'done' && (
+										<Text color={theme.success}> ✓</Text>
+									)}
+									{task.status === 'in-progress' && (
+										<Text color={theme.warning}> ⚡</Text>
+									)}
+								</Box>
+							))}
+						</Box>
 					)}
-					<Text color={theme.muted}>[↑↓] Navigate</Text>
-					<Text color={theme.muted}>[Esc] Back to Details</Text>
 				</Box>
-			</Box>
+			</BaseModal>
 		);
 	}
 
 	// Jump to task view
 	if (viewMode === 'jump') {
 		return (
-			<Box
-				flexDirection="column"
-				borderStyle="round"
-				borderColor={theme.border}
-				padding={1}
-				width={80}
-			>
-				{/* Header */}
-				<Box marginBottom={1}>
-					<Text bold color={theme.primary}>
-						Jump to Task: {worktree.name}
-					</Text>
-				</Box>
-
-				{/* Task List for jumping */}
-				{linkedTasks.length === 0 ? (
-					<Box paddingLeft={2}>
-						<Text color={theme.muted}>No tasks linked to this worktree</Text>
-					</Box>
-				) : (
-					<Box flexDirection="column">
-						{linkedTasks.map((task, index) => (
-							<Box
-								key={task.id}
-								backgroundColor={
-									index === selectedTaskIndex
-										? theme.backgroundHighlight
-										: undefined
-								}
-								paddingLeft={1}
-								paddingRight={1}
-							>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
+			<BaseModal {...getModalProps()}>
+				<Box flexDirection="column">
+					{/* Task List for jumping */}
+					{linkedTasks.length === 0 ? (
+						<Box paddingLeft={2}>
+							<Text color={theme.muted}>No tasks linked to this worktree</Text>
+						</Box>
+					) : (
+						<Box flexDirection="column">
+							{linkedTasks.map((task, index) => (
+								<Box
+									key={task.id}
+									backgroundColor={
+										index === selectedTaskIndex
+											? theme.backgroundHighlight
+											: undefined
 									}
+									paddingLeft={1}
+									paddingRight={1}
 								>
-									{index === selectedTaskIndex ? '▸ ' : '  '}
-								</Text>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
-									}
-								>
-									{task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`}
-								</Text>
-								<Text color={theme.muted}> - </Text>
-								<Text
-									color={
-										index === selectedTaskIndex ? theme.accent : theme.text
-									}
-								>
-									{task.title}
-								</Text>
-							</Box>
-						))}
-					</Box>
-				)}
-
-				{/* Actions */}
-				<Box marginTop={2} gap={2}>
-					{linkedTasks.length > 0 && (
-						<Text color={theme.muted}>[Enter] Jump to Task</Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{index === selectedTaskIndex ? '▸ ' : '  '}
+									</Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`}
+									</Text>
+									<Text color={theme.muted}> - </Text>
+									<Text
+										color={
+											index === selectedTaskIndex ? theme.accent : theme.text
+										}
+									>
+										{task.title}
+									</Text>
+								</Box>
+							))}
+						</Box>
 					)}
-					<Text color={theme.muted}>[↑↓] Navigate</Text>
-					<Text color={theme.muted}>[Esc] Cancel</Text>
 				</Box>
-			</Box>
+			</BaseModal>
 		);
 	}
 
@@ -467,96 +505,64 @@ export default function WorktreeDetailsModal({
 		scrollOffset + VISIBLE_ROWS
 	);
 	const totalLines = detailContent.length;
-	const maxScroll = Math.max(0, totalLines - VISIBLE_ROWS);
 
 	// Main render (details view)
 	return (
-		<Box
-			flexDirection="column"
-			borderStyle="round"
-			borderColor={theme.border}
-			padding={1}
-			width={80}
-			height={VISIBLE_ROWS + 6} // Fixed height for scrolling
-		>
-			{/* Header */}
-			<Box marginBottom={1}>
-				<Text bold color={theme.primary}>
-					Worktree Details: {worktree.name}
-				</Text>
-			</Box>
+		<BaseModal {...getModalProps()}>
+			<Box flexDirection="column">
+				{/* Scrollable content */}
+				<Box flexDirection="column" height={VISIBLE_ROWS}>
+					{visibleContent.map((line, index) => {
+						const lineKey = `${line.type}-${scrollOffset + index}-${line.content?.substring(0, 20) || index}`;
 
-			{/* Scrollable content */}
-			<Box flexDirection="column" height={VISIBLE_ROWS}>
-				{visibleContent.map((line, index) => {
-					const lineKey = `${line.type}-${scrollOffset + index}-${line.content?.substring(0, 20) || index}`;
-
-					if (line.type === 'blank') {
-						return <Box key={lineKey} height={1} />;
-					} else if (line.type === 'header') {
-						return (
-							<Text key={lineKey} bold color={theme.primary}>
-								{line.content}
-							</Text>
-						);
-					} else if (line.type === 'task') {
-						return (
-							<Text
-								key={lineKey}
-								color={line.status === 'done' ? theme.success : theme.text}
-							>
-								{line.content}
-							</Text>
-						);
-					} else {
-						return (
-							<Text
-								key={lineKey}
-								color={line.color || theme.text}
-								dimColor={line.dimColor}
-							>
-								{line.content}
-							</Text>
-						);
-					}
-				})}
-			</Box>
-
-			{/* Scroll indicator */}
-			{totalLines > VISIBLE_ROWS && (
-				<Box marginTop={1}>
-					<Text color={theme.muted}>
-						Lines {scrollOffset + 1}-
-						{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
-					</Text>
+						if (line.type === 'blank') {
+							return <Box key={lineKey} height={1} />;
+						} else if (line.type === 'header') {
+							return (
+								<Text key={lineKey} bold color={theme.primary}>
+									{line.content}
+								</Text>
+							);
+						} else if (line.type === 'task') {
+							return (
+								<Text
+									key={lineKey}
+									color={line.status === 'done' ? theme.success : theme.text}
+								>
+									{line.content}
+								</Text>
+							);
+						} else {
+							return (
+								<Text
+									key={lineKey}
+									color={line.color || theme.text}
+									dimColor={line.dimColor}
+								>
+									{line.content}
+								</Text>
+							);
+						}
+					})}
 				</Box>
-			)}
 
-			{/* Actions */}
-			<Box marginTop={1} gap={2}>
+				{/* Scroll indicator */}
 				{totalLines > VISIBLE_ROWS && (
-					<Text color={theme.muted}>[↑↓] Scroll</Text>
+					<Box marginTop={1}>
+						<Text color={theme.muted}>
+							Lines {scrollOffset + 1}-
+							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
+						</Text>
+					</Box>
 				)}
-				{linkedTasks.length > 0 && onNavigateToTask && (
-					<>
-						<Text color={theme.muted}>[v] View Tasks</Text>
-						<Text color={theme.muted}>[j] Jump to Task</Text>
-					</>
-				)}
-				<Text color={theme.muted}>[l] Link/Manage Tasks</Text>
-				{linkedTasks.length > 0 && (
-					<Text color={theme.muted}>[c] Launch Claude</Text>
-				)}
-				{!worktree.isCurrent && <Text color={theme.muted}>[d] Delete</Text>}
-				<Text color={theme.muted}>[Esc] Close</Text>
-			</Box>
 
-			{/* Error Message */}
-			{error && (
-				<Box marginTop={1}>
-					<Text color="red">✗ {error}</Text>
-				</Box>
-			)}
-		</Box>
+				{/* Error Message */}
+				{error && (
+					<Box marginTop={1}>
+						<Text color="red">✗ {error}</Text>
+					</Box>
+				)}
+			</Box>
+		</BaseModal>
 	);
 }

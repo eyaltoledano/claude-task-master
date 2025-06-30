@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { getTheme } from '../theme.js';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 import { personaDefinitions } from '../personas/persona-definitions.js';
 
 // Persona icons for visual identification
@@ -25,7 +27,8 @@ export function ClaudeWorktreeLauncherModal({
 	onClose,
 	onSuccess
 }) {
-	const theme = getTheme();
+	const { theme } = useComponentTheme('modal');
+	
 	// Always select the task automatically for single task scenarios
 	const [selectedTasks] = useState(() => {
 		// For subtasks, we always process just the one
@@ -146,160 +149,282 @@ export function ClaudeWorktreeLauncherModal({
 		detectPersonasForSelectedTasks
 	]);
 
-	useInput((input, key) => {
-		if (key.escape) {
-			onClose();
-			return;
+	// Dynamic modal props based on current view
+	const getModalProps = () => {
+		const baseProps = {
+			width: 100,
+			height: 'auto',
+			onClose
+		};
+
+		switch (view) {
+			case 'persona':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Select Persona',
+					preset: 'info',
+					keyboardHints: isDetectingPersonas 
+						? ['ESC cancel']
+						: ['↑↓ navigate', 'ENTER accept', 'TAB next', '1-9 quick select', 'p manual', 'n none', 'ESC cancel']
+				};
+			case 'options':
+				return {
+					...baseProps,
+					title: `🚀 Claude Code: Configure Session`,
+					preset: 'default',
+					keyboardHints: ['1-3 toggle restrictions', '+/- adjust turns', 'ENTER continue', 'BACKSPACE back', 'ESC cancel']
+				};
+			case 'prompt':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Enter Instructions',
+					preset: 'default',
+					keyboardHints: ['ENTER launch', 'BACKSPACE back', 'ESC cancel']
+				};
+			case 'research':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Preparing Research',
+					preset: 'info',
+					keyboardHints: ['ESC cancel']
+				};
+			case 'processing':
+				return {
+					...baseProps,
+					title: `🚀 Claude Code: Processing`,
+					preset: 'default',
+					keyboardHints: processingLines.length > viewportHeight 
+						? ['↑↓/j/k scroll', 'PgUp/PgDn page', 'Home/End jump', 'ESC cancel']
+						: ['ESC cancel']
+				};
+			case 'summary':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Task Complete',
+					preset: 'success',
+					keyboardHints: showFullConversation 
+						? ['v hide conversation', 'p toggle PR', 'ENTER done', '↑↓ scroll', 'H/E home/end', 'ESC cancel']
+						: ['v show conversation', 'p toggle PR', 'ENTER done', 'r resume', 'ESC cancel']
+				};
+			default:
+				return {
+					...baseProps,
+					title: '🚀 Claude Code',
+					preset: 'default',
+					keyboardHints: ['ESC cancel']
+				};
 		}
+	};
+
+	const keyHandlers = {
+		escape: onClose,
 
 		// Handle scrolling in processing view
-		if (view === 'processing' && processingLines.length > viewportHeight) {
-			if (key.upArrow || input === 'k') {
+		up: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
-				return;
+			} else if (view === 'persona') {
+				setPersonaSelectionIndex(Math.max(0, personaSelectionIndex - 1));
+			} else if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset((prev) => Math.max(0, prev - 1));
 			}
-			if (key.downArrow || input === 'j') {
+		},
+
+		down: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
 				setScrollOffset((prev) => 
 					Math.min(prev + 1, Math.max(0, processingLines.length - viewportHeight))
 				);
-				return;
-			}
-			if (key.pageUp) {
-				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
-				return;
-			}
-			if (key.pageDown) {
-				setScrollOffset((prev) => 
-					Math.min(prev + viewportHeight, Math.max(0, processingLines.length - viewportHeight))
-				);
-				return;
-			}
-			if (input === 'g' || key.home) {
-				setScrollOffset(0);
-				return;
-			}
-			if (input === 'G' || key.end) {
-				setScrollOffset(Math.max(0, processingLines.length - viewportHeight));
-				return;
-			}
-		}
-
-		if (view === 'persona') {
-			if (key.upArrow) {
-				setPersonaSelectionIndex(Math.max(0, personaSelectionIndex - 1));
-			} else if (key.downArrow) {
+			} else if (view === 'persona') {
 				setPersonaSelectionIndex(
 					Math.min(detectedPersonas.length - 1, personaSelectionIndex + 1)
 				);
-			} else if (key.return) {
+			} else if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 1));
+			}
+		},
+
+		// Vim-style navigation
+		j: () => {
+			if (view === 'processing') {
+				keyHandlers.down();
+			}
+		},
+
+		k: () => {
+			if (view === 'processing') {
+				keyHandlers.up();
+			}
+		},
+
+		// Page navigation
+		pageUp: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
+				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
+			} else if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset((prev) => Math.max(0, prev - 10));
+			}
+		},
+
+		pageDown: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
+				setScrollOffset((prev) => 
+					Math.min(prev + viewportHeight, Math.max(0, processingLines.length - viewportHeight))
+				);
+			} else if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 10));
+			}
+		},
+
+		home: () => {
+			if (view === 'processing') {
+				setScrollOffset(0);
+			}
+		},
+
+		end: () => {
+			if (view === 'processing') {
+				setScrollOffset(Math.max(0, processingLines.length - viewportHeight));
+			}
+		},
+
+		// View-specific actions
+		return: () => {
+			if (view === 'persona') {
 				setSelectedPersona(
 					detectedPersonas[personaSelectionIndex]?.persona || 'architect'
 				);
 				setView('options');
-			} else if (key.tab && detectedPersonas.length > 1) {
-				// Cycle through detected personas
+			} else if (view === 'options') {
+				setView('prompt');
+			} else if (view === 'prompt') {
+				handleLaunch();
+			} else if (view === 'summary') {
+				handleComplete();
+			}
+		},
+
+		backspace: () => {
+			if (view === 'options') {
+				setView('persona');
+			} else if (view === 'prompt' && headlessPrompt === '') {
+				setView('options');
+			}
+		},
+
+		// Persona view specific
+		tab: () => {
+			if (view === 'persona' && detectedPersonas.length > 1) {
 				const nextIndex = (personaSelectionIndex + 1) % detectedPersonas.length;
 				setPersonaSelectionIndex(nextIndex);
-			} else if (input >= '1' && input <= '9') {
-				// Quick select by number
-				const index = parseInt(input) - 1;
-				const personaIds = Object.keys(personaDefinitions);
-				if (index < personaIds.length) {
-					setSelectedPersona(personaIds[index]);
-					setView('options');
-				}
-			} else if (input === 'p') {
-				// Manual persona selection
+			}
+		},
+
+		// Number keys for quick selection
+		'1': () => handleNumberKey('1'),
+		'2': () => handleNumberKey('2'),
+		'3': () => handleNumberKey('3'),
+		'4': () => handleNumberKey('4'),
+		'5': () => handleNumberKey('5'),
+		'6': () => handleNumberKey('6'),
+		'7': () => handleNumberKey('7'),
+		'8': () => handleNumberKey('8'),
+		'9': () => handleNumberKey('9'),
+
+		// Letter keys
+		p: () => {
+			if (view === 'persona') {
 				setView('manual-persona');
-			} else if (input === 'n') {
-				// No persona
+			} else if (view === 'summary') {
+				setShouldCreatePR(!shouldCreatePR);
+			}
+		},
+
+		n: () => {
+			if (view === 'persona') {
 				setSelectedPersona(null);
 				setView('options');
 			}
+		},
+
+		v: () => {
+			if (view === 'summary') {
+				setShowFullConversation(!showFullConversation);
+				setConversationScrollOffset(0);
+			}
+		},
+
+		r: () => {
+			if (view === 'summary') {
+				handleResume();
+			}
+		},
+
+		// Options view specific
+		'+': () => {
+			if (view === 'options') {
+				setMaxTurns((prev) => Math.min(30, prev + 5));
+			}
+		},
+
+		'-': () => {
+			if (view === 'options') {
+				setMaxTurns((prev) => Math.max(5, prev - 5));
+			}
+		},
+
+		// Summary view specific
+		h: () => {
+			if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset(0);
+			}
+		},
+
+		e: () => {
+			if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset(maxOffset);
+			}
+		}
+	};
+
+	const handleNumberKey = (number) => {
+		if (view === 'persona') {
+			const index = parseInt(number) - 1;
+			const personaIds = Object.keys(personaDefinitions);
+			if (index < personaIds.length) {
+				setSelectedPersona(personaIds[index]);
+				setView('options');
+			}
 		} else if (view === 'options') {
-			if (input === '1') {
-				// Toggle shell commands
+			if (number === '1') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowShellCommands: !prev.allowShellCommands
 				}));
-			} else if (input === '2') {
-				// Toggle file operations
+			} else if (number === '2') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowFileOperations: !prev.allowFileOperations
 				}));
-			} else if (input === '3') {
-				// Toggle web search
+			} else if (number === '3') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowWebSearch: !prev.allowWebSearch
 				}));
-			} else if (input === '+') {
-				// Increase max turns
-				setMaxTurns((prev) => Math.min(30, prev + 5));
-			} else if (input === '-') {
-				// Decrease max turns
-				setMaxTurns((prev) => Math.max(5, prev - 5));
-			} else if (key.return) {
-				// Continue to prompt
-				setView('prompt');
-			} else if (key.backspace) {
-				// Go back to persona selection
-				setView('persona');
-			}
-		} else if (view === 'prompt') {
-			if (key.return && !key.shift) {
-				// Launch on Enter (without shift)
-				handleLaunch();
-			} else if (key.backspace && headlessPrompt === '') {
-				// Go back to options if prompt is empty
-				setView('options');
-			}
-		} else if (view === 'summary') {
-			if (input === 'v') {
-				// Toggle full conversation view
-				setShowFullConversation(!showFullConversation);
-				// Reset scroll when toggling
-				setConversationScrollOffset(0);
-			} else if (input === 'r') {
-				// Retry/Resume if interrupted
-				handleResume();
-			} else if (input === 'p') {
-				// Toggle PR creation
-				setShouldCreatePR(!shouldCreatePR);
-			} else if (key.return) {
-				// Complete and close, create PR if requested
-				handleComplete();
-			} else if (showFullConversation) {
-				// Scroll controls when conversation is shown
-				if (key.upArrow) {
-					setConversationScrollOffset((prev) => Math.max(0, prev - 1));
-				} else if (key.downArrow) {
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12; // Height minus headers
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 1));
-				} else if (key.pageUp) {
-					setConversationScrollOffset((prev) => Math.max(0, prev - 10));
-				} else if (key.pageDown) {
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12; // Height minus headers
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 10));
-				} else if (input === 'h' || input === 'H') {
-					// Home - go to top
-					setConversationScrollOffset(0);
-				} else if (input === 'e' || input === 'E') {
-					// End - go to bottom
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12;
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset(maxOffset);
-				}
 			}
 		}
-	});
+	};
+
+	useKeypress(keyHandlers);
 
 	const handleLaunch = async () => {
 		setIsProcessing(true);
@@ -498,63 +623,11 @@ export function ClaudeWorktreeLauncherModal({
 			);
 
 			if (result.success) {
-				// Calculate detailed statistics
-				const turnCount =
-					result.messages?.filter((m) => m.type === 'assistant').length || 0;
-				const fileChanges =
-					result.messages?.filter(
-						(m) =>
-							m.type === 'tool_use' &&
-							['create_file', 'edit_file'].includes(m.name)
-					).length || 0;
-				const tokenCounts = result.tokenCounts || {};
-
-				// Store the result for the summary view
-				const sessionData = {
-					mode: 'headless',
-					worktree: actualWorktree.name, // Use the actual worktree
-					worktreePath: actualWorktree.path,
-					branch: actualWorktree.branch || actualWorktree.name,
-					sourceBranch: actualWorktree.sourceBranch || 'main',
-					tasks: selectedTaskObjects.map((t) => ({
-						id: t.id,
-						title: t.title,
-						description: t.description
-					})),
-					persona: result.persona || selectedPersona,
-					output: result.output,
-					sessionId: result.sessionId,
-					totalCost: result.totalCost,
-					duration: result.duration,
-					messages: result.messages,
-					message: `Processed ${result.tasksProcessed} task(s) in ${actualWorktree.name}`,
-					statistics: {
-						turns: turnCount,
-						maxTurns: maxTurns,
-						fileChanges: fileChanges,
-						totalCost: result.totalCost || 0,
-						duration: result.duration || 0,
-						durationSeconds: Math.round((result.duration || 0) / 1000),
-						tokenCounts: tokenCounts,
-						toolRestrictions: toolRestrictions,
-						completedAt: new Date().toISOString()
-					}
-				};
-
-				setSessionResult(sessionData);
-
-				// Save session data to file
-				try {
-					await backend.saveClaudeSessionData(sessionData);
-				} catch (saveError) {
-					console.error('Failed to save Claude session data:', saveError);
-					// Don't block the UI flow, just log the error
-				}
-
-				// Switch to summary view
+				setSessionResult(result);
 				setView('summary');
 			} else {
-				throw new Error(result.error || 'Claude headless execution failed');
+				setError(result.error || 'Failed to complete task');
+				setView('persona');
 			}
 		} catch (err) {
 			setError(err.message);
@@ -568,87 +641,35 @@ export function ClaudeWorktreeLauncherModal({
 		if (!sessionResult?.sessionId) return;
 
 		setIsProcessing(true);
-		setView('processing');
 		setError(null);
+		setView('processing');
 
 		try {
-			// Resume the session with additional instructions
-			const result = await backend.claudeCodeResume(
-				sessionResult.sessionId,
-				'Continue with the task implementation',
-				{
-					maxTurns: maxTurns,
-					permissionMode: 'acceptEdits',
-					captureOutput: true
+			const result = await backend.resumeClaudeSession(sessionResult.sessionId, {
+				maxTurns: maxTurns,
+				onProgress: (output) => {
+					if (typeof output === 'string') {
+						setProcessingLines((prev) => [...prev, output]);
+						setProcessingLog(output.trim());
+					}
 				}
-			);
+			});
 
 			if (result.success) {
-				// Update session result
-				const updatedSessionData = {
-					...sessionResult,
-					...result,
-					messages: [
-						...(sessionResult.messages || []),
-						...(result.messages || [])
-					],
-					statistics: {
-						...sessionResult.statistics,
-						turns:
-							(sessionResult.statistics?.turns || 0) +
-							(result.messages?.filter((m) => m.type === 'assistant').length ||
-								0),
-						fileChanges:
-							(sessionResult.statistics?.fileChanges || 0) +
-							(result.messages?.filter(
-								(m) =>
-									m.type === 'tool_use' &&
-									['create_file', 'edit_file'].includes(m.name)
-							).length || 0),
-						totalCost:
-							(sessionResult.statistics?.totalCost || 0) +
-							(result.totalCost || 0),
-						duration:
-							(sessionResult.statistics?.duration || 0) +
-							(result.duration || 0),
-						durationSeconds: Math.round(
-							((sessionResult.statistics?.duration || 0) +
-								(result.duration || 0)) /
-								1000
-						),
-						lastResumedAt: new Date().toISOString()
-					}
-				};
-
-				setSessionResult(updatedSessionData);
-
-				// Save updated session data
-				try {
-					await backend.saveClaudeSessionData(updatedSessionData);
-				} catch (saveError) {
-					console.error(
-						'Failed to save updated Claude session data:',
-						saveError
-					);
-				}
-
+				setSessionResult(result);
 				setView('summary');
 			} else {
-				throw new Error(result.error || 'Failed to resume session');
+				setError(result.error || 'Failed to resume session');
 			}
 		} catch (err) {
 			setError(err.message);
-			setView('summary');
 		} finally {
 			setIsProcessing(false);
 		}
 	};
 
 	const handleComplete = async () => {
-		const actualWorktree = worktree || (sessionResult ? { name: sessionResult.worktree } : null);
-		
-		if (shouldCreatePR && actualWorktree) {
-			// Create PR using WorktreeManager
+		if (shouldCreatePR && sessionResult) {
 			try {
 				const task = tasks[0]; // Get the first (usually only) task
 				const prDescription = `Implemented by Claude Code\n\nStatistics:\n- Turns: ${sessionResult.statistics?.turns || 0}/${sessionResult.statistics?.maxTurns || 0}\n- File Changes: ${sessionResult.statistics?.fileChanges || 0}\n- Duration: ${sessionResult.statistics?.durationSeconds || 0}s\n- Cost: $${(sessionResult.statistics?.totalCost || 0).toFixed(4)}`;
@@ -669,10 +690,6 @@ export function ClaudeWorktreeLauncherModal({
 	// Render functions for different views
 	const renderPersonaSelection = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Select Persona
-			</Text>
-
 			{isDetectingPersonas ? (
 				<Box marginTop={1}>
 					<LoadingSpinner />
@@ -707,15 +724,6 @@ export function ClaudeWorktreeLauncherModal({
 							})}
 						</Box>
 					)}
-
-					<Box marginTop={2} flexDirection="column">
-						<Text dimColor>
-							[↑↓] Navigate [Enter] Accept [Tab] Next suggestion
-						</Text>
-						<Text dimColor>
-							[1-9] Quick select [p] Choose manually [n] No persona
-						</Text>
-					</Box>
 				</>
 			)}
 		</Box>
@@ -723,9 +731,6 @@ export function ClaudeWorktreeLauncherModal({
 
 	const renderPromptInput = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Enter Instructions for Claude
-			</Text>
 			<Text color={theme.secondary}>
 				Persona: {personaIcons[selectedPersona]}{' '}
 				{personaDefinitions[selectedPersona]?.identity.split('|')[0] || 'None'}
@@ -737,9 +742,6 @@ export function ClaudeWorktreeLauncherModal({
 					placeholder="Additional instructions for task implementation..."
 					onSubmit={() => handleLaunch()}
 				/>
-			</Box>
-			<Box marginTop={1}>
-				<Text dimColor>[Enter] to launch, [Esc] to cancel</Text>
 			</Box>
 		</Box>
 	);
@@ -757,12 +759,6 @@ export function ClaudeWorktreeLauncherModal({
 
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Box marginBottom={1}>
-					<Text bold color={theme.primary}>
-						🔍 Preparing Research for Task Implementation
-					</Text>
-				</Box>
-
 				{taskInfo && (
 					<Box marginBottom={1} flexDirection="column">
 						<Text color={theme.secondary}>
@@ -900,9 +896,6 @@ export function ClaudeWorktreeLauncherModal({
 
 	const renderOptions = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Configure Claude Session
-			</Text>
 			<Text color={theme.secondary}>
 				Persona: {personaIcons[selectedPersona]}{' '}
 				{personaDefinitions[selectedPersona]?.identity.split('|')[0] || 'None'}
@@ -944,11 +937,6 @@ export function ClaudeWorktreeLauncherModal({
 				<Text color={theme.text}>
 					Max Turns: {maxTurns} (use +/- to adjust)
 				</Text>
-			</Box>
-
-			<Box marginTop={2}>
-				<Text dimColor>[1-3] Toggle restrictions [+/-] Adjust turns</Text>
-				<Text dimColor>[Enter] Continue [Backspace] Back</Text>
 			</Box>
 		</Box>
 	);
@@ -1090,47 +1078,18 @@ export function ClaudeWorktreeLauncherModal({
 									);
 								})}
 						</Box>
-						{sessionResult.messages?.length > 12 && (
-							<Box marginTop={1}>
-								<Text dimColor>
-									[↑↓] Scroll line [PgUp/PgDn] Scroll page [H]ome [E]nd
-								</Text>
-							</Box>
-						)}
 					</Box>
 				) : (
 					<Box marginTop={2}>
 						<Text dimColor>{sessionResult.message}</Text>
 					</Box>
 				)}
-
-				<Box marginTop={2}>
-					<Text dimColor>
-						[v] {showFullConversation ? 'Hide' : 'Show'} full conversation
-						{sessionResult.sessionId && ' [r] Resume/Retry'} [p] Toggle PR
-						[Enter] {shouldCreatePR ? 'Done & Create PR' : 'Done'}
-					</Text>
-				</Box>
 			</Box>
 		);
 	};
 
 	return (
-		<Box
-			flexDirection="column"
-			width={100}
-			borderStyle="round"
-			borderColor={theme.border}
-			paddingX={1}
-			paddingY={0}
-		>
-			<Box marginBottom={0} flexDirection="row" justifyContent="space-between" alignItems="center">
-				<Text bold color={theme.highlight}>
-					🚀 Claude Code: {worktree?.name || sessionResult?.worktree || 'Setting up...'}
-				</Text>
-				{view === 'processing' && <Text color={theme.muted}>Headless Mode</Text>}
-			</Box>
-
+		<BaseModal {...getModalProps()}>
 			{error && (
 				<Box marginBottom={1}>
 					<Text color={theme.error}>❌ {error}</Text>
@@ -1145,6 +1104,6 @@ export function ClaudeWorktreeLauncherModal({
 				{view === 'options' && renderOptions()}
 				{view === 'summary' && renderSummary()}
 			</Box>
-		</Box>
+		</BaseModal>
 	);
 }

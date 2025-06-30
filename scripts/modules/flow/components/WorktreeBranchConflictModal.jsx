@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
-import { theme } from '../theme.js';
+import { Box, Text } from 'ink';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 
 /**
  * Modal to handle branch conflicts when creating worktrees
@@ -17,6 +19,7 @@ export function WorktreeBranchConflictModal({
 	onClose
 }) {
 	const [selectedOption, setSelectedOption] = useState(0);
+	const theme = useComponentTheme('modal');
 
 	const options = [
 		{
@@ -37,81 +40,85 @@ export function WorktreeBranchConflictModal({
 		}
 	];
 
-	useInput((input, key) => {
-		if (key.escape) {
-			onClose();
-		} else if (key.upArrow) {
+	const keyHandlers = {
+		escape: onClose,
+		
+		up: () => {
 			setSelectedOption((prev) => (prev > 0 ? prev - 1 : options.length - 1));
-		} else if (key.downArrow) {
+		},
+		
+		down: () => {
 			setSelectedOption((prev) => (prev < options.length - 1 ? prev + 1 : 0));
-		} else if (key.return) {
+		},
+
+		// Vim-style navigation
+		j: () => keyHandlers.down(),
+		k: () => keyHandlers.up(),
+		
+		return: () => {
 			onDecision(options[selectedOption].key);
-		} else if (input >= '1' && input <= '3') {
-			const index = parseInt(input) - 1;
-			if (index < options.length) {
-				onDecision(options[index].key);
-			}
-		}
-	});
+		},
+
+		// Quick select by number
+		1: () => onDecision(options[0].key),
+		2: () => onDecision(options[1].key),
+		3: () => onDecision(options[2].key)
+	};
+
+	useKeypress(keyHandlers);
+
+	const modalProps = {
+		title: '⚠️ Branch Already Exists',
+		preset: 'warning',
+		width: 80,
+		height: 15,
+		keyboardHints: ['↑↓ navigate', 'j/k vim nav', '1-3 quick select', 'ENTER confirm', 'ESC cancel']
+	};
 
 	return (
-		<Box
-			flexDirection="column"
-			width={80}
-			minHeight={15}
-			borderStyle="round"
-			borderColor={theme.warning}
-			paddingX={2}
-			paddingY={1}
-		>
-			<Box marginBottom={1} flexDirection="column" alignItems="center">
-				<Text bold color={theme.warning}>
-					⚠️ Branch Already Exists
-				</Text>
-				<Text color={theme.text}>Branch: {branchName}</Text>
-				{branchInUseAt && (
-					<Text color={theme.muted} fontSize={12}>
-						Currently in use at: {branchInUseAt}
+		<BaseModal {...modalProps}>
+			<Box flexDirection="column">
+				{/* Branch info */}
+				<Box marginBottom={1} flexDirection="column" alignItems="center">
+					<Text color={theme.text}>Branch: {branchName}</Text>
+					{branchInUseAt && (
+						<Text color={theme.muted} fontSize={12}>
+							Currently in use at: {branchInUseAt}
+						</Text>
+					)}
+				</Box>
+
+				{/* Description */}
+				<Box flexDirection="column" marginBottom={1}>
+					<Text color={theme.text}>
+						A branch named "{branchName}" already exists. What would you like to
+						do?
 					</Text>
-				)}
-			</Box>
+				</Box>
 
-			<Box marginBottom={1} borderStyle="single" borderColor={theme.border} />
+				{/* Options */}
+				<Box flexDirection="column" marginBottom={2}>
+					{options.map((option, index) => {
+						const isSelected = index === selectedOption;
+						const number = index + 1;
 
-			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.text}>
-					A branch named "{branchName}" already exists. What would you like to
-					do?
-				</Text>
-			</Box>
-
-			<Box flexDirection="column" marginBottom={2}>
-				{options.map((option, index) => {
-					const isSelected = index === selectedOption;
-					const number = index + 1;
-
-					return (
-						<Box key={option.key} marginBottom={1} flexDirection="column">
-							<Box>
-								<Text color={isSelected ? theme.primary : theme.text}>
-									{isSelected ? '▶ ' : '  '}[{number}] {option.label}
-								</Text>
+						return (
+							<Box key={option.key} marginBottom={1} flexDirection="column">
+								<Box>
+									<Text color={isSelected ? theme.primary : theme.text}>
+										{isSelected ? '▶ ' : '  '}[{number}] {option.label}
+									</Text>
+								</Box>
+								<Box marginLeft={5}>
+									<Text color={theme.muted} dimColor={!isSelected} wrap="wrap">
+										{option.description}
+									</Text>
+								</Box>
 							</Box>
-							<Box marginLeft={5}>
-								<Text color={theme.muted} dimColor={!isSelected} wrap="wrap">
-									{option.description}
-								</Text>
-							</Box>
-						</Box>
-					);
-				})}
+						);
+					})}
+				</Box>
 			</Box>
-
-			<Box marginTop={1}>
-				<Text dimColor>
-					[↑↓] Navigate [1-3] Quick select [Enter] Confirm [Esc] Cancel
-				</Text>
-			</Box>
-		</Box>
+		</BaseModal>
 	);
 }

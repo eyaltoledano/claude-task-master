@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
 import TextInput from 'ink-text-input';
-import { theme } from '../theme.js';
+import { BaseModal } from './BaseModal.jsx';
+import { useComponentTheme } from '../hooks/useTheme.js';
 
 export function ExpandModal({
 	onSelect,
@@ -11,6 +12,7 @@ export function ExpandModal({
 	fromComplexityReport = false,
 	hasExistingSubtasks = false
 }) {
+	const { theme } = useComponentTheme('modal');
 	const [step, setStep] = useState(
 		hasExistingSubtasks ? 'confirm' : 'research'
 	); // 'confirm', 'research', or 'number'
@@ -73,89 +75,104 @@ export function ExpandModal({
 		}
 	};
 
-	const handleNumberKeyPress = (key, isEscapeKey) => {
-		if (isEscapeKey || key === 'escape') {
-			onClose();
+	// Get modal properties based on current step
+	const getModalProps = () => {
+		switch (step) {
+			case 'confirm':
+				return {
+					title: '⚠️ Warning: This task already has subtasks',
+					preset: 'warning'
+				};
+			case 'research':
+				return {
+					title: 'Expand Task Options',
+					preset: 'info'
+				};
+			case 'number':
+				return {
+					title: 'Number of Subtasks',
+					preset: 'default'
+				};
+			default:
+				return {
+					title: 'Expand Task',
+					preset: 'default'
+				};
 		}
 	};
 
-	if (step === 'confirm') {
-		return (
-			<Box
-				borderStyle="round"
-				borderColor={theme.warning}
-				padding={1}
-				flexDirection="column"
-			>
-				<Text color={theme.warning} bold>
-					⚠️ Warning: This task already has subtasks
-				</Text>
-				<Text color={theme.text} marginTop={1}>
-					Expanding will replace all existing subtasks.
-				</Text>
-				<Text color={theme.text}>Do you want to continue?</Text>
-				<Box marginTop={1}>
+	const modalProps = getModalProps();
+
+	// Render step content
+	const renderStepContent = () => {
+		if (step === 'confirm') {
+			return (
+				<Box flexDirection="column">
+					<Box marginBottom={2}>
+						<Text color={theme.text}>
+							Expanding will replace all existing subtasks.
+						</Text>
+						<Text color={theme.text}>Do you want to continue?</Text>
+					</Box>
 					<SelectInput items={confirmItems} onSelect={handleConfirmSelect} />
 				</Box>
-			</Box>
-		);
-	}
+			);
+		}
 
-	if (step === 'research') {
-		return (
-			<Box
-				borderStyle="round"
-				borderColor={theme.accent}
-				padding={1}
-				flexDirection="column"
-			>
-				<Text color={theme.accent} bold>
-					Expand Task Options
-				</Text>
-				<Text color={theme.text} marginTop={1}>
-					Use research for better task breakdown?
-				</Text>
-				<Box marginTop={1}>
+		if (step === 'research') {
+			return (
+				<Box flexDirection="column">
+					<Box marginBottom={2}>
+						<Text color={theme.text}>
+							Use research for better task breakdown?
+						</Text>
+					</Box>
 					<SelectInput items={researchItems} onSelect={handleResearchSelect} />
+				</Box>
+			);
+		}
+
+		// Number input step
+		return (
+			<Box flexDirection="column">
+				<Box marginBottom={2}>
+					<Text color={theme.text}>
+						How many subtasks? (default: {defaultNum}
+						{fromComplexityReport
+							? ' ✓ from complexity analysis'
+							: ' - estimated'}
+						):
+					</Text>
+				</Box>
+				<Box marginBottom={2} alignItems="center">
+					<Text color={theme.text}>→ </Text>
+					<Box marginLeft={1} flexGrow={1}>
+						<TextInput
+							value={numSubtasks}
+							onChange={setNumSubtasks}
+							onSubmit={handleNumberSubmit}
+							placeholder={defaultNum.toString()}
+						/>
+					</Box>
+				</Box>
+				<Box justifyContent="center">
+					<Text color={theme.textDim}>
+						Press Enter to confirm or Escape to cancel
+					</Text>
 				</Box>
 			</Box>
 		);
-	}
+	};
 
-	// Number input step
 	return (
-		<Box
-			borderStyle="round"
-			borderColor={theme.accent}
-			padding={1}
-			flexDirection="column"
+		<BaseModal
+			title={modalProps.title}
+			onClose={onClose}
+			width="60%"
+			height="auto"
+			preset={modalProps.preset}
 		>
-			<Text color={theme.accent} bold>
-				Number of Subtasks
-			</Text>
-			<Box marginTop={1}>
-				<Text color={theme.text}>
-					How many subtasks? (default: {defaultNum}
-					{fromComplexityReport
-						? ' ✓ from complexity analysis'
-						: ' - estimated'}
-					):
-				</Text>
-			</Box>
-			<Box marginTop={1}>
-				<Text color={theme.text}>→ </Text>
-				<TextInput
-					value={numSubtasks}
-					onChange={setNumSubtasks}
-					onSubmit={handleNumberSubmit}
-					placeholder={defaultNum.toString()}
-				/>
-			</Box>
-			<Box marginTop={1}>
-				<Text color={theme.textDim}>
-					Press Enter to confirm or Escape to cancel
-				</Text>
-			</Box>
-		</Box>
+			{renderStepContent()}
+		</BaseModal>
 	);
 }

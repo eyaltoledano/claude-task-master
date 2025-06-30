@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
-import SelectInput from 'ink-select-input';
-import { getCurrentTheme } from '../theme.js';
+import { Box, Text } from 'ink';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 
 export function WorktreePromptModal({
 	taskTitle,
@@ -9,7 +10,7 @@ export function WorktreePromptModal({
 	onSelect,
 	onClose
 }) {
-	const theme = getCurrentTheme();
+	const { theme } = useComponentTheme('modal');
 	const [selectedOption, setSelectedOption] = useState(0);
 
 	const options = [
@@ -35,74 +36,75 @@ export function WorktreePromptModal({
 		}
 	];
 
-	useInput((input, key) => {
-		if (key.escape) {
-			onSelect('cancel');
-		} else if (key.return) {
-			onSelect(options[selectedOption].value);
-		} else if (key.downArrow) {
-			setSelectedOption((prev) => (prev + 1) % options.length);
-		} else if (key.upArrow) {
-			setSelectedOption((prev) => (prev - 1 + options.length) % options.length);
-		}
-	});
+	const handleSelect = () => {
+		onSelect(options[selectedOption].value);
+	};
+
+	const handleCancel = () => {
+		onSelect('cancel');
+	};
+
+	const handlers = {
+		escape: handleCancel,
+		return: handleSelect,
+		downArrow: () => setSelectedOption((prev) => (prev + 1) % options.length),
+		upArrow: () => setSelectedOption((prev) => (prev - 1 + options.length) % options.length),
+		j: () => setSelectedOption((prev) => (prev + 1) % options.length), // vim-style
+		k: () => setSelectedOption((prev) => (prev - 1 + options.length) % options.length) // vim-style
+	};
+
+	useKeypress(handlers);
 
 	return (
-		<Box
-			flexDirection="column"
-			borderStyle="round"
-			borderColor={theme.border}
-			paddingLeft={2}
-			paddingRight={2}
-			paddingTop={1}
-			paddingBottom={1}
-			width={60}
+		<BaseModal
+			title="No Worktree Found"
+			onClose={handleCancel}
+			width="60%"
+			height="auto"
+			preset="warning"
+			showCloseHint={false} // We'll show custom navigation hint
 		>
-			<Box marginBottom={1}>
-				<Text color={theme.accent} bold>
-					No Worktree Found
-				</Text>
-			</Box>
-
-			<Box marginBottom={1}>
-				<Text color={theme.text}>
-					Task "{taskTitle}" doesn't have an associated worktree.
-				</Text>
-				{subtaskTitle && (
-					<Text color={theme.textDim}>Subtask: {subtaskTitle}</Text>
-				)}
-			</Box>
-
-			<Box marginBottom={1}>
-				<Text color={theme.text}>How would you like to proceed?</Text>
-			</Box>
-
 			<Box flexDirection="column">
-				{options.map((option, index) => {
-					const isSelected = index === selectedOption;
-					return (
-						<Box key={option.value} marginBottom={0.5}>
-							<Box>
-								<Text color={isSelected ? theme.selectionText : theme.text}>
-									{isSelected ? '→ ' : '  '}
-									{option.label}
-								</Text>
-							</Box>
-							{isSelected && option.description && (
-								<Box marginLeft={4}>
-									<Text color={theme.textDim}>{option.description}</Text>
-								</Box>
-							)}
-						</Box>
-					);
-				})}
-			</Box>
+				<Box marginBottom={2}>
+					<Text color={theme.text}>
+						Task "{taskTitle}" doesn't have an associated worktree.
+					</Text>
+					{subtaskTitle && (
+						<Text color={theme.textDim}>Subtask: {subtaskTitle}</Text>
+					)}
+				</Box>
 
-			<Box marginTop={1}>
-				<Text color={theme.textDim}>
-					↑↓ navigate • Enter select • ESC cancel
-				</Text>
+				<Box marginBottom={2}>
+					<Text color={theme.text}>How would you like to proceed?</Text>
+				</Box>
+
+				<Box flexDirection="column" marginBottom={2}>
+					{options.map((option, index) => {
+						const isSelected = index === selectedOption;
+						return (
+							<Box key={option.value} marginBottom={0.5}>
+								<Box>
+									<Text color={isSelected ? theme.accent : theme.text}>
+										{isSelected ? '→ ' : '  '}
+										{option.label}
+									</Text>
+								</Box>
+								{isSelected && option.description && (
+									<Box marginLeft={4}>
+										<Text color={theme.textDim}>{option.description}</Text>
+									</Box>
+								)}
+							</Box>
+						);
+					})}
+				</Box>
+
+				<Box justifyContent="center">
+					<Text color={theme.textDim}>
+						↑↓ navigate • j/k vim • Enter select • ESC cancel
+					</Text>
+				</Box>
 			</Box>
-		</Box>
+		</BaseModal>
 	);
 }

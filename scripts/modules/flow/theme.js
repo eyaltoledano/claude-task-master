@@ -391,11 +391,17 @@ export const ComponentThemes = {
   
   modal: {
     overlay: 'background.overlay',
-    content: {
-      background: 'surface.primary',
-      border: 'border.primary',
-      shadow: 'rgba(0, 0, 0, 0.1)'
-    },
+    background: 'surface.primary',
+    border: 'border.primary',
+    text: 'text.primary',
+    textDim: 'text.secondary',
+    accent: 'accent',
+    shadow: 'rgba(0, 0, 0, 0.1)',
+    // Theme presets
+    error: 'state.error.primary',
+    warning: 'state.warning.primary',
+    info: 'state.info.primary',
+    success: 'state.success.primary',
     header: {
       background: 'surface.secondary',
       text: 'text.primary',

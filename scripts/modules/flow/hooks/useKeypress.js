@@ -54,6 +54,51 @@ export function useKeypress(handlers = {}, options = {}) {
       return;
     }
 
+    // Handle escape key
+    if (key.escape && currentHandlers.escape) {
+      currentHandlers.escape();
+      return;
+    }
+
+    // Handle arrow keys
+    if (key.upArrow && currentHandlers.upArrow) {
+      currentHandlers.upArrow();
+      return;
+    }
+
+    if (key.downArrow && currentHandlers.downArrow) {
+      currentHandlers.downArrow();
+      return;
+    }
+
+    if (key.leftArrow && currentHandlers.leftArrow) {
+      currentHandlers.leftArrow();
+      return;
+    }
+
+    if (key.rightArrow && currentHandlers.rightArrow) {
+      currentHandlers.rightArrow();
+      return;
+    }
+
+    // Handle return key
+    if (key.return && currentHandlers.return) {
+      currentHandlers.return();
+      return;
+    }
+
+    // Handle tab key
+    if (key.tab && currentHandlers.tab) {
+      currentHandlers.tab();
+      return;
+    }
+
+    // Handle specific character inputs
+    if (input && currentHandlers[input]) {
+      currentHandlers[input]();
+      return;
+    }
+
     // Fallback to default handler
     if (currentHandlers.default) {
       currentHandlers.default(input, key);

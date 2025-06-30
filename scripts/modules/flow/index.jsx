@@ -34,6 +34,7 @@ import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 
+
 // Create context for backend and app state
 const AppContext = createContext();
 
