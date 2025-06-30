@@ -636,82 +636,22 @@ export function TaskManagementScreen() {
 		if (!selectedTask || !selectedSubtask) return;
 
 		try {
-			// Check for existing worktrees for this subtask
+			// Check for existing worktrees for this subtask (but don't create)
 			const worktrees = await backend.getTaskWorktrees(
 				`${selectedTask.id}.${selectedSubtask.id}`
 			);
 
-			let worktreeToUse;
+			let worktreeToUse = null;
 
 			if (worktrees && worktrees.length > 0) {
-				// Use the first linked worktree
+				// Use the first linked worktree if it exists
 				worktreeToUse = worktrees[0];
-			} else {
-				// No linked worktree, create one automatically
-				setToast({
-					message: 'Creating worktree for subtask...',
-					type: 'info'
-				});
-
-				// Get the current branch to use as source
-				let sourceBranch = 'main'; // default fallback
-				try {
-					const { execSync } = await import('child_process');
-					sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-						cwd: backend.projectRoot,
-						encoding: 'utf8'
-					}).trim();
-				} catch (error) {
-					console.error('Failed to get current branch:', error);
-					// Try 'master' as a secondary fallback
-					sourceBranch = 'master';
-				}
-
-				// Get or create worktree
-				const result = await backend.getOrCreateWorktreeForSubtask(
-					selectedTask.id,
-					selectedSubtask.id,
-					{
-						sourceBranch,
-						subtaskTitle: selectedSubtask.title
-					}
-				);
-
-				// Check if we need user decision for branch conflict
-				if (result.needsUserDecision) {
-					// Store info for the modal
-					setBranchConflictInfo({
-						branchName: result.worktreeName,
-						branchInUseAt: result.branchInUseAt,
-						taskId: selectedTask.id,
-						subtaskId: selectedSubtask.id,
-						subtaskTitle: selectedSubtask.title,
-						sourceBranch
-					});
-					setShowBranchConflictModal(true);
-					return;
-				}
-
-				if (!result.exists && result.created) {
-					setToast({
-						message: `Created worktree: ${result.worktree.name}`,
-						type: 'success'
-					});
-				}
-
-				worktreeToUse = result.worktree;
-
-				// Update subtask worktrees state
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const updatedWorktrees = new Map(subtaskWorktrees);
-				updatedWorktrees.set(subtaskId, [result.worktree]);
-				setSubtaskWorktrees(updatedWorktrees);
 			}
 
-			// Set the worktree for Claude launcher
+			// Set the worktree (or null if none exists) for Claude launcher
 			setClaudeWorktree(worktreeToUse);
 
-			// Show the Claude launcher modal in its new streamlined form
+			// Show the Claude launcher modal - it will handle worktree creation if needed
 			setShowClaudeLauncherModal(true);
 		} catch (error) {
 			console.error('Failed to setup Claude session:', error);
@@ -1846,11 +1786,11 @@ Focus on: current industry standards, common pitfalls, security considerations
 		);
 
 		// If modal is open, render only the modal
-		if (showClaudeLauncherModal && claudeWorktree && modalTaskData) {
+		if (showClaudeLauncherModal && modalTaskData) {
 			return (
 				<ClaudeWorktreeLauncherModal
 					backend={backend}
-					worktree={claudeWorktree}
+					worktree={claudeWorktree} // Can be null - modal will handle worktree creation
 					tasks={modalTaskData}
 					onClose={() => {
 						setShowClaudeLauncherModal(false);
@@ -1971,11 +1911,11 @@ Focus on: current industry standards, common pitfalls, security considerations
 
 	// Render task list view
 	// If modal is open, render only the modal
-	if (showClaudeLauncherModal && claudeWorktree && modalTaskData) {
+	if (showClaudeLauncherModal && modalTaskData) {
 		return (
 			<ClaudeWorktreeLauncherModal
 				backend={backend}
-				worktree={claudeWorktree}
+				worktree={claudeWorktree} // Can be null - modal will handle worktree creation
 				tasks={modalTaskData}
 				onClose={() => {
 					setShowClaudeLauncherModal(false);

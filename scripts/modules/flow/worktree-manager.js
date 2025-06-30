@@ -165,6 +165,18 @@ export class WorktreeManager {
 			};
 		}
 
+		// Check if worktree directory already exists on disk (but not in our config)
+		if (fs.existsSync(worktreePath)) {
+			logger.info(`Worktree directory already exists at ${worktreePath}, cleaning up...`);
+			try {
+				// Try to remove the existing worktree directory
+				await fs.remove(worktreePath);
+			} catch (error) {
+				logger.error(`Failed to clean up existing worktree directory: ${error.message}`);
+				throw new Error(`Worktree directory already exists at ${worktreePath} and could not be cleaned up`);
+			}
+		}
+
 		// Create new worktree
 		const sourceBranch =
 			options.sourceBranch || this.config.config.defaultSourceBranch || 'main';
@@ -223,6 +235,26 @@ export class WorktreeManager {
 		// Ensure worktrees root exists
 		const worktreesRoot = path.dirname(worktreePath);
 		await fs.ensureDir(worktreesRoot);
+
+		// Check if worktree directory already exists and clean it up
+		if (fs.existsSync(worktreePath)) {
+			logger.info(`Worktree directory ${worktreePath} already exists, cleaning up...`);
+			try {
+				// Try to remove via git first
+				execSync(`git worktree remove --force "${worktreePath}"`, {
+					cwd: this.projectRoot,
+					stdio: 'pipe'
+				});
+			} catch (error) {
+				logger.debug('Git worktree remove failed, attempting manual cleanup');
+				try {
+					await fs.remove(worktreePath);
+				} catch (fsError) {
+					logger.error(`Failed to clean up existing worktree directory: ${fsError.message}`);
+					throw new Error(`Worktree directory already exists at ${worktreePath} and could not be cleaned up`);
+				}
+			}
+		}
 
 		// Simple creation - the calling method handles any cleanup if needed
 		try {

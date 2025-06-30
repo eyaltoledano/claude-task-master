@@ -312,60 +312,6 @@ export function ClaudeWorktreeLauncherModal({
 				selectedTasks.includes(t.id)
 			);
 
-			// Handle worktree creation if needed
-			let actualWorktree = worktree;
-			
-			if (!actualWorktree && selectedTaskObjects.length > 0) {
-				// No worktree exists, create one for the subtask
-				const task = selectedTaskObjects[0];
-				const [parentId, subtaskId] = task.id.split('.');
-				
-				setView('research'); // Show research view during worktree creation
-				setProcessingLog('Creating worktree for subtask...');
-
-				// Get the current branch to use as source
-				let sourceBranch = 'main'; // default fallback
-				try {
-					const { execSync } = await import('child_process');
-					sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-						cwd: backend.projectRoot,
-						encoding: 'utf8'
-					}).trim();
-				} catch (error) {
-					console.error('Failed to get current branch:', error);
-					// Try 'master' as a secondary fallback
-					sourceBranch = 'master';
-				}
-
-				// Create worktree
-				const result = await backend.getOrCreateWorktreeForSubtask(
-					parseInt(parentId),
-					parseInt(subtaskId),
-					{
-						sourceBranch,
-						subtaskTitle: task.title
-					}
-				);
-
-				// Check if we need user decision for branch conflict
-				if (result.needsUserDecision) {
-					setError(`Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`);
-					setView('persona');
-					return;
-				}
-
-				if (result.created) {
-					setProcessingLog(`Created worktree: ${result.worktree.name}`);
-				} else if (result.exists) {
-					setProcessingLog(`Using existing worktree: ${result.worktree.name}`);
-				}
-
-				actualWorktree = result.worktree;
-				
-				// Brief delay to show the worktree creation message
-				await new Promise(resolve => setTimeout(resolve, 1000));
-			}
-
 			// Check if tasks need research
 			let needsResearch = false;
 			for (const task of selectedTaskObjects) {
@@ -418,7 +364,7 @@ export function ClaudeWorktreeLauncherModal({
 
 			// Headless mode - run Claude with prompts in background
 			const result = await backend.launchClaudeHeadless(
-				actualWorktree, // Use the actual worktree (existing or newly created)
+				worktree,
 				selectedTaskObjects,
 				headlessPrompt,
 				{
@@ -512,10 +458,10 @@ export function ClaudeWorktreeLauncherModal({
 				// Store the result for the summary view
 				const sessionData = {
 					mode: 'headless',
-					worktree: actualWorktree.name, // Use the actual worktree
-					worktreePath: actualWorktree.path,
-					branch: actualWorktree.branch || actualWorktree.name,
-					sourceBranch: actualWorktree.sourceBranch || 'main',
+					worktree: worktree.name,
+					worktreePath: worktree.path,
+					branch: worktree.branch || worktree.name,
+					sourceBranch: worktree.sourceBranch || 'main',
 					tasks: selectedTaskObjects.map((t) => ({
 						id: t.id,
 						title: t.title,
@@ -527,7 +473,7 @@ export function ClaudeWorktreeLauncherModal({
 					totalCost: result.totalCost,
 					duration: result.duration,
 					messages: result.messages,
-					message: `Processed ${result.tasksProcessed} task(s) in ${actualWorktree.name}`,
+					message: `Processed ${result.tasksProcessed} task(s) in ${worktree.name}`,
 					statistics: {
 						turns: turnCount,
 						maxTurns: maxTurns,
@@ -645,15 +591,13 @@ export function ClaudeWorktreeLauncherModal({
 	};
 
 	const handleComplete = async () => {
-		const actualWorktree = worktree || (sessionResult ? { name: sessionResult.worktree } : null);
-		
-		if (shouldCreatePR && actualWorktree) {
+		if (shouldCreatePR && worktree) {
 			// Create PR using WorktreeManager
 			try {
 				const task = tasks[0]; // Get the first (usually only) task
 				const prDescription = `Implemented by Claude Code\n\nStatistics:\n- Turns: ${sessionResult.statistics?.turns || 0}/${sessionResult.statistics?.maxTurns || 0}\n- File Changes: ${sessionResult.statistics?.fileChanges || 0}\n- Duration: ${sessionResult.statistics?.durationSeconds || 0}s\n- Cost: $${(sessionResult.statistics?.totalCost || 0).toFixed(4)}`;
 
-				await backend.completeSubtaskWithPR(actualWorktree.name, {
+				await backend.completeSubtaskWithPR(worktree.name, {
 					createPR: true,
 					prTitle: `Task ${task.id}: ${task.title}`,
 					prDescription: prDescription
@@ -816,26 +760,24 @@ export function ClaudeWorktreeLauncherModal({
 		return (
 			<Box flexDirection="column" padding={0}>
 				{/* Compact Git Worktree Box */}
-				{(worktree || sessionResult?.worktree) && (
-					<Box
-						marginBottom={0}
-						flexDirection="column"
-						borderStyle="single"
-						borderColor={theme.border}
-						paddingX={1}
-						paddingY={0}
-					>
-						<Text bold color={theme.highlight}>
-							📁 Git Worktree: {worktree?.name || sessionResult?.worktree || 'Creating...'}
-						</Text>
-						<Text color={theme.secondary} fontSize={11}>
-							Branch: {worktree?.branch || worktree?.name || sessionResult?.branch || 'TBD'} • Source: {worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
-						</Text>
-						<Text color={theme.muted} fontSize={10}>
-							Path: {worktree?.path || sessionResult?.worktreePath || 'TBD'}
-						</Text>
-					</Box>
-				)}
+				<Box
+					marginBottom={0}
+					flexDirection="column"
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingX={1}
+					paddingY={0}
+				>
+					<Text bold color={theme.highlight}>
+						📁 Git Worktree: {worktree.name}
+					</Text>
+					<Text color={theme.secondary} fontSize={11}>
+						Branch: {worktree.branch || worktree.name} • Source: {worktree.sourceBranch || 'main'}
+					</Text>
+					<Text color={theme.muted} fontSize={10}>
+						Path: {worktree.path}
+					</Text>
+				</Box>
 
 				{/* Task info - compact */}
 				{taskInfo && (
@@ -977,17 +919,17 @@ export function ClaudeWorktreeLauncherModal({
 					paddingY={0.5}
 				>
 					<Text bold color={theme.highlight}>
-						📁 Git Worktree: {worktree?.name || sessionResult?.worktree || 'Unknown'}
+						📁 Git Worktree: {worktree.name}
 					</Text>
 					<Box flexDirection="column" marginLeft={2}>
 						<Text color={theme.secondary}>
-							Branch: {worktree?.branch || worktree?.name || sessionResult?.branch || 'Unknown'}
+							Branch: {worktree.branch || worktree.name}
 						</Text>
 						<Text color={theme.secondary}>
-							Source: {worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
+							Source: {worktree.sourceBranch || 'main'}
 						</Text>
 						<Text color={theme.muted} fontSize={12}>
-							Path: {worktree?.path || sessionResult?.worktreePath || 'Unknown'}
+							Path: {worktree.path}
 						</Text>
 					</Box>
 				</Box>
@@ -1126,7 +1068,7 @@ export function ClaudeWorktreeLauncherModal({
 		>
 			<Box marginBottom={0} flexDirection="row" justifyContent="space-between" alignItems="center">
 				<Text bold color={theme.highlight}>
-					🚀 Claude Code: {worktree?.name || sessionResult?.worktree || 'Setting up...'}
+					🚀 Claude Code: {worktree.name}
 				</Text>
 				{view === 'processing' && <Text color={theme.muted}>Headless Mode</Text>}
 			</Box>
