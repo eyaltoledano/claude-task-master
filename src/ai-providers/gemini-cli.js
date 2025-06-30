@@ -5,8 +5,22 @@
  * using the ai-sdk-provider-gemini-cli package.
  */
 
-import { createGeminiProvider } from 'ai-sdk-provider-gemini-cli';
 import { BaseAIProvider } from './base-provider.js';
+
+let createGeminiProvider;
+
+async function loadGeminiCliModule() {
+	if (!createGeminiProvider) {
+		try {
+			const mod = await import('ai-sdk-provider-gemini-cli');
+			createGeminiProvider = mod.createGeminiProvider;
+		} catch (err) {
+			throw new Error(
+				"Gemini CLI SDK is not installed. Please install 'ai-sdk-provider-gemini-cli' to use the gemini-cli provider."
+			);
+		}
+	}
+}
 
 export class GeminiCliProvider extends BaseAIProvider {
 	constructor() {
@@ -32,11 +46,13 @@ export class GeminiCliProvider extends BaseAIProvider {
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} [params.apiKey] - Optional Gemini API key (rarely used with gemini-cli)
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
-	 * @returns {Function} Gemini CLI client function
+	 * @returns {Promise<Function>} Gemini CLI client function
 	 * @throws {Error} If initialization fails
 	 */
-	getClient(params) {
+	async getClient(params) {
 		try {
+			// Load the Gemini CLI module dynamically
+			await loadGeminiCliModule();
 			// Primary use case: Use existing gemini CLI authentication
 			// Secondary use case: Direct API key (for compatibility)
 			let authOptions = {};
