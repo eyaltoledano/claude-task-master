@@ -1965,6 +1965,31 @@ export class DirectBackend extends FlowBackend {
 		try {
 			const execAsync = promisify(exec);
 			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
+			
+			// Import AST context builder (dynamic import to avoid circular dependencies)
+			let astContextBuilder = null;
+			let astContext = null;
+			
+			try {
+				const { createASTContextBuilder } = await import('../ast/context/ast-context-builder.js');
+				astContextBuilder = createASTContextBuilder(this.projectRoot);
+				
+				// Build AST context for the worktree
+				astContext = await astContextBuilder.buildWorktreeContext(worktree.path, {
+					tasks,
+					includeComplexity: true,
+					includeImports: true
+				});
+				
+				console.debug('[AST] Context building result:', {
+					enabled: astContext.enabled,
+					success: astContext.success,
+					filesAnalyzed: astContext.metadata?.filesAnalyzed || 0
+				});
+			} catch (error) {
+				console.debug('[AST] Failed to build AST context:', error.message);
+				astContext = { enabled: false, error: error.message };
+			}
 
 			// Detect persona if not provided
 			let persona = options.persona;
@@ -2027,6 +2052,14 @@ Branch: ${worktree.branch || 'unknown'}
 				}
 
 				content += '\n---\n\n';
+			}
+
+			// Add AST-powered code analysis if available
+			if (astContext && astContext.enabled && astContext.success && astContext.context) {
+				content += astContext.context;
+			} else if (astContext && astContext.enabled) {
+				content += '## Code Structure Analysis\n\n';
+				content += `*AST analysis failed: ${astContext.error || 'Unknown error'}*\n\n`;
 			}
 
 			// Add project structure (filtered to relevant files)

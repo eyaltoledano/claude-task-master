@@ -2,6 +2,11 @@ import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs-extra';
 import { log } from '../utils.js';
+import { 
+	initializeWorktreeCache, 
+	cleanupWorktreeCache, 
+	validateWorktreeCache 
+} from './ast/context/cache-manager.js';
 
 const logger = {
 	info: (msg) => log('info', msg),
@@ -109,6 +114,13 @@ export class WorktreeManager {
 			// Update last accessed
 			existing.lastAccessed = new Date().toISOString();
 			this.saveConfig();
+
+			// Validate AST cache for the existing worktree
+			try {
+				await validateWorktreeCache(existing.path, this.projectRoot);
+			} catch (error) {
+				logger.debug('Failed to validate AST cache for worktree:', error.message);
+			}
 
 			return {
 				exists: true,
@@ -225,6 +237,13 @@ export class WorktreeManager {
 
 			this.config.worktrees[worktreeName] = worktreeData;
 			this.saveConfig();
+
+			// Initialize AST cache for the new worktree
+			try {
+				await initializeWorktreeCache(worktreePath, this.projectRoot);
+			} catch (error) {
+				logger.debug('Failed to initialize AST cache for worktree:', error.message);
+			}
 
 			return {
 				exists: false,
@@ -394,13 +413,19 @@ export class WorktreeManager {
 
 		for (const [name, worktree] of Object.entries(this.config.worktrees)) {
 			if (!fs.existsSync(worktree.path)) {
-				invalidWorktrees.push(name);
+				invalidWorktrees.push({ name, worktree });
 			}
 		}
 
-		invalidWorktrees.forEach((name) => {
+		// Clean up AST cache for invalid worktrees
+		for (const { name, worktree } of invalidWorktrees) {
+			try {
+				await cleanupWorktreeCache(worktree.path, this.projectRoot);
+			} catch (error) {
+				logger.debug(`Failed to cleanup AST cache for ${name}:`, error.message);
+			}
 			delete this.config.worktrees[name];
-		});
+		}
 
 		if (invalidWorktrees.length > 0) {
 			this.saveConfig();
@@ -448,6 +473,14 @@ export class WorktreeManager {
 			for (const [name, worktree] of Object.entries(this.config.worktrees)) {
 				if (!fs.existsSync(worktree.path)) {
 					logger.info(`Removing stale worktree entry: ${name}`);
+					
+					// Clean up AST cache for the stale worktree
+					try {
+						await cleanupWorktreeCache(worktree.path, this.projectRoot);
+					} catch (error) {
+						logger.debug(`Failed to cleanup AST cache for ${name}:`, error.message);
+					}
+					
 					delete this.config.worktrees[name];
 					removedCount++;
 				}
