@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { SimpleTable } from './SimpleTable.jsx';
 import { useComponentTheme, useStateAndRef } from '../hooks/index.js';
@@ -14,6 +14,7 @@ export function ClaudeSessionList({
 	onSessionSelect,
 	onSessionResume,
 	onSessionDetails,
+	onWatchOperation,
 	onNewSession,
 	onRefresh,
 	onBack,
@@ -25,82 +26,87 @@ export function ClaudeSessionList({
 	const { theme: safeTheme } = useComponentTheme('claudeSessionList');
 
 	// Self-contained state management
-	const [selectedIndex, setSelectedIndex, selectedIndexRef] =
-		useStateAndRef(initialSelectedIndex);
-	const [scrollOffset, setScrollOffset, scrollOffsetRef] =
-		useStateAndRef(initialScrollOffset);
-	const [sessionFilter, setSessionFilter] =
-		React.useState(initialSessionFilter);
+	const [selectedIndex, setSelectedIndex, selectedIndexRef] = useStateAndRef(initialSelectedIndex);
+	const [scrollOffset, setScrollOffset] = useState(initialScrollOffset);
+	const [sessionFilter, setSessionFilter] = useState(initialSessionFilter);
+	const [showActions, setShowActions] = useState(false);
 
-	// Combine running operations with sessions
+	// Combine sessions and running operations for display
 	const combinedItems = React.useMemo(() => {
-		// Convert running operations to session-like objects
-		const runningItems = runningOperations.map(op => ({
-			sessionId: op.id,
-			prompt: op.metadata?.prompt || 'Background operation',
-			lastUpdated: op.startTime,
-			metadata: {
-				...op.metadata,
-				type: op.metadata?.type || 'background',
-				finished: false,
-				isRunning: true,
-				operationId: op.id
-			},
-			status: op.status,
-			messages: op.messages || []
-		}));
-
-		// Combine and sort by date (newest first)
-		return [...runningItems, ...sessions].sort((a, b) => 
-			new Date(b.lastUpdated || b.createdAt) - new Date(a.lastUpdated || a.createdAt)
-		);
+		const items = [];
+		
+		// Add running operations first (they'll appear at the top)
+		runningOperations.forEach(op => {
+			items.push({
+				type: 'operation',
+				id: op.id,
+				sessionId: op.id,
+				status: op.status,
+				startTime: op.startTime,
+				messages: op.messages || [],
+				metadata: op.metadata || {},
+				title: op.metadata?.subtaskId ? `Subtask ${op.metadata.subtaskId}` : 'Background Operation'
+			});
+		});
+		
+		// Add regular sessions
+		sessions.forEach(session => {
+			items.push({
+				type: 'session',
+				...session
+			});
+		});
+		
+	
+		return items;
 	}, [sessions, runningOperations]);
 
-	// Filter sessions based on current filter
-	const filteredSessions = React.useMemo(() => {
-		return combinedItems.filter((session) => {
-			// First apply subtask filter if provided
-			if (filterSubtaskId && session.metadata?.subtaskId !== filterSubtaskId) {
-				return false;
-			}
+	// Filter items based on current filter and subtaskId
+	const filteredItems = React.useMemo(() => {
+		let items = combinedItems;
+		
+		// Filter by subtask if specified
+		if (filterSubtaskId) {
+			items = items.filter(item => {
+				if (item.type === 'operation') {
+					return item.metadata?.subtaskId === filterSubtaskId;
+				}
+				return item.metadata?.subtaskId === filterSubtaskId;
+			});
+		}
+		
+		// Apply session filter
+		if (sessionFilter === 'active') {
+			items = items.filter(item => {
+				if (item.type === 'operation') return true; // Operations are always considered active
+				return !item.metadata?.finished;
+			});
+		} else if (sessionFilter === 'finished') {
+			items = items.filter(item => {
+				if (item.type === 'operation') return false; // Operations are never finished in this context
+				return item.metadata?.finished;
+			});
+		}
+		
 
-			if (sessionFilter === 'all') return true;
-			if (sessionFilter === 'active') {
-				// Active sessions are running operations or unfinished sessions
-				return (
-					session.metadata?.isRunning ||
-					!session.metadata?.finished ||
-					(session.lastUpdated &&
-						new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
-				);
-			}
-			if (sessionFilter === 'finished') {
-				return session.metadata?.finished === true && !session.metadata?.isRunning;
-			}
-			return true;
-		});
-	}, [combinedItems, filterSubtaskId, sessionFilter]);
+		return items;
+	}, [combinedItems, sessionFilter, filterSubtaskId]);
 
 	// Reset selection when filtered sessions change
 	React.useEffect(() => {
 		if (
-			selectedIndex >= filteredSessions.length &&
-			filteredSessions.length > 0
+			selectedIndex >= filteredItems.length &&
+			filteredItems.length > 0
 		) {
 			setSelectedIndex(0);
 			setScrollOffset(0);
 		}
-	}, [
-		filteredSessions.length,
-		selectedIndex,
-		setSelectedIndex,
-		setScrollOffset
-	]);
+	}, [filteredItems.length, selectedIndex, setSelectedIndex, setScrollOffset]);
 
 	// Keyboard navigation handling
 	useInput((input, key) => {
 		if (key.downArrow) {
-			const newIndex = Math.min(selectedIndex + 1, filteredSessions.length - 1);
+			const newIndex = Math.min(selectedIndex + 1, filteredItems.length - 1);
 			setSelectedIndex(newIndex);
 
 			// Adjust scroll if needed
@@ -115,125 +121,135 @@ export function ClaudeSessionList({
 			if (newIndex < scrollOffset) {
 				setScrollOffset(newIndex);
 			}
-		} else if (key.return && filteredSessions.length > 0) {
+		} else if (key.return && filteredItems.length > 0) {
 			// Select session for viewing details
-			const session = filteredSessions[selectedIndex];
-			if (!session.metadata?.isRunning) {
-				onSessionSelect?.(session);
+			const item = filteredItems[selectedIndex];
+			if (item.type === 'operation') {
+				// Watch running operation
+				onWatchOperation?.(item.id);
+			} else if (!item.metadata?.isRunning) {
+				onSessionSelect?.(item);
 			}
-		} else if (input === 'r' && filteredSessions.length > 0) {
+		} else if (input === 'r' && filteredItems.length > 0) {
 			// Resume session (not applicable to running operations)
-			const session = filteredSessions[selectedIndex];
-			if (!session.metadata?.finished && !session.metadata?.isRunning) {
-				onSessionResume?.(session.sessionId);
+			const item = filteredItems[selectedIndex];
+			if (item.type === 'session' && !item.metadata?.finished && !item.metadata?.isRunning) {
+				onSessionResume?.(item.sessionId);
 			}
-		} else if (input === 'd' && filteredSessions.length > 0) {
+		} else if (input === 'w' && filteredItems.length > 0) {
+			// Watch operation
+			const item = filteredItems[selectedIndex];
+			if (item.type === 'operation') {
+				onWatchOperation?.(item.id);
+			}
+		} else if (input === 'd' && filteredItems.length > 0) {
 			// View session details (not applicable to running operations)
-			const session = filteredSessions[selectedIndex];
-			if (!session.metadata?.isRunning) {
-				onSessionDetails?.(session.sessionId);
+			const item = filteredItems[selectedIndex];
+			if (item.type === 'session' && !item.metadata?.isRunning) {
+				onSessionDetails?.(item.sessionId);
 			}
-		} else if (input === 'f') {
-			// Cycle through filters
-			if (sessionFilter === 'all') {
-				setSessionFilter('active');
-			} else if (sessionFilter === 'active') {
-				setSessionFilter('finished');
-			} else {
-				setSessionFilter('all');
-			}
-			setSelectedIndex(0);
-			setScrollOffset(0);
-		} else if (input === '1') {
-			setSessionFilter('all');
-			setSelectedIndex(0);
-			setScrollOffset(0);
-		} else if (input === '2') {
-			setSessionFilter('active');
-			setSelectedIndex(0);
-			setScrollOffset(0);
-		} else if (input === '3') {
-			setSessionFilter('finished');
-			setSelectedIndex(0);
-			setScrollOffset(0);
 		} else if (input === 'n') {
 			// New session
 			onNewSession?.();
-		} else if (input === 'r' && filteredSessions.length === 0) {
+		} else if (input === 'r' && filteredItems.length === 0) {
 			// Refresh when no sessions
 			onRefresh?.();
+		} else if (input === 'f') {
+			// Filter toggle
+			setSessionFilter(currentFilter => {
+				switch (currentFilter) {
+					case 'all':
+						return 'active';
+					case 'active':
+						return 'finished';
+					case 'finished':
+						return 'all';
+					default:
+						return 'all';
+				}
+			});
 		} else if (key.escape) {
 			// Go back
 			onBack?.();
 		}
 	});
 
-	const visibleSessions = filteredSessions.slice(
+	const visibleSessions = filteredItems.slice(
 		scrollOffset,
 		scrollOffset + visibleRows
 	);
 
-	// Prepare table data
-	const tableData = visibleSessions.map((session, displayIndex) => {
-		const actualIndex = displayIndex + scrollOffset;
-		const isSelected = actualIndex === selectedIndex;
-		const date = new Date(session.lastUpdated || session.createdAt);
-		const isActive = !session.metadata?.finished;
-		const isSubtaskSession =
-			session.metadata?.type === 'subtask-implementation';
-		const isRunning = session.metadata?.isRunning;
-
-		return {
-			' ': isSelected ? '→' : ' ',
-			'Session ID': isRunning 
-				? `🔄 ${session.sessionId.substring(0, 6)}...` 
-				: session.sessionId.substring(0, 8) + '...',
-			Type: isRunning 
-				? 'Background' 
-				: (isSubtaskSession ? 'Subtask' : 'General'),
-			Status: isRunning 
-				? `⚡ ${session.status || 'Running'}` 
-				: (isActive ? '● Active' : '✓ Finished'),
-			Prompt: session.prompt?.substring(0, 40) + '...' || 'No prompt',
-			Started: isRunning 
-				? formatDistanceToNow(new Date(session.lastUpdated), { addSuffix: true })
-				: date.toLocaleDateString(),
-			'': isRunning ? '' : date.toLocaleTimeString(),
-			_renderCell: (col, value) => {
-				let color = isSelected
-					? safeTheme.item?.selected || '#0f172a'
-					: safeTheme.text?.primary || '#f1f5f9';
-
-				if (col === 'Status') {
-					if (!isSelected) {
-						if (isRunning) {
-							color = '#fbbf24'; // Yellow for running
-						} else {
-							color = isActive
-								? safeTheme.session?.active || '#60a5fa'
-								: safeTheme.session?.finished || '#34d399';
-						}
-					}
-				} else if (col === 'Type') {
-					if (!isSelected) {
-						if (isRunning) {
-							color = '#fbbf24'; // Yellow for running
-						} else if (isSubtaskSession) {
-							color = safeTheme.session?.subtask || '#22d3ee';
-						}
-					}
-				} else if (col === 'Session ID' && isRunning && !isSelected) {
-					color = '#fbbf24'; // Yellow for running
-				}
-
-				return (
-					<Text color={color} bold={isSelected}>
+	// Generate table data
+	const tableData = visibleSessions.map((item, index) => {
+		const isSelected = scrollOffset + index === selectedIndex;
+		const globalIndex = scrollOffset + index;
+		
+		if (item.type === 'operation') {
+			// Running operation
+			const elapsed = Math.floor((new Date() - new Date(item.startTime)) / 1000);
+			const minutes = Math.floor(elapsed / 60);
+			const seconds = elapsed % 60;
+			
+			return {
+				'Session/Operation': `🔄 ${item.title}`,
+				'Status': `Running • ${minutes}:${seconds.toString().padStart(2, '0')}`,
+				'Time/Messages': `${item.messages.length} msgs`,
+				'Context': item.metadata.subtaskId || 'General',
+				_renderCell: (col, value, selected) => (
+					<Text color={isSelected ? 'cyan' : 'white'} bold={isSelected}>
 						{value}
 					</Text>
-				);
+				)
+			};
+		} else {
+			// Regular session
+			const statusDisplay = item.metadata?.finished 
+				? '✅ Complete'
+				: item.metadata?.isRunning 
+					? '🔄 Running'
+					: '⏸️ Paused';
+			
+			const dateDisplay = formatDistanceToNow(
+				new Date(item.lastUpdated || item.createdAt),
+				{ addSuffix: true }
+			);
+
+			// Generate display name from subtask info
+			const subtaskInfo = item.metadata?.subtaskInfo;
+			let displayName = 'No subtask info';
+			
+			if (subtaskInfo) {
+				const fullId = subtaskInfo.fullId || `${subtaskInfo.parentTaskId}.${subtaskInfo.subtaskId}` || 'Unknown';
+				const title = subtaskInfo.title || 'Untitled';
+				displayName = `${fullId}: ${title}`;
+				
+				// Truncate if too long
+				if (displayName.length > 40) {
+					displayName = displayName.substring(0, 37) + '...';
+				}
 			}
-		};
+			
+			return {
+				'Session/Operation': displayName,
+				'Status': statusDisplay,
+				'Time/Messages': dateDisplay,
+				'Context': subtaskInfo?.fullId || subtaskInfo?.parentTaskId || 'General',
+				_renderCell: (col, value, selected) => (
+					<Text color={isSelected ? 'cyan' : 'white'} bold={isSelected}>
+						{value}
+					</Text>
+				)
+			};
+		}
 	});
+
+
+
+	const tableConfig = {
+		headers: ['Session/Operation', 'Status', 'Time/Messages', 'Context'],
+		columnWidths: [40, 20, 20, 15],
+		selectedRowIndex: selectedIndex - scrollOffset
+	};
 
 	return (
 		<Box flexDirection="column" height="100%">
@@ -280,7 +296,7 @@ export function ClaudeSessionList({
 
 			{/* Sessions Table */}
 			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				{filteredSessions.length === 0 ? (
+				{filteredItems.length === 0 ? (
 					<Box
 						flexDirection="column"
 						alignItems="center"
@@ -299,30 +315,21 @@ export function ClaudeSessionList({
 					<>
 						<SimpleTable
 							data={tableData}
-							columns={[
-								' ',
-								'Session ID',
-								'Type',
-								'Status',
-								'Prompt',
-								'Started',
-								''
-							]}
-							selectedIndex={selectedIndex - scrollOffset}
+							columns={tableConfig.headers}
 							borders={true}
 						/>
 
 						{/* Scroll indicator */}
-						{filteredSessions.length > visibleRows && (
+						{filteredItems.length > visibleRows && (
 							<Box marginTop={1}>
 								<Text color={safeTheme.text?.tertiary || '#cbd5e1'}>
 									Showing {scrollOffset + 1}-
 									{Math.min(
 										scrollOffset + visibleRows,
-										filteredSessions.length
+										filteredItems.length
 									)}{' '}
-									of {filteredSessions.length} items
-									{selectedIndex < filteredSessions.length - visibleRows &&
+									of {filteredItems.length} items
+									{selectedIndex < filteredItems.length - visibleRows &&
 										' • ↓ for more'}
 								</Text>
 							</Box>
@@ -334,7 +341,7 @@ export function ClaudeSessionList({
 			{/* Footer */}
 			<Box
 				borderStyle="single"
-				borderColor={safeTheme.border || '#334155'}
+				borderColor={safeTheme.border?.primary || '#475569'}
 				borderTop={true}
 				borderBottom={false}
 				borderLeft={false}
@@ -342,13 +349,35 @@ export function ClaudeSessionList({
 				paddingTop={1}
 				paddingLeft={1}
 				paddingRight={1}
-				flexShrink={0}
+				marginTop={1}
 			>
 				<Text color={safeTheme.text?.primary || '#f1f5f9'}>
-					{filteredSessions.length > 0
-						? 'Enter to view • r resume active • d details • '
-						: ''}
-					n new • f filter • r refresh • ESC back
+					{filteredItems.length > 0 ? (
+						(() => {
+							const selectedItem = filteredItems[selectedIndex];
+							const commands = [];
+							
+							if (selectedItem?.type === 'operation') {
+								commands.push('Enter/w watch');
+							} else {
+								commands.push('Enter view');
+								if (!selectedItem?.metadata?.finished && !selectedItem?.metadata?.isRunning) {
+									commands.push('r resume');
+								}
+								if (!selectedItem?.metadata?.isRunning) {
+									commands.push('d details');
+								}
+							}
+							
+							commands.push('n new');
+							commands.push('f filter');
+							commands.push('ESC back');
+							
+							return commands.join(' • ');
+						})()
+					) : (
+						'n new session • r refresh • ESC back'
+					)}
 				</Text>
 			</Box>
 		</Box>
