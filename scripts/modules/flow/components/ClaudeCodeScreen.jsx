@@ -30,30 +30,31 @@ export function ClaudeCodeScreen({
 	highlightSessionId = null
 }) {
 	const { setCurrentScreen } = useAppContext();
-	const [config, setConfig] = useState(null);
 	const [sessions, setSessions, sessionsRef] = useStateAndRef([]);
+	const [runningOperations, setRunningOperations] = useState([]);
+	const [mode, setMode] = useState(
+		initialMode === 'subtask-implementation' ? 'active-session' : 'list'
+	);
+	const [prompt, setPrompt] = useState('');
 	const [loading, setLoading] = useState(
 		initialMode !== 'subtask-implementation' // Don't show loading for subtask mode
 	);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(null);
-	const [mode, setMode] = useState(
-		initialMode === 'subtask-implementation' ? 'active-session' : 'list'
-	);
-	const [prompt, setPrompt] = useState('');
-	const [activeSession, setActiveSession] = useState(null);
-	const [messages, setMessages, messagesRef] = useStateAndRef([]);
 	const [isProcessing, setIsProcessing] = useState(false);
-	const [showMenu, setShowMenu] = useState(false);
+	const [messages, setMessages, messagesRef] = useStateAndRef([]);
+	const [config, setConfig] = useState(null);
+	const [activeSession, setActiveSession] = useState(null);
 	const [keyInsights, setKeyInsights] = useState([]);
+	const [showBackgroundChoice, setShowBackgroundChoice] = useState(false);
+	const [operationId, setOperationId] = useState(null);
+	const [showMenu, setShowMenu] = useState(false);
 	const [viewingSession, setViewingSession] = useState(null);
 	const [sessionMessages, setSessionMessages] = useState({});
 	const [sessionScrollOffset, setSessionScrollOffset] = useState(0);
 	const [waitingForConfig, setWaitingForConfig] = useState(
 		initialMode === 'subtask-implementation' // Start waiting for config in subtask mode
 	);
-	const [showBackgroundChoice, setShowBackgroundChoice] = useState(false);
-	const [operationId, setOperationId] = useState(null);
 	const abortControllerRef = useRef(null);
 	const { theme } = useComponentTheme('claudeCodeScreen');
 	const { width, height, isNarrow, isWide } = useTerminalSize();
@@ -128,6 +129,32 @@ export function ClaudeCodeScreen({
 		};
 	}, [initialMode, initialContext]);
 
+	// Listen for background operation updates
+	useEffect(() => {
+		const handleOperationUpdate = () => {
+			const operations = backgroundOperations.getRunningOperations();
+			setRunningOperations(operations);
+		};
+
+		// Listen for operation updates
+		backgroundOperations.on('operation-started', handleOperationUpdate);
+		backgroundOperations.on('operation-message', handleOperationUpdate);
+		backgroundOperations.on('operation-completed', handleOperationUpdate);
+
+		return () => {
+			backgroundOperations.off('operation-started', handleOperationUpdate);
+			backgroundOperations.off('operation-message', handleOperationUpdate);
+			backgroundOperations.off('operation-completed', handleOperationUpdate);
+		};
+	}, []);
+
+	useEffect(() => {
+		if (viewingSession && !sessionMessages[viewingSession]) {
+			loadSessionMessages(viewingSession);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [viewingSession]);
+
 	// Auto-select highlighted session if provided - now handled by ClaudeSessionList component
 	const initialSelectedIndex = React.useMemo(() => {
 		if (highlightSessionId && sessions.length > 0) {
@@ -164,6 +191,10 @@ export function ClaudeCodeScreen({
 			if (sessionsResult.success) {
 				setSessions(sessionsResult.sessions || sessionsResult.data || []);
 			}
+
+			// Load running background operations
+			const operations = backgroundOperations.getRunningOperations();
+			setRunningOperations(operations);
 		} catch (err) {
 			setError(`Failed to load data: ${err.message}`);
 		} finally {
@@ -385,6 +416,13 @@ Additional context:
 
 		setWaitingForConfig(false);
 		setLoading(false);
+		
+		// Show background choice prompt
+		setShowBackgroundChoice(true);
+	};
+
+	const handleBackgroundChoice = async (runInBackground) => {
+		setShowBackgroundChoice(false);
 		setIsProcessing(true);
 		setMessages([]);
 		setMode('active-session'); // Ensure we're in active session mode
@@ -395,58 +433,33 @@ Additional context:
 		console.log('[ClaudeCodeScreen] Starting Claude Code query', {
 			promptLength: subtaskPrompt.length,
 			hasResearchContext: !!initialContext?.researchContext,
-			worktreePath: initialContext?.worktreePath
+			worktreePath: initialContext?.worktreePath,
+			runInBackground
 		});
 
-		abortControllerRef.current = new AbortController();
-
-		try {
-			const result = await backend.claudeCodeQuery(subtaskPrompt, {
-				maxTurns: 10, // Allow more turns for implementation
-				permissionMode: config?.permissionMode || 'acceptEdits',
-				allowedTools: config?.allowedTools || ['Read', 'Write', 'Bash'],
-				systemPrompt,
-				cwd: initialContext.worktreePath,
-				abortController: abortControllerRef.current,
-				onMessage: (message) => {
-					setMessages((prev) => [...prev, message]);
-
-					// Extract key insights from Claude's responses
-					if (message.type === 'assistant') {
-						const insights = extractKeyInsights(
-							message.message.content?.[0]?.text || ''
-						);
-						if (insights.length > 0) {
-							setKeyInsights((prev) => [...prev, ...insights]);
-						}
-					}
-				}
-			});
-
-			if (result.success && result.sessionId) {
-				setActiveSession({
-					sessionId: result.sessionId,
-					prompt: subtaskPrompt,
-					timestamp: new Date().toISOString(),
-					subtaskId: initialContext.currentSubtask.id
-				});
-
-				// Save session with subtask reference
-				await backend.saveClaudeCodeSession({
-					sessionId: result.sessionId,
-					prompt: subtaskPrompt,
-					lastUpdated: new Date().toISOString(),
+		if (runInBackground) {
+			// Start in background
+			try {
+				const operation = await backgroundClaudeCode.startQuery(subtaskPrompt, {
 					metadata: {
 						type: 'subtask-implementation',
 						subtaskId: initialContext.currentSubtask.id,
-						parentTaskId: initialContext.parentTask.id
+						parentTaskId: initialContext.parentTask.id,
+						worktreePath: initialContext.worktreePath
+					},
+					onMessage: (message) => {
+						// Messages will be tracked in the background operation
+						console.log('[ClaudeCodeScreen] Background message:', message.type);
 					}
 				});
 
-				// Update subtask with Claude session reference
+				setOperationId(operation.operationId);
+				setSuccess(`Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`);
+				
+				// Update subtask with background operation reference
 				const sessionReference = `
-<claude-session added="${new Date().toISOString()}" sessionId="${result.sessionId}">
-Claude Code session started for implementation. Session ID: ${result.sessionId}
+<claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background">
+Claude Code session started in background. Operation ID: ${operation.operationId}
 Working directory: ${initialContext.worktreePath}
 </claude-session>
 `;
@@ -456,20 +469,87 @@ Working directory: ${initialContext.worktreePath}
 					research: false
 				});
 
-				setSuccess('Claude Code session started for subtask implementation');
-
-				// Reload sessions to include this new session in the list
-				await loadData();
-			} else if (result.error) {
-				setError(result.error);
+				// Go back to task screen after 2 seconds
+				setTimeout(() => handleBack(), 2000);
+			} catch (err) {
+				setError(err.message);
 				setTimeout(() => handleBack(), 3000);
 			}
-		} catch (err) {
-			setError(err.message);
-			setTimeout(() => handleBack(), 3000);
-		} finally {
-			setIsProcessing(false);
-			abortControllerRef.current = null;
+		} else {
+			// Run in foreground (existing logic)
+			abortControllerRef.current = new AbortController();
+
+			try {
+				const result = await backend.claudeCodeQuery(subtaskPrompt, {
+					maxTurns: 10, // Allow more turns for implementation
+					permissionMode: config?.permissionMode || 'acceptEdits',
+					allowedTools: config?.allowedTools || ['Read', 'Write', 'Bash'],
+					systemPrompt,
+					cwd: initialContext.worktreePath,
+					abortController: abortControllerRef.current,
+					onMessage: (message) => {
+						setMessages((prev) => [...prev, message]);
+
+						// Extract key insights from Claude's responses
+						if (message.type === 'assistant') {
+							const insights = extractKeyInsights(
+								message.message.content?.[0]?.text || ''
+							);
+							if (insights.length > 0) {
+								setKeyInsights((prev) => [...prev, ...insights]);
+							}
+						}
+					}
+				});
+
+				if (result.success && result.sessionId) {
+					setActiveSession({
+						sessionId: result.sessionId,
+						prompt: subtaskPrompt,
+						timestamp: new Date().toISOString(),
+						subtaskId: initialContext.currentSubtask.id
+					});
+
+					// Save session with subtask reference
+					await backend.saveClaudeCodeSession({
+						sessionId: result.sessionId,
+						prompt: subtaskPrompt,
+						lastUpdated: new Date().toISOString(),
+						metadata: {
+							type: 'subtask-implementation',
+							subtaskId: initialContext.currentSubtask.id,
+							parentTaskId: initialContext.parentTask.id
+						}
+					});
+
+					// Update subtask with Claude session reference
+					const sessionReference = `
+<claude-session added="${new Date().toISOString()}" sessionId="${result.sessionId}">
+Claude Code session started for implementation. Session ID: ${result.sessionId}
+Working directory: ${initialContext.worktreePath}
+</claude-session>
+`;
+					await backend.updateSubtask({
+						id: initialContext.currentSubtask.id,
+						prompt: sessionReference,
+						research: false
+					});
+
+					setSuccess('Claude Code session started for subtask implementation');
+
+					// Reload sessions to include this new session in the list
+					await loadData();
+				} else if (result.error) {
+					setError(result.error);
+					setTimeout(() => handleBack(), 3000);
+				}
+			} catch (err) {
+				setError(err.message);
+				setTimeout(() => handleBack(), 3000);
+			} finally {
+				setIsProcessing(false);
+				abortControllerRef.current = null;
+			}
 		}
 	};
 
@@ -692,8 +772,21 @@ ${insightSummary}
 				setShowMenu(false);
 			} else if (viewingSession) {
 				setViewingSession(null);
+			} else if (showBackgroundChoice) {
+				setShowBackgroundChoice(false);
+				handleBack();
 			} else {
 				handleBack();
+			}
+			return;
+		}
+
+		// Handle background choice
+		if (showBackgroundChoice && initialMode === 'subtask-implementation') {
+			if (input === 'b') {
+				handleBackgroundChoice(true);
+			} else if (input === 'f') {
+				handleBackgroundChoice(false);
 			}
 			return;
 		}
@@ -912,6 +1005,114 @@ ${insightSummary}
 			<Box flexDirection="column" height="100%">
 				<Box justifyContent="center" alignItems="center" height="100%">
 					<LoadingSpinner message="Preparing Claude Code environment..." />
+				</Box>
+			</Box>
+		);
+	}
+
+	// Show background choice for subtask implementation
+	if (showBackgroundChoice && initialMode === 'subtask-implementation') {
+		return (
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={safeTheme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color="white">Claude Code</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>Subtask Implementation</Text>
+					</Box>
+				</Box>
+
+				{/* Choice Options */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					alignItems="center"
+					justifyContent="center"
+				>
+					<Box
+						borderStyle="round"
+						borderColor={safeTheme.border}
+						padding={2}
+						flexDirection="column"
+						width={60}
+					>
+						<Text bold color={safeTheme.accent} marginBottom={2}>
+							How would you like to run Claude Code?
+						</Text>
+						
+						<Box marginBottom={2}>
+							<Text color={safeTheme.textDim}>
+								Subtask: {initialContext?.currentSubtask?.title}
+							</Text>
+						</Box>
+
+						<Box flexDirection="column" gap={1}>
+							<Box marginBottom={1}>
+								<Text color="green">b - Run in background (recommended)</Text>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Continue working on other tasks
+									</Text>
+								</Box>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Monitor progress in session list
+									</Text>
+								</Box>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Resume session anytime
+									</Text>
+								</Box>
+							</Box>
+							
+							<Box>
+								<Text color="yellow">f - Run in foreground</Text>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Watch implementation in real-time
+									</Text>
+								</Box>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Interact with Claude directly
+									</Text>
+								</Box>
+								<Box marginLeft={4}>
+									<Text color={safeTheme.textDim}>
+										• Blocks other work until complete
+									</Text>
+								</Box>
+							</Box>
+						</Box>
+					</Box>
+				</Box>
+
+				{/* Footer */}
+				<Box
+					borderStyle="single"
+					borderColor={safeTheme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingTop={1}
+					paddingLeft={1}
+					paddingRight={1}
+					flexShrink={0}
+				>
+					<Text color={safeTheme.text}>
+						Press b for background, f for foreground, or ESC to cancel
+					</Text>
 				</Box>
 			</Box>
 		);
@@ -1309,6 +1510,7 @@ ${insightSummary}
 		<>
 			<ClaudeSessionList
 				sessions={sessions}
+				runningOperations={runningOperations}
 				filterSubtaskId={filterSubtaskId}
 				visibleRows={VISIBLE_ROWS}
 				config={config}

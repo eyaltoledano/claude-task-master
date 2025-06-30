@@ -63,20 +63,26 @@ export class BackgroundClaudeCode {
 				}
 			});
 
-			// Mark operation as completed
-			backgroundOperations.completeOperation(operationId, result);
-			
-			// Save session if successful
 			if (result.success && result.sessionId) {
-				const metadata = options.metadata || {};
-				await this.backend.saveClaudeCodeSession({
+				// Save session if backend supports it
+				if (this.backend.saveClaudeCodeSession) {
+					await this.backend.saveClaudeCodeSession({
+						sessionId: result.sessionId,
+						prompt,
+						lastUpdated: new Date().toISOString(),
+						metadata: options.metadata || {}
+					});
+				}
+
+				backgroundOperations.completeOperation(operationId, {
+					success: true,
 					sessionId: result.sessionId,
-					prompt,
-					lastUpdated: new Date().toISOString(),
-					metadata: {
-						operationId,
-						...metadata
-					}
+					...result
+				});
+			} else {
+				backgroundOperations.completeOperation(operationId, {
+					success: false,
+					error: result.error || 'Operation failed'
 				});
 			}
 
@@ -122,7 +128,6 @@ export class BackgroundClaudeCode {
 	async runContinue(operationId, prompt, options) {
 		try {
 			const result = await this.backend.claudeCodeContinue(prompt, {
-				...options,
 				onMessage: (message) => {
 					backgroundOperations.addMessage(operationId, message);
 					if (options.onMessage) {
@@ -131,7 +136,26 @@ export class BackgroundClaudeCode {
 				}
 			});
 
-			backgroundOperations.completeOperation(operationId, result);
+			if (result.success) {
+				// Update session if backend supports it
+				if (this.backend.saveClaudeCodeSession) {
+					await this.backend.saveClaudeCodeSession({
+						sessionId: operation.sessionId,
+						lastUpdated: new Date().toISOString()
+					});
+				}
+
+				backgroundOperations.completeOperation(operationId, {
+					success: true,
+					...result
+				});
+			} else {
+				backgroundOperations.completeOperation(operationId, {
+					success: false,
+					error: result.error || 'Operation failed'
+				});
+			}
+
 			return result;
 		} catch (error) {
 			backgroundOperations.failOperation(operationId, error.message);
@@ -173,8 +197,7 @@ export class BackgroundClaudeCode {
 
 	async runResume(operationId, sessionId, prompt, options) {
 		try {
-			const result = await this.backend.claudeCodeResume(sessionId, prompt, {
-				...options,
+			const result = await this.backend.claudeCodeResume(sessionId, '', {
 				onMessage: (message) => {
 					backgroundOperations.addMessage(operationId, message);
 					if (options.onMessage) {
@@ -183,7 +206,27 @@ export class BackgroundClaudeCode {
 				}
 			});
 
-			backgroundOperations.completeOperation(operationId, result);
+			if (result.success) {
+				// Update session if backend supports it
+				if (this.backend.saveClaudeCodeSession) {
+					await this.backend.saveClaudeCodeSession({
+						sessionId,
+						lastUpdated: new Date().toISOString()
+					});
+				}
+
+				backgroundOperations.completeOperation(operationId, {
+					success: true,
+					sessionId,
+					...result
+				});
+			} else {
+				backgroundOperations.completeOperation(operationId, {
+					success: false,
+					error: result.error || 'Operation failed'
+				});
+			}
+
 			return result;
 		} catch (error) {
 			backgroundOperations.failOperation(operationId, error.message);

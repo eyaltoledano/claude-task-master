@@ -33,7 +33,6 @@ import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
-import { BackgroundOperationsScreen } from './components/BackgroundOperationsScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -93,7 +92,6 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			{ name: '/trees', description: 'Manage Git worktrees' },
 			{ name: '/claude', description: 'Claude Code assistant' },
-			{ name: '/bg', description: 'Monitor background operations' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
@@ -368,9 +366,6 @@ function FlowApp({ backend, options = {} }) {
 				case 'claude':
 					setCurrentScreen('claude-code');
 					break;
-				case 'bg':
-					setCurrentScreen('bg');
-					break;
 				case 'exit':
 				case 'quit':
 					exit();
@@ -483,9 +478,6 @@ function FlowApp({ backend, options = {} }) {
 						break;
 					case 'l':
 						setCurrentScreen('claude-code');
-						break;
-					case 'o':
-						setCurrentScreen('bg');
 						break;
 					case 'v':
 						setCurrentScreen('mcp-management');
@@ -782,13 +774,9 @@ function FlowApp({ backend, options = {} }) {
 							returnTo={navigationData?.returnTo}
 							returnData={navigationData?.returnData}
 						/>
-					) : currentScreen === 'bg' ? (
-						<BackgroundOperationsScreen
-							onBack={() => setCurrentScreen('welcome')}
-						/>
-									) : currentScreen === 'mcp-management' ? (
-					<MCPManagementScreen />
-				) : currentScreen === 'worktreePrompt' ? (
+					) : currentScreen === 'mcp-management' ? (
+						<MCPManagementScreen />
+					) : currentScreen === 'worktreePrompt' ? (
 						<Box justifyContent="center" alignItems="center" height="100%">
 							<WorktreePromptModal
 								taskTitle={navigationData?.taskTitle}
