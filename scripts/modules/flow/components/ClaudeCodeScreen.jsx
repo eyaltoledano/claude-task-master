@@ -8,6 +8,8 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { ClaudeSessionList } from './ClaudeSessionList.jsx';
 import { useComponentTheme, useTerminalSize, useConsoleMessages, useStateAndRef, usePhraseCycler } from '../hooks/index.js';
 import { useAppContext } from '../index.jsx';
+import { OverflowableText } from './OverflowableText.jsx';
+import { OverflowIndicator } from './OverflowIndicator.jsx';
 
 export function ClaudeCodeScreen({
 	backend,
@@ -746,7 +748,14 @@ ${insightSummary}
 	const renderUserMessage = (msg, idx) => (
 		<Box key={`user-${msg.timestamp || idx}-${idx}`} marginBottom={1}>
 			<Text color="cyan">User: </Text>
-			<Text>{msg.message.content?.[0]?.text || ''}</Text>
+			<Box marginLeft={2}>
+				<OverflowableText
+					id={`active-user-${msg.timestamp || idx}-${idx}`}
+					content={msg.message.content?.[0]?.text || ''}
+					maxLines={8}
+					color="white"
+				/>
+			</Box>
 		</Box>
 	);
 
@@ -760,7 +769,12 @@ ${insightSummary}
 			>
 				<Text color="green">Claude: </Text>
 				<Box marginLeft={2}>
-					<Text>{content}</Text>
+					<OverflowableText
+						id={`active-assistant-${msg.timestamp || idx}-${idx}`}
+						content={content}
+						maxLines={15}
+						color="white"
+					/>
 				</Box>
 			</Box>
 		);
@@ -1014,8 +1028,15 @@ ${insightSummary}
 				</Box>
 
 				{/* Messages Area */}
-				<Box flexGrow={1} flexDirection="column" padding={1} height={20}>
+				<Box flexGrow={1} flexDirection="column" padding={1} height={20} position="relative">
 					{renderMessages()}
+					
+					{/* Overflow indicator for active session */}
+					<OverflowIndicator 
+						position="top-right"
+						showCount={false}
+						symbol="⋯"
+					/>
 				</Box>
 
 				{/* Input Area */}
@@ -1149,7 +1170,12 @@ ${insightSummary}
 										<>
 											<Text color="cyan">User: </Text>
 											<Box marginLeft={2}>
-												<Text>{msg.content}</Text>
+												<OverflowableText
+													id={`user-msg-${viewingSession}-${sessionScrollOffset + idx}`}
+													content={msg.content}
+													maxLines={8}
+													color="white"
+												/>
 											</Box>
 										</>
 									)}
@@ -1157,7 +1183,12 @@ ${insightSummary}
 										<>
 											<Text color="green">Claude: </Text>
 											<Box marginLeft={2}>
-												<Text>{msg.content}</Text>
+												<OverflowableText
+													id={`assistant-msg-${viewingSession}-${sessionScrollOffset + idx}`}
+													content={msg.content}
+													maxLines={12}
+													color="white"
+												/>
 											</Box>
 										</>
 									)}
@@ -1165,7 +1196,13 @@ ${insightSummary}
 										<>
 											<Text color="gray">System: </Text>
 											<Box marginLeft={2}>
-												<Text color="gray">{msg.content}</Text>
+												<OverflowableText
+													id={`system-msg-${viewingSession}-${sessionScrollOffset + idx}`}
+													content={msg.content}
+													maxLines={4}
+													color="gray"
+													dimWhenCollapsed={true}
+												/>
 											</Box>
 										</>
 									)}
@@ -1173,7 +1210,12 @@ ${insightSummary}
 										<>
 											<Text color="red">Error: </Text>
 											<Box marginLeft={2}>
-												<Text color="red">{msg.content}</Text>
+												<OverflowableText
+													id={`error-msg-${viewingSession}-${sessionScrollOffset + idx}`}
+													content={msg.content}
+													maxLines={6}
+													color="red"
+												/>
 											</Box>
 										</>
 									)}
@@ -1181,7 +1223,12 @@ ${insightSummary}
 										<>
 											<Text color="yellow">{msg.type}: </Text>
 											<Box marginLeft={2}>
-												<Text color="yellow">{msg.content}</Text>
+												<OverflowableText
+													id={`other-msg-${viewingSession}-${sessionScrollOffset + idx}`}
+													content={msg.content}
+													maxLines={6}
+													color="yellow"
+												/>
 											</Box>
 										</>
 									)}
@@ -1210,12 +1257,19 @@ ${insightSummary}
 					paddingLeft={1}
 					paddingRight={1}
 					flexShrink={0}
+					position="relative"
 				>
 					<Text color={safeTheme.text}>
 						{canScroll ? '↑↓ scroll • ' : ''}
 						{!session?.metadata?.finished ? 'r resume session • ' : ''}ESC back
 						to list
 					</Text>
+					
+					{/* Overflow indicator */}
+					<OverflowIndicator 
+						position="bottom-right"
+						showCount={true}
+					/>
 				</Box>
 			</Box>
 		);

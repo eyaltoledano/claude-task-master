@@ -4,6 +4,8 @@ import { style, gradient } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
+import { OverflowableText } from './OverflowableText.jsx';
+import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function AnalyzeComplexityScreen() {
@@ -393,6 +395,13 @@ export function AnalyzeComplexityScreen() {
 			<StreamingModal 
 				isOpen={showStreamingModal} 
 				onClose={() => setShowStreamingModal(false)} 
+			/>
+
+			{/* Overflow Indicator */}
+			<OverflowIndicator 
+				position="bottom-right"
+				showCount={false}
+				symbol="⋯"
 			/>
 		</Box>
 	);

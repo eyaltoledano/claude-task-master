@@ -7,6 +7,7 @@ import {
   PhraseCollections,
   useKeypress,
 } from '../hooks/index.js';
+import { OverflowableText } from './OverflowableText.jsx';
 
 export function TaskDetails({
   task,
@@ -111,9 +112,12 @@ export function TaskDetails({
     return (
       <Box flexDirection="column" marginBottom={1}>
         <Text color={theme.text.primary} bold>Description:</Text>
-        <Text color={theme.text.primary}>
-          {currentItem.description}
-        </Text>
+        <OverflowableText
+          id={`task-description-${currentItem.id || 'unknown'}`}
+          content={currentItem.description}
+          maxLines={6}
+          color={theme.text.primary}
+        />
       </Box>
     );
   };
@@ -121,44 +125,15 @@ export function TaskDetails({
   const renderDetails = () => {
     if (!currentItem.details) return null;
 
-    // Split details into lines and handle scrolling
-    const detailLines = currentItem.details.split('\n');
-    const visibleLines = detailLines.slice(
-      detailScrollOffset,
-      detailScrollOffset + maxVisibleRows
-    );
-
-    const hasMoreAbove = detailScrollOffset > 0;
-    const hasMoreBelow = detailScrollOffset + maxVisibleRows < detailLines.length;
-
     return (
       <Box flexDirection="column" marginBottom={1}>
         <Text color={theme.text.primary} bold>Implementation Details:</Text>
-        
-        {hasMoreAbove && (
-          <Text color={theme.text.tertiary} dimColor>
-            ▲ {detailScrollOffset} lines above...
-          </Text>
-        )}
-
-        {visibleLines.map((line, index) => (
-          <Text key={`line-${detailScrollOffset + index}-${line.slice(0, 10)}`} color={theme.text.primary}>
-            {line || ' '} {/* Handle empty lines */}
-          </Text>
-        ))}
-
-        {hasMoreBelow && (
-          <Text color={theme.text.tertiary} dimColor>
-            ▼ {detailLines.length - (detailScrollOffset + maxVisibleRows)} lines below...
-          </Text>
-        )}
-
-        {/* Scroll indicators */}
-        {(hasMoreAbove || hasMoreBelow) && !isNarrow && (
-          <Text color={theme.text.tertiary} dimColor>
-            Use ↑/↓ to scroll, Page Up/Down for faster scrolling
-          </Text>
-        )}
+        <OverflowableText
+          id={`task-details-${currentItem.id || 'unknown'}`}
+          content={currentItem.details}
+          maxLines={15}
+          color={theme.text.primary}
+        />
       </Box>
     );
   };
@@ -169,9 +144,12 @@ export function TaskDetails({
     return (
       <Box flexDirection="column" marginBottom={1}>
         <Text color={theme.text.primary} bold>Test Strategy:</Text>
-        <Text color={theme.text.primary}>
-          {currentItem.testStrategy}
-        </Text>
+        <OverflowableText
+          id={`task-test-strategy-${currentItem.id || 'unknown'}`}
+          content={currentItem.testStrategy}
+          maxLines={8}
+          color={theme.text.primary}
+        />
       </Box>
     );
   };

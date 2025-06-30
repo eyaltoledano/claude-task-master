@@ -11,6 +11,7 @@ import Spinner from 'ink-spinner';
 import { ChatSession } from '../session/chat-session.js';
 import { AIMessageHandler } from '../ai/message-handler.js';
 import { getCurrentTheme } from '../theme.js';
+import { OverflowableText } from './OverflowableText.jsx';
 import fs from 'fs';
 import path from 'path';
 
@@ -40,10 +41,12 @@ const Message = ({ message, isStreaming = false }) => {
 				</Text>
 			</Box>
 			<Box marginLeft={3}>
-				<Text>
-					{message.content}
-					{isStreaming && <Text color={theme.textDim}>▊</Text>}
-				</Text>
+				<OverflowableText
+					id={`chat-message-${message.role}-${message.timestamp || Date.now()}`}
+					content={message.content + (isStreaming ? '▊' : '')}
+					maxLines={message.role === 'user' ? 8 : 20}
+					color={theme.text}
+				/>
 			</Box>
 			{message.metadata?.toolCalls && message.metadata.toolCalls.length > 0 && (
 				<Box flexDirection="column" marginLeft={3} marginTop={1}>

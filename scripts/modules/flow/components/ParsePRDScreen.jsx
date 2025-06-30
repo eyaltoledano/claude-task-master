@@ -6,6 +6,7 @@ import { theme } from '../theme.js';
 import { FileBrowser } from './FileBrowser.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
+import { OverflowableText } from './OverflowableText.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function ParsePRDScreen() {

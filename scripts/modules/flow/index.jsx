@@ -32,6 +32,7 @@ import { NextTaskModal } from './components/NextTaskModal.jsx';
 import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
+import { OverflowProvider } from './contexts/OverflowContext.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -722,7 +723,8 @@ function FlowApp({ backend, options = {} }) {
 
 	return (
 		<AppContext.Provider value={contextValue}>
-			<Box flexDirection="column" height="100%">
+			<OverflowProvider>
+				<Box flexDirection="column" height="100%">
 				{/* Conditionally render EITHER popup OR main content */}
 				{showCommandPalette ? (
 					<CommandPalette />
@@ -902,6 +904,7 @@ function FlowApp({ backend, options = {} }) {
 					</>
 				)}
 			</Box>
+			</OverflowProvider>
 		</AppContext.Provider>
 	);
 }

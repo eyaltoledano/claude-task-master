@@ -612,6 +612,23 @@ export const ComponentThemes = {
       invalid: 'state.error.primary',
       status: 'text.tertiary'
     }
+  },
+
+  // Overflow management component themes
+  showMore: {
+    indicator: 'accent',
+    indicatorDim: 'text.tertiary',
+    text: 'text.secondary',
+    textDim: 'text.tertiary',
+    focus: 'accent',
+    background: 'surface.secondary'
+  },
+
+  overflowIndicator: {
+    indicator: 'text.tertiary',
+    text: 'text.tertiary',
+    background: 'surface.secondary',
+    border: 'border.secondary'
   }
 };
 

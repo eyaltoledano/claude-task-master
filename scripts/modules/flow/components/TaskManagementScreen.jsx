@@ -6,6 +6,7 @@ import { useAppContext } from '../index.jsx';
 import { getTheme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
+import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
@@ -2151,6 +2152,13 @@ Focus on: current industry standards, common pitfalls, security considerations
 			<StreamingModal 
 				isOpen={showStreamingModal} 
 				onClose={() => setShowStreamingModal(false)} 
+			/>
+
+			{/* Overflow Indicator */}
+			<OverflowIndicator 
+				position="bottom-right"
+				showCount={true}
+				symbol="⋯"
 			/>
     </Box>
   );
