@@ -722,7 +722,9 @@ export function ClaudeWorktreeLauncherModal({
 				const task = tasks[0]; // Get the first (usually only) task
 				const prDescription = `Implemented by Claude Code\n\nStatistics:\n- Turns: ${sessionResult.statistics?.turns || 0}/${sessionResult.statistics?.maxTurns || 0}\n- File Changes: ${sessionResult.statistics?.fileChanges || 0}\n- Duration: ${sessionResult.statistics?.durationSeconds || 0}s\n- Cost: $${(sessionResult.statistics?.totalCost || 0).toFixed(4)}`;
 
-				await backend.completeSubtaskWithPR(actualWorktree.name, {
+				// Use worktree from props or sessionResult as fallback
+				const currentWorktree = worktree || { name: sessionResult?.worktree };
+				await backend.completeSubtaskWithPR(currentWorktree.name, {
 					createPR: true,
 					prTitle: `Task ${task.id}: ${task.title}`,
 					prDescription: prDescription
