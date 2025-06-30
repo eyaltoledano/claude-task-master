@@ -786,9 +786,9 @@ function FlowApp({ backend, options = {} }) {
 						<BackgroundOperationsScreen
 							onBack={() => setCurrentScreen('welcome')}
 						/>
-					) : currentScreen === 'mcp-management' ? (
-						<MCPManagementScreen />
-					) : currentScreen === 'worktreePrompt' ? (
+									) : currentScreen === 'mcp-management' ? (
+					<MCPManagementScreen />
+				) : currentScreen === 'worktreePrompt' ? (
 						<Box justifyContent="center" alignItems="center" height="100%">
 							<WorktreePromptModal
 								taskTitle={navigationData?.taskTitle}

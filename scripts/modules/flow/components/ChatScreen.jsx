@@ -12,6 +12,7 @@ import { ChatSession } from '../session/chat-session.js';
 import { AIMessageHandler } from '../ai/message-handler.js';
 import { getCurrentTheme } from '../theme.js';
 import { OverflowableText } from './OverflowableText.jsx';
+import { Markdown } from './Markdown.jsx';
 import fs from 'fs';
 import path from 'path';
 
@@ -32,6 +33,7 @@ const Message = ({ message, isStreaming = false }) => {
 	const theme = getCurrentTheme();
 	const roleColor = message.role === 'user' ? theme.info : theme.success;
 	const roleSymbol = message.role === 'user' ? '👤' : '🤖';
+	const messageContent = message.content + (isStreaming ? '▊' : '');
 
 	return (
 		<Box flexDirection="column" marginBottom={1}>
@@ -41,12 +43,16 @@ const Message = ({ message, isStreaming = false }) => {
 				</Text>
 			</Box>
 			<Box marginLeft={3}>
-				<OverflowableText
-					id={`chat-message-${message.role}-${message.timestamp || Date.now()}`}
-					content={message.content + (isStreaming ? '▊' : '')}
-					maxLines={message.role === 'user' ? 8 : 20}
-					color={theme.text}
-				/>
+				{message.role === 'user' ? (
+					<OverflowableText
+						id={`chat-message-${message.role}-${message.timestamp || Date.now()}`}
+						content={messageContent}
+						maxLines={8}
+						color={theme.text}
+					/>
+				) : (
+					<Markdown content={messageContent} />
+				)}
 			</Box>
 			{message.metadata?.toolCalls && message.metadata.toolCalls.length > 0 && (
 				<Box flexDirection="column" marginLeft={3} marginTop={1}>

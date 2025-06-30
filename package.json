@@ -61,6 +61,7 @@
 		"cli-table3": "^0.6.5",
 		"commander": "^11.1.0",
 		"cors": "^2.8.5",
+		"date-fns": "^4.1.0",
 		"dotenv": "^16.3.1",
 		"express": "^4.21.2",
 		"fastmcp": "^2.2.2",
@@ -71,6 +72,7 @@
 		"helmet": "^8.1.0",
 		"ink-select-input": "^6.2.0",
 		"ink-spinner": "^5.0.0",
+		"ink-syntax-highlight": "^2.0.2",
 		"ink-text-input": "^6.0.0",
 		"inquirer": "^12.5.0",
 		"jsonwebtoken": "^9.0.2",
@@ -78,6 +80,7 @@
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
+		"react-dom": "^18.3.1",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8"
 	},
