@@ -160,6 +160,15 @@ export function WelcomeScreen() {
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
+								<Text color={theme.accent}>/bg</Text>
+							</Box>
+							<Box width={34}>
+								<Text>Monitor background operations</Text>
+							</Box>
+							<Text color={theme.textDim}>ctrl+x o</Text>
+						</Box>
+						<Box flexDirection="row">
+							<Box width={12}>
 								<Text color={theme.accent}>/status</Text>
 							</Box>
 							<Box width={34}>

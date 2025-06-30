@@ -16,6 +16,8 @@ import {
 import { useAppContext } from '../index.jsx';
 import { OverflowableText } from './OverflowableText.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';
+import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
+import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 
 export function ClaudeCodeScreen({
 	backend,
@@ -50,9 +52,14 @@ export function ClaudeCodeScreen({
 	const [waitingForConfig, setWaitingForConfig] = useState(
 		initialMode === 'subtask-implementation' // Start waiting for config in subtask mode
 	);
+	const [showBackgroundChoice, setShowBackgroundChoice] = useState(false);
+	const [operationId, setOperationId] = useState(null);
 	const abortControllerRef = useRef(null);
 	const { theme } = useComponentTheme('claudeCodeScreen');
 	const { width, height, isNarrow, isWide } = useTerminalSize();
+
+	// Initialize background service
+	const backgroundClaudeCode = new BackgroundClaudeCode(backend);
 
 	// Safe color accessor with fallbacks and backwards compatibility
 	const getColor = (colorPath, fallback = '#ffffff') => {
