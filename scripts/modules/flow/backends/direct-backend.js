@@ -1965,7 +1965,7 @@ export class DirectBackend extends FlowBackend {
 		try {
 			const execAsync = promisify(exec);
 			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
-			
+
 					// Import Enhanced AST context builder for Phase 2.3 (dynamic import to avoid circular dependencies)
 		let enhancedAstContextBuilder = null;
 		let enhancedAstContext = null;
@@ -2001,12 +2001,12 @@ export class DirectBackend extends FlowBackend {
 			enhancedAstContext = { enabled: false, error: error.message };
 		}
 
-					// Detect persona if not provided
-		let persona = options.persona;
-		if (!persona && tasks.length > 0) {
-			const detectedPersonas = await detectPersona(tasks[0], worktree);
-			persona = detectedPersonas[0]?.persona || 'architect';
-		}
+			// Detect persona if not provided
+			let persona = options.persona;
+			if (!persona && tasks.length > 0) {
+				const detectedPersonas = await detectPersona(tasks[0], worktree);
+				persona = detectedPersonas[0]?.persona || 'architect';
+			}
 
 		let content = '';
 
