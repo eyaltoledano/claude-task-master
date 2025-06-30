@@ -38,6 +38,7 @@ export function ClaudeCodeScreen({
 	const [keyInsights, setKeyInsights] = useState([]);
 	const [viewingSession, setViewingSession] = useState(null);
 	const [sessionMessages, setSessionMessages] = useState({});
+	const [sessionScrollOffset, setSessionScrollOffset] = useState(0);
 	const [waitingForConfig, setWaitingForConfig] = useState(
 		initialMode === 'subtask-implementation' // Start waiting for config in subtask mode
 	);
@@ -218,15 +219,136 @@ Additional context:
 	};
 
 	const loadSessionMessages = async (sessionId) => {
-		// TODO: Implement loading session messages from backend
-		// For now, we'll use a placeholder
-		setSessionMessages((prev) => ({
-			...prev,
-			[sessionId]: [
-				{ type: 'user', content: 'Session messages will be loaded here...' },
-				{ type: 'assistant', content: 'This feature is in development.' }
-			]
-		}));
+		try {
+			// Reset scroll offset when loading a new session
+			setSessionScrollOffset(0);
+			
+			setSessionMessages((prev) => ({
+				...prev,
+				[sessionId]: [] // Clear existing messages while loading
+			}));
+
+			const result = await backend.getClaudeSessionDetails(sessionId);
+			
+			if (result.success && result.session) {
+				const session = result.session;
+				
+				// Extract messages from the conversation
+				const messages = session.conversation?.messages || [];
+				
+				// Format messages for display
+				const formattedMessages = messages.map((msg, index) => {
+					if (msg.type === 'system') {
+						return {
+							type: 'system',
+							content: `System: ${msg.subtype || 'init'} - ${msg.details?.model || 'Unknown model'}`,
+							timestamp: msg.timestamp
+						};
+					} else if (msg.type === 'assistant') {
+						// Handle assistant messages
+						let content = '';
+						
+						if (typeof msg.content === 'string') {
+							// Check if content is a JSON string (tool use)
+							try {
+								const parsed = JSON.parse(msg.content);
+								if (parsed.type === 'tool_use') {
+									content = `🔧 Used tool: ${parsed.name}\nInput: ${JSON.stringify(parsed.input, null, 2)}`;
+								} else {
+									content = msg.content;
+								}
+							} catch {
+								// Not JSON, use as-is
+								content = msg.content;
+							}
+						} else if (Array.isArray(msg.content)) {
+							// Handle array of content parts
+							for (const part of msg.content) {
+								if (part.type === 'text' && part.text) {
+									content += part.text;
+								} else if (part.type === 'thinking' && part.thinking) {
+									content += `[Thinking: ${part.thinking.substring(0, 200)}...]`;
+								}
+							}
+						}
+						
+						return {
+							type: 'assistant',
+							content: content || '(No content)',
+							timestamp: msg.timestamp
+						};
+					} else if (msg.type === 'user') {
+						// Handle user messages (including tool results)
+						let content = '';
+						
+						if (typeof msg.content === 'string') {
+							// Check if content is a JSON string (tool result)
+							try {
+								const parsed = JSON.parse(msg.content);
+								if (parsed.type === 'tool_result') {
+									if (parsed.is_error) {
+										content = `❌ Tool Error: ${parsed.content}`;
+									} else {
+										// Truncate long tool results
+										const resultContent = typeof parsed.content === 'string' 
+											? parsed.content 
+											: JSON.stringify(parsed.content, null, 2);
+										content = `✅ Tool Result: ${resultContent.substring(0, 500)}${resultContent.length > 500 ? '...' : ''}`;
+									}
+								} else {
+									content = msg.content;
+								}
+							} catch {
+								// Not JSON, use as-is
+								content = msg.content;
+							}
+						} else {
+							content = msg.content || '(No content)';
+						}
+						
+						return {
+							type: 'user',
+							content: content,
+							timestamp: msg.timestamp
+						};
+					}
+					
+					// Handle other message types
+					return {
+						type: msg.type,
+						content: `[${msg.type}]: ${JSON.stringify(msg, null, 2).substring(0, 200)}...`,
+						timestamp: msg.timestamp
+					};
+				});
+
+				setSessionMessages((prev) => ({
+					...prev,
+					[sessionId]: formattedMessages
+				}));
+			} else {
+				// Handle error case
+				setSessionMessages((prev) => ({
+					...prev,
+					[sessionId]: [
+						{ 
+							type: 'error', 
+							content: `Failed to load session: ${result.error || 'Unknown error'}` 
+						}
+					]
+				}));
+			}
+		} catch (error) {
+			console.error('Error loading session messages:', error);
+			setSessionMessages((prev) => ({
+				...prev,
+				[sessionId]: [
+					{ 
+						type: 'error', 
+						content: `Error loading session: ${error.message}` 
+					}
+				]
+			}));
+		}
 	};
 
 	const startSubtaskImplementationSession = async () => {
@@ -554,7 +676,18 @@ ${insightSummary}
 
 		// Handle session detail view
 		if (viewingSession) {
-			if (
+			const sessionMessagesData = sessionMessages[viewingSession] || [];
+			const totalMessages = sessionMessagesData.length;
+			const maxVisibleMessages = height - 8; // Account for header, info, footer
+			const maxScrollOffset = Math.max(0, totalMessages - maxVisibleMessages);
+			
+			if (key.upArrow && sessionScrollOffset > 0) {
+				setSessionScrollOffset(sessionScrollOffset - 1);
+				return;
+			} else if (key.downArrow && sessionScrollOffset < maxScrollOffset) {
+				setSessionScrollOffset(sessionScrollOffset + 1);
+				return;
+			} else if (
 				input === 'r' &&
 				sessions.find(
 					(s) => s.sessionId === viewingSession && !s.metadata?.finished
@@ -924,6 +1057,19 @@ ${insightSummary}
 	if (viewingSession) {
 		const session = sessions.find((s) => s.sessionId === viewingSession);
 		const sessionMessagesData = sessionMessages[viewingSession] || [];
+		
+		// Calculate scroll parameters for session messages
+		const totalMessages = sessionMessagesData.length;
+		const maxVisibleMessages = height - 8; // Account for header, info, footer
+		const canScroll = totalMessages > maxVisibleMessages;
+		const maxScrollOffset = Math.max(0, totalMessages - maxVisibleMessages);
+		
+
+		
+		// Get visible messages for current scroll position
+		const visibleMessages = canScroll 
+			? sessionMessagesData.slice(sessionScrollOffset, sessionScrollOffset + maxVisibleMessages)
+			: sessionMessagesData;
 
 		return (
 			<Box flexDirection="column" height="100%">
@@ -986,15 +1132,25 @@ ${insightSummary}
 						</Box>
 					) : (
 						<Box flexDirection="column">
-							{sessionMessagesData.map((msg, idx) => (
+							{/* Scroll indicator - top */}
+							{canScroll && sessionScrollOffset > 0 && (
+								<Box justifyContent="center" marginBottom={1}>
+									<Text color={safeTheme.textDim}>▲ {sessionScrollOffset} messages above</Text>
+								</Box>
+							)}
+							
+							{/* Visible messages */}
+							{visibleMessages.map((msg, idx) => (
 								<Box
-									key={`session-msg-${viewingSession}-${msg.type}-${idx}`}
+									key={`session-msg-${viewingSession}-${msg.type}-${sessionScrollOffset + idx}`}
 									marginBottom={1}
 								>
 									{msg.type === 'user' && (
 										<>
 											<Text color="cyan">User: </Text>
-											<Text>{msg.content}</Text>
+											<Box marginLeft={2}>
+												<Text>{msg.content}</Text>
+											</Box>
 										</>
 									)}
 									{msg.type === 'assistant' && (
@@ -1005,8 +1161,39 @@ ${insightSummary}
 											</Box>
 										</>
 									)}
+									{msg.type === 'system' && (
+										<>
+											<Text color="gray">System: </Text>
+											<Box marginLeft={2}>
+												<Text color="gray">{msg.content}</Text>
+											</Box>
+										</>
+									)}
+									{msg.type === 'error' && (
+										<>
+											<Text color="red">Error: </Text>
+											<Box marginLeft={2}>
+												<Text color="red">{msg.content}</Text>
+											</Box>
+										</>
+									)}
+									{!['user', 'assistant', 'system', 'error'].includes(msg.type) && (
+										<>
+											<Text color="yellow">{msg.type}: </Text>
+											<Box marginLeft={2}>
+												<Text color="yellow">{msg.content}</Text>
+											</Box>
+										</>
+									)}
 								</Box>
 							))}
+							
+							{/* Scroll indicator - bottom */}
+							{canScroll && sessionScrollOffset < maxScrollOffset && (
+								<Box justifyContent="center" marginTop={1}>
+									<Text color={safeTheme.textDim}>▼ {maxScrollOffset - sessionScrollOffset} messages below</Text>
+								</Box>
+							)}
 						</Box>
 					)}
 				</Box>
@@ -1025,6 +1212,7 @@ ${insightSummary}
 					flexShrink={0}
 				>
 					<Text color={safeTheme.text}>
+						{canScroll ? '↑↓ scroll • ' : ''}
 						{!session?.metadata?.finished ? 'r resume session • ' : ''}ESC back
 						to list
 					</Text>

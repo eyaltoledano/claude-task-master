@@ -1792,23 +1792,46 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
-	// Get Claude Code sessions
+	// Get Claude Code sessions (reads from index for efficiency)
 	async getClaudeCodeSessions() {
 		try {
-			const sessionsPath = path.join(
+			const indexPath = path.join(
 				this.projectRoot,
 				'.taskmaster',
 				'claude-sessions.json'
 			);
 
 			try {
-				const data = await fs.readFile(sessionsPath, 'utf8');
+				const data = await fs.readFile(indexPath, 'utf8');
+				const sessions = JSON.parse(data);
+				
+				// Convert index format to display format
+				const displaySessions = sessions.map(session => ({
+					sessionId: session.sessionId,
+					prompt: session.subtaskInfo 
+						? `${session.subtaskInfo.fullId}: ${session.subtaskInfo.title}`
+						: 'General Claude Session',
+					lastUpdated: session.timestamp,
+					createdAt: session.timestamp,
+					metadata: {
+						type: 'subtask',
+						filename: session.filename,
+						subtaskInfo: session.subtaskInfo,
+						worktree: session.worktree,
+						branch: session.branch,
+						statistics: session.statistics,
+						persona: session.persona,
+						prInfo: session.prInfo,
+						finished: true
+					}
+				}));
+
 				return {
 					success: true,
-					sessions: JSON.parse(data)
+					sessions: displaySessions
 				};
 			} catch {
-				// No sessions file yet
+				// No index file yet
 				return {
 					success: true,
 					sessions: []
@@ -1816,6 +1839,67 @@ export class DirectBackend extends FlowBackend {
 			}
 		} catch (error) {
 			console.error('Error getting Claude sessions:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Get detailed Claude session data
+	async getClaudeSessionDetails(sessionId) {
+		try {
+			// First get the session info from index
+			const indexPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			let sessionInfo = null;
+			try {
+				const data = await fs.readFile(indexPath, 'utf8');
+				const sessions = JSON.parse(data);
+				sessionInfo = sessions.find(s => s.sessionId === sessionId);
+			} catch {
+				return {
+					success: false,
+					error: 'Session index not found'
+				};
+			}
+
+			if (!sessionInfo) {
+				return {
+					success: false,
+					error: 'Session not found in index'
+				};
+			}
+
+			// Read the full session file
+			const sessionPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions',
+				sessionInfo.filename
+			);
+
+			try {
+				const sessionData = await fs.readFile(sessionPath, 'utf8');
+				const fullSession = JSON.parse(sessionData);
+
+				return {
+					success: true,
+					session: fullSession,
+					indexInfo: sessionInfo
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: `Failed to read session file: ${error.message}`
+				};
+			}
+		} catch (error) {
+			console.error('Error getting Claude session details:', error);
 			return {
 				success: false,
 				error: error.message
@@ -2594,7 +2678,7 @@ ${prompt}
 	}
 
 	/**
-	 * Save Claude session data to a JSON file in .taskmaster folder
+	 * Save Claude session data to a JSON file in .taskmaster folder and update index
 	 * @param {Object} sessionData - The session data to save
 	 * @returns {Promise<void>}
 	 */
@@ -2612,9 +2696,6 @@ ${prompt}
 			const taskIds = sessionData.tasks.map((t) => t.id).join('_');
 			const filename = `claude-session-${taskIds}-${timestamp}.json`;
 			const filePath = path.join(claudeDir, filename);
-
-			// Also save a "latest" file for easy access
-			const latestPath = path.join(claudeDir, 'claude-latest.json');
 
 			// Process conversation history for better readability
 			const processedMessages =
@@ -2647,12 +2728,33 @@ ${prompt}
 					return processed;
 				}) || [];
 
-			// Prepare data with summary at the top
+			// Extract subtask information for better organization
+			const primaryTask = sessionData.tasks[0];
+			const isSubtask = primaryTask.id.includes('.');
+			let parentTaskId = null;
+			let subtaskId = null;
+			
+			if (isSubtask) {
+				const [parent, sub] = primaryTask.id.split('.');
+				parentTaskId = parent;
+				subtaskId = sub;
+			}
+
+			// Prepare data with enhanced summary
 			const dataToSave = {
 				summary: {
+					sessionId: sessionData.sessionId,
 					timestamp: sessionData.statistics.completedAt,
 					worktree: sessionData.worktree,
 					branch: sessionData.branch,
+					// Enhanced task information
+					subtaskInfo: isSubtask ? {
+						parentTaskId,
+						subtaskId,
+						fullId: primaryTask.id,
+						title: primaryTask.title,
+						description: primaryTask.description
+					} : null,
 					tasks: sessionData.tasks.map((t) => ({
 						id: t.id,
 						title: t.title,
@@ -2669,7 +2771,12 @@ ${prompt}
 					},
 					persona: sessionData.persona,
 					toolRestrictions: sessionData.statistics.toolRestrictions,
-					sessionId: sessionData.sessionId
+					// PR tracking
+					prInfo: {
+						created: false,
+						url: null,
+						createdAt: null
+					}
 				},
 				conversation: {
 					messageCount: processedMessages.length,
@@ -2681,19 +2788,64 @@ ${prompt}
 				}
 			};
 
-			// Write to both files
+			// Write session file
 			await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
-			await fs.writeFile(
-				latestPath,
-				JSON.stringify(dataToSave, null, 2),
-				'utf8'
-			);
+
+			// Update the index file
+			await this.updateClaudeSessionIndex({
+				sessionId: sessionData.sessionId,
+				filename: filename,
+				timestamp: sessionData.statistics.completedAt,
+				subtaskInfo: dataToSave.summary.subtaskInfo,
+				worktree: sessionData.worktree,
+				branch: sessionData.branch,
+				statistics: dataToSave.summary.statistics,
+				persona: sessionData.persona,
+				prInfo: dataToSave.summary.prInfo
+			});
 
 			this.log.info(`Claude session data saved to: ${filePath}`);
 			return filePath;
 		} catch (error) {
 			this.log.error('Failed to save Claude session data:', error.message);
 			throw error;
+		}
+	}
+
+	/**
+	 * Update the Claude sessions index file
+	 * @private
+	 */
+	async updateClaudeSessionIndex(sessionInfo) {
+		try {
+			const indexPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			let index = [];
+			try {
+				const data = await fs.readFile(indexPath, 'utf8');
+				index = JSON.parse(data);
+			} catch {
+				// No index file yet
+			}
+
+			// Remove existing entry if it exists
+			index = index.filter(s => s.sessionId !== sessionInfo.sessionId);
+
+			// Add new entry
+			index.unshift(sessionInfo); // Add to beginning (newest first)
+
+			// Keep only last 100 sessions in index
+			if (index.length > 100) {
+				index = index.slice(0, 100);
+			}
+
+			await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+		} catch (error) {
+			this.log.error('Failed to update Claude session index:', error.message);
 		}
 	}
 
@@ -2743,6 +2895,158 @@ ${prompt}
 	async completeSubtaskWithPR(worktreeName, options = {}) {
 		const worktreeManager = new WorktreeManager(this.projectRoot);
 		return await worktreeManager.completeSubtask(worktreeName, options);
+	}
+
+	// Create PR from Claude session
+	async createPRFromClaudeSession(sessionId, options = {}) {
+		try {
+			// Get session details
+			const sessionResult = await this.getClaudeSessionDetails(sessionId);
+			if (!sessionResult.success) {
+				return sessionResult;
+			}
+
+			const { session, indexInfo } = sessionResult;
+			const subtaskInfo = session.summary.subtaskInfo;
+
+			if (!subtaskInfo) {
+				return {
+					success: false,
+					error: 'Session is not associated with a subtask'
+				};
+			}
+
+			// Check if PR already exists
+			if (session.summary.prInfo.created) {
+				return {
+					success: false,
+					error: `PR already created: ${session.summary.prInfo.url}`
+				};
+			}
+
+			// Get worktree info
+			const worktreeName = `task-${subtaskInfo.fullId}`;
+			const worktree = await this.getWorktreeForSubtask(subtaskInfo.parentTaskId, subtaskInfo.subtaskId);
+
+			if (!worktree) {
+				return {
+					success: false,
+					error: 'Associated worktree not found'
+				};
+			}
+
+			// Create PR using worktree manager
+			const prTitle = options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
+			const prDescription = options.prDescription || this.generatePRDescription(session);
+
+			const prResult = await this.completeSubtaskWithPR(worktreeName, {
+				createPR: true,
+				prTitle,
+				prDescription
+			});
+
+			if (prResult.prUrl) {
+				// Update session with PR info
+				await this.updateClaudeSessionPR(sessionId, {
+					created: true,
+					url: prResult.prUrl,
+					createdAt: new Date().toISOString()
+				});
+
+				return {
+					success: true,
+					prUrl: prResult.prUrl,
+					worktree: worktree.name
+				};
+			} else {
+				return {
+					success: false,
+					error: 'Failed to create PR'
+				};
+			}
+		} catch (error) {
+			console.error('Error creating PR from Claude session:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Update Claude session with PR information
+	async updateClaudeSessionPR(sessionId, prInfo) {
+		try {
+			// Update the index
+			const indexPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			let index = [];
+			try {
+				const data = await fs.readFile(indexPath, 'utf8');
+				index = JSON.parse(data);
+			} catch {
+				return;
+			}
+
+			// Find and update session in index
+			const sessionIndex = index.findIndex(s => s.sessionId === sessionId);
+			if (sessionIndex >= 0) {
+				index[sessionIndex].prInfo = prInfo;
+				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+			}
+
+			// Update the session file
+			const sessionInfo = index[sessionIndex];
+			if (sessionInfo) {
+				const sessionPath = path.join(
+					this.projectRoot,
+					'.taskmaster',
+					'claude-sessions',
+					sessionInfo.filename
+				);
+
+				try {
+					const sessionData = await fs.readFile(sessionPath, 'utf8');
+					const fullSession = JSON.parse(sessionData);
+					fullSession.summary.prInfo = prInfo;
+					await fs.writeFile(sessionPath, JSON.stringify(fullSession, null, 2), 'utf8');
+				} catch (error) {
+					this.log.error('Failed to update session file with PR info:', error.message);
+				}
+			}
+		} catch (error) {
+			this.log.error('Failed to update Claude session PR info:', error.message);
+		}
+	}
+
+	// Generate PR description from Claude session
+	generatePRDescription(session) {
+		const stats = session.summary.statistics;
+		const subtask = session.summary.subtaskInfo;
+		
+		let description = `Implemented by Claude Code\n\n`;
+		description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
+		if (subtask.description) {
+			description += `**Description:** ${subtask.description}\n`;
+		}
+		description += `\n**Session Statistics:**\n`;
+		description += `- Turns: ${stats.turns}/${stats.maxTurns}\n`;
+		description += `- File Changes: ${stats.fileChanges || 0}\n`;
+		description += `- Duration: ${stats.durationSeconds || 0}s\n`;
+		description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
+		description += `- Persona: ${session.summary.persona}\n`;
+
+		if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
+			description += `\n**Tools Used:**\n`;
+			for (const [tool, count] of Object.entries(stats.toolsUsed)) {
+				description += `- ${tool}: ${count} times\n`;
+			}
+		}
+
+		return description;
 	}
 
 	async claudeCodeStatus(sessionId) {
