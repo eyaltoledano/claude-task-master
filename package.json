@@ -50,6 +50,7 @@
 		"@ai-sdk/xai": "^1.2.15",
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@aws-sdk/credential-providers": "^3.817.0",
+		"@inkjs/ui": "^2.0.0",
 		"@inquirer/search": "^3.0.15",
 		"@modelcontextprotocol/sdk": "^1.13.1",
 		"@openrouter/ai-sdk-provider": "^0.4.5",

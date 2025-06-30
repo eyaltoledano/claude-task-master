@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { ConfirmInput } from '@inkjs/ui';
 import { style, gradient } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';

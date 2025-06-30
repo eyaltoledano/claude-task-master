@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { ConfirmInput } from '@inkjs/ui';
 import { getTheme } from '../theme.js';
 import { Toast } from './Toast.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
@@ -151,29 +152,8 @@ export default function GitWorktreeScreen({
 			return;
 		}
 
-		// Handle force delete confirmation
-		if (confirmForceDelete) {
-			if (input === 'y' || input === 'Y') {
-				handleRemoveWorktree(confirmForceDelete, true);
-				setConfirmForceDelete(null);
-				setShowDetailsModal(false);
-				setWorktreeDetails(null);
-			} else if (input === 'n' || input === 'N' || key.escape) {
-				setConfirmForceDelete(null);
-			}
-			return;
-		}
-
-		// Handle delete confirmation
-		if (confirmDelete) {
-			if (input === 'y' || input === 'Y') {
-				handleRemoveWorktree(confirmDelete);
-				setConfirmDelete(null);
-				setShowDetailsModal(false);
-				setWorktreeDetails(null);
-			} else if (input === 'n' || input === 'N' || key.escape) {
-				setConfirmDelete(null);
-			}
+		// Handle confirmations - now handled by ConfirmInput components
+		if (confirmForceDelete || confirmDelete) {
 			return;
 		}
 
@@ -312,7 +292,16 @@ export default function GitWorktreeScreen({
 					<Text dimColor>{confirmDelete.path}</Text>
 				</Box>
 				<Box marginTop={2}>
-					<Text>Press Y to confirm, N to cancel</Text>
+					<ConfirmInput
+						message="Delete this worktree?"
+						onConfirm={() => {
+							handleRemoveWorktree(confirmDelete);
+							setConfirmDelete(null);
+							setShowDetailsModal(false);
+							setWorktreeDetails(null);
+						}}
+						onCancel={() => setConfirmDelete(null)}
+					/>
 				</Box>
 			</Box>
 		);
@@ -346,7 +335,18 @@ export default function GitWorktreeScreen({
 					<Text dimColor>{confirmForceDelete.path}</Text>
 				</Box>
 				<Box marginTop={2}>
-					<Text>Press Y to force delete, N to cancel</Text>
+					<ConfirmInput
+						message="Force delete this worktree? (All uncommitted changes will be lost!)"
+						onConfirm={() => {
+							handleRemoveWorktree(confirmForceDelete, true);
+							setConfirmForceDelete(null);
+							setShowDetailsModal(false);
+							setWorktreeDetails(null);
+						}}
+						onCancel={() => setConfirmForceDelete(null)}
+						confirmText="Force Delete"
+						cancelText="Cancel"
+					/>
 				</Box>
 			</Box>
 		);

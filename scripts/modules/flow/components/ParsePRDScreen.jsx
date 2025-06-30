@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
+import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { FileBrowser } from './FileBrowser.jsx';
@@ -322,43 +323,15 @@ export function ParsePRDScreen() {
 			return;
 		}
 
-		if (step === 'research-prompt') {
-			if (input === 'y' || input === 'Y') {
-				handleResearchPrompt(true);
-			} else if (input === 'n' || input === 'N') {
-				handleResearchPrompt(false);
-			}
-			return;
-		}
+		// Note: confirmation prompts are now handled by ConfirmInput components
+		// Only handle non-confirmation steps here
 
 		if (step === 'num-tasks-prompt') {
 			// Input is handled by TextInput component
 			return;
 		}
 
-		if (step === 'confirm-overwrite') {
-			if (input === 'y' || input === 'Y') {
-				handleOverwriteConfirmation(true);
-			} else if (input === 'n' || input === 'N') {
-				handleOverwriteConfirmation(false);
-			}
-			return;
-		}
-
-		if (step === 'success') {
-			if (input === 'y' || input === 'Y') {
-				setStep('analyze-prompt');
-			} else if (input === 'n' || input === 'N') {
-				setCurrentScreen('welcome');
-				showToast(`✓ Parsed PRD successfully!`);
-			}
-		} else if (step === 'analyze-prompt') {
-			if (input === 'y' || input === 'Y') {
-				handleAnalyzeResponse(true);
-			} else if (input === 'n' || input === 'N') {
-				handleAnalyzeResponse(false);
-			}
-		} else if (step === 'expand-prompt') {
+		if (step === 'expand-prompt') {
 			if (input === 'a' || input === 'A') {
 				handleExpandResponse('all');
 			} else if (input === 'f' || input === 'F') {
@@ -429,9 +402,13 @@ export function ParsePRDScreen() {
 						<Text color={theme.textDim}>
 							This provides more accurate task generation but takes longer.
 						</Text>
-						<Text color={theme.text} marginTop={2}>
-							Use research? (y/n)
-						</Text>
+						<Box marginTop={2}>
+							<ConfirmInput
+								message="Use research?"
+								onConfirm={() => handleResearchPrompt(true)}
+								onCancel={() => handleResearchPrompt(false)}
+							/>
+						</Box>
 					</Box>
 				)}
 
@@ -471,9 +448,13 @@ export function ParsePRDScreen() {
 						<Text color={theme.textDim} marginTop={2}>
 							Parsing this PRD will overwrite all existing tasks in this tag.
 						</Text>
-						<Text color={theme.text} marginTop={2}>
-							Do you want to continue? (y/n)
-						</Text>
+						<Box marginTop={2}>
+							<ConfirmInput
+								message="Do you want to continue?"
+								onConfirm={() => handleOverwriteConfirmation(true)}
+								onCancel={() => handleOverwriteConfirmation(false)}
+							/>
+						</Box>
 					</Box>
 				)}
 
@@ -494,9 +475,16 @@ export function ParsePRDScreen() {
 								{parseResult.message}
 							</Text>
 						)}
-						<Text color={theme.textDim} marginTop={2}>
-							Would you like to analyze task complexity? (y/n)
-						</Text>
+						<Box marginTop={2}>
+							<ConfirmInput
+								message="Would you like to analyze task complexity?"
+								onConfirm={() => setStep('analyze-prompt')}
+								onCancel={() => {
+									setCurrentScreen('welcome');
+									showToast(`✓ Parsed PRD successfully!`);
+								}}
+							/>
+						</Box>
 					</Box>
 				)}
 
@@ -506,9 +494,13 @@ export function ParsePRDScreen() {
 						<Text color={theme.text} marginTop={1}>
 							This will identify tasks that should be broken down further.
 						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							Proceed with complexity analysis? (y/n)
-						</Text>
+						<Box marginTop={2}>
+							<ConfirmInput
+								message="Proceed with complexity analysis?"
+								onConfirm={() => handleAnalyzeResponse(true)}
+								onCancel={() => handleAnalyzeResponse(false)}
+							/>
+						</Box>
 					</Box>
 				)}
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
+import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { SimpleTable } from './SimpleTable.jsx';
@@ -64,12 +65,7 @@ export function TagManagementScreen() {
 		}
 
 		if (mode === 'delete-confirm') {
-			if (input === 'y' || input === 'Y') {
-				deleteTag();
-			} else if (input === 'n' || input === 'N' || key.escape) {
-				setMode('view');
-				setError(null);
-			}
+			// Confirmation is now handled by ConfirmInput component
 			return;
 		}
 
@@ -425,10 +421,14 @@ export function TagManagementScreen() {
 			>
 				{mode === 'delete-confirm' ? (
 					<Box>
-						<Text color={theme.warning}>
-							Delete tag '{sortedTags[selectedIndex]?.name}'?{' '}
-						</Text>
-						<Text color={theme.text}>(y/n)</Text>
+						<ConfirmInput
+							message={`Delete tag '${sortedTags[selectedIndex]?.name}'?`}
+							onConfirm={() => deleteTag()}
+							onCancel={() => {
+								setMode('view');
+								setError(null);
+							}}
+						/>
 					</Box>
 				) : error ? (
 					<Text color={theme.error}>{error}</Text>

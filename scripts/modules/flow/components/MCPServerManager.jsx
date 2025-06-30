@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import Spinner from 'ink-spinner';
+import { ConfirmInput } from '@inkjs/ui';
 import { MCPServerForm } from './MCPServerForm.jsx';
 import { MCPServerDetails } from './MCPServerDetails.jsx';
 import {
@@ -68,11 +69,7 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 		if (view !== 'list') return;
 
 		if (confirmDelete) {
-			if (input === 'y') {
-				handleConfirmDelete();
-			} else if (input === 'n' || key.escape) {
-				setConfirmDelete(null);
-			}
+			// Confirmation is now handled by ConfirmInput component
 			return;
 		}
 
@@ -158,18 +155,14 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 	};
 
 	const handleSaveServer = async (serverData) => {
-		try {
-			if (view === 'add') {
-				await addServer(serverData);
-			} else {
-				await updateServer(serverData);
-			}
-			await loadServerList();
-			setView('list');
-			setEditingServer(null);
-		} catch (err) {
-			throw err; // Let the form handle the error
+		if (view === 'add') {
+			await addServer(serverData);
+		} else {
+			await updateServer(serverData);
 		}
+		await loadServerList();
+		setView('list');
+		setEditingServer(null);
 	};
 
 	const handleCancel = () => {
@@ -235,9 +228,11 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 
 			{confirmDelete && (
 				<Box marginBottom={1} borderStyle="round" borderColor="red" padding={1}>
-					<Text color="red">
-						Delete server "{confirmDelete.name}"? This cannot be undone. (Y/N)
-					</Text>
+					<ConfirmInput
+						message={`Delete server "${confirmDelete.name}"? This cannot be undone.`}
+						onConfirm={() => handleConfirmDelete()}
+						onCancel={() => setConfirmDelete(null)}
+					/>
 				</Box>
 			)}
 
