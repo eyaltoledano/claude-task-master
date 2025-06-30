@@ -14,6 +14,7 @@ import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
+import { useTerminalSize } from '../hooks/useTerminalSize.js';
 
 export function TaskManagementScreen() {
 	const {

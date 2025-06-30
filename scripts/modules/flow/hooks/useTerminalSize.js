@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Hook for responsive terminal layouts based on terminal dimensions
- * Inspired by Gemini CLI's useTerminalSize implementation
+ * Simplified approach inspired by Gemini CLI - focuses on practical breakpoints
  */
 export function useTerminalSize() {
 	const [size, setSize] = useState(() => ({
@@ -34,12 +34,25 @@ export function useTerminalSize() {
 		width: size.width,
 		height: size.height,
 		layout,
-		// Utility functions for responsive design
+		
+		// Practical breakpoints - only three that matter
 		isNarrow: size.width < 60,
-		isWide: size.width >= 120,
-		isTall: size.height >= 30,
-		maxContentWidth: Math.min(size.width - 4, 120), // Account for padding
-		availableHeight: size.height - 6 // Account for header/footer
+		isMedium: size.width >= 60 && size.width < 100,
+		isWide: size.width >= 100,
+		
+		// Cap effective width at 120 for readability
+		effectiveWidth: Math.min(size.width, 120),
+		
+		// Utility functions for responsive design
+		contentWidth: Math.min(size.width - 4, 116), // Account for padding, cap at 116
+		availableHeight: size.height - 6, // Account for header/footer
+		
+		// Helper for responsive values
+		getResponsiveValue: (narrow, medium, wide) => {
+			if (size.width < 60) return narrow;
+			if (size.width < 100) return medium;
+			return wide;
+		}
 	};
 }
 
