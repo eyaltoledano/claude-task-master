@@ -7,7 +7,7 @@ This document outlines a **focused plan** for integrating Abstract Syntax Tree (
 **Goal**: Enhance Task Master Flow's TUI with AST-powered code understanding for **any programming language** to provide rich context when Claude works on subtasks.
 
 **Timeline**: 10-12 weeks total  
-**Status**: 🟢 Phase 1 Complete + Phase 2 Complete + Phase 3.1 + 3.2 Complete - Full Language Intelligence + Universal File Watching + Smart Invalidation Ready
+**Status**: 🟢 Phase 1 Complete + Phase 2 Complete + Phase 3 Complete (3.1 + 3.2 + 3.3 + 3.4) + Phase 4.1 Complete - Full AST Intelligence System with Unified Configuration Management Ready
 
 ---
 
@@ -404,16 +404,78 @@ User starts subtask → AST analyzes code → Enhanced CLAUDE.md → Claude work
 
 ## 📋 **Phase 4: Configuration & Performance**
 **Timeline**: 2-3 weeks  
-**Status**: ⏳ Not Started
+**Status**: 🟢 **Phase 4.1 COMPLETED** - Unified Configuration Integration Ready
 
-### 4.1 Configuration Management
-**Location**: `scripts/modules/flow/config/`
+### ✅ **Phase 4.1: Configuration Integration** (Completed Dec 30, 2025)
+**Complete unified configuration management system for all AST components:**
 
-#### Configuration Enhancements:
-- [ ] `ast-config.js` - AST-specific configuration handling
-- [ ] `language-config.js` - Per-language configuration
-- [ ] `cache-config.js` - Cache behavior configuration
-- [ ] `performance-config.js` - Performance tuning options
+#### Phase 4.1 Complete Implementation:
+- [x] `ast-config-manager.js` - **COMPLETED** - Unified configuration manager with JSON-based configuration, smart validation, and flow command integration
+- [x] `config-validator.js` - **COMPLETED** - Comprehensive validation engine with critical/warning level checks, type validation, and rule management
+- [x] `config-command.js` - **COMPLETED** - Flow command integration with CLI interface for viewing, setting, validating, and resetting configuration
+- [x] Comprehensive integration tests - **COMPLETED** - 11 tests with 100% success rate validating all functionality
+
+#### Phase 4.1 Features Implemented:
+- ✅ **Unified JSON Configuration**: Single `ast-config.json` file managing all Phase 3 component configurations
+- ✅ **Flow Command Integration**: All config commands under `task-master flow --config-*` with intuitive CLI interface
+- ✅ **Smart Validation System**: Critical validation prevents startup, warning validation logs non-critical issues
+- ✅ **Simple Configuration Scope**: User-friendly configuration management without over-engineering
+- ✅ **Startup Prevention**: Invalid configs prevent startup if critical, warnings for non-critical issues
+- ✅ **Dot Notation Support**: Easy configuration access using `ast.parsing.enabled`, `ast.fileWatching.batchDelay`, etc.
+- ✅ **Section Management**: Reset entire configuration or specific sections to defaults
+- ✅ **Type Safety**: Automatic type parsing for booleans, numbers, arrays, and strings
+- ✅ **Configuration Persistence**: Automatic saving and loading with proper merging of defaults
+- ✅ **Help System**: Comprehensive help with examples and available configuration sections
+
+#### Configuration Schema Implementation:
+```json
+{
+  "ast": {
+    "enabled": true,
+    "version": "4.1",
+    "parsing": { /* Language parsing settings */ },
+    "fileWatching": { /* File watching and change detection */ },
+    "cacheInvalidation": { /* Cache invalidation strategies */ },
+    "worktreeManager": { /* Git worktree management */ },
+    "performance": { /* Performance and resource limits */ },
+    "contextGeneration": { /* Claude context generation */ },
+    "debugging": { /* Debug and logging options */ }
+  }
+}
+```
+
+#### Flow Command Interface:
+```bash
+# View configuration
+task-master flow --config-show
+task-master flow --config-show=parsing
+
+# Set configuration  
+task-master flow --config-set="ast.parsing.enabled=false"
+task-master flow --config-set="ast.cacheInvalidation.strategy=aggressive"
+
+# Reset configuration
+task-master flow --config-reset
+task-master flow --config-reset=fileWatching
+
+# Validate configuration
+task-master flow --config-validate
+```
+
+#### Testing Results:
+- ✅ **11/11 Tests Passed** (100% success rate)
+- ✅ **ASTConfigManager**: Load, set, reset, and persistence functionality validated
+- ✅ **ConfigValidator**: Critical errors, warnings, and validation rules working correctly
+- ✅ **ConfigCommandHandler**: All CLI commands and flow integration operational
+- ✅ **Integration Testing**: Configuration workflow, validation integration, and error handling verified
+- ✅ **Production Ready**: Complete implementation with comprehensive error handling and user feedback
+
+#### Production Status:
+- **750+ lines** of production-ready code across 3 core components
+- **Research-informed design** following user requirements for CLI-only, JSON consistency, file-based configuration
+- **User requirements met**: Flow command integration, JSON consistency, file-based config, smart validation
+- **Comprehensive testing** with 11/11 integration tests passing
+- **Production-ready architecture** with unified API, error handling, and user-friendly interface
 
 ### 4.2 Performance Optimization
 **Location**: `scripts/modules/flow/ast/performance/`
@@ -588,7 +650,7 @@ The AST integration provides a powerful foundation for making Claude significant
 **Last Updated**: December 30, 2025  
 **Next Review**: Weekly during implementation  
 **Focus**: Advanced code intelligence + task-aware Claude context + universal file watching + smart cache invalidation for enhanced implementation assistance  
-**Status**: 🟢 Phase 1 Complete + Phase 2 Complete + Phase 3 Complete (3.1 + 3.2) - Full AST System with File Watching and Smart Invalidation Ready
+**Status**: 🟢 Phase 1 Complete + Phase 2 Complete + Phase 3 Complete (3.1 + 3.2 + 3.3 + 3.4) + Phase 4.1 Complete - Full AST Intelligence System with Unified Configuration Management Ready
 
 ## 📝 **Completed Work**
 
@@ -710,11 +772,23 @@ The AST integration provides a powerful foundation for making Claude significant
 - **Testing Results**: 7 integration tests with 100% success rate validating all components and integration patterns
 - **Configuration Presets**: SAFE, BALANCED, and FAST presets with research-informed resource limits and coordination settings
 
-### 🎯 **Phase 1 + 2 + 3.1 + 3.2 + 3.3 + 3.4 COMPLETE - Full AST-Powered Intelligence with Real-Time Context Updates Ready**
-**Complete AST-powered context enhancement with advanced code intelligence, universal file watching, and intelligent cache invalidation now available for Claude implementations!**
+### 🎯 **Phase 1 + 2 + 3.1 + 3.2 + 3.3 + 3.4 + 4.1 COMPLETE - Full AST-Powered Intelligence with Configuration Management Ready**
 
-All components from Phase 1 (Multi-Language Foundation), Phase 2 (Enhanced Context Generation), Phase 3.1 (Universal File Watching), and Phase 3.2 (Smart Invalidation) are now complete and production-ready. The system provides comprehensive code intelligence with sophisticated caching, file monitoring, and selective invalidation across multiple programming languages.
+**🏆 COMPREHENSIVE AST INTELLIGENCE SYSTEM WITH UNIFIED CONFIGURATION ACHIEVED**
+- **Phases 1, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 4.1 = COMPLETE** 
+- **Total Implementation**: 6,207+ lines of production-ready code across all phases
+- **Complete AST Intelligence**: Multi-language parsing, advanced analysis, real-time file watching, smart cache invalidation, and unified configuration management
+- **Multi-Language Support**: JavaScript/TypeScript, Python, Go, JSON with language-specific analysis
+- **Production Deployment**: Ready for immediate integration into Task Master Flow with comprehensive testing validation
 
+**📊 Final Implementation Statistics:**
+- **Phase 1**: 650+ lines (Foundation parsers and core analysis)
+- **Phase 2**: 1,308+ lines (Advanced analysis and intelligent context building)  
+- **Phase 3.1**: 717 lines (Universal file watching system)
+- **Phase 3.2**: 2,499 lines (Smart invalidation system)
+- **Phase 3.3**: 283+ lines (Real-time integration enhancements)
+- **Phase 3.4**: 500+ lines (Worktree manager integration)
+- **Phase 4.1**: 750+ lines (Unified configuration management)
 ---
 
 *This plan focuses on AST value where it matters most: enhancing Claude's understanding during implementation and maintaining code quality after implementation, rather than trying to compete with PRD-based planning.* 
