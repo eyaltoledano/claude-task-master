@@ -523,6 +523,21 @@ export const ComponentThemes = {
   },
 
   // Claude Code component themes
+  claudeCodeScreen: {
+    background: 'surface.primary',
+    text: {
+      primary: 'text.primary',
+      secondary: 'text.secondary',
+      tertiary: 'text.tertiary'
+    },
+    accent: 'accent',
+    border: 'border.primary',
+    success: 'state.success.primary',
+    error: 'state.error.primary',
+    warning: 'state.warning.primary',
+    info: 'state.info.primary'
+  },
+  
   claudeSessionList: {
     background: 'surface.primary',
     text: {

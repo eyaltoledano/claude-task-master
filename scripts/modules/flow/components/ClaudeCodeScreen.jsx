@@ -5,7 +5,8 @@ import TextInput from 'ink-text-input';
 import { SimpleTable } from './SimpleTable.jsx';
 import { Toast } from './Toast.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { getTheme } from '../theme.js';
+import { ClaudeSessionList } from './ClaudeSessionList.jsx';
+import { useComponentTheme, useTerminalSize, useConsoleMessages, useStateAndRef, usePhraseCycler } from '../hooks/index.js';
 import { useAppContext } from '../index.jsx';
 
 export function ClaudeCodeScreen({
@@ -20,7 +21,7 @@ export function ClaudeCodeScreen({
 }) {
 	const { setCurrentScreen } = useAppContext();
 	const [config, setConfig] = useState(null);
-	const [sessions, setSessions] = useState([]);
+	const [sessions, setSessions, sessionsRef] = useStateAndRef([]);
 	const [loading, setLoading] = useState(
 		initialMode !== 'subtask-implementation' // Don't show loading for subtask mode
 	);
@@ -31,23 +32,74 @@ export function ClaudeCodeScreen({
 	);
 	const [prompt, setPrompt] = useState('');
 	const [activeSession, setActiveSession] = useState(null);
-	const [messages, setMessages] = useState([]);
+	const [messages, setMessages, messagesRef] = useStateAndRef([]);
 	const [isProcessing, setIsProcessing] = useState(false);
-	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [scrollOffset, setScrollOffset] = useState(0);
 	const [showMenu, setShowMenu] = useState(false);
 	const [keyInsights, setKeyInsights] = useState([]);
-	const [sessionFilter, setSessionFilter] = useState('all'); // all, active, finished
 	const [viewingSession, setViewingSession] = useState(null);
 	const [sessionMessages, setSessionMessages] = useState({});
 	const [waitingForConfig, setWaitingForConfig] = useState(
 		initialMode === 'subtask-implementation' // Start waiting for config in subtask mode
 	);
 	const abortControllerRef = useRef(null);
-	const theme = getTheme();
+	const { theme } = useComponentTheme('claudeCodeScreen');
+	const { width, height, isNarrow, isWide } = useTerminalSize();
+	
+	// Debug theme colors
+	useEffect(() => {
+		console.log('[ClaudeCodeScreen] Theme debug:', {
+			themeKeys: Object.keys(theme),
+			border: theme.border,
+			accent: theme.accent,
+			text: theme.text,
+			background: safeTheme.background
+		});
+	}, [theme]);
 
-	// Constants
-	const VISIBLE_ROWS = 15;
+	// Safe color accessor with fallbacks and backwards compatibility
+	const getColor = (colorPath, fallback = '#ffffff') => {
+		if (typeof colorPath === 'string' && colorPath.length > 0) {
+			return colorPath;
+		}
+		console.warn('[ClaudeCodeScreen] Invalid color path:', colorPath, 'using fallback:', fallback);
+		return fallback;
+	};
+
+	// Create backwards-compatible theme object
+	const resolvedTheme = theme; // Store reference to original
+	const safeTheme = {
+		// Direct access from resolved theme
+		border: getColor(resolvedTheme.border, '#334155'),
+		accent: getColor(resolvedTheme.accent, '#22d3ee'),
+		background: getColor(resolvedTheme.background, '#1e293b'),
+		success: getColor(resolvedTheme.success, '#34d399'),
+		error: getColor(resolvedTheme.error, '#f87171'),
+		warning: getColor(resolvedTheme.warning, '#fbbf24'),
+		info: getColor(resolvedTheme.info, '#60a5fa'),
+		
+		// Text colors
+		text: getColor(resolvedTheme.text?.primary, '#f1f5f9'),
+		textDim: getColor(resolvedTheme.text?.secondary, '#cbd5e1'),
+		textSecondary: getColor(resolvedTheme.text?.secondary, '#cbd5e1'),
+		textTertiary: getColor(resolvedTheme.text?.tertiary, '#94a3b8'),
+
+		// Common status colors (using fallback colors)
+		statusDone: '#34d399',
+		statusInProgress: '#60a5fa',
+		statusPending: '#fbbf24',
+		statusBlocked: '#f87171',
+		selectionText: '#0f172a',
+	};
+	const { messages: consoleMessages, clearMessages: clearConsoleMessages } = useConsoleMessages();
+	const { currentPhrase: loadingPhrase, isActive: isPhraseCycling } = usePhraseCycler('claudeProcessing', isProcessing);
+
+	// Constants - now responsive to terminal size
+	const VISIBLE_ROWS = Math.max(10, Math.min(25, height - 10)); // Dynamic rows based on terminal height
+
+	// Log terminal size and responsive calculations
+	useEffect(() => {
+		console.log('[ClaudeCodeScreen] Terminal size updated:', { width, height, VISIBLE_ROWS, isNarrow, isWide });
+	}, [width, height, VISIBLE_ROWS, isNarrow, isWide]);
 
 	useEffect(() => {
 		loadData();
@@ -69,54 +121,24 @@ export function ClaudeCodeScreen({
 		};
 	}, [initialMode, initialContext]);
 
-	// Auto-select highlighted session if provided
-	useEffect(() => {
+	// Auto-select highlighted session if provided - now handled by ClaudeSessionList component
+	const initialSelectedIndex = React.useMemo(() => {
 		if (highlightSessionId && sessions.length > 0) {
-			// Calculate filtered sessions here to avoid conditional hook issue
-			const filtered = sessions.filter((session) => {
-				// First apply subtask filter if provided
-				if (
-					filterSubtaskId &&
-					session.metadata?.subtaskId !== filterSubtaskId
-				) {
-					return false;
-				}
-
-				if (sessionFilter === 'all') return true;
-				if (sessionFilter === 'active') {
-					// Active sessions are those without a final result or recent activity
-					return (
-						!session.metadata?.finished ||
-						(session.lastUpdated &&
-							new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
-					);
-				}
-				if (sessionFilter === 'finished') {
-					return session.metadata?.finished === true;
-				}
-				return true;
-			});
-
-			if (filtered.length > 0) {
-				const index = filtered.findIndex(
-					(s) => s.sessionId === highlightSessionId
-				);
-				if (index >= 0) {
-					setSelectedIndex(index);
-					// Adjust scroll to show the highlighted session
-					if (index >= VISIBLE_ROWS) {
-						setScrollOffset(Math.max(0, index - Math.floor(VISIBLE_ROWS / 2)));
-					}
-				}
-			}
+			console.log('[ClaudeCodeScreen] Setting initial highlighted session:', { highlightSessionId, sessionsCount: sessions.length });
+			// Return the index to be used as initial state in ClaudeSessionList
+			const index = sessions.findIndex(s => s.sessionId === highlightSessionId);
+			return index >= 0 ? index : 0;
 		}
-	}, [highlightSessionId, sessions, filterSubtaskId, sessionFilter]);
+		return 0;
+	}, [highlightSessionId, sessions]);
 
 	const loadData = async () => {
 		// Only show loading screen if we're not in an active session
 		if (mode !== 'active-session') {
 			setLoading(true);
 		}
+		
+		console.log('[ClaudeCodeScreen] Loading data, mode:', mode);
 
 		try {
 			// Load Claude Code configuration
@@ -583,125 +605,73 @@ ${insightSummary}
 			return;
 		}
 
-		// Handle list mode navigation
-		if (mode === 'list') {
-			if (key.downArrow) {
-				const newIndex = Math.min(
-					selectedIndex + 1,
-					filteredSessions.length - 1
-				);
-				setSelectedIndex(newIndex);
-
-				// Adjust scroll if needed
-				if (newIndex >= scrollOffset + VISIBLE_ROWS) {
-					setScrollOffset(newIndex - VISIBLE_ROWS + 1);
-				}
-			} else if (key.upArrow) {
-				const newIndex = Math.max(selectedIndex - 1, 0);
-				setSelectedIndex(newIndex);
-
-				// Adjust scroll if needed
-				if (newIndex < scrollOffset) {
-					setScrollOffset(newIndex);
-				}
-			} else if (key.return && filteredSessions.length > 0) {
-				// View selected session details
-				const session = filteredSessions[selectedIndex];
-				setViewingSession(session.sessionId);
-				// Load session messages if needed
-				loadSessionMessages(session.sessionId);
-			} else if (input === 'f') {
-				// Cycle through filters
-				if (sessionFilter === 'all') {
-					setSessionFilter('active');
-				} else if (sessionFilter === 'active') {
-					setSessionFilter('finished');
-				} else {
-					setSessionFilter('all');
-				}
-				setSelectedIndex(0);
-				setScrollOffset(0);
-			} else if (input === '1') {
-				setSessionFilter('all');
-				setSelectedIndex(0);
-				setScrollOffset(0);
-			} else if (input === '2') {
-				setSessionFilter('active');
-				setSelectedIndex(0);
-				setScrollOffset(0);
-			} else if (input === '3') {
-				setSessionFilter('finished');
-				setSelectedIndex(0);
-				setScrollOffset(0);
-			} else if (input === 'n') {
-				// New session
-				if (!config?.enabled) {
-					setError(
-						'Claude Code is not enabled. Configure it in settings first.'
-					);
-					return;
-				}
-				setMode('new-query');
-				setPrompt('');
-			} else if (input === 'm') {
-				// Show menu
-				setShowMenu(true);
-			} else if (input === 'r') {
-				// Refresh sessions
-				loadData();
-			}
-		} else if (mode === 'active-session' && !isProcessing) {
+		// List mode navigation is now handled by ClaudeSessionList component
+		if (mode === 'active-session' && !isProcessing) {
 			if (key.return && prompt.trim()) {
 				handleContinue();
 			}
 		}
 	});
 
+	// Helper functions for rendering different message types
+	const renderSystemMessage = (msg, idx) => (
+		<Box key={`system-init-${msg.session_id}-${idx}`} marginBottom={1}>
+			<Text color="gray">
+				Session: {msg.session_id} | Model: {msg.model} | CWD: {msg.cwd}
+			</Text>
+		</Box>
+	);
+
+	const renderUserMessage = (msg, idx) => (
+		<Box key={`user-${msg.timestamp || idx}-${idx}`} marginBottom={1}>
+			<Text color="cyan">User: </Text>
+			<Text>{msg.message.content?.[0]?.text || ''}</Text>
+		</Box>
+	);
+
+	const renderAssistantMessage = (msg, idx) => {
+		const content = msg.message.content?.[0]?.text || '';
+		return (
+			<Box
+				key={`assistant-${msg.timestamp || idx}-${idx}`}
+				marginBottom={1}
+				flexDirection="column"
+			>
+				<Text color="green">Claude: </Text>
+				<Box marginLeft={2}>
+					<Text>{content}</Text>
+				</Box>
+			</Box>
+		);
+	};
+
+	const renderResultMessage = (msg, idx) => (
+		<Box
+			key={`result-${msg.subtype}-${msg.num_turns}-${idx}`}
+			marginTop={1}
+		>
+			<Text color="yellow">
+				Result: {msg.subtype} | Turns: {msg.num_turns} | Cost: $
+				{msg.total_cost_usd?.toFixed(4) || '0.0000'}
+			</Text>
+		</Box>
+	);
+
 	const renderMessages = () => {
 		return messages.map((msg, idx) => {
-			if (msg.type === 'system' && msg.subtype === 'init') {
-				return (
-					<Box key={`system-init-${msg.session_id}-${idx}`} marginBottom={1}>
-						<Text color="gray">
-							Session: {msg.session_id} | Model: {msg.model} | CWD: {msg.cwd}
-						</Text>
-					</Box>
-				);
-			} else if (msg.type === 'user') {
-				return (
-					<Box key={`user-${msg.timestamp || idx}-${idx}`} marginBottom={1}>
-						<Text color="cyan">User: </Text>
-						<Text>{msg.message.content?.[0]?.text || ''}</Text>
-					</Box>
-				);
-			} else if (msg.type === 'assistant') {
-				const content = msg.message.content?.[0]?.text || '';
-				return (
-					<Box
-						key={`assistant-${msg.timestamp || idx}-${idx}`}
-						marginBottom={1}
-						flexDirection="column"
-					>
-						<Text color="green">Claude: </Text>
-						<Box marginLeft={2}>
-							<Text>{content}</Text>
-						</Box>
-					</Box>
-				);
-			} else if (msg.type === 'result') {
-				return (
-					<Box
-						key={`result-${msg.subtype}-${msg.num_turns}-${idx}`}
-						marginTop={1}
-					>
-						<Text color="yellow">
-							Result: {msg.subtype} | Turns: {msg.num_turns} | Cost: $
-							{msg.total_cost_usd?.toFixed(4) || '0.0000'}
-						</Text>
-					</Box>
-				);
+			switch (msg.type) {
+				case 'system':
+					return msg.subtype === 'init' ? renderSystemMessage(msg, idx) : null;
+				case 'user':
+					return renderUserMessage(msg, idx);
+				case 'assistant':
+					return renderAssistantMessage(msg, idx);
+				case 'result':
+					return renderResultMessage(msg, idx);
+				default:
+					console.log('[ClaudeCodeScreen] Unknown message type:', msg.type);
+					return null;
 			}
-			return null;
 		});
 	};
 
@@ -712,17 +682,17 @@ ${insightSummary}
 				{/* Header */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					paddingLeft={1}
 					paddingRight={1}
 					marginBottom={1}
 				>
 					<Box flexGrow={1}>
-						<Text color={theme.accent}>Task Master</Text>
-						<Text color={theme.textDim}> › </Text>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
 						<Text color="white">Claude Code</Text>
-						<Text color={theme.textDim}> › </Text>
-						<Text color={theme.text}>Menu</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>Menu</Text>
 					</Box>
 				</Box>
 
@@ -735,11 +705,11 @@ ${insightSummary}
 				>
 					<Box
 						borderStyle="round"
-						borderColor={theme.border}
+						borderColor={safeTheme.border}
 						padding={2}
 						flexDirection="column"
 					>
-						<Text bold color={theme.accent} marginBottom={1}>
+						<Text bold color={safeTheme.accent} marginBottom={1}>
 							Claude Code Options
 						</Text>
 						<Box flexDirection="column" gap={1}>
@@ -753,7 +723,7 @@ ${insightSummary}
 				{/* Footer */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					borderTop={true}
 					borderBottom={false}
 					borderLeft={false}
@@ -763,7 +733,7 @@ ${insightSummary}
 					paddingRight={1}
 					flexShrink={0}
 				>
-					<Text color={theme.text}>
+					<Text color={safeTheme.text}>
 						Select an option or press ESC to go back
 					</Text>
 				</Box>
@@ -804,30 +774,30 @@ ${insightSummary}
 				{/* Header */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					paddingLeft={1}
 					paddingRight={1}
 					marginBottom={1}
 				>
 					<Box flexGrow={1}>
-						<Text color={theme.accent}>Task Master</Text>
-						<Text color={theme.textDim}> › </Text>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
 						<Text color="white">Claude Code</Text>
-						<Text color={theme.textDim}> › </Text>
-						<Text color={theme.text}>Subtask Implementation</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>Subtask Implementation</Text>
 					</Box>
 				</Box>
 
 				<Box justifyContent="center" alignItems="center" flexGrow={1}>
 					<Box flexDirection="column" alignItems="center">
-						<LoadingSpinner message="Starting Claude Code session..." />
+						<LoadingSpinner message={loadingPhrase} />
 						<Box marginTop={1}>
-							<Text color={theme.textDim}>
+							<Text color={safeTheme.textDim}>
 								Subtask: {initialContext?.currentSubtask?.title || 'Loading...'}
 							</Text>
 						</Box>
 						<Box marginTop={1}>
-							<Text color={theme.textDim}>
+							<Text color={safeTheme.textDim}>
 								This includes research findings and full context
 							</Text>
 						</Box>
@@ -837,7 +807,7 @@ ${insightSummary}
 				{/* Footer */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					borderTop={true}
 					borderBottom={false}
 					borderLeft={false}
@@ -847,7 +817,7 @@ ${insightSummary}
 					paddingRight={1}
 					flexShrink={0}
 				>
-					<Text color={theme.text}>ESC to cancel</Text>
+					<Text color={safeTheme.text}>ESC to cancel</Text>
 				</Box>
 			</Box>
 		);
@@ -860,17 +830,17 @@ ${insightSummary}
 				{/* Header */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					paddingLeft={1}
 					paddingRight={1}
 					marginBottom={1}
 				>
 					<Box flexGrow={1}>
-						<Text color={theme.accent}>Task Master</Text>
-						<Text color={theme.textDim}> › </Text>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
 						<Text color="white">Claude Code</Text>
-						<Text color={theme.textDim}> › </Text>
-						<Text color={theme.text}>New Session</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>New Session</Text>
 					</Box>
 				</Box>
 
@@ -889,7 +859,7 @@ ${insightSummary}
 						/>
 					</Box>
 					<Box marginTop={2}>
-						<Text color={theme.textDim}>
+						<Text color={safeTheme.textDim}>
 							Press Enter to submit, ESC to cancel
 						</Text>
 					</Box>
@@ -905,20 +875,20 @@ ${insightSummary}
 				{/* Header */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					paddingLeft={1}
 					paddingRight={1}
 					marginBottom={1}
 				>
 					<Box flexGrow={1}>
-						<Text color={theme.accent}>Task Master</Text>
-						<Text color={theme.textDim}> › </Text>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
 						<Text color="white">Claude Code</Text>
-						<Text color={theme.textDim}> › </Text>
-						<Text color={theme.text}>Active Session</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>Active Session</Text>
 					</Box>
 					{activeSession && (
-						<Text color={theme.textDim}>[{activeSession.sessionId}]</Text>
+						<Text color={safeTheme.textDim}>[{activeSession.sessionId}]</Text>
 					)}
 				</Box>
 
@@ -930,7 +900,7 @@ ${insightSummary}
 				{/* Input Area */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					borderTop={true}
 					borderBottom={false}
 					borderLeft={false}
@@ -942,7 +912,7 @@ ${insightSummary}
 				>
 					{isProcessing ? (
 						<Text color="yellow">
-							<Spinner type="dots" /> Processing... (Press ESC to abort)
+							<Spinner type="dots" /> {loadingPhrase} (Press ESC to abort)
 						</Text>
 					) : (
 						<Box flexDirection="column">
@@ -962,70 +932,6 @@ ${insightSummary}
 		);
 	}
 
-	// Sessions list view (default)
-	const filteredSessions = sessions.filter((session) => {
-		// First apply subtask filter if provided
-		if (filterSubtaskId && session.metadata?.subtaskId !== filterSubtaskId) {
-			return false;
-		}
-
-		if (sessionFilter === 'all') return true;
-		if (sessionFilter === 'active') {
-			// Active sessions are those without a final result or recent activity
-			return (
-				!session.metadata?.finished ||
-				(session.lastUpdated &&
-					new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
-			);
-		}
-		if (sessionFilter === 'finished') {
-			return session.metadata?.finished === true;
-		}
-		return true;
-	});
-
-	const visibleSessions = filteredSessions.slice(
-		scrollOffset,
-		scrollOffset + VISIBLE_ROWS
-	);
-
-	// Prepare table data
-	const tableData = visibleSessions.map((session, displayIndex) => {
-		const actualIndex = displayIndex + scrollOffset;
-		const isSelected = actualIndex === selectedIndex;
-		const date = new Date(session.lastUpdated || session.createdAt);
-		const isActive = !session.metadata?.finished;
-		const isSubtaskSession =
-			session.metadata?.type === 'subtask-implementation';
-
-		return {
-			' ': isSelected ? '→' : ' ',
-			'Session ID': session.sessionId.substring(0, 8) + '...',
-			Type: isSubtaskSession ? 'Subtask' : 'General',
-			Status: isActive ? '● Active' : '✓ Finished',
-			Prompt: session.prompt?.substring(0, 40) + '...' || 'No prompt',
-			Date: date.toLocaleDateString(),
-			Time: date.toLocaleTimeString(),
-			_renderCell: (col, value) => {
-				let color = isSelected ? theme.selectionText : theme.text;
-
-				if (col === 'Status') {
-					if (!isSelected) {
-						color = isActive ? theme.statusInProgress : theme.statusDone;
-					}
-				} else if (col === 'Type' && isSubtaskSession && !isSelected) {
-					color = theme.accent;
-				}
-
-				return (
-					<Text color={color} bold={isSelected}>
-						{value}
-					</Text>
-				);
-			}
-		};
-	});
-
 	// Session detail view
 	if (viewingSession) {
 		const session = sessions.find((s) => s.sessionId === viewingSession);
@@ -1036,19 +942,19 @@ ${insightSummary}
 				{/* Header */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					paddingLeft={1}
 					paddingRight={1}
 					marginBottom={1}
 				>
 					<Box flexGrow={1}>
-						<Text color={theme.accent}>Task Master</Text>
-						<Text color={theme.textDim}> › </Text>
+						<Text color={safeTheme.accent}>Task Master</Text>
+						<Text color={safeTheme.textDim}> › </Text>
 						<Text color="white">Claude Code</Text>
-						<Text color={theme.textDim}> › </Text>
-						<Text color={theme.text}>Session Details</Text>
+						<Text color={safeTheme.textDim}> › </Text>
+						<Text color={safeTheme.text}>Session Details</Text>
 					</Box>
-					<Text color={theme.textDim}>
+					<Text color={safeTheme.textDim}>
 						[{viewingSession.substring(0, 8)}...]
 					</Text>
 				</Box>
@@ -1056,24 +962,24 @@ ${insightSummary}
 				{/* Session Info */}
 				<Box paddingLeft={2} paddingRight={2} marginBottom={1}>
 					<Box flexDirection="column">
-						<Text color={theme.textDim}>
+						<Text color={safeTheme.textDim}>
 							Type:{' '}
 							{session?.metadata?.type === 'subtask-implementation'
 								? 'Subtask Implementation'
 								: 'General Query'}
 						</Text>
 						{session?.metadata?.subtaskId && (
-							<Text color={theme.textDim}>
+							<Text color={safeTheme.textDim}>
 								Subtask: {session.metadata.subtaskId}
 							</Text>
 						)}
-						<Text color={theme.textDim}>
+						<Text color={safeTheme.textDim}>
 							Started:{' '}
 							{new Date(
 								session?.createdAt || session?.lastUpdated
 							).toLocaleString()}
 						</Text>
-						<Text color={theme.textDim}>
+						<Text color={safeTheme.textDim}>
 							Status: {session?.metadata?.finished ? 'Finished' : 'Active'}
 						</Text>
 					</Box>
@@ -1120,7 +1026,7 @@ ${insightSummary}
 				{/* Footer */}
 				<Box
 					borderStyle="single"
-					borderColor={theme.border}
+					borderColor={safeTheme.border}
 					borderTop={true}
 					borderBottom={false}
 					borderLeft={false}
@@ -1130,7 +1036,7 @@ ${insightSummary}
 					paddingRight={1}
 					flexShrink={0}
 				>
-					<Text color={theme.text}>
+					<Text color={safeTheme.text}>
 						{!session?.metadata?.finished ? 'r resume session • ' : ''}ESC back
 						to list
 					</Text>
@@ -1139,108 +1045,44 @@ ${insightSummary}
 		);
 	}
 
+	// Sessions list view (default) - use enhanced ClaudeSessionList component
 	return (
-		<Box flexDirection="column" height="100%">
-			{/* Header */}
-			<Box
-				borderStyle="single"
-				borderColor={theme.border}
-				paddingLeft={1}
-				paddingRight={1}
-				marginBottom={1}
-			>
-				<Box flexGrow={1}>
-					<Text color={theme.accent}>Task Master</Text>
-					<Text color={theme.textDim}> › </Text>
-					<Text color="white">Claude Code Sessions</Text>
-					{filterSubtaskId && (
-						<>
-							<Text color={theme.textDim}> › </Text>
-							<Text color={theme.text}>Subtask {filterSubtaskId}</Text>
-						</>
-					)}
-					<Text color={theme.textDim}> [{sessionFilter}]</Text>
-				</Box>
-				{config?.enabled ? (
-					<Text color={theme.success}>[Enabled]</Text>
-				) : (
-					<Text color={theme.error}>[Disabled]</Text>
-				)}
-			</Box>
-
-			{/* Sessions Table */}
-			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
-				{filteredSessions.length === 0 ? (
-					<Box
-						flexDirection="column"
-						alignItems="center"
-						justifyContent="center"
-						flexGrow={1}
-					>
-						<Text color={theme.textDim}>
-							No {sessionFilter === 'all' ? '' : sessionFilter} Claude Code
-							sessions found
-						</Text>
-						<Text color={theme.textDim} marginTop={1}>
-							Press 'n' to start a new session
-						</Text>
-					</Box>
-				) : (
-					<>
-						<SimpleTable
-							data={tableData}
-							columns={[
-								' ',
-								'Session ID',
-								'Type',
-								'Status',
-								'Prompt',
-								'Date',
-								'Time'
-							]}
-							selectedIndex={selectedIndex - scrollOffset}
-							borders={true}
-						/>
-
-						{/* Scroll indicator */}
-						{filteredSessions.length > VISIBLE_ROWS && (
-							<Box marginTop={1}>
-								<Text color={theme.textDim}>
-									{scrollOffset + 1}-
-									{Math.min(
-										scrollOffset + VISIBLE_ROWS,
-										filteredSessions.length
-									)}{' '}
-									of {filteredSessions.length} sessions ({sessionFilter})
-								</Text>
-							</Box>
-						)}
-					</>
-				)}
-			</Box>
-
-			{/* Footer */}
-			<Box
-				borderStyle="single"
-				borderColor={theme.border}
-				borderTop={true}
-				borderBottom={false}
-				borderLeft={false}
-				borderRight={false}
-				paddingTop={1}
-				paddingLeft={1}
-				paddingRight={1}
-				flexShrink={0}
-			>
-				<Text color={theme.text}>
-					{filteredSessions.length > 0 ? '↑↓ navigate • Enter view • ' : ''}f
-					filter [{sessionFilter === 'all' ? '1' : '○'}all{' '}
-					{sessionFilter === 'active' ? '2' : '○'}active{' '}
-					{sessionFilter === 'finished' ? '3' : '○'}finished] • n new • r
-					refresh • ESC back
-				</Text>
-			</Box>
-
+		<>
+			<ClaudeSessionList
+				sessions={sessions}
+				filterSubtaskId={filterSubtaskId}
+				visibleRows={VISIBLE_ROWS}
+				config={config}
+				initialSelectedIndex={initialSelectedIndex}
+				initialScrollOffset={0}
+				initialSessionFilter="all"
+				onSessionSelect={(session) => {
+					setViewingSession(session.sessionId);
+					loadSessionMessages(session.sessionId);
+				}}
+				onSessionResume={(sessionId) => {
+					handleResume(sessionId);
+				}}
+				onSessionDetails={(sessionId) => {
+					setViewingSession(sessionId);
+					loadSessionMessages(sessionId);
+				}}
+				onNewSession={() => {
+					if (!config?.enabled) {
+						setError('Claude Code is not enabled. Configure it in settings first.');
+						return;
+					}
+					setMode('new-query');
+					setPrompt('');
+				}}
+				onRefresh={() => {
+					loadData();
+				}}
+				onBack={() => {
+					handleBack();
+				}}
+			/>
+			
 			{/* Toast notifications */}
 			{error && (
 				<Toast type="error" message={error} onDismiss={() => setError(null)} />
@@ -1252,6 +1094,6 @@ ${insightSummary}
 					onDismiss={() => setSuccess(null)}
 				/>
 			)}
-		</Box>
+		</>
 	);
 }

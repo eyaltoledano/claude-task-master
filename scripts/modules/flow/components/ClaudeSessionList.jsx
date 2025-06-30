@@ -1,265 +1,269 @@
-import React, { useMemo } from 'react';
-import { Box, Text } from 'ink';
-import {
-  useComponentTheme,
-  useTerminalSize,
-  useStateAndRef,
-  useKeypress,
-} from '../hooks/index.js';
+import React from 'react';
+import { Box, Text, useInput } from 'ink';
+import { SimpleTable } from './SimpleTable.jsx';
+import { useComponentTheme, useStateAndRef } from '../hooks/index.js';
 
 export function ClaudeSessionList({
-  sessions = [],
-  selectedIndex,
-  onSelectSession,
-  onResumeSession,
-  onViewSession,
-  sessionFilter = 'all',
-  onFilterChange,
-  filterSubtaskId = null,
-  highlightSessionId = null,
-  scrollOffset = 0,
-  visibleRows = 15,
+	sessions = [],
+	filterSubtaskId = null,
+	visibleRows = 15,
+	config = null,
+	// Callback props for actions
+	onSessionSelect,
+	onSessionResume,
+	onSessionDetails,
+	onNewSession,
+	onRefresh,
+	onBack,
+	// Initial state
+	initialSelectedIndex = 0,
+	initialScrollOffset = 0,
+	initialSessionFilter = 'all'
 }) {
-  const { theme } = useComponentTheme('claudeSessionList');
-  const { maxContentWidth, isNarrow } = useTerminalSize();
-  
-  // Performance optimization for large session lists
-  const [filteredSessions, setFilteredSessions, filteredSessionsRef] = useStateAndRef([]);
+	const { theme: safeTheme } = useComponentTheme('claudeSessionList');
+	
+	// Self-contained state management
+	const [selectedIndex, setSelectedIndex, selectedIndexRef] = useStateAndRef(initialSelectedIndex);
+	const [scrollOffset, setScrollOffset, scrollOffsetRef] = useStateAndRef(initialScrollOffset);
+	const [sessionFilter, setSessionFilter] = React.useState(initialSessionFilter);
 
-  // Filter sessions based on current filter and subtask filter
-  const applyFilters = useMemo(() => {
-    const filtered = sessions.filter((session) => {
-      // Apply subtask filter first
-      if (filterSubtaskId && session.metadata?.subtaskId !== filterSubtaskId) {
-        return false;
-      }
+	// Filter sessions based on current filter
+	const filteredSessions = React.useMemo(() => {
+		return sessions.filter((session) => {
+			// First apply subtask filter if provided
+			if (filterSubtaskId && session.metadata?.subtaskId !== filterSubtaskId) {
+				return false;
+			}
 
-      // Apply status filter
-      if (sessionFilter === 'all') return true;
-      if (sessionFilter === 'active') {
-        return (
-          !session.metadata?.finished ||
-          (session.lastUpdated &&
-            new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
-        );
-      }
-      if (sessionFilter === 'finished') {
-        return session.metadata?.finished === true;
-      }
-      return true;
-    });
+			if (sessionFilter === 'all') return true;
+			if (sessionFilter === 'active') {
+				// Active sessions are those without a final result or recent activity
+				return (
+					!session.metadata?.finished ||
+					(session.lastUpdated &&
+						new Date(session.lastUpdated) > new Date(Date.now() - 3600000))
+				);
+			}
+			if (sessionFilter === 'finished') {
+				return session.metadata?.finished === true;
+			}
+			return true;
+		});
+	}, [sessions, filterSubtaskId, sessionFilter]);
 
-    setFilteredSessions(filtered);
-    return filtered;
-  }, [sessions, sessionFilter, filterSubtaskId, setFilteredSessions]);
+	// Reset selection when filtered sessions change
+	React.useEffect(() => {
+		if (selectedIndex >= filteredSessions.length && filteredSessions.length > 0) {
+			setSelectedIndex(0);
+			setScrollOffset(0);
+		}
+	}, [filteredSessions.length, selectedIndex, setSelectedIndex, setScrollOffset]);
 
-  // Keyboard handling for session list
-  useKeypress({
-    up: () => {
-      if (selectedIndex > 0) {
-        onSelectSession(selectedIndex - 1);
-      }
-    },
-    down: () => {
-      if (selectedIndex < filteredSessionsRef.current.length - 1) {
-        onSelectSession(selectedIndex + 1);
-      }
-    },
-    return: () => {
-      const session = filteredSessionsRef.current[selectedIndex];
-      if (session && onResumeSession) {
-        onResumeSession(session.sessionId);
-      }
-    },
-    'r': () => {
-      const session = filteredSessionsRef.current[selectedIndex];
-      if (session && onResumeSession) {
-        onResumeSession(session.sessionId);
-      }
-    },
-    'v': () => {
-      const session = filteredSessionsRef.current[selectedIndex];
-      if (session && onViewSession) {
-        onViewSession(session);
-      }
-    },
-    '1': () => onFilterChange('all'),
-    '2': () => onFilterChange('active'),
-    '3': () => onFilterChange('finished'),
-  }, { isActive: filteredSessions.length > 0 });
+	// Keyboard navigation handling
+	useInput((input, key) => {
+		if (key.downArrow) {
+			const newIndex = Math.min(selectedIndex + 1, filteredSessions.length - 1);
+			setSelectedIndex(newIndex);
 
-  const renderFilterTabs = () => {
-    const filters = [
-      { key: 'all', label: 'All', count: sessions.length },
-      { key: 'active', label: 'Active', count: sessions.filter(s => !s.metadata?.finished).length },
-      { key: 'finished', label: 'Finished', count: sessions.filter(s => s.metadata?.finished).length },
-    ];
+			// Adjust scroll if needed
+			if (newIndex >= scrollOffset + visibleRows) {
+				setScrollOffset(newIndex - visibleRows + 1);
+			}
+		} else if (key.upArrow) {
+			const newIndex = Math.max(selectedIndex - 1, 0);
+			setSelectedIndex(newIndex);
 
-    return (
-      <Box flexDirection={isNarrow ? 'column' : 'row'} marginBottom={1}>
-        {filters.map((filter, index) => {
-          const isActive = sessionFilter === filter.key;
-          return (
-            <Box key={filter.key} marginRight={isNarrow ? 0 : 2}>
-              <Text color={isActive ? theme.accent : theme.text.secondary}>
-                [{index + 1}] {filter.label}
-              </Text>
-              {!isNarrow && (
-                <Text color={theme.text.tertiary}>
-                  {' '}({filter.count})
-                </Text>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-    );
-  };
+			// Adjust scroll if needed
+			if (newIndex < scrollOffset) {
+				setScrollOffset(newIndex);
+			}
+		} else if (key.return && filteredSessions.length > 0) {
+			// Select session for viewing details
+			const session = filteredSessions[selectedIndex];
+			onSessionSelect?.(session);
+		} else if (input === 'r' && filteredSessions.length > 0) {
+			// Resume session
+			const session = filteredSessions[selectedIndex];
+			if (!session.metadata?.finished) {
+				onSessionResume?.(session.sessionId);
+			}
+		} else if (input === 'd' && filteredSessions.length > 0) {
+			// View session details
+			const session = filteredSessions[selectedIndex];
+			onSessionDetails?.(session.sessionId);
+		} else if (input === 'f') {
+			// Cycle through filters
+			if (sessionFilter === 'all') {
+				setSessionFilter('active');
+			} else if (sessionFilter === 'active') {
+				setSessionFilter('finished');
+			} else {
+				setSessionFilter('all');
+			}
+			setSelectedIndex(0);
+			setScrollOffset(0);
+		} else if (input === '1') {
+			setSessionFilter('all');
+			setSelectedIndex(0);
+			setScrollOffset(0);
+		} else if (input === '2') {
+			setSessionFilter('active');
+			setSelectedIndex(0);
+			setScrollOffset(0);
+		} else if (input === '3') {
+			setSessionFilter('finished');
+			setSelectedIndex(0);
+			setScrollOffset(0);
+		} else if (input === 'n') {
+			// New session
+			onNewSession?.();
+		} else if (input === 'r' && filteredSessions.length === 0) {
+			// Refresh when no sessions
+			onRefresh?.();
+		} else if (key.escape) {
+			// Go back
+			onBack?.();
+		}
+	});
 
-  const renderSessionItem = (session, index, isSelected) => {
-    const isHighlighted = session.sessionId === highlightSessionId;
-    const isFinished = session.metadata?.finished;
-    const isSubtaskSession = session.metadata?.type === 'subtask-implementation';
-    
-    // Format timestamp
-    const timestamp = session.lastUpdated 
-      ? new Date(session.lastUpdated).toLocaleString()
-      : 'Unknown';
+	const visibleSessions = filteredSessions.slice(
+		scrollOffset,
+		scrollOffset + visibleRows
+	);
 
-    return (
-      <Box 
-        key={session.sessionId}
-        flexDirection="column"
-        paddingX={1}
-        backgroundColor={isSelected ? theme.item.selected : 'transparent'}
-        width={maxContentWidth}
-      >
-        {/* Session header */}
-        <Box>
-          <Text color={isSelected ? theme.accent : 'transparent'}>
-            {isSelected ? '▶ ' : '  '}
-          </Text>
-          
-          {/* Status indicator */}
-          <Text color={isFinished ? 'green' : 'blue'}>
-            {isFinished ? '✓' : '●'}
-          </Text>
-          
-          {/* Session type indicator */}
-          {isSubtaskSession && (
-            <Text color="yellow"> 🔧</Text>
-          )}
-          
-          {/* Session ID (truncated) */}
-          <Text color={theme.text.secondary}>
-            {' '}{session.sessionId?.slice(0, 8)}...
-          </Text>
-          
-          {/* Timestamp */}
-          {!isNarrow && (
-            <Text color={theme.text.tertiary}>
-              {' '}({new Date(timestamp).toLocaleDateString()})
-            </Text>
-          )}
-          
-          {/* Highlight indicator */}
-          {isHighlighted && (
-            <Text color={theme.accent} bold>
-              {' '}★
-            </Text>
-          )}
-        </Box>
+	// Prepare table data
+	const tableData = visibleSessions.map((session, displayIndex) => {
+		const actualIndex = displayIndex + scrollOffset;
+		const isSelected = actualIndex === selectedIndex;
+		const date = new Date(session.lastUpdated || session.createdAt);
+		const isActive = !session.metadata?.finished;
+		const isSubtaskSession = session.metadata?.type === 'subtask-implementation';
 
-        {/* Session details */}
-        <Box paddingLeft={4}>
-          {/* Subtask info for subtask sessions */}
-          {isSubtaskSession && session.metadata?.subtaskId && (
-            <Text color={theme.text.secondary}>
-              Subtask: {session.metadata.subtaskId}
-            </Text>
-          )}
-          
-          {/* Prompt preview */}
-          {session.prompt && (
-            <Text color={theme.text.primary}>
-              {session.prompt.length > 80 
-                ? `${session.prompt.substring(0, 80)}...`
-                : session.prompt}
-            </Text>
-          )}
-        </Box>
-      </Box>
-    );
-  };
+		return {
+			' ': isSelected ? '→' : ' ',
+			'Session ID': session.sessionId.substring(0, 8) + '...',
+			Type: isSubtaskSession ? 'Subtask' : 'General',
+			Status: isActive ? '● Active' : '✓ Finished',
+			Prompt: session.prompt?.substring(0, 40) + '...' || 'No prompt',
+			Date: date.toLocaleDateString(),
+			Time: date.toLocaleTimeString(),
+			_renderCell: (col, value) => {
+				let color = isSelected ? (safeTheme.item?.selected || '#0f172a') : (safeTheme.text?.primary || '#f1f5f9');
 
-  const renderEmptyState = () => {
-    if (sessions.length === 0) {
-      return (
-        <Box justifyContent="center" paddingY={2}>
-          <Text color={theme.text.secondary}>
-            No Claude Code sessions found
-          </Text>
-        </Box>
-      );
-    }
+				if (col === 'Status') {
+					if (!isSelected) {
+						color = isActive ? (safeTheme.session?.active || '#60a5fa') : (safeTheme.session?.finished || '#34d399');
+					}
+				} else if (col === 'Type' && isSubtaskSession && !isSelected) {
+					color = safeTheme.session?.subtask || '#22d3ee';
+				}
 
-    if (filteredSessions.length === 0) {
-      return (
-        <Box justifyContent="center" paddingY={2}>
-          <Text color={theme.text.secondary}>
-            No sessions match current filter
-          </Text>
-        </Box>
-      );
-    }
+				return (
+					<Text color={color} bold={isSelected}>
+						{value}
+					</Text>
+				);
+			}
+		};
+	});
 
-    return null;
-  };
+	return (
+		<Box flexDirection="column" height="100%">
+			{/* Header */}
+			<Box
+				borderStyle="single"
+				borderColor={safeTheme.border || '#334155'}
+				paddingLeft={1}
+				paddingRight={1}
+				marginBottom={1}
+			>
+				<Box flexGrow={1}>
+					<Text color={safeTheme.accent || '#22d3ee'}>Task Master</Text>
+					<Text color={safeTheme.text?.secondary || '#cbd5e1'}> › </Text>
+					<Text color="white">Claude Code Sessions</Text>
+					{filterSubtaskId && (
+						<>
+							<Text color={safeTheme.text?.secondary || '#cbd5e1'}> › </Text>
+							<Text color={safeTheme.text?.primary || '#f1f5f9'}>Subtask {filterSubtaskId}</Text>
+						</>
+					)}
+					<Text color={safeTheme.text?.secondary || '#cbd5e1'}> [{sessionFilter}]</Text>
+				</Box>
+				{config?.enabled ? (
+					<Text color={safeTheme.session?.active || '#34d399'}>[Enabled]</Text>
+				) : (
+					<Text color={safeTheme.session?.finished || '#f87171'}>[Disabled]</Text>
+				)}
+			</Box>
 
-  const renderActions = () => {
-    if (filteredSessions.length === 0) return null;
+			{/* Sessions Table */}
+			<Box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1}>
+				{filteredSessions.length === 0 ? (
+					<Box
+						flexDirection="column"
+						alignItems="center"
+						justifyContent="center"
+						flexGrow={1}
+					>
+						<Text color={safeTheme.text?.secondary || '#cbd5e1'}>
+							No {sessionFilter === 'all' ? '' : sessionFilter} Claude Code
+							sessions found
+						</Text>
+						<Text color={safeTheme.text?.secondary || '#cbd5e1'} marginTop={1}>
+							Press 'n' to start a new session
+						</Text>
+					</Box>
+				) : (
+					<>
+						<SimpleTable
+							data={tableData}
+							columns={[
+								' ',
+								'Session ID',
+								'Type',
+								'Status',
+								'Prompt',
+								'Date',
+								'Time'
+							]}
+							selectedIndex={selectedIndex - scrollOffset}
+							borders={true}
+						/>
 
-    return (
-      <Box marginTop={1} paddingX={1}>
-        <Text color={theme.text.secondary}>
-          [Enter/r] Resume • [v] View • [1-3] Filter
-        </Text>
-      </Box>
-    );
-  };
+						{/* Scroll indicator */}
+						{filteredSessions.length > visibleRows && (
+							<Box marginTop={1}>
+								<Text color={safeTheme.text?.tertiary || '#cbd5e1'}>
+									Showing {scrollOffset + 1}-{Math.min(scrollOffset + visibleRows, filteredSessions.length)} of {filteredSessions.length} sessions
+									{selectedIndex < filteredSessions.length - visibleRows && ' • ↓ for more'}
+								</Text>
+							</Box>
+						)}
+					</>
+				)}
+			</Box>
 
-  const visibleSessions = filteredSessions.slice(
-    scrollOffset,
-    scrollOffset + visibleRows
-  );
-
-  return (
-    <Box flexDirection="column" width={maxContentWidth}>
-      {/* Filter tabs */}
-      {renderFilterTabs()}
-
-      {/* Sessions list */}
-      {renderEmptyState() || (
-        <Box flexDirection="column">
-          {visibleSessions.map((session, index) => {
-            const actualIndex = scrollOffset + index;
-            const isSelected = actualIndex === selectedIndex;
-            return renderSessionItem(session, actualIndex, isSelected);
-          })}
-        </Box>
-      )}
-
-      {/* Scroll indicators */}
-      {filteredSessions.length > visibleRows && (
-        <Box justifyContent="center" marginTop={1}>
-          <Text color={theme.text.tertiary}>
-            Showing {Math.min(scrollOffset + visibleRows, filteredSessions.length)} of {filteredSessions.length} sessions
-          </Text>
-        </Box>
-      )}
-
-      {/* Action hints */}
-      {renderActions()}
-    </Box>
-  );
+			{/* Footer */}
+			<Box
+				borderStyle="single"
+				borderColor={safeTheme.border || '#334155'}
+				borderTop={true}
+				borderBottom={false}
+				borderLeft={false}
+				borderRight={false}
+				paddingTop={1}
+				paddingLeft={1}
+				paddingRight={1}
+				flexShrink={0}
+			>
+				<Text color={safeTheme.text?.primary || '#f1f5f9'}>
+					{filteredSessions.length > 0 
+						? 'Enter to view • r resume active • d details • '
+						: ''
+					}
+					n new • f filter • r refresh • ESC back
+				</Text>
+			</Box>
+		</Box>
+	);
 } 
