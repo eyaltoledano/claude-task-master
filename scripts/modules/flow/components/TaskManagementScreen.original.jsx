@@ -683,7 +683,7 @@ export function TaskManagementScreen() {
 				if (result.needsUserDecision) {
 					// Store info for the modal
 					setBranchConflictInfo({
-						branchName: result.worktreeName,
+					branchName: result.branchName,
 						branchInUseAt: result.branchInUseAt,
 						taskId: selectedTask.id,
 						subtaskId: selectedSubtask.id,
@@ -762,7 +762,7 @@ export function TaskManagementScreen() {
 			if (result.needsUserDecision) {
 				// Store info for the modal
 				setBranchConflictInfo({
-					branchName: result.worktreeName,
+					branchName: result.branchName,
 					branchInUseAt: result.branchInUseAt,
 					taskId: selectedTask.id,
 					subtaskId: selectedSubtask.id,

@@ -1966,40 +1966,70 @@ export class DirectBackend extends FlowBackend {
 			const execAsync = promisify(exec);
 			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
 
-					// Import Enhanced AST context builder for Phase 2.3 (dynamic import to avoid circular dependencies)
-		let enhancedAstContextBuilder = null;
-		let enhancedAstContext = null;
-		
-		try {
-			const { createEnhancedASTContextBuilder } = await import('../ast/context/enhanced-ast-context-builder.js');
-			enhancedAstContextBuilder = createEnhancedASTContextBuilder(this.projectRoot, {
-				enablePhase21: true,        // Advanced context enhancement
-				enablePhase22: true,        // Language-specific analysis
-				enableTaskAwareness: true,  // Task-aware context building
-				enableIntelligentSelection: true // Intelligent file selection
-			});
+			// Enhance subtasks with parent task information
+			const enhancedTasks = await Promise.all(tasks.map(async (task) => {
+				const isSubtask = task.isSubtask || String(task.id).includes('.');
+				
+				if (isSubtask && !task.parentTask) {
+					// Look up parent task information
+					try {
+						const [parentId] = String(task.id).split('.');
+						const parentTask = await this.getTask(parentId);
+						
+						if (parentTask) {
+							return {
+								...task,
+								parentTask: {
+									id: parentTask.id,
+									title: parentTask.title,
+									description: parentTask.description,
+									details: parentTask.details,
+									testStrategy: parentTask.testStrategy || parentTask.test_strategy
+								}
+							};
+						}
+					} catch (error) {
+						console.warn(`Could not load parent task for subtask ${task.id}:`, error.message);
+					}
+				}
+				
+				return task;
+			}));
+
+			// Import Enhanced AST context builder for Phase 2.3 (dynamic import to avoid circular dependencies)
+			let enhancedAstContextBuilder = null;
+			let enhancedAstContext = null;
 			
-			// Build enhanced AST context for the worktree with Phase 2.1 + 2.2 capabilities
-			enhancedAstContext = await enhancedAstContextBuilder.buildWorktreeContext(worktree.path, {
-				tasks,
-				includeComplexity: true,
-				includeImports: true,
-				includeDependencyAnalysis: true,
-				includeFrameworkDetection: true,
-				includePatternAnalysis: true
-			});
-			
-			console.debug('[Enhanced AST] Context building result:', {
-				enabled: enhancedAstContext.enabled,
-				success: enhancedAstContext.success,
-				filesAnalyzed: enhancedAstContext.metadata?.filesAnalyzed || 0,
-				phase: enhancedAstContext.metadata?.phase || 'Unknown',
-				enhancedFeatures: enhancedAstContext.metadata?.enhancedFeatures || {}
-			});
-		} catch (error) {
-			console.debug('[Enhanced AST] Failed to build enhanced AST context:', error.message);
-			enhancedAstContext = { enabled: false, error: error.message };
-		}
+			try {
+				const { createEnhancedASTContextBuilder } = await import('../ast/context/enhanced-ast-context-builder.js');
+				enhancedAstContextBuilder = createEnhancedASTContextBuilder(this.projectRoot, {
+					enablePhase21: true,        // Advanced context enhancement
+					enablePhase22: true,        // Language-specific analysis
+					enableTaskAwareness: true,  // Task-aware context building
+					enableIntelligentSelection: true // Intelligent file selection
+				});
+				
+				// Build enhanced AST context for the worktree with Phase 2.1 + 2.2 capabilities
+				enhancedAstContext = await enhancedAstContextBuilder.buildWorktreeContext(worktree.path, {
+					tasks: enhancedTasks,
+					includeComplexity: true,
+					includeImports: true,
+					includeDependencyAnalysis: true,
+					includeFrameworkDetection: true,
+					includePatternAnalysis: true
+				});
+				
+				console.debug('[Enhanced AST] Context building result:', {
+					enabled: enhancedAstContext.enabled,
+					success: enhancedAstContext.success,
+					filesAnalyzed: enhancedAstContext.metadata?.filesAnalyzed || 0,
+					phase: enhancedAstContext.metadata?.phase || 'Unknown',
+					enhancedFeatures: enhancedAstContext.metadata?.enhancedFeatures || {}
+				});
+			} catch (error) {
+				console.debug('[Enhanced AST] Failed to build enhanced AST context:', error.message);
+				enhancedAstContext = { enabled: false, error: error.message };
+			}
 
 			// Detect persona if not provided
 			let persona = options.persona;
@@ -2008,312 +2038,338 @@ export class DirectBackend extends FlowBackend {
 				persona = detectedPersonas[0]?.persona || 'architect';
 			}
 
-		let content = '';
+			let content = '';
 
-		// Phase 2.3: Use Enhanced CLAUDE.md Formatter for rich, task-aware context
-		try {
-			const { formatEnhancedClaudeContext } = await import('../ast/context/enhanced-claude-formatter.js');
-			
-			if (enhancedAstContext && enhancedAstContext.enabled && enhancedAstContext.success) {
-				// Generate rich, enhanced CLAUDE.md content with Phase 2.1 + 2.2 analysis
-				content = await formatEnhancedClaudeContext(enhancedAstContext, tasks, {
-					worktreePath: worktree.path,
-					includeTaskAnalysis: true,
-					includeArchitectureOverview: true,
-					includePrioritizedContext: true,
-					includeDependencyAnalysis: true,
-					includeComplexityInsights: true,
-					includeImplementationGuidance: true,
-					detailLevel: 'comprehensive'
-				});
+			// Phase 2.3: Use Enhanced CLAUDE.md Formatter for rich, task-aware context
+			try {
+				const { formatEnhancedClaudeContext } = await import('../ast/context/enhanced-claude-formatter.js');
 				
-				console.debug('[Enhanced CLAUDE.md] Generated rich context with Phase 2.3 formatter');
-			} else {
-				// Fallback to enhanced formatter with error handling
-				content = await formatEnhancedClaudeContext(enhancedAstContext, tasks, {
-					worktreePath: worktree.path,
-					detailLevel: 'basic'
-				});
+				if (enhancedAstContext && enhancedAstContext.enabled && enhancedAstContext.success) {
+					// Generate rich, enhanced CLAUDE.md content with Phase 2.1 + 2.2 analysis
+					content = await formatEnhancedClaudeContext(enhancedAstContext, enhancedTasks, {
+						worktreePath: worktree.path,
+						includeTaskAnalysis: true,
+						includeArchitectureOverview: true,
+						includePrioritizedContext: true,
+						includeDependencyAnalysis: true,
+						includeComplexityInsights: true,
+						includeImplementationGuidance: true,
+						detailLevel: 'comprehensive'
+					});
+					
+					console.debug('[Enhanced CLAUDE.md] Generated rich context with Phase 2.3 formatter');
+				} else {
+					// Fallback to enhanced formatter with error handling
+					content = await formatEnhancedClaudeContext(enhancedAstContext, enhancedTasks, {
+						worktreePath: worktree.path,
+						detailLevel: 'basic'
+					});
+					
+					console.debug('[Enhanced CLAUDE.md] Generated fallback context due to AST analysis failure');
+				}
+			} catch (formatterError) {
+				console.warn('[Enhanced CLAUDE.md] Formatter failed, using basic context:', formatterError.message);
 				
-				console.debug('[Enhanced CLAUDE.md] Generated fallback context due to AST analysis failure');
-			}
-		} catch (formatterError) {
-			console.warn('[Enhanced CLAUDE.md] Formatter failed, using basic context:', formatterError.message);
-			
-			// Ultimate fallback to basic context generation
-			content = `# Task Implementation Context
+				// Ultimate fallback to basic context generation
+				content = `# Task Implementation Context
 
 Generated by Task Master for worktree: ${worktree.name}
 Branch: ${worktree.branch || 'unknown'}
 
 `;
 
-			// Add worktree-specific note for subtask worktrees
-			if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
-				content += `**Note:** This worktree was automatically created for the specific subtask implementation.\n\n`;
-			}
-
-			// Add tasks with full details
-			content += '## Tasks to Implement\n\n';
-			for (const task of tasks) {
-				content += `### Task ${task.id}: ${task.title}\n\n`;
-				content += `**Status:** ${task.status}\n\n`;
-
-				if (task.description) {
-					content += `**Description:**\n${task.description}\n\n`;
+				// Add worktree-specific note for subtask worktrees
+				if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
+					content += `**Note:** This worktree was automatically created for the specific subtask implementation.\n\n`;
 				}
 
-				if (task.details) {
-					content += `**Implementation Details:**\n${task.details}\n\n`;
-				}
-
-				// Check for test strategy (handle empty strings)
-				const testStrategy = task.testStrategy || task.test_strategy || null;
-				if (testStrategy !== null && testStrategy !== '') {
-					content += `**Test Strategy:**\n${testStrategy}\n\n`;
-				} else if (task.isSubtask) {
-					// For subtasks without test strategy, add a placeholder
-					content += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
-				}
-
-				if (task.dependencies && task.dependencies.length > 0) {
-					content += `**Dependencies:** ${task.dependencies.join(', ')}\n`;
-				}
-
-				if (task.subtasks && task.subtasks.length > 0) {
-					content += `**Subtasks:**\n`;
-					for (const subtask of task.subtasks) {
-						content += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
-						if (subtask.details) {
-							content += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
+				// Add tasks with full details
+				content += '## Tasks to Implement\n\n';
+				for (const task of enhancedTasks) {
+					// Check if this is a subtask by looking at the ID or isSubtask property
+					const isSubtask = task.isSubtask || String(task.id).includes('.');
+					const taskType = isSubtask ? 'Subtask' : 'Task';
+					
+					// If this is a subtask, first show parent task context
+					if (isSubtask && task.parentTask) {
+						content += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
+						
+						if (task.parentTask.description) {
+							content += `**Parent Description:**\n${task.parentTask.description}\n\n`;
 						}
-						if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
-							content += `  - Test Strategy: ${subtask.testStrategy}\n`;
+						
+						if (task.parentTask.details) {
+							content += `**Parent Implementation Details:**\n${task.parentTask.details}\n\n`;
 						}
+						
+						// Check for parent test strategy
+						const parentTestStrategy = task.parentTask.testStrategy || task.parentTask.test_strategy || null;
+						if (parentTestStrategy !== null && parentTestStrategy !== '') {
+							content += `**Parent Test Strategy:**\n${parentTestStrategy}\n\n`;
+						}
+						
+						content += '---\n\n';
 					}
-					content += '\n';
+					
+					content += `### ${taskType} to Implement: ${task.id}: ${task.title}\n\n`;
+					content += `**Status:** ${task.status}\n\n`;
+
+					if (task.description) {
+						content += `**Description:**\n${task.description}\n\n`;
+					}
+
+					if (task.details) {
+						content += `**Implementation Details:**\n${task.details}\n\n`;
+					}
+
+					// Check for test strategy (handle empty strings)
+					const testStrategy = task.testStrategy || task.test_strategy || null;
+					if (testStrategy !== null && testStrategy !== '') {
+						content += `**Test Strategy:**\n${testStrategy}\n\n`;
+					} else if (isSubtask) {
+						// For subtasks without test strategy, add a placeholder
+						content += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
+					}
+
+					if (task.dependencies && task.dependencies.length > 0) {
+						content += `**Dependencies:** ${task.dependencies.join(', ')}\n`;
+					}
+
+					// Only show subtasks section if this is a parent task with subtasks
+					if (!isSubtask && task.subtasks && task.subtasks.length > 0) {
+						content += `**Subtasks:**\n`;
+						for (const subtask of task.subtasks) {
+							content += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
+							if (subtask.details) {
+								content += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
+							}
+							if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
+								content += `  - Test Strategy: ${subtask.testStrategy}\n`;
+							}
+						}
+						content += '\n';
+					}
+
+					content += '\n---\n\n';
 				}
 
-				content += '\n---\n\n';
-			}
-
-			// Add basic AST context if available
-			if (enhancedAstContext && enhancedAstContext.enabled && enhancedAstContext.success && enhancedAstContext.context) {
-				content += '## Code Structure Analysis\n\n';
-				content += '*Basic AST analysis (enhanced formatter unavailable)*\n\n';
-				if (typeof enhancedAstContext.context === 'string') {
-					content += enhancedAstContext.context;
-				} else {
-					content += 'AST analysis completed but formatting failed.\n\n';
-				}
-			} else if (enhancedAstContext && enhancedAstContext.enabled) {
-				content += '## Code Structure Analysis\n\n';
-				content += `*AST analysis failed: ${enhancedAstContext.error || 'Unknown error'}*\n\n`;
-			}
-				}
-
-		// Only add basic project structure and Git context for ultimate fallback case
-		// (Enhanced formatter handles these sections with richer analysis)
-		if (content.includes('Ultimate fallback') || !content.includes('Enhanced Task Implementation Context')) {
-			// Add project structure (filtered to relevant files)
-			if (options.includeStructure !== false) {
-				content += '## Project Structure\n\n';
-				content += '```\n';
-
-				try {
-					// Get project files, excluding common directories and files
-					const { stdout } = await execAsync(
-						`cd "${worktree.path}" && find . -type f \\( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" \\) | grep -v node_modules | grep -v "\\.git" | grep -v "dist/" | grep -v "build/" | grep -v "coverage/" | head -50 | sort`
-					);
-
-					if (stdout.trim()) {
-						content += stdout;
+				// Add basic AST context if available
+				if (enhancedAstContext && enhancedAstContext.enabled && enhancedAstContext.success && enhancedAstContext.context) {
+					content += '## Code Structure Analysis\n\n';
+					content += '*Basic AST analysis (enhanced formatter unavailable)*\n\n';
+					if (typeof enhancedAstContext.context === 'string') {
+						content += enhancedAstContext.context;
 					} else {
-						content += '(No project files found yet)\n';
+						content += 'AST analysis completed but formatting failed.\n\n';
+					}
+				} else if (enhancedAstContext && enhancedAstContext.enabled) {
+					content += '## Code Structure Analysis\n\n';
+					content += `*AST analysis failed: ${enhancedAstContext.error || 'Unknown error'}*\n\n`;
+				}
+			}
+
+			// Only add basic project structure and Git context for ultimate fallback case
+			// (Enhanced formatter handles these sections with richer analysis)
+			if (content.includes('Ultimate fallback') || !content.includes('Enhanced Task Implementation Context')) {
+				// Add project structure (filtered to relevant files)
+				if (options.includeStructure !== false) {
+					content += '## Project Structure\n\n';
+					content += '```\n';
+
+					try {
+						// Get project files, excluding common directories and files
+						const { stdout } = await execAsync(
+							`cd "${worktree.path}" && find . -type f \\( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" \\) | grep -v node_modules | grep -v "\\.git" | grep -v "dist/" | grep -v "build/" | grep -v "coverage/" | head -50 | sort`
+						);
+
+						if (stdout.trim()) {
+							content += stdout;
+						} else {
+							content += '(No project files found yet)\n';
+						}
+					} catch (err) {
+						content += '(Unable to list project files)\n';
+					}
+
+					content += '```\n\n';
+				}
+
+				// Add Git context
+				content += '## Git Context\n\n';
+				try {
+					const { stdout: branch } = await execAsync(
+						`cd "${worktree.path}" && git rev-parse --abbrev-ref HEAD`
+					);
+					content += `**Current branch:** ${branch.trim()}\n`;
+
+					const { stdout: status } = await execAsync(
+						`cd "${worktree.path}" && git status --short`
+					);
+					if (status.trim()) {
+						content += '\n**Uncommitted changes:**\n```\n' + status + '```\n';
+					} else {
+						content += '\n**Working directory:** Clean\n';
+					}
+
+					// Add recent commits
+					try {
+						const { stdout: commits } = await execAsync(
+							`cd "${worktree.path}" && git log --oneline -5`
+						);
+						if (commits.trim()) {
+							content += '\n**Recent commits:**\n```\n' + commits + '```\n';
+						}
+					} catch {
+						// Might be a new branch with no commits
 					}
 				} catch (err) {
-					content += '(Unable to list project files)\n';
+					content += 'Git information unavailable\n';
 				}
 
-				content += '```\n\n';
+				// Add instructions for Claude
+				content += '\n## Instructions\n\n';
+				content +=
+					'Please implement the tasks listed above, following the implementation details and test strategies provided.\n';
+				content +=
+					'Ensure all code follows project conventions and includes appropriate tests.\n';
+				content +=
+					'This context file provides a comprehensive overview of the task requirements and current project state.\n';
 			}
 
-			// Add Git context
-			content += '## Git Context\n\n';
-			try {
-				const { stdout: branch } = await execAsync(
-					`cd "${worktree.path}" && git rev-parse --abbrev-ref HEAD`
-				);
-				content += `**Current branch:** ${branch.trim()}\n`;
-
-				const { stdout: status } = await execAsync(
-					`cd "${worktree.path}" && git status --short`
-				);
-				if (status.trim()) {
-					content += '\n**Uncommitted changes:**\n```\n' + status + '```\n';
-				} else {
-					content += '\n**Working directory:** Clean\n';
+				// Add custom headless prompt if provided
+				if (options.headlessPrompt) {
+					content += '\n## Additional User Instructions\n\n';
+					content += options.headlessPrompt + '\n';
 				}
 
-				// Add recent commits
-				try {
-					const { stdout: commits } = await execAsync(
-						`cd "${worktree.path}" && git log --oneline -5`
-					);
-					if (commits.trim()) {
-						content += '\n**Recent commits:**\n```\n' + commits + '```\n';
-					}
-				} catch {
-					// Might be a new branch with no commits
-				}
+				// Write CLAUDE.md
+				await fs.writeFile(claudeMdPath, content);
+
+				return {
+					contextFile: claudeMdPath,
+					persona,
+					tasksCount: enhancedTasks.length
+				};
 			} catch (err) {
-				content += 'Git information unavailable\n';
+				throw new Error(`Failed to prepare Claude context: ${err.message}`);
 			}
-
-			// Add instructions for Claude
-			content += '\n## Instructions\n\n';
-			content +=
-				'Please implement the tasks listed above, following the implementation details and test strategies provided.\n';
-			content +=
-				'Ensure all code follows project conventions and includes appropriate tests.\n';
-			content +=
-				'This context file provides a comprehensive overview of the task requirements and current project state.\n';
 		}
 
-			// Add custom headless prompt if provided
-			if (options.headlessPrompt) {
-				content += '\n## Additional User Instructions\n\n';
-				content += options.headlessPrompt + '\n';
-			}
-
-			// Write CLAUDE.md
-			await fs.writeFile(claudeMdPath, content);
-
-			return {
-				contextFile: claudeMdPath,
-				persona,
-				tasksCount: tasks.length
-			};
-		} catch (err) {
-			throw new Error(`Failed to prepare Claude context: ${err.message}`);
-		}
-	}
-
-	// Launch Claude CLI in interactive mode
-	async launchClaudeCLI(worktree, options = {}) {
-		try {
-			const execAsync = promisify(exec);
-			// Prepare context if tasks provided
-			let contextInfo = {};
-			if (options.tasks?.length > 0) {
-				contextInfo = await this.prepareClaudeContext(worktree, options.tasks, {
-					...options,
-					mode: 'interactive'
-				});
-			}
-
-			const platform = os.platform();
-			let command;
-
-			if (platform === 'darwin') {
-				// macOS - use Terminal.app or iTerm2 if available
-				try {
-					// Check if iTerm2 is available
-					await execAsync(
-						'osascript -e \'tell application "System Events" to get name of every application process\' | grep -i iterm'
-					);
-					// iTerm2 is available
-					command = `osascript -e 'tell application "iTerm"
-						create window with default profile
-						tell current session of current window
-							write text "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
-						end tell
-					end tell'`;
-				} catch {
-					// Fall back to Terminal.app
-					command = `osascript -e 'tell application "Terminal"
-						do script "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
-						activate
-					end tell'`;
+		// Launch Claude CLI in interactive mode
+		async launchClaudeCLI(worktree, options = {}) {
+			try {
+				const execAsync = promisify(exec);
+				// Prepare context if tasks provided
+				let contextInfo = {};
+				if (options.tasks?.length > 0) {
+					contextInfo = await this.prepareClaudeContext(worktree, options.tasks, {
+						...options,
+						mode: 'interactive'
+					});
 				}
-			} else if (platform === 'win32') {
-				// Windows
-				command = `start cmd /k "cd /d \\"${worktree.path}\\" && claude"`;
-			} else {
-				// Linux - try common terminal emulators
-				const terminals = [
-					`gnome-terminal -- bash -c "cd '${worktree.path}' && claude; exec bash"`,
-					`konsole -e bash -c "cd '${worktree.path}' && claude; exec bash"`,
-					`xterm -e bash -c "cd '${worktree.path}' && claude; exec bash"`
-				];
 
-				for (const term of terminals) {
+				const platform = os.platform();
+				let command;
+
+				if (platform === 'darwin') {
+					// macOS - use Terminal.app or iTerm2 if available
 					try {
-						await execAsync(term);
-						command = term;
-						break;
+						// Check if iTerm2 is available
+						await execAsync(
+							'osascript -e \'tell application "System Events" to get name of every application process\' | grep -i iterm'
+						);
+						// iTerm2 is available
+						command = `osascript -e 'tell application "iTerm"
+							create window with default profile
+							tell current session of current window
+								write text "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
+							end tell
+						end tell'`;
 					} catch {
-						// Try next terminal
+						// Fall back to Terminal.app
+						command = `osascript -e 'tell application "Terminal"
+							do script "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
+							activate
+						end tell'`;
+					}
+				} else if (platform === 'win32') {
+					// Windows
+					command = `start cmd /k "cd /d \\"${worktree.path}\\" && claude"`;
+				} else {
+					// Linux - try common terminal emulators
+					const terminals = [
+						`gnome-terminal -- bash -c "cd '${worktree.path}' && claude; exec bash"`,
+						`konsole -e bash -c "cd '${worktree.path}' && claude; exec bash"`,
+						`xterm -e bash -c "cd '${worktree.path}' && claude; exec bash"`
+					];
+
+					for (const term of terminals) {
+						try {
+							await execAsync(term);
+							command = term;
+							break;
+						} catch {
+							// Try next terminal
+						}
+					}
+
+					if (!command) {
+						throw new Error('No supported terminal emulator found');
 					}
 				}
 
-				if (!command) {
-					throw new Error('No supported terminal emulator found');
-				}
-			}
+				await execAsync(command);
 
-			await execAsync(command);
-
-			return {
-				success: true,
-				worktree: worktree.path,
-				contextInfo
-			};
-		} catch (err) {
-			throw new Error(`Failed to launch Claude CLI: ${err.message}`);
-		}
-	}
-
-	// Launch Claude in headless mode with prompt
-	async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
-		try {
-			// Ensure all tasks have research before proceeding
-			await this.ensureTasksHaveResearch(tasks, worktree, {
-				...options,
-				mcpLog: options.mcpLog || options.log || this.log
-			});
-
-			// Prepare context file (CLAUDE.md) first
-			const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
-				...options,
-				mode: 'headless',
-				headlessPrompt: prompt
-			});
-
-			// Read the CLAUDE.md content to include in the prompt
-			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
-			let claudeMdContent = '';
-			try {
-				claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
+				return {
+					success: true,
+					worktree: worktree.path,
+					contextInfo
+				};
 			} catch (err) {
-				console.warn('Could not read CLAUDE.md:', err.message);
+				throw new Error(`Failed to launch Claude CLI: ${err.message}`);
 			}
+		}
 
-			// Detect persona if not provided
-			let persona = options.persona || contextInfo.persona;
-			if (!persona && tasks.length > 0) {
-				const detectedPersonas = await detectPersona(tasks[0], worktree);
-				persona = detectedPersonas[0]?.persona || 'architect';
-			}
+		// Launch Claude in headless mode with prompt
+		async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
+			try {
+				// Ensure all tasks have research before proceeding
+				await this.ensureTasksHaveResearch(tasks, worktree, {
+					...options,
+					mcpLog: options.mcpLog || options.log || this.log
+				});
 
-			// Build comprehensive prompt
-			const promptBuilder = new PersonaPromptBuilder(persona);
-			let fullPrompt;
+				// Prepare context file (CLAUDE.md) first
+				const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
+					...options,
+					mode: 'headless',
+					headlessPrompt: prompt
+				});
 
-			// Combine CLAUDE.md content with user instructions
-			let combinedContext = '';
-			if (claudeMdContent) {
-				combinedContext = `## Implementation Context
+				// Read the CLAUDE.md content to include in the prompt
+				const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
+				let claudeMdContent = '';
+				try {
+					claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
+				} catch (err) {
+					console.warn('Could not read CLAUDE.md:', err.message);
+				}
+
+				// Detect persona if not provided
+				let persona = options.persona || contextInfo.persona;
+				if (!persona && tasks.length > 0) {
+					const detectedPersonas = await detectPersona(tasks[0], worktree);
+					persona = detectedPersonas[0]?.persona || 'architect';
+				}
+
+				// Build comprehensive prompt
+				const promptBuilder = new PersonaPromptBuilder(persona);
+				let fullPrompt;
+
+				// Combine CLAUDE.md content with user instructions
+				let combinedContext = '';
+				if (claudeMdContent) {
+					combinedContext = `## Implementation Context
 
 The following comprehensive context has been prepared for this task implementation:
 
@@ -2323,837 +2379,837 @@ ${claudeMdContent}
 
 ---
 `;
-			}
-			if (prompt) {
-				combinedContext += `
+				}
+				if (prompt) {
+					combinedContext += `
 ## Additional User Instructions
 
 ${prompt}
 
 ---
 `;
-			}
-
-			if (tasks.length === 1) {
-				fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
-					additionalContext: combinedContext || null
-				});
-			} else {
-				fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
-					additionalContext: combinedContext || null
-				});
-			}
-
-			// Use Claude Code SDK
-			const messages = [];
-			const startTime = Date.now();
-			let totalCost = 0;
-			let sessionId = null;
-
-			const queryOptions = {
-				prompt: fullPrompt,
-				abortController: options.abortController || new AbortController(),
-				options: {
-					maxTurns: options.maxTurns || 10,
-					permissionMode: options.permissionMode || 'acceptEdits',
-					outputFormat: options.outputFormat || 'stream-json',
-					cwd: worktree.path,
-					// Add allowed tools if provided
-					...(options.allowedTools && { allowedTools: options.allowedTools })
-				}
-			};
-
-			// Handle different output formats
-			if (options.captureOutput) {
-				let output = '';
-
-				for await (const message of claudeQuery(queryOptions)) {
-					messages.push(message);
-
-					// Extract session ID from init message
-					if (message.type === 'system' && message.subtype === 'init') {
-						sessionId = message.session_id;
-					}
-
-					// Track costs
-					if (
-						message.type === 'result' &&
-						message.total_cost_usd !== undefined
-					) {
-						totalCost = message.total_cost_usd;
-					}
-
-					// Build output text from assistant messages
-					if (message.type === 'assistant' && message.message?.content) {
-						const content = message.message.content;
-						if (Array.isArray(content)) {
-							for (const part of content) {
-								if (part.type === 'text') {
-									output += part.text + '\n';
-								}
-							}
-						} else if (typeof content === 'string') {
-							output += content + '\n';
-						}
-					}
-
-					// Call progress callback if provided
-					if (options.onProgress && message.type === 'assistant') {
-						options.onProgress(output);
-					}
 				}
 
-				const duration = Date.now() - startTime;
-
-				return {
-					success: true,
-					output,
-					persona,
-					tasksProcessed: tasks.length,
-					sessionId,
-					totalCost,
-					duration,
-					messages
-				};
-			} else {
-				// Fire and forget mode - just start the process
-				const claudeProcess = spawn(
-					'claude',
-					[
-						'-p',
-						fullPrompt,
-						'--max-turns',
-						String(options.maxTurns || 10),
-						'--permission-mode',
-						options.permissionMode || 'acceptEdits',
-						'--add-dir',
-						worktree.path
-					],
-					{
-						cwd: worktree.path,
-						stdio: 'inherit'
-					}
-				);
-
-				return {
-					success: true,
-					persona,
-					tasksProcessed: tasks.length,
-					process: claudeProcess
-				};
-			}
-		} catch (err) {
-			throw new Error(
-				`Failed to launch Claude in headless mode: ${err.message}`
-			);
-		}
-	}
-
-	// Launch multiple Claude sessions for batch processing
-	async launchMultipleClaudeSessions(worktree, taskGroups, options = {}) {
-		try {
-			const sessions = [];
-
-			for (const group of taskGroups) {
-				const { tasks, persona, prompt } = group;
-
-				const sessionResult = await this.launchClaudeHeadless(
-					worktree,
-					tasks,
-					prompt,
-					{
-						...options,
-						persona,
-						captureOutput: true
-					}
-				);
-
-				sessions.push({
-					tasks: tasks.map((t) => t.id),
-					persona,
-					result: sessionResult
-				});
-			}
-
-			return {
-				success: true,
-				sessions,
-				totalTasks: taskGroups.reduce((sum, g) => sum + g.tasks.length, 0)
-			};
-		} catch (err) {
-			throw new Error(
-				`Failed to launch multiple Claude sessions: ${err.message}`
-			);
-		}
-	}
-
-	// Get available personas
-	async getAvailablePersonas() {
-		return getAllPersonaIds();
-	}
-
-	// Detect personas for tasks
-	async detectPersonasForTasks(tasks, worktree) {
-		const detectionResults = [];
-
-		for (const task of tasks) {
-			const personas = await detectPersona(task, worktree);
-			detectionResults.push({
-				taskId: task.id,
-				taskTitle: task.title,
-				suggestedPersonas: personas
-			});
-		}
-
-		// Check for multi-persona workflow
-		const multiPersona = detectMultiPersonaWorkflow(tasks);
-
-		return {
-			taskPersonas: detectionResults,
-			multiPersonaWorkflow: multiPersona
-		};
-	}
-
-	/**
-	 * Check if a task has research in its details
-	 * @param {Object} task - Task object
-	 * @returns {boolean} - True if task has research
-	 */
-	hasResearchInTask(task) {
-		// Check main task details (case-insensitive)
-		if (
-			task.details &&
-			(task.details.toLowerCase().includes('research session') ||
-				task.details.includes('<info added on'))
-		) {
-			return true;
-		}
-
-		// Check subtasks if they exist
-		if (task.subtasks && Array.isArray(task.subtasks)) {
-			for (const subtask of task.subtasks) {
-				if (
-					subtask.details &&
-					(subtask.details.toLowerCase().includes('research session') ||
-						subtask.details.includes('<info added on'))
-				) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Run research for tasks that don't have research
-	 * @param {Array} tasks - Array of tasks
-	 * @param {Object} worktree - Worktree object
-	 * @param {Object} options - Options
-	 * @returns {Promise<void>}
-	 */
-	async ensureTasksHaveResearch(tasks, worktree, options = {}) {
-		const logFn = options.mcpLog || this.log;
-
-		for (const task of tasks) {
-			if (!this.hasResearchInTask(task)) {
-				logFn.info(`Task ${task.id} has no research. Running research...`);
-
-				try {
-					// Build research query based on task
-					const researchQuery = `Task ${task.id}: ${task.title}\n\nDescription: ${task.description || 'No description'}\n\nDetails: ${task.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
-
-					// Run research
-					const researchResult = await this.research({
-						query: researchQuery,
-						taskIds: [task.id.toString()],
-						includeProjectTree: true,
-						detailLevel: 'high',
-						saveTo: task.id.toString()
+				if (tasks.length === 1) {
+					fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
+						additionalContext: combinedContext || null
 					});
+				} else {
+					fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
+						additionalContext: combinedContext || null
+					});
+				}
 
-					if (researchResult.success) {
-						logFn.info(`Research completed and saved to task ${task.id}`);
+				// Use Claude Code SDK
+				const messages = [];
+				const startTime = Date.now();
+				let totalCost = 0;
+				let sessionId = null;
 
-						// Reload task to get updated details with research
-						const updatedTask = await this.getTask(task.id.toString());
-						if (updatedTask) {
-							// Update the task object in the array with the new details
-							Object.assign(task, updatedTask);
+				const queryOptions = {
+					prompt: fullPrompt,
+					abortController: options.abortController || new AbortController(),
+					options: {
+						maxTurns: options.maxTurns || 10,
+						permissionMode: options.permissionMode || 'acceptEdits',
+						outputFormat: options.outputFormat || 'stream-json',
+						cwd: worktree.path,
+						// Add allowed tools if provided
+						...(options.allowedTools && { allowedTools: options.allowedTools })
+					}
+				};
+
+				// Handle different output formats
+				if (options.captureOutput) {
+					let output = '';
+
+					for await (const message of claudeQuery(queryOptions)) {
+						messages.push(message);
+
+						// Extract session ID from init message
+						if (message.type === 'system' && message.subtype === 'init') {
+							sessionId = message.session_id;
 						}
-					} else {
-						logFn.warn(
-							`Research failed for task ${task.id}: ${researchResult.error}`
-						);
-					}
-				} catch (error) {
-					logFn.error(
-						`Error running research for task ${task.id}: ${error.message}`
-					);
-				}
-			} else {
-				logFn.info(
-					`Task ${task.id} already has research - skipping research generation`
-				);
-				// Show a snippet of the existing research
-				if (task.details) {
-					const researchMatch = task.details.match(
-						/research session.*?(?=\n|$)/i
-					);
-					if (researchMatch) {
-						logFn.debug(`Existing research: "${researchMatch[0]}..."`);
-					}
-				}
-			}
-		}
-	}
 
-	/**
-	 * Get or create a worktree for a subtask
-	 * @param {string} taskId
-	 * @param {string} subtaskId
-	 * @param {Object} options
-	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
-	 */
-	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
-		try {
-			// Dynamically import WorktreeManager to avoid circular dependencies
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-
-			// Get subtask details if not provided
-			if (!options.subtaskTitle && taskId && subtaskId) {
-				try {
-					const task = await this.getTask(taskId);
-					if (task.subtasks) {
-						const subtask = task.subtasks.find(
-							(st) => String(st.id) === String(subtaskId)
-						);
-						if (subtask) {
-							options.subtaskTitle = subtask.title;
+						// Track costs
+						if (
+							message.type === 'result' &&
+							message.total_cost_usd !== undefined
+						) {
+							totalCost = message.total_cost_usd;
 						}
-					}
-				} catch (error) {
-					// Continue without title
-					this.log.debug('Could not get subtask title:', error.message);
-				}
-			}
 
-			return await manager.getOrCreateWorktreeForSubtask(
-				taskId,
-				subtaskId,
-				options
-			);
-		} catch (error) {
-			this.log.error('Error in getOrCreateWorktreeForSubtask:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Get worktree for a specific subtask
-	 * @param {string} taskId
-	 * @param {string} subtaskId
-	 * @returns {Promise<Object|null>}
-	 */
-	async getWorktreeForSubtask(taskId, subtaskId) {
-		const { WorktreeManager } = await import('../worktree-manager.js');
-		const manager = new WorktreeManager(this.projectRoot);
-		return manager.getWorktreeForSubtask(taskId, subtaskId);
-	}
-
-	/**
-	 * Get all worktrees
-	 * @returns {Promise<Array>}
-	 */
-	async getAllWorktrees() {
-		const { WorktreeManager } = await import('../worktree-manager.js');
-		const manager = new WorktreeManager(this.projectRoot);
-		return manager.getAllWorktrees();
-	}
-
-	/**
-	 * Complete a subtask and optionally create PR
-	 * @param {string} worktreeName
-	 * @param {Object} options
-	 * @returns {Promise<Object>}
-	 */
-	async completeSubtaskWorktree(worktreeName, options = {}) {
-		const { WorktreeManager } = await import('../worktree-manager.js');
-		const manager = new WorktreeManager(this.projectRoot);
-		return await manager.completeSubtask(worktreeName, options);
-	}
-
-	/**
-	 * Update worktree configuration
-	 * @param {Object} updates
-	 * @returns {Promise<void>}
-	 */
-	async updateWorktreeConfig(updates) {
-		const { WorktreeManager } = await import('../worktree-manager.js');
-		const manager = new WorktreeManager(this.projectRoot);
-		return manager.updateConfig(updates);
-	}
-
-	/**
-	 * Force create a worktree, removing any existing branch/worktree
-	 * @param {string} taskId
-	 * @param {string} subtaskId
-	 * @param {Object} options
-	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
-	 */
-	async forceCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
-		try {
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-
-			// Get subtask details if not provided
-			if (!options.subtaskTitle && taskId && subtaskId) {
-				try {
-					const task = await this.getTask(taskId);
-					if (task.subtasks) {
-						const subtask = task.subtasks.find(
-							(st) => String(st.id) === String(subtaskId)
-						);
-						if (subtask) {
-							options.subtaskTitle = subtask.title;
-						}
-					}
-				} catch (error) {
-					this.log.debug('Could not get subtask title:', error.message);
-				}
-			}
-
-			return await manager.forceCreateWorktree(taskId, subtaskId, options);
-		} catch (error) {
-			this.log.error('Error in forceCreateWorktreeForSubtask:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Use existing branch for worktree
-	 * @param {string} taskId
-	 * @param {string} subtaskId
-	 * @param {Object} options
-	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, reusedBranch: boolean}>}
-	 */
-	async useExistingBranchForSubtask(taskId, subtaskId, options = {}) {
-		try {
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-
-			// Get subtask details if not provided
-			if (!options.subtaskTitle && taskId && subtaskId) {
-				try {
-					const task = await this.getTask(taskId);
-					if (task.subtasks) {
-						const subtask = task.subtasks.find(
-							(st) => String(st.id) === String(subtaskId)
-						);
-						if (subtask) {
-							options.subtaskTitle = subtask.title;
-						}
-					}
-				} catch (error) {
-					this.log.debug('Could not get subtask title:', error.message);
-				}
-			}
-
-			return await manager.useExistingBranch(taskId, subtaskId, options);
-		} catch (error) {
-			this.log.error('Error in useExistingBranchForSubtask:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Save Claude session data to a JSON file in .taskmaster folder and update index
-	 * @param {Object} sessionData - The session data to save
-	 * @returns {Promise<void>}
-	 */
-	async saveClaudeSessionData(sessionData) {
-		try {
-			const claudeDir = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions'
-			);
-			await fs.mkdir(claudeDir, { recursive: true });
-
-			// Create a filename based on timestamp and task ID
-			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-			const taskIds = sessionData.tasks.map((t) => t.id).join('_');
-			const filename = `claude-session-${taskIds}-${timestamp}.json`;
-			const filePath = path.join(claudeDir, filename);
-
-			// Process conversation history for better readability
-			const processedMessages =
-				sessionData.messages?.map((msg, idx) => {
-					const processed = {
-						index: idx,
-						type: msg.type,
-						timestamp: msg.timestamp || new Date().toISOString()
-					};
-
-					// Handle different message types
-					if (msg.type === 'assistant' && msg.message) {
-						processed.content = this.extractMessageContent(msg.message.content);
-						processed.role = 'assistant';
-					} else if (msg.type === 'user' && msg.message) {
-						processed.content = this.extractMessageContent(msg.message.content);
-						processed.role = 'user';
-					} else if (msg.type === 'tool_use') {
-						processed.tool = msg.name;
-						processed.input = msg.input;
-						processed.output = msg.output;
-					} else if (msg.type === 'system') {
-						processed.subtype = msg.subtype;
-						processed.details = msg;
-					} else if (msg.type === 'result') {
-						processed.totalCost = msg.total_cost_usd;
-						processed.tokenCounts = msg.token_counts;
-					}
-
-					return processed;
-				}) || [];
-
-			// Extract subtask information for better organization
-			const primaryTask = sessionData.tasks[0];
-			const isSubtask = primaryTask.id.includes('.');
-			let parentTaskId = null;
-			let subtaskId = null;
-
-			if (isSubtask) {
-				const [parent, sub] = primaryTask.id.split('.');
-				parentTaskId = parent;
-				subtaskId = sub;
-			}
-
-			// Prepare data with enhanced summary
-			const dataToSave = {
-				summary: {
-					sessionId: sessionData.sessionId,
-					timestamp: sessionData.statistics.completedAt,
-					worktree: sessionData.worktree,
-					branch: sessionData.branch,
-					// Enhanced task information
-					subtaskInfo: isSubtask
-						? {
-								parentTaskId,
-								subtaskId,
-								fullId: primaryTask.id,
-								title: primaryTask.title,
-								description: primaryTask.description
+						// Build output text from assistant messages
+						if (message.type === 'assistant' && message.message?.content) {
+							const content = message.message.content;
+							if (Array.isArray(content)) {
+								for (const part of content) {
+									if (part.type === 'text') {
+										output += part.text + '\n';
+									}
+								}
+							} else if (typeof content === 'string') {
+								output += content + '\n';
 							}
-						: null,
-					tasks: sessionData.tasks.map((t) => ({
-						id: t.id,
-						title: t.title,
-						description: t.description
-					})),
-					statistics: {
-						turns: sessionData.statistics.turns,
-						maxTurns: sessionData.statistics.maxTurns,
-						fileChanges: sessionData.statistics.fileChanges,
-						totalCost: sessionData.statistics.totalCost,
-						durationSeconds: sessionData.statistics.durationSeconds,
-						tokenCounts: sessionData.statistics.tokenCounts || {},
-						toolsUsed: this.countToolsUsed(processedMessages)
-					},
-					persona: sessionData.persona,
-					toolRestrictions: sessionData.statistics.toolRestrictions,
-					// PR tracking
-					prInfo: {
-						created: false,
-						url: null,
-						createdAt: null
+						}
+
+						// Call progress callback if provided
+						if (options.onProgress && message.type === 'assistant') {
+							options.onProgress(output);
+						}
 					}
-				},
-				conversation: {
-					messageCount: processedMessages.length,
-					messages: processedMessages
-				},
-				rawSession: {
-					output: sessionData.output,
-					fullData: sessionData
+
+					const duration = Date.now() - startTime;
+
+					return {
+						success: true,
+						output,
+						persona,
+						tasksProcessed: tasks.length,
+						sessionId,
+						totalCost,
+						duration,
+						messages
+					};
+				} else {
+					// Fire and forget mode - just start the process
+					const claudeProcess = spawn(
+						'claude',
+						[
+							'-p',
+							fullPrompt,
+							'--max-turns',
+							String(options.maxTurns || 10),
+							'--permission-mode',
+							options.permissionMode || 'acceptEdits',
+							'--add-dir',
+							worktree.path
+						],
+						{
+							cwd: worktree.path,
+							stdio: 'inherit'
+						}
+					);
+
+					return {
+						success: true,
+						persona,
+						tasksProcessed: tasks.length,
+						process: claudeProcess
+					};
 				}
-			};
-
-			// Write session file
-			await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
-
-			// Update the index file
-			await this.updateClaudeSessionIndex({
-				sessionId: sessionData.sessionId,
-				filename: filename,
-				timestamp: sessionData.statistics.completedAt,
-				subtaskInfo: dataToSave.summary.subtaskInfo,
-				worktree: sessionData.worktree,
-				branch: sessionData.branch,
-				statistics: dataToSave.summary.statistics,
-				persona: sessionData.persona,
-				prInfo: dataToSave.summary.prInfo
-			});
-
-			this.log.info(`Claude session data saved to: ${filePath}`);
-			return filePath;
-		} catch (error) {
-			this.log.error('Failed to save Claude session data:', error.message);
-			throw error;
+			} catch (err) {
+				throw new Error(
+					`Failed to launch Claude in headless mode: ${err.message}`
+				);
+			}
 		}
-	}
 
-	/**
-	 * Update the Claude sessions index file
-	 * @private
-	 */
-	async updateClaudeSessionIndex(sessionInfo) {
-		try {
-			const indexPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions.json'
-			);
-
-			let index = [];
+		// Launch multiple Claude sessions for batch processing
+		async launchMultipleClaudeSessions(worktree, taskGroups, options = {}) {
 			try {
-				const data = await fs.readFile(indexPath, 'utf8');
-				index = JSON.parse(data);
-			} catch {
-				// No index file yet
-			}
+				const sessions = [];
 
-			// Remove existing entry if it exists
-			index = index.filter((s) => s.sessionId !== sessionInfo.sessionId);
+				for (const group of taskGroups) {
+					const { tasks, persona, prompt } = group;
 
-			// Add new entry
-			index.unshift(sessionInfo); // Add to beginning (newest first)
+					const sessionResult = await this.launchClaudeHeadless(
+						worktree,
+						tasks,
+						prompt,
+						{
+							...options,
+							persona,
+							captureOutput: true
+						}
+					);
 
-			// Keep only last 100 sessions in index
-			if (index.length > 100) {
-				index = index.slice(0, 100);
-			}
-
-			await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
-		} catch (error) {
-			this.log.error('Failed to update Claude session index:', error.message);
-		}
-	}
-
-	/**
-	 * Extract text content from various message content formats
-	 * @private
-	 */
-	extractMessageContent(content) {
-		if (!content) return '';
-
-		if (typeof content === 'string') {
-			return content;
-		}
-
-		if (Array.isArray(content)) {
-			return content
-				.map((part) => {
-					if (part.type === 'text') return part.text;
-					if (part.type === 'code')
-						return `\`\`\`${part.language || ''}\n${part.code}\n\`\`\``;
-					return JSON.stringify(part);
-				})
-				.join('\n');
-		}
-
-		if (content.text) {
-			return content.text;
-		}
-
-		return JSON.stringify(content);
-	}
-
-	/**
-	 * Count tools used in the conversation
-	 * @private
-	 */
-	countToolsUsed(messages) {
-		const toolCounts = {};
-		messages.forEach((msg) => {
-			if (msg.type === 'tool_use' && msg.tool) {
-				toolCounts[msg.tool] = (toolCounts[msg.tool] || 0) + 1;
-			}
-		});
-		return toolCounts;
-	}
-
-	async completeSubtaskWithPR(worktreeName, options = {}) {
-		const worktreeManager = new WorktreeManager(this.projectRoot);
-		return await worktreeManager.completeSubtask(worktreeName, options);
-	}
-
-	// Create PR from Claude session
-	async createPRFromClaudeSession(sessionId, options = {}) {
-		try {
-			// Get session details
-			const sessionResult = await this.getClaudeSessionDetails(sessionId);
-			if (!sessionResult.success) {
-				return sessionResult;
-			}
-
-			const { session, indexInfo } = sessionResult;
-			const subtaskInfo = session.summary.subtaskInfo;
-
-			if (!subtaskInfo) {
-				return {
-					success: false,
-					error: 'Session is not associated with a subtask'
-				};
-			}
-
-			// Check if PR already exists
-			if (session.summary.prInfo.created) {
-				return {
-					success: false,
-					error: `PR already created: ${session.summary.prInfo.url}`
-				};
-			}
-
-			// Get worktree info
-			const worktreeName = `task-${subtaskInfo.fullId}`;
-			const worktree = await this.getWorktreeForSubtask(
-				subtaskInfo.parentTaskId,
-				subtaskInfo.subtaskId
-			);
-
-			if (!worktree) {
-				return {
-					success: false,
-					error: 'Associated worktree not found'
-				};
-			}
-
-			// Create PR using worktree manager
-			const prTitle =
-				options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
-			const prDescription =
-				options.prDescription || this.generatePRDescription(session);
-
-			const prResult = await this.completeSubtaskWithPR(worktreeName, {
-				createPR: true,
-				prTitle,
-				prDescription
-			});
-
-			if (prResult.prUrl) {
-				// Update session with PR info
-				await this.updateClaudeSessionPR(sessionId, {
-					created: true,
-					url: prResult.prUrl,
-					createdAt: new Date().toISOString()
-				});
+					sessions.push({
+						tasks: tasks.map((t) => t.id),
+						persona,
+						result: sessionResult
+					});
+				}
 
 				return {
 					success: true,
-					prUrl: prResult.prUrl,
-					worktree: worktree.name
+					sessions,
+					totalTasks: taskGroups.reduce((sum, g) => sum + g.tasks.length, 0)
 				};
-			} else {
-				return {
-					success: false,
-					error: 'Failed to create PR'
-				};
+			} catch (err) {
+				throw new Error(
+					`Failed to launch multiple Claude sessions: ${err.message}`
+				);
 			}
-		} catch (error) {
-			console.error('Error creating PR from Claude session:', error);
+		}
+
+		// Get available personas
+		async getAvailablePersonas() {
+			return getAllPersonaIds();
+		}
+
+		// Detect personas for tasks
+		async detectPersonasForTasks(tasks, worktree) {
+			const detectionResults = [];
+
+			for (const task of tasks) {
+				const personas = await detectPersona(task, worktree);
+				detectionResults.push({
+					taskId: task.id,
+					taskTitle: task.title,
+					suggestedPersonas: personas
+				});
+			}
+
+			// Check for multi-persona workflow
+			const multiPersona = detectMultiPersonaWorkflow(tasks);
+
 			return {
-				success: false,
-				error: error.message
+				taskPersonas: detectionResults,
+				multiPersonaWorkflow: multiPersona
 			};
 		}
-	}
 
-	// Update Claude session with PR information
-	async updateClaudeSessionPR(sessionId, prInfo) {
-		try {
-			// Update the index
-			const indexPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions.json'
-			);
+		/**
+		 * Check if a task has research in its details
+		 * @param {Object} task - Task object
+		 * @returns {boolean} - True if task has research
+		 */
+		hasResearchInTask(task) {
+			// Check main task details (case-insensitive)
+			if (
+				task.details &&
+				(task.details.toLowerCase().includes('research session') ||
+					task.details.includes('<info added on'))
+			) {
+				return true;
+			}
 
-			let index = [];
+			// Check subtasks if they exist
+			if (task.subtasks && Array.isArray(task.subtasks)) {
+				for (const subtask of task.subtasks) {
+					if (
+						subtask.details &&
+						(subtask.details.toLowerCase().includes('research session') ||
+							subtask.details.includes('<info added on'))
+					) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		 * Run research for tasks that don't have research
+		 * @param {Array} tasks - Array of tasks
+		 * @param {Object} worktree - Worktree object
+		 * @param {Object} options - Options
+		 * @returns {Promise<void>}
+		 */
+		async ensureTasksHaveResearch(tasks, worktree, options = {}) {
+			const logFn = options.mcpLog || this.log;
+
+			for (const task of tasks) {
+				if (!this.hasResearchInTask(task)) {
+					logFn.info(`Task ${task.id} has no research. Running research...`);
+
+					try {
+						// Build research query based on task
+						const researchQuery = `Task ${task.id}: ${task.title}\n\nDescription: ${task.description || 'No description'}\n\nDetails: ${task.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
+
+						// Run research
+						const researchResult = await this.research({
+							query: researchQuery,
+							taskIds: [task.id.toString()],
+							includeProjectTree: true,
+							detailLevel: 'high',
+							saveTo: task.id.toString()
+						});
+
+						if (researchResult.success) {
+							logFn.info(`Research completed and saved to task ${task.id}`);
+
+							// Reload task to get updated details with research
+							const updatedTask = await this.getTask(task.id.toString());
+							if (updatedTask) {
+								// Update the task object in the array with the new details
+								Object.assign(task, updatedTask);
+							}
+						} else {
+							logFn.warn(
+								`Research failed for task ${task.id}: ${researchResult.error}`
+							);
+						}
+					} catch (error) {
+						logFn.error(
+							`Error running research for task ${task.id}: ${error.message}`
+						);
+					}
+				} else {
+					logFn.info(
+						`Task ${task.id} already has research - skipping research generation`
+					);
+					// Show a snippet of the existing research
+					if (task.details) {
+						const researchMatch = task.details.match(
+							/research session.*?(?=\n|$)/i
+						);
+						if (researchMatch) {
+							logFn.debug(`Existing research: "${researchMatch[0]}..."`);
+						}
+					}
+				}
+			}
+		}
+
+		/**
+		 * Get or create a worktree for a subtask
+		 * @param {string} taskId
+		 * @param {string} subtaskId
+		 * @param {Object} options
+		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
+		 */
+		async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
 			try {
-				const data = await fs.readFile(indexPath, 'utf8');
-				index = JSON.parse(data);
-			} catch {
-				return;
-			}
+				// Dynamically import WorktreeManager to avoid circular dependencies
+				const { WorktreeManager } = await import('../worktree-manager.js');
+				const manager = new WorktreeManager(this.projectRoot);
 
-			// Find and update session in index
-			const sessionIndex = index.findIndex((s) => s.sessionId === sessionId);
-			if (sessionIndex >= 0) {
-				index[sessionIndex].prInfo = prInfo;
-				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
-			}
+				// Get subtask details if not provided
+				if (!options.subtaskTitle && taskId && subtaskId) {
+					try {
+						const task = await this.getTask(taskId);
+						if (task.subtasks) {
+							const subtask = task.subtasks.find(
+								(st) => String(st.id) === String(subtaskId)
+							);
+							if (subtask) {
+								options.subtaskTitle = subtask.title;
+							}
+						}
+					} catch (error) {
+						// Continue without title
+						this.log.debug('Could not get subtask title:', error.message);
+					}
+				}
 
-			// Update the session file
-			const sessionInfo = index[sessionIndex];
-			if (sessionInfo) {
-				const sessionPath = path.join(
+				return await manager.getOrCreateWorktreeForSubtask(
+					taskId,
+					subtaskId,
+					options
+				);
+			} catch (error) {
+				this.log.error('Error in getOrCreateWorktreeForSubtask:', error);
+				throw error;
+			}
+		}
+
+		/**
+		 * Get worktree for a specific subtask
+		 * @param {string} taskId
+		 * @param {string} subtaskId
+		 * @returns {Promise<Object|null>}
+		 */
+		async getWorktreeForSubtask(taskId, subtaskId) {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+			return manager.getWorktreeForSubtask(taskId, subtaskId);
+		}
+
+		/**
+		 * Get all worktrees
+		 * @returns {Promise<Array>}
+		 */
+		async getAllWorktrees() {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+			return manager.getAllWorktrees();
+		}
+
+		/**
+		 * Complete a subtask and optionally create PR
+		 * @param {string} worktreeName
+		 * @param {Object} options
+		 * @returns {Promise<Object>}
+		 */
+		async completeSubtaskWorktree(worktreeName, options = {}) {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+			return await manager.completeSubtask(worktreeName, options);
+		}
+
+		/**
+		 * Update worktree configuration
+		 * @param {Object} updates
+		 * @returns {Promise<void>}
+		 */
+		async updateWorktreeConfig(updates) {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+			return manager.updateConfig(updates);
+		}
+
+		/**
+		 * Force create a worktree, removing any existing branch/worktree
+		 * @param {string} taskId
+		 * @param {string} subtaskId
+		 * @param {Object} options
+		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+		 */
+		async forceCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+			try {
+				const { WorktreeManager } = await import('../worktree-manager.js');
+				const manager = new WorktreeManager(this.projectRoot);
+
+				// Get subtask details if not provided
+				if (!options.subtaskTitle && taskId && subtaskId) {
+					try {
+						const task = await this.getTask(taskId);
+						if (task.subtasks) {
+							const subtask = task.subtasks.find(
+								(st) => String(st.id) === String(subtaskId)
+							);
+							if (subtask) {
+								options.subtaskTitle = subtask.title;
+							}
+						}
+					} catch (error) {
+						this.log.debug('Could not get subtask title:', error.message);
+					}
+				}
+
+				return await manager.forceCreateWorktree(taskId, subtaskId, options);
+			} catch (error) {
+				this.log.error('Error in forceCreateWorktreeForSubtask:', error);
+				throw error;
+			}
+		}
+
+		/**
+		 * Use existing branch for worktree
+		 * @param {string} taskId
+		 * @param {string} subtaskId
+		 * @param {Object} options
+		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, reusedBranch: boolean}>}
+		 */
+		async useExistingBranchForSubtask(taskId, subtaskId, options = {}) {
+			try {
+				const { WorktreeManager } = await import('../worktree-manager.js');
+				const manager = new WorktreeManager(this.projectRoot);
+
+				// Get subtask details if not provided
+				if (!options.subtaskTitle && taskId && subtaskId) {
+					try {
+						const task = await this.getTask(taskId);
+						if (task.subtasks) {
+							const subtask = task.subtasks.find(
+								(st) => String(st.id) === String(subtaskId)
+							);
+							if (subtask) {
+								options.subtaskTitle = subtask.title;
+							}
+						}
+					} catch (error) {
+						this.log.debug('Could not get subtask title:', error.message);
+					}
+				}
+
+				return await manager.useExistingBranch(taskId, subtaskId, options);
+			} catch (error) {
+				this.log.error('Error in useExistingBranchForSubtask:', error);
+				throw error;
+			}
+		}
+
+		/**
+		 * Save Claude session data to a JSON file in .taskmaster folder and update index
+		 * @param {Object} sessionData - The session data to save
+		 * @returns {Promise<void>}
+		 */
+		async saveClaudeSessionData(sessionData) {
+			try {
+				const claudeDir = path.join(
 					this.projectRoot,
 					'.taskmaster',
-					'claude-sessions',
-					sessionInfo.filename
+					'claude-sessions'
+				);
+				await fs.mkdir(claudeDir, { recursive: true });
+
+				// Create a filename based on timestamp and task ID
+				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+				const taskIds = sessionData.tasks.map((t) => t.id).join('_');
+				const filename = `claude-session-${taskIds}-${timestamp}.json`;
+				const filePath = path.join(claudeDir, filename);
+
+				// Process conversation history for better readability
+				const processedMessages =
+					sessionData.messages?.map((msg, idx) => {
+						const processed = {
+							index: idx,
+							type: msg.type,
+							timestamp: msg.timestamp || new Date().toISOString()
+						};
+
+						// Handle different message types
+						if (msg.type === 'assistant' && msg.message) {
+							processed.content = this.extractMessageContent(msg.message.content);
+							processed.role = 'assistant';
+						} else if (msg.type === 'user' && msg.message) {
+							processed.content = this.extractMessageContent(msg.message.content);
+							processed.role = 'user';
+						} else if (msg.type === 'tool_use') {
+							processed.tool = msg.name;
+							processed.input = msg.input;
+							processed.output = msg.output;
+						} else if (msg.type === 'system') {
+							processed.subtype = msg.subtype;
+							processed.details = msg;
+						} else if (msg.type === 'result') {
+							processed.totalCost = msg.total_cost_usd;
+							processed.tokenCounts = msg.token_counts;
+						}
+
+						return processed;
+					}) || [];
+
+				// Extract subtask information for better organization
+				const primaryTask = sessionData.tasks[0];
+				const isSubtask = primaryTask.id.includes('.');
+				let parentTaskId = null;
+				let subtaskId = null;
+
+				if (isSubtask) {
+					const [parent, sub] = primaryTask.id.split('.');
+					parentTaskId = parent;
+					subtaskId = sub;
+				}
+
+				// Prepare data with enhanced summary
+				const dataToSave = {
+					summary: {
+						sessionId: sessionData.sessionId,
+						timestamp: sessionData.statistics.completedAt,
+						worktree: sessionData.worktree,
+						branch: sessionData.branch,
+						// Enhanced task information
+						subtaskInfo: isSubtask
+							? {
+									parentTaskId,
+									subtaskId,
+									fullId: primaryTask.id,
+									title: primaryTask.title,
+									description: primaryTask.description
+								}
+							: null,
+						tasks: sessionData.tasks.map((t) => ({
+							id: t.id,
+							title: t.title,
+							description: t.description
+						})),
+						statistics: {
+							turns: sessionData.statistics.turns,
+							maxTurns: sessionData.statistics.maxTurns,
+							fileChanges: sessionData.statistics.fileChanges,
+							totalCost: sessionData.statistics.totalCost,
+							durationSeconds: sessionData.statistics.durationSeconds,
+							tokenCounts: sessionData.statistics.tokenCounts || {},
+							toolsUsed: this.countToolsUsed(processedMessages)
+						},
+						persona: sessionData.persona,
+						toolRestrictions: sessionData.statistics.toolRestrictions,
+						// PR tracking
+						prInfo: {
+							created: false,
+							url: null,
+							createdAt: null
+						}
+					},
+					conversation: {
+						messageCount: processedMessages.length,
+						messages: processedMessages
+					},
+					rawSession: {
+						output: sessionData.output,
+						fullData: sessionData
+					}
+				};
+
+				// Write session file
+				await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
+
+				// Update the index file
+				await this.updateClaudeSessionIndex({
+					sessionId: sessionData.sessionId,
+					filename: filename,
+					timestamp: sessionData.statistics.completedAt,
+					subtaskInfo: dataToSave.summary.subtaskInfo,
+					worktree: sessionData.worktree,
+					branch: sessionData.branch,
+					statistics: dataToSave.summary.statistics,
+					persona: sessionData.persona,
+					prInfo: dataToSave.summary.prInfo
+				});
+
+				this.log.info(`Claude session data saved to: ${filePath}`);
+				return filePath;
+			} catch (error) {
+				this.log.error('Failed to save Claude session data:', error.message);
+				throw error;
+			}
+		}
+
+		/**
+		 * Update the Claude sessions index file
+		 * @private
+		 */
+		async updateClaudeSessionIndex(sessionInfo) {
+			try {
+				const indexPath = path.join(
+					this.projectRoot,
+					'.taskmaster',
+					'claude-sessions.json'
 				);
 
+				let index = [];
 				try {
-					const sessionData = await fs.readFile(sessionPath, 'utf8');
-					const fullSession = JSON.parse(sessionData);
-					fullSession.summary.prInfo = prInfo;
-					await fs.writeFile(
-						sessionPath,
-						JSON.stringify(fullSession, null, 2),
-						'utf8'
+					const data = await fs.readFile(indexPath, 'utf8');
+					index = JSON.parse(data);
+				} catch {
+					// No index file yet
+				}
+
+				// Remove existing entry if it exists
+				index = index.filter((s) => s.sessionId !== sessionInfo.sessionId);
+
+				// Add new entry
+				index.unshift(sessionInfo); // Add to beginning (newest first)
+
+				// Keep only last 100 sessions in index
+				if (index.length > 100) {
+					index = index.slice(0, 100);
+				}
+
+				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+			} catch (error) {
+				this.log.error('Failed to update Claude session index:', error.message);
+			}
+		}
+
+		/**
+		 * Extract text content from various message content formats
+		 * @private
+		 */
+		extractMessageContent(content) {
+			if (!content) return '';
+
+			if (typeof content === 'string') {
+				return content;
+			}
+
+			if (Array.isArray(content)) {
+				return content
+					.map((part) => {
+						if (part.type === 'text') return part.text;
+						if (part.type === 'code')
+							return `\`\`\`${part.language || ''}\n${part.code}\n\`\`\``;
+						return JSON.stringify(part);
+					})
+					.join('\n');
+			}
+
+			if (content.text) {
+				return content.text;
+			}
+
+			return JSON.stringify(content);
+		}
+
+		/**
+		 * Count tools used in the conversation
+		 * @private
+		 */
+		countToolsUsed(messages) {
+			const toolCounts = {};
+			messages.forEach((msg) => {
+				if (msg.type === 'tool_use' && msg.tool) {
+					toolCounts[msg.tool] = (toolCounts[msg.tool] || 0) + 1;
+				}
+			});
+			return toolCounts;
+		}
+
+		async completeSubtaskWithPR(worktreeName, options = {}) {
+			const worktreeManager = new WorktreeManager(this.projectRoot);
+			return await worktreeManager.completeSubtask(worktreeName, options);
+		}
+
+		// Create PR from Claude session
+		async createPRFromClaudeSession(sessionId, options = {}) {
+			try {
+				// Get session details
+				const sessionResult = await this.getClaudeSessionDetails(sessionId);
+				if (!sessionResult.success) {
+					return sessionResult;
+				}
+
+				const { session, indexInfo } = sessionResult;
+				const subtaskInfo = session.summary.subtaskInfo;
+
+				if (!subtaskInfo) {
+					return {
+						success: false,
+						error: 'Session is not associated with a subtask'
+					};
+				}
+
+				// Check if PR already exists
+				if (session.summary.prInfo.created) {
+					return {
+						success: false,
+						error: `PR already created: ${session.summary.prInfo.url}`
+					};
+				}
+
+				// Get worktree info
+				const worktreeName = `task-${subtaskInfo.fullId}`;
+				const worktree = await this.getWorktreeForSubtask(
+					subtaskInfo.parentTaskId,
+					subtaskInfo.subtaskId
+				);
+
+				if (!worktree) {
+					return {
+						success: false,
+						error: 'Associated worktree not found'
+					};
+				}
+
+				// Create PR using worktree manager
+				const prTitle =
+					options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
+				const prDescription =
+					options.prDescription || this.generatePRDescription(session);
+
+				const prResult = await this.completeSubtaskWithPR(worktreeName, {
+					createPR: true,
+					prTitle,
+					prDescription
+				});
+
+				if (prResult.prUrl) {
+					// Update session with PR info
+					await this.updateClaudeSessionPR(sessionId, {
+						created: true,
+						url: prResult.prUrl,
+						createdAt: new Date().toISOString()
+					});
+
+					return {
+						success: true,
+						prUrl: prResult.prUrl,
+						worktree: worktree.name
+					};
+				} else {
+					return {
+						success: false,
+						error: 'Failed to create PR'
+					};
+				}
+			} catch (error) {
+				console.error('Error creating PR from Claude session:', error);
+				return {
+					success: false,
+					error: error.message
+				};
+			}
+		}
+
+		// Update Claude session with PR information
+		async updateClaudeSessionPR(sessionId, prInfo) {
+			try {
+				// Update the index
+				const indexPath = path.join(
+					this.projectRoot,
+					'.taskmaster',
+					'claude-sessions.json'
+				);
+
+				let index = [];
+				try {
+					const data = await fs.readFile(indexPath, 'utf8');
+					index = JSON.parse(data);
+				} catch {
+					return;
+				}
+
+				// Find and update session in index
+				const sessionIndex = index.findIndex((s) => s.sessionId === sessionId);
+				if (sessionIndex >= 0) {
+					index[sessionIndex].prInfo = prInfo;
+					await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+				}
+
+				// Update the session file
+				const sessionInfo = index[sessionIndex];
+				if (sessionInfo) {
+					const sessionPath = path.join(
+						this.projectRoot,
+						'.taskmaster',
+						'claude-sessions',
+						sessionInfo.filename
 					);
-				} catch (error) {
-					this.log.error(
-						'Failed to update session file with PR info:',
-						error.message
-					);
+
+					try {
+						const sessionData = await fs.readFile(sessionPath, 'utf8');
+						const fullSession = JSON.parse(sessionData);
+						fullSession.summary.prInfo = prInfo;
+						await fs.writeFile(
+							sessionPath,
+							JSON.stringify(fullSession, null, 2),
+							'utf8'
+						);
+					} catch (error) {
+						this.log.error(
+							'Failed to update session file with PR info:',
+							error.message
+						);
+					}
+				}
+			} catch (error) {
+				this.log.error('Failed to update Claude session PR info:', error.message);
+			}
+		}
+
+		// Generate PR description from Claude session
+		generatePRDescription(session) {
+			const stats = session.summary.statistics;
+			const subtask = session.summary.subtaskInfo;
+
+			let description = `Implemented by Claude Code\n\n`;
+			description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
+			if (subtask.description) {
+				description += `**Description:** ${subtask.description}\n`;
+			}
+			description += `\n**Session Statistics:**\n`;
+			description += `- Turns: ${stats.turns}/${stats.maxTurns}\n`;
+			description += `- File Changes: ${stats.fileChanges || 0}\n`;
+			description += `- Duration: ${stats.durationSeconds || 0}s\n`;
+			description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
+			description += `- Persona: ${session.summary.persona}\n`;
+
+			if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
+				description += `\n**Tools Used:**\n`;
+				for (const [tool, count] of Object.entries(stats.toolsUsed)) {
+					description += `- ${tool}: ${count} times\n`;
 				}
 			}
-		} catch (error) {
-			this.log.error('Failed to update Claude session PR info:', error.message);
-		}
-	}
 
-	// Generate PR description from Claude session
-	generatePRDescription(session) {
-		const stats = session.summary.statistics;
-		const subtask = session.summary.subtaskInfo;
-
-		let description = `Implemented by Claude Code\n\n`;
-		description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
-		if (subtask.description) {
-			description += `**Description:** ${subtask.description}\n`;
-		}
-		description += `\n**Session Statistics:**\n`;
-		description += `- Turns: ${stats.turns}/${stats.maxTurns}\n`;
-		description += `- File Changes: ${stats.fileChanges || 0}\n`;
-		description += `- Duration: ${stats.durationSeconds || 0}s\n`;
-		description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
-		description += `- Persona: ${session.summary.persona}\n`;
-
-		if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
-			description += `\n**Tools Used:**\n`;
-			for (const [tool, count] of Object.entries(stats.toolsUsed)) {
-				description += `- ${tool}: ${count} times\n`;
-			}
+			return description;
 		}
 
-		return description;
+		async claudeCodeStatus(sessionId) {
+			// ... existing code ...
+		}
 	}
-
-	async claudeCodeStatus(sessionId) {
-		// ... existing code ...
-	}
-}

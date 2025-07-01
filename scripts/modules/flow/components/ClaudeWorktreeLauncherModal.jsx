@@ -256,7 +256,7 @@ export function ClaudeWorktreeLauncherModal({
 		escape: onClose,
 
 		// Handle scrolling in processing view
-		up: () => {
+		upArrow: () => {
 			if (view === 'processing' && processingLines.length > viewportHeight) {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
 			} else if (view === 'persona') {
@@ -266,7 +266,7 @@ export function ClaudeWorktreeLauncherModal({
 			}
 		},
 
-		down: () => {
+		downArrow: () => {
 			if (view === 'processing' && processingLines.length > viewportHeight) {
 				setScrollOffset((prev) =>
 					Math.min(
@@ -289,13 +289,13 @@ export function ClaudeWorktreeLauncherModal({
 		// Vim-style navigation
 		j: () => {
 			if (view === 'processing') {
-				keyHandlers.down();
+				keyHandlers.downArrow();
 			}
 		},
 
 		k: () => {
 			if (view === 'processing') {
-				keyHandlers.up();
+				keyHandlers.upArrow();
 			}
 		},
 
@@ -516,9 +516,11 @@ export function ClaudeWorktreeLauncherModal({
 
 				// Check if we need user decision for branch conflict
 				if (result.needsUserDecision) {
-					setError(
-						`Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`
-					);
+					const conflictMessage = result.branchInUseAt 
+						? `Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`
+						: `Branch conflict: ${result.branchName} already exists but is not currently in use. Please choose how to proceed in the Tasks screen.`;
+					
+					setError(conflictMessage);
 					setView('persona');
 					return;
 				}

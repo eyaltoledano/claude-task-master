@@ -114,10 +114,38 @@ function generateFallbackContext(enhancedResults, tasks, options) {
     if (tasks.length > 0) {
         context += '## Tasks to Implement\n\n';
         tasks.forEach(task => {
-            context += `### Task ${task.id}: ${task.title}\n`;
+            // Check if this is a subtask by looking at the ID or isSubtask property
+            const isSubtask = task.isSubtask || String(task.id).includes('.');
+            const taskType = isSubtask ? 'Subtask' : 'Task';
+            
+            // If this is a subtask, first show parent task context
+            if (isSubtask && task.parentTask) {
+                context += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
+                
+                if (task.parentTask.description) {
+                    context += `**Parent Description:** ${task.parentTask.description}\n\n`;
+                }
+                
+                if (task.parentTask.details) {
+                    context += `**Parent Implementation Details:** ${task.parentTask.details}\n\n`;
+                }
+                
+                // Check for parent test strategy
+                const parentTestStrategy = task.parentTask.testStrategy || task.parentTask.test_strategy || null;
+                if (parentTestStrategy !== null && parentTestStrategy !== '') {
+                    context += `**Parent Test Strategy:** ${parentTestStrategy}\n\n`;
+                }
+                
+                context += '---\n\n';
+            }
+            
+            context += `### ${taskType} to Implement: ${task.id}: ${task.title}\n`;
             context += `**Status:** ${task.status}\n\n`;
             if (task.description) {
                 context += `**Description:** ${task.description}\n\n`;
+            }
+            if (task.details) {
+                context += `**Implementation Details:** ${task.details}\n\n`;
             }
         });
     }

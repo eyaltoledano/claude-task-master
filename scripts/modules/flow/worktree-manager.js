@@ -165,16 +165,22 @@ export class WorktreeManager {
 			// Branch doesn't exist, this is fine
 		}
 
-		// If branch exists, return info about it so UI can ask user
-		if (branchExists) {
+		// If branch exists but is in use by another worktree, return conflict info
+		if (branchExists && branchInUseByOtherWorktree) {
 			return {
 				exists: false,
 				branchExists: true,
+				branchName: worktreeName,
 				branchInUseAt: branchInUseByOtherWorktree,
 				worktreePath: worktreePath,
 				worktreeName: worktreeName,
 				needsUserDecision: true
 			};
+		}
+
+		// If branch exists but is orphaned (not in use), we'll reuse it automatically
+		if (branchExists && !branchInUseByOtherWorktree) {
+			logger.info(`Found orphaned branch ${worktreeName}, reusing it...`);
 		}
 
 		// Check if worktree directory already exists on disk (but not in our config)
