@@ -52,10 +52,12 @@
 		"@aws-sdk/credential-providers": "^3.817.0",
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
+		"@streamparser/json": "^0.0.22",
 		"ai": "^4.3.10",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"cli-highlight": "^2.1.11",
+		"cli-progress": "^3.12.0",
 		"cli-table3": "^0.6.5",
 		"commander": "^11.1.0",
 		"cors": "^2.8.5",
@@ -77,7 +79,15 @@
 		"zod": "^3.23.8"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.25"
+		"@anthropic-ai/claude-code": "^1.0.25",
+		"@biomejs/cli-darwin-arm64": "1.9.4",
+		"@biomejs/cli-darwin-x64": "1.9.4",
+		"@biomejs/cli-linux-arm64": "1.9.4",
+		"@biomejs/cli-linux-arm64-musl": "1.9.4",
+		"@biomejs/cli-linux-x64": "1.9.4",
+		"@biomejs/cli-linux-x64-musl": "1.9.4",
+		"@biomejs/cli-win32-arm64": "1.9.4",
+		"@biomejs/cli-win32-x64": "1.9.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
