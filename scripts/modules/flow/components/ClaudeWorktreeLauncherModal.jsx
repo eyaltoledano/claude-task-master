@@ -916,7 +916,7 @@ Working directory: ${worktree?.path}
 					>
 						<Text bold color={theme.highlight}>
 							📁 Git Worktree:{' '}
-							{worktree?.name || sessionResult?.worktree || 'Creating...'}
+							{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
 						</Text>
 						<Text color={theme.secondary} fontSize={11}>
 							Branch:{' '}
@@ -1084,7 +1084,7 @@ Working directory: ${worktree?.path}
 				>
 					<Text bold color={theme.highlight}>
 						📁 Git Worktree:{' '}
-						{worktree?.name || sessionResult?.worktree || 'Unknown'}
+						{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
 					</Text>
 					<Box flexDirection="column" marginLeft={2}>
 						<Text color={theme.secondary}>
