@@ -71,7 +71,7 @@ export const HookUtils = {
 
 import { HookExecutor } from './core/hook-executor.js';
 import { HookValidator } from './core/hook-validator.js';
-import { HookContext } from './core/hook-context.js';
+import { createHookContext } from './core/hook-context.js';
 import { HookStorage } from './core/hook-storage.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -118,7 +118,6 @@ export class HookManager {
 		this.hooks = new Map();
 		this.executor = new HookExecutor();
 		this.validator = new HookValidator();
-		this.context = new HookContext(backend);
 		this.storage = new HookStorage();
 		this.config = null;
 		this.initialized = false;
@@ -249,7 +248,11 @@ export class HookManager {
 		console.log(`🎣 Executing ${eventHooks.length} hooks for event: ${event}`);
 
 		const results = [];
-		const hookContext = await this.context.createContext(context);
+		const hookContext = createHookContext({
+			...context,
+			backend: this.backend,
+			storage: this.storage
+		});
 
 		for (const hook of eventHooks) {
 			try {
