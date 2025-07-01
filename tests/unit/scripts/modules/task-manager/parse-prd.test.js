@@ -69,6 +69,18 @@ jest.unstable_mockModule(
 	})
 );
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt for parse-prd',
+				userPrompt: 'Mocked user prompt for parse-prd'
+			})
+		})
+	})
+);
+
 // Mock fs module
 jest.unstable_mockModule('fs', () => ({
 	default: {
