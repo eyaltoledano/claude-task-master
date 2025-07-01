@@ -60,6 +60,9 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	const [customPrompt, setCustomPrompt] = useState('');
 	const [useCustomPrompt, setUseCustomPrompt] = useState(false);
 
+	// PR creation setting
+	const [createPR, setCreatePR] = useState(true);
+
 	// Research state
 	const [researchStatus, setResearchStatus] = useState(null);
 	const [shouldRunResearch, setShouldRunResearch] = useState(false);
@@ -247,7 +250,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					title: '🚀 Claude Code: Configure Tools',
 					preset: 'default',
 					keyboardHints: [
-						'1-3 toggle',
+						'1-4 toggle',
 						'+/- turns',
 						'ENTER next',
 						'BACKSPACE back',
@@ -416,6 +419,8 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					...prev,
 					allowWebSearch: !prev.allowWebSearch
 				}));
+			} else if (number === '4') {
+				setCreatePR((prev) => !prev);
 			}
 		}
 	};
@@ -432,6 +437,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			researchStatus,
 			researchResults,
 			shouldRunResearch,
+			createPR,
 			tasks: tasks[0],
 			worktree
 		};
@@ -447,6 +453,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 		researchStatus,
 		researchResults,
 		shouldRunResearch,
+		createPR,
 		tasks,
 		worktree
 	]);
@@ -502,7 +509,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			// Notify hooks about session start
 			await hookService.notifySessionStarted(
 				session,
-				finalConfig,
+				{ ...finalConfig, globalPRSetting: finalConfig.createPR },
 				tasks[0],
 				actualWorktree
 			);
@@ -582,7 +589,8 @@ export function EnhancedClaudeWorktreeLauncherModal({
 				branch: worktree.branch || worktree.name,
 				maxTurns: finalConfig.maxTurns,
 				allowedTools: buildAllowedTools(),
-				prompt
+				prompt,
+				globalPRSetting: finalConfig.createPR
 			}
 		});
 
@@ -697,6 +705,11 @@ export function EnhancedClaudeWorktreeLauncherModal({
 						{toolRestrictions.allowWebSearch ? '✓ Allowed' : '✗ Restricted'}
 					</Text>
 				</Box>
+				<Box>
+					<Text color={createPR ? 'green' : 'gray'}>
+						4. Auto-create PR: {createPR ? '✓ Enabled' : '✗ Disabled'}
+					</Text>
+				</Box>
 			</Box>
 
 			<Box marginTop={2}>
@@ -804,6 +817,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 							? 'Will run'
 							: 'Skipped'}
 				</Text>
+				<Text>🔀 Auto-create PR: {finalConfig?.createPR ? 'Yes' : 'No'}</Text>
 			</Box>
 
 			{finalConfig?.worktree && (
