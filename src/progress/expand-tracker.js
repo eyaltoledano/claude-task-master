@@ -235,7 +235,7 @@ export class ExpandTracker {
 				{},
 				{
 					format:
-						'------+-----+-------+-----+-----+-------+----------------------------------',
+						'------+-----+-------+-----+-----+--------+----------------------------------------------------------------',
 					barsize: 1
 				}
 			);
@@ -247,7 +247,7 @@ export class ExpandTracker {
 				1,
 				{},
 				{
-					format: ' TASK | SUB | SCORE |  IN | OUT |  COST | TITLE',
+					format: ' TASK | SUB | SCORE |  IN | OUT |  COST  | TITLE',
 					barsize: 1
 				}
 			);
@@ -260,7 +260,7 @@ export class ExpandTracker {
 				{},
 				{
 					format:
-						'------+-----+-------+-----+-----+-------+----------------------------------',
+						'------+-----+-------+-----+-----+--------+----------------------------------------------------------------',
 					barsize: 1
 				}
 			);
@@ -320,8 +320,8 @@ export class ExpandTracker {
 		// Create individual task display for expand-all
 		if (this.expandType === 'all') {
 			const displayTitle =
-				title && title.length > 34
-					? `${title.substring(0, 31)}...`
+				title && title.length > 60
+					? `${title.substring(0, 57)}...`
 					: title || `Task ${taskId}`;
 
 			const statusIndicator = this._getStatusIndicator(status);
@@ -350,28 +350,39 @@ export class ExpandTracker {
 				cost: cost
 			});
 
+			// Helper function to center text within a given width
+			const centerText = (text, width) => {
+				const textLength = text.length;
+				if (textLength >= width) return text.substring(0, width);
+				
+				const totalPadding = width - textLength;
+				const leftPadding = Math.floor(totalPadding / 2);
+				const rightPadding = Math.ceil(totalPadding / 2);
+				
+				return ' '.repeat(leftPadding) + text + ' '.repeat(rightPadding);
+			};
+
 			// Create individual task bar with monospace-style formatting
 			const taskIdCentered = taskId.toString().padStart(3, ' ').padEnd(4, ' ');
 			const subtasksPadded = `${subtasksDisplay} `.padStart(3, ' ');
-			const scorePadded = scoreDisplay.padStart(5, ' ');
+			const scorePadded = centerText(scoreDisplay, 5); // Center in 5-char width to match header
 			const tokensInPadded = tokensIn.toString().padStart(3, ' ');
 			const tokensOutPadded = tokensOut.toString().padStart(3, ' ');
 			const costFormatted = cost > 0 ? `$${cost.toFixed(3)}` : '$0.000';
-			const costPadded = costFormatted.padStart(5, ' ');
+			const costPadded = costFormatted.padStart(8, ' ');
 
 			const taskBar = this.multibar.create(
 				1,
 				1,
 				{},
 				{
-					format: ` ${taskIdCentered} | ${subtasksPadded} | ${scorePadded} | ${tokensInPadded} | ${tokensOutPadded} | ${costPadded} | {status} {title}`,
+					format: ` ${taskIdCentered} | ${subtasksPadded} | ${scorePadded} | ${tokensInPadded} | ${tokensOutPadded} | ${costPadded} | {title}`,
 					barsize: 1
 				}
 			);
 
 			taskBar.update(1, {
-				title: displayTitle,
-				status: statusIndicator
+				title: displayTitle
 			});
 
 			// Add border line after each task
@@ -381,7 +392,7 @@ export class ExpandTracker {
 				{},
 				{
 					format:
-						'------+-----+-------+-----+-----+-------+----------------------------------',
+						'------+-----+-------+-----+-----+--------+----------------------------------------------------------------',
 					barsize: 1
 				}
 			);
