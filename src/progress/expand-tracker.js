@@ -269,9 +269,7 @@ export class ExpandTracker {
 
 		// Update counters based on status
 		this.completedExpansions++;
-		if (status === 'success') {
-			this.subtasksCreated += subtasksGenerated;
-		} else if (status === 'skipped') {
+		if (status === 'skipped') {
 			this.tasksSkipped++;
 		} else if (status === 'error') {
 			this.tasksWithErrors++;
@@ -354,11 +352,11 @@ export class ExpandTracker {
 			const centerText = (text, width) => {
 				const textLength = text.length;
 				if (textLength >= width) return text.substring(0, width);
-				
+
 				const totalPadding = width - textLength;
 				const leftPadding = Math.floor(totalPadding / 2);
 				const rightPadding = Math.ceil(totalPadding / 2);
-				
+
 				return ' '.repeat(leftPadding) + text + ' '.repeat(rightPadding);
 			};
 
@@ -369,7 +367,7 @@ export class ExpandTracker {
 			const tokensInPadded = tokensIn.toString().padStart(3, ' ');
 			const tokensOutPadded = tokensOut.toString().padStart(3, ' ');
 			const costFormatted = cost > 0 ? `$${cost.toFixed(3)}` : '$0.000';
-			const costPadded = costFormatted.padStart(8, ' ');
+			const costPadded = costFormatted.padStart(6, ' ');
 
 			const taskBar = this.multibar.create(
 				1,
@@ -841,6 +839,12 @@ export class ExpandTracker {
 			}
 			this._updateTimeTokensBar();
 		}
+	}
+
+	// Increment the global subtask count for real-time updates
+	incrementSubtaskCount() {
+		this.subtasksCreated++;
+		this._updateTimeTokensBar();
 	}
 
 	// Methods needed by expand-all-tasks.js

@@ -759,6 +759,9 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 
 						// Update subtask progress in parent
 						parentTracker.updateCurrentTaskSubtaskProgress(currentCount);
+
+						// Increment the global subtask count for real-time updates
+						parentTracker.incrementSubtaskCount();
 					}
 
 					// Call the onSubtaskProgress callback if provided (for MCP in expand-all)
