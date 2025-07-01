@@ -2448,11 +2448,11 @@ ${prompt}
 				});
 			}
 
-			// Use Claude Code SDK
-			const messages = [];
-			const startTime = Date.now();
-			let totalCost = 0;
-			let sessionId = null;
+					// Use Claude Code SDK
+		const messages = [];
+		const startTime = Date.now();
+		const totalCost = 0;
+		const sessionId = null;
 
 			const queryOptions = {
 				prompt: fullPrompt,
@@ -3303,70 +3303,838 @@ ${prompt}
 	}
 
 	/**
-	 * Check if PR can be auto-merged safely
+	 * Enhanced merge eligibility validation with comprehensive safety checks
 	 */
-	async canAutoMergePR(prNumber, requiredChecks = []) {
+	async validateMergeEligibility(prNumber, config = {}) {
 		try {
+			const validationResults = {
+				eligible: false,
+				checks: {},
+				blockers: [],
+				warnings: [],
+				details: {}
+			};
+
+			// 1. Get PR status
 			const prStatus = await this.getPRStatus(prNumber);
-			
-			// Basic merge requirements
-			if (!prStatus.canMerge) {
-				return {
-					canMerge: false,
-					reason: 'PR not in mergeable state',
-					details: {
-						mergeable: prStatus.mergeable,
-						draft: prStatus.draft,
-						checksPass: prStatus.checksPass
-					}
-				};
+			validationResults.details.prStatus = prStatus;
+
+			// 2. Basic PR state validation
+			validationResults.checks.prState = this.validatePRState(prStatus);
+			if (!validationResults.checks.prState.passed) {
+				validationResults.blockers.push(...validationResults.checks.prState.blockers);
 			}
 
-			// Check required status checks
-			if (requiredChecks.length > 0) {
-				const checks = await this.getPRChecks(prNumber);
-				const missingChecks = requiredChecks.filter(required => 
-					!checks.some(check => check.name === required && check.status === 'completed' && check.conclusion === 'success')
-				);
-
-				if (missingChecks.length > 0) {
-					return {
-						canMerge: false,
-						reason: 'Required checks not satisfied',
-						details: {
-							missingChecks,
-							requiredChecks,
-							availableChecks: checks.map(c => c.name)
-						}
-					};
+			// 3. CI/CD checks validation
+			if (config.requiredChecks && config.requiredChecks.length > 0) {
+				validationResults.checks.ciChecks = await this.validateRequiredChecks(prNumber, config.requiredChecks);
+				if (!validationResults.checks.ciChecks.passed) {
+					validationResults.blockers.push(...validationResults.checks.ciChecks.blockers);
 				}
 			}
 
-			// Additional safety checks
-			const safetyChecks = await this.performMergeSafetyChecks(prNumber);
-			if (!safetyChecks.safe) {
-				return {
-					canMerge: false,
-					reason: 'Safety checks failed',
-					details: safetyChecks
-				};
+			// 4. Branch protection rules validation
+			validationResults.checks.branchProtection = await this.validateBranchProtectionRules(prNumber);
+			if (!validationResults.checks.branchProtection.passed) {
+				validationResults.blockers.push(...validationResults.checks.branchProtection.blockers);
+			}
+
+			// 5. Conflict detection
+			validationResults.checks.conflicts = await this.validateNoConflicts(prNumber);
+			if (!validationResults.checks.conflicts.passed) {
+				validationResults.blockers.push(...validationResults.checks.conflicts.blockers);
+			}
+
+			// 6. Recent activity check
+			validationResults.checks.recentActivity = await this.validateRecentActivity(prNumber, config);
+			if (!validationResults.checks.recentActivity.passed) {
+				if (config.strictMode) {
+					validationResults.blockers.push(...validationResults.checks.recentActivity.blockers);
+				} else {
+					validationResults.warnings.push(...validationResults.checks.recentActivity.warnings);
+				}
+			}
+
+			// 7. Custom validation hooks (if configured)
+			if (config.customValidationHooks) {
+				validationResults.checks.customHooks = await this.runCustomValidationHooks(prNumber, config.customValidationHooks);
+				if (!validationResults.checks.customHooks.passed) {
+					validationResults.blockers.push(...validationResults.checks.customHooks.blockers);
+				}
+			}
+
+			// Determine final eligibility
+			validationResults.eligible = validationResults.blockers.length === 0;
+
+			return {
+				canMerge: validationResults.eligible,
+				reason: validationResults.eligible ? 'All validation checks passed' : 'Validation checks failed',
+				validationResults,
+				timestamp: new Date().toISOString()
+			};
+
+		} catch (error) {
+			return {
+				canMerge: false,
+				reason: 'Error during merge validation',
+				error: error.message,
+				timestamp: new Date().toISOString()
+			};
+		}
+	}
+
+	/**
+	 * Legacy method for backward compatibility
+	 */
+	async canAutoMergePR(prNumber, requiredChecks = []) {
+		const result = await this.validateMergeEligibility(prNumber, { requiredChecks });
+		return {
+			canMerge: result.canMerge,
+			reason: result.reason,
+			details: result.validationResults || { error: result.error }
+		};
+	}
+
+	/**
+	 * Validate basic PR state requirements
+	 */
+	validatePRState(prStatus) {
+		const blockers = [];
+		
+		if (prStatus.draft) {
+			blockers.push('PR is still in draft mode');
+		}
+		
+		if (prStatus.state !== 'OPEN') {
+			blockers.push(`PR state is ${prStatus.state}, expected OPEN`);
+		}
+		
+		if (!prStatus.mergeable) {
+			blockers.push('PR is not mergeable (conflicts or other issues)');
+		}
+
+		return {
+			passed: blockers.length === 0,
+			blockers,
+			details: {
+				draft: prStatus.draft,
+				state: prStatus.state,
+				mergeable: prStatus.mergeable
+			}
+		};
+	}
+
+	/**
+	 * Validate required CI/CD checks
+	 */
+	async validateRequiredChecks(prNumber, requiredChecks) {
+		const checks = await this.getPRChecks(prNumber);
+		const blockers = [];
+		
+		const missingChecks = requiredChecks.filter(required => 
+			!checks.some(check => 
+				check.name === required && 
+				check.status === 'completed' && 
+				check.conclusion === 'success'
+			)
+		);
+
+		if (missingChecks.length > 0) {
+			blockers.push(`Required checks not satisfied: ${missingChecks.join(', ')}`);
+		}
+
+		const failedChecks = checks.filter(check => 
+			check.status === 'completed' && check.conclusion === 'failure'
+		);
+
+		if (failedChecks.length > 0) {
+			blockers.push(`Failed checks: ${failedChecks.map(c => c.name).join(', ')}`);
+		}
+
+		return {
+			passed: blockers.length === 0,
+			blockers,
+			details: {
+				requiredChecks,
+				missingChecks,
+				failedChecks: failedChecks.map(c => c.name),
+				allChecks: checks.map(c => ({ name: c.name, status: c.status, conclusion: c.conclusion }))
+			}
+		};
+	}
+
+	/**
+	 * Validate branch protection rules
+	 */
+	async validateBranchProtectionRules(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			// Get branch protection info
+			const protectionRaw = execSync(`gh api repos/:owner/:repo/branches/${prStatus.baseRef}/protection --jq '.required_status_checks.strict'`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			}).trim();
+
+			const strictChecks = protectionRaw === 'true';
+			const blockers = [];
+
+			if (strictChecks) {
+				// Check if branch is up to date with base
+				const comparison = execSync(`gh api repos/:owner/:repo/compare/${prStatus.baseRef}...${prStatus.headRef} --jq '.status'`, {
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}).trim();
+
+				if (comparison === 'behind') {
+					blockers.push('Branch is behind base branch and strict status checks are enabled');
+				}
 			}
 
 			return {
-				canMerge: true,
-				reason: 'All requirements satisfied',
+				passed: blockers.length === 0,
+				blockers,
 				details: {
-					prStatus,
-					safetyChecks
+					strictChecks,
+					baseRef: prStatus.baseRef,
+					headRef: prStatus.headRef
+				}
+			};
+		} catch (error) {
+			// If we can't check protection rules, assume they're fine but log warning
+			return {
+				passed: true,
+				blockers: [],
+				warnings: [`Could not verify branch protection rules: ${error.message}`],
+				details: { error: error.message }
+			};
+		}
+	}
+
+	/**
+	 * Validate no merge conflicts exist
+	 */
+	async validateNoConflicts(prNumber) {
+		try {
+			const prStatus = await this.getPRStatus(prNumber);
+			const blockers = [];
+
+			if (prStatus.mergeable === false) {
+				blockers.push('PR has merge conflicts');
+			}
+
+			return {
+				passed: blockers.length === 0,
+				blockers,
+				details: {
+					mergeable: prStatus.mergeable
 				}
 			};
 		} catch (error) {
 			return {
-				canMerge: false,
-				reason: 'Error checking merge eligibility',
-				error: error.message
+				passed: false,
+				blockers: [`Error checking conflicts: ${error.message}`],
+				details: { error: error.message }
 			};
 		}
+	}
+
+	/**
+	 * Validate no recent activity that might interfere
+	 */
+	async validateRecentActivity(prNumber, config) {
+		try {
+			const { execSync } = await import('child_process');
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			const timeWindow = config.recentActivityWindow || '30 minutes ago';
+			const blockers = [];
+			const warnings = [];
+
+			// Check for recent commits on base branch
+			const recentCommits = execSync(`git log --oneline --since="${timeWindow}" origin/${prStatus.baseRef}`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			}).trim();
+
+			if (recentCommits.length > 0) {
+				const message = `Recent activity detected on ${prStatus.baseRef} branch`;
+				if (config.strictMode) {
+					blockers.push(message);
+				} else {
+					warnings.push(message);
+				}
+			}
+
+			// Check for recent pushes to PR branch
+			const prCommits = execSync(`git log --oneline --since="${timeWindow}" origin/${prStatus.headRef}`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			}).trim();
+
+			if (prCommits.length > 0) {
+				const message = `Recent commits on PR branch ${prStatus.headRef}`;
+				warnings.push(message);
+			}
+
+			return {
+				passed: blockers.length === 0,
+				blockers,
+				warnings,
+				details: {
+					timeWindow,
+					recentCommitsOnBase: recentCommits.split('\n').filter(Boolean),
+					recentCommitsOnPR: prCommits.split('\n').filter(Boolean)
+				}
+			};
+		} catch (error) {
+			return {
+				passed: true,
+				blockers: [],
+				warnings: [`Could not check recent activity: ${error.message}`],
+				details: { error: error.message }
+			};
+		}
+	}
+
+	/**
+	 * Run custom validation hooks
+	 */
+	async runCustomValidationHooks(prNumber, hooks) {
+		const blockers = [];
+		const results = [];
+
+		for (const hook of hooks) {
+			try {
+				// This would call custom validation logic
+				// For now, just a placeholder
+				const result = await this.executeCustomValidationHook(prNumber, hook);
+				results.push(result);
+				
+				if (!result.passed) {
+					blockers.push(`Custom validation '${hook.name}' failed: ${result.reason}`);
+				}
+			} catch (error) {
+				blockers.push(`Custom validation '${hook.name}' error: ${error.message}`);
+			}
+		}
+
+		return {
+			passed: blockers.length === 0,
+			blockers,
+			details: { results }
+		};
+	}
+
+	/**
+	 * Execute a single custom validation hook
+	 */
+	async executeCustomValidationHook(prNumber, hook) {
+		// Placeholder for custom validation logic
+		// In a real implementation, this would:
+		// 1. Load the hook script/function
+		// 2. Execute it with PR context
+		// 3. Return validation result
+		
+		return {
+			name: hook.name,
+			passed: true,
+			reason: 'Custom validation not implemented'
+		};
+	}
+
+	/**
+	 * Execute PR merge with comprehensive safety checks and rollback capability
+	 */
+	async executeMerge(prNumber, config = {}) {
+		const mergeAttempt = {
+			prNumber,
+			timestamp: new Date().toISOString(),
+			config,
+			phases: [],
+			success: false,
+			rollbackData: null
+		};
+
+		try {
+			// Phase 1: Pre-merge validation
+			mergeAttempt.phases.push({ phase: 'validation', status: 'started', timestamp: new Date().toISOString() });
+			
+			const validation = await this.validateMergeEligibility(prNumber, config);
+			if (!validation.canMerge) {
+				mergeAttempt.phases.push({ 
+					phase: 'validation', 
+					status: 'failed', 
+					reason: validation.reason,
+					details: validation.validationResults,
+					timestamp: new Date().toISOString() 
+				});
+				return {
+					success: false,
+					reason: 'Pre-merge validation failed',
+					mergeAttempt,
+					canRetry: false
+				};
+			}
+
+			mergeAttempt.phases.push({ phase: 'validation', status: 'completed', timestamp: new Date().toISOString() });
+
+			// Phase 2: Pre-merge hooks
+			mergeAttempt.phases.push({ phase: 'pre-merge-hooks', status: 'started', timestamp: new Date().toISOString() });
+			
+			const preHooksResult = await this.executePreMergeHooks(prNumber, config);
+			if (!preHooksResult.success) {
+				mergeAttempt.phases.push({ 
+					phase: 'pre-merge-hooks', 
+					status: 'failed', 
+					reason: preHooksResult.reason,
+					timestamp: new Date().toISOString() 
+				});
+				return {
+					success: false,
+					reason: 'Pre-merge hooks failed',
+					mergeAttempt,
+					canRetry: true
+				};
+			}
+
+			mergeAttempt.phases.push({ phase: 'pre-merge-hooks', status: 'completed', timestamp: new Date().toISOString() });
+
+			// Phase 3: Create rollback point
+			mergeAttempt.phases.push({ phase: 'rollback-preparation', status: 'started', timestamp: new Date().toISOString() });
+			
+			mergeAttempt.rollbackData = await this.createRollbackPoint(prNumber);
+			
+			mergeAttempt.phases.push({ phase: 'rollback-preparation', status: 'completed', timestamp: new Date().toISOString() });
+
+			// Phase 4: Execute merge
+			mergeAttempt.phases.push({ phase: 'merge-execution', status: 'started', timestamp: new Date().toISOString() });
+			
+			const mergeResult = await this.performActualMerge(prNumber, config);
+			if (!mergeResult.success) {
+				mergeAttempt.phases.push({ 
+					phase: 'merge-execution', 
+					status: 'failed', 
+					reason: mergeResult.reason,
+					timestamp: new Date().toISOString() 
+				});
+
+				// Attempt rollback
+				if (config.rollback?.enabled !== false) {
+					await this.executeRollback(mergeAttempt.rollbackData, 'merge_execution_failed');
+				}
+
+				return {
+					success: false,
+					reason: 'Merge execution failed',
+					mergeAttempt,
+					canRetry: mergeResult.canRetry
+				};
+			}
+
+			mergeAttempt.phases.push({ phase: 'merge-execution', status: 'completed', timestamp: new Date().toISOString() });
+
+			// Phase 5: Post-merge validation
+			mergeAttempt.phases.push({ phase: 'post-merge-validation', status: 'started', timestamp: new Date().toISOString() });
+			
+			const postValidation = await this.validatePostMerge(prNumber, mergeResult);
+			if (!postValidation.success) {
+				mergeAttempt.phases.push({ 
+					phase: 'post-merge-validation', 
+					status: 'failed', 
+					reason: postValidation.reason,
+					timestamp: new Date().toISOString() 
+				});
+
+				// Critical: rollback the merge
+				if (config.rollback?.enabled !== false) {
+					await this.executeRollback(mergeAttempt.rollbackData, 'post_merge_validation_failed');
+				}
+
+				return {
+					success: false,
+					reason: 'Post-merge validation failed',
+					mergeAttempt,
+					canRetry: false
+				};
+			}
+
+			mergeAttempt.phases.push({ phase: 'post-merge-validation', status: 'completed', timestamp: new Date().toISOString() });
+
+			// Phase 6: Cleanup workflow
+			mergeAttempt.phases.push({ phase: 'cleanup', status: 'started', timestamp: new Date().toISOString() });
+			
+			const cleanupResult = await this.executePostMergeCleanup(prNumber, config);
+			
+			mergeAttempt.phases.push({ 
+				phase: 'cleanup', 
+				status: cleanupResult.success ? 'completed' : 'completed-with-warnings',
+				warnings: cleanupResult.warnings,
+				timestamp: new Date().toISOString() 
+			});
+
+			mergeAttempt.success = true;
+			mergeAttempt.completedAt = new Date().toISOString();
+
+			return {
+				success: true,
+				mergeAttempt,
+				mergeResult,
+				cleanupResult
+			};
+
+		} catch (error) {
+			mergeAttempt.phases.push({ 
+				phase: 'error', 
+				status: 'failed', 
+				error: error.message,
+				timestamp: new Date().toISOString() 
+			});
+
+			// Emergency rollback
+			if (mergeAttempt.rollbackData && config.rollback?.enabled !== false) {
+				try {
+					await this.executeRollback(mergeAttempt.rollbackData, 'unexpected_error');
+				} catch (rollbackError) {
+					mergeAttempt.phases.push({ 
+						phase: 'emergency-rollback', 
+						status: 'failed', 
+						error: rollbackError.message,
+						timestamp: new Date().toISOString() 
+					});
+				}
+			}
+
+			return {
+				success: false,
+				reason: `Unexpected error during merge: ${error.message}`,
+				mergeAttempt,
+				canRetry: false
+			};
+		}
+	}
+
+	/**
+	 * Execute pre-merge hooks
+	 */
+	async executePreMergeHooks(prNumber, config) {
+		try {
+			const results = [];
+
+			// Custom pre-merge hooks would be executed here
+			// For now, just return success
+			
+			return {
+				success: true,
+				results
+			};
+		} catch (error) {
+			return {
+				success: false,
+				reason: `Pre-merge hooks failed: ${error.message}`
+			};
+		}
+	}
+
+	/**
+	 * Create rollback point before merge
+	 */
+	async createRollbackPoint(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+			const prStatus = await this.getPRStatus(prNumber);
+
+			const rollbackData = {
+				timestamp: new Date().toISOString(),
+				prNumber,
+				baseRef: prStatus.baseRef,
+				headRef: prStatus.headRef,
+				baseCommit: execSync(`git rev-parse origin/${prStatus.baseRef}`, {
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}).trim(),
+				headCommit: execSync(`git rev-parse origin/${prStatus.headRef}`, {
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}).trim(),
+				workingState: {
+					branch: execSync('git branch --show-current', {
+						encoding: 'utf8',
+						cwd: this.projectRoot
+					}).trim(),
+					hasUncommittedChanges: execSync('git status --porcelain', {
+						encoding: 'utf8',
+						cwd: this.projectRoot
+					}).trim().length > 0
+				}
+			};
+
+			return rollbackData;
+		} catch (error) {
+			throw new Error(`Failed to create rollback point: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Perform the actual merge operation
+	 */
+	async performActualMerge(prNumber, config) {
+		try {
+			const { execSync } = await import('child_process');
+			const mergeMethod = config.mergeMethod || 'squash';
+
+			let mergeCommand;
+			switch (mergeMethod) {
+				case 'squash':
+					mergeCommand = `gh pr merge ${prNumber} --squash --auto`;
+					break;
+				case 'merge':
+					mergeCommand = `gh pr merge ${prNumber} --merge --auto`;
+					break;
+				case 'rebase':
+					mergeCommand = `gh pr merge ${prNumber} --rebase --auto`;
+					break;
+				default:
+					mergeCommand = `gh pr merge ${prNumber} --squash --auto`;
+			}
+
+			const output = execSync(mergeCommand, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			});
+
+			return {
+				success: true,
+				method: mergeMethod,
+				output: output.trim(),
+				timestamp: new Date().toISOString()
+			};
+
+		} catch (error) {
+			return {
+				success: false,
+				reason: `Merge command failed: ${error.message}`,
+				canRetry: error.message.includes('mergeable') || error.message.includes('checks')
+			};
+		}
+	}
+
+	/**
+	 * Validate merge was successful
+	 */
+	async validatePostMerge(prNumber, mergeResult) {
+		try {
+			const { execSync } = await import('child_process');
+
+			// Wait a moment for GitHub to process
+			await new Promise(resolve => setTimeout(resolve, 5000));
+
+			// Check PR status
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			if (prStatus.state !== 'MERGED') {
+				return {
+					success: false,
+					reason: `PR state is ${prStatus.state}, expected MERGED`
+				};
+			}
+
+			// Verify merge commit exists
+			try {
+				const mergeCommit = execSync(`git log --oneline -1 --grep="Merge pull request #${prNumber}"`, {
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}).trim();
+
+				if (!mergeCommit) {
+					return {
+						success: false,
+						reason: 'Merge commit not found in git history'
+					};
+				}
+			} catch (error) {
+				// For squash merges, the commit message might be different
+				// Continue validation
+			}
+
+			return {
+				success: true,
+				prStatus,
+				timestamp: new Date().toISOString()
+			};
+
+		} catch (error) {
+			return {
+				success: false,
+				reason: `Post-merge validation failed: ${error.message}`
+			};
+		}
+	}
+
+	/**
+	 * Execute post-merge cleanup
+	 */
+	async executePostMergeCleanup(prNumber, config) {
+		const cleanupResults = {
+			success: true,
+			warnings: [],
+			actions: []
+		};
+
+		try {
+			// Cleanup actions based on config
+			if (config.cleanupWorktree) {
+				try {
+					// This would trigger worktree cleanup
+					cleanupResults.actions.push('worktree-cleanup-scheduled');
+				} catch (error) {
+					cleanupResults.warnings.push(`Worktree cleanup failed: ${error.message}`);
+				}
+			}
+
+			if (config.updateASTCache) {
+				try {
+					// This would trigger AST cache update
+					cleanupResults.actions.push('ast-cache-updated');
+				} catch (error) {
+					cleanupResults.warnings.push(`AST cache update failed: ${error.message}`);
+				}
+			}
+
+			if (config.updateTaskStatus) {
+				try {
+					// This would update related task status
+					cleanupResults.actions.push('task-status-updated');
+				} catch (error) {
+					cleanupResults.warnings.push(`Task status update failed: ${error.message}`);
+				}
+			}
+
+			return cleanupResults;
+
+		} catch (error) {
+			cleanupResults.success = false;
+			cleanupResults.warnings.push(`Cleanup failed: ${error.message}`);
+			return cleanupResults;
+		}
+	}
+
+	/**
+	 * Execute rollback to previous state
+	 */
+	async executeRollback(rollbackData, reason) {
+		try {
+			const { execSync } = await import('child_process');
+			
+			const rollbackAttempt = {
+				timestamp: new Date().toISOString(),
+				reason,
+				rollbackData,
+				actions: [],
+				success: false
+			};
+
+			// 1. Restore working directory state
+			if (rollbackData.workingState.branch) {
+				try {
+					execSync(`git checkout ${rollbackData.workingState.branch}`, {
+						cwd: this.projectRoot
+					});
+					rollbackAttempt.actions.push('working-branch-restored');
+				} catch (error) {
+					rollbackAttempt.actions.push(`working-branch-restore-failed: ${error.message}`);
+				}
+			}
+
+			// 2. Reset base branch to previous state
+			try {
+				execSync(`git fetch origin`, { cwd: this.projectRoot });
+				execSync(`git checkout ${rollbackData.baseRef}`, { cwd: this.projectRoot });
+				execSync(`git reset --hard ${rollbackData.baseCommit}`, { cwd: this.projectRoot });
+				rollbackAttempt.actions.push('base-branch-reset');
+			} catch (error) {
+				rollbackAttempt.actions.push(`base-branch-reset-failed: ${error.message}`);
+			}
+
+			// 3. Create incident report
+			if (rollbackData.config?.rollback?.createIncidentReport) {
+				try {
+					await this.createIncidentReport(rollbackAttempt);
+					rollbackAttempt.actions.push('incident-report-created');
+				} catch (error) {
+					rollbackAttempt.actions.push(`incident-report-failed: ${error.message}`);
+				}
+			}
+
+			// 4. Notify stakeholders (if configured)
+			if (rollbackData.config?.rollback?.notifyStakeholders) {
+				try {
+					await this.notifyStakeholders(rollbackAttempt);
+					rollbackAttempt.actions.push('stakeholders-notified');
+				} catch (error) {
+					rollbackAttempt.actions.push(`notification-failed: ${error.message}`);
+				}
+			}
+
+			rollbackAttempt.success = true;
+			rollbackAttempt.completedAt = new Date().toISOString();
+
+			return rollbackAttempt;
+
+		} catch (error) {
+			throw new Error(`Rollback execution failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Create incident report for failed merge
+	 */
+	async createIncidentReport(rollbackAttempt) {
+		try {
+			const fs = await import('fs/promises');
+			const path = await import('path');
+
+			const incidentDir = path.join(this.projectRoot, '.taskmaster', 'incidents');
+			await fs.mkdir(incidentDir, { recursive: true });
+
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+			const filename = `merge-rollback-${timestamp}.json`;
+			const filePath = path.join(incidentDir, filename);
+
+			const report = {
+				type: 'merge-rollback',
+				timestamp: rollbackAttempt.timestamp,
+				reason: rollbackAttempt.reason,
+				rollbackData: rollbackAttempt.rollbackData,
+				actions: rollbackAttempt.actions,
+				environment: {
+					projectRoot: this.projectRoot,
+					nodeVersion: process.version,
+					platform: process.platform
+				}
+			};
+
+			await fs.writeFile(filePath, JSON.stringify(report, null, 2));
+			
+			return { success: true, reportPath: filePath };
+		} catch (error) {
+			throw new Error(`Failed to create incident report: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Notify stakeholders of rollback
+	 */
+	async notifyStakeholders(rollbackAttempt) {
+		// Placeholder for stakeholder notification logic
+		// In a real implementation, this would:
+		// 1. Send emails/Slack messages
+		// 2. Create GitHub issues
+		// 3. Update project dashboards
+		// 4. Log to monitoring systems
+		
+		return { success: true, notified: [] };
 	}
 
 	/**

@@ -62,8 +62,38 @@
 		"pr-lifecycle-management": {
 			"enabled": true,
 			"config": {
-				"autoMerge": false,
-				"requiredChecks": [],
+				"autoMerge": {
+					"enabled": false,
+					"strictMode": false,
+					"recentActivityWindow": "30 minutes ago",
+					"maxRetries": 3,
+					"retryDelay": 60000,
+					"safetyChecks": {
+						"validatePRState": true,
+						"validateRequiredChecks": true,
+						"validateBranchProtection": true,
+						"validateNoConflicts": true,
+						"validateRecentActivity": true,
+						"customValidationHooks": []
+					}
+				},
+				"requiredChecks": [
+					"continuous-integration"
+				],
+				"emergencyStop": {
+					"enabled": true,
+					"conditions": [
+						"multiple_failed_merges",
+						"security_alert",
+						"manual_intervention_required"
+					]
+				},
+				"rollback": {
+					"enabled": true,
+					"createIncidentReport": true,
+					"notifyStakeholders": false,
+					"preserveEvidence": true
+				},
 				"cleanupAfterMerge": true,
 				"cleanupWorktree": true,
 				"updateASTCache": true,

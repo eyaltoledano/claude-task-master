@@ -263,34 +263,65 @@ export default class PRLifecycleManagementHook {
 	}
 
 	/**
-	 * Handle auto-merge process
+	 * Handle auto-merge process with enhanced safety checks and rollback capability
 	 */
 	async handleAutoMerge(context) {
 		try {
 			const { prNumber, prStatus, config } = context;
 
-			// Perform final safety checks
-			const safetyCheck = await context.backend.canAutoMergePR(
-				prNumber,
-				config?.requiredChecks || []
-			);
+			console.log(`🔄 Attempting enhanced auto-merge for PR ${prNumber}...`);
 
-			if (!safetyCheck.canMerge) {
-				console.log(`⚠️ Auto-merge blocked for PR ${prNumber}: ${safetyCheck.reason}`);
-				return {
-					success: false,
-					error: `Auto-merge blocked: ${safetyCheck.reason}`,
-					details: safetyCheck.details
-				};
-			}
+			// Use the enhanced merge execution with comprehensive safety checks
+			const mergeConfig = {
+				// Auto-merge configuration
+				enabled: true,
+				strictMode: config?.autoMerge?.strictMode || false,
+				recentActivityWindow: config?.autoMerge?.recentActivityWindow || '30 minutes ago',
+				maxRetries: config?.autoMerge?.maxRetries || 3,
+				retryDelay: config?.autoMerge?.retryDelay || 60000,
+				safetyChecks: {
+					validatePRState: true,
+					validateRequiredChecks: true,
+					validateBranchProtection: true,
+					validateNoConflicts: true,
+					validateRecentActivity: true,
+					customValidationHooks: config?.autoMerge?.safetyChecks?.customValidationHooks || []
+				},
+				
+				// Required checks and merge settings
+				requiredChecks: config?.requiredChecks || [],
+				mergeMethod: config?.mergeMethod || 'squash',
+				
+				// Emergency stop configuration
+				emergencyStop: config?.emergencyStop || {
+					enabled: true,
+					conditions: ['multiple_failed_merges', 'security_alert', 'manual_intervention_required']
+				},
+				
+				// Rollback configuration
+				rollback: config?.rollback || {
+					enabled: true,
+					createIncidentReport: true,
+					notifyStakeholders: false,
+					preserveEvidence: true
+				},
+				
+				// Cleanup configuration
+				cleanupWorktree: config?.cleanupWorktree !== false,
+				updateASTCache: config?.updateASTCache !== false,
+				updateTaskStatus: config?.updateTaskStatus !== false,
+				archiveSession: config?.archiveSession !== false
+			};
 
-			// Perform the merge
-			console.log(`🔄 Executing auto-merge for PR ${prNumber}...`);
-			
-			const mergeResult = await this.executeMerge(prNumber, config);
+			const mergeResult = await context.backend.executeMerge(prNumber, mergeConfig);
 
 			if (mergeResult.success) {
-				console.log(`✅ Successfully auto-merged PR ${prNumber}`);
+				console.log(`✅ Successfully auto-merged PR ${prNumber} using ${mergeResult.mergeResult?.method || 'squash'}`);
+				
+				// Log merge phases for debugging
+				if (mergeResult.mergeAttempt?.phases) {
+					console.log(`📊 Merge phases: ${mergeResult.mergeAttempt.phases.map(p => `${p.phase}:${p.status}`).join(', ')}`);
+				}
 				
 				// Stop monitoring since PR is merged
 				await this.prMonitoringService.stopMonitoring(prNumber, 'auto-merged');
@@ -301,14 +332,36 @@ export default class PRLifecycleManagementHook {
 						prNumber,
 						action: 'auto-merged',
 						mergeResult,
+						mergeAttempt: mergeResult.mergeAttempt,
+						cleanupResult: mergeResult.cleanupResult,
 						timestamp: new Date().toISOString()
 					}
 				};
 			} else {
-				console.error(`❌ Auto-merge failed for PR ${prNumber}:`, mergeResult.error);
+				console.error(`❌ Enhanced auto-merge failed for PR ${prNumber}: ${mergeResult.reason}`);
+				
+				// Log detailed failure information
+				if (mergeResult.mergeAttempt?.phases) {
+					const failedPhase = mergeResult.mergeAttempt.phases.find(p => p.status === 'failed');
+					if (failedPhase) {
+						console.error(`💥 Failed at phase: ${failedPhase.phase} - ${failedPhase.reason}`);
+					}
+				}
+				
+				// Check if we should retry
+				if (mergeResult.canRetry && this.shouldRetryMerge(prNumber, mergeResult)) {
+					console.log(`🔄 Scheduling retry for PR ${prNumber}...`);
+					await this.scheduleRetry(prNumber, mergeResult, mergeConfig);
+				}
+				
 				return {
 					success: false,
-					error: `Auto-merge failed: ${mergeResult.error}`
+					error: `Enhanced auto-merge failed: ${mergeResult.reason}`,
+					details: {
+						mergeAttempt: mergeResult.mergeAttempt,
+						canRetry: mergeResult.canRetry,
+						phases: mergeResult.mergeAttempt?.phases
+					}
 				};
 			}
 		} catch (error) {
@@ -321,7 +374,60 @@ export default class PRLifecycleManagementHook {
 	}
 
 	/**
-	 * Execute the actual merge
+	 * Check if a merge should be retried
+	 */
+	shouldRetryMerge(prNumber, mergeResult) {
+		// Don't retry if it's a validation failure or rollback occurred
+		if (mergeResult.mergeAttempt?.phases?.some(p => 
+			p.phase === 'validation' && p.status === 'failed' ||
+			p.phase === 'rollback-preparation' && p.status === 'completed'
+		)) {
+			return false;
+		}
+
+		// Check for retryable conditions
+		const retryableReasons = [
+			'checks-pending',
+			'temporary-network-error',
+			'rate-limit-exceeded',
+			'merge-queue-busy'
+		];
+
+		return retryableReasons.some(reason => 
+			mergeResult.reason?.toLowerCase().includes(reason.toLowerCase())
+		);
+	}
+
+	/**
+	 * Schedule a retry for a failed merge
+	 */
+	async scheduleRetry(prNumber, mergeResult, mergeConfig) {
+		try {
+			const retryDelay = mergeConfig.retryDelay || 60000; // 1 minute default
+			
+			console.log(`⏰ Scheduling retry for PR ${prNumber} in ${retryDelay / 1000} seconds...`);
+			
+			// Store retry information for monitoring service
+			const retryInfo = {
+				prNumber,
+				originalAttempt: mergeResult.mergeAttempt,
+				retryConfig: mergeConfig,
+				scheduledAt: new Date().toISOString(),
+				retryAt: new Date(Date.now() + retryDelay).toISOString()
+			};
+
+			// The monitoring service will handle the actual retry
+			await this.prMonitoringService.scheduleRetry(prNumber, retryInfo);
+			
+			return { success: true, retryInfo };
+		} catch (error) {
+			console.error(`Failed to schedule retry for PR ${prNumber}:`, error);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Execute the actual merge (legacy method for backward compatibility)
 	 */
 	async executeMerge(prNumber, config = {}) {
 		try {
