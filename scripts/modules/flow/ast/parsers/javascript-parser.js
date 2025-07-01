@@ -390,26 +390,43 @@ export class JavaScriptParser extends BaseParser {
 		const functions = [];
 		const lines = content.split('\n');
 		
-		// Find function boundaries using more comprehensive regex
-		const functionPattern = /(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)\s*\(([^)]*)\)\s*\{|const\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>\s*\{|(\w+)\s*\(\s*([^)]*)\s*\)\s*=>\s*\{)/g;
+		// Find function boundaries using comprehensive regex patterns
+		const patterns = [
+			// Traditional function declarations: function name() {
+			/(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)\s*\{/g,
+			// Arrow function assignments: const name = () => {
+			/const\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>\s*\{/g,
+			// Arrow functions: name() => {
+			/(\w+)\s*\(\s*([^)]*)\s*\)\s*=>\s*\{/g,
+			// Class methods: methodName() { (including async, static, constructor)
+			/(?:static\s+)?(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*\{/g
+		];
 		
-		let match = functionPattern.exec(content);
-		while (match !== null) {
-			const name = match[1] || match[3] || match[5] || '<anonymous>';
-			const functionStart = match.index;
-			const lineNumber = content.substring(0, functionStart).split('\n').length;
-			
-			// Extract function body for complexity analysis
-			const functionBody = this.extractFunctionBodyRegex(content, functionStart);
-			const complexity = this.calculateComplexityRegex(functionBody);
-			
-			functions.push(this.createFunctionInfo(name, {
-				lineStart: lineNumber,
-				complexity
-			}));
-			
-			match = functionPattern.exec(content);
-		}
+		patterns.forEach(pattern => {
+			let match = pattern.exec(content);
+			while (match !== null) {
+				const name = match[1] || '<anonymous>';
+				const functionStart = match.index;
+				const lineNumber = content.substring(0, functionStart).split('\n').length;
+				
+				// Skip if this looks like a class declaration instead of a method
+				const beforeMatch = content.substring(Math.max(0, functionStart - 50), functionStart);
+				const isClassDeclaration = /class\s+\w+\s*$/.test(beforeMatch.trim());
+				
+				if (!isClassDeclaration) {
+					// Extract function body for complexity analysis
+					const functionBody = this.extractFunctionBodyRegex(content, functionStart);
+					const complexity = this.calculateComplexityRegex(functionBody);
+					
+					functions.push(this.createFunctionInfo(name, {
+						lineStart: lineNumber,
+						complexity
+					}));
+				}
+				
+				match = pattern.exec(content);
+			}
+		});
 
 		return functions;
 	}
