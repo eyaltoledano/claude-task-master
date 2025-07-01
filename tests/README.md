@@ -1,63 +1,137 @@
-# Task Master Test Suite
+# Flow & AST Test Suite
 
-This directory contains tests for the Task Master CLI. The tests are organized into different categories to ensure comprehensive test coverage.
+> Comprehensive testing for Task Master Flow system including AST intelligence and Flow UI/backend functionality.
 
-## Test Structure
+## 🎯 Overview
 
-- `unit/`: Unit tests for individual functions and components
-- `integration/`: Integration tests for testing interactions between components
-- `e2e/`: End-to-end tests for testing complete workflows
-- `fixtures/`: Test fixtures and sample data
+This directory contains a complete test suite for the Task Master Flow system, providing comprehensive coverage of:
+- **AST Intelligence**: Multi-language parsing, analysis, and intelligence features
+- **Flow UI**: Terminal-based user interface components and interactions  
+- **Flow Backend**: CLI, Direct, and MCP backend interfaces
+- **Integration**: End-to-end workflows and system integration
 
-## Running Tests
+## 🏗️ Test Structure
 
-To run all tests:
-
-```bash
-npm test
+```
+scripts/modules/flow/tests/
+├── README.md                           # This documentation
+├── jest.config.js                      # Jest configuration for Flow tests
+├── setup.js                           # Test environment setup & mocking
+├── run-tests.js                       # Custom test runner script
+├── ast/
+│   └── integration.test.js            # AST system integration tests
+├── flow/
+│   ├── backend.test.js                # Flow backend systems tests
+│   └── components.test.js             # Flow UI component tests
+└── integration/
+    └── e2e.test.js                    # End-to-end integration tests
 ```
 
-To run tests in watch mode (for development):
+## 🚀 Running Tests
+
+### Quick Start
 
 ```bash
-npm run test:watch
+# Navigate to Flow tests
+cd scripts/modules/flow/tests
+
+# Run all tests
+./run-tests.js
+
+# Run specific test suites
+./run-tests.js ast           # AST-specific tests only
+./run-tests.js flow          # Flow UI/backend tests only  
+./run-tests.js integration   # Integration tests only
+./run-tests.js coverage      # All tests with coverage report
 ```
 
-To run tests with coverage reporting:
+### Using Jest Directly
 
 ```bash
-npm run test:coverage
+# Run all Flow tests
+npx jest --config jest.config.js
+
+# Run specific test files
+npx jest ast/integration.test.js
+npx jest flow/backend.test.js
+
+# Watch mode for development
+npx jest --config jest.config.js --watch
+
+# Generate coverage report
+npx jest --config jest.config.js --coverage
 ```
 
-## Testing Approach
+## 📊 Test Coverage
 
-### Unit Tests
+### 1. AST Intelligence System ✅
+- ✅ Language Detection (JavaScript, TypeScript, Python, Go)
+- ✅ Multi-language parsing with error recovery
+- ✅ Parser registry management and validation
+- ✅ Performance testing with large files
 
-Unit tests focus on testing individual functions and components in isolation. These tests should be fast and should mock external dependencies.
+### 2. Flow System ✅
+- ✅ Backend interface abstraction
+- ✅ CLI, Direct, and MCP Backend integration
+- ✅ UI component testing with proper mocking
+- ✅ Session management and streaming
 
-### Integration Tests
+### 3. Integration Testing ✅
+- ✅ AST + Flow system integration
+- ✅ Multi-backend support validation
+- ✅ Real-world project workflow simulation
+- ✅ Performance and error recovery testing
 
-Integration tests focus on testing interactions between components. These tests ensure that components work together correctly.
+## 🔄 Integration with Project Tests
 
-### End-to-End Tests
+This Flow test suite complements the existing project test structure:
 
-End-to-end tests focus on testing complete workflows from a user's perspective. These tests ensure that the CLI works correctly as a whole.
-
-## Test Fixtures
-
-Test fixtures provide sample data for tests. Fixtures should be small, focused, and representative of real-world data.
-
-## Mocking
-
-For external dependencies like file system operations and API calls, we use mocking to isolate the code being tested.
-
-- File system operations: Use `mock-fs` to mock the file system
-- API calls: Use Jest's mocking capabilities to mock API responses
-
-## Test Coverage
-
-We aim for at least 80% test coverage for all code paths. Coverage reports can be generated with:
-
-```bash
-npm run test:coverage
 ```
+task-master/
+├── tests/                              # General Task Master tests
+│   ├── e2e/                           # CLI end-to-end tests
+│   ├── integration/                   # System integration tests
+│   ├── unit/                          # Core module unit tests
+│   └── README.md                      # General testing documentation
+└── scripts/modules/flow/tests/        # Flow & AST test suite
+    ├── ast/                           # AST intelligence tests
+    ├── flow/                          # Flow UI/backend tests
+    └── integration/                   # Flow integration tests
+```
+
+## 🛠️ Technical Features
+
+### Test Infrastructure
+- **Jest Framework**: Optimized for ES modules and Flow system
+- **Mock System**: Proper mocking for terminal UI (blessed) components
+- **Test Environment**: Isolated environment with automatic cleanup
+- **Custom Runner**: Flexible execution for different test categories
+- **Coverage Reports**: Comprehensive tracking with configurable thresholds
+
+### Test Quality Standards
+- **Error Scenarios**: Comprehensive edge case and error condition testing
+- **Performance Benchmarks**: Critical operation timing and memory validation
+- **Integration Validation**: Cross-component interaction verification
+- **Mock Strategies**: Meaningful mocks that preserve test value
+
+## 📝 Development Guidelines
+
+### Adding New Tests
+1. Identify the appropriate test category (ast/, flow/, integration/)
+2. Create test file following naming conventions (`*.test.js`)
+3. Follow existing test patterns and mock strategies
+4. Ensure proper cleanup and isolation
+5. Update this README if adding new test categories
+
+### Test Standards
+- Follow existing test patterns and structure
+- Include both positive and negative test cases
+- Add performance benchmarks for new functionality
+- Ensure proper error handling test coverage
+- Update documentation when adding new test areas
+
+---
+
+**Status: ✅ PRODUCTION READY**
+
+This test suite provides comprehensive validation of the Flow & AST systems and is ready for production use.
