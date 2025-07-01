@@ -147,6 +147,15 @@ function generateFallbackContext(enhancedResults, tasks, options) {
             if (task.details) {
                 context += `**Implementation Details:** ${task.details}\n\n`;
             }
+
+            // Check for test strategy (handle empty strings)
+            const testStrategy = task.testStrategy || task.test_strategy || null;
+            if (testStrategy !== null && testStrategy !== '') {
+                context += `**Test Strategy:** ${testStrategy}\n\n`;
+            } else if (isSubtask) {
+                // For subtasks without test strategy, add a placeholder
+                context += `**Test Strategy:** (No specific test strategy defined for this subtask)\n\n`;
+            }
         });
     }
 
