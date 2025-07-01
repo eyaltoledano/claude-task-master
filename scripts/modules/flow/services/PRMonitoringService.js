@@ -125,11 +125,52 @@ export class PRMonitoringService extends EventEmitter {
 	}
 
 	/**
+	 * Pause monitoring for a PR
+	 */
+	async pauseMonitoring(prNumber) {
+		if (!this.activePRs.has(prNumber)) {
+			return false;
+		}
+
+		const config = this.activePRs.get(prNumber);
+		config.status = 'paused';
+		config.lastChecked = new Date().toISOString();
+		await this.saveState();
+
+		this.logEvent(prNumber, 'monitoringPaused');
+		this.emit('monitoringPaused', { prNumber, config });
+
+		return true;
+	}
+
+	/**
+	 * Resume monitoring for a PR
+	 */
+	async resumeMonitoring(prNumber) {
+		if (!this.activePRs.has(prNumber)) {
+			return false;
+		}
+
+		const config = this.activePRs.get(prNumber);
+		config.status = 'monitoring'; // Reset to monitoring
+		config.lastChecked = new Date().toISOString();
+		await this.saveState();
+		
+		// Immediately trigger a check
+		await this.checkPRStatus(prNumber);
+
+		this.logEvent(prNumber, 'monitoringResumed');
+		this.emit('monitoringResumed', { prNumber, config });
+
+		return true;
+	}
+
+	/**
 	 * Check PR status and handle state changes
 	 */
 	async checkPRStatus(prNumber) {
 		const config = this.activePRs.get(prNumber);
-		if (!config) {
+		if (!config || config.status === 'paused') {
 			return null;
 		}
 

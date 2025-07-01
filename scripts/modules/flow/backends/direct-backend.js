@@ -4188,4 +4188,41 @@ ${prompt}
 		}
 		return this.prMonitoringService.getPRDetails(prNumber);
 	}
+
+	/**
+	 * Pause monitoring for a specific PR
+	 */
+	async pausePRMonitoring(prNumber) {
+		if (!this.prMonitoringService) {
+			await this.initializePRMonitoring();
+		}
+		return this.prMonitoringService.pauseMonitoring(prNumber);
+	}
+
+	/**
+	 * Resume monitoring for a specific PR
+	 */
+	async resumePRMonitoring(prNumber) {
+		if (!this.prMonitoringService) {
+			await this.initializePRMonitoring();
+		}
+		return this.prMonitoringService.resumeMonitoring(prNumber);
+	}
+
+	/**
+	 * Force a merge for a specific PR, bypassing some safety checks
+	 */
+	async forceMerge(prNumber) {
+		const mergeConfig = {
+			mergeMethod: 'merge', // Or allow this to be passed in
+			// Bypassing most safety checks, but keeping essential ones
+			safetyChecks: {
+				validatePRState: true,
+				validateNoConflicts: true,
+			},
+			cleanupWorktree: true,
+			updateTaskStatus: true,
+		};
+		return this.executeMerge(prNumber, mergeConfig);
+	}
 }
