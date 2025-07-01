@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { getTheme } from '../theme.js';
+import { BaseModal } from './BaseModal.jsx';
+import { useKeypress } from '../hooks/useKeypress.js';
+import { useComponentTheme } from '../hooks/useTheme.js';
 import { personaDefinitions } from '../personas/persona-definitions.js';
+import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
+import { useAppContext } from '../index.jsx';
+import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 
 // Persona icons for visual identification
 const personaIcons = {
@@ -25,7 +30,8 @@ export function ClaudeWorktreeLauncherModal({
 	onClose,
 	onSuccess
 }) {
-	const theme = getTheme();
+	const { theme } = useComponentTheme('modal');
+
 	// Always select the task automatically for single task scenarios
 	const [selectedTasks] = useState(() => {
 		// For subtasks, we always process just the one
@@ -124,7 +130,10 @@ export function ClaudeWorktreeLauncherModal({
 	useEffect(() => {
 		// Reserve space for header, task info, status line, and scroll indicators
 		const reservedLines = 12;
-		const availableHeight = Math.max(5, (process.stdout.rows || 24) - reservedLines);
+		const availableHeight = Math.max(
+			5,
+			(process.stdout.rows || 24) - reservedLines
+		);
 		setViewportHeight(availableHeight);
 	}, []);
 
@@ -146,188 +155,418 @@ export function ClaudeWorktreeLauncherModal({
 		detectPersonasForSelectedTasks
 	]);
 
-	useInput((input, key) => {
-		if (key.escape) {
-			onClose();
-			return;
+	// Dynamic modal props based on current view
+	const getModalProps = () => {
+		const baseProps = {
+			width: 100,
+			height: 'auto',
+			onClose
+		};
+
+		switch (view) {
+			case 'persona':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Select Persona',
+					preset: 'info',
+					keyboardHints: isDetectingPersonas
+						? ['ESC cancel']
+						: [
+								'↑↓ navigate',
+								'ENTER accept',
+								'TAB next',
+								'1-9 quick select',
+								'p manual',
+								'n none',
+								'ESC cancel'
+							]
+				};
+			case 'options':
+				return {
+					...baseProps,
+					title: `🚀 Claude Code: Configure Session`,
+					preset: 'default',
+					keyboardHints: [
+						'1-3 toggle restrictions',
+						'+/- adjust turns',
+						'c customize prompt',
+						'ENTER launch',
+						'BACKSPACE back',
+						'ESC cancel'
+					]
+				};
+			case 'prompt':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Enter Instructions',
+					preset: 'default',
+					keyboardHints: ['ENTER launch', 'BACKSPACE back', 'ESC cancel']
+				};
+			case 'research':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Preparing Research',
+					preset: 'info',
+					keyboardHints: ['ESC cancel']
+				};
+			case 'processing':
+				return {
+					...baseProps,
+					title: `🚀 Claude Code: Processing`,
+					preset: 'default',
+					keyboardHints:
+						processingLines.length > viewportHeight
+							? [
+									'↑↓/j/k scroll',
+									'PgUp/PgDn page',
+									'Home/End jump',
+									'ESC cancel'
+								]
+							: ['ESC cancel']
+				};
+			case 'summary':
+				return {
+					...baseProps,
+					title: '🚀 Claude Code: Task Complete',
+					preset: 'success',
+					keyboardHints: showFullConversation
+						? [
+								'v hide conversation',
+								'p toggle PR',
+								'ENTER done',
+								'↑↓ scroll',
+								'H/E home/end',
+								'ESC cancel'
+							]
+						: [
+								'v show conversation',
+								'p toggle PR',
+								'ENTER done',
+								'r resume',
+								'ESC cancel'
+							]
+				};
+			default:
+				return {
+					...baseProps,
+					title: '🚀 Claude Code',
+					preset: 'default',
+					keyboardHints: ['ESC cancel']
+				};
 		}
+	};
+
+	const keyHandlers = {
+		escape: onClose,
 
 		// Handle scrolling in processing view
-		if (view === 'processing' && processingLines.length > viewportHeight) {
-			if (key.upArrow || input === 'k') {
+		upArrow: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
-				return;
-			}
-			if (key.downArrow || input === 'j') {
-				setScrollOffset((prev) => 
-					Math.min(prev + 1, Math.max(0, processingLines.length - viewportHeight))
-				);
-				return;
-			}
-			if (key.pageUp) {
-				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
-				return;
-			}
-			if (key.pageDown) {
-				setScrollOffset((prev) => 
-					Math.min(prev + viewportHeight, Math.max(0, processingLines.length - viewportHeight))
-				);
-				return;
-			}
-			if (input === 'g' || key.home) {
-				setScrollOffset(0);
-				return;
-			}
-			if (input === 'G' || key.end) {
-				setScrollOffset(Math.max(0, processingLines.length - viewportHeight));
-				return;
-			}
-		}
-
-		if (view === 'persona') {
-			if (key.upArrow) {
+			} else if (view === 'persona') {
 				setPersonaSelectionIndex(Math.max(0, personaSelectionIndex - 1));
-			} else if (key.downArrow) {
+			} else if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset((prev) => Math.max(0, prev - 1));
+			}
+		},
+
+		downArrow: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
+				setScrollOffset((prev) =>
+					Math.min(
+						prev + 1,
+						Math.max(0, processingLines.length - viewportHeight)
+					)
+				);
+			} else if (view === 'persona') {
 				setPersonaSelectionIndex(
 					Math.min(detectedPersonas.length - 1, personaSelectionIndex + 1)
 				);
-			} else if (key.return) {
+			} else if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 1));
+			}
+		},
+
+		// Vim-style navigation
+		j: () => {
+			if (view === 'processing') {
+				keyHandlers.downArrow();
+			}
+		},
+
+		k: () => {
+			if (view === 'processing') {
+				keyHandlers.upArrow();
+			}
+		},
+
+		// Page navigation
+		pageUp: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
+				setScrollOffset((prev) => Math.max(0, prev - viewportHeight));
+			} else if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset((prev) => Math.max(0, prev - 10));
+			}
+		},
+
+		pageDown: () => {
+			if (view === 'processing' && processingLines.length > viewportHeight) {
+				setScrollOffset((prev) =>
+					Math.min(
+						prev + viewportHeight,
+						Math.max(0, processingLines.length - viewportHeight)
+					)
+				);
+			} else if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 10));
+			}
+		},
+
+		home: () => {
+			if (view === 'processing') {
+				setScrollOffset(0);
+			}
+		},
+
+		end: () => {
+			if (view === 'processing') {
+				setScrollOffset(Math.max(0, processingLines.length - viewportHeight));
+			}
+		},
+
+		// View-specific actions
+		return: () => {
+			if (view === 'persona') {
 				setSelectedPersona(
 					detectedPersonas[personaSelectionIndex]?.persona || 'architect'
 				);
 				setView('options');
-			} else if (key.tab && detectedPersonas.length > 1) {
-				// Cycle through detected personas
+			} else if (view === 'options') {
+				// Skip the prompt view and launch directly with default prompt
+				const defaultPrompt = 'Implement the assigned tasks according to the specifications and context provided in CLAUDE.md. Follow best practices and ensure comprehensive testing.';
+				setHeadlessPrompt(defaultPrompt);
+				handleLaunch();
+			} else if (view === 'prompt') {
+				handleLaunch();
+			} else if (view === 'summary') {
+				handleComplete();
+			}
+		},
+
+		backspace: () => {
+			if (view === 'options') {
+				setView('persona');
+			} else if (view === 'prompt' && headlessPrompt === '') {
+				setView('options');
+			}
+		},
+
+		// Persona view specific
+		tab: () => {
+			if (view === 'persona' && detectedPersonas.length > 1) {
 				const nextIndex = (personaSelectionIndex + 1) % detectedPersonas.length;
 				setPersonaSelectionIndex(nextIndex);
-			} else if (input >= '1' && input <= '9') {
-				// Quick select by number
-				const index = parseInt(input) - 1;
-				const personaIds = Object.keys(personaDefinitions);
-				if (index < personaIds.length) {
-					setSelectedPersona(personaIds[index]);
-					setView('options');
-				}
-			} else if (input === 'p') {
-				// Manual persona selection
+			}
+		},
+
+		// Number keys for quick selection
+		1: () => handleNumberKey('1'),
+		2: () => handleNumberKey('2'),
+		3: () => handleNumberKey('3'),
+		4: () => handleNumberKey('4'),
+		5: () => handleNumberKey('5'),
+		6: () => handleNumberKey('6'),
+		7: () => handleNumberKey('7'),
+		8: () => handleNumberKey('8'),
+		9: () => handleNumberKey('9'),
+
+		// Letter keys
+		p: () => {
+			if (view === 'persona') {
 				setView('manual-persona');
-			} else if (input === 'n') {
-				// No persona
+			} else if (view === 'summary') {
+				setShouldCreatePR(!shouldCreatePR);
+			}
+		},
+
+		c: () => {
+			if (view === 'options') {
+				setView('prompt');
+			}
+		},
+
+		n: () => {
+			if (view === 'persona') {
 				setSelectedPersona(null);
 				setView('options');
 			}
+		},
+
+		v: () => {
+			if (view === 'summary') {
+				setShowFullConversation(!showFullConversation);
+				setConversationScrollOffset(0);
+			}
+		},
+
+		r: () => {
+			if (view === 'summary') {
+				handleResume();
+			}
+		},
+
+		// Options view specific
+		'+': () => {
+			if (view === 'options') {
+				setMaxTurns((prev) => Math.min(30, prev + 5));
+			}
+		},
+
+		'-': () => {
+			if (view === 'options') {
+				setMaxTurns((prev) => Math.max(5, prev - 5));
+			}
+		},
+
+		// Summary view specific
+		h: () => {
+			if (view === 'summary' && showFullConversation) {
+				setConversationScrollOffset(0);
+			}
+		},
+
+		e: () => {
+			if (view === 'summary' && showFullConversation) {
+				const totalMessages = sessionResult?.messages?.length || 0;
+				const visibleLines = 12;
+				const maxOffset = Math.max(0, totalMessages - visibleLines);
+				setConversationScrollOffset(maxOffset);
+			}
+		}
+	};
+
+	const handleNumberKey = (number) => {
+		if (view === 'persona') {
+			const index = parseInt(number) - 1;
+			const personaIds = Object.keys(personaDefinitions);
+			if (index < personaIds.length) {
+				setSelectedPersona(personaIds[index]);
+				setView('options');
+			}
 		} else if (view === 'options') {
-			if (input === '1') {
-				// Toggle shell commands
+			if (number === '1') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowShellCommands: !prev.allowShellCommands
 				}));
-			} else if (input === '2') {
-				// Toggle file operations
+			} else if (number === '2') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowFileOperations: !prev.allowFileOperations
 				}));
-			} else if (input === '3') {
-				// Toggle web search
+			} else if (number === '3') {
 				setToolRestrictions((prev) => ({
 					...prev,
 					allowWebSearch: !prev.allowWebSearch
 				}));
-			} else if (input === '+') {
-				// Increase max turns
-				setMaxTurns((prev) => Math.min(30, prev + 5));
-			} else if (input === '-') {
-				// Decrease max turns
-				setMaxTurns((prev) => Math.max(5, prev - 5));
-			} else if (key.return) {
-				// Continue to prompt
-				setView('prompt');
-			} else if (key.backspace) {
-				// Go back to persona selection
-				setView('persona');
-			}
-		} else if (view === 'prompt') {
-			if (key.return && !key.shift) {
-				// Launch on Enter (without shift)
-				handleLaunch();
-			} else if (key.backspace && headlessPrompt === '') {
-				// Go back to options if prompt is empty
-				setView('options');
-			}
-		} else if (view === 'summary') {
-			if (input === 'v') {
-				// Toggle full conversation view
-				setShowFullConversation(!showFullConversation);
-				// Reset scroll when toggling
-				setConversationScrollOffset(0);
-			} else if (input === 'r') {
-				// Retry/Resume if interrupted
-				handleResume();
-			} else if (input === 'p') {
-				// Toggle PR creation
-				setShouldCreatePR(!shouldCreatePR);
-			} else if (key.return) {
-				// Complete and close, create PR if requested
-				handleComplete();
-			} else if (showFullConversation) {
-				// Scroll controls when conversation is shown
-				if (key.upArrow) {
-					setConversationScrollOffset((prev) => Math.max(0, prev - 1));
-				} else if (key.downArrow) {
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12; // Height minus headers
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 1));
-				} else if (key.pageUp) {
-					setConversationScrollOffset((prev) => Math.max(0, prev - 10));
-				} else if (key.pageDown) {
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12; // Height minus headers
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset((prev) => Math.min(maxOffset, prev + 10));
-				} else if (input === 'h' || input === 'H') {
-					// Home - go to top
-					setConversationScrollOffset(0);
-				} else if (input === 'e' || input === 'E') {
-					// End - go to bottom
-					const totalMessages = sessionResult?.messages?.length || 0;
-					const visibleLines = 12;
-					const maxOffset = Math.max(0, totalMessages - visibleLines);
-					setConversationScrollOffset(maxOffset);
-				}
 			}
 		}
-	});
+	};
+
+	useKeypress(keyHandlers);
 
 	const handleLaunch = async () => {
-		setIsProcessing(true);
-		setError(null);
-		setProcessingLines([]); // Clear previous lines
-		setScrollOffset(0); // Reset scroll position
+		console.log('🚀 [ClaudeWorktreeLauncherModal] Starting background Claude Code session with options:', {
+			persona: selectedPersona,
+			maxTurns: maxTurns,
+			worktreeName: worktree?.name,
+			tasksCount: tasks.length
+		});
+
+		// Handle worktree creation if needed
+		let actualWorktree = worktree;
+
+		if (!actualWorktree && tasks.length > 0) {
+			// No worktree exists, create one for the task/subtask
+			const task = tasks[0];
+			const isSubtask = task.isSubtask || String(task.id).includes('.');
+
+			console.log('🏗️ [ClaudeWorktreeLauncherModal] Creating worktree for task:', {
+				taskId: task.id,
+				isSubtask,
+				title: task.title
+			});
+
+			try {
+				// Get the current branch to use as source
+				let sourceBranch = 'main'; // default fallback
+				try {
+					const { execSync } = await import('child_process');
+					sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+						cwd: backend.projectRoot,
+						encoding: 'utf8'
+					}).trim();
+				} catch (error) {
+					console.error('Failed to get current branch:', error);
+					// Try 'master' as a secondary fallback
+					sourceBranch = 'master';
+				}
+
+				// Create worktree based on task type
+				let result;
+				if (isSubtask) {
+					const [parentId, subtaskId] = task.id.split('.');
+					result = await backend.getOrCreateWorktreeForSubtask(
+						parseInt(parentId),
+						parseInt(subtaskId),
+						{
+							sourceBranch,
+							subtaskTitle: task.title
+						}
+					);
+				} else {
+					result = await backend.getOrCreateWorktreeForTask(
+						task.id,
+						{
+							sourceBranch,
+							taskTitle: task.title
+						}
+					);
+				}
+
+				// Check if we need user decision for branch conflict
+				if (result.needsUserDecision) {
+					const conflictMessage = result.branchInUseAt 
+						? `Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`
+						: `Branch conflict: ${result.branchName} already exists but is not currently in use. Please choose how to proceed in the Tasks screen.`;
+					
+					setError(conflictMessage);
+					setView('persona');
+					return;
+				}
+
+				if (result.created) {
+					console.log(`✅ [ClaudeWorktreeLauncherModal] Created worktree: ${result.worktree.name}`);
+				} else if (result.exists) {
+					console.log(`♻️ [ClaudeWorktreeLauncherModal] Using existing worktree: ${result.worktree.name}`);
+				}
+
+				actualWorktree = result.worktree;
+			} catch (worktreeError) {
+				console.error('❌ [ClaudeWorktreeLauncherModal] Failed to create worktree:', worktreeError);
+				setError(`Failed to create worktree: ${worktreeError.message}`);
+				setView('persona');
+				return;
+			}
+		}
 
 		try {
-			const selectedTaskObjects = tasks.filter((t) =>
-				selectedTasks.includes(t.id)
-			);
-
-			// Check if tasks need research
-			let needsResearch = false;
-			for (const task of selectedTaskObjects) {
-				if (!backend.hasResearchInTask || !backend.hasResearchInTask(task)) {
-					needsResearch = true;
-					break;
-				}
-			}
-
-			if (needsResearch) {
-				setView('research');
-				setProcessingLog('Checking for existing research...');
-			} else {
-				setView('processing');
-			}
-
 			// Build allowed tools list based on restrictions
 			let allowedTools = null;
 			if (
@@ -362,242 +601,218 @@ export function ClaudeWorktreeLauncherModal({
 				}
 			}
 
-			// Headless mode - run Claude with prompts in background
-			const result = await backend.launchClaudeHeadless(
-				worktree,
-				selectedTaskObjects,
-				headlessPrompt,
-				{
+			// Initialize background service
+			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
+			
+			// Build the prompt for the session
+			const prompt = headlessPrompt || 'Implement the assigned tasks according to the specifications in CLAUDE.md';
+			
+			// Start background operation
+			const operation = await backgroundClaudeCode.startQuery(prompt, {
+				persona: selectedPersona,
+				metadata: {
+					type: tasks.length === 1 && (tasks[0].isSubtask || String(tasks[0].id).includes('.')) ? 'subtask-implementation' : 'task-implementation',
+					taskId: tasks[0]?.id,
+					subtaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id : null,
+					parentTaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id.split('.')[0] : null,
+					// Pass complete task information for CLAUDE.md generation
+					taskData: tasks[0] ? await (async () => {
+						const task = tasks[0];
+						const taskData = {
+							id: task.id,
+							title: task.title,
+							description: task.description || '',
+							details: task.details || '',
+							testStrategy: task.testStrategy || '',
+							status: task.status || 'pending',
+							isSubtask: task.isSubtask || String(task.id).includes('.'),
+							parentTask: task.parentTask || null
+						};
+						
+						// If this is a subtask, fetch complete parent task information
+						if (taskData.isSubtask && task.id.includes('.')) {
+							const parentTaskId = task.id.split('.')[0];
+							try {
+								const parentTask = await backend.getTask(parentTaskId);
+								if (parentTask) {
+									taskData.parentTask = {
+										id: parentTask.id,
+										title: parentTask.title,
+										description: parentTask.description || '',
+										details: parentTask.details || '',
+										testStrategy: parentTask.testStrategy || '',
+										status: parentTask.status || 'pending'
+									};
+								}
+							} catch (error) {
+								console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to fetch parent task:', error);
+							}
+						}
+						
+						return taskData;
+					})() : null,
+					worktreePath: actualWorktree?.path,
+					worktreeName: actualWorktree?.name,
+					branch: actualWorktree?.branch || actualWorktree?.name,
 					persona: selectedPersona,
 					maxTurns: maxTurns,
-					permissionMode: 'acceptEdits',
-					captureOutput: true,
-					outputFormat: 'stream-json',
 					allowedTools: allowedTools,
-					log: {
-						info: (msg) => {
-							if (
-								msg.includes('has no research') ||
-								msg.includes('Running research')
-							) {
-								setView('research');
-								setProcessingLog(msg);
-							} else if (msg.includes('Research completed')) {
-								setProcessingLog(msg);
-								// Switch to processing view after research is done
-								setTimeout(() => setView('processing'), 1000);
-							} else if (msg.includes('already has research')) {
-								// If all tasks already have research, go straight to processing
-								if (view === 'research') {
-									setView('processing');
-								}
-							}
-						},
-						warn: (msg) => console.warn(msg),
-						error: (msg) => console.error(msg),
-						debug: (msg) => console.debug(msg),
-						success: (msg) => console.log(msg)
-					},
-					onProgress: (output) => {
-						// Handle streaming output - show everything in real-time
-						if (typeof output === 'string') {
-							// Just append the new output to what we have
-							setProcessingLines((prev) => {
-								// Split by newlines but keep empty lines for proper formatting
-								const newContent = output.split('\n');
-								
-								// If this is the first update, just set it
-								if (prev.length === 0) {
-									return newContent;
-								}
-								
-								// Otherwise, append this chunk to our running log
-								// The last line of previous content might be incomplete,
-								// so we concatenate it with the first line of new content
-								const combined = [...prev];
-								if (combined.length > 0 && newContent.length > 0) {
-									// Merge the last incomplete line with new content
-									const lastIndex = combined.length - 1;
-									combined[lastIndex] = combined[lastIndex] + newContent[0];
-									// Add the rest of the new lines
-									if (newContent.length > 1) {
-										combined.push(...newContent.slice(1));
-									}
-								} else {
-									// Just append all new content
-									combined.push(...newContent);
-								}
-								
-								return combined;
-							});
-							
-							// Update log with the latest chunk
-							setProcessingLog(output.trim());
-						} else if (output && typeof output === 'object') {
-							// Handle structured progress updates
-							const message = output.message || output.text || JSON.stringify(output);
-							setProcessingLines((prev) => [...prev, '', message, '']);
-							setProcessingLog(message);
-						}
-					}
+					prompt: prompt
 				}
-			);
+			});
 
-			if (result.success) {
-				// Calculate detailed statistics
-				const turnCount =
-					result.messages?.filter((m) => m.type === 'assistant').length || 0;
-				const fileChanges =
-					result.messages?.filter(
-						(m) =>
-							m.type === 'tool_use' &&
-							['create_file', 'edit_file'].includes(m.name)
-					).length || 0;
-				const tokenCounts = result.tokenCounts || {};
+			console.log('✅ [ClaudeWorktreeLauncherModal] Background operation started:', {
+				operationId: operation.operationId,
+				worktree: actualWorktree?.name
+			});
 
-				// Store the result for the summary view
-				const sessionData = {
-					mode: 'headless',
-					worktree: worktree.name,
-					worktreePath: worktree.path,
-					branch: worktree.branch || worktree.name,
-					sourceBranch: worktree.sourceBranch || 'main',
-					tasks: selectedTaskObjects.map((t) => ({
-						id: t.id,
-						title: t.title,
-						description: t.description
-					})),
-					persona: result.persona || selectedPersona,
-					output: result.output,
-					sessionId: result.sessionId,
-					totalCost: result.totalCost,
-					duration: result.duration,
-					messages: result.messages,
-					message: `Processed ${result.tasksProcessed} task(s) in ${worktree.name}`,
-					statistics: {
-						turns: turnCount,
-						maxTurns: maxTurns,
-						fileChanges: fileChanges,
-						totalCost: result.totalCost || 0,
-						duration: result.duration || 0,
-						durationSeconds: Math.round((result.duration || 0) / 1000),
-						tokenCounts: tokenCounts,
-						toolRestrictions: toolRestrictions,
-						completedAt: new Date().toISOString()
-					}
-				};
+			// Update the relevant task/subtask with background operation reference
+			try {
+				const primaryTask = tasks[0];
+				const sessionReference = `
+<claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background">
+Claude Code session started in background with ${selectedPersona} persona. Operation ID: ${operation.operationId}
+Working directory: ${actualWorktree?.path}
+Branch: ${actualWorktree?.branch || actualWorktree?.name}
+Max turns: ${maxTurns}
+${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowed'}
+</claude-session>
+`;
 
-				setSessionResult(sessionData);
-
-				// Save session data to file
-				try {
-					await backend.saveClaudeSessionData(sessionData);
-				} catch (saveError) {
-					console.error('Failed to save Claude session data:', saveError);
-					// Don't block the UI flow, just log the error
+				if (primaryTask.isSubtask || String(primaryTask.id).includes('.')) {
+					// Update subtask
+					await backend.updateSubtask({
+						id: primaryTask.id,
+						prompt: sessionReference,
+						research: false
+					});
+					console.log('📝 [ClaudeWorktreeLauncherModal] Updated subtask with session reference');
+				} else {
+					// Update task
+					await backend.updateTask({
+						id: primaryTask.id,
+						prompt: sessionReference,
+						research: false
+					});
+					console.log('📝 [ClaudeWorktreeLauncherModal] Updated task with session reference');
 				}
-
-				// Switch to summary view
-				setView('summary');
-			} else {
-				throw new Error(result.error || 'Claude headless execution failed');
+			} catch (updateError) {
+				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with session reference:', updateError);
 			}
-		} catch (err) {
-			setError(err.message);
+
+			// Show success and close modal
+			setSessionResult({
+				success: true,
+				operationId: operation.operationId,
+				sessionId: operation.operationId, // Use operationId as sessionId for compatibility
+				worktree: actualWorktree,
+				output: `Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`,
+				message: `Background session started successfully! You can monitor progress in the Background Operations screen.`
+			});
+			
+			setView('summary');
+			
+			// Auto-close after showing success
+			setTimeout(() => {
+				onClose();
+			}, 3000);
+
+		} catch (error) {
+			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to start background operation:', error);
+			setError(`Failed to start Claude Code: ${error.message}`);
 			setView('persona');
-		} finally {
-			setIsProcessing(false);
 		}
 	};
 
 	const handleResume = async () => {
-		if (!sessionResult?.sessionId) return;
-
-		setIsProcessing(true);
-		setView('processing');
-		setError(null);
+		console.log('🔄 [ClaudeWorktreeLauncherModal] Resuming background Claude Code session:', {
+			sessionId: sessionResult.sessionId,
+			maxTurns: maxTurns
+		});
 
 		try {
-			// Resume the session with additional instructions
-			const result = await backend.claudeCodeResume(
-				sessionResult.sessionId,
-				'Continue with the task implementation',
-				{
+			// Initialize background service
+			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
+			
+			// Resume the session (or start a new one with continuation prompt)
+			const resumePrompt = 'Continue with the implementation from where we left off.';
+			
+			// Start a new background operation as continuation
+			const operation = await backgroundClaudeCode.startQuery(resumePrompt, {
+				persona: selectedPersona,
+				metadata: {
+					type: 'session-continuation',
+					originalSessionId: sessionResult.sessionId,
+					taskId: tasks[0]?.id,
+					worktreePath: worktree?.path,
+					worktreeName: worktree?.name,
+					branch: worktree?.branch || worktree?.name,
+					persona: selectedPersona,
 					maxTurns: maxTurns,
-					permissionMode: 'acceptEdits',
-					captureOutput: true
+					prompt: resumePrompt
 				}
-			);
+			});
 
-			if (result.success) {
-				// Update session result
-				const updatedSessionData = {
-					...sessionResult,
-					...result,
-					messages: [
-						...(sessionResult.messages || []),
-						...(result.messages || [])
-					],
-					statistics: {
-						...sessionResult.statistics,
-						turns:
-							(sessionResult.statistics?.turns || 0) +
-							(result.messages?.filter((m) => m.type === 'assistant').length ||
-								0),
-						fileChanges:
-							(sessionResult.statistics?.fileChanges || 0) +
-							(result.messages?.filter(
-								(m) =>
-									m.type === 'tool_use' &&
-									['create_file', 'edit_file'].includes(m.name)
-							).length || 0),
-						totalCost:
-							(sessionResult.statistics?.totalCost || 0) +
-							(result.totalCost || 0),
-						duration:
-							(sessionResult.statistics?.duration || 0) +
-							(result.duration || 0),
-						durationSeconds: Math.round(
-							((sessionResult.statistics?.duration || 0) +
-								(result.duration || 0)) /
-								1000
-						),
-						lastResumedAt: new Date().toISOString()
-					}
-				};
+			console.log('✅ [ClaudeWorktreeLauncherModal] Background continuation started:', {
+				operationId: operation.operationId,
+				originalSessionId: sessionResult.sessionId
+			});
 
-				setSessionResult(updatedSessionData);
+			// Update the task/subtask with continuation reference
+			try {
+				const primaryTask = tasks[0];
+				const continuationReference = `
+<claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background-continuation">
+Claude Code session resumed in background. New Operation ID: ${operation.operationId}
+Original Session: ${sessionResult.sessionId}
+Working directory: ${worktree?.path}
+</claude-session>
+`;
 
-				// Save updated session data
-				try {
-					await backend.saveClaudeSessionData(updatedSessionData);
-				} catch (saveError) {
-					console.error(
-						'Failed to save updated Claude session data:',
-						saveError
-					);
+				if (primaryTask.isSubtask || String(primaryTask.id).includes('.')) {
+					await backend.updateSubtask({
+						id: primaryTask.id,
+						prompt: continuationReference,
+						research: false
+					});
+				} else {
+					await backend.updateTask({
+						id: primaryTask.id,
+						prompt: continuationReference,
+						research: false
+					});
 				}
-
-				setView('summary');
-			} else {
-				throw new Error(result.error || 'Failed to resume session');
+			} catch (updateError) {
+				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with continuation reference:', updateError);
 			}
-		} catch (err) {
-			setError(err.message);
-			setView('summary');
-		} finally {
-			setIsProcessing(false);
+
+			// Update session result
+			setSessionResult({
+				...sessionResult,
+				operationId: operation.operationId,
+				message: `Session resumed in background! New Operation ID: ${operation.operationId.substring(0, 8)}...`
+			});
+
+			// Auto-close after showing success
+			setTimeout(() => {
+				onClose();
+			}, 3000);
+
+		} catch (error) {
+			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to resume background session:', error);
+			setError(`Failed to resume session: ${error.message}`);
 		}
 	};
 
 	const handleComplete = async () => {
-		if (shouldCreatePR && worktree) {
-			// Create PR using WorktreeManager
+		if (shouldCreatePR && sessionResult) {
 			try {
 				const task = tasks[0]; // Get the first (usually only) task
 				const prDescription = `Implemented by Claude Code\n\nStatistics:\n- Turns: ${sessionResult.statistics?.turns || 0}/${sessionResult.statistics?.maxTurns || 0}\n- File Changes: ${sessionResult.statistics?.fileChanges || 0}\n- Duration: ${sessionResult.statistics?.durationSeconds || 0}s\n- Cost: $${(sessionResult.statistics?.totalCost || 0).toFixed(4)}`;
 
-				await backend.completeSubtaskWithPR(worktree.name, {
+				// Use worktree from props or sessionResult as fallback
+				const currentWorktree = worktree || { name: sessionResult?.worktree };
+				await backend.completeSubtaskWithPR(currentWorktree.name, {
 					createPR: true,
 					prTitle: `Task ${task.id}: ${task.title}`,
 					prDescription: prDescription
@@ -613,10 +828,6 @@ export function ClaudeWorktreeLauncherModal({
 	// Render functions for different views
 	const renderPersonaSelection = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Select Persona
-			</Text>
-
 			{isDetectingPersonas ? (
 				<Box marginTop={1}>
 					<LoadingSpinner />
@@ -651,15 +862,6 @@ export function ClaudeWorktreeLauncherModal({
 							})}
 						</Box>
 					)}
-
-					<Box marginTop={2} flexDirection="column">
-						<Text dimColor>
-							[↑↓] Navigate [Enter] Accept [Tab] Next suggestion
-						</Text>
-						<Text dimColor>
-							[1-9] Quick select [p] Choose manually [n] No persona
-						</Text>
-					</Box>
 				</>
 			)}
 		</Box>
@@ -667,9 +869,6 @@ export function ClaudeWorktreeLauncherModal({
 
 	const renderPromptInput = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Enter Instructions for Claude
-			</Text>
 			<Text color={theme.secondary}>
 				Persona: {personaIcons[selectedPersona]}{' '}
 				{personaDefinitions[selectedPersona]?.identity.split('|')[0] || 'None'}
@@ -681,9 +880,6 @@ export function ClaudeWorktreeLauncherModal({
 					placeholder="Additional instructions for task implementation..."
 					onSubmit={() => handleLaunch()}
 				/>
-			</Box>
-			<Box marginTop={1}>
-				<Text dimColor>[Enter] to launch, [Esc] to cancel</Text>
 			</Box>
 		</Box>
 	);
@@ -701,12 +897,6 @@ export function ClaudeWorktreeLauncherModal({
 
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Box marginBottom={1}>
-					<Text bold color={theme.primary}>
-						🔍 Preparing Research for Task Implementation
-					</Text>
-				</Box>
-
 				{taskInfo && (
 					<Box marginBottom={1} flexDirection="column">
 						<Text color={theme.secondary}>
@@ -752,7 +942,10 @@ export function ClaudeWorktreeLauncherModal({
 
 		// Calculate visible lines based on viewport
 		const startIdx = scrollOffset;
-		const endIdx = Math.min(scrollOffset + viewportHeight, processingLines.length);
+		const endIdx = Math.min(
+			scrollOffset + viewportHeight,
+			processingLines.length
+		);
 		const visibleLines = processingLines.slice(startIdx, endIdx);
 		const canScrollUp = scrollOffset > 0;
 		const canScrollDown = endIdx < processingLines.length;
@@ -760,51 +953,70 @@ export function ClaudeWorktreeLauncherModal({
 		return (
 			<Box flexDirection="column" padding={0}>
 				{/* Compact Git Worktree Box */}
-				<Box
-					marginBottom={0}
-					flexDirection="column"
-					borderStyle="single"
-					borderColor={theme.border}
-					paddingX={1}
-					paddingY={0}
-				>
-					<Text bold color={theme.highlight}>
-						📁 Git Worktree: {worktree.name}
-					</Text>
-					<Text color={theme.secondary} fontSize={11}>
-						Branch: {worktree.branch || worktree.name} • Source: {worktree.sourceBranch || 'main'}
-					</Text>
-					<Text color={theme.muted} fontSize={10}>
-						Path: {worktree.path}
-					</Text>
-				</Box>
+				{(worktree || sessionResult?.worktree) && (
+					<Box
+						marginBottom={0}
+						flexDirection="column"
+						borderStyle="single"
+						borderColor={theme.border}
+						paddingX={1}
+						paddingY={0}
+					>
+						<Text bold color={theme.highlight}>
+							📁 Git Worktree:{' '}
+							{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
+						</Text>
+						<Text color={theme.secondary} fontSize={11}>
+							Branch:{' '}
+							{worktree?.branch ||
+								worktree?.name ||
+								sessionResult?.branch ||
+								'TBD'}{' '}
+							• Source:{' '}
+							{worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
+						</Text>
+						<Text color={theme.muted} fontSize={10}>
+							Path: {worktree?.path || sessionResult?.worktreePath || 'TBD'}
+						</Text>
+					</Box>
+				)}
 
 				{/* Task info - compact */}
 				{taskInfo && (
 					<Box marginTop={1} marginBottom={0} flexDirection="column">
 						<Text bold color={theme.primary}>
-							{taskInfo.isSubtask ? `Subtask ${taskInfo.id}` : `Task ${taskInfo.id}`}: {taskInfo.title}
+							{taskInfo.isSubtask
+								? `Subtask ${taskInfo.id}`
+								: `Task ${taskInfo.id}`}
+							: {taskInfo.title}
 						</Text>
 					</Box>
 				)}
-				
+
 				{/* Processing status and mode/persona on same line */}
 				<Box marginTop={1} flexDirection="row" justifyContent="space-between">
 					<Box>
-						<Text bold color="green">Processing with Claude Code...</Text>
+						<Text bold color="green">
+							Processing with Claude Code...
+						</Text>
 						<LoadingSpinner />
 						<Text> Working on implementation...</Text>
 					</Box>
-					<Text dimColor fontSize={11}>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
+					<Text
+						dimColor
+						fontSize={11}
+					>{`${selectedPersona || 'auto-detected'} • headless`}</Text>
 				</Box>
-				
+
 				{/* Scroll indicators */}
 				{canScrollUp && (
 					<Box marginTop={1}>
-						<Text dimColor>↑ {scrollOffset} more lines above (press ↑/k to scroll up)</Text>
+						<Text dimColor>
+							↑ {scrollOffset} more lines above (press ↑/k to scroll up)
+						</Text>
 					</Box>
 				)}
-				
+
 				{/* Streaming Progress - Scrollable view */}
 				{visibleLines.length > 0 && (
 					<Box
@@ -814,25 +1026,33 @@ export function ClaudeWorktreeLauncherModal({
 						height={viewportHeight}
 					>
 						{visibleLines.map((line, idx) => (
-							<Text key={`log-${startIdx + idx}-${line.substring(0, 20)}`} wrap="wrap" fontSize={11}>
+							<Text
+								key={`log-${startIdx + idx}-${line.substring(0, 20)}`}
+								wrap="wrap"
+								fontSize={11}
+							>
 								{line}
 							</Text>
 						))}
 					</Box>
 				)}
-				
+
 				{/* Scroll indicators */}
 				{canScrollDown && (
 					<Box marginTop={1}>
-						<Text dimColor>↓ {processingLines.length - endIdx} more lines below (press ↓/j to scroll down)</Text>
+						<Text dimColor>
+							↓ {processingLines.length - endIdx} more lines below (press ↓/j to
+							scroll down)
+						</Text>
 					</Box>
 				)}
-				
+
 				{/* Quick scroll info */}
 				{processingLines.length > viewportHeight && (
 					<Box marginTop={1}>
 						<Text dimColor fontSize={10}>
-							Line {startIdx + 1}-{endIdx} of {processingLines.length} • [PgUp/PgDn] page • [Home/End] jump
+							Line {startIdx + 1}-{endIdx} of {processingLines.length} •
+							[PgUp/PgDn] page • [Home/End] jump
 						</Text>
 					</Box>
 				)}
@@ -842,9 +1062,6 @@ export function ClaudeWorktreeLauncherModal({
 
 	const renderOptions = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>
-				Configure Claude Session
-			</Text>
 			<Text color={theme.secondary}>
 				Persona: {personaIcons[selectedPersona]}{' '}
 				{personaDefinitions[selectedPersona]?.identity.split('|')[0] || 'None'}
@@ -889,8 +1106,9 @@ export function ClaudeWorktreeLauncherModal({
 			</Box>
 
 			<Box marginTop={2}>
-				<Text dimColor>[1-3] Toggle restrictions [+/-] Adjust turns</Text>
-				<Text dimColor>[Enter] Continue [Backspace] Back</Text>
+				<Text color={theme.secondary}>
+					Press ENTER to launch with default prompt or 'c' to customize
+				</Text>
 			</Box>
 		</Box>
 	);
@@ -919,17 +1137,23 @@ export function ClaudeWorktreeLauncherModal({
 					paddingY={0.5}
 				>
 					<Text bold color={theme.highlight}>
-						📁 Git Worktree: {worktree.name}
+						📁 Git Worktree:{' '}
+						{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
 					</Text>
 					<Box flexDirection="column" marginLeft={2}>
 						<Text color={theme.secondary}>
-							Branch: {worktree.branch || worktree.name}
+							Branch:{' '}
+							{worktree?.branch ||
+								worktree?.name ||
+								sessionResult?.branch ||
+								'Unknown'}
 						</Text>
 						<Text color={theme.secondary}>
-							Source: {worktree.sourceBranch || 'main'}
+							Source:{' '}
+							{worktree?.sourceBranch || sessionResult?.sourceBranch || 'main'}
 						</Text>
 						<Text color={theme.muted} fontSize={12}>
-							Path: {worktree.path}
+							Path: {worktree?.path || sessionResult?.worktreePath || 'Unknown'}
 						</Text>
 					</Box>
 				</Box>
@@ -1032,47 +1256,18 @@ export function ClaudeWorktreeLauncherModal({
 									);
 								})}
 						</Box>
-						{sessionResult.messages?.length > 12 && (
-							<Box marginTop={1}>
-								<Text dimColor>
-									[↑↓] Scroll line [PgUp/PgDn] Scroll page [H]ome [E]nd
-								</Text>
-							</Box>
-						)}
 					</Box>
 				) : (
 					<Box marginTop={2}>
 						<Text dimColor>{sessionResult.message}</Text>
 					</Box>
 				)}
-
-				<Box marginTop={2}>
-					<Text dimColor>
-						[v] {showFullConversation ? 'Hide' : 'Show'} full conversation
-						{sessionResult.sessionId && ' [r] Resume/Retry'} [p] Toggle PR
-						[Enter] {shouldCreatePR ? 'Done & Create PR' : 'Done'}
-					</Text>
-				</Box>
 			</Box>
 		);
 	};
 
 	return (
-		<Box
-			flexDirection="column"
-			width={100}
-			borderStyle="round"
-			borderColor={theme.border}
-			paddingX={1}
-			paddingY={0}
-		>
-			<Box marginBottom={0} flexDirection="row" justifyContent="space-between" alignItems="center">
-				<Text bold color={theme.highlight}>
-					🚀 Claude Code: {worktree.name}
-				</Text>
-				{view === 'processing' && <Text color={theme.muted}>Headless Mode</Text>}
-			</Box>
-
+		<BaseModal {...getModalProps()}>
 			{error && (
 				<Box marginBottom={1}>
 					<Text color={theme.error}>❌ {error}</Text>
@@ -1087,6 +1282,6 @@ export function ClaudeWorktreeLauncherModal({
 				{view === 'options' && renderOptions()}
 				{view === 'summary' && renderSummary()}
 			</Box>
-		</Box>
+		</BaseModal>
 	);
 }

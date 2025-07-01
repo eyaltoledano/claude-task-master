@@ -16,16 +16,16 @@ export { useConsoleMessages, MessageFormatters } from './useConsoleMessages.js';
 // Context-aware hooks
 export { useGitBranchName } from './useGitBranchName.js';
 
-// Theme system hooks
-export {
-	ThemeProvider,
-	useTheme,
-	useResponsiveTheme,
-	useComponentTheme,
-	useThemedStyles,
-	useThemeTransitions,
-	useThemePersistence
-} from './useTheme.jsx';
+// Theme system hooks (JSX exports commented out for Node.js compatibility)
+// export {
+// 	ThemeProvider,
+// 	useTheme,
+// 	useResponsiveTheme,
+// 	useComponentTheme,
+// 	useThemedStyles,
+// 	useThemeTransitions,
+// 	useThemePersistence
+// } from './useTheme.jsx';
 
 // Re-export hook utilities for convenience
 export const HookUtils = {

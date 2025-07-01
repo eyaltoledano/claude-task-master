@@ -104,6 +104,163 @@ export class WorktreeManager {
 		fs.writeJsonSync(this.configPath, this.config, { spaces: 2 });
 	}
 
+	async getOrCreateWorktreeForTask(taskId, options = {}) {
+		const worktreeName = `task-${taskId}`;
+		const existing = this.config.worktrees[worktreeName];
+		const worktreePath = this.getWorktreePath(worktreeName);
+
+		// Check if worktree exists in our config and on disk
+		if (existing && fs.existsSync(existing.path)) {
+			// Update last accessed
+			existing.lastAccessed = new Date().toISOString();
+			this.saveConfig();
+
+			// Validate AST cache for the existing worktree
+			try {
+				await validateWorktreeCache(existing.path, this.projectRoot);
+			} catch (error) {
+				logger.debug('Failed to validate AST cache for worktree:', error.message);
+			}
+
+			return {
+				exists: true,
+				worktree: existing,
+				created: false
+			};
+		}
+
+		// Check if branch exists in git
+		let branchExists = false;
+		let branchInUseByOtherWorktree = null;
+
+		try {
+			execSync(`git show-ref --verify --quiet refs/heads/${worktreeName}`, {
+				cwd: this.projectRoot,
+				stdio: 'ignore'
+			});
+			branchExists = true;
+
+			// Check if branch is used by another worktree
+			const worktreeList = execSync('git worktree list --porcelain', {
+				cwd: this.projectRoot,
+				encoding: 'utf8'
+			});
+
+			const lines = worktreeList.split('\n');
+			let currentPath = '';
+			for (const line of lines) {
+				if (line.startsWith('worktree ')) {
+					currentPath = line.substring(9);
+				} else if (
+					line.startsWith('branch refs/heads/') &&
+					line.includes(worktreeName)
+				) {
+					if (currentPath !== worktreePath) {
+						branchInUseByOtherWorktree = currentPath;
+						break;
+					}
+				}
+			}
+		} catch {
+			// Branch doesn't exist, this is fine
+		}
+
+		// If branch exists but is in use by another worktree, return conflict info
+		if (branchExists && branchInUseByOtherWorktree) {
+			return {
+				exists: false,
+				branchExists: true,
+				branchName: worktreeName,
+				branchInUseAt: branchInUseByOtherWorktree,
+				worktreePath: worktreePath,
+				worktreeName: worktreeName,
+				needsUserDecision: true
+			};
+		}
+
+		// If branch exists but is orphaned (not in use), we'll reuse it automatically
+		if (branchExists && !branchInUseByOtherWorktree) {
+			logger.info(`Found orphaned branch ${worktreeName}, reusing it...`);
+		}
+
+		// Check if worktree directory already exists on disk (but not in our config)
+		if (fs.existsSync(worktreePath)) {
+			logger.info(
+				`Worktree directory already exists at ${worktreePath}, cleaning up...`
+			);
+			try {
+				// Try to remove the existing worktree directory
+				await fs.remove(worktreePath);
+			} catch (error) {
+				logger.error(
+					`Failed to clean up existing worktree directory: ${error.message}`
+				);
+				throw new Error(
+					`Worktree directory already exists at ${worktreePath} and could not be cleaned up`
+				);
+			}
+		}
+
+		// Create new worktree
+		const sourceBranch =
+			options.sourceBranch || this.config.config.defaultSourceBranch || 'main';
+
+		logger.info(`Creating worktree for task ${taskId}...`);
+
+		try {
+			// Create worktree with new branch
+			const actualBranchName = await this.createWorktree(
+				worktreeName,
+				worktreePath,
+				sourceBranch
+			);
+
+			// Link to task
+			const worktreeData = {
+				path: worktreePath,
+				branch: actualBranchName, // Use the actual branch name returned
+				sourceBranch,
+				linkedTask: {
+					taskId,
+					fullId: `${taskId}`,
+					title: options.taskTitle || ''
+				},
+				// Also include linkedTasks array for backwards compatibility
+				linkedTasks: [
+					{
+						id: `${taskId}`,
+						type: 'task',
+						tag: options.tag || 'master'
+					}
+				],
+				status: 'active',
+				createdAt: new Date().toISOString(),
+				lastAccessed: new Date().toISOString(),
+				completedAt: null,
+				prUrl: null
+			};
+
+			this.config.worktrees[worktreeName] = worktreeData;
+			this.saveConfig();
+
+			// Initialize AST cache for the new worktree
+			try {
+				await initializeWorktreeCache(worktreePath, this.projectRoot);
+			} catch (error) {
+				logger.debug('Failed to initialize AST cache for worktree:', error.message);
+			}
+
+			return {
+				exists: false,
+				worktree: worktreeData,
+				created: true
+			};
+		} catch (error) {
+			logger.error('Failed to create worktree:', error);
+			throw error;
+		}
+	}
+
 	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
 		const worktreeName = `task-${taskId}.${subtaskId}`;
 		const existing = this.config.worktrees[worktreeName];

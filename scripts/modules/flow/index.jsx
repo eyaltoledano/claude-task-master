@@ -33,6 +33,7 @@ import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
+import { getHookManager } from './hooks/index.js';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -66,6 +67,7 @@ function FlowApp({ backend, options = {} }) {
 	const [inputKey, setInputKey] = useState(0);
 	const [nextTask, setNextTask] = useState(null);
 	const [showNextTaskModal, setShowNextTaskModal] = useState(false);
+	const [hookManager, setHookManager] = useState(null);
 
 	const { exit } = useApp();
 
@@ -156,11 +158,16 @@ function FlowApp({ backend, options = {} }) {
 		}
 	}, [options.completedSetup]);
 
-	// Initialize backend
+	// Initialize backend and hook manager
 	useEffect(() => {
 		async function init() {
 			try {
 				await currentBackend.initialize();
+
+				// Initialize hook manager
+				const hooks = getHookManager(currentBackend);
+				await hooks.initialize();
+				setHookManager(hooks);
 
 				// Check if tasks.json exists
 				const hasFile = await currentBackend.hasTasksFile();
@@ -654,6 +661,7 @@ function FlowApp({ backend, options = {} }) {
 	// Context value
 	const contextValue = {
 		backend: currentBackend,
+		hookManager,
 		tasks,
 		setTasks,
 		currentTag,

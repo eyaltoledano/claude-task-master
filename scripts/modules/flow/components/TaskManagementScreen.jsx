@@ -9,7 +9,7 @@ import { ExpandModal } from './ExpandModal.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
-import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
+import { EnhancedClaudeWorktreeLauncherModal } from './EnhancedClaudeWorktreeLauncherModal.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
@@ -1769,7 +1769,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 		// If modal is open, render only the modal
 		if (showClaudeLauncherModal && modalTaskData) {
 			return (
-				<ClaudeWorktreeLauncherModal
+				<EnhancedClaudeWorktreeLauncherModal
 					backend={backend}
 					worktree={claudeWorktree} // Can be null - modal will handle worktree creation
 					tasks={modalTaskData}
@@ -1894,7 +1894,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 	// If modal is open, render only the modal
 	if (showClaudeLauncherModal && modalTaskData) {
 		return (
-			<ClaudeWorktreeLauncherModal
+			<EnhancedClaudeWorktreeLauncherModal
 				backend={backend}
 				worktree={claudeWorktree} // Can be null - modal will handle worktree creation
 				tasks={modalTaskData}

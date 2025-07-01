@@ -2670,6 +2670,41 @@ ${prompt}
 		}
 
 		/**
+		 * Get or create a worktree for a task
+		 * @param {string} taskId
+		 * @param {Object} options
+		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
+		 */
+		async getOrCreateWorktreeForTask(taskId, options = {}) {
+			try {
+				// Dynamically import WorktreeManager to avoid circular dependencies
+				const { WorktreeManager } = await import('../worktree-manager.js');
+				const manager = new WorktreeManager(this.projectRoot);
+
+				// Get task details if not provided
+				if (!options.taskTitle && taskId) {
+					try {
+						const task = await this.getTask(taskId);
+						if (task) {
+							options.taskTitle = task.title;
+						}
+					} catch (error) {
+						// Continue without title
+						this.log.debug('Could not get task title:', error.message);
+					}
+				}
+
+				return await manager.getOrCreateWorktreeForTask(
+					taskId,
+					options
+				);
+			} catch (error) {
+				this.log.error('Error in getOrCreateWorktreeForTask:', error);
+				throw error;
+			}
+		}
+
+		/**
 		 * Get or create a worktree for a subtask
 		 * @param {string} taskId
 		 * @param {string} subtaskId
