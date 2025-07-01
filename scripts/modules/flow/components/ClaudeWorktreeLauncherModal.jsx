@@ -616,16 +616,41 @@ export function ClaudeWorktreeLauncherModal({
 					subtaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id : null,
 					parentTaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id.split('.')[0] : null,
 					// Pass complete task information for CLAUDE.md generation
-					taskData: tasks[0] ? {
-						id: tasks[0].id,
-						title: tasks[0].title,
-						description: tasks[0].description || '',
-						details: tasks[0].details || '',
-						testStrategy: tasks[0].testStrategy || '',
-						status: tasks[0].status || 'pending',
-						isSubtask: tasks[0].isSubtask || String(tasks[0].id).includes('.'),
-						parentTask: tasks[0].parentTask || null
-					} : null,
+					taskData: tasks[0] ? await (async () => {
+						const task = tasks[0];
+						const taskData = {
+							id: task.id,
+							title: task.title,
+							description: task.description || '',
+							details: task.details || '',
+							testStrategy: task.testStrategy || '',
+							status: task.status || 'pending',
+							isSubtask: task.isSubtask || String(task.id).includes('.'),
+							parentTask: task.parentTask || null
+						};
+						
+						// If this is a subtask, fetch complete parent task information
+						if (taskData.isSubtask && task.id.includes('.')) {
+							const parentTaskId = task.id.split('.')[0];
+							try {
+								const parentTask = await backend.getTask(parentTaskId);
+								if (parentTask) {
+									taskData.parentTask = {
+										id: parentTask.id,
+										title: parentTask.title,
+										description: parentTask.description || '',
+										details: parentTask.details || '',
+										testStrategy: parentTask.testStrategy || '',
+										status: parentTask.status || 'pending'
+									};
+								}
+							} catch (error) {
+								console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to fetch parent task:', error);
+							}
+						}
+						
+						return taskData;
+					})() : null,
 					worktreePath: actualWorktree?.path,
 					worktreeName: actualWorktree?.name,
 					branch: actualWorktree?.branch || actualWorktree?.name,
