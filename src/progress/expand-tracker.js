@@ -841,7 +841,7 @@ export class ExpandTracker {
 		}
 	}
 
-	// Increment the global subtask count for real-time updates
+	// Increment subtask count for real-time updates
 	incrementSubtaskCount() {
 		this.subtasksCreated++;
 		this._updateTimeTokensBar();
