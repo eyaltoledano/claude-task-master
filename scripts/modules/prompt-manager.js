@@ -23,8 +23,7 @@ export class PromptManager {
 	constructor() {
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
-		this.templatesDir = path.join(__dirname, '..', '..', 'src', 'prompts');
-		this.schemasDir = path.join(__dirname, '..', '..', 'assets', 'schemas');
+		this.promptsDir = path.join(__dirname, '..', '..', 'src', 'prompts');
 		this.cache = new Map();
 		this.setupValidation();
 	}
@@ -43,9 +42,10 @@ export class PromptManager {
 		addFormats(this.ajv);
 
 		try {
-			// Load schema from assets/schemas
+			// Load schema from src/prompts/schemas
 			const schemaPath = path.join(
-				this.schemasDir,
+				this.promptsDir,
+				'schemas',
 				'prompt-template.schema.json'
 			);
 			const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
@@ -114,7 +114,7 @@ export class PromptManager {
 	 * @private
 	 */
 	loadTemplate(promptId) {
-		const templatePath = path.join(this.templatesDir, `${promptId}.json`);
+		const templatePath = path.join(this.promptsDir, `${promptId}.json`);
 
 		try {
 			const content = fs.readFileSync(templatePath, 'utf-8');
@@ -357,7 +357,7 @@ export class PromptManager {
 		const results = { total: 0, errors: [], valid: [] };
 
 		try {
-			const files = fs.readdirSync(this.templatesDir);
+			const files = fs.readdirSync(this.promptsDir);
 			const promptFiles = files.filter((file) => file.endsWith('.json'));
 
 			for (const file of promptFiles) {
@@ -385,7 +385,7 @@ export class PromptManager {
 	 */
 	listPrompts() {
 		try {
-			const files = fs.readdirSync(this.templatesDir);
+			const files = fs.readdirSync(this.promptsDir);
 			const prompts = [];
 
 			for (const file of files) {
