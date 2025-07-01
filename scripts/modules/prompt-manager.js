@@ -2,19 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { log } from './utils.js';
-
-// Import schema validation dependencies
-let Ajv, addFormats;
-try {
-	const ajvModule = await import('ajv');
-	const formatsModule = await import('ajv-formats');
-	Ajv = ajvModule.default;
-	addFormats = formatsModule.default;
-} catch (error) {
-	console.warn(
-		'⚠ Schema validation dependencies not available. Install ajv and ajv-formats for full validation support.'
-	);
-}
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 
 /**
  * Manages prompt templates for AI interactions
@@ -33,11 +22,6 @@ export class PromptManager {
 	 * @private
 	 */
 	setupValidation() {
-		if (!Ajv || !addFormats) {
-			this.validatePrompt = () => true; // No validation available
-			return;
-		}
-
 		this.ajv = new Ajv({ allErrors: true, strict: false });
 		addFormats(this.ajv);
 
