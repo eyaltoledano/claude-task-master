@@ -2419,59 +2419,63 @@ ${prompt}
 					}
 				};
 
+				console.log('🎮 [DirectBackend] Query options prepared:', {
+					promptLength: fullPrompt.length,
+					maxTurns: queryOptions.options.maxTurns,
+					permissionMode: queryOptions.options.permissionMode,
+					outputFormat: queryOptions.options.outputFormat,
+					cwd: queryOptions.options.cwd,
+					captureOutput: options.captureOutput
+				});
+
 				// Handle different output formats
 				if (options.captureOutput) {
 					let output = '';
+					let sessionId = null;
+					const messages = [];
 
-					for await (const message of claudeQuery(queryOptions)) {
-						messages.push(message);
+					try {
+						for await (const message of claudeQuery(queryOptions)) {
+							// Extract session ID from the first message
+							if (!sessionId && message.sessionId) {
+								sessionId = message.sessionId;
+							}
 
-						// Extract session ID from init message
-						if (message.type === 'system' && message.subtype === 'init') {
-							sessionId = message.session_id;
-						}
+							messages.push(message);
+							if (options.onProgress && typeof options.onProgress === 'function') {
+								options.onProgress(message);
+							}
 
-						// Track costs
-						if (
-							message.type === 'result' &&
-							message.total_cost_usd !== undefined
-						) {
-							totalCost = message.total_cost_usd;
-						}
-
-						// Build output text from assistant messages
-						if (message.type === 'assistant' && message.message?.content) {
-							const content = message.message.content;
-							if (Array.isArray(content)) {
-								for (const part of content) {
-									if (part.type === 'text') {
-										output += part.text + '\n';
+							// Accumulate output
+							if (message.type === 'assistant' && message.content) {
+								if (Array.isArray(message.content)) {
+									for (const part of message.content) {
+										if (part.type === 'text' && part.text) {
+											output += part.text;
+										}
 									}
+								} else if (typeof message.content === 'string') {
+									output += message.content;
 								}
-							} else if (typeof content === 'string') {
-								output += content + '\n';
 							}
 						}
-
-						// Call progress callback if provided
-						if (options.onProgress && message.type === 'assistant') {
-							options.onProgress(output);
-						}
+					} catch (error) {
+						console.error('Error in Claude query:', error);
+						return {
+							success: false,
+							error: error.message
+						};
 					}
-
-					const duration = Date.now() - startTime;
 
 					return {
 						success: true,
 						output,
-						persona,
-						tasksProcessed: tasks.length,
 						sessionId,
-						totalCost,
-						duration,
 						messages
 					};
 				} else {
+					const output = '';
+					console.log('🚀 [DirectBackend] Taking fire-and-forget path...');
 					// Fire and forget mode - just start the process
 					const claudeProcess = spawn(
 						'claude',
@@ -2499,6 +2503,7 @@ ${prompt}
 					};
 				}
 			} catch (err) {
+				console.error('💥 [DirectBackend] launchClaudeHeadless error:', err);
 				throw new Error(
 					`Failed to launch Claude in headless mode: ${err.message}`
 				);
@@ -2835,127 +2840,33 @@ ${prompt}
 					'.taskmaster',
 					'claude-sessions'
 				);
+				
+				// Ensure directory exists
 				await fs.mkdir(claudeDir, { recursive: true });
 
-				// Create a filename based on timestamp and task ID
+				// Create filename with timestamp and session ID
 				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-				const taskIds = sessionData.tasks.map((t) => t.id).join('_');
-				const filename = `claude-session-${taskIds}-${timestamp}.json`;
+				const sessionId = sessionData.sessionId || 'unknown';
+				const filename = `${timestamp}_${sessionId.substring(0, 8)}.json`;
 				const filePath = path.join(claudeDir, filename);
 
-				// Process conversation history for better readability
-				const processedMessages =
-					sessionData.messages?.map((msg, idx) => {
-						const processed = {
-							index: idx,
-							type: msg.type,
-							timestamp: msg.timestamp || new Date().toISOString()
-						};
+				// Save session data
+				await fs.writeFile(filePath, JSON.stringify(sessionData, null, 2));
 
-						// Handle different message types
-						if (msg.type === 'assistant' && msg.message) {
-							processed.content = this.extractMessageContent(msg.message.content);
-							processed.role = 'assistant';
-						} else if (msg.type === 'user' && msg.message) {
-							processed.content = this.extractMessageContent(msg.message.content);
-							processed.role = 'user';
-						} else if (msg.type === 'tool_use') {
-							processed.tool = msg.name;
-							processed.input = msg.input;
-							processed.output = msg.output;
-						} else if (msg.type === 'system') {
-							processed.subtype = msg.subtype;
-							processed.details = msg;
-						} else if (msg.type === 'result') {
-							processed.totalCost = msg.total_cost_usd;
-							processed.tokenCounts = msg.token_counts;
-						}
-
-						return processed;
-					}) || [];
-
-				// Extract subtask information for better organization
-				const primaryTask = sessionData.tasks[0];
-				const isSubtask = primaryTask.id.includes('.');
-				let parentTaskId = null;
-				let subtaskId = null;
-
-				if (isSubtask) {
-					const [parent, sub] = primaryTask.id.split('.');
-					parentTaskId = parent;
-					subtaskId = sub;
-				}
-
-				// Prepare data with enhanced summary
-				const dataToSave = {
-					summary: {
-						sessionId: sessionData.sessionId,
-						timestamp: sessionData.statistics.completedAt,
-						worktree: sessionData.worktree,
-						branch: sessionData.branch,
-						// Enhanced task information
-						subtaskInfo: isSubtask
-							? {
-									parentTaskId,
-									subtaskId,
-									fullId: primaryTask.id,
-									title: primaryTask.title,
-									description: primaryTask.description
-								}
-							: null,
-						tasks: sessionData.tasks.map((t) => ({
-							id: t.id,
-							title: t.title,
-							description: t.description
-						})),
-						statistics: {
-							turns: sessionData.statistics.turns,
-							maxTurns: sessionData.statistics.maxTurns,
-							fileChanges: sessionData.statistics.fileChanges,
-							totalCost: sessionData.statistics.totalCost,
-							durationSeconds: sessionData.statistics.durationSeconds,
-							tokenCounts: sessionData.statistics.tokenCounts || {},
-							toolsUsed: this.countToolsUsed(processedMessages)
-						},
-						persona: sessionData.persona,
-						toolRestrictions: sessionData.statistics.toolRestrictions,
-						// PR tracking
-						prInfo: {
-							created: false,
-							url: null,
-							createdAt: null
-						}
-					},
-					conversation: {
-						messageCount: processedMessages.length,
-						messages: processedMessages
-					},
-					rawSession: {
-						output: sessionData.output,
-						fullData: sessionData
-					}
-				};
-
-				// Write session file
-				await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
-
-				// Update the index file
+				// Update the sessions index
 				await this.updateClaudeSessionIndex({
 					sessionId: sessionData.sessionId,
-					filename: filename,
-					timestamp: sessionData.statistics.completedAt,
-					subtaskInfo: dataToSave.summary.subtaskInfo,
-					worktree: sessionData.worktree,
-					branch: sessionData.branch,
-					statistics: dataToSave.summary.statistics,
-					persona: sessionData.persona,
-					prInfo: dataToSave.summary.prInfo
+					filename,
+					timestamp: new Date().toISOString(),
+					subtaskInfo: sessionData.tasks?.[0]?.isSubtask ? {
+						id: sessionData.tasks[0].id,
+						title: sessionData.tasks[0].title
+					} : null
 				});
 
-				this.log.info(`Claude session data saved to: ${filePath}`);
-				return filePath;
+				return { success: true, filePath };
 			} catch (error) {
-				this.log.error('Failed to save Claude session data:', error.message);
+				console.error('Error saving Claude session data:', error);
 				throw error;
 			}
 		}
@@ -2976,24 +2887,23 @@ ${prompt}
 				try {
 					const data = await fs.readFile(indexPath, 'utf8');
 					index = JSON.parse(data);
-				} catch {
-					// No index file yet
+				} catch (error) {
+					// File doesn't exist or is invalid, start with empty array
+					index = [];
 				}
 
-				// Remove existing entry if it exists
-				index = index.filter((s) => s.sessionId !== sessionInfo.sessionId);
+				// Add new session to index
+				index.unshift(sessionInfo);
 
-				// Add new entry
-				index.unshift(sessionInfo); // Add to beginning (newest first)
-
-				// Keep only last 100 sessions in index
+				// Keep only the most recent 100 sessions
 				if (index.length > 100) {
 					index = index.slice(0, 100);
 				}
 
-				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+				await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
 			} catch (error) {
-				this.log.error('Failed to update Claude session index:', error.message);
+				console.error('Error updating Claude session index:', error);
+				throw error;
 			}
 		}
 

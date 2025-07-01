@@ -6,6 +6,9 @@ import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../hooks/useKeypress.js';
 import { useComponentTheme } from '../hooks/useTheme.js';
 import { personaDefinitions } from '../personas/persona-definitions.js';
+import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
+import { useAppContext } from '../index.jsx';
+import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 
 // Persona icons for visual identification
 const personaIcons = {
@@ -345,8 +348,6 @@ export function ClaudeWorktreeLauncherModal({
 				setView('options');
 			} else if (view === 'options') {
 				setView('prompt');
-			} else if (view === 'prompt') {
-				handleLaunch();
 			} else if (view === 'summary') {
 				handleComplete();
 			}
@@ -469,27 +470,28 @@ export function ClaudeWorktreeLauncherModal({
 	useKeypress(keyHandlers);
 
 	const handleLaunch = async () => {
-		setIsProcessing(true);
-		setError(null);
-		setProcessingLines([]); // Clear previous lines
-		setScrollOffset(0); // Reset scroll position
+		console.log('🚀 [ClaudeWorktreeLauncherModal] Starting background Claude Code session with options:', {
+			persona: selectedPersona,
+			maxTurns: maxTurns,
+			worktreeName: worktree?.name,
+			tasksCount: tasks.length
+		});
 
-		try {
-			const selectedTaskObjects = tasks.filter((t) =>
-				selectedTasks.includes(t.id)
-			);
+		// Handle worktree creation if needed
+		let actualWorktree = worktree;
 
-			// Handle worktree creation if needed
-			let actualWorktree = worktree;
+		if (!actualWorktree && tasks.length > 0) {
+			// No worktree exists, create one for the task/subtask
+			const task = tasks[0];
+			const isSubtask = task.isSubtask || String(task.id).includes('.');
 
-			if (!actualWorktree && selectedTaskObjects.length > 0) {
-				// No worktree exists, create one for the subtask
-				const task = selectedTaskObjects[0];
-				const [parentId, subtaskId] = task.id.split('.');
+			console.log('🏗️ [ClaudeWorktreeLauncherModal] Creating worktree for task:', {
+				taskId: task.id,
+				isSubtask,
+				title: task.title
+			});
 
-				setView('research'); // Show research view during worktree creation
-				setProcessingLog('Creating worktree for subtask...');
-
+			try {
 				// Get the current branch to use as source
 				let sourceBranch = 'main'; // default fallback
 				try {
@@ -504,15 +506,27 @@ export function ClaudeWorktreeLauncherModal({
 					sourceBranch = 'master';
 				}
 
-				// Create worktree
-				const result = await backend.getOrCreateWorktreeForSubtask(
-					parseInt(parentId),
-					parseInt(subtaskId),
-					{
-						sourceBranch,
-						subtaskTitle: task.title
-					}
-				);
+				// Create worktree based on task type
+				let result;
+				if (isSubtask) {
+					const [parentId, subtaskId] = task.id.split('.');
+					result = await backend.getOrCreateWorktreeForSubtask(
+						parseInt(parentId),
+						parseInt(subtaskId),
+						{
+							sourceBranch,
+							subtaskTitle: task.title
+						}
+					);
+				} else {
+					result = await backend.getOrCreateWorktreeForTask(
+						task.id,
+						{
+							sourceBranch,
+							taskTitle: task.title
+						}
+					);
+				}
 
 				// Check if we need user decision for branch conflict
 				if (result.needsUserDecision) {
@@ -526,33 +540,21 @@ export function ClaudeWorktreeLauncherModal({
 				}
 
 				if (result.created) {
-					setProcessingLog(`Created worktree: ${result.worktree.name}`);
+					console.log(`✅ [ClaudeWorktreeLauncherModal] Created worktree: ${result.worktree.name}`);
 				} else if (result.exists) {
-					setProcessingLog(`Using existing worktree: ${result.worktree.name}`);
+					console.log(`♻️ [ClaudeWorktreeLauncherModal] Using existing worktree: ${result.worktree.name}`);
 				}
 
 				actualWorktree = result.worktree;
-
-				// Brief delay to show the worktree creation message
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+			} catch (worktreeError) {
+				console.error('❌ [ClaudeWorktreeLauncherModal] Failed to create worktree:', worktreeError);
+				setError(`Failed to create worktree: ${worktreeError.message}`);
+				setView('persona');
+				return;
 			}
+		}
 
-			// Check if tasks need research
-			let needsResearch = false;
-			for (const task of selectedTaskObjects) {
-				if (!backend.hasResearchInTask || !backend.hasResearchInTask(task)) {
-					needsResearch = true;
-					break;
-				}
-			}
-
-			if (needsResearch) {
-				setView('research');
-				setProcessingLog('Checking for existing research...');
-			} else {
-				setView('processing');
-			}
-
+		try {
 			// Build allowed tools list based on restrictions
 			let allowedTools = null;
 			if (
@@ -587,197 +589,170 @@ export function ClaudeWorktreeLauncherModal({
 				}
 			}
 
-			// Headless mode - run Claude with prompts in background
-			const result = await backend.launchClaudeHeadless(
-				actualWorktree, // Use the actual worktree (existing or newly created)
-				selectedTaskObjects,
-				headlessPrompt,
-				{
+			// Initialize background service
+			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
+			
+			// Build the prompt for the session
+			const prompt = headlessPrompt || 'Implement the assigned tasks according to the specifications in CLAUDE.md';
+			
+			// Start background operation
+			const operation = await backgroundClaudeCode.startQuery(prompt, {
+				persona: selectedPersona,
+				metadata: {
+					type: tasks.length === 1 && (tasks[0].isSubtask || String(tasks[0].id).includes('.')) ? 'subtask-implementation' : 'task-implementation',
+					taskId: tasks[0]?.id,
+					subtaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id : null,
+					parentTaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id.split('.')[0] : null,
+					worktreePath: actualWorktree?.path,
+					worktreeName: actualWorktree?.name,
+					branch: actualWorktree?.branch || actualWorktree?.name,
 					persona: selectedPersona,
 					maxTurns: maxTurns,
-					permissionMode: 'acceptEdits',
-					captureOutput: true,
-					outputFormat: 'stream-json',
 					allowedTools: allowedTools,
-					log: {
-						info: (msg) => {
-							if (
-								msg.includes('has no research') ||
-								msg.includes('Running research')
-							) {
-								setView('research');
-								setProcessingLog(msg);
-							} else if (msg.includes('Research completed')) {
-								setProcessingLog(msg);
-								// Switch to processing view after research is done
-								setTimeout(() => setView('processing'), 1000);
-							} else if (msg.includes('already has research')) {
-								// If all tasks already have research, go straight to processing
-								if (view === 'research') {
-									setView('processing');
-								}
-							}
-						},
-						warn: (msg) => console.warn(msg),
-						error: (msg) => console.error(msg),
-						debug: (msg) => console.debug(msg),
-						success: (msg) => console.log(msg)
-					},
-					onProgress: (output) => {
-						// Handle streaming output - show everything in real-time
-						if (typeof output === 'string') {
-							// Just append the new output to what we have
-							setProcessingLines((prev) => {
-								// Split by newlines but keep empty lines for proper formatting
-								const newContent = output.split('\n');
-
-								// If this is the first update, just set it
-								if (prev.length === 0) {
-									return newContent;
-								}
-
-								// Otherwise, append this chunk to our running log
-								// The last line of previous content might be incomplete,
-								// so we concatenate it with the first line of new content
-								const combined = [...prev];
-								if (combined.length > 0 && newContent.length > 0) {
-									// Merge the last incomplete line with new content
-									const lastIndex = combined.length - 1;
-									combined[lastIndex] = combined[lastIndex] + newContent[0];
-									// Add the rest of the new lines
-									if (newContent.length > 1) {
-										combined.push(...newContent.slice(1));
-									}
-								} else {
-									// Just append all new content
-									combined.push(...newContent);
-								}
-
-								return combined;
-							});
-
-							// Update log with the latest chunk
-							setProcessingLog(output.trim());
-						} else if (output && typeof output === 'object') {
-							// Handle structured progress updates
-							const message =
-								output.message || output.text || JSON.stringify(output);
-							setProcessingLines((prev) => [...prev, '', message, '']);
-							setProcessingLog(message);
-						}
-					}
+					prompt: prompt
 				}
-			);
+			});
 
-			if (result.success) {
-				// Save session data for persistence and indexing
-				try {
-					const sessionData = {
-						sessionId: result.sessionId,
-						tasks: selectedTaskObjects,
-						worktree: actualWorktree?.name || 'unknown',
-						branch: actualWorktree?.branch || actualWorktree?.name || 'unknown',
-						persona: selectedPersona,
-						output: result.output,
-						messages: result.messages,
-						statistics: {
-							turns: result.messages?.filter((m) => m.type === 'assistant').length || 0,
-							maxTurns: maxTurns,
-							fileChanges: result.messages?.filter((m) => 
-								m.type === 'tool_use' && ['create_file', 'edit_file'].includes(m.name)
-							).length || 0,
-							totalCost: result.totalCost || 0,
-							durationSeconds: Math.round((result.duration || 0) / 1000),
-							completedAt: new Date().toISOString(),
-							tokenCounts: {},
-							toolRestrictions: toolRestrictions
-						}
-					};
+			console.log('✅ [ClaudeWorktreeLauncherModal] Background operation started:', {
+				operationId: operation.operationId,
+				worktree: actualWorktree?.name
+			});
 
-					// Save session data to .taskmaster/claude-sessions
-					await backend.saveClaudeSessionData(sessionData);
-				} catch (saveError) {
-					console.warn('Failed to save Claude session data:', saveError.message);
-					// Don't fail the whole operation if session saving fails
+			// Update the relevant task/subtask with background operation reference
+			try {
+				const primaryTask = tasks[0];
+				const sessionReference = `
+<claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background">
+Claude Code session started in background with ${selectedPersona} persona. Operation ID: ${operation.operationId}
+Working directory: ${actualWorktree?.path}
+Branch: ${actualWorktree?.branch || actualWorktree?.name}
+Max turns: ${maxTurns}
+${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowed'}
+</claude-session>
+`;
+
+				if (primaryTask.isSubtask || String(primaryTask.id).includes('.')) {
+					// Update subtask
+					await backend.updateSubtask({
+						id: primaryTask.id,
+						prompt: sessionReference,
+						research: false
+					});
+					console.log('📝 [ClaudeWorktreeLauncherModal] Updated subtask with session reference');
+				} else {
+					// Update task
+					await backend.updateTask({
+						id: primaryTask.id,
+						prompt: sessionReference,
+						research: false
+					});
+					console.log('📝 [ClaudeWorktreeLauncherModal] Updated task with session reference');
 				}
-
-				setSessionResult(result);
-				setView('summary');
-			} else {
-				setError(result.error || 'Failed to complete task');
-				setView('persona');
+			} catch (updateError) {
+				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with session reference:', updateError);
 			}
-		} catch (err) {
-			setError(err.message);
+
+			// Show success and close modal
+			setSessionResult({
+				success: true,
+				operationId: operation.operationId,
+				sessionId: operation.operationId, // Use operationId as sessionId for compatibility
+				worktree: actualWorktree,
+				output: `Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`,
+				message: `Background session started successfully! You can monitor progress in the Background Operations screen.`
+			});
+			
+			setView('summary');
+			
+			// Auto-close after showing success
+			setTimeout(() => {
+				onClose();
+			}, 3000);
+
+		} catch (error) {
+			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to start background operation:', error);
+			setError(`Failed to start Claude Code: ${error.message}`);
 			setView('persona');
-		} finally {
-			setIsProcessing(false);
 		}
 	};
 
 	const handleResume = async () => {
-		if (!sessionResult?.sessionId) return;
-
-		setIsProcessing(true);
-		setError(null);
-		setView('processing');
+		console.log('🔄 [ClaudeWorktreeLauncherModal] Resuming background Claude Code session:', {
+			sessionId: sessionResult.sessionId,
+			maxTurns: maxTurns
+		});
 
 		try {
-			const result = await backend.resumeClaudeSession(
-				sessionResult.sessionId,
-				{
+			// Initialize background service
+			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
+			
+			// Resume the session (or start a new one with continuation prompt)
+			const resumePrompt = 'Continue with the implementation from where we left off.';
+			
+			// Start a new background operation as continuation
+			const operation = await backgroundClaudeCode.startQuery(resumePrompt, {
+				persona: selectedPersona,
+				metadata: {
+					type: 'session-continuation',
+					originalSessionId: sessionResult.sessionId,
+					taskId: tasks[0]?.id,
+					worktreePath: worktree?.path,
+					worktreeName: worktree?.name,
+					branch: worktree?.branch || worktree?.name,
+					persona: selectedPersona,
 					maxTurns: maxTurns,
-					onProgress: (output) => {
-						if (typeof output === 'string') {
-							setProcessingLines((prev) => [...prev, output]);
-							setProcessingLog(output.trim());
-						}
-					}
+					prompt: resumePrompt
 				}
-			);
+			});
 
-			if (result.success) {
-				// Save updated session data for resumed sessions
-				try {
-					const task = tasks[0]; // Get primary task
-					const sessionData = {
-						sessionId: result.sessionId || sessionResult.sessionId,
-						tasks: [task],
-						worktree: worktree?.name || 'unknown',
-						branch: worktree?.branch || worktree?.name || 'unknown',
-						persona: selectedPersona,
-						output: result.output,
-						messages: result.messages,
-						statistics: {
-							turns: result.messages?.filter((m) => m.type === 'assistant').length || 0,
-							maxTurns: maxTurns,
-							fileChanges: result.messages?.filter((m) => 
-								m.type === 'tool_use' && ['create_file', 'edit_file'].includes(m.name)
-							).length || 0,
-							totalCost: result.totalCost || 0,
-							durationSeconds: Math.round((result.duration || 0) / 1000),
-							completedAt: new Date().toISOString(),
-							tokenCounts: {},
-							toolRestrictions: toolRestrictions
-						}
-					};
+			console.log('✅ [ClaudeWorktreeLauncherModal] Background continuation started:', {
+				operationId: operation.operationId,
+				originalSessionId: sessionResult.sessionId
+			});
 
-					// Update session data in .taskmaster/claude-sessions
-					await backend.saveClaudeSessionData(sessionData);
-				} catch (saveError) {
-					console.warn('Failed to save resumed Claude session data:', saveError.message);
-					// Don't fail the whole operation if session saving fails
+			// Update the task/subtask with continuation reference
+			try {
+				const primaryTask = tasks[0];
+				const continuationReference = `
+<claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background-continuation">
+Claude Code session resumed in background. New Operation ID: ${operation.operationId}
+Original Session: ${sessionResult.sessionId}
+Working directory: ${worktree?.path}
+</claude-session>
+`;
+
+				if (primaryTask.isSubtask || String(primaryTask.id).includes('.')) {
+					await backend.updateSubtask({
+						id: primaryTask.id,
+						prompt: continuationReference,
+						research: false
+					});
+				} else {
+					await backend.updateTask({
+						id: primaryTask.id,
+						prompt: continuationReference,
+						research: false
+					});
 				}
-
-				setSessionResult(result);
-				setView('summary');
-			} else {
-				setError(result.error || 'Failed to resume session');
+			} catch (updateError) {
+				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with continuation reference:', updateError);
 			}
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setIsProcessing(false);
+
+			// Update session result
+			setSessionResult({
+				...sessionResult,
+				operationId: operation.operationId,
+				message: `Session resumed in background! New Operation ID: ${operation.operationId.substring(0, 8)}...`
+			});
+
+			// Auto-close after showing success
+			setTimeout(() => {
+				onClose();
+			}, 3000);
+
+		} catch (error) {
+			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to resume background session:', error);
+			setError(`Failed to resume session: ${error.message}`);
 		}
 	};
 
