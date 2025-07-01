@@ -1,6 +1,7 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://github.com/eyaltoledano/claude-task-master/schemas/parameter.json",
+	"$id": "https://github.com/eyaltoledano/claude-task-master/blob/main/src/prompts/schemas/parameter.schema.json",
+	"version": "1.0.0",
 	"title": "Task Master Prompt Parameter",
 	"description": "Schema for individual prompt template parameters",
 	"type": "object",
