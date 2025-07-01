@@ -540,18 +540,32 @@ export class ExpandTracker {
 			return `Est: ~${this._formatDuration(estimatedSeconds)}`;
 		}
 
-		// For expand-all, use task expansion data
-		if (this.completedExpansions === 0 || !this.bestAvgTimePerExpansion) {
+		// For expand-all, calculate fractional progress including current task's subtasks
+		let fractionalProgress = this.completedExpansions;
+		if (this.currentTaskSubtaskCount > 0) {
+			fractionalProgress += this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+		}
+
+		// For expand-all, provide estimate as soon as we have meaningful progress
+		if (fractionalProgress < 0.05) { // Need at least 5% progress for meaningful estimate
 			return 'Est: ~calculating...';
 		}
 
-		// Calculate fractional progress including current task's subtasks
-		let fractionalProgress = this.completedExpansions;
-		if (this.currentTaskSubtaskCount > 0) {
-			fractionalProgress +=
-				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+		// We don't have a stable average yet but have some progress, so provide initial estimate
+		if (!this.bestAvgTimePerExpansion && fractionalProgress > 0 && this.startTime) {
+			const elapsed = (Date.now() - this.startTime) / 1000;
+			const avgTimePerTask = elapsed / fractionalProgress;
+			const remainingProgress = this.numTasks - fractionalProgress;
+			const estimatedSeconds = Math.ceil(remainingProgress * avgTimePerTask);
+			return `Est: ~${this._formatDuration(estimatedSeconds)} (initial)`;
 		}
 
+		// If we still don't have enough data, fall back to calculating message
+		if (!this.bestAvgTimePerExpansion) {
+			return 'Est: ~calculating...';
+		}
+
+		// Reuse the fractional progress already calculated above
 		const remainingProgress = this.numTasks - fractionalProgress;
 		if (remainingProgress <= 0) return 'Complete!';
 
