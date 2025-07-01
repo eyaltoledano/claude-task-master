@@ -555,7 +555,7 @@ async function expandTask(
 		const nextSubtaskId = (task.subtasks?.length || 0) + 1;
 
 		// Load prompts using PromptManager
-		const promptManager = getPromptManager(projectRoot);
+		const promptManager = getPromptManager();
 
 		const promptParams = {
 			task: task,

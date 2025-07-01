@@ -133,7 +133,7 @@ The PromptManager is implemented in `scripts/modules/prompt-manager.js` and prov
 ```javascript
 import { getPromptManager } from '../prompt-manager.js';
 
-const promptManager = getPromptManager(projectRoot);
+const promptManager = getPromptManager();
 const { systemPrompt, userPrompt, metadata } = await promptManager.loadPrompt('task-id', {
   // Parameters matching the template's parameter definitions
   param1: 'value1',
@@ -193,7 +193,7 @@ When modifying prompts, ensure to test:
 You can test prompt loading directly:
 ```javascript
 // Test prompt loading and variable substitution
-const promptManager = getPromptManager(projectRoot);
+const promptManager = getPromptManager();
 const result = await promptManager.loadPrompt('task-id', {
   // Test parameters
 });

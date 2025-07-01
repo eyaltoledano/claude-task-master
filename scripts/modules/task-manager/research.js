@@ -192,7 +192,7 @@ async function performResearch(
 		const tokenBreakdown = contextResult.tokenBreakdown;
 
 		// Load prompts using PromptManager
-		const promptManager = getPromptManager(projectRoot);
+		const promptManager = getPromptManager();
 
 		const promptParams = {
 			query: query,

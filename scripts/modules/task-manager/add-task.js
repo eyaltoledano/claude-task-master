@@ -391,7 +391,7 @@ async function addTask(
 				contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
 
 			// Load prompts using PromptManager
-			const promptManager = getPromptManager(projectRoot);
+			const promptManager = getPromptManager();
 			const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 				'add-task',
 				{

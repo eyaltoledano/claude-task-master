@@ -225,7 +225,7 @@ async function updateSubtaskById(
 					: null;
 
 			// Build prompts using PromptManager
-			const promptManager = getPromptManager(projectRoot);
+			const promptManager = getPromptManager();
 
 			const promptParams = {
 				parentTask: parentContext,

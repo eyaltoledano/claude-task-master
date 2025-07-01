@@ -1,14 +1,16 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { log } from './utils.js';
 
 /**
  * Manages prompt templates for AI interactions
  */
 export class PromptManager {
-	constructor(projectRoot) {
-		this.projectRoot = projectRoot;
-		this.templatesDir = path.join(projectRoot, 'src/prompts');
+	constructor() {
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = path.dirname(__filename);
+		this.templatesDir = path.join(__dirname, '..', '..', 'src', 'prompts');
 		this.cache = new Map();
 	}
 
@@ -274,12 +276,11 @@ let promptManager = null;
 
 /**
  * Get or create the prompt manager instance
- * @param {string} projectRoot - Project root directory
  * @returns {PromptManager}
  */
-export function getPromptManager(projectRoot) {
-	if (!promptManager || promptManager.projectRoot !== projectRoot) {
-		promptManager = new PromptManager(projectRoot);
+export function getPromptManager() {
+	if (!promptManager) {
+		promptManager = new PromptManager();
 	}
 	return promptManager;
 }

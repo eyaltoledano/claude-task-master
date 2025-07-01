@@ -366,7 +366,7 @@ async function updateTasks(
 
 		// --- Build Prompts (Using PromptManager) ---
 		// Load prompts using PromptManager
-		const promptManager = getPromptManager(projectRoot);
+		const promptManager = getPromptManager();
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'update-tasks',
 			{

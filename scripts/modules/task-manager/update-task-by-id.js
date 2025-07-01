@@ -410,7 +410,7 @@ async function updateTaskById(
 		}
 
 		// --- Build Prompts using PromptManager ---
-		const promptManager = getPromptManager(projectRoot);
+		const promptManager = getPromptManager();
 
 		const promptParams = {
 			task: taskToUpdate,

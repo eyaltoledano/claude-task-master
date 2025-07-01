@@ -174,7 +174,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		}
 
 		// Load prompts using PromptManager
-		const promptManager = getPromptManager(projectRoot || process.cwd());
+		const promptManager = getPromptManager();
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'parse-prd',
 			{

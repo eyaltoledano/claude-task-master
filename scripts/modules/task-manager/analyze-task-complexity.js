@@ -398,7 +398,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 		// Continue with regular analysis path
 		// Load prompts using PromptManager
-		const promptManager = getPromptManager(projectRoot);
+		const promptManager = getPromptManager();
 
 		const promptParams = {
 			tasks: tasksData.tasks,

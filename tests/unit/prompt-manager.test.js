@@ -7,6 +7,7 @@ import {
 	expect
 } from '@jest/globals';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Create mock functions
 const mockReadFile = jest.fn();
@@ -26,16 +27,23 @@ const { getPromptManager } = await import(
 
 describe('PromptManager', () => {
 	let promptManager;
-	const mockProjectRoot = '/test/project';
-	const mockTemplatesDir = path.join(mockProjectRoot, 'src/prompts');
+	// Calculate expected templates directory
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = path.dirname(__filename);
+	const expectedTemplatesDir = path.join(
+		__dirname,
+		'..',
+		'..',
+		'src',
+		'prompts'
+	);
 
 	beforeEach(() => {
 		// Clear all mocks
 		jest.clearAllMocks();
 
-		// Note: We can't easily reset the singleton in tests due to module-level state
-		// Each test will work with potentially shared instances
-		promptManager = getPromptManager(mockProjectRoot);
+		// Get the singleton instance
+		promptManager = getPromptManager();
 	});
 
 	afterEach(() => {
@@ -64,7 +72,7 @@ describe('PromptManager', () => {
 			expect(result.systemPrompt).toBe('You are a helpful assistant');
 			expect(result.userPrompt).toBe('Hello Alice, please help me');
 			expect(mockReadFile).toHaveBeenCalledWith(
-				path.join(mockTemplatesDir, 'test-prompt.json'),
+				path.join(expectedTemplatesDir, 'test-prompt.json'),
 				'utf-8'
 			);
 		});
@@ -346,18 +354,11 @@ describe('PromptManager', () => {
 	});
 
 	describe('singleton behavior', () => {
-		it('should return the same instance for the same project root', () => {
-			const instance1 = getPromptManager(mockProjectRoot);
-			const instance2 = getPromptManager(mockProjectRoot);
+		it('should return the same instance on multiple calls', () => {
+			const instance1 = getPromptManager();
+			const instance2 = getPromptManager();
 
 			expect(instance1).toBe(instance2);
-		});
-
-		it('should return different instances for different project roots', () => {
-			const instance1 = getPromptManager('/project1');
-			const instance2 = getPromptManager('/project2');
-
-			expect(instance1).not.toBe(instance2);
 		});
 	});
 });
