@@ -23,7 +23,11 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDebugFlag: jest.fn(() => false),
-		getDefaultSubtasks: jest.fn(() => 5)
+		getDefaultSubtasks: jest.fn(() => 5),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getMainTemperature: jest.fn(() => 0.2),
+		getResearchModelId: jest.fn(() => 'sonar-pro'),
+		getResearchTemperature: jest.fn(() => 0.1)
 	})
 );
 
@@ -46,6 +50,49 @@ jest.unstable_mockModule('chalk', () => ({
 
 jest.unstable_mockModule('boxen', () => ({
 	default: jest.fn((text) => text)
+}));
+
+jest.unstable_mockModule('../../../../../src/ui/expand.js', () => ({
+	displayExpandStart: jest.fn(),
+	displayExpandSummary: jest.fn()
+}));
+
+jest.unstable_mockModule(
+	'../../../../../src/progress/expand-tracker.js',
+	() => ({
+		createExpandTracker: jest.fn(() => ({
+			start: jest.fn(),
+			stop: jest.fn(),
+			getSummary: jest.fn(() => ({
+				totalSubtasksCreated: 0,
+				elapsedTime: 1000,
+				errors: []
+			})),
+			addTelemetryData: jest.fn(),
+			setCurrentTask: jest.fn(),
+			addExpansionLine: jest.fn(),
+			incrementSubtaskCount: jest.fn()
+		}))
+	})
+);
+
+jest.unstable_mockModule('../../../../../src/constants/paths.js', () => ({
+	COMPLEXITY_REPORT_FILE: '.taskmaster/reports/task-complexity-report.json'
+}));
+
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		existsSync: jest.fn(() => false),
+		readFileSync: jest.fn(() => '{}')
+	}
+}));
+
+jest.unstable_mockModule('path', () => ({
+	default: {
+		join: jest.fn((...args) => args.join('/')),
+		dirname: jest.fn((p) => p.split('/').slice(0, -1).join('/')),
+		resolve: jest.fn((...args) => args.join('/'))
+	}
 }));
 
 // Import the mocked modules
