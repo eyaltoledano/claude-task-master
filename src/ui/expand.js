@@ -94,9 +94,9 @@ function displayExpandStart({
 			content += chalk.blue(
 				`${subtaskText}: ${numSubtasks} (explicitly provided)\n`
 			);
-		} else if (hasComplexityAnalysis && !isExpandAll) {
+		} else if (hasComplexityAnalysis) {
 			content += chalk.blue(
-				`${subtaskText}: ${numSubtasks} (from complexity report)\n`
+				`${subtaskText}: ${numSubtasks} (based on complexity analysis)\n`
 			);
 		} else {
 			content += chalk.blue(`${subtaskText}: ${numSubtasks} (using default)\n`);
@@ -143,7 +143,7 @@ function displayExpandStart({
 				chalk.bold(`ℹ️  Found complexity analysis with score ${complexityScore}`)
 			);
 			console.log(
-				chalk.bold('ℹ️  Using expansion prompt from complexity report')
+				chalk.bold('ℹ️  Using expansion prompt from complexity analysis')
 			);
 		} else {
 			console.log(chalk.bold('ℹ️  No complexity analysis found'));
@@ -241,7 +241,7 @@ function displayExpandSummary(summary) {
 		if (explicitSubtasks) {
 			summaryContent += ` ${chalk.dim('(explicitly set)')}`;
 		} else if (hasComplexityAnalysis) {
-			summaryContent += ` ${chalk.dim('(from complexity analysis)')}`;
+			summaryContent += ` ${chalk.dim('(based on complexity analysis)')}`;
 		} else {
 			summaryContent += ` ${chalk.dim('(auto-calculated)')}`;
 		}
