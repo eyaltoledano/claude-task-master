@@ -251,20 +251,7 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	async setTaskStatus(taskId, status) {
-		const args = {
-			projectRoot: this.projectRoot,
-			tasksJsonPath: this.tasksJsonPath,
-			id: taskId,
-			status: status
-		};
-
-		const result = await setTaskStatusDirect(args, this.log, { session: {} });
-		if (!result.success) {
-			throw new Error(result.error.message || result.error);
-		}
-
-		this.updateTelemetry(result.data);
-		return result.data;
+		return this.flow.setTaskStatus(taskId, status);
 	}
 
 	async expandTask(taskId, options = {}) {
@@ -4180,5 +4167,25 @@ ${prompt}
 				error: error.message
 			};
 		}
+	}
+
+	/**
+	 * Get all monitored PRs from the monitoring service
+	 */
+	async getAllMonitoredPRs() {
+		if (!this.prMonitoringService) {
+			await this.initializePRMonitoring();
+		}
+		return this.prMonitoringService.getAllMonitoredPRs();
+	}
+
+	/**
+	 * Get detailed information for a specific PR from the monitoring service
+	 */
+	async getPRDetails(prNumber) {
+		if (!this.prMonitoringService) {
+			await this.initializePRMonitoring();
+		}
+		return this.prMonitoringService.getPRDetails(prNumber);
 	}
 }

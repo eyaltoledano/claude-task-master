@@ -20,6 +20,7 @@ export class PRMonitoringService extends EventEmitter {
 		this.timers = new Map();
 		this.stateFile = null;
 		this.initialized = false;
+		this.eventLogs = new Map(); // Add event log storage
 	}
 
 	/**
@@ -62,6 +63,10 @@ export class PRMonitoringService extends EventEmitter {
 			await this.initialize();
 		}
 
+		// Initialize event log for this PR
+		this.eventLogs.set(prNumber, []);
+		this.logEvent(prNumber, 'monitoringStarted', { config });
+
 		const monitoringConfig = {
 			prNumber,
 			taskId: config.taskId,
@@ -96,6 +101,9 @@ export class PRMonitoringService extends EventEmitter {
 		if (!this.activePRs.has(prNumber)) {
 			return false;
 		}
+
+		// Log stop event
+		this.logEvent(prNumber, 'monitoringStopped', { reason });
 
 		// Clear timer
 		if (this.timers.has(prNumber)) {
@@ -142,6 +150,9 @@ export class PRMonitoringService extends EventEmitter {
 				config.status = newStatus;
 				await this.saveState();
 
+				// Log the status change event
+				this.logEvent(prNumber, 'statusChanged', { oldStatus, newStatus, prStatus });
+
 				// Emit status change event
 				this.emit('statusChanged', {
 					prNumber,
@@ -154,6 +165,9 @@ export class PRMonitoringService extends EventEmitter {
 				// Handle specific status transitions
 				await this.handleStatusTransition(prNumber, oldStatus, newStatus, prStatus);
 			}
+
+			// Add a periodic check-in event
+			this.logEvent(prNumber, 'statusChecked', { status: newStatus, checks: prStatus.checks?.length || 0 });
 
 			return {
 				prNumber,
@@ -341,6 +355,13 @@ export class PRMonitoringService extends EventEmitter {
 					this.activePRs.set(parseInt(prNumber), config);
 				}
 			}
+
+			// Restore event logs from state
+			if (state.eventLogs) {
+				for (const [prNumber, log] of Object.entries(state.eventLogs)) {
+					this.eventLogs.set(parseInt(prNumber), log);
+				}
+			}
 		} catch (error) {
 			if (error.code !== 'ENOENT') {
 				console.error('Error loading PR monitoring state:', error);
@@ -356,7 +377,8 @@ export class PRMonitoringService extends EventEmitter {
 		try {
 			const state = {
 				lastUpdated: new Date().toISOString(),
-				activePRs: Object.fromEntries(this.activePRs)
+				activePRs: Object.fromEntries(this.activePRs),
+				eventLogs: Object.fromEntries(this.eventLogs) // Save event logs
 			};
 
 			await fs.writeFile(this.stateFile, JSON.stringify(state, null, 2));
@@ -371,6 +393,11 @@ export class PRMonitoringService extends EventEmitter {
 	async resumeActiveMonitoring() {
 		for (const [prNumber] of this.activePRs) {
 			this.startMonitoringTimer(prNumber);
+			// Ensure event log exists for resumed PRs
+			if (!this.eventLogs.has(prNumber)) {
+				this.eventLogs.set(prNumber, []);
+			}
+			this.logEvent(prNumber, 'monitoringResumed');
 		}
 
 		if (this.activePRs.size > 0) {
@@ -392,6 +419,70 @@ export class PRMonitoringService extends EventEmitter {
 		await this.saveState();
 
 		this.emit('cleanup');
+	}
+
+	/**
+	 * Private: Log an event for a specific PR
+	 */
+	logEvent(prNumber, eventName, details = {}) {
+		if (!this.eventLogs.has(prNumber)) {
+			this.eventLogs.set(prNumber, []);
+		}
+		const log = this.eventLogs.get(prNumber);
+		log.push({
+			timestamp: new Date().toISOString(),
+			event: eventName,
+			details
+		});
+		// Optional: Limit log size
+		if (log.length > 100) {
+			log.shift();
+		}
+	}
+
+	/**
+	 * Get all monitored PRs with their summary status for the dashboard
+	 */
+	async getAllMonitoredPRs() {
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
+		const prs = this.getActivePRs();
+		return prs.map(pr => ({
+			prNumber: pr.prNumber,
+			status: pr.status,
+			autoMerge: pr.autoMerge,
+			createdAt: pr.created,
+			lastChecked: pr.lastChecked,
+			taskId: pr.taskId
+		}));
+	}
+
+	/**
+	 * Get detailed information for a single PR for the dashboard
+	 */
+	async getPRDetails(prNumber) {
+		if (!this.activePRs.has(prNumber)) {
+			return null;
+		}
+	
+		const config = this.getMonitoringConfig(prNumber);
+		const prStatus = await this.backend.getPRStatus(prNumber).catch(() => null);
+		const eventLog = this.getEventLog(prNumber);
+	
+		return {
+			config,
+			prStatus,
+			eventLog
+		};
+	}
+
+	/**
+	 * Get the event log for a specific PR
+	 */
+	getEventLog(prNumber) {
+		return this.eventLogs.get(prNumber) || [];
 	}
 }
 
