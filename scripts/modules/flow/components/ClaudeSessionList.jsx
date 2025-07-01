@@ -18,6 +18,7 @@ export function ClaudeSessionList({
 	onNewSession,
 	onRefresh,
 	onBack,
+	onSelectedIndexChange,
 	// Initial state
 	initialSelectedIndex = 0,
 	initialScrollOffset = 0,
@@ -108,6 +109,7 @@ export function ClaudeSessionList({
 		if (key.downArrow) {
 			const newIndex = Math.min(selectedIndex + 1, filteredItems.length - 1);
 			setSelectedIndex(newIndex);
+			onSelectedIndexChange?.(newIndex);
 
 			// Adjust scroll if needed
 			if (newIndex >= scrollOffset + visibleRows) {
@@ -116,11 +118,43 @@ export function ClaudeSessionList({
 		} else if (key.upArrow) {
 			const newIndex = Math.max(selectedIndex - 1, 0);
 			setSelectedIndex(newIndex);
+			onSelectedIndexChange?.(newIndex);
 
 			// Adjust scroll if needed
 			if (newIndex < scrollOffset) {
 				setScrollOffset(newIndex);
 			}
+		} else if (key.pageDown) {
+			// Page down - jump by visibleRows
+			const newIndex = Math.min(
+				selectedIndex + visibleRows,
+				filteredItems.length - 1
+			);
+			setSelectedIndex(newIndex);
+			onSelectedIndexChange?.(newIndex);
+			setScrollOffset(
+				Math.min(
+					newIndex - visibleRows + 1,
+					Math.max(0, filteredItems.length - visibleRows)
+				)
+			);
+		} else if (key.pageUp) {
+			// Page up - jump by visibleRows
+			const newIndex = Math.max(selectedIndex - visibleRows, 0);
+			setSelectedIndex(newIndex);
+			onSelectedIndexChange?.(newIndex);
+			setScrollOffset(Math.max(0, newIndex));
+		} else if (key.home) {
+			// Jump to first item
+			setSelectedIndex(0);
+			onSelectedIndexChange?.(0);
+			setScrollOffset(0);
+		} else if (key.end) {
+			// Jump to last item
+			const lastIndex = filteredItems.length - 1;
+			setSelectedIndex(lastIndex);
+			onSelectedIndexChange?.(lastIndex);
+			setScrollOffset(Math.max(0, lastIndex - visibleRows + 1));
 		} else if (key.return && filteredItems.length > 0) {
 			// Select session for viewing details
 			const item = filteredItems[selectedIndex];
@@ -243,6 +277,7 @@ export function ClaudeSessionList({
 			}
 			
 			return {
+				' ': isSelected ? '→' : ' ', // Add selection indicator column
 				'Session/Operation': displayName,
 				'Status': statusDisplay,
 				'Time/Messages': dateDisplay,
@@ -259,8 +294,8 @@ export function ClaudeSessionList({
 
 
 	const tableConfig = {
-		headers: ['Session/Operation', 'Status', 'Time/Messages', 'Context'],
-		columnWidths: [40, 20, 20, 15],
+		headers: [' ', 'Session/Operation', 'Status', 'Time/Messages', 'Context'],
+		columnWidths: [3, 40, 20, 20, 15],
 		selectedRowIndex: selectedIndex - scrollOffset
 	};
 
@@ -329,6 +364,7 @@ export function ClaudeSessionList({
 						<SimpleTable
 							data={tableData}
 							columns={tableConfig.headers}
+							selectedIndex={selectedIndex - scrollOffset}
 							borders={true}
 						/>
 
@@ -344,6 +380,17 @@ export function ClaudeSessionList({
 									of {filteredItems.length} items
 									{selectedIndex < filteredItems.length - visibleRows &&
 										' • ↓ for more'}
+									{scrollOffset > 0 && ' • ↑ for previous'}
+									{filteredItems.length > visibleRows && ' • PgUp/PgDn for fast scroll'}
+								</Text>
+							</Box>
+						)}
+
+						{/* Navigation hint for smaller lists */}
+						{filteredItems.length <= visibleRows && filteredItems.length >= 5 && (
+							<Box marginTop={1}>
+								<Text color={safeTheme.text?.tertiary || '#cbd5e1'}>
+									{filteredItems.length} items • Use ↑↓ to navigate • PgUp/PgDn/Home/End for quick jumping
 								</Text>
 							</Box>
 						)}
@@ -384,6 +431,16 @@ export function ClaudeSessionList({
 							
 							commands.push('n new');
 							commands.push('f filter');
+							
+							// Add navigation hints if there are enough items
+							if (filteredItems.length > visibleRows) {
+								commands.push('PgUp/PgDn fast scroll');
+								commands.push('Home/End jump');
+							} else if (filteredItems.length >= 5) {
+								// Show navigation hints for smaller lists too
+								commands.push('PgUp/PgDn/Home/End navigate');
+							}
+							
 							commands.push('ESC back');
 							
 							return commands.join(' • ');

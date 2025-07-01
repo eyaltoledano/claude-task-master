@@ -53,6 +53,7 @@ export function ClaudeCodeScreen({
 	const [watchStartTime, setWatchStartTime] = useState(null);
 	const [notification, setNotification] = useState(null);
 	const [viewingSession, setViewingSession] = useState(null);
+	const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
 	const [sessionMessages, setSessionMessages] = useState({});
 	const [sessionScrollOffset, setSessionScrollOffset] = useState(0);
 	const [waitingForConfig, setWaitingForConfig] = useState(
@@ -182,23 +183,18 @@ export function ClaudeCodeScreen({
 		if (viewingSession && !sessionMessages[viewingSession]) {
 			loadSessionMessages(viewingSession);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [viewingSession]);
+	}, [viewingSession, sessionMessages]);
 
-	// Auto-select highlighted session if provided - now handled by ClaudeSessionList component
-	const initialSelectedIndex = React.useMemo(() => {
+	// Initialize selected index based on highlighted session
+	useEffect(() => {
 		if (highlightSessionId && sessions.length > 0) {
-			console.log('[ClaudeCodeScreen] Setting initial highlighted session:', {
-				highlightSessionId,
-				sessionsCount: sessions.length
-			});
-			// Return the index to be used as initial state in ClaudeSessionList
 			const index = sessions.findIndex(
 				(s) => s.sessionId === highlightSessionId
 			);
-			return index >= 0 ? index : 0;
+			if (index >= 0) {
+				setSelectedSessionIndex(index);
+			}
 		}
-		return 0;
 	}, [highlightSessionId, sessions]);
 
 	const loadData = async () => {
@@ -1530,9 +1526,12 @@ ${insightSummary}
 				filterSubtaskId={filterSubtaskId}
 				visibleRows={VISIBLE_ROWS}
 				config={config}
-				initialSelectedIndex={initialSelectedIndex}
+				initialSelectedIndex={selectedSessionIndex}
 				initialScrollOffset={0}
 				initialSessionFilter="all"
+				onSelectedIndexChange={(newIndex) => {
+					setSelectedSessionIndex(newIndex); // Track selection changes
+				}}
 				onSessionSelect={(session) => {
 					setViewingSession(session.sessionId);
 					loadSessionMessages(session.sessionId);
