@@ -101,7 +101,7 @@ export function ClaudeSessionList({
 			setSelectedIndex(0);
 			setScrollOffset(0);
 		}
-	}, [filteredItems.length, selectedIndex, setSelectedIndex, setScrollOffset]);
+	}, [filteredItems.length, selectedIndex, setSelectedIndex]);
 
 	// Keyboard navigation handling
 	useInput((input, key) => {
@@ -209,10 +209,23 @@ export function ClaudeSessionList({
 					? '🔄 Running'
 					: '⏸️ Paused';
 			
-			const dateDisplay = formatDistanceToNow(
-				new Date(item.lastUpdated || item.createdAt),
-				{ addSuffix: true }
-			);
+			// Safe date formatting with validation
+			let dateDisplay = 'Unknown time';
+			const dateValue = item.lastUpdated || item.createdAt;
+			if (dateValue) {
+				const date = new Date(dateValue);
+				if (!Number.isNaN(date.getTime())) {
+					try {
+						dateDisplay = formatDistanceToNow(date, { addSuffix: true });
+					} catch (error) {
+						console.warn('Date formatting error:', error, 'for value:', dateValue);
+						dateDisplay = 'Invalid date';
+					}
+				} else {
+					console.warn('Invalid date value:', dateValue);
+					dateDisplay = 'Invalid date';
+				}
+			}
 
 			// Generate display name from subtask info
 			const subtaskInfo = item.metadata?.subtaskInfo;
