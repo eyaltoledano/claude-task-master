@@ -543,16 +543,22 @@ export class ExpandTracker {
 		// For expand-all, calculate fractional progress including current task's subtasks
 		let fractionalProgress = this.completedExpansions;
 		if (this.currentTaskSubtaskCount > 0) {
-			fractionalProgress += this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+			fractionalProgress +=
+				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
 		}
 
 		// For expand-all, provide estimate as soon as we have meaningful progress
-		if (fractionalProgress < 0.05) { // Need at least 5% progress for meaningful estimate
+		if (fractionalProgress < 0.05) {
+			// Need at least 5% progress for meaningful estimate
 			return 'Est: ~calculating...';
 		}
 
 		// We don't have a stable average yet but have some progress, so provide initial estimate
-		if (!this.bestAvgTimePerExpansion && fractionalProgress > 0 && this.startTime) {
+		if (
+			!this.bestAvgTimePerExpansion &&
+			fractionalProgress > 0 &&
+			this.startTime
+		) {
 			const elapsed = (Date.now() - this.startTime) / 1000;
 			const avgTimePerTask = elapsed / fractionalProgress;
 			const remainingProgress = this.numTasks - fractionalProgress;
