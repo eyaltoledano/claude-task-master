@@ -1,1 +1,1 @@
-console.log("Test file created");
+console.log('Test file created');

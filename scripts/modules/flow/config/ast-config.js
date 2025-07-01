@@ -13,7 +13,13 @@ const DEFAULT_AST_CONFIG = {
 	cacheMaxAge: '2h',
 	cacheMaxSize: '100MB',
 	supportedLanguages: ['javascript', 'typescript', 'python', 'go'],
-	excludePatterns: ['node_modules/**', 'dist/**', 'build/**', '.git/**', '*.min.js'],
+	excludePatterns: [
+		'node_modules/**',
+		'dist/**',
+		'build/**',
+		'.git/**',
+		'*.min.js'
+	],
 	contextInclusion: {
 		maxFunctions: 10,
 		maxComplexityScore: 8,
@@ -33,11 +39,11 @@ export async function loadASTConfig() {
 			path.dirname(fileURLToPath(import.meta.url)),
 			'../flow-config.json'
 		);
-		
+
 		try {
 			const flowConfig = await fs.readFile(flowConfigPath, 'utf8');
 			const flowParsed = JSON.parse(flowConfig);
-			
+
 			if (flowParsed.ast) {
 				// Merge with defaults to ensure all required fields exist
 				return {
@@ -71,12 +77,12 @@ export async function loadASTConfig() {
  */
 export function validateASTConfig(config) {
 	const errors = [];
-	
+
 	// Check required fields
 	if (typeof config.enabled !== 'boolean') {
 		errors.push('enabled must be a boolean');
 	}
-	
+
 	if (typeof config.cacheMaxAge !== 'string') {
 		errors.push('cacheMaxAge must be a string');
 	} else {
@@ -86,7 +92,7 @@ export function validateASTConfig(config) {
 			errors.push('cacheMaxAge must be in format like "2h", "30m", or "24h"');
 		}
 	}
-	
+
 	if (typeof config.cacheMaxSize !== 'string') {
 		errors.push('cacheMaxSize must be a string');
 	} else {
@@ -96,21 +102,35 @@ export function validateASTConfig(config) {
 			errors.push('cacheMaxSize must be in format like "100MB" or "1GB"');
 		}
 	}
-	
+
 	if (!Array.isArray(config.supportedLanguages)) {
 		errors.push('supportedLanguages must be an array');
 	} else {
-		const validLanguages = ['javascript', 'typescript', 'python', 'go', 'rust', 'java', 'csharp', 'php', 'ruby'];
-		const invalidLanguages = config.supportedLanguages.filter(lang => !validLanguages.includes(lang));
+		const validLanguages = [
+			'javascript',
+			'typescript',
+			'python',
+			'go',
+			'rust',
+			'java',
+			'csharp',
+			'php',
+			'ruby'
+		];
+		const invalidLanguages = config.supportedLanguages.filter(
+			(lang) => !validLanguages.includes(lang)
+		);
 		if (invalidLanguages.length > 0) {
-			errors.push(`Invalid languages: ${invalidLanguages.join(', ')}. Valid languages: ${validLanguages.join(', ')}`);
+			errors.push(
+				`Invalid languages: ${invalidLanguages.join(', ')}. Valid languages: ${validLanguages.join(', ')}`
+			);
 		}
 	}
-	
+
 	if (!Array.isArray(config.excludePatterns)) {
 		errors.push('excludePatterns must be an array');
 	}
-	
+
 	if (!config.contextInclusion || typeof config.contextInclusion !== 'object') {
 		errors.push('contextInclusion must be an object');
 	} else {
@@ -118,8 +138,14 @@ export function validateASTConfig(config) {
 		if (typeof ctx.maxFunctions !== 'number' || ctx.maxFunctions < 1) {
 			errors.push('contextInclusion.maxFunctions must be a positive number');
 		}
-		if (typeof ctx.maxComplexityScore !== 'number' || ctx.maxComplexityScore < 1 || ctx.maxComplexityScore > 10) {
-			errors.push('contextInclusion.maxComplexityScore must be a number between 1 and 10');
+		if (
+			typeof ctx.maxComplexityScore !== 'number' ||
+			ctx.maxComplexityScore < 1 ||
+			ctx.maxComplexityScore > 10
+		) {
+			errors.push(
+				'contextInclusion.maxComplexityScore must be a number between 1 and 10'
+			);
 		}
 		if (typeof ctx.includeImports !== 'boolean') {
 			errors.push('contextInclusion.includeImports must be a boolean');
@@ -128,7 +154,7 @@ export function validateASTConfig(config) {
 			errors.push('contextInclusion.includeDependencies must be a boolean');
 		}
 	}
-	
+
 	return {
 		isValid: errors.length === 0,
 		errors,
@@ -146,15 +172,19 @@ export function parseCacheDuration(duration) {
 	if (!match) {
 		throw new Error(`Invalid duration format: ${duration}`);
 	}
-	
+
 	const value = parseInt(match[1], 10);
 	const unit = match[2];
-	
+
 	switch (unit) {
-		case 'm': return value * 60 * 1000; // minutes to ms
-		case 'h': return value * 60 * 60 * 1000; // hours to ms  
-		case 'd': return value * 24 * 60 * 60 * 1000; // days to ms
-		default: throw new Error(`Invalid duration unit: ${unit}`);
+		case 'm':
+			return value * 60 * 1000; // minutes to ms
+		case 'h':
+			return value * 60 * 60 * 1000; // hours to ms
+		case 'd':
+			return value * 24 * 60 * 60 * 1000; // days to ms
+		default:
+			throw new Error(`Invalid duration unit: ${unit}`);
 	}
 }
 
@@ -168,14 +198,17 @@ export function parseCacheSize(size) {
 	if (!match) {
 		throw new Error(`Invalid size format: ${size}`);
 	}
-	
+
 	const value = parseInt(match[1], 10);
 	const unit = match[2];
-	
+
 	switch (unit) {
-		case 'MB': return value * 1024 * 1024; // MB to bytes
-		case 'GB': return value * 1024 * 1024 * 1024; // GB to bytes
-		default: throw new Error(`Invalid size unit: ${unit}`);
+		case 'MB':
+			return value * 1024 * 1024; // MB to bytes
+		case 'GB':
+			return value * 1024 * 1024 * 1024; // GB to bytes
+		default:
+			throw new Error(`Invalid size unit: ${unit}`);
 	}
 }
 
@@ -196,23 +229,23 @@ export function isLanguageSupported(config, language) {
  */
 export function getSupportedExtensions(config) {
 	const extensionMap = {
-		'javascript': ['.js', '.jsx'],
-		'typescript': ['.ts', '.tsx'],
-		'python': ['.py'],
-		'go': ['.go'],
-		'rust': ['.rs'],
-		'java': ['.java'],
-		'csharp': ['.cs'],
-		'php': ['.php'],
-		'ruby': ['.rb']
+		javascript: ['.js', '.jsx'],
+		typescript: ['.ts', '.tsx'],
+		python: ['.py'],
+		go: ['.go'],
+		rust: ['.rs'],
+		java: ['.java'],
+		csharp: ['.cs'],
+		php: ['.php'],
+		ruby: ['.rb']
 	};
-	
+
 	const extensions = [];
 	for (const language of config.supportedLanguages) {
 		if (extensionMap[language]) {
 			extensions.push(...extensionMap[language]);
 		}
 	}
-	
+
 	return [...new Set(extensions)]; // Remove duplicates
-} 
+}

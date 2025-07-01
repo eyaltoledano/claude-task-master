@@ -56,41 +56,41 @@ export class GoParser extends BaseParser {
 		const sourceDir = join(tempDir, `taskmaster_source_${timestamp}`);
 		const tempGoFile = join(parserDir, 'parser.go');
 		const tempSourceFile = join(sourceDir, 'source.go');
-		
+
 		try {
 			// Create the directories
 			await mkdir(parserDir, { recursive: true });
 			await mkdir(sourceDir, { recursive: true });
-			
+
 			// Write the Go parser program
 			const goProgram = this.createGoParserProgram();
 			await writeFile(tempGoFile, goProgram);
-			
+
 			// Write the source code to parse
 			await writeFile(tempSourceFile, content);
-			
+
 			return new Promise((resolve, reject) => {
 				// Run the Go parser program with the source file path as argument
 				const go = spawn(this.goExecutable, ['run', tempGoFile], {
 					cwd: parserDir,
 					env: { ...process.env, GOPATH: tempDir }
 				});
-				
+
 				// Send the source file path as input to the program
 				go.stdin.write(tempSourceFile);
 				go.stdin.end();
-				
+
 				let stdout = '';
 				let stderr = '';
-				
+
 				go.stdout.on('data', (data) => {
 					stdout += data.toString();
 				});
-				
+
 				go.stderr.on('data', (data) => {
 					stderr += data.toString();
 				});
-				
+
 				go.on('close', async (code) => {
 					// Clean up temporary files and directories
 					try {
@@ -101,12 +101,14 @@ export class GoParser extends BaseParser {
 					} catch (cleanupError) {
 						// Ignore cleanup errors
 					}
-					
+
 					if (code !== 0) {
-						reject(new Error(`Go parsing failed: ${stderr || 'Unknown error'}`));
+						reject(
+							new Error(`Go parsing failed: ${stderr || 'Unknown error'}`)
+						);
 						return;
 					}
-					
+
 					try {
 						const result = JSON.parse(stdout);
 						if (result.error) {
@@ -115,10 +117,12 @@ export class GoParser extends BaseParser {
 							resolve(result.ast);
 						}
 					} catch (parseError) {
-						reject(new Error(`Failed to parse Go AST JSON: ${parseError.message}`));
+						reject(
+							new Error(`Failed to parse Go AST JSON: ${parseError.message}`)
+						);
 					}
 				});
-				
+
 				go.on('error', async (error) => {
 					// Clean up temporary files and directories on error
 					try {
@@ -269,7 +273,7 @@ export class GoParser extends BaseParser {
 			'	json.NewEncoder(os.Stdout).Encode(result)',
 			'}'
 		];
-		
+
 		return lines.join('\n');
 	}
 
@@ -280,18 +284,18 @@ export class GoParser extends BaseParser {
 	 */
 	extractFunctions(ast) {
 		const functions = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'FuncDecl') {
 				const func = this.extractFunctionFromNode(node, ast);
 				if (func) functions.push(func);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return functions;
 	}
@@ -305,21 +309,21 @@ export class GoParser extends BaseParser {
 	extractFunctionFromNode(node, ast) {
 		const name = node.name || '<anonymous>';
 		const isExported = node.fields?.exported || false;
-		
+
 		// Extract parameters
 		const parameters = [];
 		if (node.fields?.params) {
-			node.fields.params.forEach(paramName => {
+			node.fields.params.forEach((paramName) => {
 				parameters.push({
 					name: paramName,
 					type: null // Go type information would need more parsing
 				});
 			});
 		}
-		
+
 		// Calculate complexity by counting control flow nodes
 		const complexity = this.calculateNodeComplexity(node);
-		
+
 		return this.createFunctionInfo(name, {
 			parameters,
 			lineStart: node.line,
@@ -338,18 +342,18 @@ export class GoParser extends BaseParser {
 	 */
 	extractClasses(ast) {
 		const types = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'TypeSpec') {
 				const type = this.extractTypeFromNode(node, ast);
 				if (type) types.push(type);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return types;
 	}
@@ -363,29 +367,35 @@ export class GoParser extends BaseParser {
 	extractTypeFromNode(node, ast) {
 		const name = node.name || '<anonymous>';
 		const isExported = node.fields?.exported || false;
-		
+
 		// Extract methods - would need to find functions with receiver matching this type
 		const methods = [];
-		
+
 		// Extract fields for struct types
 		const properties = [];
 		if (node.children) {
-			node.children.forEach(child => {
+			node.children.forEach((child) => {
 				if (child.type === 'StructType' && child.fields?.fieldNames) {
-					child.fields.fieldNames.forEach(fieldName => {
+					child.fields.fieldNames.forEach((fieldName) => {
 						properties.push({
 							name: fieldName,
 							type: null,
-							visibility: fieldName[0] === fieldName[0].toUpperCase() ? 'public' : 'private'
+							visibility:
+								fieldName[0] === fieldName[0].toUpperCase()
+									? 'public'
+									: 'private'
 						});
 					});
 				}
 			});
 		}
-		
+
 		// Calculate type complexity
-		const complexity = Math.min(10, methods.reduce((sum, method) => sum + (method.complexity || 1), 1));
-		
+		const complexity = Math.min(
+			10,
+			methods.reduce((sum, method) => sum + (method.complexity || 1), 1)
+		);
+
 		return this.createClassInfo(name, {
 			methods,
 			properties,
@@ -404,18 +414,18 @@ export class GoParser extends BaseParser {
 	 */
 	extractImports(ast) {
 		const imports = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'ImportSpec') {
 				const imp = this.extractImportFromNode(node, ast);
 				if (imp) imports.push(imp);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return imports;
 	}
@@ -429,7 +439,7 @@ export class GoParser extends BaseParser {
 	extractImportFromNode(node, ast) {
 		const source = node.fields?.path || '';
 		const alias = node.fields?.alias || null;
-		
+
 		return this.createImportInfo(source, {
 			imports: [alias || source.split('/').pop()], // Use alias or last part of path
 			defaultImport: alias,
@@ -444,24 +454,34 @@ export class GoParser extends BaseParser {
 	 */
 	calculateNodeComplexity(node) {
 		let complexity = 1; // Base complexity
-		
+
 		const visit = (n) => {
 			// Add complexity for control flow statements
-			if (['IfStmt', 'ForStmt', 'RangeStmt', 'SwitchStmt', 'TypeSwitchStmt', 
-				 'SelectStmt', 'CaseClause', 'CommClause'].includes(n.type)) {
+			if (
+				[
+					'IfStmt',
+					'ForStmt',
+					'RangeStmt',
+					'SwitchStmt',
+					'TypeSwitchStmt',
+					'SelectStmt',
+					'CaseClause',
+					'CommClause'
+				].includes(n.type)
+			) {
 				complexity++;
 			}
-			
+
 			// Add complexity for function literals (closures)
 			if (n.type === 'FuncLit') {
 				complexity++;
 			}
-			
+
 			if (n.children) {
 				n.children.forEach(visit);
 			}
 		};
-		
+
 		visit(node);
 		return Math.min(complexity, 10); // Cap at 10
 	}
@@ -474,13 +494,13 @@ export class GoParser extends BaseParser {
 	calculateComplexity(ast) {
 		const functions = this.extractFunctions(ast);
 		const types = this.extractClasses(ast);
-		
+
 		if (functions.length === 0 && types.length === 0) return 1;
 
 		// Calculate average complexity
 		const totalComplexity = [
-			...functions.map(f => f.complexity || 1),
-			...types.map(t => t.complexity || 1)
+			...functions.map((f) => f.complexity || 1),
+			...types.map((t) => t.complexity || 1)
 		].reduce((sum, c) => sum + c, 0);
 
 		const itemCount = functions.length + types.length;
@@ -504,23 +524,23 @@ export class GoParser extends BaseParser {
 	 */
 	validateContent(content) {
 		if (!super.validateContent(content)) return false;
-		
+
 		// Basic Go syntax check
 		const goPatterns = [
-			/package\s+\w+/,            // Package declaration
-			/func\s+\w+\s*\(/,          // Function definitions
-			/type\s+\w+\s+struct/,      // Struct definitions
-			/type\s+\w+\s+interface/,   // Interface definitions
-			/import\s*[\("]/,           // Import statements
-			/var\s+\w+/,                // Variable declarations
-			/const\s+\w+/,              // Constant declarations
-			/if\s+.*\{/,                // If statements
-			/for\s+.*\{/,               // For loops
-			/switch\s+.*\{/,            // Switch statements
-			/^\s*\/\//m                 // Comments
+			/package\s+\w+/, // Package declaration
+			/func\s+\w+\s*\(/, // Function definitions
+			/type\s+\w+\s+struct/, // Struct definitions
+			/type\s+\w+\s+interface/, // Interface definitions
+			/import\s*[\("]/, // Import statements
+			/var\s+\w+/, // Variable declarations
+			/const\s+\w+/, // Constant declarations
+			/if\s+.*\{/, // If statements
+			/for\s+.*\{/, // For loops
+			/switch\s+.*\{/, // Switch statements
+			/^\s*\/\//m // Comments
 		];
-		
+
 		// Content should match at least one Go pattern
-		return goPatterns.some(pattern => pattern.test(content));
+		return goPatterns.some((pattern) => pattern.test(content));
 	}
-} 
+}

@@ -86,24 +86,24 @@ const __dirname = path.dirname(__filename);
 export const HOOK_EVENTS = {
 	// Pre-launch validation
 	PRE_LAUNCH: 'pre-launch',
-	
+
 	// Worktree lifecycle
 	POST_WORKTREE: 'post-worktree',
-	
+
 	// Research lifecycle
 	PRE_RESEARCH: 'pre-research',
 	POST_RESEARCH: 'post-research',
-	
+
 	// CLAUDE.md lifecycle
 	PRE_CLAUDE_MD: 'pre-claude-md',
 	POST_CLAUDE_MD: 'post-claude-md',
-	
+
 	// Session lifecycle
 	SESSION_STARTED: 'session-started',
 	SESSION_MESSAGE: 'session-message',
 	SESSION_COMPLETED: 'session-completed',
 	SESSION_FAILED: 'session-failed',
-	
+
 	// PR lifecycle
 	PRE_PR: 'pre-pr',
 	PR_CREATED: 'pr-created'
@@ -132,19 +132,18 @@ export class HookManager {
 		try {
 			// Load configuration
 			this.config = await this.loadConfiguration();
-			
+
 			// Initialize storage
 			await this.storage.initialize();
-			
+
 			// Load built-in hooks
 			await this.loadBuiltInHooks();
-			
+
 			// Load user hooks (if any)
 			await this.loadUserHooks();
-			
+
 			this.initialized = true;
 			console.log(`🎣 Hook system initialized with ${this.hooks.size} hooks`);
-			
 		} catch (error) {
 			console.error('Failed to initialize hook system:', error);
 			throw error;
@@ -157,7 +156,9 @@ export class HookManager {
 	async loadConfiguration() {
 		try {
 			const configPath = path.join(__dirname, 'config', 'default-config.json');
-			const { default: config } = await import(configPath, { assert: { type: 'json' } });
+			const { default: config } = await import(configPath, {
+				assert: { type: 'json' }
+			});
 			return config;
 		} catch (error) {
 			console.warn('Failed to load hook configuration, using defaults:', error);
@@ -195,9 +196,9 @@ export class HookManager {
 
 				const hookPath = path.join(__dirname, 'built-in', `${hookName}.js`);
 				const { default: HookClass } = await import(hookPath);
-				
+
 				const hookInstance = new HookClass();
-				
+
 				// Validate hook
 				const validation = this.validator.validateHook(hookInstance);
 				if (!validation.valid) {
@@ -213,7 +214,6 @@ export class HookManager {
 				});
 
 				console.log(`✅ Loaded built-in hook: ${hookName}`);
-				
 			} catch (error) {
 				console.error(`❌ Failed to load built-in hook ${hookName}:`, error);
 			}
@@ -238,8 +238,8 @@ export class HookManager {
 		}
 
 		const eventHooks = Array.from(this.hooks.values())
-			.filter(hook => hook.instance.events.includes(event))
-			.filter(hook => hook.config.enabled !== false);
+			.filter((hook) => hook.instance.events.includes(event))
+			.filter((hook) => hook.config.enabled !== false);
 
 		if (eventHooks.length === 0) {
 			return { success: true, results: [] };
@@ -262,7 +262,7 @@ export class HookManager {
 					hookContext,
 					hook.config
 				);
-				
+
 				results.push({
 					hookName: hook.instance.constructor.name,
 					event,
@@ -280,9 +280,11 @@ export class HookManager {
 						result.data
 					);
 				}
-
 			} catch (error) {
-				console.error(`❌ Hook execution failed for ${hook.instance.constructor.name}:`, error);
+				console.error(
+					`❌ Hook execution failed for ${hook.instance.constructor.name}:`,
+					error
+				);
 				results.push({
 					hookName: hook.instance.constructor.name,
 					event,
@@ -293,8 +295,8 @@ export class HookManager {
 			}
 		}
 
-		const allSuccessful = results.every(r => r.success);
-		
+		const allSuccessful = results.every((r) => r.success);
+
 		return {
 			success: allSuccessful,
 			results,
@@ -356,12 +358,12 @@ export class HookManager {
 		}
 
 		hook.config.enabled = enabled;
-		
+
 		// Persist configuration change if needed
 		// This would update the config file in a real implementation
-		
+
 		console.log(`🎣 Hook ${hookName} ${enabled ? 'enabled' : 'disabled'}`);
-		
+
 		return true;
 	}
 
@@ -379,10 +381,10 @@ export class HookManager {
 		if (this.storage) {
 			await this.storage.cleanup();
 		}
-		
+
 		this.hooks.clear();
 		this.initialized = false;
-		
+
 		console.log('🎣 Hook system cleaned up');
 	}
 }

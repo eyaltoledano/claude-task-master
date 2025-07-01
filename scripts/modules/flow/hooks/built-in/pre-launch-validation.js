@@ -4,7 +4,8 @@
 export default class PreLaunchValidationHook {
 	constructor() {
 		this.version = '1.0.0';
-		this.description = 'Validates environment and task scope before starting Claude Code sessions';
+		this.description =
+			'Validates environment and task scope before starting Claude Code sessions';
 		this.events = ['pre-launch'];
 		this.timeout = 10000; // 10 seconds
 	}
@@ -46,7 +47,6 @@ export default class PreLaunchValidationHook {
 				passed: validation.errors.length === 0,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				validation: {
@@ -70,20 +70,26 @@ export default class PreLaunchValidationHook {
 		try {
 			// Check if we're in a git repository
 			if (!services.git) {
-				validation.warnings.push('Git service not available - skipping git checks');
+				validation.warnings.push(
+					'Git service not available - skipping git checks'
+				);
 				validation.checks.git = { status: 'skipped', reason: 'no-git-service' };
 				return;
 			}
 
 			// Check for uncommitted changes
 			const status = await this.getGitStatus(services);
-			
+
 			if (status.hasUncommittedChanges) {
-				validation.warnings.push('Uncommitted changes detected - consider committing before starting Claude Code');
+				validation.warnings.push(
+					'Uncommitted changes detected - consider committing before starting Claude Code'
+				);
 			}
 
 			if (status.hasUntrackedFiles) {
-				validation.warnings.push('Untracked files detected - consider adding them to git');
+				validation.warnings.push(
+					'Untracked files detected - consider adding them to git'
+				);
 			}
 
 			validation.checks.git = {
@@ -92,7 +98,6 @@ export default class PreLaunchValidationHook {
 				untrackedFiles: status.hasUntrackedFiles,
 				currentBranch: status.currentBranch
 			};
-
 		} catch (error) {
 			validation.warnings.push(`Git status check failed: ${error.message}`);
 			validation.checks.git = { status: 'failed', error: error.message };
@@ -108,14 +113,20 @@ export default class PreLaunchValidationHook {
 		try {
 			if (!task) {
 				validation.errors.push('No task provided for validation');
-				validation.checks.dependencies = { status: 'failed', reason: 'no-task' };
+				validation.checks.dependencies = {
+					status: 'failed',
+					reason: 'no-task'
+				};
 				return;
 			}
 
 			// Check if task has dependencies
 			if (task.dependencies && task.dependencies.length > 0) {
-				const dependencyStatus = await this.checkDependencyStatus(task, services);
-				
+				const dependencyStatus = await this.checkDependencyStatus(
+					task,
+					services
+				);
+
 				if (dependencyStatus.hasUncompletedDependencies) {
 					validation.errors.push(
 						`Task has uncompleted dependencies: ${dependencyStatus.uncompletedDependencies.join(', ')}`
@@ -123,18 +134,25 @@ export default class PreLaunchValidationHook {
 				}
 
 				validation.checks.dependencies = {
-					status: dependencyStatus.hasUncompletedDependencies ? 'failed' : 'passed',
+					status: dependencyStatus.hasUncompletedDependencies
+						? 'failed'
+						: 'passed',
 					totalDependencies: task.dependencies.length,
 					completedDependencies: dependencyStatus.completedDependencies.length,
 					uncompletedDependencies: dependencyStatus.uncompletedDependencies
 				};
 			} else {
-				validation.checks.dependencies = { status: 'passed', reason: 'no-dependencies' };
+				validation.checks.dependencies = {
+					status: 'passed',
+					reason: 'no-dependencies'
+				};
 			}
-
 		} catch (error) {
 			validation.warnings.push(`Dependency check failed: ${error.message}`);
-			validation.checks.dependencies = { status: 'failed', error: error.message };
+			validation.checks.dependencies = {
+				status: 'failed',
+				error: error.message
+			};
 		}
 	}
 
@@ -149,7 +167,7 @@ export default class PreLaunchValidationHook {
 				// No existing worktree, check if we can create one
 				const branchName = this.generateBranchName(task);
 				const conflicts = await this.checkBranchConflicts(branchName, services);
-				
+
 				if (conflicts.hasConflicts) {
 					validation.warnings.push(
 						`Branch ${branchName} already exists - worktree creation may require user input`
@@ -164,10 +182,15 @@ export default class PreLaunchValidationHook {
 				};
 			} else {
 				// Existing worktree, validate it's accessible
-				const isAccessible = await this.validateWorktreeAccess(worktree, services);
-				
+				const isAccessible = await this.validateWorktreeAccess(
+					worktree,
+					services
+				);
+
 				if (!isAccessible) {
-					validation.errors.push(`Worktree at ${worktree.path} is not accessible`);
+					validation.errors.push(
+						`Worktree at ${worktree.path} is not accessible`
+					);
 				}
 
 				validation.checks.worktree = {
@@ -178,7 +201,6 @@ export default class PreLaunchValidationHook {
 					accessible: isAccessible
 				};
 			}
-
 		} catch (error) {
 			validation.warnings.push(`Worktree validation failed: ${error.message}`);
 			validation.checks.worktree = { status: 'failed', error: error.message };
@@ -206,10 +228,13 @@ export default class PreLaunchValidationHook {
 
 			// Validate tool restrictions
 			if (config.toolRestrictions) {
-				const { allowShellCommands, allowFileOperations, allowWebSearch } = config.toolRestrictions;
-				
+				const { allowShellCommands, allowFileOperations, allowWebSearch } =
+					config.toolRestrictions;
+
 				if (!allowShellCommands && !allowFileOperations) {
-					validation.warnings.push('Both shell commands and file operations are restricted - Claude may have limited capabilities');
+					validation.warnings.push(
+						'Both shell commands and file operations are restricted - Claude may have limited capabilities'
+					);
 				}
 			}
 
@@ -219,9 +244,10 @@ export default class PreLaunchValidationHook {
 			} else {
 				validation.checks.config = { status: 'passed' };
 			}
-
 		} catch (error) {
-			validation.warnings.push(`Configuration validation failed: ${error.message}`);
+			validation.warnings.push(
+				`Configuration validation failed: ${error.message}`
+			);
 			validation.checks.config = { status: 'failed', error: error.message };
 		}
 	}
@@ -269,7 +295,7 @@ export default class PreLaunchValidationHook {
 
 	generateBranchName(task) {
 		if (!task) return 'task-unknown';
-		
+
 		const isSubtask = task.isSubtask || String(task.id).includes('.');
 		if (isSubtask) {
 			return `task-${task.id}`;
@@ -292,4 +318,4 @@ export default class PreLaunchValidationHook {
 		// For now, assume it's accessible
 		return true;
 	}
-} 
+}

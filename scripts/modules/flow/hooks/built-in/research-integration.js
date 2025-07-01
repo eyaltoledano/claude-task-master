@@ -4,7 +4,8 @@
 export default class ResearchIntegrationHook {
 	constructor() {
 		this.version = '1.0.0';
-		this.description = 'Analyzes tasks for research needs and manages research workflow';
+		this.description =
+			'Analyzes tasks for research needs and manages research workflow';
 		this.events = ['pre-research', 'post-research'];
 		this.timeout = 30000; // 30 seconds
 	}
@@ -41,12 +42,20 @@ export default class ResearchIntegrationHook {
 		try {
 			// Update task with research findings
 			if (config.updateTaskDetails && services.backend) {
-				await this.updateTaskWithResearch(task, researchResults, services.backend);
+				await this.updateTaskWithResearch(
+					task,
+					researchResults,
+					services.backend
+				);
 			}
 
 			// Cache research results if configured
 			if (config.cacheResults && services.storage) {
-				await this.cacheResearchResults(task, researchResults, services.storage);
+				await this.cacheResearchResults(
+					task,
+					researchResults,
+					services.storage
+				);
 			}
 
 			return {
@@ -55,7 +64,6 @@ export default class ResearchIntegrationHook {
 				cached: config.cacheResults,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -71,7 +79,7 @@ export default class ResearchIntegrationHook {
 		try {
 			// Check if research already exists
 			const existingResearch = utils.extractResearchFromTask(task);
-			
+
 			if (existingResearch && config.autoDetectExisting) {
 				return {
 					researchStatus: {
@@ -87,10 +95,10 @@ export default class ResearchIntegrationHook {
 
 			// Analyze task content for research indicators
 			const analysis = utils.analyzeTaskForResearch(task);
-			
+
 			// Apply confidence threshold from config
 			const threshold = config.confidenceThreshold || 0.7;
-			const needsResearch = analysis.confidence >= (threshold * 100);
+			const needsResearch = analysis.confidence >= threshold * 100;
 
 			const researchStatus = {
 				needed: needsResearch,
@@ -99,15 +107,17 @@ export default class ResearchIntegrationHook {
 				confidence: analysis.confidence,
 				score: analysis.score,
 				keywords: analysis.keywords,
-				suggestions: analysis.suggestions.slice(0, config.maxSuggestedQueries || 3),
+				suggestions: analysis.suggestions.slice(
+					0,
+					config.maxSuggestedQueries || 3
+				),
 				threshold: threshold * 100,
-				message: needsResearch 
+				message: needsResearch
 					? `Research recommended (${analysis.confidence}% confidence)`
 					: `Research not needed (${analysis.confidence}% confidence)`
 			};
 
 			return { researchStatus };
-
 		} catch (error) {
 			return {
 				researchStatus: {
@@ -127,11 +137,14 @@ export default class ResearchIntegrationHook {
 		try {
 			// Generate research queries
 			const analysis = utils.analyzeTaskForResearch(task);
-			const queries = analysis.suggestions.slice(0, config.maxSuggestedQueries || 3);
+			const queries = analysis.suggestions.slice(
+				0,
+				config.maxSuggestedQueries || 3
+			);
 
 			// Add context-specific queries
 			const contextQueries = this.generateContextQueries(task);
-			
+
 			const allQueries = [...queries, ...contextQueries]
 				.filter((query, index, arr) => arr.indexOf(query) === index) // Remove duplicates
 				.slice(0, 5); // Limit total queries
@@ -143,7 +156,6 @@ export default class ResearchIntegrationHook {
 				confidence: analysis.confidence,
 				prepared: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -157,15 +169,24 @@ export default class ResearchIntegrationHook {
 	 */
 	generateContextQueries(task) {
 		const queries = [];
-		const text = `${task.title} ${task.description} ${task.details || ''}`.toLowerCase();
+		const text =
+			`${task.title} ${task.description} ${task.details || ''}`.toLowerCase();
 
 		// Security-related queries
-		if (text.includes('security') || text.includes('auth') || text.includes('login')) {
+		if (
+			text.includes('security') ||
+			text.includes('auth') ||
+			text.includes('login')
+		) {
 			queries.push('Security best practices for authentication implementation');
 		}
 
 		// Performance-related queries
-		if (text.includes('performance') || text.includes('optimization') || text.includes('speed')) {
+		if (
+			text.includes('performance') ||
+			text.includes('optimization') ||
+			text.includes('speed')
+		) {
 			queries.push('Performance optimization techniques and best practices');
 		}
 
@@ -175,7 +196,11 @@ export default class ResearchIntegrationHook {
 		}
 
 		// Database-related queries
-		if (text.includes('database') || text.includes('db') || text.includes('sql')) {
+		if (
+			text.includes('database') ||
+			text.includes('db') ||
+			text.includes('sql')
+		) {
 			queries.push('Database design patterns and optimization');
 		}
 
@@ -189,10 +214,10 @@ export default class ResearchIntegrationHook {
 		try {
 			// Format research content for task details
 			const researchSummary = this.formatResearchForTask(researchResults);
-			
+
 			// Determine if this is a task or subtask
 			const isSubtask = task.id && task.id.toString().includes('.');
-			
+
 			if (isSubtask) {
 				// Update subtask
 				await backend.updateSubtask(task.id, researchSummary);
@@ -213,9 +238,9 @@ export default class ResearchIntegrationHook {
 	 */
 	formatResearchForTask(researchResults) {
 		const timestamp = new Date().toISOString();
-		
+
 		let summary = `Research completed on ${new Date().toLocaleDateString()}:\n\n`;
-		
+
 		if (researchResults.query) {
 			summary += `**Research Query:** ${researchResults.query}\n\n`;
 		}
@@ -224,7 +249,10 @@ export default class ResearchIntegrationHook {
 			summary += `**Key Findings:**\n${researchResults.summary}\n\n`;
 		}
 
-		if (researchResults.recommendations && researchResults.recommendations.length > 0) {
+		if (
+			researchResults.recommendations &&
+			researchResults.recommendations.length > 0
+		) {
 			summary += `**Recommendations:**\n`;
 			researchResults.recommendations.forEach((rec, index) => {
 				summary += `${index + 1}. ${rec}\n`;
@@ -275,4 +303,4 @@ export default class ResearchIntegrationHook {
 			return null;
 		}
 	}
-} 
+}

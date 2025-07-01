@@ -20,7 +20,7 @@ function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
 	const [operationId, setOperationId] = useState(null);
 	const [backgroundChoice, setBackgroundChoice] = useState(null); // null, 'background', 'modal'
 	const { theme } = useComponentTheme('modal');
-	
+
 	// Initialize background service
 	const backgroundClaudeCode = new BackgroundClaudeCode(backend);
 
@@ -110,7 +110,9 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 
 			// Show background notification
 			setMode('background-confirm');
-			setSuccess(`Claude Code is running in the background (Operation ID: ${operation.operationId.slice(0, 8)}...)`);
+			setSuccess(
+				`Claude Code is running in the background (Operation ID: ${operation.operationId.slice(0, 8)}...)`
+			);
 			setIsProcessing(false);
 
 			// Close modal after 3 seconds
@@ -362,9 +364,7 @@ Focus on implementing this specific task. Be thorough but stay within scope.`;
 						</Box>
 
 						<Box>
-							<Text color={theme.warning}>
-								[M] Keep Modal Open
-							</Text>
+							<Text color={theme.warning}>[M] Keep Modal Open</Text>
 							<Box marginLeft={4}>
 								<Text color={theme.textDim}>
 									Watch the progress in real-time (blocks other work)

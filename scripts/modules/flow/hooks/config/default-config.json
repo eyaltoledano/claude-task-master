@@ -1,74 +1,74 @@
 {
-  "enabled": true,
-  "version": "1.0.0",
-  "hooks": {
-    "pre-launch-validation": {
-      "enabled": true,
-      "config": {
-        "checkGitStatus": true,
-        "validateDependencies": true,
-        "checkConflicts": true,
-        "strictMode": false,
-        "timeout": 10000
-      }
-    },
-    "research-integration": {
-      "enabled": true,
-      "config": {
-        "autoDetectExisting": true,
-        "confidenceThreshold": 0.7,
-        "maxSuggestedQueries": 3,
-        "cacheResults": true,
-        "timeout": 30000
-      }
-    },
-    "progress-tracking": {
-      "enabled": true,
-      "config": {
-        "updateTaskDetails": true,
-        "trackFileChanges": true,
-        "logInterval": 5000,
-        "maxLogEntries": 100,
-        "timeout": 5000
-      }
-    },
-    "worktree-management": {
-      "enabled": true,
-      "config": {
-        "autoCleanup": false,
-        "validateBranches": true,
-        "trackChanges": true,
-        "timeout": 15000
-      }
-    },
-    "session-completion": {
-      "enabled": true,
-      "config": {
-        "updateTaskStatus": true,
-        "generateSummary": true,
-        "saveMetrics": true,
-        "timeout": 10000
-      }
-    },
-    "pr-automation": {
-      "enabled": true,
-      "config": {
-        "useGlobalSetting": true,
-        "defaultTemplate": "claude-code",
-        "autoLabels": ["claude-code", "auto-generated"],
-        "timeout": 20000
-      }
-    }
-  },
-  "global": {
-    "maxConcurrentHooks": 5,
-    "defaultTimeout": 30000,
-    "logLevel": "info",
-    "enableMetrics": true,
-    "storage": {
-      "maxAge": 2592000000,
-      "backupInterval": 86400000,
-      "maxBackups": 10
-    }
-  }
-} 
+	"enabled": true,
+	"version": "1.0.0",
+	"hooks": {
+		"pre-launch-validation": {
+			"enabled": true,
+			"config": {
+				"checkGitStatus": true,
+				"validateDependencies": true,
+				"checkConflicts": true,
+				"strictMode": false,
+				"timeout": 10000
+			}
+		},
+		"research-integration": {
+			"enabled": true,
+			"config": {
+				"autoDetectExisting": true,
+				"confidenceThreshold": 0.7,
+				"maxSuggestedQueries": 3,
+				"cacheResults": true,
+				"timeout": 30000
+			}
+		},
+		"progress-tracking": {
+			"enabled": true,
+			"config": {
+				"updateTaskDetails": true,
+				"trackFileChanges": true,
+				"logInterval": 5000,
+				"maxLogEntries": 100,
+				"timeout": 5000
+			}
+		},
+		"worktree-management": {
+			"enabled": true,
+			"config": {
+				"autoCleanup": false,
+				"validateBranches": true,
+				"trackChanges": true,
+				"timeout": 15000
+			}
+		},
+		"session-completion": {
+			"enabled": true,
+			"config": {
+				"updateTaskStatus": true,
+				"generateSummary": true,
+				"saveMetrics": true,
+				"timeout": 10000
+			}
+		},
+		"pr-automation": {
+			"enabled": true,
+			"config": {
+				"useGlobalSetting": true,
+				"defaultTemplate": "claude-code",
+				"autoLabels": ["claude-code", "auto-generated"],
+				"timeout": 20000
+			}
+		}
+	},
+	"global": {
+		"maxConcurrentHooks": 5,
+		"defaultTimeout": 30000,
+		"logLevel": "info",
+		"enableMetrics": true,
+		"storage": {
+			"maxAge": 2592000000,
+			"backupInterval": 86400000,
+			"maxBackups": 10
+		}
+	}
+}

@@ -28,7 +28,13 @@
 		"cacheMaxAge": "2h",
 		"cacheMaxSize": "100MB",
 		"supportedLanguages": ["javascript", "typescript", "python", "go"],
-		"excludePatterns": ["node_modules/**", "dist/**", "build/**", ".git/**", "*.min.js"],
+		"excludePatterns": [
+			"node_modules/**",
+			"dist/**",
+			"build/**",
+			".git/**",
+			"*.min.js"
+		],
 		"contextInclusion": {
 			"maxFunctions": 10,
 			"maxComplexityScore": 8,

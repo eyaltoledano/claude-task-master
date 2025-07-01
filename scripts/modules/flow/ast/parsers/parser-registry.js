@@ -70,7 +70,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 			fallbackToSimpleParsing: true,
 			...options
 		};
-		
+
 		this.parserCache = new Map();
 		this.initialized = false;
 	}
@@ -113,8 +113,9 @@ export class EnhancedParserRegistry extends ParserRegistry {
 
 		try {
 			// Determine language
-			const detectedLanguage = language || this.detectLanguage(filePath, content);
-			
+			const detectedLanguage =
+				language || this.detectLanguage(filePath, content);
+
 			if (!detectedLanguage) {
 				return {
 					success: false,
@@ -128,7 +129,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 
 			// Get parser for language
 			const parser = this.getParser(detectedLanguage);
-			
+
 			if (!parser) {
 				return {
 					success: false,
@@ -143,7 +144,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 
 			// Parse the file
 			const result = await parser.parse(filePath, content);
-			
+
 			// Add metadata to result
 			if (result.success) {
 				result.metadata = {
@@ -155,7 +156,6 @@ export class EnhancedParserRegistry extends ParserRegistry {
 			}
 
 			return result;
-
 		} catch (error) {
 			return {
 				success: false,
@@ -197,7 +197,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 	 */
 	detectLanguageByExtension(filePath) {
 		const extension = this.getFileExtension(filePath);
-		
+
 		for (const [language, config] of Object.entries(LANGUAGE_PATTERNS)) {
 			if (config.extensions.includes(extension)) {
 				return language;
@@ -222,7 +222,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 		// Score each language based on pattern matches
 		for (const [language, config] of Object.entries(LANGUAGE_PATTERNS)) {
 			let score = 0;
-			
+
 			for (const pattern of config.patterns) {
 				const matches = content.match(pattern);
 				if (matches) {
@@ -236,7 +236,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 		// Return language with highest score (if any)
 		const maxScore = Math.max(...Object.values(scores));
 		if (maxScore > 0) {
-			return Object.keys(scores).find(lang => scores[lang] === maxScore);
+			return Object.keys(scores).find((lang) => scores[lang] === maxScore);
 		}
 
 		return null;
@@ -258,7 +258,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 	 */
 	getSupportedExtensionsByLanguage() {
 		const extensions = {};
-		
+
 		for (const [language, config] of Object.entries(LANGUAGE_PATTERNS)) {
 			extensions[language] = config.extensions;
 		}
@@ -283,7 +283,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 	getStatistics() {
 		const languages = this.getSupportedLanguages();
 		const extensions = this.getSupportedExtensions();
-		
+
 		return {
 			initialized: this.initialized,
 			supportedLanguages: languages.length,
@@ -314,7 +314,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 		// Test each parser with sample content
 		for (const [language, config] of Object.entries(LANGUAGE_PATTERNS)) {
 			const parser = this.getParser(language);
-			
+
 			if (!parser) {
 				validation.errors.push(`Parser not found for language: ${language}`);
 				validation.success = false;
@@ -323,7 +323,7 @@ export class EnhancedParserRegistry extends ParserRegistry {
 
 			// Create minimal valid content for the language
 			const sampleContent = this.createSampleContent(language);
-			
+
 			try {
 				// Test parsing without actual execution
 				const isValid = parser.validateContent(sampleContent);
@@ -337,7 +337,9 @@ export class EnhancedParserRegistry extends ParserRegistry {
 					available: false,
 					error: error.message
 				};
-				validation.warnings.push(`Parser for ${language} may have issues: ${error.message}`);
+				validation.warnings.push(
+					`Parser for ${language} may have issues: ${error.message}`
+				);
 			}
 		}
 
@@ -411,4 +413,4 @@ export function getRegistryStatistics() {
 
 // Export parser classes for direct use
 export { JavaScriptParser, PythonParser, GoParser };
-export { BaseParser, AST_NODE_TYPES } from './base-parser.js'; 
+export { BaseParser, AST_NODE_TYPES } from './base-parser.js';

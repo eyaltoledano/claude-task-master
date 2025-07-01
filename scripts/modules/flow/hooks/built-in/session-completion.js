@@ -5,7 +5,12 @@ export default class SessionCompletionHook {
 	constructor() {
 		this.version = '1.0.0';
 		this.description = 'Handles session completion, cleanup, and PR creation';
-		this.events = ['session-completed', 'session-failed', 'pre-pr', 'pr-created'];
+		this.events = [
+			'session-completed',
+			'session-failed',
+			'pre-pr',
+			'pr-created'
+		];
 		this.timeout = 30000; // 30 seconds
 	}
 
@@ -25,7 +30,11 @@ export default class SessionCompletionHook {
 
 			// Collect session statistics
 			if (config.collectStatistics) {
-				completionResult.statistics = await this.collectSessionStatistics(session, worktree, services);
+				completionResult.statistics = await this.collectSessionStatistics(
+					session,
+					worktree,
+					services
+				);
 			}
 
 			// Update task status if configured
@@ -36,23 +45,35 @@ export default class SessionCompletionHook {
 
 			// Generate completion summary
 			if (config.generateSummary) {
-				const summary = await this.generateCompletionSummary(session, task, worktree);
+				const summary = await this.generateCompletionSummary(
+					session,
+					task,
+					worktree
+				);
 				completionResult.summary = summary;
 				completionResult.actions.push('summary-generated');
 			}
 
 			// Check if PR should be created
 			if (config.autoCreatePR && this.shouldCreatePR(session, config)) {
-				const prResult = await this.handlePRCreation(session, task, worktree, services);
+				const prResult = await this.handlePRCreation(
+					session,
+					task,
+					worktree,
+					services
+				);
 				completionResult.prResult = prResult;
 				completionResult.actions.push('pr-created');
 			}
 
 			// Generate recommendations
-			completionResult.recommendations = this.generateRecommendations(session, task, config);
+			completionResult.recommendations = this.generateRecommendations(
+				session,
+				task,
+				config
+			);
 
 			return completionResult;
-
 		} catch (error) {
 			return {
 				success: false,
@@ -87,7 +108,11 @@ export default class SessionCompletionHook {
 			}
 
 			// Generate recovery recommendations
-			failureResult.recommendations = this.generateRecoveryRecommendations(error, session, task);
+			failureResult.recommendations = this.generateRecoveryRecommendations(
+				error,
+				session,
+				task
+			);
 
 			// Clean up if needed
 			if (worktree && session?.metadata?.cleanupOnFailure) {
@@ -96,7 +121,6 @@ export default class SessionCompletionHook {
 			}
 
 			return failureResult;
-
 		} catch (cleanupError) {
 			return {
 				success: false,
@@ -122,7 +146,10 @@ export default class SessionCompletionHook {
 			};
 
 			// Check if worktree has changes
-			validation.checks.changes = await this.checkWorktreeChanges(worktree, services);
+			validation.checks.changes = await this.checkWorktreeChanges(
+				worktree,
+				services
+			);
 			if (!validation.checks.changes.hasChanges) {
 				validation.warnings.push('No changes detected in worktree');
 			}
@@ -135,9 +162,14 @@ export default class SessionCompletionHook {
 			}
 
 			// Check for conflicts
-			validation.checks.conflicts = await this.checkForConflicts(worktree, services);
+			validation.checks.conflicts = await this.checkForConflicts(
+				worktree,
+				services
+			);
 			if (validation.checks.conflicts.hasConflicts) {
-				validation.warnings.push('Merge conflicts detected - PR may need manual resolution');
+				validation.warnings.push(
+					'Merge conflicts detected - PR may need manual resolution'
+				);
 			}
 
 			// Validate task completion
@@ -151,7 +183,6 @@ export default class SessionCompletionHook {
 				canProceed: validation.canCreatePR,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				validation: {
@@ -208,7 +239,6 @@ export default class SessionCompletionHook {
 			}
 
 			return result;
-
 		} catch (error) {
 			return {
 				success: false,
@@ -244,7 +274,9 @@ export default class SessionCompletionHook {
 
 			// Calculate duration
 			if (session.startTime && session.endTime) {
-				stats.duration = Math.round((new Date(session.endTime) - new Date(session.startTime)) / 1000);
+				stats.duration = Math.round(
+					(new Date(session.endTime) - new Date(session.startTime)) / 1000
+				);
 			}
 
 			// Count file changes in worktree
@@ -254,7 +286,6 @@ export default class SessionCompletionHook {
 				stats.linesAdded = changes.additions;
 				stats.linesRemoved = changes.deletions;
 			}
-
 		} catch (error) {
 			console.warn('Failed to collect complete statistics:', error);
 		}
@@ -268,11 +299,11 @@ export default class SessionCompletionHook {
 		try {
 			// Determine if session was successful
 			const wasSuccessful = session.status === 'completed' && !session.error;
-			
+
 			if (wasSuccessful) {
 				// Update task status to completed
 				const isSubtask = task.isSubtask || String(task.id).includes('.');
-				
+
 				if (isSubtask) {
 					await services.backend.setTaskStatus({
 						id: task.id,
@@ -316,30 +347,35 @@ export default class SessionCompletionHook {
 	shouldCreatePR(session, config) {
 		// Check global PR setting
 		if (!config.globalPRSetting) return false;
-		
+
 		// Check if session was successful
 		if (session.status !== 'completed') return false;
-		
+
 		// Check if there are actual changes
 		// This would be determined by checking git status
-		
+
 		return true;
 	}
 
 	async handlePRCreation(session, task, worktree, services) {
 		if (!services.backend || !worktree) {
-			throw new Error('Backend service or worktree not available for PR creation');
+			throw new Error(
+				'Backend service or worktree not available for PR creation'
+			);
 		}
 
 		try {
 			const prTitle = `Task ${task.id}: ${task.title}`;
 			const prDescription = this.generatePRDescription(session, task);
 
-			const result = await services.backend.completeSubtaskWithPR(worktree.name, {
-				createPR: true,
-				prTitle,
-				prDescription
-			});
+			const result = await services.backend.completeSubtaskWithPR(
+				worktree.name,
+				{
+					createPR: true,
+					prTitle,
+					prDescription
+				}
+			);
 
 			return {
 				success: true,
@@ -348,7 +384,6 @@ export default class SessionCompletionHook {
 				title: prTitle,
 				description: prDescription
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -367,8 +402,12 @@ export default class SessionCompletionHook {
 			`**Session Details:**`,
 			`- Persona: ${session.metadata?.persona || 'Unknown'}`,
 			`- Operation ID: ${session.id || session.operationId}`,
-			session.metadata?.turns ? `- Turns: ${session.metadata.turns}/${session.metadata.maxTurns}` : null,
-			session.metadata?.totalCost ? `- Cost: $${session.metadata.totalCost.toFixed(4)}` : null
+			session.metadata?.turns
+				? `- Turns: ${session.metadata.turns}/${session.metadata.maxTurns}`
+				: null,
+			session.metadata?.totalCost
+				? `- Cost: $${session.metadata.totalCost.toFixed(4)}`
+				: null
 		].filter(Boolean);
 
 		return parts.join('\n');
@@ -382,13 +421,16 @@ export default class SessionCompletionHook {
 			recommendations.push({
 				type: 'session',
 				level: 'info',
-				message: 'Session used most of the available turns. Consider increasing max turns for complex tasks.'
+				message:
+					'Session used most of the available turns. Consider increasing max turns for complex tasks.'
 			});
 		}
 
 		// Task-based recommendations
 		if (task.subtasks && task.subtasks.length > 0) {
-			const pendingSubtasks = task.subtasks.filter(st => st.status !== 'done');
+			const pendingSubtasks = task.subtasks.filter(
+				(st) => st.status !== 'done'
+			);
 			if (pendingSubtasks.length > 0) {
 				recommendations.push({
 					type: 'task',
@@ -438,7 +480,6 @@ export default class SessionCompletionHook {
 					analysis.cause = 'max-turns-reached';
 				}
 			}
-
 		} catch (analysisError) {
 			console.warn('Failed to analyze failure:', analysisError);
 		}
@@ -460,7 +501,7 @@ Stack: ${error?.stack ? error.stack.split('\n')[0] : 'No stack trace'}
 `;
 
 			const isSubtask = task.isSubtask || String(task.id).includes('.');
-			
+
 			if (isSubtask) {
 				await services.backend.updateSubtask({
 					id: task.id,
@@ -474,7 +515,6 @@ Stack: ${error?.stack ? error.stack.split('\n')[0] : 'No stack trace'}
 					research: false
 				});
 			}
-
 		} catch (updateError) {
 			console.warn('Failed to save failure context:', updateError);
 		}
@@ -487,7 +527,8 @@ Stack: ${error?.stack ? error.stack.split('\n')[0] : 'No stack trace'}
 			recommendations.push({
 				type: 'recovery',
 				action: 'retry',
-				message: 'Session timed out. Try running again with a more specific prompt.'
+				message:
+					'Session timed out. Try running again with a more specific prompt.'
 			});
 		}
 
@@ -551,4 +592,4 @@ Stack: ${error?.stack ? error.stack.split('\n')[0] : 'No stack trace'}
 	async cleanupOnFailure(worktree, services) {
 		// Implementation would perform failure cleanup
 	}
-} 
+}

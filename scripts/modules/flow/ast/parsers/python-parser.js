@@ -51,27 +51,29 @@ export class PythonParser extends BaseParser {
 	async parseWithPython(filePath, content) {
 		// Create Python script to parse the file
 		const pythonScript = this.createPythonParserScript();
-		
+
 		return new Promise((resolve, reject) => {
 			const python = spawn(this.pythonExecutable, ['-c', pythonScript]);
-			
+
 			let stdout = '';
 			let stderr = '';
-			
+
 			python.stdout.on('data', (data) => {
 				stdout += data.toString();
 			});
-			
+
 			python.stderr.on('data', (data) => {
 				stderr += data.toString();
 			});
-			
+
 			python.on('close', (code) => {
 				if (code !== 0) {
-					reject(new Error(`Python parsing failed: ${stderr || 'Unknown error'}`));
+					reject(
+						new Error(`Python parsing failed: ${stderr || 'Unknown error'}`)
+					);
 					return;
 				}
-				
+
 				try {
 					const result = JSON.parse(stdout);
 					if (result.error) {
@@ -80,14 +82,16 @@ export class PythonParser extends BaseParser {
 						resolve(result.ast);
 					}
 				} catch (parseError) {
-					reject(new Error(`Failed to parse Python AST JSON: ${parseError.message}`));
+					reject(
+						new Error(`Failed to parse Python AST JSON: ${parseError.message}`)
+					);
 				}
 			});
-			
+
 			python.on('error', (error) => {
 				reject(new Error(`Failed to spawn Python process: ${error.message}`));
 			});
-			
+
 			// Send the Python code to parse via stdin
 			python.stdin.write(content);
 			python.stdin.end();
@@ -183,18 +187,18 @@ except Exception as e:
 	 */
 	extractFunctions(ast) {
 		const functions = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'FunctionDef' || node.type === 'AsyncFunctionDef') {
 				const func = this.extractFunctionFromNode(node, ast);
 				if (func) functions.push(func);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return functions;
 	}
@@ -208,15 +212,17 @@ except Exception as e:
 	extractFunctionFromNode(node, ast) {
 		const name = node.name || '<anonymous>';
 		const isAsync = node.type === 'AsyncFunctionDef';
-		
+
 		// Extract parameters
 		const parameters = [];
 		if (node.children) {
-			const argsNode = node.children.find(child => child.type === 'arguments');
+			const argsNode = node.children.find(
+				(child) => child.type === 'arguments'
+			);
 			if (argsNode && argsNode.children) {
 				argsNode.children
-					.filter(child => child.type === 'arg')
-					.forEach(arg => {
+					.filter((child) => child.type === 'arg')
+					.forEach((arg) => {
 						parameters.push({
 							name: arg.arg || arg.id || 'unknown',
 							type: null // Python doesn't have static types by default
@@ -224,13 +230,13 @@ except Exception as e:
 					});
 			}
 		}
-		
+
 		// Calculate complexity by counting control flow nodes
 		const complexity = this.calculateNodeComplexity(node);
-		
+
 		// Check if function is inside a class (basic heuristic)
 		const isMethod = this.isInsideClass(node, ast);
-		
+
 		return this.createFunctionInfo(name, {
 			parameters,
 			lineStart: node.lineno,
@@ -238,7 +244,11 @@ except Exception as e:
 			isAsync,
 			isExported: true, // Python functions are generally accessible
 			complexity,
-			visibility: isMethod ? (name.startsWith('_') ? 'private' : 'public') : 'public'
+			visibility: isMethod
+				? name.startsWith('_')
+					? 'private'
+					: 'public'
+				: 'public'
 		});
 	}
 
@@ -249,18 +259,18 @@ except Exception as e:
 	 */
 	extractClasses(ast) {
 		const classes = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'ClassDef') {
 				const cls = this.extractClassFromNode(node, ast);
 				if (cls) classes.push(cls);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return classes;
 	}
@@ -273,25 +283,31 @@ except Exception as e:
 	 */
 	extractClassFromNode(node, ast) {
 		const name = node.name || '<anonymous>';
-		
+
 		// Extract methods
 		const methods = [];
 		if (node.children) {
 			node.children
-				.filter(child => child.type === 'FunctionDef' || child.type === 'AsyncFunctionDef')
-				.forEach(methodNode => {
+				.filter(
+					(child) =>
+						child.type === 'FunctionDef' || child.type === 'AsyncFunctionDef'
+				)
+				.forEach((methodNode) => {
 					const method = this.extractFunctionFromNode(methodNode, ast);
 					if (method) methods.push(method);
 				});
 		}
-		
+
 		// Extract base classes
 		const baseClasses = [];
 		// Python inheritance information would be in bases attribute
-		
+
 		// Calculate class complexity as sum of method complexities
-		const complexity = Math.min(10, methods.reduce((sum, method) => sum + method.complexity, 1));
-		
+		const complexity = Math.min(
+			10,
+			methods.reduce((sum, method) => sum + method.complexity, 1)
+		);
+
 		return this.createClassInfo(name, {
 			extends: baseClasses.length > 0 ? baseClasses[0] : null,
 			methods,
@@ -310,18 +326,18 @@ except Exception as e:
 	 */
 	extractImports(ast) {
 		const imports = [];
-		
+
 		const visit = (node) => {
 			if (node.type === 'Import' || node.type === 'ImportFrom') {
 				const imp = this.extractImportFromNode(node, ast);
 				if (imp) imports.push(imp);
 			}
-			
+
 			if (node.children) {
 				node.children.forEach(visit);
 			}
 		};
-		
+
 		visit(ast);
 		return imports;
 	}
@@ -335,13 +351,13 @@ except Exception as e:
 	extractImportFromNode(node, ast) {
 		let source = '';
 		const namedImports = [];
-		
+
 		if (node.type === 'Import') {
 			// import module1, module2
 			if (node.children) {
 				node.children
-					.filter(child => child.type === 'alias')
-					.forEach(alias => {
+					.filter((child) => child.type === 'alias')
+					.forEach((alias) => {
 						const moduleName = alias.name || alias.id;
 						namedImports.push(alias.asname || moduleName);
 						if (!source) source = moduleName;
@@ -350,17 +366,17 @@ except Exception as e:
 		} else if (node.type === 'ImportFrom') {
 			// from module import name1, name2
 			source = node.module || '';
-			
+
 			if (node.children) {
 				node.children
-					.filter(child => child.type === 'alias')
-					.forEach(alias => {
+					.filter((child) => child.type === 'alias')
+					.forEach((alias) => {
 						const importName = alias.name || alias.id;
 						namedImports.push(alias.asname || importName);
 					});
 			}
 		}
-		
+
 		return this.createImportInfo(source, {
 			imports: namedImports,
 			lineNumber: node.lineno
@@ -374,29 +390,40 @@ except Exception as e:
 	 */
 	calculateNodeComplexity(node) {
 		let complexity = 1; // Base complexity
-		
+
 		const visit = (n) => {
 			// Add complexity for control flow statements
-			if (['If', 'While', 'For', 'AsyncFor', 'Try', 'With', 'AsyncWith', 
-				 'Match', 'IfExp'].includes(n.type)) {
+			if (
+				[
+					'If',
+					'While',
+					'For',
+					'AsyncFor',
+					'Try',
+					'With',
+					'AsyncWith',
+					'Match',
+					'IfExp'
+				].includes(n.type)
+			) {
 				complexity++;
 			}
-			
+
 			// Add complexity for exception handlers
 			if (n.type === 'ExceptHandler') {
 				complexity++;
 			}
-			
+
 			// Add complexity for boolean operators
 			if (n.type === 'BoolOp') {
 				complexity++;
 			}
-			
+
 			if (n.children) {
 				n.children.forEach(visit);
 			}
 		};
-		
+
 		visit(node);
 		return Math.min(complexity, 10); // Cap at 10
 	}
@@ -409,13 +436,13 @@ except Exception as e:
 	calculateComplexity(ast) {
 		const functions = this.extractFunctions(ast);
 		const classes = this.extractClasses(ast);
-		
+
 		if (functions.length === 0 && classes.length === 0) return 1;
 
 		// Calculate average complexity
 		const totalComplexity = [
-			...functions.map(f => f.complexity || 1),
-			...classes.map(c => c.complexity || 1)
+			...functions.map((f) => f.complexity || 1),
+			...classes.map((c) => c.complexity || 1)
 		].reduce((sum, c) => sum + c, 0);
 
 		const itemCount = functions.length + classes.length;
@@ -439,22 +466,22 @@ except Exception as e:
 	 */
 	validateContent(content) {
 		if (!super.validateContent(content)) return false;
-		
+
 		// Basic Python syntax check
 		const pythonPatterns = [
-			/def\s+\w+\s*\(/,           // Function definitions
-			/class\s+\w+/,              // Class definitions
-			/import\s+\w+/,             // Import statements
-			/from\s+\w+\s+import/,      // From imports
-			/if\s+.*:/,                 // If statements
-			/for\s+.*:/,                // For loops
-			/while\s+.*:/,              // While loops
-			/try\s*:/,                  // Try blocks
-			/^\s*#/m                    // Comments
+			/def\s+\w+\s*\(/, // Function definitions
+			/class\s+\w+/, // Class definitions
+			/import\s+\w+/, // Import statements
+			/from\s+\w+\s+import/, // From imports
+			/if\s+.*:/, // If statements
+			/for\s+.*:/, // For loops
+			/while\s+.*:/, // While loops
+			/try\s*:/, // Try blocks
+			/^\s*#/m // Comments
 		];
-		
+
 		// Content should match at least one Python pattern
-		return pythonPatterns.some(pattern => pattern.test(content));
+		return pythonPatterns.some((pattern) => pattern.test(content));
 	}
 
 	/**
@@ -468,4 +495,4 @@ except Exception as e:
 		// we'd need to track the node hierarchy during traversal
 		return false; // Placeholder for now
 	}
-} 
+}

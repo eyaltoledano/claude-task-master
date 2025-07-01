@@ -24,10 +24,10 @@ export class HookStorage {
 		try {
 			// Ensure storage directory exists
 			await fs.mkdir(this.storageDir, { recursive: true });
-			
+
 			// Load existing data into cache
 			await this.loadCache();
-			
+
 			this.initialized = true;
 			console.log('💾 Hook storage initialized');
 		} catch (error) {
@@ -42,17 +42,20 @@ export class HookStorage {
 	async loadCache() {
 		try {
 			const files = await fs.readdir(this.storageDir);
-			
+
 			for (const file of files) {
 				if (file.endsWith('.json')) {
 					const hookName = path.basename(file, '.json');
 					const filePath = path.join(this.storageDir, file);
-					
+
 					try {
 						const data = await fs.readFile(filePath, 'utf8');
 						this.cache.set(hookName, JSON.parse(data));
 					} catch (fileError) {
-						console.warn(`⚠️ Failed to load hook data for ${hookName}:`, fileError.message);
+						console.warn(
+							`⚠️ Failed to load hook data for ${hookName}:`,
+							fileError.message
+						);
 					}
 				}
 			}
@@ -73,11 +76,11 @@ export class HookStorage {
 		}
 
 		const hookData = this.cache.get(hookName) || {};
-		
+
 		if (key === null) {
 			return hookData;
 		}
-		
+
 		return hookData[key] || null;
 	}
 
@@ -91,17 +94,17 @@ export class HookStorage {
 
 		// Get existing data or create new
 		const hookData = this.cache.get(hookName) || {};
-		
+
 		// Update data
 		hookData[key] = value;
 		hookData._lastUpdated = new Date().toISOString();
-		
+
 		// Update cache
 		this.cache.set(hookName, hookData);
-		
+
 		// Persist to disk
 		await this.persist(hookName);
-		
+
 		return true;
 	}
 
@@ -115,17 +118,17 @@ export class HookStorage {
 
 		// Get existing data or create new
 		const hookData = this.cache.get(hookName) || {};
-		
+
 		// Merge data
 		Object.assign(hookData, data);
 		hookData._lastUpdated = new Date().toISOString();
-		
+
 		// Update cache
 		this.cache.set(hookName, hookData);
-		
+
 		// Persist to disk
 		await this.persist(hookName);
-		
+
 		return hookData;
 	}
 
@@ -143,7 +146,7 @@ export class HookStorage {
 		if (key === null) {
 			// Delete entire hook data
 			this.cache.delete(hookName);
-			
+
 			// Delete file
 			const filePath = path.join(this.storageDir, `${hookName}.json`);
 			try {
@@ -161,7 +164,7 @@ export class HookStorage {
 				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
 				delete newHookData[key];
 				newHookData._lastUpdated = new Date().toISOString();
-				
+
 				this.cache.set(hookName, newHookData);
 				await this.persist(hookName);
 			}
@@ -178,7 +181,7 @@ export class HookStorage {
 		if (!hookData) return;
 
 		const filePath = path.join(this.storageDir, `${hookName}.json`);
-		
+
 		try {
 			await fs.writeFile(filePath, JSON.stringify(hookData, null, 2));
 		} catch (error) {
@@ -199,7 +202,7 @@ export class HookStorage {
 		for (const [hookName, data] of this.cache) {
 			result[hookName] = data;
 		}
-		
+
 		return result;
 	}
 
@@ -225,7 +228,9 @@ export class HookStorage {
 		};
 
 		for (const [hookName, data] of this.cache) {
-			const keyCount = Object.keys(data).filter(key => !key.startsWith('_')).length;
+			const keyCount = Object.keys(data).filter(
+				(key) => !key.startsWith('_')
+			).length;
 			stats.hooks[hookName] = {
 				keys: keyCount,
 				lastUpdated: data._lastUpdated || 'unknown',
@@ -283,7 +288,8 @@ export class HookStorage {
 	/**
 	 * Clean up old data
 	 */
-	async cleanup(maxAge = 30 * 24 * 60 * 60 * 1000) { // 30 days default
+	async cleanup(maxAge = 30 * 24 * 60 * 60 * 1000) {
+		// 30 days default
 		if (!this.initialized) {
 			await this.initialize();
 		}
@@ -303,4 +309,4 @@ export class HookStorage {
 
 		return { cleaned, cutoff: cutoff.toISOString() };
 	}
-} 
+}

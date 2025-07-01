@@ -18,9 +18,15 @@ export class HookValidator {
 			'onPrCreated',
 			'onSessionFailed'
 		]);
-		
+
 		this.requiredProperties = ['events'];
-		this.optionalProperties = ['version', 'description', 'timeout', 'timeouts', 'config'];
+		this.optionalProperties = [
+			'version',
+			'description',
+			'timeout',
+			'timeouts',
+			'config'
+		];
 		this.dangerousPatterns = [
 			/eval\s*\(/,
 			/Function\s*\(/,
@@ -45,16 +51,15 @@ export class HookValidator {
 		try {
 			// Basic structure validation
 			this.validateStructure(hookInstance, errors, warnings);
-			
+
 			// Security validation
 			this.validateSecurity(hookInstance, errors, warnings);
-			
+
 			// Method validation
 			this.validateMethods(hookInstance, errors, warnings);
-			
+
 			// Configuration validation
 			this.validateConfiguration(hookInstance, errors, warnings);
-
 		} catch (validationError) {
 			errors.push(`Validation failed: ${validationError.message}`);
 		}
@@ -104,9 +109,16 @@ export class HookValidator {
 
 		// Check for unexpected properties in strict mode
 		if (this.strictMode) {
-			const allowedProps = new Set([...this.requiredProperties, ...this.optionalProperties]);
+			const allowedProps = new Set([
+				...this.requiredProperties,
+				...this.optionalProperties
+			]);
 			for (const prop in hookInstance) {
-				if (!allowedProps.has(prop) && !prop.startsWith('on') && prop !== 'constructor') {
+				if (
+					!allowedProps.has(prop) &&
+					!prop.startsWith('on') &&
+					prop !== 'constructor'
+				) {
 					warnings.push(`Unexpected property: ${prop}`);
 				}
 			}
@@ -123,7 +135,9 @@ export class HookValidator {
 		// Check for dangerous patterns
 		for (const pattern of this.dangerousPatterns) {
 			if (pattern.test(hookString)) {
-				errors.push(`Potentially dangerous pattern detected: ${pattern.source}`);
+				errors.push(
+					`Potentially dangerous pattern detected: ${pattern.source}`
+				);
 			}
 		}
 
@@ -133,7 +147,11 @@ export class HookValidator {
 		}
 
 		// Check for network access attempts
-		if (hookString.includes('fetch') || hookString.includes('XMLHttpRequest') || hookString.includes('axios')) {
+		if (
+			hookString.includes('fetch') ||
+			hookString.includes('XMLHttpRequest') ||
+			hookString.includes('axios')
+		) {
 			warnings.push('Network access detected - ensure this is intentional');
 		}
 	}
@@ -146,7 +164,7 @@ export class HookValidator {
 		if (hookInstance.events) {
 			for (const event of hookInstance.events) {
 				const methodName = this.eventToMethodName(event);
-				
+
 				if (!(methodName in hookInstance)) {
 					errors.push(`Missing method ${methodName} for event ${event}`);
 				} else if (typeof hookInstance[methodName] !== 'function') {
@@ -172,9 +190,13 @@ export class HookValidator {
 	validateConfiguration(hookInstance, errors, warnings) {
 		// Validate timeout settings
 		if (hookInstance.timeout !== undefined) {
-			if (typeof hookInstance.timeout !== 'number' || hookInstance.timeout <= 0) {
+			if (
+				typeof hookInstance.timeout !== 'number' ||
+				hookInstance.timeout <= 0
+			) {
 				errors.push('timeout must be a positive number');
-			} else if (hookInstance.timeout > 300000) { // 5 minutes
+			} else if (hookInstance.timeout > 300000) {
+				// 5 minutes
 				warnings.push('timeout is very long (>5 minutes)');
 			}
 		}
@@ -223,7 +245,9 @@ export class HookValidator {
 	 * Convert event name to method name
 	 */
 	eventToMethodName(event) {
-		const camelCase = event.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+		const camelCase = event.replace(/-([a-z])/g, (match, letter) =>
+			letter.toUpperCase()
+		);
 		return `on${camelCase.charAt(0).toUpperCase()}${camelCase.slice(1)}`;
 	}
 
@@ -232,9 +256,11 @@ export class HookValidator {
 	 */
 	methodNameToEvent(methodName) {
 		if (!methodName.startsWith('on')) return methodName;
-		
+
 		const withoutOn = methodName.slice(2);
-		return withoutOn.replace(/([A-Z])/g, (match, letter) => `-${letter.toLowerCase()}`).slice(1);
+		return withoutOn
+			.replace(/([A-Z])/g, (match, letter) => `-${letter.toLowerCase()}`)
+			.slice(1);
 	}
 
 	/**
@@ -255,7 +281,7 @@ export class HookValidator {
 			'pr-created',
 			'session-failed'
 		];
-		
+
 		return validEvents.includes(event);
 	}
 
@@ -265,4 +291,4 @@ export class HookValidator {
 	setStrictMode(enabled) {
 		this.strictMode = enabled;
 	}
-} 
+}

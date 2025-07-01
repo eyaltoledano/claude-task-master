@@ -30,7 +30,9 @@ export class JavaScriptParser extends BaseParser {
 			return true;
 		} catch (error) {
 			// TypeScript not available - we'll use a simpler approach
-			console.warn('TypeScript compiler not available, using simplified parsing');
+			console.warn(
+				'TypeScript compiler not available, using simplified parsing'
+			);
 			this.initialized = false;
 			return false;
 		}
@@ -51,7 +53,7 @@ export class JavaScriptParser extends BaseParser {
 
 		try {
 			let ast;
-			
+
 			if (this.initialized && this.ts) {
 				// Use TypeScript compiler API for robust parsing
 				ast = this.parseWithTypeScript(filePath, content);
@@ -74,7 +76,7 @@ export class JavaScriptParser extends BaseParser {
 	 */
 	parseWithTypeScript(filePath, content) {
 		const isTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
-		
+
 		const sourceFile = this.ts.createSourceFile(
 			filePath,
 			content,
@@ -117,13 +119,14 @@ export class JavaScriptParser extends BaseParser {
 		if (!this.ts || !ast) return [];
 
 		const functions = [];
-		
+
 		const visit = (node) => {
-			if (this.ts.isFunctionDeclaration(node) || 
+			if (
+				this.ts.isFunctionDeclaration(node) ||
 				this.ts.isMethodDeclaration(node) ||
 				this.ts.isArrowFunction(node) ||
-				this.ts.isFunctionExpression(node)) {
-				
+				this.ts.isFunctionExpression(node)
+			) {
 				const func = this.extractFunctionFromNode(node, ast);
 				if (func) functions.push(func);
 			}
@@ -147,21 +150,34 @@ export class JavaScriptParser extends BaseParser {
 		const name = node.name ? node.name.text : '<anonymous>';
 		const start = sourceFile.getLineAndCharacterOfPosition(node.getStart());
 		const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
-		
+
 		// Extract parameters
-		const parameters = node.parameters ? node.parameters.map(param => {
-			const paramName = param.name ? param.name.text : 'unknown';
-			const paramType = param.type ? sourceFile.text.substring(param.type.getStart(), param.type.getEnd()) : null;
-			return { name: paramName, type: paramType };
-		}) : [];
+		const parameters = node.parameters
+			? node.parameters.map((param) => {
+					const paramName = param.name ? param.name.text : 'unknown';
+					const paramType = param.type
+						? sourceFile.text.substring(
+								param.type.getStart(),
+								param.type.getEnd()
+							)
+						: null;
+					return { name: paramName, type: paramType };
+				})
+			: [];
 
 		// Check if function is async
-		const isAsync = node.modifiers ? 
-			node.modifiers.some(mod => mod.kind === this.ts.SyntaxKind.AsyncKeyword) : false;
+		const isAsync = node.modifiers
+			? node.modifiers.some(
+					(mod) => mod.kind === this.ts.SyntaxKind.AsyncKeyword
+				)
+			: false;
 
 		// Check if function is exported
-		const isExported = node.modifiers ?
-			node.modifiers.some(mod => mod.kind === this.ts.SyntaxKind.ExportKeyword) : false;
+		const isExported = node.modifiers
+			? node.modifiers.some(
+					(mod) => mod.kind === this.ts.SyntaxKind.ExportKeyword
+				)
+			: false;
 
 		// Calculate complexity by counting decision points
 		const complexity = this.calculateNodeComplexity(node);
@@ -189,7 +205,7 @@ export class JavaScriptParser extends BaseParser {
 		if (!this.ts || !ast) return [];
 
 		const classes = [];
-		
+
 		const visit = (node) => {
 			if (this.ts.isClassDeclaration(node)) {
 				const cls = this.extractClassFromNode(node, ast);
@@ -218,7 +234,7 @@ export class JavaScriptParser extends BaseParser {
 
 		// Extract methods
 		const methods = [];
-		node.members?.forEach(member => {
+		node.members?.forEach((member) => {
 			if (this.ts.isMethodDeclaration(member)) {
 				const method = this.extractFunctionFromNode(member, sourceFile);
 				if (method) methods.push(method);
@@ -226,11 +242,17 @@ export class JavaScriptParser extends BaseParser {
 		});
 
 		// Check if class is exported
-		const isExported = node.modifiers ?
-			node.modifiers.some(mod => mod.kind === this.ts.SyntaxKind.ExportKeyword) : false;
+		const isExported = node.modifiers
+			? node.modifiers.some(
+					(mod) => mod.kind === this.ts.SyntaxKind.ExportKeyword
+				)
+			: false;
 
 		// Calculate class complexity as sum of method complexities
-		const complexity = Math.min(10, methods.reduce((sum, method) => sum + method.complexity, 1));
+		const complexity = Math.min(
+			10,
+			methods.reduce((sum, method) => sum + method.complexity, 1)
+		);
 
 		return this.createClassInfo(name, {
 			methods,
@@ -254,7 +276,7 @@ export class JavaScriptParser extends BaseParser {
 		if (!this.ts || !ast) return [];
 
 		const imports = [];
-		
+
 		const visit = (node) => {
 			if (this.ts.isImportDeclaration(node)) {
 				const imp = this.extractImportFromNode(node, ast);
@@ -278,7 +300,8 @@ export class JavaScriptParser extends BaseParser {
 		if (!this.ts || !node.moduleSpecifier) return null;
 
 		const source = node.moduleSpecifier.text;
-		const lineNumber = sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+		const lineNumber =
+			sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1;
 
 		let defaultImport = null;
 		let namespaceImport = null;
@@ -295,7 +318,7 @@ export class JavaScriptParser extends BaseParser {
 				if (this.ts.isNamespaceImport(node.importClause.namedBindings)) {
 					namespaceImport = node.importClause.namedBindings.name.text;
 				} else if (this.ts.isNamedImports(node.importClause.namedBindings)) {
-					node.importClause.namedBindings.elements.forEach(element => {
+					node.importClause.namedBindings.elements.forEach((element) => {
 						namedImports.push(element.name.text);
 					});
 				}
@@ -322,21 +345,25 @@ export class JavaScriptParser extends BaseParser {
 
 		const visit = (n) => {
 			// Add complexity for control flow statements
-			if (this.ts.isIfStatement(n) ||
+			if (
+				this.ts.isIfStatement(n) ||
 				this.ts.isWhileStatement(n) ||
 				this.ts.isForStatement(n) ||
 				this.ts.isForInStatement(n) ||
 				this.ts.isForOfStatement(n) ||
 				this.ts.isSwitchStatement(n) ||
 				this.ts.isConditionalExpression(n) ||
-				this.ts.isCatchClause(n)) {
+				this.ts.isCatchClause(n)
+			) {
 				complexity++;
 			}
 
 			// Add complexity for logical operators
 			if (this.ts.isBinaryExpression(n)) {
-				if (n.operatorToken.kind === this.ts.SyntaxKind.AmpersandAmpersandToken ||
-					n.operatorToken.kind === this.ts.SyntaxKind.BarBarToken) {
+				if (
+					n.operatorToken.kind === this.ts.SyntaxKind.AmpersandAmpersandToken ||
+					n.operatorToken.kind === this.ts.SyntaxKind.BarBarToken
+				) {
 					complexity++;
 				}
 			}
@@ -356,13 +383,13 @@ export class JavaScriptParser extends BaseParser {
 	calculateComplexity(ast) {
 		const functions = this.extractFunctions(ast);
 		const classes = this.extractClasses(ast);
-		
+
 		if (functions.length === 0 && classes.length === 0) return 1;
 
 		// Calculate average complexity
 		const totalComplexity = [
-			...functions.map(f => f.complexity || 1),
-			...classes.map(c => c.complexity || 1)
+			...functions.map((f) => f.complexity || 1),
+			...classes.map((c) => c.complexity || 1)
 		].reduce((sum, c) => sum + c, 0);
 
 		const itemCount = functions.length + classes.length;
@@ -389,7 +416,7 @@ export class JavaScriptParser extends BaseParser {
 	extractFunctionsWithRegex(content) {
 		const functions = [];
 		const lines = content.split('\n');
-		
+
 		// Find function boundaries using comprehensive regex patterns
 		const patterns = [
 			// Traditional function declarations: function name() {
@@ -401,29 +428,39 @@ export class JavaScriptParser extends BaseParser {
 			// Class methods: methodName() { (including async, static, constructor)
 			/(?:static\s+)?(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*\{/g
 		];
-		
-		patterns.forEach(pattern => {
+
+		patterns.forEach((pattern) => {
 			let match = pattern.exec(content);
 			while (match !== null) {
 				const name = match[1] || '<anonymous>';
 				const functionStart = match.index;
-				const lineNumber = content.substring(0, functionStart).split('\n').length;
-				
+				const lineNumber = content
+					.substring(0, functionStart)
+					.split('\n').length;
+
 				// Skip if this looks like a class declaration instead of a method
-				const beforeMatch = content.substring(Math.max(0, functionStart - 50), functionStart);
+				const beforeMatch = content.substring(
+					Math.max(0, functionStart - 50),
+					functionStart
+				);
 				const isClassDeclaration = /class\s+\w+\s*$/.test(beforeMatch.trim());
-				
+
 				if (!isClassDeclaration) {
 					// Extract function body for complexity analysis
-					const functionBody = this.extractFunctionBodyRegex(content, functionStart);
+					const functionBody = this.extractFunctionBodyRegex(
+						content,
+						functionStart
+					);
 					const complexity = this.calculateComplexityRegex(functionBody);
-					
-					functions.push(this.createFunctionInfo(name, {
-						lineStart: lineNumber,
-						complexity
-					}));
+
+					functions.push(
+						this.createFunctionInfo(name, {
+							lineStart: lineNumber,
+							complexity
+						})
+					);
 				}
-				
+
 				match = pattern.exec(content);
 			}
 		});
@@ -441,27 +478,27 @@ export class JavaScriptParser extends BaseParser {
 		let braceCount = 0;
 		let inFunction = false;
 		let body = '';
-		
+
 		for (let i = startIndex; i < content.length; i++) {
 			const char = content[i];
-			
+
 			if (char === '{') {
 				braceCount++;
 				inFunction = true;
 			} else if (char === '}') {
 				braceCount--;
 			}
-			
+
 			if (inFunction) {
 				body += char;
 			}
-			
+
 			// End of function when braces are balanced
 			if (inFunction && braceCount === 0) {
 				break;
 			}
 		}
-		
+
 		return body;
 	}
 
@@ -472,30 +509,30 @@ export class JavaScriptParser extends BaseParser {
 	 */
 	calculateComplexityRegex(functionBody) {
 		if (!functionBody) return 1;
-		
+
 		let complexity = 1; // Base complexity
-		
+
 		// Count decision points using regex
 		const patterns = [
-			/\bif\s*\(/g,           // if statements
-			/\belse\s+if\b/g,       // else if statements  
-			/\bwhile\s*\(/g,        // while loops
-			/\bfor\s*\(/g,          // for loops
-			/\bswitch\s*\(/g,       // switch statements
-			/\bcase\s+/g,           // case statements
-			/\bcatch\s*\(/g,        // catch blocks
-			/\?\s*.*?\s*:/g,        // ternary operators
-			/&&/g,                  // logical AND
-			/\|\|/g                 // logical OR
+			/\bif\s*\(/g, // if statements
+			/\belse\s+if\b/g, // else if statements
+			/\bwhile\s*\(/g, // while loops
+			/\bfor\s*\(/g, // for loops
+			/\bswitch\s*\(/g, // switch statements
+			/\bcase\s+/g, // case statements
+			/\bcatch\s*\(/g, // catch blocks
+			/\?\s*.*?\s*:/g, // ternary operators
+			/&&/g, // logical AND
+			/\|\|/g // logical OR
 		];
-		
-		patterns.forEach(pattern => {
+
+		patterns.forEach((pattern) => {
 			const matches = functionBody.match(pattern);
 			if (matches) {
 				complexity += matches.length;
 			}
 		});
-		
+
 		// Cap complexity at 10
 		return Math.min(complexity, 10);
 	}
@@ -508,17 +545,19 @@ export class JavaScriptParser extends BaseParser {
 	extractClassesWithRegex(content) {
 		const classes = [];
 		const classPattern = /(?:export\s+)?class\s+(\w+)/g;
-		
+
 		let match = classPattern.exec(content);
 		while (match !== null) {
 			const name = match[1];
 			const lineNumber = content.substring(0, match.index).split('\n').length;
-			
-			classes.push(this.createClassInfo(name, {
-				lineStart: lineNumber,
-				complexity: 3 // Default complexity for regex-based detection
-			}));
-			
+
+			classes.push(
+				this.createClassInfo(name, {
+					lineStart: lineNumber,
+					complexity: 3 // Default complexity for regex-based detection
+				})
+			);
+
 			match = classPattern.exec(content);
 		}
 
@@ -538,20 +577,22 @@ export class JavaScriptParser extends BaseParser {
 			/require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g
 		];
 
-		importPatterns.forEach(pattern => {
+		importPatterns.forEach((pattern) => {
 			let match = pattern.exec(content);
 			while (match !== null) {
 				const source = match[1];
 				const lineNumber = content.substring(0, match.index).split('\n').length;
-				
-				imports.push(this.createImportInfo(source, {
-					lineNumber
-				}));
-				
+
+				imports.push(
+					this.createImportInfo(source, {
+						lineNumber
+					})
+				);
+
 				match = pattern.exec(content);
 			}
 		});
 
 		return imports;
 	}
-} 
+}

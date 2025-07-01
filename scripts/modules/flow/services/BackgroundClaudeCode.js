@@ -34,8 +34,11 @@ export class BackgroundClaudeCode {
 		});
 
 		// Start the query without awaiting it
-		queryPromise.catch(error => {
-			console.error(`Background Claude Code operation ${operationId} failed:`, error);
+		queryPromise.catch((error) => {
+			console.error(
+				`Background Claude Code operation ${operationId} failed:`,
+				error
+			);
 		});
 
 		return {
@@ -51,19 +54,21 @@ export class BackgroundClaudeCode {
 	async runQuery(operationId, prompt, options) {
 		try {
 			let result;
-			
+
 			// Check if this is a worktree-based operation that needs CLAUDE.md preparation
 			const metadata = options.metadata || {};
 			const worktreePath = metadata.worktreePath;
-			const isTaskImplementation = metadata.type && (
-				metadata.type === 'subtask-implementation' || 
-				metadata.type === 'task-implementation'
-			);
+			const isTaskImplementation =
+				metadata.type &&
+				(metadata.type === 'subtask-implementation' ||
+					metadata.type === 'task-implementation');
 
 			if (worktreePath && isTaskImplementation) {
 				// This is a task/subtask implementation in a worktree - use headless launch
-				console.log('🏗️ [BackgroundClaudeCode] Using headless launch for worktree-based session');
-				
+				console.log(
+					'🏗️ [BackgroundClaudeCode] Using headless launch for worktree-based session'
+				);
+
 				// Build worktree object from metadata
 				const worktree = {
 					path: worktreePath,
@@ -92,7 +97,10 @@ export class BackgroundClaudeCode {
 							});
 						}
 					} catch (error) {
-						console.warn('Could not load task details, using minimal task info:', error);
+						console.warn(
+							'Could not load task details, using minimal task info:',
+							error
+						);
 						tasks.push({
 							id: metadata.taskId,
 							title: `Task ${metadata.taskId}`,
@@ -103,32 +111,39 @@ export class BackgroundClaudeCode {
 				}
 
 				// Use launchClaudeHeadless which properly prepares CLAUDE.md
-				result = await this.backend.launchClaudeHeadless(worktree, tasks, prompt, {
-					persona: metadata.persona || options.persona,
-					maxTurns: metadata.maxTurns || 10,
-					permissionMode: 'acceptEdits',
-					allowedTools: metadata.allowedTools,
-					captureOutput: true,
-					abortController: options.abortController,
-					onProgress: (message) => {
-						// Add message to the operation
-						backgroundOperations.addMessage(operationId, message);
-						
-						// Call the original callback if provided
-						if (options.onMessage) {
-							options.onMessage(message);
+				result = await this.backend.launchClaudeHeadless(
+					worktree,
+					tasks,
+					prompt,
+					{
+						persona: metadata.persona || options.persona,
+						maxTurns: metadata.maxTurns || 10,
+						permissionMode: 'acceptEdits',
+						allowedTools: metadata.allowedTools,
+						captureOutput: true,
+						abortController: options.abortController,
+						onProgress: (message) => {
+							// Add message to the operation
+							backgroundOperations.addMessage(operationId, message);
+
+							// Call the original callback if provided
+							if (options.onMessage) {
+								options.onMessage(message);
+							}
 						}
 					}
-				});
+				);
 			} else {
 				// Fallback to raw claudeCodeQuery for non-worktree operations
-				console.log('📝 [BackgroundClaudeCode] Using raw query for non-worktree session');
+				console.log(
+					'📝 [BackgroundClaudeCode] Using raw query for non-worktree session'
+				);
 				result = await this.backend.claudeCodeQuery(prompt, {
 					...options,
 					onMessage: (message) => {
 						// Add message to the operation
 						backgroundOperations.addMessage(operationId, message);
-						
+
 						// Call the original callback if provided
 						if (options.onMessage) {
 							options.onMessage(message);
@@ -188,8 +203,11 @@ export class BackgroundClaudeCode {
 			promise: queryPromise
 		});
 
-		queryPromise.catch(error => {
-			console.error(`Background Claude Code continue ${operationId} failed:`, error);
+		queryPromise.catch((error) => {
+			console.error(
+				`Background Claude Code continue ${operationId} failed:`,
+				error
+			);
 		});
 
 		return {
@@ -258,8 +276,11 @@ export class BackgroundClaudeCode {
 			promise: queryPromise
 		});
 
-		queryPromise.catch(error => {
-			console.error(`Background Claude Code resume ${operationId} failed:`, error);
+		queryPromise.catch((error) => {
+			console.error(
+				`Background Claude Code resume ${operationId} failed:`,
+				error
+			);
 		});
 
 		return {
@@ -319,8 +340,12 @@ export class BackgroundClaudeCode {
 	 * Get all running operations
 	 */
 	getRunningOperations() {
-		return backgroundOperations.getRunningOperations()
-			.filter(op => op.operation.type && op.operation.type.startsWith('claude-code-'));
+		return backgroundOperations
+			.getRunningOperations()
+			.filter(
+				(op) =>
+					op.operation.type && op.operation.type.startsWith('claude-code-')
+			);
 	}
 
 	/**
@@ -329,4 +354,4 @@ export class BackgroundClaudeCode {
 	abortOperation(operationId) {
 		return backgroundOperations.abortOperation(operationId);
 	}
-} 
+}

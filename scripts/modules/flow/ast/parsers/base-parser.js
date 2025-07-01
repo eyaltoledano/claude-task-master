@@ -38,7 +38,9 @@ export class BaseParser {
 	 * @returns {Promise<Object>} Parsed AST result
 	 */
 	async parse(filePath, content) {
-		throw new Error(`parse() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`parse() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -47,7 +49,9 @@ export class BaseParser {
 	 * @returns {Array<Object>} Array of function information
 	 */
 	extractFunctions(ast) {
-		throw new Error(`extractFunctions() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`extractFunctions() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -56,7 +60,9 @@ export class BaseParser {
 	 * @returns {Array<Object>} Array of class/type information
 	 */
 	extractClasses(ast) {
-		throw new Error(`extractClasses() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`extractClasses() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -65,7 +71,9 @@ export class BaseParser {
 	 * @returns {Array<Object>} Array of import information
 	 */
 	extractImports(ast) {
-		throw new Error(`extractImports() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`extractImports() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -74,7 +82,9 @@ export class BaseParser {
 	 * @returns {number} Complexity score (1-10)
 	 */
 	calculateComplexity(ast) {
-		throw new Error(`calculateComplexity() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`calculateComplexity() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -82,7 +92,9 @@ export class BaseParser {
 	 * @returns {Array<string>} Array of file extensions (e.g., ['.js', '.jsx'])
 	 */
 	getSupportedExtensions() {
-		throw new Error(`getSupportedExtensions() method must be implemented by ${this.language} parser`);
+		throw new Error(
+			`getSupportedExtensions() method must be implemented by ${this.language} parser`
+		);
 	}
 
 	/**
@@ -210,9 +222,11 @@ export class BaseParser {
 						functionCount: functions.length,
 						classCount: classes.length,
 						importCount: imports.length,
-						avgFunctionComplexity: functions.length > 0 
-							? functions.reduce((sum, f) => sum + (f.complexity || 1), 0) / functions.length 
-							: 0
+						avgFunctionComplexity:
+							functions.length > 0
+								? functions.reduce((sum, f) => sum + (f.complexity || 1), 0) /
+									functions.length
+								: 0
 					}
 				}
 			};
@@ -230,10 +244,10 @@ export class BaseParser {
 		// Base implementation - subclasses should override with language-specific logic
 		// Start with 1 (base path) and add 1 for each decision point
 		const complexity = 1;
-		
+
 		// This is a simplified version - real implementations would traverse the AST
 		// looking for if statements, loops, switch cases, etc.
-		
+
 		return Math.min(complexity, 10); // Cap at 10 for consistent scoring
 	}
 
@@ -247,11 +261,11 @@ export class BaseParser {
 	getCharacterPosition(content, line, column) {
 		const lines = content.split('\n');
 		let position = 0;
-		
+
 		for (let i = 0; i < line - 1 && i < lines.length; i++) {
 			position += lines[i].length + 1; // +1 for newline character
 		}
-		
+
 		return position + column;
 	}
 
@@ -324,4 +338,4 @@ export class ParserRegistry {
 		}
 		return [...new Set(extensions)]; // Remove duplicates
 	}
-} 
+}

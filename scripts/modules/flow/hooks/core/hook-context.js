@@ -11,32 +11,33 @@ export function createHookContext(baseContext) {
 		event: baseContext.event,
 		hookName: baseContext.hookName,
 		timestamp: new Date().toISOString(),
-		
+
 		// Hook configuration
 		config: baseContext.config || {},
-		
+
 		// Storage service
 		storage: baseContext.storage,
-		
+
 		// Session data (if available)
 		session: baseContext.session || null,
-		
+
 		// Task data (if available)
 		task: baseContext.task || null,
-		
+
 		// Worktree data (if available)
 		worktree: baseContext.worktree || null,
-		
+
 		// Services
 		services: createServiceProxy(baseContext),
-		
+
 		// Utilities
 		utils: createUtilities(),
-		
+
 		// Spread any additional context (excluding duplicates)
 		...Object.fromEntries(
-			Object.entries(baseContext).filter(([key]) => 
-				!['config', 'storage', 'backend', 'research', 'git'].includes(key)
+			Object.entries(baseContext).filter(
+				([key]) =>
+					!['config', 'storage', 'backend', 'research', 'git'].includes(key)
 			)
 		)
 	};
@@ -93,7 +94,7 @@ function createBackendProxy(backend) {
 	];
 
 	const proxy = {};
-	
+
 	for (const method of safeMethods) {
 		if (typeof backend[method] === 'function') {
 			proxy[method] = backend[method].bind(backend);
@@ -115,19 +116,20 @@ function createUtilities() {
 			if (!task || !task.details) return null;
 
 			// Look for research markers in task details
-			const researchPattern = /<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
+			const researchPattern =
+				/<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
 			const matches = [...task.details.matchAll(researchPattern)];
-			
+
 			if (matches.length === 0) return null;
 
-			const research = matches.map(match => ({
+			const research = matches.map((match) => ({
 				timestamp: match[1],
 				content: match[2].trim()
 			}));
 
 			// Find the most recent research entry
-			const latestResearch = research.sort((a, b) => 
-				new Date(b.timestamp) - new Date(a.timestamp)
+			const latestResearch = research.sort(
+				(a, b) => new Date(b.timestamp) - new Date(a.timestamp)
 			)[0];
 
 			return {
@@ -144,37 +146,69 @@ function createUtilities() {
 		analyzeTaskForResearch(task) {
 			if (!task) return { needed: false, confidence: 0 };
 
-			const text = `${task.title} ${task.description} ${task.details || ''}`.toLowerCase();
-			
+			const text =
+				`${task.title} ${task.description} ${task.details || ''}`.toLowerCase();
+
 			// Keywords that suggest research might be helpful
 			const researchIndicators = [
-				'new', 'latest', 'best practices', 'modern', 'current',
-				'framework', 'library', 'api', 'integration', 'setup',
-				'configure', 'implement', 'architecture', 'design pattern',
-				'security', 'performance', 'optimization', 'testing'
+				'new',
+				'latest',
+				'best practices',
+				'modern',
+				'current',
+				'framework',
+				'library',
+				'api',
+				'integration',
+				'setup',
+				'configure',
+				'implement',
+				'architecture',
+				'design pattern',
+				'security',
+				'performance',
+				'optimization',
+				'testing'
 			];
 
 			// Technology keywords that often need research
 			const techKeywords = [
-				'react', 'vue', 'angular', 'node', 'python', 'go', 'rust',
-				'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'firebase',
-				'mongodb', 'postgresql', 'redis', 'graphql', 'rest api'
+				'react',
+				'vue',
+				'angular',
+				'node',
+				'python',
+				'go',
+				'rust',
+				'docker',
+				'kubernetes',
+				'aws',
+				'azure',
+				'gcp',
+				'firebase',
+				'mongodb',
+				'postgresql',
+				'redis',
+				'graphql',
+				'rest api'
 			];
 
 			const foundKeywords = [];
-			const score = researchIndicators.reduce((acc, keyword) => {
-				if (text.includes(keyword)) {
-					foundKeywords.push(keyword);
-					return acc + 1;
-				}
-				return acc;
-			}, 0) + techKeywords.reduce((acc, keyword) => {
-				if (text.includes(keyword)) {
-					foundKeywords.push(keyword);
-					return acc + 0.5;
-				}
-				return acc;
-			}, 0);
+			const score =
+				researchIndicators.reduce((acc, keyword) => {
+					if (text.includes(keyword)) {
+						foundKeywords.push(keyword);
+						return acc + 1;
+					}
+					return acc;
+				}, 0) +
+				techKeywords.reduce((acc, keyword) => {
+					if (text.includes(keyword)) {
+						foundKeywords.push(keyword);
+						return acc + 0.5;
+					}
+					return acc;
+				}, 0);
 
 			// Calculate confidence based on score
 			const confidence = Math.min(score / 3, 1); // Normalize to 0-1
@@ -201,13 +235,17 @@ function createUtilities() {
 
 			// Technology-specific queries
 			if (keywords.length > 0) {
-				const techKeywords = keywords.filter(k => 
-					['react', 'vue', 'angular', 'node', 'python', 'go', 'rust'].includes(k)
+				const techKeywords = keywords.filter((k) =>
+					['react', 'vue', 'angular', 'node', 'python', 'go', 'rust'].includes(
+						k
+					)
 				);
-				
+
 				if (techKeywords.length > 0) {
 					queries.push(`${techKeywords[0]} ${baseText} tutorial`);
-					queries.push(`Latest ${techKeywords[0]} patterns for ${task.title.toLowerCase()}`);
+					queries.push(
+						`Latest ${techKeywords[0]} patterns for ${task.title.toLowerCase()}`
+					);
 				}
 			}
 
@@ -249,7 +287,7 @@ function createUtilities() {
 		deepClone(obj) {
 			if (obj === null || typeof obj !== 'object') return obj;
 			if (obj instanceof Date) return new Date(obj.getTime());
-			if (Array.isArray(obj)) return obj.map(item => this.deepClone(item));
+			if (Array.isArray(obj)) return obj.map((item) => this.deepClone(item));
 			if (typeof obj === 'object') {
 				const cloned = {};
 				for (const key in obj) {
@@ -285,4 +323,4 @@ export function validateContext(context) {
 		valid: errors.length === 0,
 		errors
 	};
-} 
+}

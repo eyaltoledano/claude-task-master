@@ -2,16 +2,16 @@
 
 // Mock terminal components for testing
 global.mockTerminal = {
-  screen: { render: jest.fn(), destroy: jest.fn() },
-  box: jest.fn(() => ({ setContent: jest.fn(), focus: jest.fn() })),
-  list: jest.fn(() => ({ setItems: jest.fn(), select: jest.fn() }))
+	screen: { render: jest.fn(), destroy: jest.fn() },
+	box: jest.fn(() => ({ setContent: jest.fn(), focus: jest.fn() })),
+	list: jest.fn(() => ({ setItems: jest.fn(), select: jest.fn() }))
 };
 
 // Setup test environment
 beforeEach(() => {
-  jest.clearAllMocks();
+	jest.clearAllMocks();
 });
 
 afterEach(() => {
-  // Cleanup test artifacts
+	// Cleanup test artifacts
 });

@@ -671,26 +671,27 @@ export function TaskManagementScreen() {
 
 		try {
 			// Prepare task data for the Claude launcher modal
-			const taskData = [{
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title,
-				description: selectedSubtask.description,
-				details: selectedSubtask.details,
-				status: selectedSubtask.status,
-				isSubtask: true,
-				parentTask: {
-					id: selectedTask.id,
-					title: selectedTask.title,
-					description: selectedTask.description
+			const taskData = [
+				{
+					id: `${selectedTask.id}.${selectedSubtask.id}`,
+					title: selectedSubtask.title,
+					description: selectedSubtask.description,
+					details: selectedSubtask.details,
+					status: selectedSubtask.status,
+					isSubtask: true,
+					parentTask: {
+						id: selectedTask.id,
+						title: selectedTask.title,
+						description: selectedTask.description
+					}
 				}
-			}];
+			];
 
 			// Set modal data and show the launcher modal
 			// No worktree is passed - the modal will create it when Claude is launched
 			setModalTaskData(taskData);
 			setClaudeWorktree(null); // Explicitly set to null
 			setShowClaudeLauncherModal(true);
-
 		} catch (error) {
 			console.error('Failed to setup Claude session:', error);
 			setToast({
@@ -719,7 +720,7 @@ export function TaskManagementScreen() {
 			const updatedWorktrees = new Map(subtaskWorktrees);
 			updatedWorktrees.set(subtaskId, [result.worktree]);
 			setSubtaskWorktrees(updatedWorktrees);
-			
+
 			setToast({
 				message: `Claude session started in worktree: ${result.worktree.name}`,
 				type: 'success'

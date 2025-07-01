@@ -22,8 +22,11 @@ export class HookExecutor {
 		try {
 			// Determine which method to call based on event
 			const methodName = this.getMethodName(event);
-			
-			if (!hookInstance[methodName] || typeof hookInstance[methodName] !== 'function') {
+
+			if (
+				!hookInstance[methodName] ||
+				typeof hookInstance[methodName] !== 'function'
+			) {
 				// Hook doesn't implement this event, skip silently
 				return { skipped: true, reason: 'method-not-implemented' };
 			}
@@ -40,7 +43,6 @@ export class HookExecutor {
 				result,
 				executionTime: Date.now() - context.startTime
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -58,7 +60,9 @@ export class HookExecutor {
 	 */
 	getMethodName(event) {
 		// Convert kebab-case to camelCase and add 'on' prefix
-		const camelCase = event.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+		const camelCase = event.replace(/-([a-z])/g, (match, letter) =>
+			letter.toUpperCase()
+		);
 		return `on${camelCase.charAt(0).toUpperCase()}${camelCase.slice(1)}`;
 	}
 
@@ -78,11 +82,11 @@ export class HookExecutor {
 			};
 
 			Promise.resolve(fn(contextWithTime))
-				.then(result => {
+				.then((result) => {
 					clearTimeout(timeoutId);
 					resolve(result);
 				})
-				.catch(error => {
+				.catch((error) => {
 					clearTimeout(timeoutId);
 					reject(error);
 				});
@@ -97,7 +101,7 @@ export class HookExecutor {
 		if (hookInstance.timeouts && hookInstance.timeouts[event]) {
 			return hookInstance.timeouts[event];
 		}
-		
+
 		// Check if hook has a general timeout
 		if (hookInstance.timeout) {
 			return hookInstance.timeout;
@@ -117,4 +121,4 @@ export class HookExecutor {
 			defaultTimeout: this.defaultTimeout
 		};
 	}
-} 
+}

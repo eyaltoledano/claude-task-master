@@ -28,7 +28,7 @@ export class ASTContextBuilder {
 		try {
 			// Load AST configuration
 			this.config = await loadASTConfig(this.projectRoot);
-			
+
 			// Check if AST is enabled
 			if (!this.config.enabled) {
 				console.debug('[AST] AST analysis disabled in configuration');
@@ -38,7 +38,7 @@ export class ASTContextBuilder {
 
 			// Initialize parser registry
 			this.parserRegistry = initializeDefaultRegistry();
-			
+
 			console.debug('[AST] Context builder initialized', {
 				supportedLanguages: this.config.supportedLanguages,
 				cacheEnabled: this.config.cacheMaxAge !== 'disabled'
@@ -46,7 +46,10 @@ export class ASTContextBuilder {
 
 			this.initialized = true;
 		} catch (error) {
-			console.warn('[AST] Failed to initialize context builder:', error.message);
+			console.warn(
+				'[AST] Failed to initialize context builder:',
+				error.message
+			);
 			this.initialized = true; // Mark as initialized even on failure for graceful degradation
 		}
 	}
@@ -69,7 +72,7 @@ export class ASTContextBuilder {
 		}
 
 		const startTime = Date.now();
-		
+
 		try {
 			console.debug('[AST] Building worktree context', { worktreePath });
 
@@ -78,16 +81,25 @@ export class ASTContextBuilder {
 			console.debug('[AST] Discovered files', { count: projectFiles.length });
 
 			// Parse files by language
-			const parseResults = await this.parseFilesByLanguage(projectFiles, worktreePath);
-			
+			const parseResults = await this.parseFilesByLanguage(
+				projectFiles,
+				worktreePath
+			);
+
 			// Score relevance if tasks provided
 			let relevanceScores = {};
 			if (contextOptions.tasks && contextOptions.tasks.length > 0) {
-				relevanceScores = await this.scoreFilesRelevance(parseResults, contextOptions.tasks);
+				relevanceScores = await this.scoreFilesRelevance(
+					parseResults,
+					contextOptions.tasks
+				);
 			}
 
 			// Filter results based on configuration and relevance
-			const filteredResults = this.filterResultsByRelevance(parseResults, relevanceScores);
+			const filteredResults = this.filterResultsByRelevance(
+				parseResults,
+				relevanceScores
+			);
 
 			// Format for Claude context
 			const formattedContext = await formatASTContext(filteredResults, {
@@ -96,7 +108,7 @@ export class ASTContextBuilder {
 			});
 
 			const duration = Date.now() - startTime;
-			console.debug('[AST] Context building completed', { 
+			console.debug('[AST] Context building completed', {
 				duration: `${duration}ms`,
 				filesAnalyzed: projectFiles.length,
 				languagesFound: Object.keys(parseResults).length
@@ -113,7 +125,6 @@ export class ASTContextBuilder {
 					timestamp: new Date().toISOString()
 				}
 			};
-
 		} catch (error) {
 			console.error('[AST] Failed to build worktree context:', error.message);
 			return {
@@ -132,7 +143,7 @@ export class ASTContextBuilder {
 	 */
 	async discoverProjectFiles(worktreePath) {
 		const files = [];
-		
+
 		// Get supported extensions from config
 		const supportedExtensions = this.getSupportedExtensions();
 		const excludePatterns = this.config.excludePatterns || [];
@@ -140,7 +151,7 @@ export class ASTContextBuilder {
 		try {
 			// Create glob pattern for supported extensions
 			const extensionPattern = `**/*{${supportedExtensions.join(',')}}`;
-			
+
 			// Find files matching extensions
 			const foundFiles = await glob(extensionPattern, {
 				cwd: worktreePath,
@@ -150,11 +161,11 @@ export class ASTContextBuilder {
 
 			for (const filePath of foundFiles) {
 				const fullPath = path.join(worktreePath, filePath);
-				
+
 				// Check if file exists and is readable
 				if (await fs.pathExists(fullPath)) {
 					const stats = await fs.stat(fullPath);
-					
+
 					// Skip very large files (>1MB)
 					if (stats.size > 1024 * 1024) {
 						console.debug('[AST] Skipping large file:', filePath);
@@ -163,7 +174,7 @@ export class ASTContextBuilder {
 
 					// Detect language
 					const language = this.parserRegistry.detectLanguage(fullPath);
-					
+
 					if (language && this.config.supportedLanguages.includes(language)) {
 						files.push({
 							path: filePath,
@@ -202,8 +213,12 @@ export class ASTContextBuilder {
 		// Parse each language group
 		for (const [language, files] of Object.entries(filesByLanguage)) {
 			console.debug(`[AST] Parsing ${files.length} ${language} files`);
-			
-			resultsByLanguage[language] = await this.parseLanguageFiles(language, files, worktreePath);
+
+			resultsByLanguage[language] = await this.parseLanguageFiles(
+				language,
+				files,
+				worktreePath
+			);
 		}
 
 		return resultsByLanguage;
@@ -218,12 +233,16 @@ export class ASTContextBuilder {
 	 */
 	async parseLanguageFiles(language, files, worktreePath) {
 		const results = [];
-		
+
 		for (const file of files) {
 			try {
 				// Generate cache key
-				const cacheKey = await createCacheKey(file.fullPath, language, worktreePath);
-				
+				const cacheKey = await createCacheKey(
+					file.fullPath,
+					language,
+					worktreePath
+				);
+
 				// Try to get cached result or execute parsing
 				const parseResult = await getCachedOrExecute(
 					cacheKey,
@@ -246,9 +265,11 @@ export class ASTContextBuilder {
 						language
 					});
 				} else {
-					console.warn(`[AST] Failed to parse ${file.path}:`, parseResult.error);
+					console.warn(
+						`[AST] Failed to parse ${file.path}:`,
+						parseResult.error
+					);
 				}
-
 			} catch (error) {
 				console.warn(`[AST] Error parsing ${file.path}:`, error.message);
 			}
@@ -265,7 +286,7 @@ export class ASTContextBuilder {
 	 */
 	async scoreFilesRelevance(parseResults, tasks) {
 		const scores = {};
-		
+
 		try {
 			for (const [language, results] of Object.entries(parseResults)) {
 				for (const result of results) {
@@ -297,20 +318,25 @@ export class ASTContextBuilder {
 		const filtered = {};
 
 		for (const [language, results] of Object.entries(parseResults)) {
-			filtered[language] = results.filter(result => {
-				// Check complexity limits
-				if (result.ast.complexity > maxComplexityScore) {
-					return false;
-				}
+			filtered[language] = results
+				.filter((result) => {
+					// Check complexity limits
+					if (result.ast.complexity > maxComplexityScore) {
+						return false;
+					}
 
-				// Check relevance if scored
-				const filePath = result.file.path;
-				if (relevanceScores[filePath] !== undefined && relevanceScores[filePath] < 0.3) {
-					return false;
-				}
+					// Check relevance if scored
+					const filePath = result.file.path;
+					if (
+						relevanceScores[filePath] !== undefined &&
+						relevanceScores[filePath] < 0.3
+					) {
+						return false;
+					}
 
-				return true;
-			}).slice(0, maxFunctions); // Limit total functions per language
+					return true;
+				})
+				.slice(0, maxFunctions); // Limit total functions per language
 		}
 
 		return filtered;
@@ -322,7 +348,7 @@ export class ASTContextBuilder {
 	 */
 	getSupportedExtensions() {
 		const extensions = [];
-		
+
 		for (const language of this.config.supportedLanguages) {
 			switch (language) {
 				case 'javascript':
@@ -346,7 +372,12 @@ export class ASTContextBuilder {
 	 * @returns {boolean} True if AST can be used
 	 */
 	isAvailable() {
-		return this.initialized && this.config && this.config.enabled && this.parserRegistry;
+		return (
+			this.initialized &&
+			this.config &&
+			this.config.enabled &&
+			this.parserRegistry
+		);
 	}
 }
 
@@ -358,4 +389,4 @@ export class ASTContextBuilder {
  */
 export function createASTContextBuilder(projectRoot, options = {}) {
 	return new ASTContextBuilder(projectRoot, options);
-} 
+}

@@ -1,15 +1,18 @@
 /**
  * Phase 2.2 Language-Specific Analyzers Export Index
- * 
+ *
  * Centralized exports for all Phase 2.2 language-specific analyzers
  * and the dispatcher that coordinates them.
- * 
+ *
  * @author Task Master Flow
  * @version 2.2.0
  */
 
 // Core dispatcher
-export { AnalyzerDispatcher, createAnalyzerDispatcher } from './analyzer-dispatcher.js';
+export {
+	AnalyzerDispatcher,
+	createAnalyzerDispatcher
+} from './analyzer-dispatcher.js';
 
 // Language-specific analyzers
 export { JavaScriptAnalyzer } from './javascript-analyzer.js';

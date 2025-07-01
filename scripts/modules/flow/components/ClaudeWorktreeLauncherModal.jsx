@@ -349,7 +349,8 @@ export function ClaudeWorktreeLauncherModal({
 				setView('options');
 			} else if (view === 'options') {
 				// Skip the prompt view and launch directly with default prompt
-				const defaultPrompt = 'Implement the assigned tasks according to the specifications and context provided in CLAUDE.md. Follow best practices and ensure comprehensive testing.';
+				const defaultPrompt =
+					'Implement the assigned tasks according to the specifications and context provided in CLAUDE.md. Follow best practices and ensure comprehensive testing.';
 				setHeadlessPrompt(defaultPrompt);
 				handleLaunch();
 			} else if (view === 'prompt') {
@@ -482,12 +483,15 @@ export function ClaudeWorktreeLauncherModal({
 	useKeypress(keyHandlers);
 
 	const handleLaunch = async () => {
-		console.log('🚀 [ClaudeWorktreeLauncherModal] Starting background Claude Code session with options:', {
-			persona: selectedPersona,
-			maxTurns: maxTurns,
-			worktreeName: worktree?.name,
-			tasksCount: tasks.length
-		});
+		console.log(
+			'🚀 [ClaudeWorktreeLauncherModal] Starting background Claude Code session with options:',
+			{
+				persona: selectedPersona,
+				maxTurns: maxTurns,
+				worktreeName: worktree?.name,
+				tasksCount: tasks.length
+			}
+		);
 
 		// Handle worktree creation if needed
 		let actualWorktree = worktree;
@@ -497,11 +501,14 @@ export function ClaudeWorktreeLauncherModal({
 			const task = tasks[0];
 			const isSubtask = task.isSubtask || String(task.id).includes('.');
 
-			console.log('🏗️ [ClaudeWorktreeLauncherModal] Creating worktree for task:', {
-				taskId: task.id,
-				isSubtask,
-				title: task.title
-			});
+			console.log(
+				'🏗️ [ClaudeWorktreeLauncherModal] Creating worktree for task:',
+				{
+					taskId: task.id,
+					isSubtask,
+					title: task.title
+				}
+			);
 
 			try {
 				// Get the current branch to use as source
@@ -531,35 +538,39 @@ export function ClaudeWorktreeLauncherModal({
 						}
 					);
 				} else {
-					result = await backend.getOrCreateWorktreeForTask(
-						task.id,
-						{
-							sourceBranch,
-							taskTitle: task.title
-						}
-					);
+					result = await backend.getOrCreateWorktreeForTask(task.id, {
+						sourceBranch,
+						taskTitle: task.title
+					});
 				}
 
 				// Check if we need user decision for branch conflict
 				if (result.needsUserDecision) {
-					const conflictMessage = result.branchInUseAt 
+					const conflictMessage = result.branchInUseAt
 						? `Branch conflict: ${result.branchName} is already in use at ${result.branchInUseAt}. Please resolve this in the Tasks screen first.`
 						: `Branch conflict: ${result.branchName} already exists but is not currently in use. Please choose how to proceed in the Tasks screen.`;
-					
+
 					setError(conflictMessage);
 					setView('persona');
 					return;
 				}
 
 				if (result.created) {
-					console.log(`✅ [ClaudeWorktreeLauncherModal] Created worktree: ${result.worktree.name}`);
+					console.log(
+						`✅ [ClaudeWorktreeLauncherModal] Created worktree: ${result.worktree.name}`
+					);
 				} else if (result.exists) {
-					console.log(`♻️ [ClaudeWorktreeLauncherModal] Using existing worktree: ${result.worktree.name}`);
+					console.log(
+						`♻️ [ClaudeWorktreeLauncherModal] Using existing worktree: ${result.worktree.name}`
+					);
 				}
 
 				actualWorktree = result.worktree;
 			} catch (worktreeError) {
-				console.error('❌ [ClaudeWorktreeLauncherModal] Failed to create worktree:', worktreeError);
+				console.error(
+					'❌ [ClaudeWorktreeLauncherModal] Failed to create worktree:',
+					worktreeError
+				);
 				setError(`Failed to create worktree: ${worktreeError.message}`);
 				setView('persona');
 				return;
@@ -603,54 +614,71 @@ export function ClaudeWorktreeLauncherModal({
 
 			// Initialize background service
 			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
-			
+
 			// Build the prompt for the session
-			const prompt = headlessPrompt || 'Implement the assigned tasks according to the specifications in CLAUDE.md';
-			
+			const prompt =
+				headlessPrompt ||
+				'Implement the assigned tasks according to the specifications in CLAUDE.md';
+
 			// Start background operation
 			const operation = await backgroundClaudeCode.startQuery(prompt, {
 				persona: selectedPersona,
 				metadata: {
-					type: tasks.length === 1 && (tasks[0].isSubtask || String(tasks[0].id).includes('.')) ? 'subtask-implementation' : 'task-implementation',
+					type:
+						tasks.length === 1 &&
+						(tasks[0].isSubtask || String(tasks[0].id).includes('.'))
+							? 'subtask-implementation'
+							: 'task-implementation',
 					taskId: tasks[0]?.id,
-					subtaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id : null,
-					parentTaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id.split('.')[0] : null,
+					subtaskId:
+						tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')
+							? tasks[0].id
+							: null,
+					parentTaskId:
+						tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')
+							? tasks[0].id.split('.')[0]
+							: null,
 					// Pass complete task information for CLAUDE.md generation
-					taskData: tasks[0] ? await (async () => {
-						const task = tasks[0];
-						const taskData = {
-							id: task.id,
-							title: task.title,
-							description: task.description || '',
-							details: task.details || '',
-							testStrategy: task.testStrategy || '',
-							status: task.status || 'pending',
-							isSubtask: task.isSubtask || String(task.id).includes('.'),
-							parentTask: task.parentTask || null
-						};
-						
-						// If this is a subtask, fetch complete parent task information
-						if (taskData.isSubtask && task.id.includes('.')) {
-							const parentTaskId = task.id.split('.')[0];
-							try {
-								const parentTask = await backend.getTask(parentTaskId);
-								if (parentTask) {
-									taskData.parentTask = {
-										id: parentTask.id,
-										title: parentTask.title,
-										description: parentTask.description || '',
-										details: parentTask.details || '',
-										testStrategy: parentTask.testStrategy || '',
-										status: parentTask.status || 'pending'
-									};
+					taskData: tasks[0]
+						? await (async () => {
+								const task = tasks[0];
+								const taskData = {
+									id: task.id,
+									title: task.title,
+									description: task.description || '',
+									details: task.details || '',
+									testStrategy: task.testStrategy || '',
+									status: task.status || 'pending',
+									isSubtask: task.isSubtask || String(task.id).includes('.'),
+									parentTask: task.parentTask || null
+								};
+
+								// If this is a subtask, fetch complete parent task information
+								if (taskData.isSubtask && task.id.includes('.')) {
+									const parentTaskId = task.id.split('.')[0];
+									try {
+										const parentTask = await backend.getTask(parentTaskId);
+										if (parentTask) {
+											taskData.parentTask = {
+												id: parentTask.id,
+												title: parentTask.title,
+												description: parentTask.description || '',
+												details: parentTask.details || '',
+												testStrategy: parentTask.testStrategy || '',
+												status: parentTask.status || 'pending'
+											};
+										}
+									} catch (error) {
+										console.warn(
+											'⚠️ [ClaudeWorktreeLauncherModal] Failed to fetch parent task:',
+											error
+										);
+									}
 								}
-							} catch (error) {
-								console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to fetch parent task:', error);
-							}
-						}
-						
-						return taskData;
-					})() : null,
+
+								return taskData;
+							})()
+						: null,
 					worktreePath: actualWorktree?.path,
 					worktreeName: actualWorktree?.name,
 					branch: actualWorktree?.branch || actualWorktree?.name,
@@ -661,10 +689,13 @@ export function ClaudeWorktreeLauncherModal({
 				}
 			});
 
-			console.log('✅ [ClaudeWorktreeLauncherModal] Background operation started:', {
-				operationId: operation.operationId,
-				worktree: actualWorktree?.name
-			});
+			console.log(
+				'✅ [ClaudeWorktreeLauncherModal] Background operation started:',
+				{
+					operationId: operation.operationId,
+					worktree: actualWorktree?.name
+				}
+			);
 
 			// Update the relevant task/subtask with background operation reference
 			try {
@@ -686,7 +717,9 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 						prompt: sessionReference,
 						research: false
 					});
-					console.log('📝 [ClaudeWorktreeLauncherModal] Updated subtask with session reference');
+					console.log(
+						'📝 [ClaudeWorktreeLauncherModal] Updated subtask with session reference'
+					);
 				} else {
 					// Update task
 					await backend.updateTask({
@@ -694,10 +727,15 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 						prompt: sessionReference,
 						research: false
 					});
-					console.log('📝 [ClaudeWorktreeLauncherModal] Updated task with session reference');
+					console.log(
+						'📝 [ClaudeWorktreeLauncherModal] Updated task with session reference'
+					);
 				}
 			} catch (updateError) {
-				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with session reference:', updateError);
+				console.warn(
+					'⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with session reference:',
+					updateError
+				);
 			}
 
 			// Show success and close modal
@@ -709,34 +747,40 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 				output: `Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`,
 				message: `Background session started successfully! You can monitor progress in the Background Operations screen.`
 			});
-			
+
 			setView('summary');
-			
+
 			// Auto-close after showing success
 			setTimeout(() => {
 				onClose();
 			}, 3000);
-
 		} catch (error) {
-			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to start background operation:', error);
+			console.error(
+				'❌ [ClaudeWorktreeLauncherModal] Failed to start background operation:',
+				error
+			);
 			setError(`Failed to start Claude Code: ${error.message}`);
 			setView('persona');
 		}
 	};
 
 	const handleResume = async () => {
-		console.log('🔄 [ClaudeWorktreeLauncherModal] Resuming background Claude Code session:', {
-			sessionId: sessionResult.sessionId,
-			maxTurns: maxTurns
-		});
+		console.log(
+			'🔄 [ClaudeWorktreeLauncherModal] Resuming background Claude Code session:',
+			{
+				sessionId: sessionResult.sessionId,
+				maxTurns: maxTurns
+			}
+		);
 
 		try {
 			// Initialize background service
 			const backgroundClaudeCode = new BackgroundClaudeCode(backend);
-			
+
 			// Resume the session (or start a new one with continuation prompt)
-			const resumePrompt = 'Continue with the implementation from where we left off.';
-			
+			const resumePrompt =
+				'Continue with the implementation from where we left off.';
+
 			// Start a new background operation as continuation
 			const operation = await backgroundClaudeCode.startQuery(resumePrompt, {
 				persona: selectedPersona,
@@ -753,10 +797,13 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 				}
 			});
 
-			console.log('✅ [ClaudeWorktreeLauncherModal] Background continuation started:', {
-				operationId: operation.operationId,
-				originalSessionId: sessionResult.sessionId
-			});
+			console.log(
+				'✅ [ClaudeWorktreeLauncherModal] Background continuation started:',
+				{
+					operationId: operation.operationId,
+					originalSessionId: sessionResult.sessionId
+				}
+			);
 
 			// Update the task/subtask with continuation reference
 			try {
@@ -783,7 +830,10 @@ Working directory: ${worktree?.path}
 					});
 				}
 			} catch (updateError) {
-				console.warn('⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with continuation reference:', updateError);
+				console.warn(
+					'⚠️ [ClaudeWorktreeLauncherModal] Failed to update task with continuation reference:',
+					updateError
+				);
 			}
 
 			// Update session result
@@ -797,9 +847,11 @@ Working directory: ${worktree?.path}
 			setTimeout(() => {
 				onClose();
 			}, 3000);
-
 		} catch (error) {
-			console.error('❌ [ClaudeWorktreeLauncherModal] Failed to resume background session:', error);
+			console.error(
+				'❌ [ClaudeWorktreeLauncherModal] Failed to resume background session:',
+				error
+			);
 			setError(`Failed to resume session: ${error.message}`);
 		}
 	};
@@ -964,7 +1016,9 @@ Working directory: ${worktree?.path}
 					>
 						<Text bold color={theme.highlight}>
 							📁 Git Worktree:{' '}
-							{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
+							{worktree?.path.split('/').pop() ||
+								sessionResult?.worktree?.path.split('/').pop() ||
+								'Unknown'}
 						</Text>
 						<Text color={theme.secondary} fontSize={11}>
 							Branch:{' '}
@@ -1138,7 +1192,9 @@ Working directory: ${worktree?.path}
 				>
 					<Text bold color={theme.highlight}>
 						📁 Git Worktree:{' '}
-						{worktree?.path.split('/').pop() || sessionResult?.worktree?.path.split('/').pop() || 'Unknown'}
+						{worktree?.path.split('/').pop() ||
+							sessionResult?.worktree?.path.split('/').pop() ||
+							'Unknown'}
 					</Text>
 					<Box flexDirection="column" marginLeft={2}>
 						<Text color={theme.secondary}>

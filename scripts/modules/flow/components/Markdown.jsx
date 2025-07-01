@@ -108,7 +108,7 @@ const parseInlineMarkdown = (text, theme) => {
 
 const renderMarkdownLine = (line, lineIndex, theme) => {
 	const trimmed = line.trim();
-	
+
 	// Empty line
 	if (!trimmed) {
 		return <Box key={lineIndex} height={1} />;
@@ -119,9 +119,16 @@ const renderMarkdownLine = (line, lineIndex, theme) => {
 	if (headerMatch) {
 		const level = headerMatch[1].length;
 		const text = headerMatch[2];
-		const colors = [theme.accent, theme.success, theme.info, theme.warning, theme.text, theme.textDim];
+		const colors = [
+			theme.accent,
+			theme.success,
+			theme.info,
+			theme.warning,
+			theme.text,
+			theme.textDim
+		];
 		const color = colors[Math.min(level - 1, colors.length - 1)];
-		
+
 		return (
 			<Box key={lineIndex} marginY={1}>
 				<Text bold color={color}>
@@ -132,10 +139,20 @@ const renderMarkdownLine = (line, lineIndex, theme) => {
 	}
 
 	// Code blocks (simple single-line detection)
-	if (trimmed.startsWith('```') && trimmed.endsWith('```') && trimmed.length > 6) {
+	if (
+		trimmed.startsWith('```') &&
+		trimmed.endsWith('```') &&
+		trimmed.length > 6
+	) {
 		const code = trimmed.slice(3, -3);
 		return (
-			<Box key={lineIndex} marginY={1} paddingX={2} borderStyle="single" borderColor={theme.textDim}>
+			<Box
+				key={lineIndex}
+				marginY={1}
+				paddingX={2}
+				borderStyle="single"
+				borderColor={theme.textDim}
+			>
 				<SyntaxHighlight code={code} />
 			</Box>
 		);
@@ -147,12 +164,10 @@ const renderMarkdownLine = (line, lineIndex, theme) => {
 		const isOrdered = /^\d+\./.test(listMatch[1]);
 		const bullet = isOrdered ? '1. ' : '• ';
 		const content = listMatch[2];
-		
+
 		return (
 			<Box key={lineIndex} marginLeft={2}>
-				<Text color={theme.text}>
-					{bullet}
-				</Text>
+				<Text color={theme.text}>{bullet}</Text>
 				{parseInlineMarkdown(content, theme)}
 			</Box>
 		);
@@ -162,7 +177,13 @@ const renderMarkdownLine = (line, lineIndex, theme) => {
 	if (trimmed.startsWith('>')) {
 		const content = trimmed.substring(1).trim();
 		return (
-			<Box key={lineIndex} marginY={1} paddingLeft={2} borderLeft borderColor={theme.textDim}>
+			<Box
+				key={lineIndex}
+				marginY={1}
+				paddingLeft={2}
+				borderLeft
+				borderColor={theme.textDim}
+			>
 				<Text color={theme.textDim} italic>
 					{content}
 				</Text>
@@ -174,9 +195,7 @@ const renderMarkdownLine = (line, lineIndex, theme) => {
 	if (trimmed.match(/^---+$/)) {
 		return (
 			<Box key={lineIndex} marginY={1}>
-				<Text color={theme.textDim}>
-					{'─'.repeat(50)}
-				</Text>
+				<Text color={theme.textDim}>{'─'.repeat(50)}</Text>
 			</Box>
 		);
 	}
@@ -214,7 +233,13 @@ export const Markdown = ({ content, ...props }) => {
 			if (inCodeBlock) {
 				// End of code block
 				elements.push(
-					<Box key={`code-${i}`} marginY={1} paddingX={2} borderStyle="single" borderColor={theme.textDim}>
+					<Box
+						key={`code-${i}`}
+						marginY={1}
+						paddingX={2}
+						borderStyle="single"
+						borderColor={theme.textDim}
+					>
 						{codeBlockLanguage && (
 							<Box marginBottom={1}>
 								<Text color={theme.textDim} bold>
@@ -222,8 +247,8 @@ export const Markdown = ({ content, ...props }) => {
 								</Text>
 							</Box>
 						)}
-						<SyntaxHighlight 
-							code={codeBlockLines.join('\n')} 
+						<SyntaxHighlight
+							code={codeBlockLines.join('\n')}
 							language={codeBlockLanguage || 'text'}
 						/>
 					</Box>
@@ -254,4 +279,4 @@ export const Markdown = ({ content, ...props }) => {
 	);
 };
 
-export default Markdown; 
+export default Markdown;

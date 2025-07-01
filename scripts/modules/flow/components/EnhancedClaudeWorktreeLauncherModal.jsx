@@ -131,15 +131,18 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 		try {
 			setProcessingLog('Analyzing task for research needs...');
-			
+
 			// Use hook to check research needs
 			const researchCheck = await hookService.checkResearchNeeded(tasks[0]);
-			
+
 			if (researchCheck && researchCheck.researchStatus) {
 				setResearchStatus(researchCheck.researchStatus);
-				
+
 				// If research is needed and not already present, suggest running it
-				if (researchCheck.researchStatus.needed && !researchCheck.researchStatus.hasExisting) {
+				if (
+					researchCheck.researchStatus.needed &&
+					!researchCheck.researchStatus.hasExisting
+				) {
 					setShouldRunResearch(true);
 				}
 			} else {
@@ -182,10 +185,10 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			});
 
 			setResearchResults(results);
-			
+
 			// Notify hooks that research completed
 			await hookService.notifyResearchCompleted(task, results);
-			
+
 			setProcessingLog('Research completed successfully');
 		} catch (error) {
 			console.error('Error running research:', error);
@@ -205,7 +208,13 @@ export function EnhancedClaudeWorktreeLauncherModal({
 		) {
 			detectPersonasForSelectedTasks();
 		}
-	}, [view, selectedTasks.length, isDetectingPersonas, detectedPersonas.length, detectPersonasForSelectedTasks]);
+	}, [
+		view,
+		selectedTasks.length,
+		isDetectingPersonas,
+		detectedPersonas.length,
+		detectPersonasForSelectedTasks
+	]);
 
 	// Auto-check research when we get to research view
 	useEffect(() => {
@@ -237,7 +246,13 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					...baseProps,
 					title: '🚀 Claude Code: Configure Tools',
 					preset: 'default',
-					keyboardHints: ['1-3 toggle', '+/- turns', 'ENTER next', 'BACKSPACE back', 'ESC cancel']
+					keyboardHints: [
+						'1-3 toggle',
+						'+/- turns',
+						'ENTER next',
+						'BACKSPACE back',
+						'ESC cancel'
+					]
 				};
 			case 'prompt':
 				return {
@@ -251,7 +266,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					...baseProps,
 					title: '🚀 Claude Code: Research Analysis',
 					preset: 'info',
-					keyboardHints: isRunningResearch 
+					keyboardHints: isRunningResearch
 						? ['ESC cancel']
 						: ['y run research', 'n skip', 'BACKSPACE back', 'ESC cancel']
 				};
@@ -301,7 +316,9 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 		return: () => {
 			if (view === 'persona') {
-				setSelectedPersona(detectedPersonas[personaSelectionIndex]?.persona || 'architect');
+				setSelectedPersona(
+					detectedPersonas[personaSelectionIndex]?.persona || 'architect'
+				);
 				setView('tools');
 			} else if (view === 'tools') {
 				setView('prompt');
@@ -333,7 +350,12 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 		// Research view specific
 		y: () => {
-			if (view === 'research' && !isRunningResearch && researchStatus?.needed && !researchResults) {
+			if (
+				view === 'research' &&
+				!isRunningResearch &&
+				researchStatus?.needed &&
+				!researchResults
+			) {
 				runResearch();
 			}
 		},
@@ -413,10 +435,21 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			tasks: tasks[0],
 			worktree
 		};
-		
+
 		setFinalConfig(config);
 		setView('review');
-	}, [selectedPersona, toolRestrictions, maxTurns, useCustomPrompt, customPrompt, researchStatus, researchResults, shouldRunResearch, tasks, worktree]);
+	}, [
+		selectedPersona,
+		toolRestrictions,
+		maxTurns,
+		useCustomPrompt,
+		customPrompt,
+		researchStatus,
+		researchResults,
+		shouldRunResearch,
+		tasks,
+		worktree
+	]);
 
 	// Main launch handler
 	const handleLaunch = async () => {
@@ -433,9 +466,13 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			if (!actualWorktree && tasks.length > 0) {
 				setProcessingLog('Creating worktree...');
 				actualWorktree = await createWorktreeForTask(tasks[0]);
-				
+
 				// Notify hooks about worktree creation
-				await hookService.notifyWorktreeCreated(actualWorktree, tasks[0], finalConfig);
+				await hookService.notifyWorktreeCreated(
+					actualWorktree,
+					tasks[0],
+					finalConfig
+				);
 			}
 
 			// Run research if needed and not already done
@@ -446,21 +483,32 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 			// Create CLAUDE.md
 			setProcessingLog('Preparing CLAUDE.md...');
-			const claudeMdPath = await prepareClaudeMarkdown(actualWorktree, tasks[0]);
-			
+			const claudeMdPath = await prepareClaudeMarkdown(
+				actualWorktree,
+				tasks[0]
+			);
+
 			// Notify hooks about CLAUDE.md preparation
-			await hookService.notifyClaudeMdPrepared(actualWorktree, tasks[0], claudeMdPath);
+			await hookService.notifyClaudeMdPrepared(
+				actualWorktree,
+				tasks[0],
+				claudeMdPath
+			);
 
 			// Start Claude Code session
 			setProcessingLog('Starting Claude Code session...');
 			const session = await startClaudeSession(actualWorktree, tasks[0]);
-			
+
 			// Notify hooks about session start
-			await hookService.notifySessionStarted(session, finalConfig, tasks[0], actualWorktree);
+			await hookService.notifySessionStarted(
+				session,
+				finalConfig,
+				tasks[0],
+				actualWorktree
+			);
 
 			setSessionResult(session);
 			setView('summary');
-
 		} catch (error) {
 			console.error('Launch failed:', error);
 			setError(`Launch failed: ${error.message}`);
@@ -473,7 +521,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	// Helper functions
 	const createWorktreeForTask = async (task) => {
 		const isSubtask = task.isSubtask || String(task.id).includes('.');
-		
+
 		try {
 			let sourceBranch = 'main';
 			try {
@@ -495,10 +543,10 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					{ sourceBranch, subtaskTitle: task.title }
 				);
 			} else {
-				result = await backend.getOrCreateWorktreeForTask(
-					task.id,
-					{ sourceBranch, taskTitle: task.title }
-				);
+				result = await backend.getOrCreateWorktreeForTask(task.id, {
+					sourceBranch,
+					taskTitle: task.title
+				});
 			}
 
 			if (result.needsUserDecision) {
@@ -519,10 +567,11 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 	const startClaudeSession = async (worktree, task) => {
 		const backgroundClaudeCode = new BackgroundClaudeCode(backend);
-		
-		const prompt = finalConfig.customPrompt || 
+
+		const prompt =
+			finalConfig.customPrompt ||
 			'Implement the assigned tasks according to the specifications in CLAUDE.md';
-		
+
 		const operation = await backgroundClaudeCode.startQuery(prompt, {
 			persona: finalConfig.persona,
 			metadata: {
@@ -546,9 +595,11 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	};
 
 	const buildAllowedTools = () => {
-		if (toolRestrictions.allowShellCommands && 
-			toolRestrictions.allowFileOperations && 
-			toolRestrictions.allowWebSearch) {
+		if (
+			toolRestrictions.allowShellCommands &&
+			toolRestrictions.allowFileOperations &&
+			toolRestrictions.allowWebSearch
+		) {
 			return null; // All tools allowed
 		}
 
@@ -623,22 +674,27 @@ export function EnhancedClaudeWorktreeLauncherModal({
 				Selected Persona: {personaIcons[selectedPersona]}{' '}
 				{personaDefinitions[selectedPersona]?.identity.split('|')[0]}
 			</Text>
-			
+
 			<Box marginTop={2} flexDirection="column">
 				<Text bold>Tool Restrictions:</Text>
 				<Box marginTop={1}>
 					<Text color={toolRestrictions.allowShellCommands ? 'green' : 'red'}>
-						1. Shell Commands: {toolRestrictions.allowShellCommands ? '✓ Allowed' : '✗ Restricted'}
+						1. Shell Commands:{' '}
+						{toolRestrictions.allowShellCommands ? '✓ Allowed' : '✗ Restricted'}
 					</Text>
 				</Box>
 				<Box>
 					<Text color={toolRestrictions.allowFileOperations ? 'green' : 'red'}>
-						2. File Operations: {toolRestrictions.allowFileOperations ? '✓ Allowed' : '✗ Restricted'}
+						2. File Operations:{' '}
+						{toolRestrictions.allowFileOperations
+							? '✓ Allowed'
+							: '✗ Restricted'}
 					</Text>
 				</Box>
 				<Box>
 					<Text color={toolRestrictions.allowWebSearch ? 'green' : 'red'}>
-						3. Web Search: {toolRestrictions.allowWebSearch ? '✓ Allowed' : '✗ Restricted'}
+						3. Web Search:{' '}
+						{toolRestrictions.allowWebSearch ? '✓ Allowed' : '✗ Restricted'}
 					</Text>
 				</Box>
 			</Box>
@@ -653,9 +709,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 	const renderCustomPrompt = () => (
 		<Box flexDirection="column">
-			<Text color={theme.secondary}>
-				Enter custom instructions (optional):
-			</Text>
+			<Text color={theme.secondary}>Enter custom instructions (optional):</Text>
 			<Box marginTop={1}>
 				<TextInput
 					value={customPrompt}
@@ -676,10 +730,8 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 	const renderResearchAnalysis = () => (
 		<Box flexDirection="column">
-			<Text color={theme.secondary}>
-				Task: {tasks[0]?.title}
-			</Text>
-			
+			<Text color={theme.secondary}>Task: {tasks[0]?.title}</Text>
+
 			{processingLog && (
 				<Box marginTop={1}>
 					<LoadingSpinner />
@@ -693,12 +745,12 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					<Text color={researchStatus.needed ? 'yellow' : 'green'}>
 						{researchStatus.message}
 					</Text>
-					
+
 					{researchStatus.needed && !researchStatus.hasExisting && (
 						<Box marginTop={1}>
 							<Text>
-								Confidence: {researchStatus.confidence}% | 
-								Keywords: {researchStatus.keywords?.join(', ') || 'None'}
+								Confidence: {researchStatus.confidence}% | Keywords:{' '}
+								{researchStatus.keywords?.join(', ') || 'None'}
 							</Text>
 							{!researchResults && (
 								<Box marginTop={1}>
@@ -712,7 +764,9 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 					{researchResults && (
 						<Box marginTop={1}>
-							<Text color="green">✓ Research completed and will be included</Text>
+							<Text color="green">
+								✓ Research completed and will be included
+							</Text>
 						</Box>
 					)}
 				</Box>
@@ -722,28 +776,33 @@ export function EnhancedClaudeWorktreeLauncherModal({
 
 	const renderFinalReview = () => (
 		<Box flexDirection="column">
-			<Text bold color={theme.primary}>Configuration Review:</Text>
-			
+			<Text bold color={theme.primary}>
+				Configuration Review:
+			</Text>
+
 			<Box marginTop={1} flexDirection="column">
+				<Text>📋 Task: {finalConfig?.tasks?.title}</Text>
 				<Text>
-					📋 Task: {finalConfig?.tasks?.title}
+					🎭 Persona: {personaIcons[finalConfig?.persona]}{' '}
+					{personaDefinitions[finalConfig?.persona]?.identity.split('|')[0]}
 				</Text>
+				<Text>🔧 Max Turns: {finalConfig?.maxTurns}</Text>
 				<Text>
-					🎭 Persona: {personaIcons[finalConfig?.persona]} {personaDefinitions[finalConfig?.persona]?.identity.split('|')[0]}
+					🛠️ Tools:{' '}
+					{finalConfig?.toolRestrictions?.allowShellCommands &&
+					finalConfig?.toolRestrictions?.allowFileOperations &&
+					finalConfig?.toolRestrictions?.allowWebSearch
+						? 'All allowed'
+						: 'Some restricted'}
 				</Text>
+				{finalConfig?.customPrompt && <Text>💬 Custom Prompt: Yes</Text>}
 				<Text>
-					🔧 Max Turns: {finalConfig?.maxTurns}
-				</Text>
-				<Text>
-					🛠️ Tools: {finalConfig?.toolRestrictions?.allowShellCommands && finalConfig?.toolRestrictions?.allowFileOperations && finalConfig?.toolRestrictions?.allowWebSearch ? 'All allowed' : 'Some restricted'}
-				</Text>
-				{finalConfig?.customPrompt && (
-					<Text>
-						💬 Custom Prompt: Yes
-					</Text>
-				)}
-				<Text>
-					🔍 Research: {finalConfig?.researchResults ? 'Completed' : finalConfig?.shouldRunResearch ? 'Will run' : 'Skipped'}
+					🔍 Research:{' '}
+					{finalConfig?.researchResults
+						? 'Completed'
+						: finalConfig?.shouldRunResearch
+							? 'Will run'
+							: 'Skipped'}
 				</Text>
 			</Box>
 
@@ -773,16 +832,20 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	const renderSummary = () => (
 		<Box flexDirection="column">
 			<Text color="green">✅ Claude Code session started successfully!</Text>
-			
+
 			{sessionResult && (
 				<Box marginTop={2} flexDirection="column">
-					<Text>Operation ID: {sessionResult.operationId?.substring(0, 8)}...</Text>
+					<Text>
+						Operation ID: {sessionResult.operationId?.substring(0, 8)}...
+					</Text>
 					<Text>{sessionResult.message}</Text>
 				</Box>
 			)}
 
 			<Box marginTop={2}>
-				<Text dimColor>Monitor progress in the Background Operations screen</Text>
+				<Text dimColor>
+					Monitor progress in the Background Operations screen
+				</Text>
 			</Box>
 		</Box>
 	);
@@ -817,9 +880,5 @@ export function EnhancedClaudeWorktreeLauncherModal({
 		}
 	};
 
-	return (
-		<BaseModal {...getModalProps()}>
-			{renderContent()}
-		</BaseModal>
-	);
-} 
+	return <BaseModal {...getModalProps()}>{renderContent()}</BaseModal>;
+}

@@ -50,8 +50,11 @@ export class HookIntegrationService {
 				type: 'research-check'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_RESEARCH, context);
-			
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.PRE_RESEARCH,
+				context
+			);
+
 			// Extract research status from hook results
 			let researchStatus = null;
 			for (const hookResult of result.results) {
@@ -68,7 +71,6 @@ export class HookIntegrationService {
 				researchStatus,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error checking research needs:', error);
 			return {
@@ -113,8 +115,11 @@ export class HookIntegrationService {
 				type: 'pre-launch-validation'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_LAUNCH, context);
-			
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.PRE_LAUNCH,
+				context
+			);
+
 			// Extract validation results
 			const validation = { passed: true, warnings: [], errors: [] };
 			for (const hookResult of result.results) {
@@ -135,7 +140,6 @@ export class HookIntegrationService {
 				validation,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error validating pre-launch:', error);
 			return {
@@ -174,14 +178,16 @@ export class HookIntegrationService {
 				type: 'worktree-created'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_WORKTREE, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.POST_WORKTREE,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying worktree creation:', error);
 			return {
@@ -214,14 +220,16 @@ export class HookIntegrationService {
 				type: 'research-completed'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_RESEARCH, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.POST_RESEARCH,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying research completion:', error);
 			return {
@@ -255,14 +263,16 @@ export class HookIntegrationService {
 				type: 'claude-md-prepared'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_CLAUDE_MD, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.POST_CLAUDE_MD,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying CLAUDE.md preparation:', error);
 			return {
@@ -297,14 +307,16 @@ export class HookIntegrationService {
 				type: 'session-started'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_STARTED, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.SESSION_STARTED,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying session start:', error);
 			return {
@@ -346,14 +358,16 @@ export class HookIntegrationService {
 				type: 'session-completed'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_COMPLETED, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.SESSION_COMPLETED,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying session completion:', error);
 			return {
@@ -388,14 +402,16 @@ export class HookIntegrationService {
 				type: 'session-failed'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_FAILED, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.SESSION_FAILED,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (hookError) {
 			console.error('Error notifying session failure:', hookError);
 			return {
@@ -430,12 +446,15 @@ export class HookIntegrationService {
 				type: 'pr-validation'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_PR, context);
-			
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.PRE_PR,
+				context
+			);
+
 			// Extract validation results
 			let canProceed = true;
 			const validation = { warnings: [], errors: [] };
-			
+
 			for (const hookResult of result.results) {
 				if (hookResult.success && hookResult.result?.validation) {
 					const hookValidation = hookResult.result.validation;
@@ -455,7 +474,6 @@ export class HookIntegrationService {
 				validation,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error validating PR creation:', error);
 			return {
@@ -491,14 +509,16 @@ export class HookIntegrationService {
 				type: 'pr-created'
 			};
 
-			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PR_CREATED, context);
+			const result = await this.hookManager.executeHooks(
+				HOOK_EVENTS.PR_CREATED,
+				context
+			);
 			this.activeOperations.delete(operationId);
 
 			return {
 				success: result.success,
 				hookResults: result.results
 			};
-
 		} catch (error) {
 			console.error('Error notifying PR creation:', error);
 			return {
@@ -597,13 +617,13 @@ export class HookIntegrationService {
 		if (this.hookManager) {
 			await this.hookManager.cleanup();
 		}
-		
+
 		this.activeOperations.clear();
 		this.initialized = false;
-		
+
 		console.log('🔗 Hook Integration Service cleaned up');
 	}
 }
 
 // Export singleton instance
-export const hookIntegration = new HookIntegrationService(); 
+export const hookIntegration = new HookIntegrationService();

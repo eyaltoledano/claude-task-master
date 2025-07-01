@@ -76,7 +76,7 @@ class BackgroundOperationsManager extends EventEmitter {
 
 	// Get running operations
 	getRunningOperations() {
-		return this.getAllOperations().filter(op => op.status === 'running');
+		return this.getAllOperations().filter((op) => op.status === 'running');
 	}
 
 	// Check if any operations are running
@@ -109,8 +109,8 @@ class BackgroundOperationsManager extends EventEmitter {
 			const toRemove = ops
 				.sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
 				.slice(0, ops.length - 50);
-			
-			toRemove.forEach(op => {
+
+			toRemove.forEach((op) => {
 				this.operations.delete(op.id);
 				this.operationResults.delete(op.id);
 			});
@@ -119,4 +119,4 @@ class BackgroundOperationsManager extends EventEmitter {
 }
 
 // Singleton instance
-export const backgroundOperations = new BackgroundOperationsManager(); 
+export const backgroundOperations = new BackgroundOperationsManager();
