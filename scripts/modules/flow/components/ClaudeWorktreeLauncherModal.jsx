@@ -670,6 +670,37 @@ export function ClaudeWorktreeLauncherModal({
 			);
 
 			if (result.success) {
+				// Save session data for persistence and indexing
+				try {
+					const sessionData = {
+						sessionId: result.sessionId,
+						tasks: selectedTaskObjects,
+						worktree: actualWorktree?.name || 'unknown',
+						branch: actualWorktree?.branch || actualWorktree?.name || 'unknown',
+						persona: selectedPersona,
+						output: result.output,
+						messages: result.messages,
+						statistics: {
+							turns: result.messages?.filter((m) => m.type === 'assistant').length || 0,
+							maxTurns: maxTurns,
+							fileChanges: result.messages?.filter((m) => 
+								m.type === 'tool_use' && ['create_file', 'edit_file'].includes(m.name)
+							).length || 0,
+							totalCost: result.totalCost || 0,
+							durationSeconds: Math.round((result.duration || 0) / 1000),
+							completedAt: new Date().toISOString(),
+							tokenCounts: {},
+							toolRestrictions: toolRestrictions
+						}
+					};
+
+					// Save session data to .taskmaster/claude-sessions
+					await backend.saveClaudeSessionData(sessionData);
+				} catch (saveError) {
+					console.warn('Failed to save Claude session data:', saveError.message);
+					// Don't fail the whole operation if session saving fails
+				}
+
 				setSessionResult(result);
 				setView('summary');
 			} else {
@@ -706,6 +737,38 @@ export function ClaudeWorktreeLauncherModal({
 			);
 
 			if (result.success) {
+				// Save updated session data for resumed sessions
+				try {
+					const task = tasks[0]; // Get primary task
+					const sessionData = {
+						sessionId: result.sessionId || sessionResult.sessionId,
+						tasks: [task],
+						worktree: worktree?.name || 'unknown',
+						branch: worktree?.branch || worktree?.name || 'unknown',
+						persona: selectedPersona,
+						output: result.output,
+						messages: result.messages,
+						statistics: {
+							turns: result.messages?.filter((m) => m.type === 'assistant').length || 0,
+							maxTurns: maxTurns,
+							fileChanges: result.messages?.filter((m) => 
+								m.type === 'tool_use' && ['create_file', 'edit_file'].includes(m.name)
+							).length || 0,
+							totalCost: result.totalCost || 0,
+							durationSeconds: Math.round((result.duration || 0) / 1000),
+							completedAt: new Date().toISOString(),
+							tokenCounts: {},
+							toolRestrictions: toolRestrictions
+						}
+					};
+
+					// Update session data in .taskmaster/claude-sessions
+					await backend.saveClaudeSessionData(sessionData);
+				} catch (saveError) {
+					console.warn('Failed to save resumed Claude session data:', saveError.message);
+					// Don't fail the whole operation if session saving fails
+				}
+
 				setSessionResult(result);
 				setView('summary');
 			} else {
