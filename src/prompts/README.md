@@ -6,15 +6,22 @@ This directory contains the centralized prompt templates for all AI-powered feat
 
 The prompt management system provides:
 - **Centralized Storage**: All prompts in one location (`/src/prompts`)
+- **JSON Schema Validation**: Comprehensive validation using AJV with detailed error reporting
 - **Version Control**: Track changes to prompts over time
 - **Variant Support**: Different prompts for different contexts (research mode, complexity levels, etc.)
 - **Template Variables**: Dynamic prompt generation with variable substitution
+- **IDE Integration**: VS Code IntelliSense and validation support
 
 ## Directory Structure
 
 ```
 src/prompts/
 ├── README.md                # This file
+├── schemas/                 # JSON schemas for validation
+│   ├── README.md           # Schema documentation
+│   ├── prompt-template.schema.json  # Main template schema
+│   ├── parameter.schema.json        # Parameter validation schema
+│   └── variant.schema.json          # Prompt variant schema
 ├── parse-prd.json          # PRD parsing prompts
 ├── expand-task.json        # Task expansion prompts
 ├── add-task.json           # Task creation prompts
@@ -24,6 +31,43 @@ src/prompts/
 ├── analyze-complexity.json # Complexity analysis prompts
 └── research.json           # Research query prompts
 ```
+
+## Schema Validation
+
+All prompt templates are validated against JSON schemas located in `/src/prompts/schemas/`. The validation system:
+
+- **Structural Validation**: Ensures required fields and proper nesting
+- **Parameter Type Checking**: Validates parameter types, patterns, and ranges
+- **Template Syntax**: Validates Handlebars syntax and variable references
+- **Semantic Versioning**: Enforces proper version format
+- **Cross-Reference Validation**: Ensures parameters match template variables
+
+### Validation Features
+- **Required Fields**: `id`, `version`, `description`, `prompts.default`
+- **Type Safety**: String, number, boolean, array, object validation
+- **Pattern Matching**: Regex validation for string parameters
+- **Range Validation**: Min/max values for numeric parameters
+- **Enum Constraints**: Restricted value sets for categorical parameters
+
+## Development Workflow
+
+### Setting Up Development Environment
+1. **VS Code Integration**: Schemas are automatically configured for IntelliSense
+2. **Dependencies**: `ajv` and `ajv-formats` are required for validation
+3. **File Watching**: Changes to templates trigger automatic validation
+
+### Creating New Prompts
+1. Create a new `.json` file in `/src/prompts/`
+2. Follow the schema structure (see Template Structure section)
+3. Define parameters with proper types and validation
+4. Create system and user prompts with template variables
+5. Test with the PromptManager before committing
+
+### Modifying Existing Prompts
+1. Update the `version` field following semantic versioning
+2. Maintain backward compatibility when possible
+3. Test with existing code that uses the prompt
+4. Update documentation if parameters change
 
 ## Prompt Template Reference
 
@@ -168,14 +212,19 @@ Each prompt template is a JSON file with the following structure:
     "author": "system",
     "created": "2024-01-01T00:00:00Z",
     "updated": "2024-01-01T00:00:00Z",
-    "tags": ["category", "feature"]
+    "tags": ["category", "feature"],
+    "category": "task"
   },
   "parameters": {
     "paramName": {
       "type": "string|number|boolean|array|object",
       "required": true|false,
       "default": "default value",
-      "description": "Parameter description"
+      "description": "Parameter description",
+      "enum": ["option1", "option2"],
+      "pattern": "^[a-z]+$",
+      "minimum": 1,
+      "maximum": 100
     }
   },
   "prompts": {
@@ -186,7 +235,10 @@ Each prompt template is a JSON file with the following structure:
     "variant-name": {
       "condition": "JavaScript expression",
       "system": "Variant system prompt",
-      "user": "Variant user prompt"
+      "user": "Variant user prompt",
+      "metadata": {
+        "description": "When to use this variant"
+      }
     }
   }
 }
@@ -210,6 +262,16 @@ Use `{{#if variable}}...{{/if}}` for conditional content:
 Use `{{#each array}}...{{/each}}` to iterate over arrays:
 ```
 "user": "Tasks:\n{{#each tasks}}- {{id}}: {{title}}\n{{/each}}"
+```
+
+### Special Loop Variables
+Inside `{{#each}}` blocks, you have access to:
+- `{{@index}}`: Current array index (0-based)
+- `{{@first}}`: Boolean, true for first item
+- `{{@last}}`: Boolean, true for last item
+
+```
+"user": "{{#each tasks}}{{@index}}. {{title}}{{#unless @last}}\n{{/unless}}{{/each}}"
 ```
 
 ### JSON Serialization
@@ -249,13 +311,28 @@ Variants allow different prompts based on conditions:
 }
 ```
 
+### Condition Evaluation
+Conditions are JavaScript expressions evaluated with parameter values as context:
+- Simple comparisons: `useResearch === true`
+- Numeric comparisons: `threshold >= 5`
+- String matching: `priority === 'high'`
+- Complex logic: `useResearch && threshold > 7`
+
 ## PromptManager Module
 
 The PromptManager is implemented in `scripts/modules/prompt-manager.js` and provides:
 - **Template loading and caching**: Templates are loaded once and cached for performance
+- **Schema validation**: Comprehensive validation using AJV with detailed error reporting
 - **Variable substitution**: Handlebars-like syntax for dynamic content
 - **Variant selection**: Automatic selection based on conditions
+- **Error handling**: Graceful fallbacks and detailed error messages
 - **Singleton pattern**: One instance per project root for efficiency
+
+### Validation Behavior
+- **Schema Available**: Full validation with detailed error messages
+- **Schema Missing**: Falls back to basic structural validation
+- **Invalid Templates**: Throws descriptive errors with field-level details
+- **Parameter Validation**: Type checking, pattern matching, range validation
 
 ## Usage in Code
 
@@ -264,7 +341,7 @@ The PromptManager is implemented in `scripts/modules/prompt-manager.js` and prov
 import { getPromptManager } from '../prompt-manager.js';
 
 const promptManager = getPromptManager();
-const { systemPrompt, userPrompt, metadata } = await promptManager.loadPrompt('add-task', {
+const { systemPrompt, userPrompt, metadata } = promptManager.loadPrompt('add-task', {
   // Parameters matching the template's parameter definitions
   prompt: 'Create a user authentication system',
   newTaskId: 5,
@@ -283,35 +360,102 @@ const result = await generateObjectService({
 ### With Variants
 ```javascript
 // Research variant will be selected automatically
-const { systemPrompt, userPrompt } = await promptManager.loadPrompt('expand-task', {
+const { systemPrompt, userPrompt } = promptManager.loadPrompt('expand-task', {
   useResearch: true,  // Triggers research variant
   task: taskObject,
   subtaskCount: 5
 });
 ```
 
+### Error Handling
+```javascript
+try {
+  const result = promptManager.loadPrompt('invalid-template', {});
+} catch (error) {
+  if (error.message.includes('Schema validation failed')) {
+    console.error('Template validation error:', error.message);
+  } else if (error.message.includes('not found')) {
+    console.error('Template not found:', error.message);
+  }
+}
+```
+
 ## Adding New Prompts
 
-1. Create a new JSON file following the template structure
-2. Define parameters with types and descriptions
-3. Create default and variant prompts
-4. Use template variables for dynamic content
-5. Test the prompt with the PromptManager
+1. **Create the JSON file** following the template structure
+2. **Define parameters** with proper types, validation, and descriptions
+3. **Create prompts** with clear system and user templates
+4. **Use template variables** for dynamic content
+5. **Add variants** if needed for different contexts
+6. **Test thoroughly** with the PromptManager
+7. **Update this documentation** with the new prompt details
+
+### Example New Prompt
+```json
+{
+  "id": "new-feature",
+  "version": "1.0.0",
+  "description": "Generate code for a new feature",
+  "parameters": {
+    "featureName": {
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9-]*$",
+      "description": "Name of the feature to implement"
+    },
+    "complexity": {
+      "type": "string",
+      "required": false,
+      "enum": ["simple", "medium", "complex"],
+      "default": "medium",
+      "description": "Feature complexity level"
+    }
+  },
+  "prompts": {
+    "default": {
+      "system": "You are a senior software engineer.",
+      "user": "Create a {{complexity}} {{featureName}} feature."
+    }
+  }
+}
+```
 
 ## Best Practices
 
-1. **Version Management**: Increment version when making significant changes
-2. **Clear Descriptions**: Document what each prompt does and when to use it
-3. **Parameter Validation**: Define parameter types and requirements
-4. **Variant Conditions**: Use simple, testable conditions for variants
-5. **Template Variables**: Use meaningful variable names
-6. **Consistent Structure**: Follow the established JSON schema
+### Template Design
+1. **Clear IDs**: Use kebab-case, descriptive identifiers
+2. **Semantic Versioning**: Follow semver for version management
+3. **Comprehensive Parameters**: Define all required and optional parameters
+4. **Type Safety**: Use proper parameter types and validation
+5. **Clear Descriptions**: Document what each prompt and parameter does
 
+### Variable Usage
+1. **Meaningful Names**: Use descriptive variable names
+2. **Consistent Patterns**: Follow established naming conventions
+3. **Safe Defaults**: Provide sensible default values
+4. **Validation**: Use patterns, enums, and ranges for validation
 
+### Variant Strategy
+1. **Simple Conditions**: Keep variant conditions easy to understand
+2. **Clear Purpose**: Each variant should have a distinct use case
+3. **Fallback Logic**: Always provide a default variant
+4. **Documentation**: Explain when each variant is used
 
-
+### Performance
+1. **Caching**: Templates are cached automatically
+2. **Lazy Loading**: Templates load only when needed
+3. **Minimal Variants**: Don't create unnecessary variants
+4. **Efficient Conditions**: Keep condition evaluation fast
 
 ## Testing Prompts
+
+### Validation Testing
+```javascript
+// Test schema validation
+const promptManager = getPromptManager();
+const results = promptManager.validateAllPrompts();
+console.log(`Valid: ${results.valid.length}, Errors: ${results.errors.length}`);
+```
 
 ### Integration Testing
 When modifying prompts, ensure to test:
@@ -319,17 +463,54 @@ When modifying prompts, ensure to test:
 - Variant selection triggers correctly based on conditions
 - AI responses remain consistent with expected behavior
 - All parameters are properly validated
+- Error handling works for invalid inputs
 
 ### Quick Testing
-You can test prompt loading directly:
 ```javascript
 // Test prompt loading and variable substitution
 const promptManager = getPromptManager();
-const result = await promptManager.loadPrompt('research', {
+const result = promptManager.loadPrompt('research', {
   query: 'What are the latest React best practices?',
   detailLevel: 'medium',
   gatheredContext: 'React project with TypeScript'
 });
-console.log(result.systemPrompt);
-console.log(result.userPrompt);
+console.log('System:', result.systemPrompt);
+console.log('User:', result.userPrompt);
+console.log('Metadata:', result.metadata);
 ```
+
+### Testing Checklist
+- [ ] Template validates against schema
+- [ ] All required parameters are defined
+- [ ] Variable substitution works correctly
+- [ ] Variants trigger under correct conditions
+- [ ] Error messages are clear and helpful
+- [ ] Performance is acceptable for repeated usage
+
+## Troubleshooting
+
+### Common Issues
+
+**Schema Validation Errors**:
+- Check required fields are present
+- Verify parameter types match schema
+- Ensure version follows semantic versioning
+- Validate JSON syntax
+
+**Variable Substitution Problems**:
+- Check variable names match parameter names
+- Verify nested property access syntax
+- Ensure array iteration syntax is correct
+- Test with actual data structures
+
+**Variant Selection Issues**:
+- Verify condition syntax is valid JavaScript
+- Check parameter values match condition expectations
+- Ensure default variant exists
+- Test condition evaluation with debug logging
+
+**Performance Issues**:
+- Check for circular references in templates
+- Verify caching is working correctly
+- Monitor template loading frequency
+- Consider simplifying complex conditions
