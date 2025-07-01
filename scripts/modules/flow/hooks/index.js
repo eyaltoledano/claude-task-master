@@ -71,28 +71,55 @@ export const HookUtils = {
 
 import { HookExecutor } from './core/hook-executor.js';
 import { HookValidator } from './core/hook-validator.js';
+import { HookContext } from './core/hook-context.js';
 import { HookStorage } from './core/hook-storage.js';
-import { createHookContext } from './core/hook-context.js';
-import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * Main Hook Manager - coordinates all hook operations
+ * Hook Events - Available events that hooks can listen to
+ */
+export const HOOK_EVENTS = {
+	// Pre-launch validation
+	PRE_LAUNCH: 'pre-launch',
+	
+	// Worktree lifecycle
+	POST_WORKTREE: 'post-worktree',
+	
+	// Research lifecycle
+	PRE_RESEARCH: 'pre-research',
+	POST_RESEARCH: 'post-research',
+	
+	// CLAUDE.md lifecycle
+	PRE_CLAUDE_MD: 'pre-claude-md',
+	POST_CLAUDE_MD: 'post-claude-md',
+	
+	// Session lifecycle
+	SESSION_STARTED: 'session-started',
+	SESSION_MESSAGE: 'session-message',
+	SESSION_COMPLETED: 'session-completed',
+	SESSION_FAILED: 'session-failed',
+	
+	// PR lifecycle
+	PRE_PR: 'pre-pr',
+	PR_CREATED: 'pr-created'
+};
+
+/**
+ * Hook Manager - Central coordination system for Flow TUI hooks
  */
 export class HookManager {
-	constructor(options = {}) {
-		this.projectRoot = options.projectRoot || process.cwd();
-		this.configPath = path.join(__dirname, 'config', 'hook-registry.json');
-		this.defaultConfigPath = path.join(__dirname, 'config', 'default-config.json');
-		
+	constructor(backend) {
+		this.backend = backend;
+		this.hooks = new Map();
 		this.executor = new HookExecutor();
 		this.validator = new HookValidator();
-		this.storage = new HookStorage(this.projectRoot);
-		
-		this.hooks = new Map();
+		this.context = new HookContext(backend);
+		this.storage = new HookStorage();
 		this.config = null;
 		this.initialized = false;
 	}
@@ -105,111 +132,101 @@ export class HookManager {
 
 		try {
 			// Load configuration
-			await this.loadConfig();
-			
-			// Load built-in hooks
-			await this.loadBuiltInHooks();
+			this.config = await this.loadConfiguration();
 			
 			// Initialize storage
 			await this.storage.initialize();
 			
+			// Load built-in hooks
+			await this.loadBuiltInHooks();
+			
+			// Load user hooks (if any)
+			await this.loadUserHooks();
+			
 			this.initialized = true;
-			console.log('🪝 Hook system initialized successfully');
+			console.log(`🎣 Hook system initialized with ${this.hooks.size} hooks`);
+			
 		} catch (error) {
-			console.error('❌ Failed to initialize hook system:', error);
+			console.error('Failed to initialize hook system:', error);
 			throw error;
 		}
 	}
 
 	/**
-	 * Load hook configuration
+	 * Load configuration from file
 	 */
-	async loadConfig() {
+	async loadConfiguration() {
 		try {
-			// Try to load existing config
-			const configData = await fs.readFile(this.configPath, 'utf8');
-			this.config = JSON.parse(configData);
+			const configPath = path.join(__dirname, 'config', 'default-config.json');
+			const { default: config } = await import(configPath, { assert: { type: 'json' } });
+			return config;
 		} catch (error) {
-			// Load default config if no custom config exists
-			try {
-				const defaultConfigData = await fs.readFile(this.defaultConfigPath, 'utf8');
-				this.config = JSON.parse(defaultConfigData);
-				
-				// Save default config as active config
-				await this.saveConfig();
-			} catch (defaultError) {
-				// Create minimal config if no default exists
-				this.config = {
-					enabled: true,
-					hooks: {}
-				};
-				await this.saveConfig();
-			}
+			console.warn('Failed to load hook configuration, using defaults:', error);
+			return {
+				hooks: {
+					'research-integration': { enabled: true },
+					'pre-launch-validation': { enabled: true },
+					'session-completion': { enabled: true }
+				},
+				executor: {
+					timeout: 30000,
+					maxConcurrent: 3
+				}
+			};
 		}
-	}
-
-	/**
-	 * Save current configuration
-	 */
-	async saveConfig() {
-		const configDir = path.dirname(this.configPath);
-		await fs.mkdir(configDir, { recursive: true });
-		await fs.writeFile(this.configPath, JSON.stringify(this.config, null, 2));
 	}
 
 	/**
 	 * Load built-in hooks
 	 */
 	async loadBuiltInHooks() {
-		const builtInDir = path.join(__dirname, 'built-in');
-		
-		try {
-			const files = await fs.readdir(builtInDir);
-			
-			for (const file of files) {
-				if (file.endsWith('.js')) {
-					const hookName = path.basename(file, '.js');
-					const hookPath = path.join(builtInDir, file);
-					
-					try {
-						const hookModule = await import(hookPath);
-						const HookClass = hookModule.default || hookModule[Object.keys(hookModule)[0]];
-						
-						if (HookClass && typeof HookClass === 'function') {
-							const hookInstance = new HookClass();
-							await this.registerHook(hookName, hookInstance);
-						}
-					} catch (hookError) {
-						console.warn(`⚠️ Failed to load hook ${hookName}:`, hookError.message);
-					}
+		const builtInHooks = [
+			'research-integration',
+			'pre-launch-validation',
+			'session-completion'
+		];
+
+		for (const hookName of builtInHooks) {
+			try {
+				const hookConfig = this.config.hooks[hookName];
+				if (!hookConfig || !hookConfig.enabled) {
+					console.log(`📋 Skipping disabled hook: ${hookName}`);
+					continue;
 				}
+
+				const hookPath = path.join(__dirname, 'built-in', `${hookName}.js`);
+				const { default: HookClass } = await import(hookPath);
+				
+				const hookInstance = new HookClass();
+				
+				// Validate hook
+				const validation = this.validator.validateHook(hookInstance);
+				if (!validation.valid) {
+					console.error(`❌ Invalid hook ${hookName}:`, validation.errors);
+					continue;
+				}
+
+				// Register hook
+				this.hooks.set(hookName, {
+					instance: hookInstance,
+					config: hookConfig,
+					type: 'built-in'
+				});
+
+				console.log(`✅ Loaded built-in hook: ${hookName}`);
+				
+			} catch (error) {
+				console.error(`❌ Failed to load built-in hook ${hookName}:`, error);
 			}
-		} catch (error) {
-			console.warn('⚠️ Built-in hooks directory not found, skipping built-in hook loading');
 		}
 	}
 
 	/**
-	 * Register a hook
+	 * Load user hooks (placeholder for future implementation)
 	 */
-	async registerHook(name, hookInstance) {
-		// Validate hook
-		const validation = await this.validator.validateHook(hookInstance);
-		if (!validation.valid) {
-			throw new Error(`Hook validation failed for ${name}: ${validation.errors.join(', ')}`);
-		}
-
-		// Store hook
-		this.hooks.set(name, {
-			instance: hookInstance,
-			config: this.config.hooks[name] || { enabled: true },
-			metadata: {
-				registered: new Date().toISOString(),
-				version: hookInstance.version || '1.0.0'
-			}
-		});
-
-		console.log(`✅ Registered hook: ${name}`);
+	async loadUserHooks() {
+		// Future implementation would scan user hooks directory
+		// For now, this is a placeholder
 	}
 
 	/**
@@ -217,67 +234,66 @@ export class HookManager {
 	 */
 	async executeHooks(event, context = {}) {
 		if (!this.initialized) {
-			await this.initialize();
+			console.warn('Hook system not initialized, skipping hooks');
+			return { success: true, results: [] };
 		}
 
-		if (!this.config.enabled) {
-			return { executed: [], skipped: 'system-disabled' };
+		const eventHooks = Array.from(this.hooks.values())
+			.filter(hook => hook.instance.events.includes(event))
+			.filter(hook => hook.config.enabled !== false);
+
+		if (eventHooks.length === 0) {
+			return { success: true, results: [] };
 		}
+
+		console.log(`🎣 Executing ${eventHooks.length} hooks for event: ${event}`);
 
 		const results = [];
-		const executed = [];
-		const skipped = [];
+		const hookContext = await this.context.createContext(context);
 
-		for (const [hookName, hookData] of this.hooks) {
-			const { instance, config } = hookData;
-
-			// Check if hook is enabled
-			if (!config.enabled) {
-				skipped.push({ name: hookName, reason: 'disabled' });
-				continue;
-			}
-
-			// Check if hook handles this event
-			if (!instance.events || !instance.events.includes(event)) {
-				continue;
-			}
-
+		for (const hook of eventHooks) {
 			try {
-				// Create hook context
-				const hookContext = createHookContext({
+				const result = await this.executor.executeHook(
+					hook.instance,
 					event,
-					hookName,
-					config: config.config || {},
-					storage: this.storage,
-					...context
-				});
-
-				// Execute hook
-				const result = await this.executor.execute(instance, event, hookContext);
+					hookContext,
+					hook.config
+				);
 				
 				results.push({
-					hook: hookName,
+					hookName: hook.instance.constructor.name,
 					event,
-					result,
-					timestamp: new Date().toISOString()
+					success: result.success,
+					result: result.data,
+					error: result.error,
+					duration: result.duration
 				});
 
-				executed.push(hookName);
+				// Store execution data if needed
+				if (result.data && hook.config.storeResults) {
+					await this.storage.storeHookData(
+						hook.instance.constructor.name,
+						event,
+						result.data
+					);
+				}
 
 			} catch (error) {
-				console.error(`❌ Hook ${hookName} failed for event ${event}:`, error);
+				console.error(`❌ Hook execution failed for ${hook.instance.constructor.name}:`, error);
 				results.push({
-					hook: hookName,
+					hookName: hook.instance.constructor.name,
 					event,
+					success: false,
 					error: error.message,
-					timestamp: new Date().toISOString()
+					duration: 0
 				});
 			}
 		}
 
+		const allSuccessful = results.every(r => r.success);
+		
 		return {
-			executed,
-			skipped,
+			success: allSuccessful,
 			results,
 			event,
 			timestamp: new Date().toISOString()
@@ -285,11 +301,24 @@ export class HookManager {
 	}
 
 	/**
-	 * Get hook status
+	 * Get hook execution history
+	 */
+	async getHookHistory(hookName, event = null) {
+		return await this.storage.getHookHistory(hookName, event);
+	}
+
+	/**
+	 * Clear hook storage
+	 */
+	async clearHookStorage() {
+		return await this.storage.clear();
+	}
+
+	/**
+	 * Get hook status and statistics
 	 */
 	getHookStatus() {
 		const status = {
-			enabled: this.config.enabled,
 			initialized: this.initialized,
 			totalHooks: this.hooks.size,
 			enabledHooks: 0,
@@ -297,21 +326,17 @@ export class HookManager {
 			hooks: {}
 		};
 
-		for (const [hookName, hookData] of this.hooks) {
-			const { config, metadata } = hookData;
-			const isEnabled = config.enabled;
+		for (const [name, hook] of this.hooks) {
+			const enabled = hook.config.enabled !== false;
+			if (enabled) status.enabledHooks++;
+			else status.disabledHooks++;
 
-			if (isEnabled) {
-				status.enabledHooks++;
-			} else {
-				status.disabledHooks++;
-			}
-
-			status.hooks[hookName] = {
-				enabled: isEnabled,
-				events: hookData.instance.events || [],
-				version: metadata.version,
-				registered: metadata.registered
+			status.hooks[name] = {
+				enabled,
+				type: hook.type,
+				events: hook.instance.events,
+				description: hook.instance.description,
+				version: hook.instance.version
 			};
 		}
 
@@ -322,49 +347,49 @@ export class HookManager {
 	 * Enable/disable a specific hook
 	 */
 	async setHookEnabled(hookName, enabled) {
-		if (!this.hooks.has(hookName)) {
-			throw new Error(`Hook ${hookName} not found`);
+		const hook = this.hooks.get(hookName);
+		if (!hook) {
+			throw new Error(`Hook not found: ${hookName}`);
 		}
 
-		if (!this.config.hooks[hookName]) {
-			this.config.hooks[hookName] = {};
-		}
-
-		this.config.hooks[hookName].enabled = enabled;
-		await this.saveConfig();
-
-		// Update in-memory config
-		const hookData = this.hooks.get(hookName);
-		hookData.config.enabled = enabled;
-
-		console.log(`🔧 Hook ${hookName} ${enabled ? 'enabled' : 'disabled'}`);
+		hook.config.enabled = enabled;
+		
+		// Persist configuration change if needed
+		// This would update the config file in a real implementation
+		
+		console.log(`🎣 Hook ${hookName} ${enabled ? 'enabled' : 'disabled'}`);
+		
+		return true;
 	}
 
 	/**
-	 * Enable/disable the entire hook system
+	 * Get available events
 	 */
-	async setSystemEnabled(enabled) {
-		this.config.enabled = enabled;
-		await this.saveConfig();
-		console.log(`🔧 Hook system ${enabled ? 'enabled' : 'disabled'}`);
+	getAvailableEvents() {
+		return Object.values(HOOK_EVENTS);
+	}
+
+	/**
+	 * Cleanup hook system
+	 */
+	async cleanup() {
+		if (this.storage) {
+			await this.storage.cleanup();
+		}
+		
+		this.hooks.clear();
+		this.initialized = false;
+		
+		console.log('🎣 Hook system cleaned up');
 	}
 }
 
 // Export singleton instance
-export const hookManager = new HookManager();
+let hookManagerInstance = null;
 
-// Export hook events constants
-export const HOOK_EVENTS = {
-	PRE_LAUNCH: 'pre-launch',
-	POST_WORKTREE: 'post-worktree',
-	PRE_RESEARCH: 'pre-research',
-	POST_RESEARCH: 'post-research',
-	PRE_CLAUDE_MD: 'pre-claude-md',
-	POST_CLAUDE_MD: 'post-claude-md',
-	SESSION_STARTED: 'session-started',
-	SESSION_MESSAGE: 'session-message',
-	SESSION_COMPLETED: 'session-completed',
-	PRE_PR: 'pre-pr',
-	PR_CREATED: 'pr-created',
-	SESSION_FAILED: 'session-failed'
-};
+export function getHookManager(backend) {
+	if (!hookManagerInstance) {
+		hookManagerInstance = new HookManager(backend);
+	}
+	return hookManagerInstance;
+}

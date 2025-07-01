@@ -1,299 +1,607 @@
-import { hookManager, HOOK_EVENTS } from '../hooks/index.js';
+import { getHookManager, HOOK_EVENTS } from '../hooks/index.js';
 
 /**
- * Hook Integration Service - provides clean interface between Flow components and hooks
+ * Hook Integration Service - Clean interface between Flow components and hooks
  */
 export class HookIntegrationService {
 	constructor(backend) {
 		this.backend = backend;
-		this.initialized = false;
+		this.hookManager = null;
 		this.activeOperations = new Map();
+		this.initialized = false;
 	}
 
 	/**
-	 * Initialize the integration service
+	 * Initialize the service
 	 */
 	async initialize() {
 		if (this.initialized) return;
 
 		try {
-			// Initialize hook manager with project context
-			await hookManager.initialize();
+			this.hookManager = getHookManager(this.backend);
+			await this.hookManager.initialize();
 			this.initialized = true;
-			console.log('🔗 Hook integration service initialized');
+			console.log('🔗 Hook Integration Service initialized');
 		} catch (error) {
-			console.error('❌ Failed to initialize hook integration service:', error);
-			// Don't throw - allow Flow to continue without hooks
-			this.initialized = false;
+			console.error('Failed to initialize Hook Integration Service:', error);
+			// Don't throw - continue without hooks if they fail
 		}
 	}
 
 	/**
-	 * Execute hooks for a specific event with error handling
+	 * Check if research is needed for a task
 	 */
-	async executeHooks(event, context = {}) {
-		if (!this.initialized) {
-			// Try to initialize if not already done
-			await this.initialize();
-			if (!this.initialized) {
-				// If still not initialized, skip hooks silently
-				return { executed: [], skipped: 'initialization-failed' };
-			}
+	async checkResearchNeeded(task) {
+		if (!this.initialized || !this.hookManager) {
+			return null;
 		}
 
 		try {
-			// Add backend service to context
-			const enrichedContext = {
-				...context,
-				backend: this.backend,
-				timestamp: new Date().toISOString()
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'research-check',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				task,
+				operationId,
+				type: 'research-check'
 			};
 
-			const result = await hookManager.executeHooks(event, enrichedContext);
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_RESEARCH, context);
 			
-			// Log hook execution for debugging
-			if (result.executed.length > 0) {
-				console.log(`🪝 Executed ${result.executed.length} hooks for ${event}`);
+			// Extract research status from hook results
+			let researchStatus = null;
+			for (const hookResult of result.results) {
+				if (hookResult.success && hookResult.result?.researchStatus) {
+					researchStatus = hookResult.result.researchStatus;
+					break;
+				}
 			}
 
-			return result;
-		} catch (error) {
-			console.error(`❌ Hook execution failed for event ${event}:`, error);
-			// Return safe result even on error
+			this.activeOperations.delete(operationId);
+
 			return {
-				executed: [],
-				skipped: 'execution-failed',
+				success: result.success,
+				researchStatus,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error checking research needs:', error);
+			return {
+				success: false,
+				error: error.message,
+				researchStatus: {
+					needed: false,
+					reason: 'error',
+					error: error.message,
+					confidence: 0
+				}
+			};
+		}
+	}
+
+	/**
+	 * Validate pre-launch configuration
+	 */
+	async validatePreLaunch(config, task, worktree) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true, validation: { passed: true } };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'pre-launch-validation',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				config: {
+					...config,
+					checkGitStatus: true,
+					validateDependencies: true,
+					checkConflicts: true
+				},
+				task,
+				worktree,
+				operationId,
+				type: 'pre-launch-validation'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_LAUNCH, context);
+			
+			// Extract validation results
+			const validation = { passed: true, warnings: [], errors: [] };
+			for (const hookResult of result.results) {
+				if (hookResult.success && hookResult.result?.validation) {
+					const hookValidation = hookResult.result.validation;
+					if (!hookValidation.passed) {
+						validation.passed = false;
+					}
+					validation.warnings.push(...(hookValidation.warnings || []));
+					validation.errors.push(...(hookValidation.errors || []));
+				}
+			}
+
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				validation,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error validating pre-launch:', error);
+			return {
+				success: false,
+				error: error.message,
+				validation: {
+					passed: false,
+					errors: [`Validation failed: ${error.message}`],
+					warnings: []
+				}
+			};
+		}
+	}
+
+	/**
+	 * Notify hooks about worktree creation
+	 */
+	async notifyWorktreeCreated(worktree, task, config) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'worktree-created',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				worktree,
+				task,
+				config,
+				operationId,
+				type: 'worktree-created'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_WORKTREE, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error notifying worktree creation:', error);
+			return {
+				success: false,
 				error: error.message
 			};
 		}
 	}
 
 	/**
-	 * Pre-launch validation hooks
+	 * Notify hooks about research completion
 	 */
-	async validatePreLaunch(config, task, worktree = null) {
-		return this.executeHooks(HOOK_EVENTS.PRE_LAUNCH, {
-			config,
-			task,
-			worktree
-		});
-	}
-
-	/**
-	 * Post-worktree creation hooks
-	 */
-	async notifyWorktreeCreated(worktree, task, config) {
-		return this.executeHooks(HOOK_EVENTS.POST_WORKTREE, {
-			worktree,
-			task,
-			config
-		});
-	}
-
-	/**
-	 * Research-related hooks
-	 */
-	async checkResearchNeeded(task) {
-		const result = await this.executeHooks(HOOK_EVENTS.PRE_RESEARCH, {
-			task,
-			action: 'check-needed'
-		});
-
-		// Extract research recommendations from hook results
-		const researchRecommendations = result.results
-			.filter(r => r.result && r.result.researchStatus)
-			.map(r => r.result.researchStatus);
-
-		if (researchRecommendations.length > 0) {
-			return researchRecommendations[0]; // Use first recommendation
+	async notifyResearchCompleted(task, researchResults) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
 		}
 
-		return null;
-	}
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'research-completed',
+				task: task.id,
+				startTime: Date.now()
+			});
 
-	async notifyResearchCompleted(task, researchResults) {
-		return this.executeHooks(HOOK_EVENTS.POST_RESEARCH, {
-			task,
-			researchResults
-		});
+			const context = {
+				task,
+				researchResults,
+				operationId,
+				type: 'research-completed'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_RESEARCH, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error notifying research completion:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
 	}
 
 	/**
-	 * Claude.md preparation hooks
+	 * Notify hooks about CLAUDE.md preparation
 	 */
 	async notifyClaudeMdPrepared(worktree, task, claudeMdPath) {
-		return this.executeHooks(HOOK_EVENTS.POST_CLAUDE_MD, {
-			worktree,
-			task,
-			claudeMdPath
-		});
-	}
-
-	/**
-	 * Session lifecycle hooks
-	 */
-	async notifySessionStarted(session, config, task, worktree) {
-		// Store operation for tracking
-		this.activeOperations.set(session.sessionId || session.operationId, {
-			session,
-			config,
-			task,
-			worktree,
-			startTime: new Date().toISOString()
-		});
-
-		return this.executeHooks(HOOK_EVENTS.SESSION_STARTED, {
-			session,
-			config,
-			task,
-			worktree
-		});
-	}
-
-	async notifySessionMessage(sessionId, message, context = {}) {
-		const operation = this.activeOperations.get(sessionId);
-		if (operation) {
-			return this.executeHooks(HOOK_EVENTS.SESSION_MESSAGE, {
-				sessionId,
-				message,
-				...operation,
-				...context
-			});
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
 		}
 
-		// If no stored operation, still try to execute hooks with available context
-		return this.executeHooks(HOOK_EVENTS.SESSION_MESSAGE, {
-			sessionId,
-			message,
-			...context
-		});
-	}
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'claude-md-prepared',
+				task: task.id,
+				startTime: Date.now()
+			});
 
-	async notifySessionCompleted(sessionId, result, context = {}) {
-		const operation = this.activeOperations.get(sessionId);
-		
-		const hookResult = await this.executeHooks(HOOK_EVENTS.SESSION_COMPLETED, {
-			sessionId,
-			result,
-			...operation,
-			...context
-		});
+			const context = {
+				worktree,
+				task,
+				claudeMdPath,
+				operationId,
+				type: 'claude-md-prepared'
+			};
 
-		// Clean up stored operation
-		this.activeOperations.delete(sessionId);
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.POST_CLAUDE_MD, context);
+			this.activeOperations.delete(operationId);
 
-		return hookResult;
-	}
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
 
-	async notifySessionFailed(sessionId, error, context = {}) {
-		const operation = this.activeOperations.get(sessionId);
-		
-		const hookResult = await this.executeHooks(HOOK_EVENTS.SESSION_FAILED, {
-			sessionId,
-			error,
-			...operation,
-			...context
-		});
-
-		// Clean up stored operation
-		this.activeOperations.delete(sessionId);
-
-		return hookResult;
+		} catch (error) {
+			console.error('Error notifying CLAUDE.md preparation:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
 	}
 
 	/**
-	 * PR creation hooks
+	 * Notify hooks about session start
 	 */
-	async notifyPRCreated(sessionId, prInfo, context = {}) {
-		return this.executeHooks(HOOK_EVENTS.PR_CREATED, {
-			sessionId,
-			prInfo,
-			...context
-		});
+	async notifySessionStarted(session, config, task, worktree) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'session-started',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				session,
+				config,
+				task,
+				worktree,
+				operationId,
+				type: 'session-started'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_STARTED, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error notifying session start:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Notify hooks about session completion
+	 */
+	async notifySessionCompleted(session, task, worktree, config = {}) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'session-completed',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				session,
+				task,
+				worktree,
+				config: {
+					collectStatistics: true,
+					autoUpdateTaskStatus: true,
+					generateSummary: true,
+					autoCreatePR: config.autoCreatePR || false,
+					globalPRSetting: config.globalPRSetting || false,
+					...config
+				},
+				operationId,
+				type: 'session-completed'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_COMPLETED, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error notifying session completion:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Notify hooks about session failure
+	 */
+	async notifySessionFailed(session, error, task, worktree) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'session-failed',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				session,
+				error,
+				task,
+				worktree,
+				operationId,
+				type: 'session-failed'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.SESSION_FAILED, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (hookError) {
+			console.error('Error notifying session failure:', hookError);
+			return {
+				success: false,
+				error: hookError.message
+			};
+		}
+	}
+
+	/**
+	 * Validate PR creation
+	 */
+	async validatePRCreation(session, task, worktree, config) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true, canProceed: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'pr-validation',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				session,
+				task,
+				worktree,
+				config,
+				operationId,
+				type: 'pr-validation'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PRE_PR, context);
+			
+			// Extract validation results
+			let canProceed = true;
+			const validation = { warnings: [], errors: [] };
+			
+			for (const hookResult of result.results) {
+				if (hookResult.success && hookResult.result?.validation) {
+					const hookValidation = hookResult.result.validation;
+					if (!hookValidation.canCreatePR) {
+						canProceed = false;
+					}
+					validation.warnings.push(...(hookValidation.warnings || []));
+					validation.errors.push(...(hookValidation.errors || []));
+				}
+			}
+
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				canProceed,
+				validation,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error validating PR creation:', error);
+			return {
+				success: false,
+				error: error.message,
+				canProceed: false
+			};
+		}
+	}
+
+	/**
+	 * Notify hooks about PR creation
+	 */
+	async notifyPRCreated(prResult, session, task, worktree) {
+		if (!this.initialized || !this.hookManager) {
+			return { success: true };
+		}
+
+		try {
+			const operationId = this.generateOperationId();
+			this.activeOperations.set(operationId, {
+				type: 'pr-created',
+				task: task.id,
+				startTime: Date.now()
+			});
+
+			const context = {
+				prResult,
+				session,
+				task,
+				worktree,
+				operationId,
+				type: 'pr-created'
+			};
+
+			const result = await this.hookManager.executeHooks(HOOK_EVENTS.PR_CREATED, context);
+			this.activeOperations.delete(operationId);
+
+			return {
+				success: result.success,
+				hookResults: result.results
+			};
+
+		} catch (error) {
+			console.error('Error notifying PR creation:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
 	}
 
 	/**
 	 * Get hook system status
 	 */
 	getHookStatus() {
-		if (!this.initialized) {
+		if (!this.initialized || !this.hookManager) {
 			return {
 				initialized: false,
+				available: false,
 				error: 'Hook system not initialized'
 			};
 		}
 
 		return {
 			initialized: true,
-			...hookManager.getHookStatus(),
+			available: true,
+			...this.hookManager.getHookStatus(),
 			activeOperations: this.activeOperations.size
 		};
-	}
-
-	/**
-	 * Enable/disable specific hooks
-	 */
-	async setHookEnabled(hookName, enabled) {
-		if (!this.initialized) {
-			await this.initialize();
-		}
-
-		if (this.initialized) {
-			return hookManager.setHookEnabled(hookName, enabled);
-		}
-
-		throw new Error('Hook system not available');
-	}
-
-	/**
-	 * Enable/disable the entire hook system
-	 */
-	async setSystemEnabled(enabled) {
-		if (!this.initialized) {
-			await this.initialize();
-		}
-
-		if (this.initialized) {
-			return hookManager.setSystemEnabled(enabled);
-		}
-
-		throw new Error('Hook system not available');
 	}
 
 	/**
 	 * Get active operations
 	 */
 	getActiveOperations() {
-		return Array.from(this.activeOperations.entries()).map(([id, operation]) => ({
-			id,
-			...operation
-		}));
+		const operations = [];
+		for (const [id, operation] of this.activeOperations) {
+			operations.push({
+				id,
+				...operation,
+				duration: Date.now() - operation.startTime
+			});
+		}
+		return operations;
 	}
 
 	/**
-	 * Clear completed operations (cleanup)
+	 * Enable/disable a specific hook
 	 */
-	clearCompletedOperations() {
-		// This is called by session completed/failed hooks
-		// Operations are automatically cleaned up, but this can be called manually
-		const beforeCount = this.activeOperations.size;
-		
-		// Could implement logic to remove old operations based on timestamp
-		// For now, operations are cleaned up when sessions complete/fail
-		
-		return {
-			before: beforeCount,
-			after: this.activeOperations.size
-		};
+	async setHookEnabled(hookName, enabled) {
+		if (!this.initialized || !this.hookManager) {
+			throw new Error('Hook system not initialized');
+		}
+
+		return await this.hookManager.setHookEnabled(hookName, enabled);
 	}
 
 	/**
-	 * Shutdown the service
+	 * Get hook execution history
 	 */
-	async shutdown() {
+	async getHookHistory(hookName, event = null) {
+		if (!this.initialized || !this.hookManager) {
+			return [];
+		}
+
+		return await this.hookManager.getHookHistory(hookName, event);
+	}
+
+	/**
+	 * Clear hook storage
+	 */
+	async clearHookStorage() {
+		if (!this.initialized || !this.hookManager) {
+			return false;
+		}
+
+		return await this.hookManager.clearHookStorage();
+	}
+
+	/**
+	 * Get available hook events
+	 */
+	getAvailableEvents() {
+		return Object.values(HOOK_EVENTS);
+	}
+
+	/**
+	 * Generate unique operation ID
+	 */
+	generateOperationId() {
+		return `hook-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	}
+
+	/**
+	 * Cleanup service
+	 */
+	async cleanup() {
+		if (this.hookManager) {
+			await this.hookManager.cleanup();
+		}
+		
 		this.activeOperations.clear();
 		this.initialized = false;
-		console.log('🔗 Hook integration service shut down');
+		
+		console.log('🔗 Hook Integration Service cleaned up');
 	}
 }
 
