@@ -10,14 +10,42 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Create mock functions
-const mockReadFile = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockReaddirSync = jest.fn();
+const mockExistsSync = jest.fn();
 
-// Mock fs/promises before importing modules that use it
-jest.unstable_mockModule('fs/promises', () => ({
+// Set up default mock for supported-models.json to prevent config-manager from failing
+mockReadFileSync.mockImplementation((filePath) => {
+	if (filePath.includes('supported-models.json')) {
+		return JSON.stringify({
+			anthropic: [{ id: 'claude-3-5-sonnet', max_tokens: 8192 }],
+			openai: [{ id: 'gpt-4', max_tokens: 8192 }]
+		});
+	}
+	// Default return for other files
+	return '{}';
+});
+
+// Mock fs before importing modules that use it
+jest.unstable_mockModule('fs', () => ({
 	default: {
-		readFile: mockReadFile
+		readFileSync: mockReadFileSync,
+		readdirSync: mockReaddirSync,
+		existsSync: mockExistsSync
 	},
-	readFile: mockReadFile
+	readFileSync: mockReadFileSync,
+	readdirSync: mockReaddirSync,
+	existsSync: mockExistsSync
+}));
+
+// Mock process.exit to prevent tests from exiting
+const mockExit = jest.fn();
+jest.unstable_mockModule('process', () => ({
+	default: {
+		exit: mockExit,
+		env: {}
+	},
+	exit: mockExit
 }));
 
 // Import after mocking
@@ -42,6 +70,18 @@ describe('PromptManager', () => {
 		// Clear all mocks
 		jest.clearAllMocks();
 
+		// Re-setup the default mock after clearing
+		mockReadFileSync.mockImplementation((filePath) => {
+			if (filePath.includes('supported-models.json')) {
+				return JSON.stringify({
+					anthropic: [{ id: 'claude-3-5-sonnet', max_tokens: 8192 }],
+					openai: [{ id: 'gpt-4', max_tokens: 8192 }]
+				});
+			}
+			// Default return for other files
+			return '{}';
+		});
+
 		// Get the singleton instance
 		promptManager = getPromptManager();
 	});
@@ -51,7 +91,7 @@ describe('PromptManager', () => {
 	});
 
 	describe('loadPrompt', () => {
-		it('should load and render a simple prompt template', async () => {
+		it('should load and render a simple prompt template', () => {
 			const mockTemplate = {
 				id: 'test-prompt',
 				prompts: {
@@ -62,22 +102,22 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			const result = await promptManager.loadPrompt('test-prompt', {
+			const result = promptManager.loadPrompt('test-prompt', {
 				name: 'Alice',
 				action: 'help me'
 			});
 
 			expect(result.systemPrompt).toBe('You are a helpful assistant');
 			expect(result.userPrompt).toBe('Hello Alice, please help me');
-			expect(mockReadFile).toHaveBeenCalledWith(
+			expect(mockReadFileSync).toHaveBeenCalledWith(
 				path.join(expectedTemplatesDir, 'test-prompt.json'),
 				'utf-8'
 			);
 		});
 
-		it('should handle conditional content', async () => {
+		it('should handle conditional content', () => {
 			const mockTemplate = {
 				id: 'conditional-prompt',
 				prompts: {
@@ -88,22 +128,22 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
 			// Test with useResearch = true
-			let result = await promptManager.loadPrompt('conditional-prompt', {
+			let result = promptManager.loadPrompt('conditional-prompt', {
 				useResearch: true
 			});
 			expect(result.userPrompt).toBe('Research and analyze the task');
 
 			// Test with useResearch = false
-			result = await promptManager.loadPrompt('conditional-prompt', {
+			result = promptManager.loadPrompt('conditional-prompt', {
 				useResearch: false
 			});
 			expect(result.userPrompt).toBe('analyze the task');
 		});
 
-		it('should handle array iteration with {{#each}}', async () => {
+		it('should handle array iteration with {{#each}}', () => {
 			const mockTemplate = {
 				id: 'loop-prompt',
 				prompts: {
@@ -114,9 +154,9 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			const result = await promptManager.loadPrompt('loop-prompt', {
+			const result = promptManager.loadPrompt('loop-prompt', {
 				tasks: [
 					{ id: 1, title: 'First task' },
 					{ id: 2, title: 'Second task' }
@@ -128,7 +168,7 @@ describe('PromptManager', () => {
 			);
 		});
 
-		it('should handle JSON serialization with triple braces', async () => {
+		it('should handle JSON serialization with triple braces', () => {
 			const mockTemplate = {
 				id: 'json-prompt',
 				prompts: {
@@ -139,21 +179,21 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
 			const tasks = [
 				{ id: 1, title: 'Task 1' },
 				{ id: 2, title: 'Task 2' }
 			];
 
-			const result = await promptManager.loadPrompt('json-prompt', { tasks });
+			const result = promptManager.loadPrompt('json-prompt', { tasks });
 
 			expect(result.userPrompt).toBe(
 				`Analyze these tasks: ${JSON.stringify(tasks, null, 2)}`
 			);
 		});
 
-		it('should select variants based on conditions', async () => {
+		it('should select variants based on conditions', () => {
 			const mockTemplate = {
 				id: 'variant-prompt',
 				prompts: {
@@ -174,31 +214,31 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
 			// Test default variant
-			let result = await promptManager.loadPrompt('variant-prompt', {
+			let result = promptManager.loadPrompt('variant-prompt', {
 				useResearch: false,
 				complexity: 5
 			});
 			expect(result.systemPrompt).toBe('Default system');
 
 			// Test research variant
-			result = await promptManager.loadPrompt('variant-prompt', {
+			result = promptManager.loadPrompt('variant-prompt', {
 				useResearch: true,
 				complexity: 5
 			});
 			expect(result.systemPrompt).toBe('Research system');
 
 			// Test high complexity variant
-			result = await promptManager.loadPrompt('variant-prompt', {
+			result = promptManager.loadPrompt('variant-prompt', {
 				useResearch: false,
 				complexity: 9
 			});
 			expect(result.systemPrompt).toBe('Complex system');
 		});
 
-		it('should use specified variant key over conditions', async () => {
+		it('should use specified variant key over conditions', () => {
 			const mockTemplate = {
 				id: 'variant-prompt',
 				prompts: {
@@ -214,10 +254,10 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
 			// Force research variant even though useResearch is false
-			const result = await promptManager.loadPrompt(
+			const result = promptManager.loadPrompt(
 				'variant-prompt',
 				{ useResearch: false },
 				'research'
@@ -226,7 +266,7 @@ describe('PromptManager', () => {
 			expect(result.systemPrompt).toBe('Research system');
 		});
 
-		it('should handle nested properties with dot notation', async () => {
+		it('should handle nested properties with dot notation', () => {
 			const mockTemplate = {
 				id: 'nested-prompt',
 				prompts: {
@@ -237,9 +277,9 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			const result = await promptManager.loadPrompt('nested-prompt', {
+			const result = promptManager.loadPrompt('nested-prompt', {
 				project: {
 					name: 'TaskMaster',
 					version: '1.0.0'
@@ -249,7 +289,7 @@ describe('PromptManager', () => {
 			expect(result.userPrompt).toBe('Project: TaskMaster, Version: 1.0.0');
 		});
 
-		it('should handle complex nested structures', async () => {
+		it('should handle complex nested structures', () => {
 			const mockTemplate = {
 				id: 'complex-prompt',
 				prompts: {
@@ -260,9 +300,9 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			const result = await promptManager.loadPrompt('complex-prompt', {
+			const result = promptManager.loadPrompt('complex-prompt', {
 				hasSubtasks: true,
 				subtasks: [
 					{ title: 'Subtask 1', status: 'pending' },
@@ -275,7 +315,7 @@ describe('PromptManager', () => {
 			);
 		});
 
-		it('should cache loaded templates', async () => {
+		it('should cache loaded templates', () => {
 			const mockTemplate = {
 				id: 'cached-prompt',
 				prompts: {
@@ -286,52 +326,54 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
 			// First load
-			await promptManager.loadPrompt('cached-prompt', { value: 'test1' });
-			expect(mockReadFile).toHaveBeenCalledTimes(1);
+			promptManager.loadPrompt('cached-prompt', { value: 'test1' });
+			expect(mockReadFileSync).toHaveBeenCalledTimes(1);
 
 			// Second load with same params should use cache
-			await promptManager.loadPrompt('cached-prompt', { value: 'test1' });
-			expect(mockReadFile).toHaveBeenCalledTimes(1);
+			promptManager.loadPrompt('cached-prompt', { value: 'test1' });
+			expect(mockReadFileSync).toHaveBeenCalledTimes(1);
 
 			// Third load with different params should NOT use cache
-			await promptManager.loadPrompt('cached-prompt', { value: 'test2' });
-			expect(mockReadFile).toHaveBeenCalledTimes(2);
+			promptManager.loadPrompt('cached-prompt', { value: 'test2' });
+			expect(mockReadFileSync).toHaveBeenCalledTimes(2);
 		});
 
-		it('should throw error for non-existent template', async () => {
+		it('should throw error for non-existent template', () => {
 			const error = new Error('File not found');
 			error.code = 'ENOENT';
-			mockReadFile.mockRejectedValue(error);
+			mockReadFileSync.mockImplementation(() => {
+				throw error;
+			});
 
-			await expect(
-				promptManager.loadPrompt('non-existent', {})
-			).rejects.toThrow();
+			expect(() => {
+				promptManager.loadPrompt('non-existent', {});
+			}).toThrow();
 		});
 
-		it('should throw error for invalid JSON', async () => {
-			mockReadFile.mockResolvedValue('{ invalid json');
+		it('should throw error for invalid JSON', () => {
+			mockReadFileSync.mockReturnValue('{ invalid json');
 
-			await expect(
-				promptManager.loadPrompt('invalid-json', {})
-			).rejects.toThrow();
+			expect(() => {
+				promptManager.loadPrompt('invalid-json', {});
+			}).toThrow();
 		});
 
-		it('should handle missing prompts section', async () => {
+		it('should handle missing prompts section', () => {
 			const mockTemplate = {
 				id: 'no-prompts'
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			await expect(
-				promptManager.loadPrompt('no-prompts', {})
-			).rejects.toThrow();
+			expect(() => {
+				promptManager.loadPrompt('no-prompts', {});
+			}).toThrow();
 		});
 
-		it('should handle special characters in templates', async () => {
+		it('should handle special characters in templates', () => {
 			const mockTemplate = {
 				id: 'special-chars',
 				prompts: {
@@ -342,9 +384,9 @@ describe('PromptManager', () => {
 				}
 			};
 
-			mockReadFile.mockResolvedValue(JSON.stringify(mockTemplate));
+			mockReadFileSync.mockReturnValue(JSON.stringify(mockTemplate));
 
-			const result = await promptManager.loadPrompt('special-chars', {});
+			const result = promptManager.loadPrompt('special-chars', {});
 
 			expect(result.systemPrompt).toBe(
 				'System with "quotes" and \'apostrophes\''
