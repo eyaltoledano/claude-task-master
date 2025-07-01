@@ -3207,4 +3207,210 @@ ${prompt}
 	async claudeCodeStatus(sessionId) {
 		// ... existing code ...
 	}
+
+	/**
+	 * Get PR status from GitHub API
+	 */
+	async getPRStatus(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+
+			// Get PR info using GitHub CLI
+			const prInfoRaw = execSync(`gh pr view ${prNumber} --json state,merged,mergeable,draft,title,url,headRefName,baseRefName,reviews,statusCheckRollup`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			});
+
+			const prInfo = JSON.parse(prInfoRaw);
+
+			// Process reviews
+			const reviews = prInfo.reviews || [];
+			const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
+			const requestedChanges = reviews.filter(review => review.state === 'CHANGES_REQUESTED');
+			
+			// Process status checks
+			const checks = (prInfo.statusCheckRollup || []).map(check => ({
+				name: check.name || check.context,
+				status: check.state === 'SUCCESS' ? 'success' : 
+				        check.state === 'FAILURE' ? 'failure' : 
+				        check.state === 'PENDING' ? 'pending' : 'unknown',
+				conclusion: check.conclusion,
+				url: check.targetUrl || check.detailsUrl
+			}));
+
+			return {
+				number: prNumber,
+				title: prInfo.title,
+				url: prInfo.url,
+				state: prInfo.state,
+				merged: prInfo.merged,
+				mergeable: prInfo.mergeable,
+				draft: prInfo.draft,
+				headRef: prInfo.headRefName,
+				baseRef: prInfo.baseRefName,
+				
+				// Review status
+				reviews: reviews.length,
+				approved: approvedReviews.length > 0,
+				changesRequested: requestedChanges.length > 0,
+				reviewRequired: true, // Assume review required by default
+				
+				// Check status
+				checks,
+				checksPass: checks.length === 0 || checks.every(check => check.status === 'success'),
+				checksFail: checks.some(check => check.status === 'failure'),
+				
+				// Computed status
+				canMerge: prInfo.mergeable && !prInfo.draft && 
+				          (checks.length === 0 || checks.every(check => check.status === 'success')),
+				
+				// Raw data for advanced processing
+				raw: prInfo
+			};
+		} catch (error) {
+			throw new Error(`Failed to get PR status: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Get detailed PR checks information
+	 */
+	async getPRChecks(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+
+			// Get check runs using GitHub CLI
+			const checksRaw = execSync(`gh pr checks ${prNumber} --json name,status,conclusion,startedAt,completedAt,detailsUrl`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			});
+
+			const checks = JSON.parse(checksRaw);
+
+			return checks.map(check => ({
+				name: check.name,
+				status: check.status?.toLowerCase() || 'unknown',
+				conclusion: check.conclusion?.toLowerCase() || null,
+				startedAt: check.startedAt,
+				completedAt: check.completedAt,
+				url: check.detailsUrl,
+				duration: check.startedAt && check.completedAt ? 
+					new Date(check.completedAt) - new Date(check.startedAt) : null
+			}));
+		} catch (error) {
+			throw new Error(`Failed to get PR checks: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Check if PR can be auto-merged safely
+	 */
+	async canAutoMergePR(prNumber, requiredChecks = []) {
+		try {
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			// Basic merge requirements
+			if (!prStatus.canMerge) {
+				return {
+					canMerge: false,
+					reason: 'PR not in mergeable state',
+					details: {
+						mergeable: prStatus.mergeable,
+						draft: prStatus.draft,
+						checksPass: prStatus.checksPass
+					}
+				};
+			}
+
+			// Check required status checks
+			if (requiredChecks.length > 0) {
+				const checks = await this.getPRChecks(prNumber);
+				const missingChecks = requiredChecks.filter(required => 
+					!checks.some(check => check.name === required && check.status === 'completed' && check.conclusion === 'success')
+				);
+
+				if (missingChecks.length > 0) {
+					return {
+						canMerge: false,
+						reason: 'Required checks not satisfied',
+						details: {
+							missingChecks,
+							requiredChecks,
+							availableChecks: checks.map(c => c.name)
+						}
+					};
+				}
+			}
+
+			// Additional safety checks
+			const safetyChecks = await this.performMergeSafetyChecks(prNumber);
+			if (!safetyChecks.safe) {
+				return {
+					canMerge: false,
+					reason: 'Safety checks failed',
+					details: safetyChecks
+				};
+			}
+
+			return {
+				canMerge: true,
+				reason: 'All requirements satisfied',
+				details: {
+					prStatus,
+					safetyChecks
+				}
+			};
+		} catch (error) {
+			return {
+				canMerge: false,
+				reason: 'Error checking merge eligibility',
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Perform additional safety checks before auto-merge
+	 */
+	async performMergeSafetyChecks(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+
+			// Check if PR is up to date with base branch
+			const prInfo = await this.getPRStatus(prNumber);
+			
+			// Get commit comparison
+			const comparison = execSync(`gh api repos/:owner/:repo/compare/${prInfo.baseRef}...${prInfo.headRef} --jq '.status'`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			}).trim();
+
+			const upToDate = comparison === 'identical' || comparison === 'ahead';
+
+			// Check for recent commits on base branch
+			const recentCommits = execSync(`git log --oneline --since="1 hour ago" origin/${prInfo.baseRef}`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			}).trim();
+
+			const hasRecentActivity = recentCommits.length > 0;
+
+			return {
+				safe: upToDate && !hasRecentActivity,
+				upToDate,
+				hasRecentActivity,
+				comparison,
+				details: {
+					baseRef: prInfo.baseRef,
+					headRef: prInfo.headRef,
+					recentCommits: recentCommits.split('\n').filter(Boolean)
+				}
+			};
+		} catch (error) {
+			return {
+				safe: false,
+				error: error.message
+			};
+		}
+	}
 }

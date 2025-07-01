@@ -58,6 +58,22 @@
 				"autoLabels": ["claude-code", "auto-generated"],
 				"timeout": 20000
 			}
+		},
+		"pr-lifecycle-management": {
+			"enabled": true,
+			"config": {
+				"autoMerge": false,
+				"requiredChecks": [],
+				"cleanupAfterMerge": true,
+				"cleanupWorktree": true,
+				"updateASTCache": true,
+				"updateTaskStatus": true,
+				"archiveSession": true,
+				"mergeMethod": "squash",
+				"monitoringInterval": 30000,
+				"maxRetries": 3,
+				"timeout": 30000
+			}
 		}
 	},
 	"global": {

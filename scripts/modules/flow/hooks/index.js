@@ -16,16 +16,16 @@ export { useConsoleMessages, MessageFormatters } from './useConsoleMessages.js';
 // Context-aware hooks
 export { useGitBranchName } from './useGitBranchName.js';
 
-// Theme system hooks (JSX exports commented out for Node.js compatibility)
-// export {
-// 	ThemeProvider,
-// 	useTheme,
-// 	useResponsiveTheme,
-// 	useComponentTheme,
-// 	useThemedStyles,
-// 	useThemeTransitions,
-// 	useThemePersistence
-// } from './useTheme.jsx';
+// Theme system hooks
+export {
+	ThemeProvider,
+	useTheme,
+	useResponsiveTheme,
+	useComponentTheme,
+	useThemedStyles,
+	useThemeTransitions,
+	useThemePersistence
+} from './useTheme.jsx';
 
 // Re-export hook utilities for convenience
 export const HookUtils = {
@@ -106,7 +106,11 @@ export const HOOK_EVENTS = {
 
 	// PR lifecycle
 	PRE_PR: 'pre-pr',
-	PR_CREATED: 'pr-created'
+	PR_CREATED: 'pr-created',
+	PR_STATUS_CHANGED: 'pr-status-changed',
+	PR_READY_TO_MERGE: 'pr-ready-to-merge',
+	PR_MERGED: 'pr-merged',
+	PR_CHECKS_FAILED: 'pr-checks-failed'
 };
 
 /**
@@ -183,7 +187,8 @@ export class HookManager {
 		const builtInHooks = [
 			'research-integration',
 			'pre-launch-validation',
-			'session-completion'
+			'session-completion',
+			'pr-lifecycle-management'
 		];
 
 		for (const hookName of builtInHooks) {
