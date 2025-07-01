@@ -140,6 +140,7 @@ import {
 	generateProfileRemovalSummary,
 	categorizeRemovalResults
 } from '../../src/utils/profiles.js';
+import { getPromptManager } from './prompt-manager.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -4539,6 +4540,46 @@ Examples:
 		.on('error', function (err) {
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);
+		});
+
+	programInstance
+		.command('validate-prompts')
+		.description('Validate all prompt templates against JSON schema')
+		.option('--fix', 'Automatically fix common issues')
+		.option('--verbose', 'Show detailed validation results')
+		.action(async (options) => {
+			console.log(chalk.blue('Validating prompt templates...'));
+
+			try {
+				const promptManager = getPromptManager();
+				const results = await promptManager.validateAllPrompts();
+
+				// Display results
+				console.log(`\nValidation Results:`);
+				console.log(`   Total templates: ${results.total}`);
+				console.log(`   Valid: ${chalk.green(results.valid.length)}`);
+				console.log(`   Errors: ${chalk.red(results.errors.length)}`);
+
+				if (options.verbose && results.valid.length > 0) {
+					console.log(`\nValid templates:`);
+					results.valid.forEach((id) =>
+						console.log(`   ${chalk.green('✓')} ${id}`)
+					);
+				}
+
+				if (results.errors.length > 0) {
+					console.log(`\nValidation errors:`);
+					results.errors.forEach((err) =>
+						console.log(`   ${chalk.red('✗')} ${err}`)
+					);
+					process.exit(1);
+				} else {
+					console.log(chalk.green('\nAll prompt templates are valid!'));
+				}
+			} catch (error) {
+				console.error(chalk.red(`\nValidation failed: ${error.message}`));
+				process.exit(1);
+			}
 		});
 
 	return programInstance;
