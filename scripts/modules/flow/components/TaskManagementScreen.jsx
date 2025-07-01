@@ -670,77 +670,33 @@ export function TaskManagementScreen() {
 		if (!selectedTask || !selectedSubtask) return;
 
 		try {
-			setIsExpanding(true); // Reuse loading state
-			setToast({
-				message: 'Setting up worktree for subtask...',
-				type: 'info'
-			});
-
-			// Get the current branch to use as source
-			let sourceBranch = 'main'; // default fallback
-			try {
-				const { execSync } = await import('child_process');
-				sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-					cwd: backend.projectRoot,
-					encoding: 'utf8'
-				}).trim();
-			} catch (error) {
-				console.error('Failed to get current branch:', error);
-				// Try 'master' as a secondary fallback
-				sourceBranch = 'master';
-			}
-
-			// Get or create worktree for this subtask
-			const result = await backend.getOrCreateWorktreeForSubtask(
-				selectedTask.id,
-				selectedSubtask.id,
-				{
-					subtaskTitle: selectedSubtask.title,
-					sourceBranch
+			// Prepare task data for the Claude launcher modal
+			const taskData = [{
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title,
+				description: selectedSubtask.description,
+				details: selectedSubtask.details,
+				status: selectedSubtask.status,
+				isSubtask: true,
+				parentTask: {
+					id: selectedTask.id,
+					title: selectedTask.title,
+					description: selectedTask.description
 				}
-			);
+			}];
 
-			// Check if we need user decision for branch conflict
-			if (result.needsUserDecision) {
-				// Store info for the modal
-				setBranchConflictInfo({
-					branchName: result.worktreeName,
-					branchInUseAt: result.branchInUseAt,
-					taskId: selectedTask.id,
-					subtaskId: selectedSubtask.id,
-					subtaskTitle: selectedSubtask.title,
-					sourceBranch,
-					isWorkOnSubtask: true // Flag to indicate this is from 'w' key
-				});
-				setShowBranchConflictModal(true);
-				setIsExpanding(false);
-				return;
-			}
-
-			if (result.created) {
-				setToast({
-					message: `Created worktree: ${result.worktree.branch}`,
-					type: 'success'
-				});
-			}
-
-			// Update subtask worktrees state
-			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-			const updatedWorktrees = new Map(subtaskWorktrees);
-			updatedWorktrees.set(subtaskId, [result.worktree]);
-			setSubtaskWorktrees(updatedWorktrees);
-
-			// Launch Claude in the worktree
-			setClaudeWorktree(result.worktree);
+			// Set modal data and show the launcher modal
+			// No worktree is passed - the modal will create it when Claude is launched
+			setModalTaskData(taskData);
+			setClaudeWorktree(null); // Explicitly set to null
 			setShowClaudeLauncherModal(true);
+
 		} catch (error) {
-			console.error('Failed to setup worktree:', error);
+			console.error('Failed to setup Claude session:', error);
 			setToast({
-				message: `Failed to setup worktree: ${error.message}`,
+				message: `Failed to setup Claude session: ${error.message}`,
 				type: 'error'
 			});
-		} finally {
-			setIsExpanding(false);
 		}
 	};
 
@@ -757,16 +713,29 @@ export function TaskManagementScreen() {
 			return;
 		}
 
+		// If a worktree was created during the modal operation, update our state
+		if (result.worktree && selectedTask && selectedSubtask) {
+			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+			const updatedWorktrees = new Map(subtaskWorktrees);
+			updatedWorktrees.set(subtaskId, [result.worktree]);
+			setSubtaskWorktrees(updatedWorktrees);
+			
+			setToast({
+				message: `Claude session started in worktree: ${result.worktree.name}`,
+				type: 'success'
+			});
+		}
+
 		// Handle other launch modes
 		if (result.mode === 'interactive') {
 			// Interactive mode - the modal has already launched Claude in a terminal
 			setToast({
-				message: `Claude launched in ${result.worktree} with persona: ${result.persona || 'none'}`,
+				message: `Claude launched in ${result.worktree?.name || 'worktree'} with persona: ${result.persona || 'none'}`,
 				type: 'success'
 			});
 		} else if (result.mode === 'headless') {
 			// Headless mode - gather context and navigate to ClaudeCodeScreen
-			const worktreePath = claudeWorktree?.path || backend.projectRoot;
+			const worktreePath = result.worktree?.path || backend.projectRoot;
 			await launchClaudeWithContext(worktreePath);
 		} else if (
 			result.mode === 'batch' ||
@@ -777,11 +746,18 @@ export function TaskManagementScreen() {
 				message: `Batch processing completed for ${result.tasks?.length || 0} tasks`,
 				type: 'success'
 			});
+		} else {
+			// Background mode (most common case now)
+			setToast({
+				message: `Claude session started in background. Monitor progress in Background Operations.`,
+				type: 'success'
+			});
 		}
 
-		// Close modal
+		// Close modal and clear state
 		setShowClaudeLauncherModal(false);
 		setClaudeWorktree(null);
+		setModalTaskData(null);
 	};
 
 	const launchClaudeWithContext = async (worktreePath) => {

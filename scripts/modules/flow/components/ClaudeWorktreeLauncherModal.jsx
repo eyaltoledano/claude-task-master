@@ -189,7 +189,8 @@ export function ClaudeWorktreeLauncherModal({
 					keyboardHints: [
 						'1-3 toggle restrictions',
 						'+/- adjust turns',
-						'ENTER continue',
+						'c customize prompt',
+						'ENTER launch',
 						'BACKSPACE back',
 						'ESC cancel'
 					]
@@ -347,7 +348,12 @@ export function ClaudeWorktreeLauncherModal({
 				);
 				setView('options');
 			} else if (view === 'options') {
-				setView('prompt');
+				// Skip the prompt view and launch directly with default prompt
+				const defaultPrompt = 'Implement the assigned tasks according to the specifications and context provided in CLAUDE.md. Follow best practices and ensure comprehensive testing.';
+				setHeadlessPrompt(defaultPrompt);
+				handleLaunch();
+			} else if (view === 'prompt') {
+				handleLaunch();
 			} else if (view === 'summary') {
 				handleComplete();
 			}
@@ -386,6 +392,12 @@ export function ClaudeWorktreeLauncherModal({
 				setView('manual-persona');
 			} else if (view === 'summary') {
 				setShouldCreatePR(!shouldCreatePR);
+			}
+		},
+
+		c: () => {
+			if (view === 'options') {
+				setView('prompt');
 			}
 		},
 
@@ -603,6 +615,17 @@ export function ClaudeWorktreeLauncherModal({
 					taskId: tasks[0]?.id,
 					subtaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id : null,
 					parentTaskId: (tasks[0]?.isSubtask || String(tasks[0]?.id).includes('.')) ? tasks[0].id.split('.')[0] : null,
+					// Pass complete task information for CLAUDE.md generation
+					taskData: tasks[0] ? {
+						id: tasks[0].id,
+						title: tasks[0].title,
+						description: tasks[0].description || '',
+						details: tasks[0].details || '',
+						testStrategy: tasks[0].testStrategy || '',
+						status: tasks[0].status || 'pending',
+						isSubtask: tasks[0].isSubtask || String(tasks[0].id).includes('.'),
+						parentTask: tasks[0].parentTask || null
+					} : null,
 					worktreePath: actualWorktree?.path,
 					worktreeName: actualWorktree?.name,
 					branch: actualWorktree?.branch || actualWorktree?.name,
@@ -1054,6 +1077,12 @@ Working directory: ${worktree?.path}
 			<Box marginTop={1}>
 				<Text color={theme.text}>
 					Max Turns: {maxTurns} (use +/- to adjust)
+				</Text>
+			</Box>
+
+			<Box marginTop={2}>
+				<Text color={theme.secondary}>
+					Press ENTER to launch with default prompt or 'c' to customize
 				</Text>
 			</Box>
 		</Box>

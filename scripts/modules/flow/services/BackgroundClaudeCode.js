@@ -50,18 +50,92 @@ export class BackgroundClaudeCode {
 	 */
 	async runQuery(operationId, prompt, options) {
 		try {
-			const result = await this.backend.claudeCodeQuery(prompt, {
-				...options,
-				onMessage: (message) => {
-					// Add message to the operation
-					backgroundOperations.addMessage(operationId, message);
-					
-					// Call the original callback if provided
-					if (options.onMessage) {
-						options.onMessage(message);
+			let result;
+			
+			// Check if this is a worktree-based operation that needs CLAUDE.md preparation
+			const metadata = options.metadata || {};
+			const worktreePath = metadata.worktreePath;
+			const isTaskImplementation = metadata.type && (
+				metadata.type === 'subtask-implementation' || 
+				metadata.type === 'task-implementation'
+			);
+
+			if (worktreePath && isTaskImplementation) {
+				// This is a task/subtask implementation in a worktree - use headless launch
+				console.log('🏗️ [BackgroundClaudeCode] Using headless launch for worktree-based session');
+				
+				// Build worktree object from metadata
+				const worktree = {
+					path: worktreePath,
+					name: metadata.worktreeName || 'unknown',
+					branch: metadata.branch
+				};
+
+				// Build tasks array from metadata
+				const tasks = [];
+				if (metadata.taskData) {
+					// Use the complete task data passed from the modal
+					tasks.push(metadata.taskData);
+				} else if (metadata.taskId) {
+					// Fallback: try to get full task details from backend
+					try {
+						const task = await this.backend.getTask(metadata.taskId);
+						if (task) {
+							tasks.push(task);
+						} else {
+							// Fallback with minimal task info
+							tasks.push({
+								id: metadata.taskId,
+								title: `Task ${metadata.taskId}`,
+								isSubtask: metadata.subtaskId !== null,
+								description: 'Auto-generated from background session'
+							});
+						}
+					} catch (error) {
+						console.warn('Could not load task details, using minimal task info:', error);
+						tasks.push({
+							id: metadata.taskId,
+							title: `Task ${metadata.taskId}`,
+							isSubtask: metadata.subtaskId !== null,
+							description: 'Auto-generated from background session'
+						});
 					}
 				}
-			});
+
+				// Use launchClaudeHeadless which properly prepares CLAUDE.md
+				result = await this.backend.launchClaudeHeadless(worktree, tasks, prompt, {
+					persona: metadata.persona || options.persona,
+					maxTurns: metadata.maxTurns || 10,
+					permissionMode: 'acceptEdits',
+					allowedTools: metadata.allowedTools,
+					captureOutput: true,
+					abortController: options.abortController,
+					onProgress: (message) => {
+						// Add message to the operation
+						backgroundOperations.addMessage(operationId, message);
+						
+						// Call the original callback if provided
+						if (options.onMessage) {
+							options.onMessage(message);
+						}
+					}
+				});
+			} else {
+				// Fallback to raw claudeCodeQuery for non-worktree operations
+				console.log('📝 [BackgroundClaudeCode] Using raw query for non-worktree session');
+				result = await this.backend.claudeCodeQuery(prompt, {
+					...options,
+					onMessage: (message) => {
+						// Add message to the operation
+						backgroundOperations.addMessage(operationId, message);
+						
+						// Call the original callback if provided
+						if (options.onMessage) {
+							options.onMessage(message);
+						}
+					}
+				});
+			}
 
 			if (result.success && result.sessionId) {
 				// Save session if backend supports it
