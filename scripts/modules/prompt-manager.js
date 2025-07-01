@@ -1,7 +1,20 @@
-import fs from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { log } from './utils.js';
+
+// Import schema validation dependencies
+let Ajv, addFormats;
+try {
+	const ajvModule = await import('ajv');
+	const formatsModule = await import('ajv-formats');
+	Ajv = ajvModule.default;
+	addFormats = formatsModule.default;
+} catch (error) {
+	console.warn(
+		'⚠ Schema validation dependencies not available. Install ajv and ajv-formats for full validation support.'
+	);
+}
 
 /**
  * Manages prompt templates for AI interactions
@@ -11,7 +24,39 @@ export class PromptManager {
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
 		this.templatesDir = path.join(__dirname, '..', '..', 'src', 'prompts');
+		this.schemasDir = path.join(__dirname, '..', '..', 'assets', 'schemas');
 		this.cache = new Map();
+		this.setupValidation();
+	}
+
+	/**
+	 * Set up JSON schema validation
+	 * @private
+	 */
+	setupValidation() {
+		if (!Ajv || !addFormats) {
+			this.validatePrompt = () => true; // No validation available
+			return;
+		}
+
+		this.ajv = new Ajv({ allErrors: true, strict: false });
+		addFormats(this.ajv);
+
+		try {
+			// Load schema from assets/schemas
+			const schemaPath = path.join(
+				this.schemasDir,
+				'prompt-template.schema.json'
+			);
+			const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+			const schema = JSON.parse(schemaContent);
+
+			this.validatePrompt = this.ajv.compile(schema);
+			log('info', '✓ JSON schema validation enabled');
+		} catch (error) {
+			log('warn', `⚠ Schema validation disabled: ${error.message}`);
+			this.validatePrompt = () => true; // Fallback to no validation
+		}
 	}
 
 	/**
@@ -19,9 +64,9 @@ export class PromptManager {
 	 * @param {string} promptId - The prompt template ID
 	 * @param {Object} variables - Variables to inject into the template
 	 * @param {string} [variantKey] - Optional specific variant to use
-	 * @returns {Promise<{systemPrompt: string, userPrompt: string, metadata: Object}>}
+	 * @returns {{systemPrompt: string, userPrompt: string, metadata: Object}}
 	 */
-	async loadPrompt(promptId, variables = {}, variantKey = null) {
+	loadPrompt(promptId, variables = {}, variantKey = null) {
 		try {
 			// Check cache first
 			const cacheKey = `${promptId}-${JSON.stringify(variables)}-${variantKey}`;
@@ -30,7 +75,12 @@ export class PromptManager {
 			}
 
 			// Load template
-			const template = await this.loadTemplate(promptId);
+			const template = this.loadTemplate(promptId);
+
+			// Validate parameters if schema validation is available
+			if (this.validatePrompt && this.validatePrompt !== true) {
+				this.validateParameters(template, variables);
+			}
 
 			// Select the variant - use specified key or select based on conditions
 			const variant = variantKey
@@ -63,16 +113,29 @@ export class PromptManager {
 	 * Load a prompt template from disk
 	 * @private
 	 */
-	async loadTemplate(promptId) {
+	loadTemplate(promptId) {
 		const templatePath = path.join(this.templatesDir, `${promptId}.json`);
 
 		try {
-			const content = await fs.readFile(templatePath, 'utf-8');
+			const content = fs.readFileSync(templatePath, 'utf-8');
 			const template = JSON.parse(content);
 
-			// Validate template structure
-			if (!template.id || !template.prompts || !template.prompts.default) {
-				throw new Error('Invalid template structure');
+			// Schema validation if available (do this first for detailed errors)
+			if (this.validatePrompt && this.validatePrompt !== true) {
+				const valid = this.validatePrompt(template);
+				if (!valid) {
+					const errors = this.validatePrompt.errors
+						.map((err) => `${err.instancePath || 'root'}: ${err.message}`)
+						.join(', ');
+					throw new Error(`Schema validation failed: ${errors}`);
+				}
+			} else {
+				// Fallback basic validation if no schema validation available
+				if (!template.id || !template.prompts || !template.prompts.default) {
+					throw new Error(
+						'Invalid template structure: missing required fields (id, prompts.default)'
+					);
+				}
 			}
 
 			return template;
@@ -81,6 +144,96 @@ export class PromptManager {
 				throw new Error(`Prompt template '${promptId}' not found`);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Validate parameters against template schema
+	 * @private
+	 */
+	validateParameters(template, variables) {
+		if (!template.parameters) return;
+
+		const errors = [];
+
+		for (const [paramName, paramConfig] of Object.entries(
+			template.parameters
+		)) {
+			const value = variables[paramName];
+
+			// Check required parameters
+			if (paramConfig.required && value === undefined) {
+				errors.push(`Required parameter '${paramName}' missing`);
+				continue;
+			}
+
+			// Skip validation for undefined optional parameters
+			if (value === undefined) continue;
+
+			// Type validation
+			if (!this.validateParameterType(value, paramConfig.type)) {
+				errors.push(
+					`Parameter '${paramName}' expected ${paramConfig.type}, got ${typeof value}`
+				);
+			}
+
+			// Enum validation
+			if (paramConfig.enum && !paramConfig.enum.includes(value)) {
+				errors.push(
+					`Parameter '${paramName}' must be one of: ${paramConfig.enum.join(', ')}`
+				);
+			}
+
+			// Pattern validation for strings
+			if (paramConfig.pattern && typeof value === 'string') {
+				const regex = new RegExp(paramConfig.pattern);
+				if (!regex.test(value)) {
+					errors.push(
+						`Parameter '${paramName}' does not match required pattern: ${paramConfig.pattern}`
+					);
+				}
+			}
+
+			// Range validation for numbers
+			if (typeof value === 'number') {
+				if (paramConfig.minimum !== undefined && value < paramConfig.minimum) {
+					errors.push(
+						`Parameter '${paramName}' must be >= ${paramConfig.minimum}`
+					);
+				}
+				if (paramConfig.maximum !== undefined && value > paramConfig.maximum) {
+					errors.push(
+						`Parameter '${paramName}' must be <= ${paramConfig.maximum}`
+					);
+				}
+			}
+		}
+
+		if (errors.length > 0) {
+			throw new Error(`Parameter validation failed: ${errors.join('; ')}`);
+		}
+	}
+
+	/**
+	 * Validate parameter type
+	 * @private
+	 */
+	validateParameterType(value, expectedType) {
+		switch (expectedType) {
+			case 'string':
+				return typeof value === 'string';
+			case 'number':
+				return typeof value === 'number';
+			case 'boolean':
+				return typeof value === 'boolean';
+			case 'array':
+				return Array.isArray(value);
+			case 'object':
+				return (
+					typeof value === 'object' && value !== null && !Array.isArray(value)
+				);
+			default:
+				return true;
 		}
 	}
 
@@ -198,11 +351,41 @@ export class PromptManager {
 	}
 
 	/**
+	 * Validate all prompt templates
+	 */
+	validateAllPrompts() {
+		const results = { total: 0, errors: [], valid: [] };
+
+		try {
+			const files = fs.readdirSync(this.templatesDir);
+			const promptFiles = files.filter((file) => file.endsWith('.json'));
+
+			for (const file of promptFiles) {
+				const promptId = file.replace('.json', '');
+				results.total++;
+
+				try {
+					this.loadTemplate(promptId);
+					results.valid.push(promptId);
+				} catch (error) {
+					results.errors.push(`${promptId}: ${error.message}`);
+				}
+			}
+		} catch (error) {
+			results.errors.push(
+				`Failed to read templates directory: ${error.message}`
+			);
+		}
+
+		return results;
+	}
+
+	/**
 	 * List all available prompt templates
 	 */
-	async listPrompts() {
+	listPrompts() {
 		try {
-			const files = await fs.readdir(this.templatesDir);
+			const files = fs.readdirSync(this.templatesDir);
 			const prompts = [];
 
 			for (const file of files) {
@@ -210,7 +393,7 @@ export class PromptManager {
 
 				const promptId = file.replace('.json', '');
 				try {
-					const template = await this.loadTemplate(promptId);
+					const template = this.loadTemplate(promptId);
 					prompts.push({
 						id: template.id,
 						description: template.description,
@@ -236,9 +419,9 @@ export class PromptManager {
 	/**
 	 * Validate template structure
 	 */
-	async validateTemplate(templatePath) {
+	validateTemplate(templatePath) {
 		try {
-			const content = await fs.readFile(templatePath, 'utf-8');
+			const content = fs.readFileSync(templatePath, 'utf-8');
 			const template = JSON.parse(content);
 
 			// Check required fields
@@ -261,6 +444,17 @@ export class PromptManager {
 						valid: false,
 						error: `Variant '${name}' missing system or user prompt`
 					};
+				}
+			}
+
+			// Schema validation if available
+			if (this.validatePrompt && this.validatePrompt !== true) {
+				const valid = this.validatePrompt(template);
+				if (!valid) {
+					const errors = this.validatePrompt.errors
+						.map((err) => `${err.instancePath || 'root'}: ${err.message}`)
+						.join(', ');
+					return { valid: false, error: `Schema validation failed: ${errors}` };
 				}
 			}
 
