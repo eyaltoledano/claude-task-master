@@ -180,10 +180,11 @@ describe('GeminiCliProvider', () => {
 		});
 
 		it('should handle nested objects with proper bracket matching', () => {
-			const input = 'Response: {"outer": {"inner": {"value": "test"}}} extra text';
+			const input =
+				'Response: {"outer": {"inner": {"value": "test"}}} extra text';
 			const result = provider.extractJson(input);
 			const parsed = JSON.parse(result);
-			expect(parsed).toEqual({ outer: { inner: { value: "test" } } });
+			expect(parsed).toEqual({ outer: { inner: { value: 'test' } } });
 		});
 
 		it('should handle escaped quotes in strings', () => {
@@ -215,10 +216,10 @@ describe('GeminiCliProvider', () => {
 			const largePrefix = 'This is a very long explanation. '.repeat(1000);
 			const json = '{"result": "success"}';
 			const input = largePrefix + json;
-			
+
 			const result = provider.extractJson(input);
 			const parsed = JSON.parse(result);
-			expect(parsed).toEqual({ result: "success" });
+			expect(parsed).toEqual({ result: 'success' });
 		});
 
 		it('should handle early termination for very large invalid content', () => {
@@ -244,7 +245,11 @@ describe('GeminiCliProvider', () => {
 
 		it('should handle JSON parsing errors by attempting manual extraction', async () => {
 			// Mock the parent generateObject to throw a JSON parsing error
-			jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(provider)), 'generateObject')
+			jest
+				.spyOn(
+					Object.getPrototypeOf(Object.getPrototypeOf(provider)),
+					'generateObject'
+				)
 				.mockRejectedValueOnce(new Error('Failed to parse JSON response'));
 
 			// Mock generateObject from ai module to return text with JSON
@@ -281,7 +286,11 @@ describe('GeminiCliProvider', () => {
 
 		it('should throw error if manual extraction also fails', async () => {
 			// Mock parent to throw JSON error
-			jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(provider)), 'generateObject')
+			jest
+				.spyOn(
+					Object.getPrototypeOf(Object.getPrototypeOf(provider)),
+					'generateObject'
+				)
 				.mockRejectedValueOnce(new Error('Failed to parse JSON'));
 
 			// Mock generateObject to return unparseable text
@@ -297,10 +306,16 @@ describe('GeminiCliProvider', () => {
 
 		it('should pass through non-JSON errors unchanged', async () => {
 			const otherError = new Error('Network error');
-			jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(provider)), 'generateObject')
+			jest
+				.spyOn(
+					Object.getPrototypeOf(Object.getPrototypeOf(provider)),
+					'generateObject'
+				)
 				.mockRejectedValueOnce(otherError);
 
-			await expect(provider.generateObject(mockParams)).rejects.toThrow('Network error');
+			await expect(provider.generateObject(mockParams)).rejects.toThrow(
+				'Network error'
+			);
 			expect(generateObject).not.toHaveBeenCalled();
 		});
 
@@ -309,7 +324,11 @@ describe('GeminiCliProvider', () => {
 				object: { test: 'data' },
 				usage: { inputTokens: 5, outputTokens: 10, totalTokens: 15 }
 			};
-			jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(provider)), 'generateObject')
+			jest
+				.spyOn(
+					Object.getPrototypeOf(Object.getPrototypeOf(provider)),
+					'generateObject'
+				)
 				.mockResolvedValueOnce(mockResult);
 
 			const result = await provider.generateObject(mockParams);

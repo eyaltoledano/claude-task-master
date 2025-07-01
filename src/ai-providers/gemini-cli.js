@@ -88,12 +88,12 @@ export class GeminiCliProvider extends BaseAIProvider {
 
 	/**
 	 * Extract JSON from Gemini's response using a tolerant parser.
-	 * 
+	 *
 	 * Optimized approach that progressively tries different parsing strategies:
 	 * 1. Direct parsing after cleanup
 	 * 2. Smart boundary detection with single-pass analysis
 	 * 3. Limited character-by-character fallback for edge cases
-	 * 
+	 *
 	 * @param {string} text - Raw text which may contain JSON
 	 * @returns {string} A valid JSON string if extraction succeeds, otherwise the original text
 	 */
@@ -122,23 +122,28 @@ export class GeminiCliProvider extends BaseAIProvider {
 		// Find the first JSON-like structure
 		const firstObj = content.indexOf('{');
 		const firstArr = content.indexOf('[');
-		
+
 		if (firstObj === -1 && firstArr === -1) {
 			return text;
 		}
 
-		const start = firstArr === -1 ? firstObj : firstObj === -1 ? firstArr : Math.min(firstObj, firstArr);
+		const start =
+			firstArr === -1
+				? firstObj
+				: firstObj === -1
+					? firstArr
+					: Math.min(firstObj, firstArr);
 		content = content.slice(start);
 
 		// Optimized parsing function with error collection
 		const tryParse = (value) => {
 			if (!value || value.length < 2) return undefined;
-			
+
 			const errors = [];
 			try {
-				const result = parse(value, errors, { 
+				const result = parse(value, errors, {
 					allowTrailingComma: true,
-					allowEmptyContent: false 
+					allowEmptyContent: false
 				});
 				if (errors.length === 0 && result !== undefined) {
 					return JSON.stringify(result, null, 2);
@@ -158,33 +163,34 @@ export class GeminiCliProvider extends BaseAIProvider {
 		// Smart boundary detection - single pass with optimizations
 		const openChar = content[0];
 		const closeChar = openChar === '{' ? '}' : ']';
-		
+
 		let depth = 0;
 		let inString = false;
 		let escapeNext = false;
 		let lastValidEnd = -1;
-		
+
 		// Single-pass boundary detection with early termination
-		for (let i = 0; i < content.length && i < 10000; i++) { // Limit scan for performance
+		for (let i = 0; i < content.length && i < 10000; i++) {
+			// Limit scan for performance
 			const char = content[i];
-			
+
 			if (escapeNext) {
 				escapeNext = false;
 				continue;
 			}
-			
+
 			if (char === '\\') {
 				escapeNext = true;
 				continue;
 			}
-			
+
 			if (char === '"') {
 				inString = !inString;
 				continue;
 			}
-			
+
 			if (inString) continue;
-			
+
 			if (char === openChar) {
 				depth++;
 			} else if (char === closeChar) {
@@ -205,7 +211,10 @@ export class GeminiCliProvider extends BaseAIProvider {
 		if (lastValidEnd > 0) {
 			const maxAttempts = Math.min(5, Math.floor(lastValidEnd / 100)); // Limit attempts
 			for (let i = 0; i < maxAttempts; i++) {
-				const testEnd = Math.max(lastValidEnd - (i * 50), Math.floor(lastValidEnd * 0.8));
+				const testEnd = Math.max(
+					lastValidEnd - i * 50,
+					Math.floor(lastValidEnd * 0.8)
+				);
 				const candidate = content.slice(0, testEnd);
 				const parsed = tryParse(candidate);
 				if (parsed !== undefined) {
@@ -266,7 +275,10 @@ export class GeminiCliProvider extends BaseAIProvider {
 								'error',
 								`Failed to parse extracted JSON: ${parseError.message}`
 							);
-							log('debug', `Extracted JSON: ${extractedJson.substring(0, 500)}...`);
+							log(
+								'debug',
+								`Extracted JSON: ${extractedJson.substring(0, 500)}...`
+							);
 							throw new Error(
 								`Gemini CLI returned invalid JSON that could not be parsed: ${parseError.message}`
 							);
