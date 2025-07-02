@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Text, Spacer } from 'ink';
-import { useBackend } from '../contexts/OverflowContext.jsx';
+import { useAppContext } from '../index.jsx';
 import { DependencyAnalysisService } from '../services/DependencyAnalysisService.js';
 
 /**
@@ -8,7 +8,7 @@ import { DependencyAnalysisService } from '../services/DependencyAnalysisService
  * Uses D3.js concepts adapted for terminal UI with Ink
  */
 export function DependencyVisualizerScreen({ onBack, projectRoot }) {
-	const { backend } = useBackend();
+	const { backend } = useAppContext();
 	const [analysisData, setAnalysisData] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
