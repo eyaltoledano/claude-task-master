@@ -36,6 +36,7 @@ Taskmaster uses two primary methods for configuration:
         "global": {
           "logLevel": "info",
           "debug": false,
+          "defaultNumTasks": 10,
           "defaultSubtasks": 5,
           "defaultPriority": "medium",
           "defaultTag": "master",
