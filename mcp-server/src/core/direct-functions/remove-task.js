@@ -20,12 +20,13 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID(s) of the task(s) or subtask(s) to remove (comma-separated for multiple).
+ * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag).
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function removeTaskDirect(args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, id, projectRoot } = args;
+	const { tasksJsonPath, id, projectRoot, tag } = args;
 	const { session } = context;
 	try {
 		// Check if tasksJsonPath was provided
@@ -56,17 +57,17 @@ export async function removeTaskDirect(args, log, context = {}) {
 		const taskIdArray = id.split(',').map((taskId) => taskId.trim());
 
 		log.info(
-			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${tasksJsonPath}`
+			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${tasksJsonPath}${tag ? ` in tag '${tag}'` : ''}`
 		);
 
 		// Validate all task IDs exist before proceeding
-		const data = readJSON(tasksJsonPath, projectRoot);
+		const data = readJSON(tasksJsonPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			return {
 				success: false,
 				error: {
 					code: 'INVALID_TASKS_FILE',
-					message: `No valid tasks found in ${tasksJsonPath}`
+					message: `No valid tasks found in ${tasksJsonPath}${tag ? ` for tag '${tag}'` : ''}`
 				}
 			};
 		}
@@ -80,71 +81,51 @@ export async function removeTaskDirect(args, log, context = {}) {
 				success: false,
 				error: {
 					code: 'INVALID_TASK_ID',
-					message: `The following tasks were not found: ${invalidTasks.join(', ')}`
+					message: `The following tasks were not found${tag ? ` in tag '${tag}'` : ''}: ${invalidTasks.join(', ')}`
 				}
 			};
 		}
-
-		// Remove tasks one by one
-		const results = [];
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
 		try {
-			for (const taskId of taskIdArray) {
-				try {
-					const result = await removeTask(tasksJsonPath, taskId);
-					results.push({
-						taskId,
-						success: true,
-						message: result.message,
-						removedTask: result.removedTask
-					});
-					log.info(`Successfully removed task: ${taskId}`);
-				} catch (error) {
-					results.push({
-						taskId,
-						success: false,
-						error: error.message
-					});
-					log.error(`Error removing task ${taskId}: ${error.message}`);
-				}
+			// Call removeTask with proper context including tag
+			const result = await removeTask(tasksJsonPath, id, {
+				projectRoot,
+				tag
+			});
+
+			if (!result.success) {
+				return {
+					success: false,
+					error: {
+						code: 'REMOVE_TASK_ERROR',
+						message: result.errors.join('; ') || 'Failed to remove tasks',
+						details: result.errors
+					}
+				};
 			}
+
+			log.info(`Successfully removed ${result.removedTasks.length} task(s)`);
+
+			return {
+				success: true,
+				data: {
+					totalTasks: taskIdArray.length,
+					successful: result.removedTasks.length,
+					failed: result.errors.length,
+					removedTasks: result.removedTasks,
+					messages: result.messages,
+					errors: result.errors,
+					tasksPath: tasksJsonPath,
+					tag: data.tag || tag || 'master'
+				}
+			};
 		} finally {
 			// Restore normal logging
 			disableSilentMode();
 		}
-
-		// Check if all tasks were successfully removed
-		const successfulRemovals = results.filter((r) => r.success);
-		const failedRemovals = results.filter((r) => !r.success);
-
-		if (successfulRemovals.length === 0) {
-			// All removals failed
-			return {
-				success: false,
-				error: {
-					code: 'REMOVE_TASK_ERROR',
-					message: 'Failed to remove any tasks',
-					details: failedRemovals
-						.map((r) => `${r.taskId}: ${r.error}`)
-						.join('; ')
-				}
-			};
-		}
-
-		// At least some tasks were removed successfully
-		return {
-			success: true,
-			data: {
-				totalTasks: taskIdArray.length,
-				successful: successfulRemovals.length,
-				failed: failedRemovals.length,
-				results: results,
-				tasksPath: tasksJsonPath
-			}
-		};
 	} catch (error) {
 		// Ensure silent mode is disabled even if an outer error occurs
 		disableSilentMode();

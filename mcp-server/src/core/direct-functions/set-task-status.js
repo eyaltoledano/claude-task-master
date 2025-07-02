@@ -20,7 +20,8 @@ import { nextTaskDirect } from './next-task.js';
  */
 export async function setTaskStatusDirect(args, log, context = {}) {
 	// Destructure expected args, including the resolved tasksJsonPath and projectRoot
-	const { tasksJsonPath, id, status, complexityReportPath, projectRoot } = args;
+	const { tasksJsonPath, id, status, complexityReportPath, projectRoot, tag } =
+		args;
 	const { session } = context;
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
@@ -69,11 +70,17 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
-			await setTaskStatus(tasksPath, taskId, newStatus, {
-				mcpLog: log,
-				projectRoot,
-				session
-			});
+			await setTaskStatus(
+				tasksPath,
+				taskId,
+				newStatus,
+				{
+					mcpLog: log,
+					projectRoot,
+					session
+				},
+				tag
+			);
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
 
