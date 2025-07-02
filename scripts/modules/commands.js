@@ -3737,7 +3737,11 @@ Examples:
 		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
 		)
 		.action(async (action, profiles, options) => {
-			const projectDir = process.cwd();
+			const projectRoot = findProjectRoot();
+			if (!projectRoot) {
+				console.error(chalk.red('Error: Could not find project root.'));
+				process.exit(1);
+			}
 
 			/**
 			 * 'task-master rules --setup' action:
@@ -3784,7 +3788,7 @@ Examples:
 					const profileConfig = getRulesProfile(profile);
 
 					const addResult = convertAllRulesToProfileRules(
-						projectDir,
+						projectRoot,
 						profileConfig
 					);
 
@@ -3830,8 +3834,8 @@ Examples:
 				let confirmed = true;
 				if (!options.force) {
 					// Check if this removal would leave no profiles remaining
-					if (wouldRemovalLeaveNoProfiles(projectDir, expandedProfiles)) {
-						const installedProfiles = getInstalledProfiles(projectDir);
+					if (wouldRemovalLeaveNoProfiles(projectRoot, expandedProfiles)) {
+						const installedProfiles = getInstalledProfiles(projectRoot);
 						confirmed = await confirmRemoveAllRemainingProfiles(
 							expandedProfiles,
 							installedProfiles
@@ -3861,12 +3865,12 @@ Examples:
 				if (action === RULES_ACTIONS.ADD) {
 					console.log(chalk.blue(`Adding rules for profile: ${profile}...`));
 					const addResult = convertAllRulesToProfileRules(
-						projectDir,
+						projectRoot,
 						profileConfig
 					);
 					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						const assetsDir = path.join(process.cwd(), 'assets');
-						profileConfig.onAddRulesProfile(projectDir, assetsDir);
+						const assetsDir = path.join(projectRoot, 'assets');
+						profileConfig.onAddRulesProfile(projectRoot, assetsDir);
 					}
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)
@@ -3882,7 +3886,7 @@ Examples:
 					console.log(chalk.green(generateProfileSummary(profile, addResult)));
 				} else if (action === RULES_ACTIONS.REMOVE) {
 					console.log(chalk.blue(`Removing rules for profile: ${profile}...`));
-					const result = removeProfileRules(projectDir, profileConfig);
+					const result = removeProfileRules(projectRoot, profileConfig);
 					removalResults.push(result);
 					console.log(
 						chalk.green(generateProfileRemovalSummary(profile, result))
