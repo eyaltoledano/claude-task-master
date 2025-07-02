@@ -914,7 +914,12 @@ async function runComprehensiveTests(generateDetailed = false) {
 		{ template: 'research', variant: 'medium' },
 		{ template: 'research', variant: 'high' },
 		{ template: 'parse-prd', variant: 'default' },
-		{ template: 'parse-prd', variant: 'research' },
+		{
+			template: 'parse-prd',
+			variant: 'default',
+			research: true,
+			testName: 'research'
+		},
 		{ template: 'update-subtask', variant: 'default' },
 		{ template: 'update-subtask', variant: 'research' },
 		{ template: 'update-task', variant: 'default' },
@@ -950,6 +955,9 @@ async function runComprehensiveTests(generateDetailed = false) {
 			// Override test data with custom parameters if specified
 			if (testCase.useResearch !== undefined) {
 				testData.params.useResearch = testCase.useResearch;
+			}
+			if (testCase.research !== undefined) {
+				testData.params.research = testCase.research;
 			}
 
 			const result = await promptManager.loadPrompt(
@@ -1061,6 +1069,7 @@ async function testSpecificTemplate(
 		// Handle special research mode variants
 		let actualVariant = variant;
 		let useResearch = false;
+		let research = false;
 		if (
 			(templateKey === 'add-task' || templateKey === 'analyze-complexity') &&
 			variant === 'research'
@@ -1068,12 +1077,19 @@ async function testSpecificTemplate(
 			actualVariant = 'default';
 			useResearch = true;
 		}
+		if (templateKey === 'parse-prd' && variant === 'research') {
+			actualVariant = 'default';
+			research = true;
+		}
 
 		const testData = getTestDataForTemplate(templateKey, actualVariant);
 
-		// Override useResearch if needed
+		// Override useResearch or research if needed
 		if (useResearch) {
 			testData.params.useResearch = true;
+		}
+		if (research) {
+			testData.params.research = true;
 		}
 
 		const result = await promptManager.loadPrompt(
