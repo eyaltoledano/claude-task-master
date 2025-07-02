@@ -72,7 +72,8 @@ import {
 	taskExists,
 	formatTaskId,
 	findCycles,
-	toKebabCase
+	toKebabCase,
+	resolveEnvVariable
 } from '../../scripts/modules/utils.js';
 
 // Import the mocked modules for use in tests
@@ -674,6 +675,217 @@ describe('CLI Flag Format Validation', () => {
 		expect(flags).toContainEqual({
 			original: 'promptText',
 			kebabCase: 'prompt-text'
+		});
+	});
+
+	describe('resolveEnvVariable function', () => {
+		let originalEnv;
+
+		beforeEach(() => {
+			// Save original environment
+			originalEnv = process.env;
+			// Clear relevant environment variables
+			delete process.env.TASKMASTER_DOTENV;
+			delete process.env.TEST_VAR;
+			// Reset fs mocks
+			jest.clearAllMocks();
+		});
+
+		afterEach(() => {
+			// Restore original environment
+			process.env = originalEnv;
+		});
+
+		test('should return value from session.env with highest priority', () => {
+			const session = {
+				env: {
+					TEST_VAR: 'session_value',
+					TASKMASTER_DOTENV: '/session/.env'
+				}
+			};
+
+			// Set up competing values
+			process.env.TEST_VAR = 'process_value';
+			process.env.TASKMASTER_DOTENV = '/process/.env';
+
+			const result = resolveEnvVariable('TEST_VAR', session, '/project');
+
+			expect(result).toBe('session_value');
+		});
+
+		test('should read from custom .env file specified in session.env.TASKMASTER_DOTENV', () => {
+			const session = {
+				env: {
+					TASKMASTER_DOTENV: '/custom/session/.env'
+				}
+			};
+
+			// Mock file exists and content
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue('TEST_VAR=custom_session_value\nOTHER_VAR=other');
+			jest.spyOn(path, 'resolve').mockReturnValue('/custom/session/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', session);
+
+			expect(path.resolve).toHaveBeenCalledWith('/custom/session/.env');
+			expect(fs.existsSync).toHaveBeenCalledWith('/custom/session/.env');
+			expect(fs.readFileSync).toHaveBeenCalledWith(
+				'/custom/session/.env',
+				'utf-8'
+			);
+			expect(result).toBe('custom_session_value');
+		});
+
+		test('should read from custom .env file specified in process.env.TASKMASTER_DOTENV', () => {
+			process.env.TASKMASTER_DOTENV = '/custom/process/.env';
+
+			// Mock file exists and content
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue('TEST_VAR=custom_process_value\nOTHER_VAR=other');
+			jest.spyOn(path, 'resolve').mockReturnValue('/custom/process/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', null, '/project');
+
+			expect(path.resolve).toHaveBeenCalledWith('/custom/process/.env');
+			expect(fs.existsSync).toHaveBeenCalledWith('/custom/process/.env');
+			expect(fs.readFileSync).toHaveBeenCalledWith(
+				'/custom/process/.env',
+				'utf-8'
+			);
+			expect(result).toBe('custom_process_value');
+		});
+
+		test('should fallback to project root .env file when TASKMASTER_DOTENV not set', () => {
+			// Mock file exists and content
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue('TEST_VAR=project_value\nOTHER_VAR=other');
+			jest.spyOn(path, 'join').mockReturnValue('/project/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', null, '/project');
+
+			expect(path.join).toHaveBeenCalledWith('/project', '.env');
+			expect(fs.existsSync).toHaveBeenCalledWith('/project/.env');
+			expect(fs.readFileSync).toHaveBeenCalledWith('/project/.env', 'utf-8');
+			expect(result).toBe('project_value');
+		});
+
+		test('should fallback to process.env when variable not found in .env files', () => {
+			process.env.TEST_VAR = 'process_fallback_value';
+
+			// Mock no .env file
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+			const result = resolveEnvVariable('TEST_VAR', null, '/project');
+
+			expect(result).toBe('process_fallback_value');
+		});
+
+		test('should handle session.env.TASKMASTER_DOTENV taking precedence over process.env.TASKMASTER_DOTENV', () => {
+			const session = {
+				env: {
+					TASKMASTER_DOTENV: '/session/.env'
+				}
+			};
+			process.env.TASKMASTER_DOTENV = '/process/.env';
+
+			// Mock session .env file exists with content
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue('TEST_VAR=session_env_value');
+			jest.spyOn(path, 'resolve').mockReturnValue('/session/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', session);
+
+			expect(path.resolve).toHaveBeenCalledWith('/session/.env');
+			expect(result).toBe('session_env_value');
+		});
+
+		test('should handle non-existent custom .env file gracefully', () => {
+			const session = {
+				env: {
+					TASKMASTER_DOTENV: '/nonexistent/.env'
+				}
+			};
+			process.env.TEST_VAR = 'fallback_value';
+
+			// Mock file doesn't exist
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+			jest.spyOn(path, 'resolve').mockReturnValue('/nonexistent/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', session);
+
+			expect(path.resolve).toHaveBeenCalledWith('/nonexistent/.env');
+			expect(fs.existsSync).toHaveBeenCalledWith('/nonexistent/.env');
+			expect(result).toBe('fallback_value');
+		});
+
+		test('should handle .env file read errors gracefully', () => {
+			process.env.TASKMASTER_DOTENV = '/custom/.env';
+			process.env.TEST_VAR = 'fallback_value';
+
+			// Mock file exists but read fails
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+				throw new Error('Permission denied');
+			});
+			jest.spyOn(path, 'resolve').mockReturnValue('/custom/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', null);
+
+			expect(result).toBe('fallback_value');
+		});
+
+		test('should handle empty or whitespace-only TASKMASTER_DOTENV values', () => {
+			const session = {
+				env: {
+					TASKMASTER_DOTENV: '   ' // whitespace only
+				}
+			};
+			process.env.TASKMASTER_DOTENV = ''; // empty string
+
+			// Mock project .env file
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest.spyOn(fs, 'readFileSync').mockReturnValue('TEST_VAR=project_value');
+			jest.spyOn(path, 'join').mockReturnValue('/project/.env');
+
+			const result = resolveEnvVariable('TEST_VAR', session, '/project');
+
+			// Should use project root .env since TASKMASTER_DOTENV values are empty/whitespace
+			expect(path.join).toHaveBeenCalledWith('/project', '.env');
+			expect(result).toBe('project_value');
+		});
+
+		test('should return undefined when variable not found anywhere', () => {
+			// Mock no .env file
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+			const result = resolveEnvVariable('NONEXISTENT_VAR', null, '/project');
+
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle relative paths in TASKMASTER_DOTENV', () => {
+			process.env.TASKMASTER_DOTENV = '../config/.env';
+
+			// Mock file exists and content
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue('TEST_VAR=relative_path_value');
+			jest.spyOn(path, 'resolve').mockReturnValue('/resolved/config/.env');
+
+			const result = resolveEnvVariable('TEST_VAR');
+
+			expect(path.resolve).toHaveBeenCalledWith('../config/.env');
+			expect(fs.existsSync).toHaveBeenCalledWith('/resolved/config/.env');
+			expect(result).toBe('relative_path_value');
 		});
 	});
 });
