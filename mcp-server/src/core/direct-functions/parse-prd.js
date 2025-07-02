@@ -109,7 +109,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 	if (numTasksArg) {
 		numTasks =
 			typeof numTasksArg === 'string' ? parseInt(numTasksArg, 10) : numTasksArg;
-		if (Number.isNaN(numTasks) || numTasks <= 0) {
+		if (Number.isNaN(numTasks) || numTasks < 0) {
 			// Ensure positive number
 			numTasks = getDefaultNumTasks(projectRoot); // Fallback to default if parsing fails or invalid
 			logWrapper.warn(
