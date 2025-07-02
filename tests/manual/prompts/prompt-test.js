@@ -910,9 +910,24 @@ async function runComprehensiveTests(generateDetailed = false) {
 			useResearch: true,
 			testName: 'research'
 		},
-		{ template: 'research', variant: 'low' },
-		{ template: 'research', variant: 'medium' },
-		{ template: 'research', variant: 'high' },
+		{
+			template: 'research',
+			variant: 'default',
+			detailLevel: 'low',
+			testName: 'low'
+		},
+		{
+			template: 'research',
+			variant: 'default',
+			detailLevel: 'medium',
+			testName: 'medium'
+		},
+		{
+			template: 'research',
+			variant: 'default',
+			detailLevel: 'high',
+			testName: 'high'
+		},
 		{ template: 'parse-prd', variant: 'default' },
 		{
 			template: 'parse-prd',
@@ -943,7 +958,13 @@ async function runComprehensiveTests(generateDetailed = false) {
 			params: { prompt: '' },
 			expectError: true
 		},
-		{ template: 'research', variant: 'invalid-detail', expectError: true }
+		{
+			template: 'research',
+			variant: 'default',
+			detailLevel: 'invalid-detail',
+			expectError: true,
+			testName: 'invalid-detail'
+		}
 	];
 
 	for (const testCase of testCases) {
@@ -958,6 +979,9 @@ async function runComprehensiveTests(generateDetailed = false) {
 			}
 			if (testCase.research !== undefined) {
 				testData.params.research = testCase.research;
+			}
+			if (testCase.detailLevel !== undefined) {
+				testData.params.detailLevel = testCase.detailLevel;
 			}
 
 			const result = await promptManager.loadPrompt(
@@ -1070,6 +1094,7 @@ async function testSpecificTemplate(
 		let actualVariant = variant;
 		let useResearch = false;
 		let research = false;
+		let detailLevel = null;
 		if (
 			(templateKey === 'add-task' || templateKey === 'analyze-complexity') &&
 			variant === 'research'
@@ -1081,15 +1106,25 @@ async function testSpecificTemplate(
 			actualVariant = 'default';
 			research = true;
 		}
+		if (
+			templateKey === 'research' &&
+			['low', 'medium', 'high'].includes(variant)
+		) {
+			actualVariant = 'default';
+			detailLevel = variant;
+		}
 
 		const testData = getTestDataForTemplate(templateKey, actualVariant);
 
-		// Override useResearch or research if needed
+		// Override useResearch, research, or detailLevel if needed
 		if (useResearch) {
 			testData.params.useResearch = true;
 		}
 		if (research) {
 			testData.params.research = true;
+		}
+		if (detailLevel) {
+			testData.params.detailLevel = detailLevel;
 		}
 
 		const result = await promptManager.loadPrompt(
@@ -1350,7 +1385,7 @@ function generateHTMLReport(testResults, templateResults = []) {
 				!result.expectedError &&
 				result.template !== 'nonexistent-template' &&
 				!(
-					result.template === 'research' && result.variant === 'invalid-detail'
+					result.template === 'research' && result.testName === 'invalid-detail'
 				) &&
 				!(result.template === 'expand-task' && result.variant === 'nonexistent')
 		);
@@ -1360,7 +1395,7 @@ function generateHTMLReport(testResults, templateResults = []) {
 				result.expectedError ||
 				result.template === 'nonexistent-template' ||
 				(result.template === 'research' &&
-					result.variant === 'invalid-detail') ||
+					result.testName === 'invalid-detail') ||
 				(result.template === 'expand-task' && result.variant === 'nonexistent')
 		);
 
