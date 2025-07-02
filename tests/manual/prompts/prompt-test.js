@@ -495,7 +495,7 @@ Build a next-generation e-commerce platform with AI-driven recommendations, voic
 					projectContext:
 						'Full-stack application migrating from REST to GraphQL for better data fetching.'
 				},
-				variants: ['default', 'research']
+				variants: ['default']
 			}
 		]
 	}
@@ -603,7 +603,7 @@ class PromptTestMenu {
 			{
 				key: 'update-tasks',
 				name: 'Update Tasks',
-				variants: ['default', 'research']
+				variants: ['default']
 			}
 		];
 
@@ -940,7 +940,6 @@ async function runComprehensiveTests(generateDetailed = false) {
 			testName: 'research'
 		},
 		{ template: 'update-tasks', variant: 'default' },
-		{ template: 'update-tasks', variant: 'research' },
 
 		// Error condition tests
 		{ template: 'expand-task', variant: 'nonexistent', expectError: true },
@@ -978,8 +977,7 @@ async function runComprehensiveTests(generateDetailed = false) {
 				(testCase.template === 'add-task' ||
 					testCase.template === 'analyze-complexity' ||
 					testCase.template === 'update-subtask' ||
-					testCase.template === 'update-task' ||
-					testCase.template === 'update-tasks') &&
+					testCase.template === 'update-task') &&
 				testCase.variant === 'research'
 			) {
 				actualVariant = 'default';
@@ -1123,8 +1121,7 @@ async function testSpecificTemplate(
 			(templateKey === 'add-task' ||
 				templateKey === 'analyze-complexity' ||
 				templateKey === 'update-subtask' ||
-				templateKey === 'update-task' ||
-				templateKey === 'update-tasks') &&
+				templateKey === 'update-task') &&
 			variant === 'research'
 		) {
 			actualVariant = 'default';

@@ -75,6 +75,27 @@ Shows usage information and examples.
 
 The comprehensive test suite covers:
 
+## Test Coverage Summary
+
+**Total Test Cases: 23** (18 functional + 5 error condition tests)
+
+### Templates with Research Conditional Content
+These templates have `useResearch` or `research` parameters that modify prompt content:
+- **add-task** (default, research variants)
+- **analyze-complexity** (default, research variants)  
+- **parse-prd** (default, research variants)
+- **update-subtask** (default, research variants)
+- **update-task** (default, append, research variants)
+
+### Templates with Legitimate Separate Variants
+These templates have genuinely different prompts for different use cases:
+- **expand-task** (default, research, complexity-report variants)
+- **research** (low, medium, high detail level variants)
+
+### Single Variant Templates
+These templates only have one variant because research mode only changes AI role, not prompt content:
+- **update-tasks** (default variant only)
+
 ### Prompt Templates (8 total)
 - **add-task** (default, research variants)
 - **expand-task** (default, research, complexity-report variants)
