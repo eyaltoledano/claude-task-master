@@ -1,4 +1,4 @@
-import { generateText, streamText, generateObject } from 'ai';
+import { generateObject, generateText, streamText } from 'ai';
 import { log } from '../../scripts/modules/index.js';
 
 /**
@@ -109,7 +109,7 @@ export class BaseAIProvider {
 				`Generating ${this.name} text with model: ${params.modelId}`
 			);
 
-			const client = this.getClient(params);
+			const client = await this.getClient(params);
 			const result = await generateText({
 				model: client(params.modelId),
 				messages: params.messages,
@@ -145,7 +145,7 @@ export class BaseAIProvider {
 
 			log('debug', `Streaming ${this.name} text with model: ${params.modelId}`);
 
-			const client = this.getClient(params);
+			const client = await this.getClient(params);
 			const stream = await streamText({
 				model: client(params.modelId),
 				messages: params.messages,
@@ -184,7 +184,7 @@ export class BaseAIProvider {
 				`Generating ${this.name} object ('${params.objectName}') with model: ${params.modelId}`
 			);
 
-			const client = this.getClient(params);
+			const client = await this.getClient(params);
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,

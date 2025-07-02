@@ -117,7 +117,10 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
-	getMcpApiKeyStatus: mockGetMcpApiKeyStatus
+	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
+
+	// Providers without API keys
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -182,6 +185,11 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateObject: jest.fn()
 	})),
 	ClaudeCodeProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
+	})),
+	GeminiCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn()
