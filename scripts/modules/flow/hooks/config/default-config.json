@@ -58,10 +58,7 @@
 			"config": {
 				"useGlobalSetting": true,
 				"defaultTemplate": "claude-code",
-				"autoLabels": [
-					"claude-code",
-					"auto-generated"
-				],
+				"autoLabels": ["claude-code", "auto-generated"],
 				"timeout": 20000
 			}
 		},
@@ -83,9 +80,7 @@
 						"customValidationHooks": []
 					}
 				},
-				"requiredChecks": [
-					"continuous-integration"
-				],
+				"requiredChecks": ["continuous-integration"],
 				"emergencyStop": {
 					"enabled": true,
 					"conditions": [

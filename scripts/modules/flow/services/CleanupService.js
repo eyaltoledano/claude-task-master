@@ -9,7 +9,7 @@ import fs from 'fs/promises';
 export class CleanupService extends EventEmitter {
 	constructor(options = {}) {
 		super();
-		
+
 		this.projectRoot = options.projectRoot || process.cwd();
 		this.config = {
 			worktree: {
@@ -35,7 +35,7 @@ export class CleanupService extends EventEmitter {
 			},
 			...options
 		};
-		
+
 		this.stats = {
 			worktreesCleanedUp: 0,
 			cacheEntriesInvalidated: 0,
@@ -43,7 +43,7 @@ export class CleanupService extends EventEmitter {
 			errors: 0,
 			lastCleanup: null
 		};
-		
+
 		this.activeCleanups = new Map();
 	}
 
@@ -52,7 +52,7 @@ export class CleanupService extends EventEmitter {
 	 */
 	async performPostMergeCleanup(prNumber, mergeInfo = {}) {
 		const cleanupId = `cleanup-${prNumber}-${Date.now()}`;
-		
+
 		try {
 			this.activeCleanups.set(cleanupId, {
 				prNumber,
@@ -85,7 +85,9 @@ export class CleanupService extends EventEmitter {
 			// Step 2: Refresh AST cache for merged branch
 			if (this.config.astCache.enabled && mergeInfo.mergedBranch) {
 				try {
-					results.astCache = await this.refreshASTCacheAfterMerge(mergeInfo.mergedBranch);
+					results.astCache = await this.refreshASTCacheAfterMerge(
+						mergeInfo.mergedBranch
+					);
 					this.emit('cleanup:ast-cache-completed', results.astCache);
 				} catch (error) {
 					results.errors.push({ step: 'astCache', error: error.message });
@@ -96,7 +98,10 @@ export class CleanupService extends EventEmitter {
 			// Step 3: Update task status and add PR reference
 			if (this.config.taskStatus.enabled && mergeInfo.taskId) {
 				try {
-					results.taskStatus = await this.finalizeTaskCompletion(mergeInfo.taskId, prNumber);
+					results.taskStatus = await this.finalizeTaskCompletion(
+						mergeInfo.taskId,
+						prNumber
+					);
 					this.emit('cleanup:task-status-completed', results.taskStatus);
 				} catch (error) {
 					results.errors.push({ step: 'taskStatus', error: error.message });
@@ -106,23 +111,23 @@ export class CleanupService extends EventEmitter {
 
 			// Update stats
 			this.stats.lastCleanup = new Date().toISOString();
-			
+
 			const cleanup = this.activeCleanups.get(cleanupId);
-			cleanup.status = results.errors.length > 0 ? 'completed-with-errors' : 'completed';
+			cleanup.status =
+				results.errors.length > 0 ? 'completed-with-errors' : 'completed';
 			cleanup.duration = Date.now() - cleanup.startTime;
 			cleanup.results = results;
 
 			this.emit('cleanup:completed', results);
-			
-			return results;
 
+			return results;
 		} catch (error) {
 			const cleanup = this.activeCleanups.get(cleanupId);
 			if (cleanup) {
 				cleanup.status = 'failed';
 				cleanup.error = error.message;
 			}
-			
+
 			this.emit('cleanup:failed', { prNumber, error: error.message });
 			throw error;
 		} finally {
@@ -138,12 +143,12 @@ export class CleanupService extends EventEmitter {
 	 */
 	async cleanupWorktree(worktreeName, options = {}) {
 		const opts = { ...this.config.worktree, ...options };
-		
+
 		try {
 			// Import WorktreeManager
 			const { WorktreeManager } = await import('../worktree-manager.js');
 			const worktreeManager = new WorktreeManager(this.projectRoot);
-			
+
 			// Get worktree info
 			const worktreeInfo = worktreeManager.config.worktrees[worktreeName];
 			if (!worktreeInfo) {
@@ -159,7 +164,9 @@ export class CleanupService extends EventEmitter {
 
 			// Step 1: Save uncommitted work if configured
 			if (opts.preserveUncommitted) {
-				const uncommittedResult = await this.preserveUncommittedWork(worktreeInfo.path);
+				const uncommittedResult = await this.preserveUncommittedWork(
+					worktreeInfo.path
+				);
 				if (uncommittedResult.hasUncommitted) {
 					result.preserved.push(uncommittedResult);
 					result.actions.push('uncommitted-work-preserved');
@@ -177,7 +184,9 @@ export class CleanupService extends EventEmitter {
 
 			// Step 3: Clean up AST cache for this worktree
 			try {
-				const { cleanupWorktreeCache } = await import('./ast/context/cache-manager.js');
+				const { cleanupWorktreeCache } = await import(
+					'./ast/context/cache-manager.js'
+				);
 				await cleanupWorktreeCache(worktreeInfo.path, this.projectRoot);
 				result.actions.push('ast-cache-cleaned');
 			} catch (error) {
@@ -187,7 +196,7 @@ export class CleanupService extends EventEmitter {
 
 			// Step 4: Remove worktree directory
 			const { execSync } = await import('child_process');
-			
+
 			try {
 				execSync(`git worktree remove "${worktreeInfo.path}" --force`, {
 					cwd: this.projectRoot,
@@ -225,7 +234,6 @@ export class CleanupService extends EventEmitter {
 
 			this.stats.worktreesCleanedUp++;
 			return result;
-
 		} catch (error) {
 			throw new Error(`Worktree cleanup failed: ${error.message}`);
 		}
@@ -236,12 +244,14 @@ export class CleanupService extends EventEmitter {
 	 */
 	async refreshASTCacheAfterMerge(mergedBranch) {
 		const opts = this.config.astCache;
-		
+
 		try {
 			// Import AST cache components
-			const { BatchInvalidation } = await import('./ast/cache/batch-invalidation.js');
+			const { BatchInvalidation } = await import(
+				'./ast/cache/batch-invalidation.js'
+			);
 			const { ASTCacheManager } = await import('./ast/cache/cache-manager.js');
-			
+
 			const result = {
 				success: true,
 				mergedBranch,
@@ -252,14 +262,14 @@ export class CleanupService extends EventEmitter {
 
 			// Get files changed in the merged branch
 			const changedFiles = await this.getChangedFilesInBranch(mergedBranch);
-			
+
 			if (changedFiles.length === 0) {
 				return { ...result, skipped: 'No files changed in merge' };
 			}
 
 			// Step 1: Invalidate cache entries for changed files
 			const cacheManager = new ASTCacheManager();
-			
+
 			if (opts.incrementalRefresh) {
 				// Batch invalidate changed files
 				const batchInvalidation = new BatchInvalidation({
@@ -288,21 +298,29 @@ export class CleanupService extends EventEmitter {
 			result.invalidatedFiles = changedFiles.length;
 
 			// Step 2: Trigger incremental re-analysis for critical files
-			const criticalFiles = changedFiles.filter(file => 
-				file.endsWith('.js') || 
-				file.endsWith('.jsx') || 
-				file.endsWith('.ts') || 
-				file.endsWith('.tsx')
+			const criticalFiles = changedFiles.filter(
+				(file) =>
+					file.endsWith('.js') ||
+					file.endsWith('.jsx') ||
+					file.endsWith('.ts') ||
+					file.endsWith('.tsx')
 			);
 
-			if (criticalFiles.length > 0 && criticalFiles.length <= opts.maxConcurrentOperations) {
+			if (
+				criticalFiles.length > 0 &&
+				criticalFiles.length <= opts.maxConcurrentOperations
+			) {
 				// Pre-warm cache for critical files
-				const analysisPromises = criticalFiles.slice(0, opts.maxConcurrentOperations).map(
-					async (filePath) => {
+				const analysisPromises = criticalFiles
+					.slice(0, opts.maxConcurrentOperations)
+					.map(async (filePath) => {
 						try {
 							// This would trigger AST analysis and caching
 							const fullPath = path.join(this.projectRoot, filePath);
-							const exists = await fs.access(fullPath).then(() => true).catch(() => false);
+							const exists = await fs
+								.access(fullPath)
+								.then(() => true)
+								.catch(() => false);
 							if (exists) {
 								// Cache will be populated on next access
 								result.refreshedEntries++;
@@ -311,8 +329,7 @@ export class CleanupService extends EventEmitter {
 						} catch (error) {
 							return { filePath, success: false, error: error.message };
 						}
-					}
-				);
+					});
 
 				await Promise.allSettled(analysisPromises);
 				result.actions.push('critical-files-pre-warmed');
@@ -320,7 +337,6 @@ export class CleanupService extends EventEmitter {
 
 			this.stats.cacheEntriesInvalidated += result.invalidatedFiles;
 			return result;
-
 		} catch (error) {
 			throw new Error(`AST cache refresh failed: ${error.message}`);
 		}
@@ -331,7 +347,7 @@ export class CleanupService extends EventEmitter {
 	 */
 	async finalizeTaskCompletion(taskId, prNumber) {
 		const opts = this.config.taskStatus;
-		
+
 		try {
 			const result = {
 				success: true,
@@ -344,12 +360,12 @@ export class CleanupService extends EventEmitter {
 			// Import task management utilities
 			const { findTasksJsonPath } = await import('../../task-manager.js');
 			const tasksPath = findTasksJsonPath({ projectRoot: this.projectRoot });
-			
+
 			// Read current tasks
 			const tasksData = JSON.parse(await fs.readFile(tasksPath, 'utf8'));
-			
+
 			// Find the task
-			const task = tasksData.tasks.find(t => String(t.id) === String(taskId));
+			const task = tasksData.tasks.find((t) => String(t.id) === String(taskId));
 			if (!task) {
 				return { ...result, skipped: 'Task not found' };
 			}
@@ -369,17 +385,17 @@ export class CleanupService extends EventEmitter {
 				if (!task.prReferences) {
 					task.prReferences = [];
 				}
-				
+
 				task.prReferences.push({
 					prNumber,
 					mergedAt: new Date().toISOString(),
 					type: 'completion'
 				});
-				
+
 				// Also add to details for visibility
 				const prNote = `\n\n**Completed via PR #${prNumber}** (${new Date().toLocaleDateString()})`;
 				task.details = (task.details || '') + prNote;
-				
+
 				result.actions.push('pr-reference-added');
 			}
 
@@ -388,11 +404,11 @@ export class CleanupService extends EventEmitter {
 				if (!task.metrics) {
 					task.metrics = {};
 				}
-				
+
 				task.metrics.completedVia = 'pr-merge';
 				task.metrics.prNumber = prNumber;
 				task.metrics.completionDate = new Date().toISOString();
-				
+
 				result.actions.push('metrics-updated');
 			}
 
@@ -403,7 +419,6 @@ export class CleanupService extends EventEmitter {
 
 			this.stats.tasksUpdated++;
 			return result;
-
 		} catch (error) {
 			throw new Error(`Task completion finalization failed: ${error.message}`);
 		}
@@ -415,7 +430,7 @@ export class CleanupService extends EventEmitter {
 	async preserveUncommittedWork(worktreePath) {
 		try {
 			const { execSync } = await import('child_process');
-			
+
 			// Check for uncommitted changes
 			const statusOutput = execSync('git status --porcelain', {
 				cwd: worktreePath,
@@ -437,7 +452,6 @@ export class CleanupService extends EventEmitter {
 				stashName,
 				preservedAt: new Date().toISOString()
 			};
-
 		} catch (error) {
 			// If stash fails, it's not critical
 			return { hasUncommitted: false, error: error.message };
@@ -449,7 +463,12 @@ export class CleanupService extends EventEmitter {
 	 */
 	async createWorktreeBackup(worktreeInfo) {
 		try {
-			const backupDir = path.join(this.projectRoot, '.taskmaster', 'backups', 'worktrees');
+			const backupDir = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'backups',
+				'worktrees'
+			);
 			await fs.mkdir(backupDir, { recursive: true });
 
 			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -458,20 +477,17 @@ export class CleanupService extends EventEmitter {
 
 			// Create a simple backup (copy important files)
 			await fs.mkdir(backupPath, { recursive: true });
-			
+
 			// Copy git status and important files
 			const { execSync } = await import('child_process');
-			
+
 			try {
 				const gitStatus = execSync('git status --porcelain', {
 					cwd: worktreeInfo.path,
 					encoding: 'utf8'
 				});
-				
-				await fs.writeFile(
-					path.join(backupPath, 'git-status.txt'), 
-					gitStatus
-				);
+
+				await fs.writeFile(path.join(backupPath, 'git-status.txt'), gitStatus);
 			} catch (error) {
 				// Git status not critical for backup
 			}
@@ -487,7 +503,6 @@ export class CleanupService extends EventEmitter {
 				backupPath,
 				createdAt: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -502,15 +517,17 @@ export class CleanupService extends EventEmitter {
 	async getChangedFilesInBranch(branchName) {
 		try {
 			const { execSync } = await import('child_process');
-			
+
 			// Get files changed in branch compared to main
 			const output = execSync(`git diff --name-only main...${branchName}`, {
 				cwd: this.projectRoot,
 				encoding: 'utf8'
 			});
 
-			return output.trim().split('\n').filter(line => line.trim().length > 0);
-
+			return output
+				.trim()
+				.split('\n')
+				.filter((line) => line.trim().length > 0);
 		} catch (error) {
 			// If git diff fails, return empty array
 			return [];
@@ -542,4 +559,4 @@ export class CleanupService extends EventEmitter {
 		this.config = { ...this.config, ...newConfig };
 		this.emit('config:updated', this.config);
 	}
-} 
+}

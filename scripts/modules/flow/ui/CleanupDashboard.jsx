@@ -90,38 +90,54 @@ const CleanupDashboard = ({ backend, onBack }) => {
 
 	const renderOverview = () => (
 		<Box flexDirection="column">
-			<Text bold marginBottom={1}>🧹 Cleanup Service Overview</Text>
-			
+			<Text bold marginBottom={1}>
+				🧹 Cleanup Service Overview
+			</Text>
+
 			{/* Statistics */}
 			<Box flexDirection="column" marginBottom={2}>
-				<Text bold color="cyan">Statistics:</Text>
+				<Text bold color="cyan">
+					Statistics:
+				</Text>
 				<Box flexDirection="row" marginTop={1}>
 					<Box marginRight={4}>
 						<Text>Worktrees Cleaned: </Text>
-						<Text color="green" bold>{stats.worktreesCleanedUp}</Text>
+						<Text color="green" bold>
+							{stats.worktreesCleanedUp}
+						</Text>
 					</Box>
 					<Box marginRight={4}>
 						<Text>Cache Entries Invalidated: </Text>
-						<Text color="blue" bold>{stats.cacheEntriesInvalidated}</Text>
+						<Text color="blue" bold>
+							{stats.cacheEntriesInvalidated}
+						</Text>
 					</Box>
 					<Box marginRight={4}>
 						<Text>Tasks Updated: </Text>
-						<Text color="yellow" bold>{stats.tasksUpdated}</Text>
+						<Text color="yellow" bold>
+							{stats.tasksUpdated}
+						</Text>
 					</Box>
 				</Box>
 				<Box flexDirection="row" marginTop={1}>
 					<Box marginRight={4}>
 						<Text>Errors: </Text>
-						<Text color={stats.errors > 0 ? 'red' : 'green'} bold>{stats.errors}</Text>
+						<Text color={stats.errors > 0 ? 'red' : 'green'} bold>
+							{stats.errors}
+						</Text>
 					</Box>
 					<Box marginRight={4}>
 						<Text>Active Cleanups: </Text>
-						<Text color="cyan" bold>{stats.activeCleanups}</Text>
+						<Text color="cyan" bold>
+							{stats.activeCleanups}
+						</Text>
 					</Box>
 					<Box>
 						<Text>Last Cleanup: </Text>
 						<Text color="gray">
-							{stats.lastCleanup ? new Date(stats.lastCleanup).toLocaleString() : 'Never'}
+							{stats.lastCleanup
+								? new Date(stats.lastCleanup).toLocaleString()
+								: 'Never'}
 						</Text>
 					</Box>
 				</Box>
@@ -129,7 +145,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 
 			{/* Service Status */}
 			<Box flexDirection="column" marginBottom={2}>
-				<Text bold color="cyan">Service Status:</Text>
+				<Text bold color="cyan">
+					Service Status:
+				</Text>
 				<Box flexDirection="row" marginTop={1}>
 					<Box marginRight={4}>
 						<Text>Worktree Cleanup: </Text>
@@ -154,54 +172,68 @@ const CleanupDashboard = ({ backend, onBack }) => {
 
 			{/* Quick Actions */}
 			<Box flexDirection="column">
-				<Text bold color="cyan">Quick Actions:</Text>
+				<Text bold color="cyan">
+					Quick Actions:
+				</Text>
 				<Text color="gray" marginTop={1}>
 					• Press 'r' to refresh data
 				</Text>
-				<Text color="gray">
-					• Use ← → to switch tabs
-				</Text>
+				<Text color="gray">• Use ← → to switch tabs</Text>
 				<Text color="gray">
 					• Press 'c' in Configuration tab to edit settings
 				</Text>
-				<Text color="gray">
-					• Press ESC to go back
-				</Text>
+				<Text color="gray">• Press ESC to go back</Text>
 			</Box>
 		</Box>
 	);
 
 	const renderRecentCleanups = () => (
 		<Box flexDirection="column">
-			<Text bold marginBottom={1}>📋 Recent Cleanup Operations</Text>
-			
+			<Text bold marginBottom={1}>
+				📋 Recent Cleanup Operations
+			</Text>
+
 			{recentCleanups.length === 0 ? (
 				<Text color="gray">No recent cleanup operations</Text>
 			) : (
 				<Box flexDirection="column">
 					{recentCleanups.slice(0, 10).map((cleanup, index) => (
-						<Box key={`cleanup-${cleanup.prNumber}-${cleanup.startTime}`} flexDirection="column" marginBottom={1} padding={1} borderStyle="single">
+						<Box
+							key={`cleanup-${cleanup.prNumber}-${cleanup.startTime}`}
+							flexDirection="column"
+							marginBottom={1}
+							padding={1}
+							borderStyle="single"
+						>
 							<Box flexDirection="row" marginBottom={1}>
-								<Text bold color="cyan">PR #{cleanup.prNumber}</Text>
+								<Text bold color="cyan">
+									PR #{cleanup.prNumber}
+								</Text>
 								<Text color="gray" marginLeft={2}>
 									{new Date(cleanup.startTime).toLocaleString()}
 								</Text>
-								<Badge 
-									color={cleanup.status === 'completed' ? 'green' : 
-										  cleanup.status === 'failed' ? 'red' : 
-										  cleanup.status === 'completed-with-errors' ? 'yellow' : 'blue'}
+								<Badge
+									color={
+										cleanup.status === 'completed'
+											? 'green'
+											: cleanup.status === 'failed'
+												? 'red'
+												: cleanup.status === 'completed-with-errors'
+													? 'yellow'
+													: 'blue'
+									}
 									marginLeft={2}
 								>
 									{cleanup.status}
 								</Badge>
 							</Box>
-							
+
 							{cleanup.duration && (
 								<Text color="gray">
 									Duration: {Math.round(cleanup.duration / 1000)}s
 								</Text>
 							)}
-							
+
 							{cleanup.results && (
 								<Box flexDirection="column" marginTop={1}>
 									{cleanup.results.worktree && (
@@ -211,7 +243,8 @@ const CleanupDashboard = ({ backend, onBack }) => {
 									)}
 									{cleanup.results.astCache && (
 										<Text color="blue">
-											🔄 AST Cache: {cleanup.results.astCache.invalidatedFiles} files invalidated
+											🔄 AST Cache: {cleanup.results.astCache.invalidatedFiles}{' '}
+											files invalidated
 										</Text>
 									)}
 									{cleanup.results.taskStatus && (
@@ -219,11 +252,12 @@ const CleanupDashboard = ({ backend, onBack }) => {
 											✅ Task: {cleanup.results.taskStatus.actions.join(', ')}
 										</Text>
 									)}
-									{cleanup.results.errors && cleanup.results.errors.length > 0 && (
-										<Text color="red">
-											❌ Errors: {cleanup.results.errors.length} occurred
-										</Text>
-									)}
+									{cleanup.results.errors &&
+										cleanup.results.errors.length > 0 && (
+											<Text color="red">
+												❌ Errors: {cleanup.results.errors.length} occurred
+											</Text>
+										)}
 								</Box>
 							)}
 						</Box>
@@ -235,10 +269,12 @@ const CleanupDashboard = ({ backend, onBack }) => {
 
 	const renderConfiguration = () => (
 		<Box flexDirection="column">
-			<Text bold marginBottom={1}>⚙️ Cleanup Configuration</Text>
-			
+			<Text bold marginBottom={1}>
+				⚙️ Cleanup Configuration
+			</Text>
+
 			{configMode ? (
-				<ConfigurationEditor 
+				<ConfigurationEditor
 					config={config}
 					onSave={async (newConfig) => {
 						const result = await backend.updateCleanupConfiguration(newConfig);
@@ -254,7 +290,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 				<Box flexDirection="column">
 					{/* Worktree Configuration */}
 					<Box flexDirection="column" marginBottom={2}>
-						<Text bold color="cyan">Worktree Cleanup:</Text>
+						<Text bold color="cyan">
+							Worktree Cleanup:
+						</Text>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Enabled: </Text>
 							<Badge color={config.worktree.enabled ? 'green' : 'red'}>
@@ -263,19 +301,25 @@ const CleanupDashboard = ({ backend, onBack }) => {
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Preserve Uncommitted: </Text>
-							<Badge color={config.worktree.preserveUncommitted ? 'green' : 'gray'}>
+							<Badge
+								color={config.worktree.preserveUncommitted ? 'green' : 'gray'}
+							>
 								{config.worktree.preserveUncommitted ? 'Yes' : 'No'}
 							</Badge>
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Backup Before Cleanup: </Text>
-							<Badge color={config.worktree.backupBeforeCleanup ? 'green' : 'gray'}>
+							<Badge
+								color={config.worktree.backupBeforeCleanup ? 'green' : 'gray'}
+							>
 								{config.worktree.backupBeforeCleanup ? 'Yes' : 'No'}
 							</Badge>
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Delete Tracking Branch: </Text>
-							<Badge color={config.worktree.deleteTrackingBranch ? 'green' : 'gray'}>
+							<Badge
+								color={config.worktree.deleteTrackingBranch ? 'green' : 'gray'}
+							>
 								{config.worktree.deleteTrackingBranch ? 'Yes' : 'No'}
 							</Badge>
 						</Box>
@@ -283,7 +327,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 
 					{/* AST Cache Configuration */}
 					<Box flexDirection="column" marginBottom={2}>
-						<Text bold color="cyan">AST Cache Refresh:</Text>
+						<Text bold color="cyan">
+							AST Cache Refresh:
+						</Text>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Enabled: </Text>
 							<Badge color={config.astCache.enabled ? 'green' : 'red'}>
@@ -292,7 +338,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Incremental Refresh: </Text>
-							<Badge color={config.astCache.incrementalRefresh ? 'green' : 'gray'}>
+							<Badge
+								color={config.astCache.incrementalRefresh ? 'green' : 'gray'}
+							>
 								{config.astCache.incrementalRefresh ? 'Yes' : 'No'}
 							</Badge>
 						</Box>
@@ -302,13 +350,17 @@ const CleanupDashboard = ({ backend, onBack }) => {
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Max Concurrent Operations: </Text>
-							<Text color="yellow">{config.astCache.maxConcurrentOperations}</Text>
+							<Text color="yellow">
+								{config.astCache.maxConcurrentOperations}
+							</Text>
 						</Box>
 					</Box>
 
 					{/* Task Status Configuration */}
 					<Box flexDirection="column" marginBottom={2}>
-						<Text bold color="cyan">Task Status Updates:</Text>
+						<Text bold color="cyan">
+							Task Status Updates:
+						</Text>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Enabled: </Text>
 							<Badge color={config.taskStatus.enabled ? 'green' : 'red'}>
@@ -323,7 +375,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 						</Box>
 						<Box flexDirection="row" marginTop={1}>
 							<Text>Add PR Reference: </Text>
-							<Badge color={config.taskStatus.addPRReference ? 'green' : 'gray'}>
+							<Badge
+								color={config.taskStatus.addPRReference ? 'green' : 'gray'}
+							>
 								{config.taskStatus.addPRReference ? 'Yes' : 'No'}
 							</Badge>
 						</Box>
@@ -342,9 +396,9 @@ const CleanupDashboard = ({ backend, onBack }) => {
 			<Text bold color="green" marginBottom={1}>
 				🧹 Intelligent Cleanup Dashboard
 			</Text>
-			
+
 			{renderTabHeader()}
-			
+
 			<Box marginTop={1}>
 				{selectedTab === 0 && renderOverview()}
 				{selectedTab === 1 && renderRecentCleanups()}
@@ -355,12 +409,18 @@ const CleanupDashboard = ({ backend, onBack }) => {
 };
 
 const ConfigurationEditor = ({ config, onSave, onCancel }) => {
-	const [editedConfig, setEditedConfig] = useState(JSON.parse(JSON.stringify(config)));
+	const [editedConfig, setEditedConfig] = useState(
+		JSON.parse(JSON.stringify(config))
+	);
 	const [selectedSection, setSelectedSection] = useState(0);
 	const [selectedSetting, setSelectedSetting] = useState(0);
-	
+
 	const sections = ['worktree', 'astCache', 'taskStatus'];
-	const sectionLabels = ['Worktree Cleanup', 'AST Cache Refresh', 'Task Status Updates'];
+	const sectionLabels = [
+		'Worktree Cleanup',
+		'AST Cache Refresh',
+		'Task Status Updates'
+	];
 
 	useInput((input, key) => {
 		if (key.escape) {
@@ -391,9 +451,9 @@ const ConfigurationEditor = ({ config, onSave, onCancel }) => {
 		const settingKeys = Object.keys(editedConfig[currentSection]);
 		const currentSetting = settingKeys[selectedSetting];
 		const currentValue = editedConfig[currentSection][currentSetting];
-		
+
 		if (typeof currentValue === 'boolean') {
-			setEditedConfig(prev => ({
+			setEditedConfig((prev) => ({
 				...prev,
 				[currentSection]: {
 					...prev[currentSection],
@@ -406,31 +466,38 @@ const ConfigurationEditor = ({ config, onSave, onCancel }) => {
 	const renderSection = (sectionName, sectionIndex) => {
 		const isSelected = selectedSection === sectionIndex;
 		const sectionConfig = editedConfig[sectionName];
-		
+
 		return (
 			<Box key={sectionName} flexDirection="column" marginBottom={2}>
 				<Text bold color={isSelected ? 'cyan' : 'white'}>
-					{isSelected ? '▶ ' : '  '}{sectionLabels[sectionIndex]}
+					{isSelected ? '▶ ' : '  '}
+					{sectionLabels[sectionIndex]}
 				</Text>
-				
+
 				{isSelected && (
 					<Box flexDirection="column" marginLeft={2} marginTop={1}>
 						{Object.entries(sectionConfig).map(([key, value], index) => (
 							<Box key={key} flexDirection="row" marginBottom={1}>
 								<Text color={selectedSetting === index ? 'yellow' : 'white'}>
 									{selectedSetting === index ? '→ ' : '  '}
-									{key}: 
+									{key}:
 								</Text>
-								<Text 
+								<Text
 									color={
-										typeof value === 'boolean' 
-											? (value ? 'green' : 'red')
+										typeof value === 'boolean'
+											? value
+												? 'green'
+												: 'red'
 											: 'cyan'
 									}
 									marginLeft={1}
 									bold={selectedSetting === index}
 								>
-									{typeof value === 'boolean' ? (value ? 'Enabled' : 'Disabled') : String(value)}
+									{typeof value === 'boolean'
+										? value
+											? 'Enabled'
+											: 'Disabled'
+										: String(value)}
 								</Text>
 							</Box>
 						))}
@@ -442,29 +509,21 @@ const ConfigurationEditor = ({ config, onSave, onCancel }) => {
 
 	return (
 		<Box flexDirection="column">
-			<Text bold marginBottom={1}>✏️ Edit Configuration</Text>
-			
+			<Text bold marginBottom={1}>
+				✏️ Edit Configuration
+			</Text>
+
 			{sections.map((section, index) => renderSection(section, index))}
-			
+
 			<Box marginTop={2}>
-				<Text color="gray">
-					• Use ← → to switch sections
-				</Text>
-				<Text color="gray">
-					• Use ↑ ↓ to navigate settings
-				</Text>
-				<Text color="gray">
-					• Press ENTER to toggle boolean values
-				</Text>
-				<Text color="gray">
-					• Press 's' to save changes
-				</Text>
-				<Text color="gray">
-					• Press ESC to cancel
-				</Text>
+				<Text color="gray">• Use ← → to switch sections</Text>
+				<Text color="gray">• Use ↑ ↓ to navigate settings</Text>
+				<Text color="gray">• Press ENTER to toggle boolean values</Text>
+				<Text color="gray">• Press 's' to save changes</Text>
+				<Text color="gray">• Press ESC to cancel</Text>
 			</Box>
 		</Box>
 	);
 };
 
-export default CleanupDashboard; 
+export default CleanupDashboard;

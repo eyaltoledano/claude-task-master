@@ -15,7 +15,7 @@ export class PRMonitoringService extends EventEmitter {
 			timeoutMs: options.timeoutMs || 300000, // 5 minutes
 			...options
 		};
-		
+
 		this.activePRs = new Map();
 		this.timers = new Map();
 		this.stateFile = null;
@@ -155,7 +155,7 @@ export class PRMonitoringService extends EventEmitter {
 		config.status = 'monitoring'; // Reset to monitoring
 		config.lastChecked = new Date().toISOString();
 		await this.saveState();
-		
+
 		// Immediately trigger a check
 		await this.checkPRStatus(prNumber);
 
@@ -185,14 +185,18 @@ export class PRMonitoringService extends EventEmitter {
 
 			// Determine new status
 			const newStatus = this.determinePRStatus(prStatus);
-			
+
 			// Update config if status changed
 			if (newStatus !== oldStatus) {
 				config.status = newStatus;
 				await this.saveState();
 
 				// Log the status change event
-				this.logEvent(prNumber, 'statusChanged', { oldStatus, newStatus, prStatus });
+				this.logEvent(prNumber, 'statusChanged', {
+					oldStatus,
+					newStatus,
+					prStatus
+				});
 
 				// Emit status change event
 				this.emit('statusChanged', {
@@ -204,11 +208,19 @@ export class PRMonitoringService extends EventEmitter {
 				});
 
 				// Handle specific status transitions
-				await this.handleStatusTransition(prNumber, oldStatus, newStatus, prStatus);
+				await this.handleStatusTransition(
+					prNumber,
+					oldStatus,
+					newStatus,
+					prStatus
+				);
 			}
 
 			// Add a periodic check-in event
-			this.logEvent(prNumber, 'statusChecked', { status: newStatus, checks: prStatus.checks?.length || 0 });
+			this.logEvent(prNumber, 'statusChecked', {
+				status: newStatus,
+				checks: prStatus.checks?.length || 0
+			});
 
 			return {
 				prNumber,
@@ -216,13 +228,12 @@ export class PRMonitoringService extends EventEmitter {
 				prStatus,
 				config
 			};
-
 		} catch (error) {
 			console.error(`Error checking PR ${prNumber} status:`, error);
-			
+
 			// Increment retry count
 			config.retryCount = (config.retryCount || 0) + 1;
-			
+
 			// Stop monitoring if max retries exceeded
 			if (config.retryCount >= this.options.maxRetries) {
 				await this.stopMonitoring(prNumber, 'max-retries-exceeded');
@@ -263,18 +274,20 @@ export class PRMonitoringService extends EventEmitter {
 	getMonitoringStats() {
 		const activePRs = this.getActivePRs();
 		const statusCounts = {};
-		
-		activePRs.forEach(pr => {
+
+		activePRs.forEach((pr) => {
 			statusCounts[pr.status] = (statusCounts[pr.status] || 0) + 1;
 		});
 
 		return {
 			totalActive: activePRs.length,
 			statusCounts,
-			oldestPR: activePRs.length > 0 ? 
-				activePRs.reduce((oldest, pr) => 
-					new Date(pr.created) < new Date(oldest.created) ? pr : oldest
-				) : null
+			oldestPR:
+				activePRs.length > 0
+					? activePRs.reduce((oldest, pr) =>
+							new Date(pr.created) < new Date(oldest.created) ? pr : oldest
+						)
+					: null
 		};
 	}
 
@@ -304,7 +317,7 @@ export class PRMonitoringService extends EventEmitter {
 		if (prStatus.merged) {
 			return 'merged';
 		}
-		
+
 		if (prStatus.closed) {
 			return 'closed';
 		}
@@ -319,7 +332,10 @@ export class PRMonitoringService extends EventEmitter {
 		}
 
 		// Check if there are issues
-		if (prStatus.checks && prStatus.checks.some(check => check.status === 'failure')) {
+		if (
+			prStatus.checks &&
+			prStatus.checks.some((check) => check.status === 'failure')
+		) {
 			return 'checks-failed';
 		}
 
@@ -335,8 +351,9 @@ export class PRMonitoringService extends EventEmitter {
 	 */
 	isReadyToMerge(prStatus) {
 		// All checks must pass
-		const checksPass = !prStatus.checks || 
-			prStatus.checks.every(check => check.status === 'success');
+		const checksPass =
+			!prStatus.checks ||
+			prStatus.checks.every((check) => check.status === 'success');
 
 		// Required reviews must be approved
 		const reviewsApproved = !prStatus.reviewRequired || prStatus.approved;
@@ -389,7 +406,7 @@ export class PRMonitoringService extends EventEmitter {
 		try {
 			const data = await fs.readFile(this.stateFile, 'utf8');
 			const state = JSON.parse(data);
-			
+
 			// Restore active PRs
 			if (state.activePRs) {
 				for (const [prNumber, config] of Object.entries(state.activePRs)) {
@@ -490,7 +507,7 @@ export class PRMonitoringService extends EventEmitter {
 		}
 
 		const prs = this.getActivePRs();
-		return prs.map(pr => ({
+		return prs.map((pr) => ({
 			prNumber: pr.prNumber,
 			status: pr.status,
 			autoMerge: pr.autoMerge,
@@ -507,11 +524,11 @@ export class PRMonitoringService extends EventEmitter {
 		if (!this.activePRs.has(prNumber)) {
 			return null;
 		}
-	
+
 		const config = this.getMonitoringConfig(prNumber);
 		const prStatus = await this.backend.getPRStatus(prNumber).catch(() => null);
 		const eventLog = this.getEventLog(prNumber);
-	
+
 		return {
 			config,
 			prStatus,
@@ -527,4 +544,4 @@ export class PRMonitoringService extends EventEmitter {
 	}
 }
 
-export default PRMonitoringService; 
+export default PRMonitoringService;

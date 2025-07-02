@@ -10,9 +10,9 @@ export const NotificationProvider = ({ children }) => {
 
 	const addNotification = useCallback((message) => {
 		const id = Date.now();
-		setNotifications(prev => [...prev, { id, message }]);
+		setNotifications((prev) => [...prev, { id, message }]);
 		setTimeout(() => {
-			setNotifications(prev => prev.filter(n => n.id !== id));
+			setNotifications((prev) => prev.filter((n) => n.id !== id));
 		}, 3000); // Notifications disappear after 3 seconds
 	}, []);
 
@@ -30,12 +30,18 @@ const NotificationManager = ({ notifications }) => {
 	}
 
 	return (
-		<Box position="absolute" bottom={0} left={0} width="100%" flexDirection="column-reverse">
-			{notifications.map(n => (
+		<Box
+			position="absolute"
+			bottom={0}
+			left={0}
+			width="100%"
+			flexDirection="column-reverse"
+		>
+			{notifications.map((n) => (
 				<Box key={n.id} backgroundColor="gray" paddingX={1}>
 					<Text>{n.message}</Text>
 				</Box>
 			))}
 		</Box>
 	);
-}; 
+};

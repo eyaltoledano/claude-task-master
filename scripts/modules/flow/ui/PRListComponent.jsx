@@ -3,7 +3,9 @@ import { Box, Text } from 'ink';
 import { useInput } from 'ink';
 
 const PRListComponent = ({ prs, selectedPR, onSelect }) => {
-	const selectedIndex = prs.findIndex(pr => pr.prNumber === selectedPR?.prNumber);
+	const selectedIndex = prs.findIndex(
+		(pr) => pr.prNumber === selectedPR?.prNumber
+	);
 
 	useInput((input, key) => {
 		if (key.upArrow) {
@@ -38,8 +40,8 @@ const PRListComponent = ({ prs, selectedPR, onSelect }) => {
 			<Text bold>Monitored PRs</Text>
 			{prs.map((pr, index) => (
 				<Box key={pr.prNumber} flexDirection="column">
-					<Text 
-						backgroundColor={index === selectedIndex ? 'blue' : undefined} 
+					<Text
+						backgroundColor={index === selectedIndex ? 'blue' : undefined}
 						color={getStatusColor(pr.status)}
 					>
 						#{pr.prNumber} - {pr.status} {pr.autoMerge ? '(Auto-merge)' : ''}
@@ -51,4 +53,4 @@ const PRListComponent = ({ prs, selectedPR, onSelect }) => {
 	);
 };
 
-export default PRListComponent; 
+export default PRListComponent;

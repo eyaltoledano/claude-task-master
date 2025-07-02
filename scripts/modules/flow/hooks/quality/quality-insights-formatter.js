@@ -12,7 +12,8 @@ export function formatForTaskUpdate(qualityMetrics) {
 	if (!qualityMetrics.hasChanges) {
 		return {
 			summary: 'No code changes detected',
-			details: qualityMetrics.message || 'Session completed without file changes'
+			details:
+				qualityMetrics.message || 'Session completed without file changes'
 		};
 	}
 
@@ -62,14 +63,20 @@ export function generateDetailedReport(metrics) {
 	if (metrics.aggregateMetrics) {
 		sections.push('## Code Metrics');
 		const agg = metrics.aggregateMetrics;
-		
-		sections.push(`- **Average Complexity:** ${agg.averageComplexity?.toFixed(1) || 'N/A'}`);
-		sections.push(`- **Comment Ratio:** ${(agg.averageCommentRatio * 100)?.toFixed(1) || 'N/A'}%`);
+
+		sections.push(
+			`- **Average Complexity:** ${agg.averageComplexity?.toFixed(1) || 'N/A'}`
+		);
+		sections.push(
+			`- **Comment Ratio:** ${(agg.averageCommentRatio * 100)?.toFixed(1) || 'N/A'}%`
+		);
 		sections.push(`- **Total Functions:** ${agg.totalFunctions || 0}`);
-		
+
 		if (agg.complexityDistribution) {
 			const dist = agg.complexityDistribution;
-			sections.push(`- **Complexity Distribution:** Low: ${dist.low}, Medium: ${dist.medium}, High: ${dist.high}, Very High: ${dist['very-high']}`);
+			sections.push(
+				`- **Complexity Distribution:** Low: ${dist.low}, Medium: ${dist.medium}, High: ${dist.high}, Very High: ${dist['very-high']}`
+			);
 		}
 		sections.push('');
 	}
@@ -78,15 +85,15 @@ export function generateDetailedReport(metrics) {
 	if (metrics.lintResults) {
 		sections.push('## Linting Results');
 		const lint = metrics.lintResults;
-		
+
 		if (lint.available) {
 			if (lint.errorCount > 0 || lint.warningCount > 0) {
 				sections.push(`- **Errors:** ${lint.errorCount || 0}`);
 				sections.push(`- **Warnings:** ${lint.warningCount || 0}`);
-				
+
 				if (lint.issues && lint.issues.length > 0) {
 					sections.push('- **Top Issues:**');
-					lint.issues.slice(0, 3).forEach(issue => {
+					lint.issues.slice(0, 3).forEach((issue) => {
 						sections.push(`  - ${issue.severity}: ${issue.message}`);
 					});
 				}
@@ -94,7 +101,9 @@ export function generateDetailedReport(metrics) {
 				sections.push('- ✅ No linting issues found');
 			}
 		} else {
-			sections.push(`- ⚠️ Linting unavailable: ${lint.reason || lint.error || 'Unknown reason'}`);
+			sections.push(
+				`- ⚠️ Linting unavailable: ${lint.reason || lint.error || 'Unknown reason'}`
+			);
 		}
 		sections.push('');
 	}
@@ -103,16 +112,26 @@ export function generateDetailedReport(metrics) {
 	if (metrics.taskAlignment) {
 		sections.push('## Task Alignment');
 		const alignment = metrics.taskAlignment;
-		
-		sections.push(`- **Keyword Coverage:** ${(alignment.keywordCoverage * 100).toFixed(1)}%`);
-		sections.push(`- **Implementation Scope:** ${alignment.implementationScope}`);
-		sections.push(`- **Relevant Files:** ${(alignment.relevantFileRatio * 100).toFixed(1)}%`);
-		
+
+		sections.push(
+			`- **Keyword Coverage:** ${(alignment.keywordCoverage * 100).toFixed(1)}%`
+		);
+		sections.push(
+			`- **Implementation Scope:** ${alignment.implementationScope}`
+		);
+		sections.push(
+			`- **Relevant Files:** ${(alignment.relevantFileRatio * 100).toFixed(1)}%`
+		);
+
 		if (alignment.foundKeywords?.length > 0) {
-			sections.push(`- **Found Keywords:** ${alignment.foundKeywords.join(', ')}`);
+			sections.push(
+				`- **Found Keywords:** ${alignment.foundKeywords.join(', ')}`
+			);
 		}
 		if (alignment.missedKeywords?.length > 0) {
-			sections.push(`- **Missed Keywords:** ${alignment.missedKeywords.join(', ')}`);
+			sections.push(
+				`- **Missed Keywords:** ${alignment.missedKeywords.join(', ')}`
+			);
 		}
 		sections.push('');
 	}
@@ -120,19 +139,24 @@ export function generateDetailedReport(metrics) {
 	// File breakdown
 	if (metrics.files && metrics.files.length > 0) {
 		sections.push('## File Analysis');
-		
-		metrics.files.forEach(file => {
+
+		metrics.files.forEach((file) => {
 			const complexity = file.metrics.complexity?.cyclomaticComplexity || 'N/A';
-			const complexityLevel = file.metrics.complexity?.complexityLevel || 'unknown';
+			const complexityLevel =
+				file.metrics.complexity?.complexityLevel || 'unknown';
 			const lines = file.metrics.linesOfCode || 0;
-			
+
 			sections.push(`- **${file.path}** (${file.status})`);
-			sections.push(`  - Lines: ${lines}, Complexity: ${complexity} (${complexityLevel})`);
-			
+			sections.push(
+				`  - Lines: ${lines}, Complexity: ${complexity} (${complexityLevel})`
+			);
+
 			if (file.jsMetrics) {
 				const js = file.jsMetrics;
-				sections.push(`  - Functions: ${js.functionCount}, Classes: ${js.classCount}, Imports: ${js.importCount}`);
-				
+				sections.push(
+					`  - Functions: ${js.functionCount}, Classes: ${js.classCount}, Imports: ${js.importCount}`
+				);
+
 				if (js.todoComments > 0) {
 					sections.push(`  - TODO comments: ${js.todoComments}`);
 				}
@@ -140,7 +164,7 @@ export function generateDetailedReport(metrics) {
 					sections.push(`  - Console usage: ${js.consoleUsage}`);
 				}
 			}
-			
+
 			if (file.issues?.length > 0) {
 				sections.push(`  - Issues: ${file.issues.join(', ')}`);
 			}
@@ -159,15 +183,17 @@ export function formatForPRDescription(qualityMetrics) {
 	}
 
 	const sections = [];
-	
+
 	sections.push('## 🔍 Code Quality Analysis');
 	sections.push('');
 	sections.push(`**Overall Score:** ${qualityMetrics.overallScore}/10`);
-	
+
 	if (qualityMetrics.aggregateMetrics) {
 		const agg = qualityMetrics.aggregateMetrics;
 		sections.push(`**Complexity:** ${agg.averageComplexity?.toFixed(1)} avg`);
-		sections.push(`**Documentation:** ${(agg.averageCommentRatio * 100)?.toFixed(1)}% comments`);
+		sections.push(
+			`**Documentation:** ${(agg.averageCommentRatio * 100)?.toFixed(1)}% comments`
+		);
 	}
 
 	if (qualityMetrics.lintResults?.available) {
@@ -175,12 +201,16 @@ export function formatForPRDescription(qualityMetrics) {
 		if (lint.errorCount === 0 && lint.warningCount === 0) {
 			sections.push(`**Linting:** ✅ Clean`);
 		} else {
-			sections.push(`**Linting:** ${lint.errorCount} errors, ${lint.warningCount} warnings`);
+			sections.push(
+				`**Linting:** ${lint.errorCount} errors, ${lint.warningCount} warnings`
+			);
 		}
 	}
 
 	if (qualityMetrics.taskAlignment) {
-		const coverage = (qualityMetrics.taskAlignment.keywordCoverage * 100).toFixed(0);
+		const coverage = (
+			qualityMetrics.taskAlignment.keywordCoverage * 100
+		).toFixed(0);
 		sections.push(`**Task Alignment:** ${coverage}% keyword coverage`);
 	}
 
@@ -200,42 +230,54 @@ export function formatForConsole(qualityMetrics) {
 	}
 
 	const lines = [];
-	
+
 	// Header
 	lines.push(`🔍 Code Quality Analysis (${qualityMetrics.analysisTime}ms)`);
 	lines.push(''.padEnd(50, '─'));
-	
+
 	// Score
-	const scoreEmoji = qualityMetrics.overallScore >= 8 ? '✅' : 
-					  qualityMetrics.overallScore >= 6 ? '⚠️' : '🔧';
+	const scoreEmoji =
+		qualityMetrics.overallScore >= 8
+			? '✅'
+			: qualityMetrics.overallScore >= 6
+				? '⚠️'
+				: '🔧';
 	lines.push(`${scoreEmoji} Overall Score: ${qualityMetrics.overallScore}/10`);
-	
+
 	// Files
-	lines.push(`📁 Files: ${qualityMetrics.fileCount} (${qualityMetrics.totalLines} lines)`);
-	
+	lines.push(
+		`📁 Files: ${qualityMetrics.fileCount} (${qualityMetrics.totalLines} lines)`
+	);
+
 	// Metrics
 	if (qualityMetrics.aggregateMetrics) {
 		const agg = qualityMetrics.aggregateMetrics;
 		lines.push(`🔄 Avg Complexity: ${agg.averageComplexity?.toFixed(1)}`);
-		lines.push(`📝 Comment Ratio: ${(agg.averageCommentRatio * 100)?.toFixed(1)}%`);
+		lines.push(
+			`📝 Comment Ratio: ${(agg.averageCommentRatio * 100)?.toFixed(1)}%`
+		);
 	}
-	
+
 	// Linting
 	if (qualityMetrics.lintResults?.available) {
 		const lint = qualityMetrics.lintResults;
 		if (lint.errorCount === 0 && lint.warningCount === 0) {
 			lines.push('✅ Linting: Clean');
 		} else {
-			lines.push(`🔧 Linting: ${lint.errorCount} errors, ${lint.warningCount} warnings`);
+			lines.push(
+				`🔧 Linting: ${lint.errorCount} errors, ${lint.warningCount} warnings`
+			);
 		}
 	}
-	
+
 	// Task alignment
 	if (qualityMetrics.taskAlignment) {
-		const coverage = (qualityMetrics.taskAlignment.keywordCoverage * 100).toFixed(0);
+		const coverage = (
+			qualityMetrics.taskAlignment.keywordCoverage * 100
+		).toFixed(0);
 		const emoji = coverage >= 70 ? '✅' : coverage >= 50 ? '⚠️' : '❌';
 		lines.push(`${emoji} Task Alignment: ${coverage}%`);
 	}
 
 	return lines.join('\n');
-} 
+}

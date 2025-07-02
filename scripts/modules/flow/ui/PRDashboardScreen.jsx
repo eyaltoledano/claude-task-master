@@ -6,7 +6,10 @@ import PRActionPanel from './PRActionPanel.jsx';
 import ConfigurationModal from './ConfigurationModal.jsx';
 import CleanupDashboard from './CleanupDashboard.jsx';
 import { ConfigurationProvider } from './ConfigurationProvider.jsx';
-import { NotificationProvider, useNotification } from './NotificationProvider.jsx';
+import {
+	NotificationProvider,
+	useNotification
+} from './NotificationProvider.jsx';
 
 const Dashboard = ({ backend }) => {
 	const [monitoredPRs, setMonitoredPRs] = useState([]);
@@ -48,7 +51,7 @@ const Dashboard = ({ backend }) => {
 	const handleSelectPR = (pr) => {
 		setSelectedPR(pr);
 	};
-	
+
 	const handleNotification = (message) => {
 		addNotification(message);
 	};
@@ -78,7 +81,13 @@ const Dashboard = ({ backend }) => {
 	}
 
 	return (
-		<Box borderStyle="round" padding={1} flexDirection="column" width="100%" height="100%">
+		<Box
+			borderStyle="round"
+			padding={1}
+			flexDirection="column"
+			width="100%"
+			height="100%"
+		>
 			<Text bold>PR Monitoring Dashboard</Text>
 			<Box marginTop={1} flexGrow={1}>
 				<Box width="30%" borderStyle="single" flexDirection="column">
@@ -88,18 +97,23 @@ const Dashboard = ({ backend }) => {
 						onSelect={handleSelectPR}
 					/>
 				</Box>
-				<Box flexGrow={1} marginLeft={1} borderStyle="single" flexDirection="column">
+				<Box
+					flexGrow={1}
+					marginLeft={1}
+					borderStyle="single"
+					flexDirection="column"
+				>
 					<PRDetailsPanel pr={selectedPR} backend={backend} />
-					<PRActionPanel 
-						pr={selectedPR} 
-						backend={backend} 
+					<PRActionPanel
+						pr={selectedPR}
+						backend={backend}
 						onNotification={handleNotification}
 						onOpenConfig={handleOpenConfig}
 						onOpenCleanup={handleOpenCleanup}
 					/>
 				</Box>
 			</Box>
-			
+
 			{/* Configuration Modal */}
 			{showConfigModal && (
 				<Box position="absolute" top={0} left={0} width="100%" height="100%">
@@ -111,14 +125,11 @@ const Dashboard = ({ backend }) => {
 					</ConfigurationProvider>
 				</Box>
 			)}
-			
+
 			{/* Cleanup Dashboard */}
 			{showCleanupDashboard && (
 				<Box position="absolute" top={0} left={0} width="100%" height="100%">
-					<CleanupDashboard
-						backend={backend}
-						onBack={handleCloseCleanup}
-					/>
+					<CleanupDashboard backend={backend} onBack={handleCloseCleanup} />
 				</Box>
 			)}
 		</Box>
@@ -131,4 +142,4 @@ const PRDashboardScreen = ({ backend }) => (
 	</NotificationProvider>
 );
 
-export default PRDashboardScreen; 
+export default PRDashboardScreen;

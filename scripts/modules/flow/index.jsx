@@ -780,7 +780,7 @@ function FlowApp({ backend, options = {} }) {
 					) : currentScreen === 'analyze' ? (
 						<AnalyzeComplexityScreen />
 					) : currentScreen === 'dependencies' ? (
-						<DependencyVisualizerScreen 
+						<DependencyVisualizerScreen
 							onBack={() => setCurrentScreen('welcome')}
 							projectRoot={currentBackend.projectRoot}
 						/>

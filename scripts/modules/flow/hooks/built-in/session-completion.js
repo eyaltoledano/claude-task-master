@@ -2,7 +2,10 @@
  * Session Completion Hook - handles post-session cleanup and PR creation
  */
 import { CodeQualityAnalyzer } from '../quality/code-quality-analyzer.js';
-import { formatForTaskUpdate, formatForPRDescription } from '../quality/quality-insights-formatter.js';
+import {
+	formatForTaskUpdate,
+	formatForPRDescription
+} from '../quality/quality-insights-formatter.js';
 
 export default class SessionCompletionHook {
 	constructor() {
@@ -89,8 +92,15 @@ export default class SessionCompletionHook {
 			}
 
 			// Update task with quality metrics
-			if (completionResult.qualityMetrics && completionResult.qualityMetrics.hasChanges) {
-				await this.updateTaskWithQualityMetrics(task, completionResult.qualityMetrics, services);
+			if (
+				completionResult.qualityMetrics &&
+				completionResult.qualityMetrics.hasChanges
+			) {
+				await this.updateTaskWithQualityMetrics(
+					task,
+					completionResult.qualityMetrics,
+					services
+				);
 				completionResult.actions.push('quality-metrics-added');
 			}
 
@@ -402,7 +412,13 @@ export default class SessionCompletionHook {
 		return true;
 	}
 
-	async handlePRCreation(session, task, worktree, services, qualityMetrics = null) {
+	async handlePRCreation(
+		session,
+		task,
+		worktree,
+		services,
+		qualityMetrics = null
+	) {
 		if (!services.backend || !worktree) {
 			throw new Error(
 				'Backend service or worktree not available for PR creation'
@@ -411,7 +427,11 @@ export default class SessionCompletionHook {
 
 		try {
 			const prTitle = `Task ${task.id}: ${task.title}`;
-			const prDescription = this.generatePRDescription(session, task, qualityMetrics);
+			const prDescription = this.generatePRDescription(
+				session,
+				task,
+				qualityMetrics
+			);
 
 			const result = await services.backend.completeSubtaskWithPR(
 				worktree.name,
@@ -682,7 +702,12 @@ ${qualityReport.details}
 
 	async analyzeCodeQuality(session, task, worktree, services) {
 		try {
-			return await this.qualityAnalyzer.analyzeSession(session, task, worktree, services);
+			return await this.qualityAnalyzer.analyzeSession(
+				session,
+				task,
+				worktree,
+				services
+			);
 		} catch (error) {
 			console.warn('Code quality analysis failed:', error.message);
 			return {
@@ -710,15 +735,21 @@ ${qualityReport.details}
 
 		// Complexity insights
 		if (metrics.aggregateMetrics?.averageComplexity > 15) {
-			insights.push('⚠️ High complexity detected - consider breaking down functions');
+			insights.push(
+				'⚠️ High complexity detected - consider breaking down functions'
+			);
 		}
 
 		// Lint insights
 		if (metrics.lintResults?.errorCount > 0) {
-			insights.push(`🔧 ${metrics.lintResults.errorCount} linting errors found`);
+			insights.push(
+				`🔧 ${metrics.lintResults.errorCount} linting errors found`
+			);
 		}
 		if (metrics.lintResults?.warningCount > 0) {
-			insights.push(`⚠️ ${metrics.lintResults.warningCount} linting warnings found`);
+			insights.push(
+				`⚠️ ${metrics.lintResults.warningCount} linting warnings found`
+			);
 		}
 
 		// Task alignment insights
@@ -735,7 +766,9 @@ ${qualityReport.details}
 
 		// Scope insights
 		if (metrics.taskAlignment?.implementationScope === 'very-large') {
-			insights.push('📏 Large implementation - consider breaking into smaller tasks');
+			insights.push(
+				'📏 Large implementation - consider breaking into smaller tasks'
+			);
 		}
 
 		return insights;

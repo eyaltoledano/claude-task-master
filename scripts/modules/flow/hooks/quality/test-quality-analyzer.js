@@ -104,7 +104,8 @@ export const debounce = (func, wait) => {
 		id: '5.2',
 		title: 'Implement Todo List Component',
 		description: 'Create a React component for displaying and filtering todos',
-		details: 'Should include filtering, toggle functionality, and delete capability',
+		details:
+			'Should include filtering, toggle functionality, and delete capability',
 		isSubtask: true
 	};
 
@@ -115,8 +116,10 @@ export const debounce = (func, wait) => {
 		console.log(`\n${change.path}:`);
 		console.log(`  Language: ${fileAnalysis.language}`);
 		console.log(`  Lines: ${fileAnalysis.metrics.linesOfCode}`);
-		console.log(`  Complexity: ${fileAnalysis.metrics.complexity?.cyclomaticComplexity} (${fileAnalysis.metrics.complexity?.complexityLevel})`);
-		
+		console.log(
+			`  Complexity: ${fileAnalysis.metrics.complexity?.cyclomaticComplexity} (${fileAnalysis.metrics.complexity?.complexityLevel})`
+		);
+
 		if (fileAnalysis.jsMetrics) {
 			console.log(`  Functions: ${fileAnalysis.jsMetrics.functionCount}`);
 			console.log(`  Imports: ${fileAnalysis.jsMetrics.importCount}`);
@@ -129,7 +132,10 @@ export const debounce = (func, wait) => {
 	const mockAnalysis = {
 		hasChanges: true,
 		fileCount: mockChanges.length,
-		totalLines: mockChanges.reduce((sum, c) => sum + c.content.split('\n').length, 0),
+		totalLines: mockChanges.reduce(
+			(sum, c) => sum + c.content.split('\n').length,
+			0
+		),
 		analysisTime: 45,
 		timestamp: new Date().toISOString(),
 		files: []
@@ -142,8 +148,10 @@ export const debounce = (func, wait) => {
 	}
 
 	// Calculate aggregate metrics
-	mockAnalysis.aggregateMetrics = analyzer.calculateAggregateMetrics(mockAnalysis.files);
-	
+	mockAnalysis.aggregateMetrics = analyzer.calculateAggregateMetrics(
+		mockAnalysis.files
+	);
+
 	// Mock task alignment
 	mockAnalysis.taskAlignment = {
 		keywordCoverage: 0.75,
@@ -160,7 +168,8 @@ export const debounce = (func, wait) => {
 		issues: [
 			{
 				severity: 'warning',
-				message: 'Prefer const over let for variables that are never reassigned',
+				message:
+					'Prefer const over let for variables that are never reassigned',
 				file: 'src/components/TodoList.jsx',
 				line: 15
 			}
@@ -181,8 +190,10 @@ export const debounce = (func, wait) => {
 	console.log(`\nOverall Score: ${mockAnalysis.overallScore}/10`);
 	console.log(`Files Analyzed: ${mockAnalysis.fileCount}`);
 	console.log(`Total Lines: ${mockAnalysis.aggregateMetrics.totalLinesOfCode}`);
-	console.log(`Average Complexity: ${mockAnalysis.aggregateMetrics.averageComplexity.toFixed(1)}`);
+	console.log(
+		`Average Complexity: ${mockAnalysis.aggregateMetrics.averageComplexity.toFixed(1)}`
+	);
 }
 
 // Run the test
-testQualityAnalyzer().catch(console.error); 
+testQualityAnalyzer().catch(console.error);

@@ -2435,11 +2435,11 @@ ${prompt}
 				});
 			}
 
-					// Use Claude Code SDK
-		const messages = [];
-		const startTime = Date.now();
-		const totalCost = 0;
-		const sessionId = null;
+			// Use Claude Code SDK
+			const messages = [];
+			const startTime = Date.now();
+			const totalCost = 0;
+			const sessionId = null;
 
 			const queryOptions = {
 				prompt: fullPrompt,
@@ -3203,24 +3203,36 @@ ${prompt}
 			const { execSync } = await import('child_process');
 
 			// Get PR info using GitHub CLI
-			const prInfoRaw = execSync(`gh pr view ${prNumber} --json state,merged,mergeable,draft,title,url,headRefName,baseRefName,reviews,statusCheckRollup`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			});
+			const prInfoRaw = execSync(
+				`gh pr view ${prNumber} --json state,merged,mergeable,draft,title,url,headRefName,baseRefName,reviews,statusCheckRollup`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			);
 
 			const prInfo = JSON.parse(prInfoRaw);
 
 			// Process reviews
 			const reviews = prInfo.reviews || [];
-			const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
-			const requestedChanges = reviews.filter(review => review.state === 'CHANGES_REQUESTED');
-			
+			const approvedReviews = reviews.filter(
+				(review) => review.state === 'APPROVED'
+			);
+			const requestedChanges = reviews.filter(
+				(review) => review.state === 'CHANGES_REQUESTED'
+			);
+
 			// Process status checks
-			const checks = (prInfo.statusCheckRollup || []).map(check => ({
+			const checks = (prInfo.statusCheckRollup || []).map((check) => ({
 				name: check.name || check.context,
-				status: check.state === 'SUCCESS' ? 'success' : 
-				        check.state === 'FAILURE' ? 'failure' : 
-				        check.state === 'PENDING' ? 'pending' : 'unknown',
+				status:
+					check.state === 'SUCCESS'
+						? 'success'
+						: check.state === 'FAILURE'
+							? 'failure'
+							: check.state === 'PENDING'
+								? 'pending'
+								: 'unknown',
 				conclusion: check.conclusion,
 				url: check.targetUrl || check.detailsUrl
 			}));
@@ -3235,22 +3247,27 @@ ${prompt}
 				draft: prInfo.draft,
 				headRef: prInfo.headRefName,
 				baseRef: prInfo.baseRefName,
-				
+
 				// Review status
 				reviews: reviews.length,
 				approved: approvedReviews.length > 0,
 				changesRequested: requestedChanges.length > 0,
 				reviewRequired: true, // Assume review required by default
-				
+
 				// Check status
 				checks,
-				checksPass: checks.length === 0 || checks.every(check => check.status === 'success'),
-				checksFail: checks.some(check => check.status === 'failure'),
-				
+				checksPass:
+					checks.length === 0 ||
+					checks.every((check) => check.status === 'success'),
+				checksFail: checks.some((check) => check.status === 'failure'),
+
 				// Computed status
-				canMerge: prInfo.mergeable && !prInfo.draft && 
-				          (checks.length === 0 || checks.every(check => check.status === 'success')),
-				
+				canMerge:
+					prInfo.mergeable &&
+					!prInfo.draft &&
+					(checks.length === 0 ||
+						checks.every((check) => check.status === 'success')),
+
 				// Raw data for advanced processing
 				raw: prInfo
 			};
@@ -3267,22 +3284,27 @@ ${prompt}
 			const { execSync } = await import('child_process');
 
 			// Get check runs using GitHub CLI
-			const checksRaw = execSync(`gh pr checks ${prNumber} --json name,status,conclusion,startedAt,completedAt,detailsUrl`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			});
+			const checksRaw = execSync(
+				`gh pr checks ${prNumber} --json name,status,conclusion,startedAt,completedAt,detailsUrl`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			);
 
 			const checks = JSON.parse(checksRaw);
 
-			return checks.map(check => ({
+			return checks.map((check) => ({
 				name: check.name,
 				status: check.status?.toLowerCase() || 'unknown',
 				conclusion: check.conclusion?.toLowerCase() || null,
 				startedAt: check.startedAt,
 				completedAt: check.completedAt,
 				url: check.detailsUrl,
-				duration: check.startedAt && check.completedAt ? 
-					new Date(check.completedAt) - new Date(check.startedAt) : null
+				duration:
+					check.startedAt && check.completedAt
+						? new Date(check.completedAt) - new Date(check.startedAt)
+						: null
 			}));
 		} catch (error) {
 			throw new Error(`Failed to get PR checks: ${error.message}`);
@@ -3309,44 +3331,68 @@ ${prompt}
 			// 2. Basic PR state validation
 			validationResults.checks.prState = this.validatePRState(prStatus);
 			if (!validationResults.checks.prState.passed) {
-				validationResults.blockers.push(...validationResults.checks.prState.blockers);
+				validationResults.blockers.push(
+					...validationResults.checks.prState.blockers
+				);
 			}
 
 			// 3. CI/CD checks validation
 			if (config.requiredChecks && config.requiredChecks.length > 0) {
-				validationResults.checks.ciChecks = await this.validateRequiredChecks(prNumber, config.requiredChecks);
+				validationResults.checks.ciChecks = await this.validateRequiredChecks(
+					prNumber,
+					config.requiredChecks
+				);
 				if (!validationResults.checks.ciChecks.passed) {
-					validationResults.blockers.push(...validationResults.checks.ciChecks.blockers);
+					validationResults.blockers.push(
+						...validationResults.checks.ciChecks.blockers
+					);
 				}
 			}
 
 			// 4. Branch protection rules validation
-			validationResults.checks.branchProtection = await this.validateBranchProtectionRules(prNumber);
+			validationResults.checks.branchProtection =
+				await this.validateBranchProtectionRules(prNumber);
 			if (!validationResults.checks.branchProtection.passed) {
-				validationResults.blockers.push(...validationResults.checks.branchProtection.blockers);
+				validationResults.blockers.push(
+					...validationResults.checks.branchProtection.blockers
+				);
 			}
 
 			// 5. Conflict detection
-			validationResults.checks.conflicts = await this.validateNoConflicts(prNumber);
+			validationResults.checks.conflicts =
+				await this.validateNoConflicts(prNumber);
 			if (!validationResults.checks.conflicts.passed) {
-				validationResults.blockers.push(...validationResults.checks.conflicts.blockers);
+				validationResults.blockers.push(
+					...validationResults.checks.conflicts.blockers
+				);
 			}
 
 			// 6. Recent activity check
-			validationResults.checks.recentActivity = await this.validateRecentActivity(prNumber, config);
+			validationResults.checks.recentActivity =
+				await this.validateRecentActivity(prNumber, config);
 			if (!validationResults.checks.recentActivity.passed) {
 				if (config.strictMode) {
-					validationResults.blockers.push(...validationResults.checks.recentActivity.blockers);
+					validationResults.blockers.push(
+						...validationResults.checks.recentActivity.blockers
+					);
 				} else {
-					validationResults.warnings.push(...validationResults.checks.recentActivity.warnings);
+					validationResults.warnings.push(
+						...validationResults.checks.recentActivity.warnings
+					);
 				}
 			}
 
 			// 7. Custom validation hooks (if configured)
 			if (config.customValidationHooks) {
-				validationResults.checks.customHooks = await this.runCustomValidationHooks(prNumber, config.customValidationHooks);
+				validationResults.checks.customHooks =
+					await this.runCustomValidationHooks(
+						prNumber,
+						config.customValidationHooks
+					);
 				if (!validationResults.checks.customHooks.passed) {
-					validationResults.blockers.push(...validationResults.checks.customHooks.blockers);
+					validationResults.blockers.push(
+						...validationResults.checks.customHooks.blockers
+					);
 				}
 			}
 
@@ -3355,11 +3401,12 @@ ${prompt}
 
 			return {
 				canMerge: validationResults.eligible,
-				reason: validationResults.eligible ? 'All validation checks passed' : 'Validation checks failed',
+				reason: validationResults.eligible
+					? 'All validation checks passed'
+					: 'Validation checks failed',
 				validationResults,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				canMerge: false,
@@ -3374,7 +3421,9 @@ ${prompt}
 	 * Legacy method for backward compatibility
 	 */
 	async canAutoMergePR(prNumber, requiredChecks = []) {
-		const result = await this.validateMergeEligibility(prNumber, { requiredChecks });
+		const result = await this.validateMergeEligibility(prNumber, {
+			requiredChecks
+		});
 		return {
 			canMerge: result.canMerge,
 			reason: result.reason,
@@ -3387,15 +3436,15 @@ ${prompt}
 	 */
 	validatePRState(prStatus) {
 		const blockers = [];
-		
+
 		if (prStatus.draft) {
 			blockers.push('PR is still in draft mode');
 		}
-		
+
 		if (prStatus.state !== 'OPEN') {
 			blockers.push(`PR state is ${prStatus.state}, expected OPEN`);
 		}
-		
+
 		if (!prStatus.mergeable) {
 			blockers.push('PR is not mergeable (conflicts or other issues)');
 		}
@@ -3417,25 +3466,31 @@ ${prompt}
 	async validateRequiredChecks(prNumber, requiredChecks) {
 		const checks = await this.getPRChecks(prNumber);
 		const blockers = [];
-		
-		const missingChecks = requiredChecks.filter(required => 
-			!checks.some(check => 
-				check.name === required && 
-				check.status === 'completed' && 
-				check.conclusion === 'success'
-			)
+
+		const missingChecks = requiredChecks.filter(
+			(required) =>
+				!checks.some(
+					(check) =>
+						check.name === required &&
+						check.status === 'completed' &&
+						check.conclusion === 'success'
+				)
 		);
 
 		if (missingChecks.length > 0) {
-			blockers.push(`Required checks not satisfied: ${missingChecks.join(', ')}`);
+			blockers.push(
+				`Required checks not satisfied: ${missingChecks.join(', ')}`
+			);
 		}
 
-		const failedChecks = checks.filter(check => 
-			check.status === 'completed' && check.conclusion === 'failure'
+		const failedChecks = checks.filter(
+			(check) => check.status === 'completed' && check.conclusion === 'failure'
 		);
 
 		if (failedChecks.length > 0) {
-			blockers.push(`Failed checks: ${failedChecks.map(c => c.name).join(', ')}`);
+			blockers.push(
+				`Failed checks: ${failedChecks.map((c) => c.name).join(', ')}`
+			);
 		}
 
 		return {
@@ -3444,8 +3499,12 @@ ${prompt}
 			details: {
 				requiredChecks,
 				missingChecks,
-				failedChecks: failedChecks.map(c => c.name),
-				allChecks: checks.map(c => ({ name: c.name, status: c.status, conclusion: c.conclusion }))
+				failedChecks: failedChecks.map((c) => c.name),
+				allChecks: checks.map((c) => ({
+					name: c.name,
+					status: c.status,
+					conclusion: c.conclusion
+				}))
 			}
 		};
 	}
@@ -3457,25 +3516,33 @@ ${prompt}
 		try {
 			const { execSync } = await import('child_process');
 			const prStatus = await this.getPRStatus(prNumber);
-			
+
 			// Get branch protection info
-			const protectionRaw = execSync(`gh api repos/:owner/:repo/branches/${prStatus.baseRef}/protection --jq '.required_status_checks.strict'`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			}).trim();
+			const protectionRaw = execSync(
+				`gh api repos/:owner/:repo/branches/${prStatus.baseRef}/protection --jq '.required_status_checks.strict'`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			).trim();
 
 			const strictChecks = protectionRaw === 'true';
 			const blockers = [];
 
 			if (strictChecks) {
 				// Check if branch is up to date with base
-				const comparison = execSync(`gh api repos/:owner/:repo/compare/${prStatus.baseRef}...${prStatus.headRef} --jq '.status'`, {
-					encoding: 'utf8',
-					cwd: this.projectRoot
-				}).trim();
+				const comparison = execSync(
+					`gh api repos/:owner/:repo/compare/${prStatus.baseRef}...${prStatus.headRef} --jq '.status'`,
+					{
+						encoding: 'utf8',
+						cwd: this.projectRoot
+					}
+				).trim();
 
 				if (comparison === 'behind') {
-					blockers.push('Branch is behind base branch and strict status checks are enabled');
+					blockers.push(
+						'Branch is behind base branch and strict status checks are enabled'
+					);
 				}
 			}
 
@@ -3493,7 +3560,9 @@ ${prompt}
 			return {
 				passed: true,
 				blockers: [],
-				warnings: [`Could not verify branch protection rules: ${error.message}`],
+				warnings: [
+					`Could not verify branch protection rules: ${error.message}`
+				],
 				details: { error: error.message }
 			};
 		}
@@ -3534,16 +3603,19 @@ ${prompt}
 		try {
 			const { execSync } = await import('child_process');
 			const prStatus = await this.getPRStatus(prNumber);
-			
+
 			const timeWindow = config.recentActivityWindow || '30 minutes ago';
 			const blockers = [];
 			const warnings = [];
 
 			// Check for recent commits on base branch
-			const recentCommits = execSync(`git log --oneline --since="${timeWindow}" origin/${prStatus.baseRef}`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			}).trim();
+			const recentCommits = execSync(
+				`git log --oneline --since="${timeWindow}" origin/${prStatus.baseRef}`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			).trim();
 
 			if (recentCommits.length > 0) {
 				const message = `Recent activity detected on ${prStatus.baseRef} branch`;
@@ -3555,10 +3627,13 @@ ${prompt}
 			}
 
 			// Check for recent pushes to PR branch
-			const prCommits = execSync(`git log --oneline --since="${timeWindow}" origin/${prStatus.headRef}`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			}).trim();
+			const prCommits = execSync(
+				`git log --oneline --since="${timeWindow}" origin/${prStatus.headRef}`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			).trim();
 
 			if (prCommits.length > 0) {
 				const message = `Recent commits on PR branch ${prStatus.headRef}`;
@@ -3598,12 +3673,16 @@ ${prompt}
 				// For now, just a placeholder
 				const result = await this.executeCustomValidationHook(prNumber, hook);
 				results.push(result);
-				
+
 				if (!result.passed) {
-					blockers.push(`Custom validation '${hook.name}' failed: ${result.reason}`);
+					blockers.push(
+						`Custom validation '${hook.name}' failed: ${result.reason}`
+					);
 				}
 			} catch (error) {
-				blockers.push(`Custom validation '${hook.name}' error: ${error.message}`);
+				blockers.push(
+					`Custom validation '${hook.name}' error: ${error.message}`
+				);
 			}
 		}
 
@@ -3623,7 +3702,7 @@ ${prompt}
 		// 1. Load the hook script/function
 		// 2. Execute it with PR context
 		// 3. Return validation result
-		
+
 		return {
 			name: hook.name,
 			passed: true,
@@ -3646,16 +3725,20 @@ ${prompt}
 
 		try {
 			// Phase 1: Pre-merge validation
-			mergeAttempt.phases.push({ phase: 'validation', status: 'started', timestamp: new Date().toISOString() });
-			
+			mergeAttempt.phases.push({
+				phase: 'validation',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
 			const validation = await this.validateMergeEligibility(prNumber, config);
 			if (!validation.canMerge) {
-				mergeAttempt.phases.push({ 
-					phase: 'validation', 
-					status: 'failed', 
+				mergeAttempt.phases.push({
+					phase: 'validation',
+					status: 'failed',
 					reason: validation.reason,
 					details: validation.validationResults,
-					timestamp: new Date().toISOString() 
+					timestamp: new Date().toISOString()
 				});
 				return {
 					success: false,
@@ -3665,18 +3748,26 @@ ${prompt}
 				};
 			}
 
-			mergeAttempt.phases.push({ phase: 'validation', status: 'completed', timestamp: new Date().toISOString() });
+			mergeAttempt.phases.push({
+				phase: 'validation',
+				status: 'completed',
+				timestamp: new Date().toISOString()
+			});
 
 			// Phase 2: Pre-merge hooks
-			mergeAttempt.phases.push({ phase: 'pre-merge-hooks', status: 'started', timestamp: new Date().toISOString() });
-			
+			mergeAttempt.phases.push({
+				phase: 'pre-merge-hooks',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
 			const preHooksResult = await this.executePreMergeHooks(prNumber, config);
 			if (!preHooksResult.success) {
-				mergeAttempt.phases.push({ 
-					phase: 'pre-merge-hooks', 
-					status: 'failed', 
+				mergeAttempt.phases.push({
+					phase: 'pre-merge-hooks',
+					status: 'failed',
 					reason: preHooksResult.reason,
-					timestamp: new Date().toISOString() 
+					timestamp: new Date().toISOString()
 				});
 				return {
 					success: false,
@@ -3686,30 +3777,49 @@ ${prompt}
 				};
 			}
 
-			mergeAttempt.phases.push({ phase: 'pre-merge-hooks', status: 'completed', timestamp: new Date().toISOString() });
+			mergeAttempt.phases.push({
+				phase: 'pre-merge-hooks',
+				status: 'completed',
+				timestamp: new Date().toISOString()
+			});
 
 			// Phase 3: Create rollback point
-			mergeAttempt.phases.push({ phase: 'rollback-preparation', status: 'started', timestamp: new Date().toISOString() });
-			
+			mergeAttempt.phases.push({
+				phase: 'rollback-preparation',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
 			mergeAttempt.rollbackData = await this.createRollbackPoint(prNumber);
-			
-			mergeAttempt.phases.push({ phase: 'rollback-preparation', status: 'completed', timestamp: new Date().toISOString() });
+
+			mergeAttempt.phases.push({
+				phase: 'rollback-preparation',
+				status: 'completed',
+				timestamp: new Date().toISOString()
+			});
 
 			// Phase 4: Execute merge
-			mergeAttempt.phases.push({ phase: 'merge-execution', status: 'started', timestamp: new Date().toISOString() });
-			
+			mergeAttempt.phases.push({
+				phase: 'merge-execution',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
 			const mergeResult = await this.performActualMerge(prNumber, config);
 			if (!mergeResult.success) {
-				mergeAttempt.phases.push({ 
-					phase: 'merge-execution', 
-					status: 'failed', 
+				mergeAttempt.phases.push({
+					phase: 'merge-execution',
+					status: 'failed',
 					reason: mergeResult.reason,
-					timestamp: new Date().toISOString() 
+					timestamp: new Date().toISOString()
 				});
 
 				// Attempt rollback
 				if (config.rollback?.enabled !== false) {
-					await this.executeRollback(mergeAttempt.rollbackData, 'merge_execution_failed');
+					await this.executeRollback(
+						mergeAttempt.rollbackData,
+						'merge_execution_failed'
+					);
 				}
 
 				return {
@@ -3720,23 +3830,37 @@ ${prompt}
 				};
 			}
 
-			mergeAttempt.phases.push({ phase: 'merge-execution', status: 'completed', timestamp: new Date().toISOString() });
+			mergeAttempt.phases.push({
+				phase: 'merge-execution',
+				status: 'completed',
+				timestamp: new Date().toISOString()
+			});
 
 			// Phase 5: Post-merge validation
-			mergeAttempt.phases.push({ phase: 'post-merge-validation', status: 'started', timestamp: new Date().toISOString() });
-			
-			const postValidation = await this.validatePostMerge(prNumber, mergeResult);
+			mergeAttempt.phases.push({
+				phase: 'post-merge-validation',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
+			const postValidation = await this.validatePostMerge(
+				prNumber,
+				mergeResult
+			);
 			if (!postValidation.success) {
-				mergeAttempt.phases.push({ 
-					phase: 'post-merge-validation', 
-					status: 'failed', 
+				mergeAttempt.phases.push({
+					phase: 'post-merge-validation',
+					status: 'failed',
 					reason: postValidation.reason,
-					timestamp: new Date().toISOString() 
+					timestamp: new Date().toISOString()
 				});
 
 				// Critical: rollback the merge
 				if (config.rollback?.enabled !== false) {
-					await this.executeRollback(mergeAttempt.rollbackData, 'post_merge_validation_failed');
+					await this.executeRollback(
+						mergeAttempt.rollbackData,
+						'post_merge_validation_failed'
+					);
 				}
 
 				return {
@@ -3747,18 +3871,29 @@ ${prompt}
 				};
 			}
 
-			mergeAttempt.phases.push({ phase: 'post-merge-validation', status: 'completed', timestamp: new Date().toISOString() });
+			mergeAttempt.phases.push({
+				phase: 'post-merge-validation',
+				status: 'completed',
+				timestamp: new Date().toISOString()
+			});
 
 			// Phase 6: Cleanup workflow
-			mergeAttempt.phases.push({ phase: 'cleanup', status: 'started', timestamp: new Date().toISOString() });
-			
-			const cleanupResult = await this.executePostMergeCleanup(prNumber, config);
-			
-			mergeAttempt.phases.push({ 
-				phase: 'cleanup', 
+			mergeAttempt.phases.push({
+				phase: 'cleanup',
+				status: 'started',
+				timestamp: new Date().toISOString()
+			});
+
+			const cleanupResult = await this.executePostMergeCleanup(
+				prNumber,
+				config
+			);
+
+			mergeAttempt.phases.push({
+				phase: 'cleanup',
 				status: cleanupResult.success ? 'completed' : 'completed-with-warnings',
 				warnings: cleanupResult.warnings,
-				timestamp: new Date().toISOString() 
+				timestamp: new Date().toISOString()
 			});
 
 			mergeAttempt.success = true;
@@ -3770,25 +3905,27 @@ ${prompt}
 				mergeResult,
 				cleanupResult
 			};
-
 		} catch (error) {
-			mergeAttempt.phases.push({ 
-				phase: 'error', 
-				status: 'failed', 
+			mergeAttempt.phases.push({
+				phase: 'error',
+				status: 'failed',
 				error: error.message,
-				timestamp: new Date().toISOString() 
+				timestamp: new Date().toISOString()
 			});
 
 			// Emergency rollback
 			if (mergeAttempt.rollbackData && config.rollback?.enabled !== false) {
 				try {
-					await this.executeRollback(mergeAttempt.rollbackData, 'unexpected_error');
+					await this.executeRollback(
+						mergeAttempt.rollbackData,
+						'unexpected_error'
+					);
 				} catch (rollbackError) {
-					mergeAttempt.phases.push({ 
-						phase: 'emergency-rollback', 
-						status: 'failed', 
+					mergeAttempt.phases.push({
+						phase: 'emergency-rollback',
+						status: 'failed',
 						error: rollbackError.message,
-						timestamp: new Date().toISOString() 
+						timestamp: new Date().toISOString()
 					});
 				}
 			}
@@ -3811,7 +3948,7 @@ ${prompt}
 
 			// Custom pre-merge hooks would be executed here
 			// For now, just return success
-			
+
 			return {
 				success: true,
 				results
@@ -3850,10 +3987,11 @@ ${prompt}
 						encoding: 'utf8',
 						cwd: this.projectRoot
 					}).trim(),
-					hasUncommittedChanges: execSync('git status --porcelain', {
-						encoding: 'utf8',
-						cwd: this.projectRoot
-					}).trim().length > 0
+					hasUncommittedChanges:
+						execSync('git status --porcelain', {
+							encoding: 'utf8',
+							cwd: this.projectRoot
+						}).trim().length > 0
 				}
 			};
 
@@ -3897,12 +4035,13 @@ ${prompt}
 				output: output.trim(),
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				success: false,
 				reason: `Merge command failed: ${error.message}`,
-				canRetry: error.message.includes('mergeable') || error.message.includes('checks')
+				canRetry:
+					error.message.includes('mergeable') ||
+					error.message.includes('checks')
 			};
 		}
 	}
@@ -3915,11 +4054,11 @@ ${prompt}
 			const { execSync } = await import('child_process');
 
 			// Wait a moment for GitHub to process
-			await new Promise(resolve => setTimeout(resolve, 5000));
+			await new Promise((resolve) => setTimeout(resolve, 5000));
 
 			// Check PR status
 			const prStatus = await this.getPRStatus(prNumber);
-			
+
 			if (prStatus.state !== 'MERGED') {
 				return {
 					success: false,
@@ -3929,10 +4068,13 @@ ${prompt}
 
 			// Verify merge commit exists
 			try {
-				const mergeCommit = execSync(`git log --oneline -1 --grep="Merge pull request #${prNumber}"`, {
-					encoding: 'utf8',
-					cwd: this.projectRoot
-				}).trim();
+				const mergeCommit = execSync(
+					`git log --oneline -1 --grep="Merge pull request #${prNumber}"`,
+					{
+						encoding: 'utf8',
+						cwd: this.projectRoot
+					}
+				).trim();
 
 				if (!mergeCommit) {
 					return {
@@ -3950,7 +4092,6 @@ ${prompt}
 				prStatus,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -3976,7 +4117,9 @@ ${prompt}
 					// This would trigger worktree cleanup
 					cleanupResults.actions.push('worktree-cleanup-scheduled');
 				} catch (error) {
-					cleanupResults.warnings.push(`Worktree cleanup failed: ${error.message}`);
+					cleanupResults.warnings.push(
+						`Worktree cleanup failed: ${error.message}`
+					);
 				}
 			}
 
@@ -3985,7 +4128,9 @@ ${prompt}
 					// This would trigger AST cache update
 					cleanupResults.actions.push('ast-cache-updated');
 				} catch (error) {
-					cleanupResults.warnings.push(`AST cache update failed: ${error.message}`);
+					cleanupResults.warnings.push(
+						`AST cache update failed: ${error.message}`
+					);
 				}
 			}
 
@@ -3994,12 +4139,13 @@ ${prompt}
 					// This would update related task status
 					cleanupResults.actions.push('task-status-updated');
 				} catch (error) {
-					cleanupResults.warnings.push(`Task status update failed: ${error.message}`);
+					cleanupResults.warnings.push(
+						`Task status update failed: ${error.message}`
+					);
 				}
 			}
 
 			return cleanupResults;
-
 		} catch (error) {
 			cleanupResults.success = false;
 			cleanupResults.warnings.push(`Cleanup failed: ${error.message}`);
@@ -4013,7 +4159,7 @@ ${prompt}
 	async executeRollback(rollbackData, reason) {
 		try {
 			const { execSync } = await import('child_process');
-			
+
 			const rollbackAttempt = {
 				timestamp: new Date().toISOString(),
 				reason,
@@ -4030,18 +4176,26 @@ ${prompt}
 					});
 					rollbackAttempt.actions.push('working-branch-restored');
 				} catch (error) {
-					rollbackAttempt.actions.push(`working-branch-restore-failed: ${error.message}`);
+					rollbackAttempt.actions.push(
+						`working-branch-restore-failed: ${error.message}`
+					);
 				}
 			}
 
 			// 2. Reset base branch to previous state
 			try {
 				execSync(`git fetch origin`, { cwd: this.projectRoot });
-				execSync(`git checkout ${rollbackData.baseRef}`, { cwd: this.projectRoot });
-				execSync(`git reset --hard ${rollbackData.baseCommit}`, { cwd: this.projectRoot });
+				execSync(`git checkout ${rollbackData.baseRef}`, {
+					cwd: this.projectRoot
+				});
+				execSync(`git reset --hard ${rollbackData.baseCommit}`, {
+					cwd: this.projectRoot
+				});
 				rollbackAttempt.actions.push('base-branch-reset');
 			} catch (error) {
-				rollbackAttempt.actions.push(`base-branch-reset-failed: ${error.message}`);
+				rollbackAttempt.actions.push(
+					`base-branch-reset-failed: ${error.message}`
+				);
 			}
 
 			// 3. Create incident report
@@ -4050,7 +4204,9 @@ ${prompt}
 					await this.createIncidentReport(rollbackAttempt);
 					rollbackAttempt.actions.push('incident-report-created');
 				} catch (error) {
-					rollbackAttempt.actions.push(`incident-report-failed: ${error.message}`);
+					rollbackAttempt.actions.push(
+						`incident-report-failed: ${error.message}`
+					);
 				}
 			}
 
@@ -4068,7 +4224,6 @@ ${prompt}
 			rollbackAttempt.completedAt = new Date().toISOString();
 
 			return rollbackAttempt;
-
 		} catch (error) {
 			throw new Error(`Rollback execution failed: ${error.message}`);
 		}
@@ -4082,7 +4237,11 @@ ${prompt}
 			const fs = await import('fs/promises');
 			const path = await import('path');
 
-			const incidentDir = path.join(this.projectRoot, '.taskmaster', 'incidents');
+			const incidentDir = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'incidents'
+			);
 			await fs.mkdir(incidentDir, { recursive: true });
 
 			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -4103,7 +4262,7 @@ ${prompt}
 			};
 
 			await fs.writeFile(filePath, JSON.stringify(report, null, 2));
-			
+
 			return { success: true, reportPath: filePath };
 		} catch (error) {
 			throw new Error(`Failed to create incident report: ${error.message}`);
@@ -4120,7 +4279,7 @@ ${prompt}
 		// 2. Create GitHub issues
 		// 3. Update project dashboards
 		// 4. Log to monitoring systems
-		
+
 		return { success: true, notified: [] };
 	}
 
@@ -4133,20 +4292,26 @@ ${prompt}
 
 			// Check if PR is up to date with base branch
 			const prInfo = await this.getPRStatus(prNumber);
-			
+
 			// Get commit comparison
-			const comparison = execSync(`gh api repos/:owner/:repo/compare/${prInfo.baseRef}...${prInfo.headRef} --jq '.status'`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			}).trim();
+			const comparison = execSync(
+				`gh api repos/:owner/:repo/compare/${prInfo.baseRef}...${prInfo.headRef} --jq '.status'`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			).trim();
 
 			const upToDate = comparison === 'identical' || comparison === 'ahead';
 
 			// Check for recent commits on base branch
-			const recentCommits = execSync(`git log --oneline --since="1 hour ago" origin/${prInfo.baseRef}`, {
-				encoding: 'utf8',
-				cwd: this.projectRoot
-			}).trim();
+			const recentCommits = execSync(
+				`git log --oneline --since="1 hour ago" origin/${prInfo.baseRef}`,
+				{
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				}
+			).trim();
 
 			const hasRecentActivity = recentCommits.length > 0;
 
@@ -4218,10 +4383,10 @@ ${prompt}
 			// Bypassing most safety checks, but keeping essential ones
 			safetyChecks: {
 				validatePRState: true,
-				validateNoConflicts: true,
+				validateNoConflicts: true
 			},
 			cleanupWorktree: true,
-			updateTaskStatus: true,
+			updateTaskStatus: true
 		};
 		return this.executeMerge(prNumber, mergeConfig);
 	}
@@ -4232,7 +4397,9 @@ ${prompt}
 	async getCleanupConfiguration() {
 		try {
 			const { CleanupService } = await import('../services/CleanupService.js');
-			const cleanupService = new CleanupService({ projectRoot: this.projectRoot });
+			const cleanupService = new CleanupService({
+				projectRoot: this.projectRoot
+			});
 			return {
 				success: true,
 				config: cleanupService.getConfig(),
@@ -4252,14 +4419,19 @@ ${prompt}
 	async updateCleanupConfiguration(newConfig) {
 		try {
 			const { CleanupService } = await import('../services/CleanupService.js');
-			const cleanupService = new CleanupService({ projectRoot: this.projectRoot });
+			const cleanupService = new CleanupService({
+				projectRoot: this.projectRoot
+			});
 			cleanupService.updateConfig(newConfig);
-			
+
 			// Save configuration to file
-			const configPath = path.join(this.projectRoot, '.taskmaster/config/cleanup.json');
+			const configPath = path.join(
+				this.projectRoot,
+				'.taskmaster/config/cleanup.json'
+			);
 			await fs.mkdir(path.dirname(configPath), { recursive: true });
 			await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
-			
+
 			return {
 				success: true,
 				config: cleanupService.getConfig()
@@ -4278,24 +4450,30 @@ ${prompt}
 	async triggerCleanup(prNumber, mergeInfo = {}) {
 		try {
 			const { CleanupService } = await import('../services/CleanupService.js');
-			
+
 			// Load saved configuration if available
 			let config = {};
 			try {
-				const configPath = path.join(this.projectRoot, '.taskmaster/config/cleanup.json');
+				const configPath = path.join(
+					this.projectRoot,
+					'.taskmaster/config/cleanup.json'
+				);
 				const configData = await fs.readFile(configPath, 'utf8');
 				config = JSON.parse(configData);
 			} catch (error) {
 				// Use defaults if no saved config
 			}
-			
-			const cleanupService = new CleanupService({ 
+
+			const cleanupService = new CleanupService({
 				projectRoot: this.projectRoot,
 				...config
 			});
-			
-			const result = await cleanupService.performPostMergeCleanup(prNumber, mergeInfo);
-			
+
+			const result = await cleanupService.performPostMergeCleanup(
+				prNumber,
+				mergeInfo
+			);
+
 			return {
 				success: true,
 				cleanupResult: result
@@ -4315,15 +4493,15 @@ ${prompt}
 		try {
 			const fs = await import('fs/promises');
 			const path = await import('path');
-			
+
 			const configPath = path.join(
 				this.projectRoot,
 				'scripts/modules/flow/hooks/config/default-config.json'
 			);
-			
+
 			const configData = await fs.readFile(configPath, 'utf8');
 			const fullConfig = JSON.parse(configData);
-			
+
 			// Return the PR lifecycle management configuration
 			return fullConfig.hooks['pr-lifecycle-management']?.config || {};
 		} catch (error) {
@@ -4339,16 +4517,16 @@ ${prompt}
 		try {
 			const fs = await import('fs/promises');
 			const path = await import('path');
-			
+
 			const configPath = path.join(
 				this.projectRoot,
 				'scripts/modules/flow/hooks/config/default-config.json'
 			);
-			
+
 			// Load current full config
 			const configData = await fs.readFile(configPath, 'utf8');
 			const fullConfig = JSON.parse(configData);
-			
+
 			// Update the PR lifecycle management configuration
 			if (!fullConfig.hooks) {
 				fullConfig.hooks = {};
@@ -4356,12 +4534,12 @@ ${prompt}
 			if (!fullConfig.hooks['pr-lifecycle-management']) {
 				fullConfig.hooks['pr-lifecycle-management'] = {};
 			}
-			
+
 			fullConfig.hooks['pr-lifecycle-management'].config = newConfig;
-			
+
 			// Write back to file
 			await fs.writeFile(configPath, JSON.stringify(fullConfig, null, '\t'));
-			
+
 			return true;
 		} catch (error) {
 			console.error('Failed to update configuration:', error);
@@ -4378,11 +4556,13 @@ ${prompt}
 	 */
 	async analyzeDependencies(options = {}) {
 		try {
-			const { DependencyAnalysisService } = await import('../services/DependencyAnalysisService.js');
-			
+			const { DependencyAnalysisService } = await import(
+				'../services/DependencyAnalysisService.js'
+			);
+
 			if (!this.dependencyAnalysisService) {
-				this.dependencyAnalysisService = new DependencyAnalysisService({ 
-					projectRoot: this.projectRoot 
+				this.dependencyAnalysisService = new DependencyAnalysisService({
+					projectRoot: this.projectRoot
 				});
 				await this.dependencyAnalysisService.initialize();
 			}
@@ -4394,8 +4574,11 @@ ${prompt}
 			}
 
 			// Run dependency analysis
-			const analysis = await this.dependencyAnalysisService.analyzeDependencies(tasksResult.data, options);
-			
+			const analysis = await this.dependencyAnalysisService.analyzeDependencies(
+				tasksResult.data,
+				options
+			);
+
 			return {
 				success: true,
 				data: analysis
@@ -4415,11 +4598,14 @@ ${prompt}
 	async getDependencyAnalysisStats() {
 		try {
 			if (!this.dependencyAnalysisService) {
-				return { success: false, error: 'Dependency analysis service not initialized' };
+				return {
+					success: false,
+					error: 'Dependency analysis service not initialized'
+				};
 			}
 
 			const stats = this.dependencyAnalysisService.getStats();
-			
+
 			return {
 				success: true,
 				data: stats
@@ -4438,11 +4624,14 @@ ${prompt}
 	async clearDependencyAnalysisCache() {
 		try {
 			if (!this.dependencyAnalysisService) {
-				return { success: false, error: 'Dependency analysis service not initialized' };
+				return {
+					success: false,
+					error: 'Dependency analysis service not initialized'
+				};
 			}
 
 			this.dependencyAnalysisService.clearCache();
-			
+
 			return {
 				success: true,
 				message: 'Dependency analysis cache cleared'
@@ -4461,11 +4650,14 @@ ${prompt}
 	async updateDependencyAnalysisConfig(newConfig) {
 		try {
 			if (!this.dependencyAnalysisService) {
-				return { success: false, error: 'Dependency analysis service not initialized' };
+				return {
+					success: false,
+					error: 'Dependency analysis service not initialized'
+				};
 			}
 
 			this.dependencyAnalysisService.updateConfig(newConfig);
-			
+
 			return {
 				success: true,
 				message: 'Dependency analysis configuration updated'

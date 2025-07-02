@@ -9,15 +9,15 @@ import fs from 'fs/promises';
 export class DependencyAnalysisService extends EventEmitter {
 	constructor(options = {}) {
 		super();
-		
+
 		this.projectRoot = options.projectRoot || process.cwd();
 		this.config = {
 			// Readiness scoring weights
 			weights: {
-				dependency: 0.8,    // Dependencies satisfied
-				complexity: 0.6,    // Manageable complexity  
-				context: 0.9,       // Related to recent work
-				priority: 0.7       // Business priority
+				dependency: 0.8, // Dependencies satisfied
+				complexity: 0.6, // Manageable complexity
+				context: 0.9, // Related to recent work
+				priority: 0.7 // Business priority
 			},
 			// Analysis settings
 			realTimeUpdates: true,
@@ -25,14 +25,14 @@ export class DependencyAnalysisService extends EventEmitter {
 			maxAnalysisTime: 5000, // 5 seconds max
 			...options
 		};
-		
+
 		// Internal state
 		this.dependencyGraph = null;
 		this.readinessScores = new Map();
 		this.analysisCache = new Map();
 		this.lastAnalysis = null;
 		this.complexityReport = null;
-		
+
 		// Performance tracking
 		this.stats = {
 			analysisCount: 0,
@@ -49,7 +49,7 @@ export class DependencyAnalysisService extends EventEmitter {
 		try {
 			// Load existing complexity report if available
 			await this.loadComplexityReport();
-			
+
 			console.log('🔍 Dependency Analysis Service initialized');
 			return { success: true };
 		} catch (error) {
@@ -63,12 +63,19 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	async loadComplexityReport() {
 		try {
-			const reportPath = path.join(this.projectRoot, '.taskmaster', 'reports', 'task-complexity-report.json');
+			const reportPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'reports',
+				'task-complexity-report.json'
+			);
 			const reportData = await fs.readFile(reportPath, 'utf8');
 			this.complexityReport = JSON.parse(reportData);
 			console.log('📊 Loaded complexity report for dependency analysis');
 		} catch (error) {
-			console.log('📊 No complexity report found, will use default complexity scoring');
+			console.log(
+				'📊 No complexity report found, will use default complexity scoring'
+			);
 			this.complexityReport = null;
 		}
 	}
@@ -78,11 +85,11 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	async analyzeDependencies(tasksData, options = {}) {
 		const startTime = Date.now();
-		
+
 		try {
 			// Create cache key
 			const cacheKey = this.createCacheKey(tasksData, options);
-			
+
 			// Check cache if enabled
 			if (this.config.cacheResults && this.analysisCache.has(cacheKey)) {
 				this.stats.cacheHits++;
@@ -91,24 +98,27 @@ export class DependencyAnalysisService extends EventEmitter {
 
 			// Build dependency graph
 			const graph = this.buildDependencyGraph(tasksData);
-			
+
 			// Calculate readiness scores
-			const readinessScores = await this.calculateReadinessScores(tasksData, graph);
-			
+			const readinessScores = await this.calculateReadinessScores(
+				tasksData,
+				graph
+			);
+
 			// Find critical path
 			const criticalPath = this.findCriticalPath(graph);
-			
+
 			// Detect bottlenecks
 			const bottlenecks = this.detectBottlenecks(graph);
-			
+
 			// Find ready tasks
 			const readyTasks = this.findReadyTasks(tasksData, graph, readinessScores);
-			
+
 			// Detect circular dependencies
 			const circularDependencies = this.detectCircularDependencies(graph);
-			
+
 			const analysisTime = Date.now() - startTime;
-			
+
 			const result = {
 				success: true,
 				timestamp: new Date().toISOString(),
@@ -123,7 +133,12 @@ export class DependencyAnalysisService extends EventEmitter {
 				bottlenecks,
 				readyTasks,
 				circularDependencies,
-				insights: this.generateInsights(graph, readinessScores, criticalPath, bottlenecks),
+				insights: this.generateInsights(
+					graph,
+					readinessScores,
+					criticalPath,
+					bottlenecks
+				),
 				recommendations: this.generateRecommendations(readyTasks, bottlenecks)
 			};
 
@@ -141,11 +156,10 @@ export class DependencyAnalysisService extends EventEmitter {
 			this.emit('analysis:complete', result);
 
 			return result;
-
 		} catch (error) {
 			const analysisTime = Date.now() - startTime;
 			console.error('Dependency analysis failed:', error);
-			
+
 			return {
 				success: false,
 				error: error.message,
@@ -165,7 +179,7 @@ export class DependencyAnalysisService extends EventEmitter {
 
 		// Collect all tasks from all tags
 		const allTasks = [];
-		
+
 		if (tasksData.tags) {
 			// New tagged format
 			for (const [tagName, tagData] of Object.entries(tasksData.tags)) {
@@ -177,7 +191,9 @@ export class DependencyAnalysisService extends EventEmitter {
 			}
 		} else if (tasksData.tasks) {
 			// Legacy format
-			allTasks.push(...tasksData.tasks.map(task => ({ ...task, tag: 'master' })));
+			allTasks.push(
+				...tasksData.tasks.map((task) => ({ ...task, tag: 'master' }))
+			);
 		}
 
 		// Create nodes
@@ -191,7 +207,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				complexity: this.getTaskComplexity(task.id),
 				subtasks: task.subtasks || []
 			};
-			
+
 			nodes.push(node);
 			nodeMap.set(task.id, node);
 
@@ -208,7 +224,7 @@ export class DependencyAnalysisService extends EventEmitter {
 						isSubtask: true,
 						complexity: this.getTaskComplexity(subtask.id)
 					};
-					
+
 					nodes.push(subtaskNode);
 					nodeMap.set(subtask.id, subtaskNode);
 				}
@@ -301,12 +317,15 @@ export class DependencyAnalysisService extends EventEmitter {
 
 			// Calculate weighted total
 			const weights = this.config.weights;
-			const totalScore = (
-				dependencyScore * weights.dependency +
-				complexityScore * weights.complexity +
-				contextScore * weights.context +
-				priorityScore * weights.priority
-			) / (weights.dependency + weights.complexity + weights.context + weights.priority);
+			const totalScore =
+				(dependencyScore * weights.dependency +
+					complexityScore * weights.complexity +
+					contextScore * weights.context +
+					priorityScore * weights.priority) /
+				(weights.dependency +
+					weights.complexity +
+					weights.context +
+					weights.priority);
 
 			return {
 				totalScore: Math.round(totalScore * 100) / 100,
@@ -320,7 +339,6 @@ export class DependencyAnalysisService extends EventEmitter {
 					priority: task.priority
 				}
 			};
-
 		} catch (error) {
 			console.error(`Error scoring task ${task.id}:`, error);
 			return {
@@ -335,13 +353,13 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	calculateDependencyScore(task, graph) {
 		const dependencies = this.getTaskDependencies(task, graph);
-		
+
 		if (dependencies.length === 0) {
 			return 1.0; // No dependencies = fully ready
 		}
 
-		const completedDeps = dependencies.filter(dep => 
-			dep.status === 'done' || dep.status === 'completed'
+		const completedDeps = dependencies.filter(
+			(dep) => dep.status === 'done' || dep.status === 'completed'
 		).length;
 
 		return completedDeps / dependencies.length;
@@ -352,7 +370,7 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	calculateComplexityScore(task) {
 		const complexity = this.getTaskComplexity(task.id);
-		
+
 		// Convert complexity (1-10) to manageability score (1-0)
 		// Lower complexity = higher manageability score
 		return Math.max(0, (10 - complexity) / 9);
@@ -364,17 +382,17 @@ export class DependencyAnalysisService extends EventEmitter {
 	async calculateContextScore(task) {
 		// For now, use simple heuristics
 		// In future, could analyze git commits, active branches, etc.
-		
+
 		let score = 0.5; // Base score
-		
+
 		// Higher score for higher priority tasks
 		if (task.priority === 'high') score += 0.3;
 		else if (task.priority === 'medium') score += 0.1;
-		
+
 		// Higher score for tasks in active development
 		if (task.status === 'in-progress') score += 0.4;
 		else if (task.status === 'pending') score += 0.2;
-		
+
 		return Math.min(1.0, score);
 	}
 
@@ -383,11 +401,11 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	calculatePriorityScore(task) {
 		const priorityMap = {
-			'high': 1.0,
-			'medium': 0.6,
-			'low': 0.3
+			high: 1.0,
+			medium: 0.6,
+			low: 0.3
 		};
-		
+
 		return priorityMap[task.priority] || 0.5;
 	}
 
@@ -396,12 +414,14 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	getTaskComplexity(taskId) {
 		if (this.complexityReport && this.complexityReport.tasks) {
-			const taskAnalysis = this.complexityReport.tasks.find(t => t.id === taskId);
+			const taskAnalysis = this.complexityReport.tasks.find(
+				(t) => t.id === taskId
+			);
 			if (taskAnalysis) {
 				return taskAnalysis.complexityScore || 5;
 			}
 		}
-		
+
 		// Default complexity for tasks without analysis
 		return 5;
 	}
@@ -411,7 +431,7 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	getTaskDependencies(task, graph) {
 		const dependencies = [];
-		
+
 		for (const edge of graph.edges) {
 			if (edge.to === task.id && edge.type === 'dependency') {
 				const depNode = graph.nodeMap.get(edge.from);
@@ -420,7 +440,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				}
 			}
 		}
-		
+
 		return dependencies;
 	}
 
@@ -430,10 +450,16 @@ export class DependencyAnalysisService extends EventEmitter {
 	getDependencyStatus(task, graph) {
 		const dependencies = this.getTaskDependencies(task, graph);
 		const total = dependencies.length;
-		const completed = dependencies.filter(dep => dep.status === 'done').length;
-		const pending = dependencies.filter(dep => dep.status === 'pending').length;
-		const inProgress = dependencies.filter(dep => dep.status === 'in-progress').length;
-		
+		const completed = dependencies.filter(
+			(dep) => dep.status === 'done'
+		).length;
+		const pending = dependencies.filter(
+			(dep) => dep.status === 'pending'
+		).length;
+		const inProgress = dependencies.filter(
+			(dep) => dep.status === 'in-progress'
+		).length;
+
 		return {
 			total,
 			completed,
@@ -450,12 +476,14 @@ export class DependencyAnalysisService extends EventEmitter {
 		// Simple critical path: longest path through dependencies
 		const paths = [];
 		const visited = new Set();
-		
+
 		// Find all leaf nodes (no outgoing dependency edges)
-		const leafNodes = graph.nodes.filter(node => {
-			return !graph.edges.some(edge => edge.from === node.id && edge.type === 'dependency');
+		const leafNodes = graph.nodes.filter((node) => {
+			return !graph.edges.some(
+				(edge) => edge.from === node.id && edge.type === 'dependency'
+			);
 		});
-		
+
 		// Calculate longest path to each leaf
 		for (const leaf of leafNodes) {
 			const path = this.findLongestPathTo(leaf, graph, visited);
@@ -463,11 +491,14 @@ export class DependencyAnalysisService extends EventEmitter {
 				paths.push(path);
 			}
 		}
-		
+
 		// Return the longest path
-		const criticalPath = paths.reduce((longest, current) => 
-			current.length > longest.length ? current : longest, []);
-		
+		const criticalPath = paths.reduce(
+			(longest, current) =>
+				current.length > longest.length ? current : longest,
+			[]
+		);
+
 		return {
 			path: criticalPath,
 			length: criticalPath.length,
@@ -482,25 +513,25 @@ export class DependencyAnalysisService extends EventEmitter {
 		if (visited.has(node.id)) {
 			return []; // Avoid cycles
 		}
-		
+
 		visited.add(node.id);
-		
+
 		const dependencies = this.getTaskDependencies(node, graph);
-		
+
 		if (dependencies.length === 0) {
 			visited.delete(node.id);
 			return [node];
 		}
-		
+
 		let longestPath = [];
-		
+
 		for (const dep of dependencies) {
 			const path = this.findLongestPathTo(dep, graph, visited);
 			if (path.length > longestPath.length) {
 				longestPath = path;
 			}
 		}
-		
+
 		visited.delete(node.id);
 		return [...longestPath, node];
 	}
@@ -511,11 +542,11 @@ export class DependencyAnalysisService extends EventEmitter {
 	estimatePathDuration(path) {
 		// Simple estimation based on complexity
 		let totalComplexity = 0;
-		
+
 		for (const node of path) {
 			totalComplexity += this.getTaskComplexity(node.id);
 		}
-		
+
 		// Rough estimate: 1 day per complexity point
 		return {
 			complexityPoints: totalComplexity,
@@ -529,30 +560,37 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	detectBottlenecks(graph) {
 		const bottlenecks = [];
-		
+
 		for (const node of graph.nodes) {
 			// Count how many tasks depend on this one
-			const dependentCount = graph.edges.filter(edge => 
-				edge.from === node.id && edge.type === 'dependency'
+			const dependentCount = graph.edges.filter(
+				(edge) => edge.from === node.id && edge.type === 'dependency'
 			).length;
-			
+
 			// Consider high complexity or many dependents as bottlenecks
 			const complexity = this.getTaskComplexity(node.id);
-			
-			if (dependentCount >= 3 || complexity >= 8 || (dependentCount >= 2 && complexity >= 6)) {
+
+			if (
+				dependentCount >= 3 ||
+				complexity >= 8 ||
+				(dependentCount >= 2 && complexity >= 6)
+			) {
 				bottlenecks.push({
 					task: node,
 					dependentCount,
 					complexity,
-					severity: this.calculateBottleneckSeverity(dependentCount, complexity),
+					severity: this.calculateBottleneckSeverity(
+						dependentCount,
+						complexity
+					),
 					reason: this.getBottleneckReason(dependentCount, complexity)
 				});
 			}
 		}
-		
+
 		// Sort by severity
 		bottlenecks.sort((a, b) => b.severity - a.severity);
-		
+
 		return bottlenecks;
 	}
 
@@ -560,7 +598,7 @@ export class DependencyAnalysisService extends EventEmitter {
 	 * Calculate bottleneck severity score
 	 */
 	calculateBottleneckSeverity(dependentCount, complexity) {
-		return (dependentCount * 0.6) + (complexity * 0.4);
+		return dependentCount * 0.6 + complexity * 0.4;
 	}
 
 	/**
@@ -583,15 +621,16 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	findReadyTasks(tasksData, graph, readinessScores) {
 		const readyTasks = [];
-		
+
 		for (const node of graph.nodes) {
 			// Skip completed, cancelled, or in-progress tasks
 			if (['done', 'cancelled', 'in-progress'].includes(node.status)) {
 				continue;
 			}
-			
+
 			const score = readinessScores.get(node.id);
-			if (score && score.dependencyScore === 1.0) { // All dependencies satisfied
+			if (score && score.dependencyScore === 1.0) {
+				// All dependencies satisfied
 				readyTasks.push({
 					task: node,
 					readinessScore: score.totalScore,
@@ -599,10 +638,10 @@ export class DependencyAnalysisService extends EventEmitter {
 				});
 			}
 		}
-		
+
 		// Sort by readiness score (highest first)
 		readyTasks.sort((a, b) => b.readinessScore - a.readinessScore);
-		
+
 		return readyTasks;
 	}
 
@@ -613,13 +652,20 @@ export class DependencyAnalysisService extends EventEmitter {
 		const visited = new Set();
 		const recursionStack = new Set();
 		const cycles = [];
-		
+
 		for (const node of graph.nodes) {
 			if (!visited.has(node.id)) {
-				this.detectCyclesFromNode(node, graph, visited, recursionStack, [], cycles);
+				this.detectCyclesFromNode(
+					node,
+					graph,
+					visited,
+					recursionStack,
+					[],
+					cycles
+				);
 			}
 		}
-		
+
 		return cycles;
 	}
 
@@ -630,24 +676,31 @@ export class DependencyAnalysisService extends EventEmitter {
 		visited.add(node.id);
 		recursionStack.add(node.id);
 		path.push(node);
-		
+
 		// Get all nodes this one depends on
 		const dependencies = this.getTaskDependencies(node, graph);
-		
+
 		for (const dep of dependencies) {
 			if (!visited.has(dep.id)) {
-				this.detectCyclesFromNode(dep, graph, visited, recursionStack, path, cycles);
+				this.detectCyclesFromNode(
+					dep,
+					graph,
+					visited,
+					recursionStack,
+					path,
+					cycles
+				);
 			} else if (recursionStack.has(dep.id)) {
 				// Found a cycle
-				const cycleStart = path.findIndex(n => n.id === dep.id);
-				const cycle = path.slice(cycleStart).map(n => ({
+				const cycleStart = path.findIndex((n) => n.id === dep.id);
+				const cycle = path.slice(cycleStart).map((n) => ({
 					id: n.id,
 					title: n.title
 				}));
 				cycles.push(cycle);
 			}
 		}
-		
+
 		recursionStack.delete(node.id);
 		path.pop();
 	}
@@ -657,18 +710,20 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	generateInsights(graph, readinessScores, criticalPath, bottlenecks) {
 		const insights = [];
-		
+
 		// Graph structure insights
 		const totalTasks = graph.nodes.length;
-		const completedTasks = graph.nodes.filter(n => n.status === 'done').length;
+		const completedTasks = graph.nodes.filter(
+			(n) => n.status === 'done'
+		).length;
 		const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-		
+
 		insights.push({
 			type: 'progress',
 			message: `Project is ${Math.round(progress)}% complete (${completedTasks}/${totalTasks} tasks)`,
 			data: { progress, completedTasks, totalTasks }
 		});
-		
+
 		// Critical path insights
 		if (criticalPath.length > 0) {
 			insights.push({
@@ -677,7 +732,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: criticalPath
 			});
 		}
-		
+
 		// Bottleneck insights
 		if (bottlenecks.length > 0) {
 			insights.push({
@@ -686,11 +741,12 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: bottlenecks.slice(0, 3) // Top 3 bottlenecks
 			});
 		}
-		
+
 		// Readiness insights
-		const readyCount = Array.from(readinessScores.values())
-			.filter(score => score.dependencyScore === 1.0 && score.totalScore > 0.5).length;
-		
+		const readyCount = Array.from(readinessScores.values()).filter(
+			(score) => score.dependencyScore === 1.0 && score.totalScore > 0.5
+		).length;
+
 		if (readyCount > 0) {
 			insights.push({
 				type: 'ready-tasks',
@@ -698,7 +754,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: { readyCount }
 			});
 		}
-		
+
 		return insights;
 	}
 
@@ -707,7 +763,7 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	generateRecommendations(readyTasks, bottlenecks) {
 		const recommendations = [];
-		
+
 		// Task execution recommendations
 		if (readyTasks.length > 0) {
 			const topTask = readyTasks[0];
@@ -719,7 +775,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: topTask
 			});
 		}
-		
+
 		// Bottleneck recommendations
 		if (bottlenecks.length > 0) {
 			const topBottleneck = bottlenecks[0];
@@ -731,9 +787,11 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: topBottleneck
 			});
 		}
-		
+
 		// Parallel work recommendations
-		const parallelTasks = readyTasks.filter((task, index) => index < 3 && task.readinessScore > 0.7);
+		const parallelTasks = readyTasks.filter(
+			(task, index) => index < 3 && task.readinessScore > 0.7
+		);
 		if (parallelTasks.length > 1) {
 			recommendations.push({
 				type: 'parallel-work',
@@ -743,7 +801,7 @@ export class DependencyAnalysisService extends EventEmitter {
 				data: parallelTasks
 			});
 		}
-		
+
 		return recommendations;
 	}
 
@@ -762,8 +820,10 @@ export class DependencyAnalysisService extends EventEmitter {
 	updateStats(analysisTime) {
 		this.stats.analysisCount++;
 		this.stats.lastAnalysisTime = analysisTime;
-		this.stats.averageAnalysisTime = 
-			(this.stats.averageAnalysisTime * (this.stats.analysisCount - 1) + analysisTime) / this.stats.analysisCount;
+		this.stats.averageAnalysisTime =
+			(this.stats.averageAnalysisTime * (this.stats.analysisCount - 1) +
+				analysisTime) /
+			this.stats.analysisCount;
 	}
 
 	/**
@@ -807,12 +867,12 @@ export class DependencyAnalysisService extends EventEmitter {
 	 */
 	updateConfig(newConfig) {
 		this.config = { ...this.config, ...newConfig };
-		
+
 		// Clear cache if weights changed
 		if (newConfig.weights) {
 			this.clearCache();
 		}
-		
+
 		this.emit('config:updated', this.config);
 	}
-} 
+}

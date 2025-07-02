@@ -6,7 +6,8 @@
 export default class PRLifecycleManagementHook {
 	constructor() {
 		this.name = 'pr-lifecycle-management';
-		this.description = 'Manages PR lifecycle including monitoring, auto-merge, and cleanup';
+		this.description =
+			'Manages PR lifecycle including monitoring, auto-merge, and cleanup';
 		this.version = '1.0.0';
 		this.events = [
 			'pr-created',
@@ -15,7 +16,7 @@ export default class PRLifecycleManagementHook {
 			'pr-merged',
 			'pr-checks-failed'
 		];
-		
+
 		this.prMonitoringService = null;
 	}
 
@@ -24,7 +25,9 @@ export default class PRLifecycleManagementHook {
 	 */
 	async initialize(context) {
 		if (!this.prMonitoringService) {
-			const { PRMonitoringService } = await import('../../services/PRMonitoringService.js');
+			const { PRMonitoringService } = await import(
+				'../../services/PRMonitoringService.js'
+			);
 			this.prMonitoringService = new PRMonitoringService(context.backend, {
 				checkInterval: 30000, // 30 seconds
 				maxRetries: 3,
@@ -64,7 +67,10 @@ export default class PRLifecycleManagementHook {
 
 		// Handle monitoring failures
 		this.prMonitoringService.on('monitoringFailed', async (data) => {
-			console.error(`PR monitoring failed for PR ${data.prNumber}:`, data.error);
+			console.error(
+				`PR monitoring failed for PR ${data.prNumber}:`,
+				data.error
+			);
 		});
 	}
 
@@ -76,7 +82,7 @@ export default class PRLifecycleManagementHook {
 			await this.initialize(context);
 
 			const { prResult, config, task, worktree } = context;
-			
+
 			if (!prResult || !prResult.prNumber) {
 				return {
 					success: false,
@@ -123,7 +129,9 @@ export default class PRLifecycleManagementHook {
 		try {
 			const { prNumber, oldStatus, newStatus, prStatus } = context;
 
-			console.log(`📊 PR ${prNumber} status changed: ${oldStatus} → ${newStatus}`);
+			console.log(
+				`📊 PR ${prNumber} status changed: ${oldStatus} → ${newStatus}`
+			);
 
 			// Log status change
 			await this.logStatusChange(prNumber, oldStatus, newStatus, prStatus);
@@ -169,10 +177,14 @@ export default class PRLifecycleManagementHook {
 
 			// Check if auto-merge is enabled
 			if (config?.autoMerge) {
-				console.log(`🤖 Auto-merge enabled for PR ${prNumber}, initiating merge...`);
+				console.log(
+					`🤖 Auto-merge enabled for PR ${prNumber}, initiating merge...`
+				);
 				return await this.handleAutoMerge(context);
 			} else {
-				console.log(`⏸️ Auto-merge disabled for PR ${prNumber}, manual merge required`);
+				console.log(
+					`⏸️ Auto-merge disabled for PR ${prNumber}, manual merge required`
+				);
 				return {
 					success: true,
 					data: {
@@ -208,7 +220,7 @@ export default class PRLifecycleManagementHook {
 			} else {
 				// Fall back to legacy cleanup methods
 				await this.updateTaskStatusOnMerge(context);
-				
+
 				if (config?.cleanupAfterMerge) {
 					cleanupResult = await this.handlePostMergeCleanup(context);
 				}
@@ -242,8 +254,9 @@ export default class PRLifecycleManagementHook {
 			console.log(`❌ PR ${prNumber} checks failed`);
 
 			// Log failed checks
-			const failedChecks = prStatus.checks?.filter(check => check.status === 'failure') || [];
-			
+			const failedChecks =
+				prStatus.checks?.filter((check) => check.status === 'failure') || [];
+
 			for (const check of failedChecks) {
 				console.log(`  ❌ ${check.name}: ${check.conclusion || 'failed'}`);
 			}
@@ -256,7 +269,7 @@ export default class PRLifecycleManagementHook {
 				data: {
 					prNumber,
 					action: 'checks-failed',
-					failedChecks: failedChecks.map(c => c.name),
+					failedChecks: failedChecks.map((c) => c.name),
 					timestamp: new Date().toISOString()
 				}
 			};
@@ -283,7 +296,8 @@ export default class PRLifecycleManagementHook {
 				// Auto-merge configuration
 				enabled: true,
 				strictMode: config?.autoMerge?.strictMode || false,
-				recentActivityWindow: config?.autoMerge?.recentActivityWindow || '30 minutes ago',
+				recentActivityWindow:
+					config?.autoMerge?.recentActivityWindow || '30 minutes ago',
 				maxRetries: config?.autoMerge?.maxRetries || 3,
 				retryDelay: config?.autoMerge?.retryDelay || 60000,
 				safetyChecks: {
@@ -292,19 +306,24 @@ export default class PRLifecycleManagementHook {
 					validateBranchProtection: true,
 					validateNoConflicts: true,
 					validateRecentActivity: true,
-					customValidationHooks: config?.autoMerge?.safetyChecks?.customValidationHooks || []
+					customValidationHooks:
+						config?.autoMerge?.safetyChecks?.customValidationHooks || []
 				},
-				
+
 				// Required checks and merge settings
 				requiredChecks: config?.requiredChecks || [],
 				mergeMethod: config?.mergeMethod || 'squash',
-				
+
 				// Emergency stop configuration
 				emergencyStop: config?.emergencyStop || {
 					enabled: true,
-					conditions: ['multiple_failed_merges', 'security_alert', 'manual_intervention_required']
+					conditions: [
+						'multiple_failed_merges',
+						'security_alert',
+						'manual_intervention_required'
+					]
 				},
-				
+
 				// Rollback configuration
 				rollback: config?.rollback || {
 					enabled: true,
@@ -312,7 +331,7 @@ export default class PRLifecycleManagementHook {
 					notifyStakeholders: false,
 					preserveEvidence: true
 				},
-				
+
 				// Cleanup configuration
 				cleanupWorktree: config?.cleanupWorktree !== false,
 				updateASTCache: config?.updateASTCache !== false,
@@ -320,19 +339,26 @@ export default class PRLifecycleManagementHook {
 				archiveSession: config?.archiveSession !== false
 			};
 
-			const mergeResult = await context.backend.executeMerge(prNumber, mergeConfig);
+			const mergeResult = await context.backend.executeMerge(
+				prNumber,
+				mergeConfig
+			);
 
 			if (mergeResult.success) {
-				console.log(`✅ Successfully auto-merged PR ${prNumber} using ${mergeResult.mergeResult?.method || 'squash'}`);
-				
+				console.log(
+					`✅ Successfully auto-merged PR ${prNumber} using ${mergeResult.mergeResult?.method || 'squash'}`
+				);
+
 				// Log merge phases for debugging
 				if (mergeResult.mergeAttempt?.phases) {
-					console.log(`📊 Merge phases: ${mergeResult.mergeAttempt.phases.map(p => `${p.phase}:${p.status}`).join(', ')}`);
+					console.log(
+						`📊 Merge phases: ${mergeResult.mergeAttempt.phases.map((p) => `${p.phase}:${p.status}`).join(', ')}`
+					);
 				}
-				
+
 				// Stop monitoring since PR is merged
 				await this.prMonitoringService.stopMonitoring(prNumber, 'auto-merged');
-				
+
 				return {
 					success: true,
 					data: {
@@ -345,22 +371,31 @@ export default class PRLifecycleManagementHook {
 					}
 				};
 			} else {
-				console.error(`❌ Enhanced auto-merge failed for PR ${prNumber}: ${mergeResult.reason}`);
-				
+				console.error(
+					`❌ Enhanced auto-merge failed for PR ${prNumber}: ${mergeResult.reason}`
+				);
+
 				// Log detailed failure information
 				if (mergeResult.mergeAttempt?.phases) {
-					const failedPhase = mergeResult.mergeAttempt.phases.find(p => p.status === 'failed');
+					const failedPhase = mergeResult.mergeAttempt.phases.find(
+						(p) => p.status === 'failed'
+					);
 					if (failedPhase) {
-						console.error(`💥 Failed at phase: ${failedPhase.phase} - ${failedPhase.reason}`);
+						console.error(
+							`💥 Failed at phase: ${failedPhase.phase} - ${failedPhase.reason}`
+						);
 					}
 				}
-				
+
 				// Check if we should retry
-				if (mergeResult.canRetry && this.shouldRetryMerge(prNumber, mergeResult)) {
+				if (
+					mergeResult.canRetry &&
+					this.shouldRetryMerge(prNumber, mergeResult)
+				) {
 					console.log(`🔄 Scheduling retry for PR ${prNumber}...`);
 					await this.scheduleRetry(prNumber, mergeResult, mergeConfig);
 				}
-				
+
 				return {
 					success: false,
 					error: `Enhanced auto-merge failed: ${mergeResult.reason}`,
@@ -385,10 +420,13 @@ export default class PRLifecycleManagementHook {
 	 */
 	shouldRetryMerge(prNumber, mergeResult) {
 		// Don't retry if it's a validation failure or rollback occurred
-		if (mergeResult.mergeAttempt?.phases?.some(p => 
-			p.phase === 'validation' && p.status === 'failed' ||
-			p.phase === 'rollback-preparation' && p.status === 'completed'
-		)) {
+		if (
+			mergeResult.mergeAttempt?.phases?.some(
+				(p) =>
+					(p.phase === 'validation' && p.status === 'failed') ||
+					(p.phase === 'rollback-preparation' && p.status === 'completed')
+			)
+		) {
 			return false;
 		}
 
@@ -400,7 +438,7 @@ export default class PRLifecycleManagementHook {
 			'merge-queue-busy'
 		];
 
-		return retryableReasons.some(reason => 
+		return retryableReasons.some((reason) =>
 			mergeResult.reason?.toLowerCase().includes(reason.toLowerCase())
 		);
 	}
@@ -411,9 +449,11 @@ export default class PRLifecycleManagementHook {
 	async scheduleRetry(prNumber, mergeResult, mergeConfig) {
 		try {
 			const retryDelay = mergeConfig.retryDelay || 60000; // 1 minute default
-			
-			console.log(`⏰ Scheduling retry for PR ${prNumber} in ${retryDelay / 1000} seconds...`);
-			
+
+			console.log(
+				`⏰ Scheduling retry for PR ${prNumber} in ${retryDelay / 1000} seconds...`
+			);
+
 			// Store retry information for monitoring service
 			const retryInfo = {
 				prNumber,
@@ -425,7 +465,7 @@ export default class PRLifecycleManagementHook {
 
 			// The monitoring service will handle the actual retry
 			await this.prMonitoringService.scheduleRetry(prNumber, retryInfo);
-			
+
 			return { success: true, retryInfo };
 		} catch (error) {
 			console.error(`Failed to schedule retry for PR ${prNumber}:`, error);
@@ -496,10 +536,12 @@ export default class PRLifecycleManagementHook {
 			// Execute cleanup tasks
 			const results = await Promise.allSettled(cleanupTasks);
 
-			const successful = results.filter(r => r.status === 'fulfilled').length;
-			const failed = results.filter(r => r.status === 'rejected').length;
+			const successful = results.filter((r) => r.status === 'fulfilled').length;
+			const failed = results.filter((r) => r.status === 'rejected').length;
 
-			console.log(`🧹 Cleanup completed: ${successful} successful, ${failed} failed`);
+			console.log(
+				`🧹 Cleanup completed: ${successful} successful, ${failed} failed`
+			);
 
 			return {
 				success: failed === 0,
@@ -527,7 +569,7 @@ export default class PRLifecycleManagementHook {
 		try {
 			// Remove worktree directory
 			const { execSync } = await import('child_process');
-			
+
 			execSync(`git worktree remove ${worktree.path} --force`, {
 				cwd: worktree.projectRoot || process.cwd()
 			});
@@ -546,14 +588,16 @@ export default class PRLifecycleManagementHook {
 	async performIntelligentCleanup(context) {
 		try {
 			const { prNumber, mergeInfo = {}, backend } = context;
-			
+
 			if (!backend || !backend.triggerCleanup) {
-				console.log('⚠️ Backend cleanup not available, falling back to basic cleanup');
+				console.log(
+					'⚠️ Backend cleanup not available, falling back to basic cleanup'
+				);
 				return await this.performBasicCleanup(context);
 			}
 
 			console.log(`🧹 Starting intelligent cleanup for PR #${prNumber}...`);
-			
+
 			// Extract merge information from context
 			const cleanupMergeInfo = {
 				worktreeName: mergeInfo.worktreeName || context.worktree?.name,
@@ -564,32 +608,35 @@ export default class PRLifecycleManagementHook {
 
 			// Trigger comprehensive cleanup
 			const result = await backend.triggerCleanup(prNumber, cleanupMergeInfo);
-			
+
 			if (result.success) {
 				const cleanup = result.cleanupResult;
 				console.log(`✅ Intelligent cleanup completed for PR #${prNumber}`);
-				
+
 				// Log cleanup results
 				if (cleanup.worktree) {
 					console.log(`  🗑️ Worktree: ${cleanup.worktree.actions.join(', ')}`);
 				}
 				if (cleanup.astCache) {
-					console.log(`  🔄 AST Cache: ${cleanup.astCache.invalidatedFiles} files invalidated`);
+					console.log(
+						`  🔄 AST Cache: ${cleanup.astCache.invalidatedFiles} files invalidated`
+					);
 				}
 				if (cleanup.taskStatus) {
 					console.log(`  ✅ Task: ${cleanup.taskStatus.actions.join(', ')}`);
 				}
-				
+
 				if (cleanup.errors.length > 0) {
-					console.log(`  ⚠️ Errors: ${cleanup.errors.length} non-critical errors occurred`);
+					console.log(
+						`  ⚠️ Errors: ${cleanup.errors.length} non-critical errors occurred`
+					);
 				}
-				
+
 				return { success: true, cleanupResult: cleanup };
 			} else {
 				console.error(`❌ Intelligent cleanup failed: ${result.error}`);
 				return { success: false, error: result.error };
 			}
-
 		} catch (error) {
 			console.error('Error during intelligent cleanup:', error);
 			return { success: false, error: error.message };
@@ -641,7 +688,6 @@ export default class PRLifecycleManagementHook {
 			}
 
 			return results;
-
 		} catch (error) {
 			console.error('Error during basic cleanup:', error);
 			return { success: false, error: error.message };
@@ -656,10 +702,10 @@ export default class PRLifecycleManagementHook {
 			// Trigger AST cache refresh for the main codebase
 			// This would integrate with the existing AST system
 			console.log('🔄 Updating AST cache...');
-			
+
 			// Placeholder for AST cache update
 			// In a real implementation, this would call the AST refresh methods
-			
+
 			return { success: true };
 		} catch (error) {
 			console.error('Error updating AST cache:', error);
@@ -680,9 +726,9 @@ export default class PRLifecycleManagementHook {
 
 			// Mark task as completed
 			await context.backend.setTaskStatus(task.id, 'done');
-			
+
 			console.log(`✅ Marked task ${task.id} as completed`);
-			
+
 			return { success: true };
 		} catch (error) {
 			console.error('Error updating task status:', error);
@@ -697,10 +743,10 @@ export default class PRLifecycleManagementHook {
 		try {
 			// Archive Claude session data for historical reference
 			console.log('📦 Archiving session data...');
-			
+
 			// Placeholder for session archival
 			// In a real implementation, this would move session files to archive
-			
+
 			return { success: true };
 		} catch (error) {
 			console.error('Error archiving session data:', error);
@@ -722,7 +768,7 @@ export default class PRLifecycleManagementHook {
 
 			// Store in hook storage for historical tracking
 			// This would use the hook storage system
-			
+
 			console.log(`📝 Logged status change for PR ${prNumber}`);
 		} catch (error) {
 			console.error('Error logging status change:', error);
@@ -735,12 +781,11 @@ export default class PRLifecycleManagementHook {
 	async notifyCheckFailures(prNumber, failedChecks) {
 		try {
 			console.log(`🚨 Notifying about check failures for PR ${prNumber}`);
-			
+
 			// In a real implementation, this could:
 			// - Send notifications
 			// - Update task comments
 			// - Create issues for failed checks
-			
 		} catch (error) {
 			console.error('Error notifying about check failures:', error);
 		}
@@ -776,4 +821,4 @@ export default class PRLifecycleManagementHook {
 			await this.prMonitoringService.cleanup();
 		}
 	}
-} 
+}

@@ -3,16 +3,22 @@ import { Box, Text } from 'ink';
 import { useInput } from 'ink';
 
 const ActionButton = ({ label, onAction, isSelected }) => (
-	<Box 
-		borderStyle="round" 
-		paddingX={1} 
+	<Box
+		borderStyle="round"
+		paddingX={1}
 		borderColor={isSelected ? 'cyan' : 'gray'}
 	>
 		<Text color={isSelected ? 'cyan' : 'white'}>{label}</Text>
 	</Box>
 );
 
-const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanup }) => {
+const PRActionPanel = ({
+	pr,
+	backend,
+	onNotification,
+	onOpenConfig,
+	onOpenCleanup
+}) => {
 	const [selectedAction, setSelectedAction] = useState(0);
 
 	// Always include configuration and cleanup actions
@@ -35,21 +41,29 @@ const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanu
 	if (pr) {
 		const isPaused = pr.status === 'paused';
 		actions.push(
-			{ 
-				label: isPaused ? 'Resume' : 'Pause', 
+			{
+				label: isPaused ? 'Resume' : 'Pause',
 				action: async () => {
-					const result = isPaused 
+					const result = isPaused
 						? await backend.resumePRMonitoring(pr.prNumber)
 						: await backend.pausePRMonitoring(pr.prNumber);
-					onNotification(result ? `PR #${pr.prNumber} ${isPaused ? 'resumed' : 'paused'}.` : 'Action failed.');
-				} 
+					onNotification(
+						result
+							? `PR #${pr.prNumber} ${isPaused ? 'resumed' : 'paused'}.`
+							: 'Action failed.'
+					);
+				}
 			},
-			{ 
-				label: 'Force Merge', 
+			{
+				label: 'Force Merge',
 				action: async () => {
 					onNotification(`Attempting to force merge PR #${pr.prNumber}...`);
 					const result = await backend.forceMerge(pr.prNumber);
-					onNotification(result.success ? `PR #${pr.prNumber} merged.` : `Merge failed: ${result.reason}`);
+					onNotification(
+						result.success
+							? `PR #${pr.prNumber} merged.`
+							: `Merge failed: ${result.reason}`
+					);
 				}
 			},
 			{
@@ -65,10 +79,10 @@ const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanu
 
 	useInput((input, key) => {
 		if (key.leftArrow) {
-			setSelectedAction(prev => (prev > 0 ? prev - 1 : actions.length - 1));
+			setSelectedAction((prev) => (prev > 0 ? prev - 1 : actions.length - 1));
 		}
 		if (key.rightArrow) {
-			setSelectedAction(prev => (prev < actions.length - 1 ? prev + 1 : 0));
+			setSelectedAction((prev) => (prev < actions.length - 1 ? prev + 1 : 0));
 		}
 		if (key.return) {
 			actions[selectedAction].action();
@@ -81,7 +95,7 @@ const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanu
 			<Box marginTop={1}>
 				{actions.map((item, index) => (
 					<Box key={item.label} marginRight={1}>
-						<ActionButton 
+						<ActionButton
 							label={item.label}
 							onAction={item.action}
 							isSelected={index === selectedAction}
@@ -96,4 +110,4 @@ const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanu
 	);
 };
 
-export default PRActionPanel; 
+export default PRActionPanel;

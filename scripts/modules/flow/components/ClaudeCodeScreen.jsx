@@ -143,27 +143,33 @@ export function ClaudeCodeScreen({
 		const handleOperationMessage = (operationId, message) => {
 			// Update running operations
 			handleOperationUpdate();
-			
+
 			// If we're watching this operation, add message to watch
 			if (watchingOperation === operationId) {
-				setWatchMessages(prev => [...prev, {
-					...message,
-					timestamp: new Date().toISOString()
-				}]);
+				setWatchMessages((prev) => [
+					...prev,
+					{
+						...message,
+						timestamp: new Date().toISOString()
+					}
+				]);
 			}
 		};
 
 		const handleOperationCompleted = (operationId, result) => {
 			// Update running operations
 			handleOperationUpdate();
-			
+
 			// If we're watching this operation, add completion message
 			if (watchingOperation === operationId) {
-				setWatchMessages(prev => [...prev, {
-					type: 'system',
-					content: `Operation completed: ${result.success ? 'Success' : 'Failed'}`,
-					timestamp: new Date().toISOString()
-				}]);
+				setWatchMessages((prev) => [
+					...prev,
+					{
+						type: 'system',
+						content: `Operation completed: ${result.success ? 'Success' : 'Failed'}`,
+						timestamp: new Date().toISOString()
+					}
+				]);
 			}
 		};
 
@@ -216,7 +222,10 @@ export function ClaudeCodeScreen({
 				const sessions = sessionsResult.sessions || sessionsResult.data || [];
 				setSessions(sessions);
 			} else {
-				console.error('[ClaudeCodeScreen] Failed to load sessions:', sessionsResult.error);
+				console.error(
+					'[ClaudeCodeScreen] Failed to load sessions:',
+					sessionsResult.error
+				);
 			}
 
 			// Load running background operations
@@ -444,12 +453,12 @@ Additional context:
 
 		setWaitingForConfig(false);
 		setLoading(false);
-		
+
 		// Always start in background + auto-watch
 		await startBackgroundWithWatch();
 	};
 
-	const showNotification = (message, type = "info", duration = 3000) => {
+	const showNotification = (message, type = 'info', duration = 3000) => {
 		setNotification({ message, type });
 		setTimeout(() => setNotification(null), duration);
 	};
@@ -460,8 +469,8 @@ Additional context:
 
 		try {
 			// Show brief notification
-			showNotification("🚀 Starting Claude Code in background...", "info");
-			
+			showNotification('🚀 Starting Claude Code in background...', 'info');
+
 			// Start background operation
 			const operation = await backgroundClaudeCode.startQuery(subtaskPrompt, {
 				metadata: {
@@ -478,10 +487,13 @@ Additional context:
 			setWatchMessages([]);
 			setWatchStartTime(new Date());
 			setMode('watching-operation');
-			
+
 			// Update notification
-			showNotification(`✅ Claude Code started! Watching operation ${operation.operationId.substring(0, 8)}...`, "success");
-			
+			showNotification(
+				`✅ Claude Code started! Watching operation ${operation.operationId.substring(0, 8)}...`,
+				'success'
+			);
+
 			// Update subtask with background operation reference
 			const sessionReference = `
 <claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background">
@@ -494,9 +506,11 @@ Working directory: ${initialContext.worktreePath}
 				prompt: sessionReference,
 				research: false
 			});
-			
 		} catch (err) {
-			showNotification(`❌ Failed to start Claude Code: ${err.message}`, "error");
+			showNotification(
+				`❌ Failed to start Claude Code: ${err.message}`,
+				'error'
+			);
 			setTimeout(() => handleBack(), 3000);
 		}
 	};
@@ -534,8 +548,10 @@ Working directory: ${initialContext.worktreePath}
 				});
 
 				setOperationId(operation.operationId);
-				setSuccess(`Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`);
-				
+				setSuccess(
+					`Claude Code started in background (Operation: ${operation.operationId.substring(0, 8)}...)`
+				);
+
 				// Update subtask with background operation reference
 				const sessionReference = `
 <claude-session added="${new Date().toISOString()}" operationId="${operation.operationId}" type="background">
@@ -557,78 +573,78 @@ Working directory: ${initialContext.worktreePath}
 			}
 		} else {
 			// Run in foreground (existing logic)
-		abortControllerRef.current = new AbortController();
+			abortControllerRef.current = new AbortController();
 
-		try {
-			const result = await backend.claudeCodeQuery(subtaskPrompt, {
-				maxTurns: 10, // Allow more turns for implementation
-				permissionMode: config?.permissionMode || 'acceptEdits',
-				allowedTools: config?.allowedTools || ['Read', 'Write', 'Bash'],
-				systemPrompt,
-				cwd: initialContext.worktreePath,
-				abortController: abortControllerRef.current,
-				onMessage: (message) => {
-					setMessages((prev) => [...prev, message]);
+			try {
+				const result = await backend.claudeCodeQuery(subtaskPrompt, {
+					maxTurns: 10, // Allow more turns for implementation
+					permissionMode: config?.permissionMode || 'acceptEdits',
+					allowedTools: config?.allowedTools || ['Read', 'Write', 'Bash'],
+					systemPrompt,
+					cwd: initialContext.worktreePath,
+					abortController: abortControllerRef.current,
+					onMessage: (message) => {
+						setMessages((prev) => [...prev, message]);
 
-					// Extract key insights from Claude's responses
-					if (message.type === 'assistant') {
-						const insights = extractKeyInsights(
-							message.message.content?.[0]?.text || ''
-						);
-						if (insights.length > 0) {
-							setKeyInsights((prev) => [...prev, ...insights]);
+						// Extract key insights from Claude's responses
+						if (message.type === 'assistant') {
+							const insights = extractKeyInsights(
+								message.message.content?.[0]?.text || ''
+							);
+							if (insights.length > 0) {
+								setKeyInsights((prev) => [...prev, ...insights]);
+							}
 						}
 					}
-				}
-			});
-
-			if (result.success && result.sessionId) {
-				setActiveSession({
-					sessionId: result.sessionId,
-					prompt: subtaskPrompt,
-					timestamp: new Date().toISOString(),
-					subtaskId: initialContext.currentSubtask.id
 				});
 
-				// Save session with subtask reference
-				await backend.saveClaudeCodeSession({
-					sessionId: result.sessionId,
-					prompt: subtaskPrompt,
-					lastUpdated: new Date().toISOString(),
-					metadata: {
-						type: 'subtask-implementation',
-						subtaskId: initialContext.currentSubtask.id,
-						parentTaskId: initialContext.parentTask.id
-					}
-				});
+				if (result.success && result.sessionId) {
+					setActiveSession({
+						sessionId: result.sessionId,
+						prompt: subtaskPrompt,
+						timestamp: new Date().toISOString(),
+						subtaskId: initialContext.currentSubtask.id
+					});
 
-				// Update subtask with Claude session reference
-				const sessionReference = `
+					// Save session with subtask reference
+					await backend.saveClaudeCodeSession({
+						sessionId: result.sessionId,
+						prompt: subtaskPrompt,
+						lastUpdated: new Date().toISOString(),
+						metadata: {
+							type: 'subtask-implementation',
+							subtaskId: initialContext.currentSubtask.id,
+							parentTaskId: initialContext.parentTask.id
+						}
+					});
+
+					// Update subtask with Claude session reference
+					const sessionReference = `
 <claude-session added="${new Date().toISOString()}" sessionId="${result.sessionId}">
 Claude Code session started for implementation. Session ID: ${result.sessionId}
 Working directory: ${initialContext.worktreePath}
 </claude-session>
 `;
-				await backend.updateSubtask({
-					id: initialContext.currentSubtask.id,
-					prompt: sessionReference,
-					research: false
-				});
+					await backend.updateSubtask({
+						id: initialContext.currentSubtask.id,
+						prompt: sessionReference,
+						research: false
+					});
 
-				setSuccess('Claude Code session started for subtask implementation');
+					setSuccess('Claude Code session started for subtask implementation');
 
-				// Reload sessions to include this new session in the list
-				await loadData();
-			} else if (result.error) {
-				setError(result.error);
+					// Reload sessions to include this new session in the list
+					await loadData();
+				} else if (result.error) {
+					setError(result.error);
+					setTimeout(() => handleBack(), 3000);
+				}
+			} catch (err) {
+				setError(err.message);
 				setTimeout(() => handleBack(), 3000);
-			}
-		} catch (err) {
-			setError(err.message);
-			setTimeout(() => handleBack(), 3000);
-		} finally {
-			setIsProcessing(false);
-			abortControllerRef.current = null;
+			} finally {
+				setIsProcessing(false);
+				abortControllerRef.current = null;
 			}
 		}
 	};
@@ -847,7 +863,10 @@ ${insightSummary}
 				setWatchingOperation(null);
 				setWatchMessages([]);
 				setMode('list');
-				showNotification("Watch closed - operation continues in background", "info");
+				showNotification(
+					'Watch closed - operation continues in background',
+					'info'
+				);
 			} else if (isProcessing && abortControllerRef.current) {
 				handleAbort();
 			} else if (mode === 'active-session') {
@@ -875,7 +894,7 @@ ${insightSummary}
 				// Abort operation
 				if (watchingOperation) {
 					backgroundOperations.abortOperation(watchingOperation);
-					showNotification("Operation aborted", "warning");
+					showNotification('Operation aborted', 'warning');
 					setWatchingOperation(null);
 					setWatchMessages([]);
 					setMode('list');
@@ -1017,7 +1036,7 @@ ${insightSummary}
 
 	const renderWatchMessage = (msg, idx) => {
 		const timeString = new Date(msg.timestamp).toLocaleTimeString();
-		
+
 		switch (msg.type) {
 			case 'system':
 				return (
@@ -1055,7 +1074,9 @@ ${insightSummary}
 				return (
 					<Box key={idx} marginBottom={1}>
 						<Text color={safeTheme.textDim}>[{timeString}] </Text>
-						<Text color={safeTheme.warning}>[{msg.type}]: {JSON.stringify(msg).substring(0, 100)}...</Text>
+						<Text color={safeTheme.warning}>
+							[{msg.type}]: {JSON.stringify(msg).substring(0, 100)}...
+						</Text>
 					</Box>
 				);
 		}
@@ -1229,8 +1250,9 @@ ${insightSummary}
 	// Watch mode
 	if (mode === 'watching-operation' && watchingOperation) {
 		const operation = backgroundOperations.getOperation(watchingOperation);
-		const elapsedTime = operation ? 
-			Math.floor((new Date() - new Date(operation.startTime)) / 1000) : 0;
+		const elapsedTime = operation
+			? Math.floor((new Date() - new Date(operation.startTime)) / 1000)
+			: 0;
 		const minutes = Math.floor(elapsedTime / 60);
 		const seconds = elapsedTime % 60;
 
@@ -1247,12 +1269,18 @@ ${insightSummary}
 					</Box>
 					<Box gap={2}>
 						<Text color={safeTheme.info}>
-							⏱️  {minutes}:{seconds.toString().padStart(2, '0')}
+							⏱️ {minutes}:{seconds.toString().padStart(2, '0')}
 						</Text>
 						<Text color={safeTheme.textDim}>
 							📨 {watchMessages.length} msgs
 						</Text>
-						<Text color={operation?.status === 'running' ? safeTheme.warning : safeTheme.success}>
+						<Text
+							color={
+								operation?.status === 'running'
+									? safeTheme.warning
+									: safeTheme.success
+							}
+						>
 							{operation?.status === 'running' ? '🔄 Running' : '✅ Complete'}
 						</Text>
 					</Box>
@@ -1260,10 +1288,16 @@ ${insightSummary}
 
 				{/* Operation details */}
 				{operation && (
-					<Box paddingX={2} paddingY={1} borderBottom={true} borderColor={safeTheme.border}>
+					<Box
+						paddingX={2}
+						paddingY={1}
+						borderBottom={true}
+						borderColor={safeTheme.border}
+					>
 						<Text color={safeTheme.textDim}>
-							Operation: {operation.id.substring(0, 8)}... | 
-							{operation.metadata?.subtaskId && ` Subtask: ${operation.metadata.subtaskId} | `}
+							Operation: {operation.id.substring(0, 8)}... |
+							{operation.metadata?.subtaskId &&
+								` Subtask: ${operation.metadata.subtaskId} | `}
 							Started: {new Date(operation.startTime).toLocaleTimeString()}
 						</Text>
 					</Box>
@@ -1274,7 +1308,9 @@ ${insightSummary}
 					{watchMessages.length === 0 ? (
 						<Box justifyContent="center" alignItems="center" flexGrow={1}>
 							<Text color={safeTheme.textDim}>
-								{operation?.status === 'running' ? 'Waiting for messages...' : 'No messages received'}
+								{operation?.status === 'running'
+									? 'Waiting for messages...'
+									: 'No messages received'}
 							</Text>
 						</Box>
 					) : (
@@ -1285,13 +1321,21 @@ ${insightSummary}
 				</Box>
 
 				{/* Footer with controls */}
-				<Box borderStyle="single" borderColor={safeTheme.border} 
-						borderTop={true} borderBottom={false} borderLeft={false} borderRight={false}
-						paddingX={1} paddingY={1}>
+				<Box
+					borderStyle="single"
+					borderColor={safeTheme.border}
+					borderTop={true}
+					borderBottom={false}
+					borderLeft={false}
+					borderRight={false}
+					paddingX={1}
+					paddingY={1}
+				>
 					<Text color={safeTheme.text}>
-						ESC close watch (keeps running) • 
-						s sessions list • 
-						{operation?.status === 'running' ? ' a abort operation' : ' r resume session'}
+						ESC close watch (keeps running) • s sessions list •
+						{operation?.status === 'running'
+							? ' a abort operation'
+							: ' r resume session'}
 					</Text>
 				</Box>
 			</Box>
@@ -1509,11 +1553,24 @@ ${insightSummary}
 			{/* Notification overlay */}
 			{notification && (
 				<Box position="absolute" top={1} right={1} zIndex={1000}>
-					<Box borderStyle="round" 
-							borderColor={notification.type === 'error' ? safeTheme.error : safeTheme.success}
-							paddingX={2} paddingY={1}
-							backgroundColor={safeTheme.background}>
-						<Text color={notification.type === 'error' ? safeTheme.error : safeTheme.success}>
+					<Box
+						borderStyle="round"
+						borderColor={
+							notification.type === 'error'
+								? safeTheme.error
+								: safeTheme.success
+						}
+						paddingX={2}
+						paddingY={1}
+						backgroundColor={safeTheme.background}
+					>
+						<Text
+							color={
+								notification.type === 'error'
+									? safeTheme.error
+									: safeTheme.success
+							}
+						>
 							{notification.message}
 						</Text>
 					</Box>

@@ -14,7 +14,7 @@ export class HookExecutor {
 	async executeHook(hookInstance, event, context, config = {}) {
 		const startTime = Date.now();
 		const executionId = `${hookInstance.constructor.name}-${event}-${startTime}`;
-		
+
 		try {
 			// Check if hook supports this event
 			if (!hookInstance.events || !hookInstance.events.includes(event)) {
@@ -60,10 +60,9 @@ export class HookExecutor {
 				duration,
 				executionId
 			};
-
 		} catch (error) {
 			const duration = Date.now() - startTime;
-			
+
 			return {
 				success: false,
 				error: error.message,
@@ -88,8 +87,11 @@ export class HookExecutor {
 
 			// Determine which method to call based on event
 			const methodName = this.getHookMethodName(event);
-			
-			if (!hookInstance[methodName] || typeof hookInstance[methodName] !== 'function') {
+
+			if (
+				!hookInstance[methodName] ||
+				typeof hookInstance[methodName] !== 'function'
+			) {
 				clearTimeout(timeoutId);
 				resolve(null); // Hook doesn't implement this method, which is okay
 				return;
@@ -98,7 +100,7 @@ export class HookExecutor {
 			// Execute the hook method (handle both sync and async methods)
 			try {
 				const result = hookInstance[methodName](context);
-				
+
 				// Check if result is a Promise
 				if (result && typeof result.then === 'function') {
 					result
@@ -145,7 +147,10 @@ export class HookExecutor {
 			'pr-checks-failed': 'onPrChecksFailed'
 		};
 
-		return eventMethodMap[event] || `on${this.capitalizeFirst(event.replace(/-/g, ''))}`;
+		return (
+			eventMethodMap[event] ||
+			`on${this.capitalizeFirst(event.replace(/-/g, ''))}`
+		);
 	}
 
 	/**
@@ -163,7 +168,7 @@ export class HookExecutor {
 			activeExecutions: this.activeExecutions.size,
 			maxConcurrent: this.maxConcurrent,
 			defaultTimeout: this.defaultTimeout,
-			activeHooks: Array.from(this.activeExecutions.values()).map(exec => ({
+			activeHooks: Array.from(this.activeExecutions.values()).map((exec) => ({
 				hookName: exec.hookName,
 				event: exec.event,
 				duration: Date.now() - exec.startTime
@@ -191,4 +196,4 @@ export class HookExecutor {
 			this.maxConcurrent = options.maxConcurrent;
 		}
 	}
-} 
+}

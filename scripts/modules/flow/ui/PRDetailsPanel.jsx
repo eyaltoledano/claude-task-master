@@ -19,7 +19,9 @@ const PRDetailsPanel = ({ pr, backend }) => {
 				setDetails(prDetails);
 				setError(null);
 			} catch (err) {
-				setError(`Failed to fetch details for PR #${pr.prNumber}: ${err.message}`);
+				setError(
+					`Failed to fetch details for PR #${pr.prNumber}: ${err.message}`
+				);
 			} finally {
 				setLoading(false);
 			}
@@ -49,23 +51,26 @@ const PRDetailsPanel = ({ pr, backend }) => {
 	return (
 		<Box flexDirection="column" paddingX={1} width="100%">
 			<Text bold>Details for PR #{pr.prNumber}</Text>
-			
+
 			<Box marginTop={1} flexDirection="column">
 				<Text bold>Status:</Text>
-				<Text>  Title: {prStatus?.title || 'N/A'}</Text>
-				<Text>  State: {prStatus?.state || 'N/A'}</Text>
-				<Text>  Mergeable: {prStatus?.mergeable ? 'Yes' : 'No'}</Text>
-				<Text>  Auto-Merge Enabled: {config?.autoMerge ? 'Yes' : 'No'}</Text>
+				<Text> Title: {prStatus?.title || 'N/A'}</Text>
+				<Text> State: {prStatus?.state || 'N/A'}</Text>
+				<Text> Mergeable: {prStatus?.mergeable ? 'Yes' : 'No'}</Text>
+				<Text> Auto-Merge Enabled: {config?.autoMerge ? 'Yes' : 'No'}</Text>
 			</Box>
 
 			<Box marginTop={1} flexDirection="column">
 				<Text bold>Checks:</Text>
 				{prStatus?.checks?.length > 0 ? (
-					prStatus.checks.map(check => (
-						<Text key={check.name}>  - {check.name}: {check.status} ({check.conclusion || 'pending'})</Text>
+					prStatus.checks.map((check) => (
+						<Text key={check.name}>
+							{' '}
+							- {check.name}: {check.status} ({check.conclusion || 'pending'})
+						</Text>
 					))
 				) : (
-					<Text>  No checks found.</Text>
+					<Text> No checks found.</Text>
 				)}
 			</Box>
 
@@ -74,10 +79,13 @@ const PRDetailsPanel = ({ pr, backend }) => {
 				<Box flexDirection="column-reverse">
 					{eventLog?.length > 0 ? (
 						eventLog.slice(-10).map((event, index) => (
-							<Text key={`${event.timestamp}-${event.event}-${index}`}>  {new Date(event.timestamp).toLocaleTimeString()}: {event.event}</Text>
+							<Text key={`${event.timestamp}-${event.event}-${index}`}>
+								{' '}
+								{new Date(event.timestamp).toLocaleTimeString()}: {event.event}
+							</Text>
 						))
 					) : (
-						<Text>  No events logged.</Text>
+						<Text> No events logged.</Text>
 					)}
 				</Box>
 			</Box>
@@ -85,4 +93,4 @@ const PRDetailsPanel = ({ pr, backend }) => {
 	);
 };
 
-export default PRDetailsPanel; 
+export default PRDetailsPanel;
