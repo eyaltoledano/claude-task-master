@@ -1,4 +1,4 @@
-# Available Models as of June 25, 2025
+# Available Models as of July 2, 2025
 
 ## Main Models
 
@@ -74,6 +74,8 @@
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 
 ## Research Models
 
@@ -97,6 +99,8 @@
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
 
 ## Fallback Models
 
@@ -161,3 +165,5 @@
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
