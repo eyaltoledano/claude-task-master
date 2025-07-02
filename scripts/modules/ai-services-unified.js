@@ -24,7 +24,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	providersWithoutApiKeys
 } from './config-manager.js';
 import {
 	log,
@@ -64,11 +65,6 @@ const PROVIDERS = {
 	'claude-code': new ClaudeCodeProvider(),
 	'gemini-cli': new GeminiCliProvider()
 };
-
-// Define providers that support optional authentication
-// These providers can work without an API key (e.g., using local instances, IAM roles, etc.)
-// To add a new provider with optional auth, simply add its name to this Set
-const OPTIONAL_AUTH_PROVIDERS = new Set(['ollama', 'bedrock', 'gemini-cli']);
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
@@ -271,7 +267,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Special handling for providers that can use alternative auth
-	if (OPTIONAL_AUTH_PROVIDERS.has(providerName)) {
+	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 		return apiKey || null;
 	}
 
@@ -471,7 +467,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (!OPTIONAL_AUTH_PROVIDERS.has(providerName?.toLowerCase())) {
+			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
