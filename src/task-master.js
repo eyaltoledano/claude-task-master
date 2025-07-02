@@ -129,8 +129,7 @@ export function initTaskMaster(overrides = {}) {
                 : path.resolve(basePath || process.cwd(), override);
             
             if (!fs.existsSync(resolvedPath)) {
-                console.error(`Error: ${pathType} override path does not exist: ${resolvedPath}`);
-                process.exit(1);
+                throw new Error(`${pathType} override path does not exist: ${resolvedPath}`);
             }
             return resolvedPath;
         }
@@ -145,8 +144,7 @@ export function initTaskMaster(overrides = {}) {
                     return fullPath;
                 }
             }
-            console.error(`Error: Required ${pathType} not found. Searched: ${defaultPaths.join(', ')}`);
-            process.exit(1);
+            throw new Error(`Required ${pathType} not found. Searched: ${defaultPaths.join(', ')}`);
         }
         
         // Optional path (override === false/undefined) - search defaults, return null if not found
@@ -168,24 +166,21 @@ export function initTaskMaster(overrides = {}) {
     if (overrides.projectRoot) {
         const resolvedOverride = path.resolve(overrides.projectRoot);
         if (!fs.existsSync(resolvedOverride)) {
-            console.error(`Error: Project root override path does not exist: ${resolvedOverride}`);
-            process.exit(1);
+            throw new Error(`Project root override path does not exist: ${resolvedOverride}`);
         }
         
         const hasTaskmasterDir = fs.existsSync(path.join(resolvedOverride, TASKMASTER_DIR));
         const hasLegacyConfig = fs.existsSync(path.join(resolvedOverride, LEGACY_CONFIG_FILE));
         
         if (!hasTaskmasterDir && !hasLegacyConfig) {
-            console.error(`Error: Project root override is not a valid taskmaster project: ${resolvedOverride}`);
-            process.exit(1);
+            throw new Error(`Project root override is not a valid taskmaster project: ${resolvedOverride}`);
         }
         
         paths.projectRoot = resolvedOverride;
     } else {
         const foundRoot = findProjectRoot();
         if (!foundRoot) {
-            console.error('Error: Unable to find project root. No project markers found. Run "init" command first.');
-            process.exit(1);
+            throw new Error('Unable to find project root. No project markers found. Run "init" command first.');
         }
         paths.projectRoot = foundRoot;
     }

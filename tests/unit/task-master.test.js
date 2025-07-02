@@ -18,9 +18,6 @@ import {
 // Mock the console to prevent noise during tests
 jest.spyOn(console, 'error').mockImplementation(() => {});
 
-// Mock process.exit to capture exit calls
-const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
-
 describe('initTaskMaster', () => {
     let tempDir;
     let originalCwd;
@@ -110,18 +107,14 @@ describe('initTaskMaster', () => {
             expect(taskMaster.getProjectRoot()).toBe(tempDir);
         });
 
-        test('should exit with error when no project markers found', () => {
+        test('should throw error when no project markers found', () => {
             // Arrange - Empty temp directory, no project markers
             process.chdir(tempDir);
             
-            // Act
-            initTaskMaster({});
-            
-            // Assert
-            expect(mockExit).toHaveBeenCalledWith(1);
-            expect(console.error).toHaveBeenCalledWith(
-                'Error: Unable to find project root. No project markers found. Run "init" command first.'
-            );
+            // Act & Assert
+            expect(() => {
+                initTaskMaster({});
+            }).toThrow('Unable to find project root. No project markers found. Run "init" command first.');
         });
     });
 
@@ -150,31 +143,23 @@ describe('initTaskMaster', () => {
             expect(taskMaster.getProjectRoot()).toBe(tempDir);
         });
 
-        test('should exit with error when project root override does not exist', () => {
+        test('should throw error when project root override does not exist', () => {
             // Arrange - Non-existent path
             const nonExistentPath = path.join(tempDir, 'does-not-exist');
             
-            // Act
-            initTaskMaster({ projectRoot: nonExistentPath });
-            
-            // Assert
-            expect(mockExit).toHaveBeenCalledWith(1);
-            expect(console.error).toHaveBeenCalledWith(
-                `Error: Project root override path does not exist: ${nonExistentPath}`
-            );
+            // Act & Assert
+            expect(() => {
+                initTaskMaster({ projectRoot: nonExistentPath });
+            }).toThrow(`Project root override path does not exist: ${nonExistentPath}`);
         });
 
-        test('should exit with error when project root override has no project markers', () => {
+        test('should throw error when project root override has no project markers', () => {
             // Arrange - Empty temp directory (no project markers)
             
-            // Act
-            initTaskMaster({ projectRoot: tempDir });
-            
-            // Assert
-            expect(mockExit).toHaveBeenCalledWith(1);
-            expect(console.error).toHaveBeenCalledWith(
-                `Error: Project root override is not a valid taskmaster project: ${tempDir}`
-            );
+            // Act & Assert
+            expect(() => {
+                initTaskMaster({ projectRoot: tempDir });
+            }).toThrow(`Project root override is not a valid taskmaster project: ${tempDir}`);
         });
 
         test('should resolve relative project root override', () => {
@@ -230,18 +215,14 @@ describe('initTaskMaster', () => {
             expect(taskMaster.getStatePath()).toBe(statePath);
         });
 
-        test('should exit with error when required (true) files do not exist', () => {
+        test('should throw error when required (true) files do not exist', () => {
             // Arrange - Remove tasks file
             fs.unlinkSync(tasksPath);
             
-            // Act
-            initTaskMaster({ tasksPath: true });
-            
-            // Assert
-            expect(mockExit).toHaveBeenCalledWith(1);
-            expect(console.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error: Required tasks file not found')
-            );
+            // Act & Assert
+            expect(() => {
+                initTaskMaster({ tasksPath: true });
+            }).toThrow('Required tasks file not found. Searched: .taskmaster/tasks/tasks.json, tasks/tasks.json');
         });
 
         test('should return null when optional (false/undefined) files do not exist', () => {
@@ -310,18 +291,14 @@ describe('initTaskMaster', () => {
             expect(taskMaster.getTasksPath()).toBe(customTasksPath);
         });
 
-        test('should exit with error when string path override does not exist', () => {
+        test('should throw error when string path override does not exist', () => {
             // Arrange - Non-existent file path
             const nonExistentPath = path.join(tempDir, 'does-not-exist.json');
             
-            // Act
-            initTaskMaster({ tasksPath: nonExistentPath });
-            
-            // Assert
-            expect(mockExit).toHaveBeenCalledWith(1);
-            expect(console.error).toHaveBeenCalledWith(
-                `Error: tasks file override path does not exist: ${nonExistentPath}`
-            );
+            // Act & Assert
+            expect(() => {
+                initTaskMaster({ tasksPath: nonExistentPath });
+            }).toThrow(`tasks file override path does not exist: ${nonExistentPath}`);
         });
     });
 

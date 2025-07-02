@@ -76,6 +76,7 @@ import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	TASKMASTER_TASKS_FILE,
+	TASKMASTER_DOCS_DIR,
 } from '../../src/constants/paths.js';
 
 import { initTaskMaster } from '../../src/task-master.js';
@@ -815,10 +816,22 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (file, options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				prdPath: file || options.input || true,
-				tasksPath: options.output || true
-			});
+			let taskMaster;
+			try {
+				taskMaster = initTaskMaster({
+					prdPath: file || options.input || true,
+					tasksPath: options.output || true
+				});
+			} catch (error) {
+				console.log(
+					boxen(
+						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
+						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+					)
+				);
+				console.error(chalk.red(`\nError: ${error.message}`));
+				process.exit(1);
+			}
 			
 			const numTasks = parseInt(options.numTasks, 10);
 			const force = options.force || false;
