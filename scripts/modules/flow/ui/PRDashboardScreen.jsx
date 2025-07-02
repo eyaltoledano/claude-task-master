@@ -4,6 +4,7 @@ import PRListComponent from './PRListComponent.jsx';
 import PRDetailsPanel from './PRDetailsPanel.jsx';
 import PRActionPanel from './PRActionPanel.jsx';
 import ConfigurationModal from './ConfigurationModal.jsx';
+import CleanupDashboard from './CleanupDashboard.jsx';
 import { ConfigurationProvider } from './ConfigurationProvider.jsx';
 import { NotificationProvider, useNotification } from './NotificationProvider.jsx';
 
@@ -13,6 +14,7 @@ const Dashboard = ({ backend }) => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [showConfigModal, setShowConfigModal] = useState(false);
+	const [showCleanupDashboard, setShowCleanupDashboard] = useState(false);
 	const { addNotification } = useNotification();
 
 	useEffect(() => {
@@ -59,6 +61,14 @@ const Dashboard = ({ backend }) => {
 		setShowConfigModal(false);
 	};
 
+	const handleOpenCleanup = () => {
+		setShowCleanupDashboard(true);
+	};
+
+	const handleCloseCleanup = () => {
+		setShowCleanupDashboard(false);
+	};
+
 	if (loading) {
 		return <Text>Loading PR Dashboard...</Text>;
 	}
@@ -85,6 +95,7 @@ const Dashboard = ({ backend }) => {
 						backend={backend} 
 						onNotification={handleNotification}
 						onOpenConfig={handleOpenConfig}
+						onOpenCleanup={handleOpenCleanup}
 					/>
 				</Box>
 			</Box>
@@ -98,6 +109,16 @@ const Dashboard = ({ backend }) => {
 							onNotification={handleNotification}
 						/>
 					</ConfigurationProvider>
+				</Box>
+			)}
+			
+			{/* Cleanup Dashboard */}
+			{showCleanupDashboard && (
+				<Box position="absolute" top={0} left={0} width="100%" height="100%">
+					<CleanupDashboard
+						backend={backend}
+						onBack={handleCloseCleanup}
+					/>
 				</Box>
 			)}
 		</Box>

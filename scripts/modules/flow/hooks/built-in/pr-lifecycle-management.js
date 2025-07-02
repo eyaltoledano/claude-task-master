@@ -200,12 +200,18 @@ export default class PRLifecycleManagementHook {
 
 			console.log(`🎉 PR ${prNumber} has been merged`);
 
-			// Update task status if applicable
-			await this.updateTaskStatusOnMerge(context);
-
-			// Trigger cleanup if enabled
-			if (config?.cleanupAfterMerge) {
-				await this.handlePostMergeCleanup(context);
+			// Use intelligent cleanup if available, otherwise fall back to legacy cleanup
+			let cleanupResult;
+			if (context.backend && context.backend.triggerCleanup) {
+				// Use the new intelligent cleanup system
+				cleanupResult = await this.performIntelligentCleanup(context);
+			} else {
+				// Fall back to legacy cleanup methods
+				await this.updateTaskStatusOnMerge(context);
+				
+				if (config?.cleanupAfterMerge) {
+					cleanupResult = await this.handlePostMergeCleanup(context);
+				}
 			}
 
 			return {
@@ -213,6 +219,7 @@ export default class PRLifecycleManagementHook {
 				data: {
 					prNumber,
 					action: 'merged',
+					cleanupResult,
 					timestamp: new Date().toISOString()
 				}
 			};
@@ -529,6 +536,114 @@ export default class PRLifecycleManagementHook {
 			return { success: true };
 		} catch (error) {
 			console.error('Error cleaning up worktree:', error);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Perform comprehensive post-merge cleanup
+	 */
+	async performIntelligentCleanup(context) {
+		try {
+			const { prNumber, mergeInfo = {}, backend } = context;
+			
+			if (!backend || !backend.triggerCleanup) {
+				console.log('⚠️ Backend cleanup not available, falling back to basic cleanup');
+				return await this.performBasicCleanup(context);
+			}
+
+			console.log(`🧹 Starting intelligent cleanup for PR #${prNumber}...`);
+			
+			// Extract merge information from context
+			const cleanupMergeInfo = {
+				worktreeName: mergeInfo.worktreeName || context.worktree?.name,
+				mergedBranch: mergeInfo.mergedBranch || context.branch,
+				taskId: mergeInfo.taskId || context.task?.id,
+				...mergeInfo
+			};
+
+			// Trigger comprehensive cleanup
+			const result = await backend.triggerCleanup(prNumber, cleanupMergeInfo);
+			
+			if (result.success) {
+				const cleanup = result.cleanupResult;
+				console.log(`✅ Intelligent cleanup completed for PR #${prNumber}`);
+				
+				// Log cleanup results
+				if (cleanup.worktree) {
+					console.log(`  🗑️ Worktree: ${cleanup.worktree.actions.join(', ')}`);
+				}
+				if (cleanup.astCache) {
+					console.log(`  🔄 AST Cache: ${cleanup.astCache.invalidatedFiles} files invalidated`);
+				}
+				if (cleanup.taskStatus) {
+					console.log(`  ✅ Task: ${cleanup.taskStatus.actions.join(', ')}`);
+				}
+				
+				if (cleanup.errors.length > 0) {
+					console.log(`  ⚠️ Errors: ${cleanup.errors.length} non-critical errors occurred`);
+				}
+				
+				return { success: true, cleanupResult: cleanup };
+			} else {
+				console.error(`❌ Intelligent cleanup failed: ${result.error}`);
+				return { success: false, error: result.error };
+			}
+
+		} catch (error) {
+			console.error('Error during intelligent cleanup:', error);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Fallback basic cleanup
+	 */
+	async performBasicCleanup(context) {
+		try {
+			const results = {
+				success: true,
+				actions: [],
+				errors: []
+			};
+
+			// Basic worktree cleanup
+			if (context.worktree) {
+				try {
+					const worktreeResult = await this.cleanupWorktree(context.worktree);
+					if (worktreeResult.success) {
+						results.actions.push('worktree-removed');
+					} else {
+						results.errors.push(worktreeResult.error);
+					}
+				} catch (error) {
+					results.errors.push(`Worktree cleanup failed: ${error.message}`);
+				}
+			}
+
+			// Basic task status update
+			if (context.task && context.backend) {
+				try {
+					const taskResult = await this.updateTaskStatusOnMerge(context);
+					if (taskResult.success) {
+						results.actions.push('task-status-updated');
+					} else {
+						results.errors.push(taskResult.error);
+					}
+				} catch (error) {
+					results.errors.push(`Task update failed: ${error.message}`);
+				}
+			}
+
+			console.log(`📋 Basic cleanup completed: ${results.actions.join(', ')}`);
+			if (results.errors.length > 0) {
+				console.log(`⚠️ Cleanup errors: ${results.errors.join(', ')}`);
+			}
+
+			return results;
+
+		} catch (error) {
+			console.error('Error during basic cleanup:', error);
 			return { success: false, error: error.message };
 		}
 	}

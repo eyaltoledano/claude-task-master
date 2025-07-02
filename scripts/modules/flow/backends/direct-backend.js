@@ -4227,6 +4227,88 @@ ${prompt}
 	}
 
 	/**
+	 * Get cleanup service configuration
+	 */
+	async getCleanupConfiguration() {
+		try {
+			const { CleanupService } = await import('../services/CleanupService.js');
+			const cleanupService = new CleanupService({ projectRoot: this.projectRoot });
+			return {
+				success: true,
+				config: cleanupService.getConfig(),
+				stats: cleanupService.getStats()
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Update cleanup service configuration
+	 */
+	async updateCleanupConfiguration(newConfig) {
+		try {
+			const { CleanupService } = await import('../services/CleanupService.js');
+			const cleanupService = new CleanupService({ projectRoot: this.projectRoot });
+			cleanupService.updateConfig(newConfig);
+			
+			// Save configuration to file
+			const configPath = path.join(this.projectRoot, '.taskmaster/config/cleanup.json');
+			await fs.mkdir(path.dirname(configPath), { recursive: true });
+			await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
+			
+			return {
+				success: true,
+				config: cleanupService.getConfig()
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Trigger immediate cleanup for a specific PR
+	 */
+	async triggerCleanup(prNumber, mergeInfo = {}) {
+		try {
+			const { CleanupService } = await import('../services/CleanupService.js');
+			
+			// Load saved configuration if available
+			let config = {};
+			try {
+				const configPath = path.join(this.projectRoot, '.taskmaster/config/cleanup.json');
+				const configData = await fs.readFile(configPath, 'utf8');
+				config = JSON.parse(configData);
+			} catch (error) {
+				// Use defaults if no saved config
+			}
+			
+			const cleanupService = new CleanupService({ 
+				projectRoot: this.projectRoot,
+				...config
+			});
+			
+			const result = await cleanupService.performPostMergeCleanup(prNumber, mergeInfo);
+			
+			return {
+				success: true,
+				cleanupResult: result
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
 	 * Get current configuration from the hook config file
 	 */
 	async getConfiguration() {

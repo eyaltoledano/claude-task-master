@@ -12,15 +12,21 @@ const ActionButton = ({ label, onAction, isSelected }) => (
 	</Box>
 );
 
-const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig }) => {
+const PRActionPanel = ({ pr, backend, onNotification, onOpenConfig, onOpenCleanup }) => {
 	const [selectedAction, setSelectedAction] = useState(0);
 
-	// Always include configuration action
+	// Always include configuration and cleanup actions
 	const actions = [
 		{
 			label: 'Config',
 			action: () => {
 				onOpenConfig();
+			}
+		},
+		{
+			label: 'Cleanup',
+			action: () => {
+				onOpenCleanup && onOpenCleanup();
 			}
 		}
 	];
