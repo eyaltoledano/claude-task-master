@@ -220,7 +220,7 @@ const VALID_CLAUDE_CODE_CONFIG = {
 			maxTurns: 3,
 			permissionMode: 'plan'
 		},
-		'research': {
+		research: {
 			customSystemPrompt: 'You are a research assistant'
 		}
 	}
@@ -237,7 +237,8 @@ const INVALID_CLAUDE_CODE_CONFIG = {
 		}
 	},
 	commandSpecific: {
-		'invalid-command': { // Invalid command name
+		'invalid-command': {
+			// Invalid command name
 			maxTurns: -1 // Invalid negative number
 		}
 	}
@@ -388,14 +389,18 @@ describe('Validation Functions', () => {
 // --- Claude Code Validation Tests ---
 describe('Claude Code Validation', () => {
 	test('validateClaudeCodeSettings should return valid settings for correct input', () => {
-		const result = configManager.validateClaudeCodeSettings(VALID_CLAUDE_CODE_CONFIG);
+		const result = configManager.validateClaudeCodeSettings(
+			VALID_CLAUDE_CODE_CONFIG
+		);
 
 		expect(result).toEqual(VALID_CLAUDE_CODE_CONFIG);
 		expect(consoleWarnSpy).not.toHaveBeenCalled();
 	});
 
 	test('validateClaudeCodeSettings should return empty object for invalid input', () => {
-		const result = configManager.validateClaudeCodeSettings(INVALID_CLAUDE_CODE_CONFIG);
+		const result = configManager.validateClaudeCodeSettings(
+			INVALID_CLAUDE_CODE_CONFIG
+		);
 
 		expect(result).toEqual({});
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -404,7 +409,9 @@ describe('Claude Code Validation', () => {
 	});
 
 	test('validateClaudeCodeSettings should handle partial valid configuration', () => {
-		const result = configManager.validateClaudeCodeSettings(PARTIAL_CLAUDE_CODE_CONFIG);
+		const result = configManager.validateClaudeCodeSettings(
+			PARTIAL_CLAUDE_CODE_CONFIG
+		);
 
 		expect(result).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);
 		expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -445,12 +452,17 @@ describe('Claude Code Getter Functions', () => {
 		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
 
 		fsReadFileSyncSpy.mockImplementation((filePath) => {
-			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
 			if (path.basename(filePath) === 'supported-models.json') {
 				return JSON.stringify({
 					openai: [{ id: 'gpt-4o' }],
 					google: [{ id: 'gemini-1.5-pro-latest' }],
-					anthropic: [{ id: 'claude-3-opus-20240229' }, { id: 'claude-3-7-sonnet-20250219' }, { id: 'claude-3-5-sonnet' }],
+					anthropic: [
+						{ id: 'claude-3-opus-20240229' },
+						{ id: 'claude-3-7-sonnet-20250219' },
+						{ id: 'claude-3-5-sonnet' }
+					],
 					perplexity: [{ id: 'sonar-pro' }],
 					ollama: [],
 					openrouter: []
@@ -460,7 +472,10 @@ describe('Claude Code Getter Functions', () => {
 		});
 		fsExistsSyncSpy.mockReturnValue(true);
 
-		const settings = configManager.getClaudeCodeSettings(MOCK_PROJECT_ROOT, true); // Force reload
+		const settings = configManager.getClaudeCodeSettings(
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
 
 		expect(settings).toEqual(VALID_CLAUDE_CODE_CONFIG);
 	});
@@ -477,12 +492,18 @@ describe('Claude Code Getter Functions', () => {
 
 		fsReadFileSyncSpy.mockImplementation((filePath) => {
 			if (path.basename(filePath) === 'supported-models.json') return '{}';
-			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
-			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
 		});
 		fsExistsSyncSpy.mockReturnValue(true);
 
-		const settings = configManager.getClaudeCodeSettingsForCommand('add-task', MOCK_PROJECT_ROOT, true); // Force reload
+		const settings = configManager.getClaudeCodeSettingsForCommand(
+			'add-task',
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
 
 		// Should merge global settings with command-specific settings
 		const expectedSettings = {
@@ -504,12 +525,17 @@ describe('Claude Code Getter Functions', () => {
 
 		fsReadFileSyncSpy.mockImplementation((filePath) => {
 			if (path.basename(filePath) === 'supported-models.json') return '{}';
-			if (filePath === MOCK_CONFIG_PATH) return JSON.stringify(configWithClaudeCode);
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
 			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
 		});
 		fsExistsSyncSpy.mockReturnValue(true);
 
-		const settings = configManager.getClaudeCodeSettingsForCommand('unknown-command', MOCK_PROJECT_ROOT, true); // Force reload
+		const settings = configManager.getClaudeCodeSettingsForCommand(
+			'unknown-command',
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
 
 		// Should return global settings only
 		expect(settings).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);

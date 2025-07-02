@@ -295,25 +295,24 @@ function validateClaudeCodeSettings(settings) {
 		maxTurns: z.number().int().positive().optional(),
 		customSystemPrompt: z.string().optional(),
 		appendSystemPrompt: z.string().optional(),
-		permissionMode: z.enum([
-			'default',
-			'acceptEdits',
-			'plan',
-			'bypassPermissions'
-		]).optional(),
+		permissionMode: z
+			.enum(['default', 'acceptEdits', 'plan', 'bypassPermissions'])
+			.optional(),
 		allowedTools: z.array(z.string()).optional(),
 		disallowedTools: z.array(z.string()).optional(),
-		mcpServers: z.record(
-			z.string(),
-			z.object({
-				type: z.enum(['stdio', 'sse']).optional(),
-				command: z.string(),
-				args: z.array(z.string()).optional(),
-				env: z.record(z.string()).optional(),
-				url: z.string().url().optional(),
-				headers: z.record(z.string()).optional()
-			})
-		).optional()
+		mcpServers: z
+			.record(
+				z.string(),
+				z.object({
+					type: z.enum(['stdio', 'sse']).optional(),
+					command: z.string(),
+					args: z.array(z.string()).optional(),
+					env: z.record(z.string()).optional(),
+					url: z.string().url().optional(),
+					headers: z.record(z.string()).optional()
+				})
+			)
+			.optional()
 	});
 
 	// Define CommandSpecificSchema using the base schema
@@ -352,7 +351,11 @@ function getClaudeCodeSettings(explicitRoot = null, forceReload = false) {
 	return { ...DEFAULTS.claudeCode, ...(config?.claudeCode || {}) };
 }
 
-function getClaudeCodeSettingsForCommand(commandName, explicitRoot = null, forceReload = false) {
+function getClaudeCodeSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
 	const settings = getClaudeCodeSettings(explicitRoot, forceReload);
 	const commandSpecific = settings?.commandSpecific || {};
 	return { ...settings, ...commandSpecific[commandName] };
