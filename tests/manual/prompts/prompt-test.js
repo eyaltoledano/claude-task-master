@@ -1290,6 +1290,11 @@ function generateHTMLReport(testResults, templateResults = []) {
 	const total = testResults.total;
 	const failed = testResults.failed;
 
+	// Helper function to generate consistent anchor IDs
+	function generateAnchorId(template, variant) {
+		return `test-${template.replace(/[^a-zA-Z0-9]/g, '_')}-${variant.replace(/[^a-zA-Z0-9]/g, '_')}`;
+	}
+
 	// Sort template results alphabetically by template name, then by variant
 	const sortedResults = [...templateResults].sort((a, b) => {
 		if (a.template !== b.template) {
@@ -1329,6 +1334,8 @@ function generateHTMLReport(testResults, templateResults = []) {
         .variant-item.passed { border-left: 2px solid #28a745; color: #155724; }
         .variant-item.failed { border-left: 2px solid #dc3545; color: #721c24; background: #fff5f5; }
         .variant-name { font-weight: 500; }
+        .variant-name a { text-decoration: none; color: inherit; }
+        .variant-name a:hover { text-decoration: underline; }
         .variant-badge { font-size: 0.8em; font-weight: bold; }
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .summary-item { padding: 15px; border-radius: 8px; border-left: 4px solid #3498db; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
@@ -1449,9 +1456,10 @@ function generateHTMLReport(testResults, templateResults = []) {
 				templateResults.forEach((result) => {
 					const status = result.success ? 'passed' : 'failed';
 					const badge = result.success ? '✓' : '✗';
+					const anchorId = generateAnchorId(result.template, result.variant);
 					html += `
                     <span class="variant-item ${status}">
-                        <span class="variant-name">${result.variant}</span>
+                        <span class="variant-name"><a href="#${anchorId}">${result.variant}</a></span>
                         <span class="variant-badge">${badge}</span>
                     </span>`;
 				});
@@ -1529,8 +1537,9 @@ function generateHTMLReport(testResults, templateResults = []) {
 
 		realTemplateResults.forEach((result, index) => {
 			const status = result.success ? 'passed' : 'failed';
+			const anchorId = generateAnchorId(result.template, result.variant);
 			html += `
-            <div class="test-case ${status}">
+            <div class="test-case ${status}" id="${anchorId}">
                 <div class="test-header">
                     <div class="test-name">${result.template} (${result.variant})</div>
                     <span class="test-status ${status}">${status}</span>`;
