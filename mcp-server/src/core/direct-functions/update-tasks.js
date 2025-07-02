@@ -21,7 +21,7 @@ import {
  */
 export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context;
-	const { from, prompt, research, tasksJsonPath, projectRoot } = args;
+	const { from, prompt, research, tasksJsonPath, projectRoot, tag } = args;
 
 	// Create the standard logger wrapper
 	const logWrapper = createLogWrapper(log);
@@ -75,7 +75,8 @@ export async function updateTasksDirect(args, log, context = {}) {
 			{
 				session,
 				mcpLog: logWrapper,
-				projectRoot
+				projectRoot,
+				tag
 			},
 			'json'
 		);
