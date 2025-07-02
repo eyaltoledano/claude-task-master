@@ -21,6 +21,7 @@ import { TagManagementScreen } from './components/TagManagementScreen.jsx';
 import { StatusScreen } from './components/StatusScreen.jsx';
 import { ParsePRDScreen } from './components/ParsePRDScreen.jsx';
 import { AnalyzeComplexityScreen } from './components/AnalyzeComplexityScreen.jsx';
+import { DependencyVisualizerScreen } from './components/DependencyVisualizerScreen.jsx';
 import { SessionsScreen } from './components/SessionsScreen.jsx';
 import { Toast } from './components/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
@@ -107,6 +108,7 @@ function FlowApp({ backend, options = {} }) {
 				2,
 				0,
 				{ name: '/analyze', description: 'Analyze task complexity' },
+				{ name: '/deps', description: 'Visualize task dependencies' },
 				{ name: '/tasks', description: 'Interactive task management' }
 			);
 		}
@@ -272,6 +274,17 @@ function FlowApp({ backend, options = {} }) {
 				case 'analyze':
 					if (hasTasksFile) {
 						setCurrentScreen('analyze');
+					} else {
+						setNotification({
+							message: 'No tasks.json found. Use /parse to create tasks first.',
+							type: 'warning',
+							duration: 3000
+						});
+					}
+					break;
+				case 'deps':
+					if (hasTasksFile) {
+						setCurrentScreen('dependencies');
 					} else {
 						setNotification({
 							message: 'No tasks.json found. Use /parse to create tasks first.',
@@ -453,6 +466,18 @@ function FlowApp({ backend, options = {} }) {
 					case 'a':
 						if (hasTasksFile) {
 							setCurrentScreen('analyze');
+						} else {
+							setNotification({
+								message:
+									'No tasks.json found. Use /parse to create tasks first.',
+								type: 'warning',
+								duration: 3000
+							});
+						}
+						break;
+					case 'e':
+						if (hasTasksFile) {
+							setCurrentScreen('dependencies');
 						} else {
 							setNotification({
 								message:
@@ -754,6 +779,11 @@ function FlowApp({ backend, options = {} }) {
 						<ParsePRDScreen />
 					) : currentScreen === 'analyze' ? (
 						<AnalyzeComplexityScreen />
+					) : currentScreen === 'dependencies' ? (
+						<DependencyVisualizerScreen 
+							onBack={() => setCurrentScreen('welcome')}
+							projectRoot={currentBackend.projectRoot}
+						/>
 					) : currentScreen === 'chat' ? (
 						<ChatScreen
 							mcpClient={currentBackend}

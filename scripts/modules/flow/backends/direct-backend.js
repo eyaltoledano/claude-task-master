@@ -4368,4 +4368,113 @@ ${prompt}
 			throw new Error(`Configuration update failed: ${error.message}`);
 		}
 	}
+
+	// ================================
+	// Dependency Analysis Methods
+	// ================================
+
+	/**
+	 * Analyze task dependencies and readiness
+	 */
+	async analyzeDependencies(options = {}) {
+		try {
+			const { DependencyAnalysisService } = await import('../services/DependencyAnalysisService.js');
+			
+			if (!this.dependencyAnalysisService) {
+				this.dependencyAnalysisService = new DependencyAnalysisService({ 
+					projectRoot: this.projectRoot 
+				});
+				await this.dependencyAnalysisService.initialize();
+			}
+
+			// Get current tasks data
+			const tasksResult = await this.getTasks();
+			if (!tasksResult.success) {
+				return { success: false, error: 'Failed to load tasks for analysis' };
+			}
+
+			// Run dependency analysis
+			const analysis = await this.dependencyAnalysisService.analyzeDependencies(tasksResult.data, options);
+			
+			return {
+				success: true,
+				data: analysis
+			};
+		} catch (error) {
+			console.error('Dependency analysis failed:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Get dependency analysis statistics
+	 */
+	async getDependencyAnalysisStats() {
+		try {
+			if (!this.dependencyAnalysisService) {
+				return { success: false, error: 'Dependency analysis service not initialized' };
+			}
+
+			const stats = this.dependencyAnalysisService.getStats();
+			
+			return {
+				success: true,
+				data: stats
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Clear dependency analysis cache
+	 */
+	async clearDependencyAnalysisCache() {
+		try {
+			if (!this.dependencyAnalysisService) {
+				return { success: false, error: 'Dependency analysis service not initialized' };
+			}
+
+			this.dependencyAnalysisService.clearCache();
+			
+			return {
+				success: true,
+				message: 'Dependency analysis cache cleared'
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Update dependency analysis configuration
+	 */
+	async updateDependencyAnalysisConfig(newConfig) {
+		try {
+			if (!this.dependencyAnalysisService) {
+				return { success: false, error: 'Dependency analysis service not initialized' };
+			}
+
+			this.dependencyAnalysisService.updateConfig(newConfig);
+			
+			return {
+				success: true,
+				message: 'Dependency analysis configuration updated'
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
 }
