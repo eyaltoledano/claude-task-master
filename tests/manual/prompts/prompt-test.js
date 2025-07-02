@@ -77,7 +77,7 @@ const sampleData = {
 					dependencies: [18],
 					useResearch: true
 				},
-				variants: ['research']
+				variants: ['default']
 			}
 		]
 	},
@@ -748,11 +748,25 @@ class PromptTestMenu {
 		console.log('='.repeat(60));
 
 		try {
-			const testData = getTestDataForTemplate(templateKey, variant);
+			// Handle special research mode variants
+			let actualVariant = variant;
+			let useResearch = false;
+			if (templateKey === 'add-task' && variant === 'research') {
+				actualVariant = 'default';
+				useResearch = true;
+			}
+
+			const testData = getTestDataForTemplate(templateKey, actualVariant);
+
+			// Override useResearch if needed
+			if (useResearch) {
+				testData.params.useResearch = true;
+			}
+
 			const result = await this.promptManager.loadPrompt(
 				templateKey,
 				testData.params,
-				variant
+				actualVariant
 			);
 
 			console.log(
@@ -879,7 +893,12 @@ async function runComprehensiveTests(generateDetailed = false) {
 	// Test all combinations
 	const testCases = [
 		{ template: 'add-task', variant: 'default' },
-		{ template: 'add-task', variant: 'research' },
+		{
+			template: 'add-task',
+			variant: 'default',
+			useResearch: true,
+			testName: 'research'
+		},
 		{ template: 'expand-task', variant: 'default' },
 		{ template: 'expand-task', variant: 'research' },
 		{ template: 'expand-task', variant: 'complexity-report' },
@@ -921,19 +940,27 @@ async function runComprehensiveTests(generateDetailed = false) {
 			const testData =
 				testCase.params ||
 				getTestDataForTemplate(testCase.template, testCase.variant);
+
+			// Override test data with custom parameters if specified
+			if (testCase.useResearch !== undefined) {
+				testData.params.useResearch = testCase.useResearch;
+			}
+
 			const result = await promptManager.loadPrompt(
 				testCase.template,
 				testData.params,
 				testCase.variant
 			);
 
+			const displayName = testCase.testName || testCase.variant;
+
 			if (testCase.expectError) {
 				console.log(
-					`✗ FAILED - ${testCase.template} (${testCase.variant}): Expected error but test passed`
+					`✗ FAILED - ${testCase.template} (${displayName}): Expected error but test passed`
 				);
 				failedTests.push({
 					template: testCase.template,
-					variant: testCase.variant,
+					variant: displayName,
 					error: 'Expected error but test passed'
 				});
 				failed++;
@@ -941,20 +968,20 @@ async function runComprehensiveTests(generateDetailed = false) {
 				if (generateDetailed) {
 					detailedResults.push({
 						template: testCase.template,
-						variant: testCase.variant,
+						variant: displayName,
 						success: false,
 						expectedError: true,
 						error: 'Expected error but test passed'
 					});
 				}
 			} else {
-				console.log(`✓ PASSED - ${testCase.template} (${testCase.variant})`);
+				console.log(`✓ PASSED - ${testCase.template} (${displayName})`);
 				passed++;
 
 				if (generateDetailed) {
 					detailedResults.push({
 						template: testCase.template,
-						variant: testCase.variant,
+						variant: displayName,
 						success: true,
 						prompts: {
 							systemPrompt: result.systemPrompt,
@@ -964,16 +991,18 @@ async function runComprehensiveTests(generateDetailed = false) {
 				}
 			}
 		} catch (error) {
+			const displayName = testCase.testName || testCase.variant;
+
 			if (testCase.expectError) {
 				console.log(
-					`✓ PASSED - ${testCase.template} (${testCase.variant}): Expected error occurred`
+					`✓ PASSED - ${testCase.template} (${displayName}): Expected error occurred`
 				);
 				passed++;
 
 				if (generateDetailed) {
 					detailedResults.push({
 						template: testCase.template,
-						variant: testCase.variant,
+						variant: displayName,
 						success: true,
 						expectedError: true,
 						error: error.message
@@ -981,11 +1010,11 @@ async function runComprehensiveTests(generateDetailed = false) {
 				}
 			} else {
 				console.log(
-					`✗ FAILED - ${testCase.template} (${testCase.variant}): ${error.message}`
+					`✗ FAILED - ${testCase.template} (${displayName}): ${error.message}`
 				);
 				failedTests.push({
 					template: testCase.template,
-					variant: testCase.variant,
+					variant: displayName,
 					error: error.message
 				});
 				failed++;
@@ -993,7 +1022,7 @@ async function runComprehensiveTests(generateDetailed = false) {
 				if (generateDetailed) {
 					detailedResults.push({
 						template: testCase.template,
-						variant: testCase.variant,
+						variant: displayName,
 						success: false,
 						error: error.message
 					});
@@ -1023,11 +1052,25 @@ async function testSpecificTemplate(
 	);
 
 	try {
-		const testData = getTestDataForTemplate(templateKey, variant);
+		// Handle special research mode variants
+		let actualVariant = variant;
+		let useResearch = false;
+		if (templateKey === 'add-task' && variant === 'research') {
+			actualVariant = 'default';
+			useResearch = true;
+		}
+
+		const testData = getTestDataForTemplate(templateKey, actualVariant);
+
+		// Override useResearch if needed
+		if (useResearch) {
+			testData.params.useResearch = true;
+		}
+
 		const result = await promptManager.loadPrompt(
 			templateKey,
 			testData.params,
-			variant
+			actualVariant
 		);
 
 		console.log(`${colors.green}✓ SUCCESS${colors.reset}\n`);
