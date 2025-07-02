@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	isSilentMode,
+	getTagAwareFilePath
+} from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -76,7 +82,7 @@ For each subtask, provide:
 - title: Clear, specific title
 - description: Detailed description
 - dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
-- details: Implementation details
+- details: Implementation details, the output should be in string
 - testStrategy: Optional testing approach
 
 
@@ -497,8 +503,17 @@ async function expandTask(
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+		// Use tag-aware complexity report path
+		const complexityReportPath = getTagAwareFilePath(
+			COMPLEXITY_REPORT_FILE,
+			tag,
+			projectRoot
+		);
 		let taskAnalysis = null;
+
+		logger.info(
+			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+		);
 
 		try {
 			if (fs.existsSync(complexityReportPath)) {
@@ -566,7 +581,7 @@ async function expandTask(
 			}
 
 			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
+			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'details' is a string. Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
 			logger.info(
 				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
 			);

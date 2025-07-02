@@ -52,6 +52,7 @@ export function registerAddSubtaskTool(server) {
 				.describe(
 					'Absolute path to the tasks file (default: tasks/tasks.json)'
 				),
+			tag: z.string().optional().describe('Tag context to operate on'),
 			skipGenerate: z
 				.boolean()
 				.optional()
@@ -89,7 +90,8 @@ export function registerAddSubtaskTool(server) {
 						status: args.status,
 						dependencies: args.dependencies,
 						skipGenerate: args.skipGenerate,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
 					log,
 					{ session }
