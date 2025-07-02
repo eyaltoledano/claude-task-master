@@ -33,7 +33,6 @@
 		},
 		"prompts": {
 			"type": "object",
-			"required": ["default"],
 			"properties": {
 				"default": {
 					"$ref": "#/definitions/promptVariant"
