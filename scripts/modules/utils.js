@@ -1013,6 +1013,21 @@ function truncate(text, maxLength) {
 }
 
 /**
+ * Checks if array or object are empty
+ * @param {*} value - The value to check
+ * @returns {boolean} True if empty, false otherwise
+ */
+function isEmpty(value) {
+	if (Array.isArray(value)) {
+		return value.length === 0;
+	} else if (typeof value === 'object' && value !== null) {
+		return Object.keys(value).length === 0;
+	}
+
+	return false; // Not an array or object, or is null
+}
+
+/**
  * Find cycles in a dependency graph using DFS
  * @param {string} subtaskId - Current subtask ID
  * @param {Map} dependencyMap - Map of subtask IDs to their dependencies
@@ -1373,6 +1388,7 @@ export {
 	formatTaskId,
 	findTaskById,
 	truncate,
+	isEmpty,
 	findCycles,
 	toKebabCase,
 	detectCamelCaseFlags,
