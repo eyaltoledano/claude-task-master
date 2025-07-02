@@ -77,7 +77,7 @@ const sampleData = {
 					dependencies: [18],
 					useResearch: true
 				},
-				variants: ['default']
+				variants: ['research']
 			}
 		]
 	},
@@ -203,7 +203,7 @@ const sampleData = {
 					useResearch: true,
 					testName: 'research'
 				},
-				variants: ['default']
+				variants: ['research']
 			}
 		]
 	},
@@ -756,7 +756,7 @@ class PromptTestMenu {
 			const result = await this.promptManager.loadPrompt(
 				templateKey,
 				testData.params,
-				actualVariant
+				templateVariant
 			);
 
 			console.log(
@@ -967,33 +967,34 @@ async function runComprehensiveTests(generateDetailed = false) {
 
 	for (const testCase of testCases) {
 		try {
-			const testData =
-				testCase.params ||
-				getTestDataForTemplate(testCase.template, testCase.variant);
+			// Handle variant conversion for comprehensive tests
+			let scenarioVariant = testCase.variant;
+			let templateVariant = testCase.variant;
 
-			// Handle variant conversion for consolidated templates
-			let actualVariant = testCase.variant;
-			if (
-				(testCase.template === 'add-task' ||
-					testCase.template === 'analyze-complexity' ||
-					testCase.template === 'update-subtask' ||
-					testCase.template === 'update-task') &&
-				testCase.variant === 'research'
-			) {
-				actualVariant = 'default';
-			}
-			if (
-				testCase.template === 'parse-prd' &&
-				testCase.variant === 'research'
-			) {
-				actualVariant = 'default';
-			}
+			// For templates using detail levels, convert to default with detailLevel param
 			if (
 				testCase.template === 'research' &&
 				['low', 'medium', 'high'].includes(testCase.variant)
 			) {
-				actualVariant = 'default';
+				templateVariant = 'default';
 			}
+
+			// For consolidated templates, convert research variant to default for template loading only
+			if (
+				(testCase.template === 'add-task' ||
+					testCase.template === 'analyze-complexity' ||
+					testCase.template === 'update-subtask' ||
+					testCase.template === 'update-task' ||
+					testCase.template === 'parse-prd') &&
+				testCase.variant === 'research'
+			) {
+				templateVariant = 'default';
+			}
+
+			// Get test data using scenario variant (research scenarios will be found correctly)
+			const testData =
+				testCase.params ||
+				getTestDataForTemplate(testCase.template, scenarioVariant);
 
 			// Override test data with custom parameters if specified
 			if (testCase.useResearch !== undefined) {
@@ -1009,7 +1010,7 @@ async function runComprehensiveTests(generateDetailed = false) {
 			const result = await promptManager.loadPrompt(
 				testCase.template,
 				testData.params,
-				actualVariant
+				templateVariant
 			);
 
 			const displayName = testCase.testName || testCase.variant;
@@ -1112,25 +1113,12 @@ async function testSpecificTemplate(
 	);
 
 	try {
-		// Handle special research mode variants
+		// Handle special research mode variants for template loading
 		let actualVariant = variant;
-		let useResearch = false;
-		let research = false;
 		let detailLevel = null;
-		if (
-			(templateKey === 'add-task' ||
-				templateKey === 'analyze-complexity' ||
-				templateKey === 'update-subtask' ||
-				templateKey === 'update-task') &&
-			variant === 'research'
-		) {
-			actualVariant = 'default';
-			useResearch = true;
-		}
-		if (templateKey === 'parse-prd' && variant === 'research') {
-			actualVariant = 'default';
-			research = true;
-		}
+
+		// For templates with separate research scenarios, keep the research variant
+		// For templates using detail levels, convert to default with detailLevel param
 		if (
 			templateKey === 'research' &&
 			['low', 'medium', 'high'].includes(variant)
@@ -1139,15 +1127,23 @@ async function testSpecificTemplate(
 			detailLevel = variant;
 		}
 
+		// Get test data using the actual variant (research scenarios will be found)
 		const testData = getTestDataForTemplate(templateKey, actualVariant);
 
-		// Override useResearch, research, or detailLevel if needed
-		if (useResearch) {
-			testData.params.useResearch = true;
+		// For consolidated templates, convert research variant to default for template loading
+		let templateVariant = actualVariant;
+		if (
+			(templateKey === 'add-task' ||
+				templateKey === 'analyze-complexity' ||
+				templateKey === 'update-subtask' ||
+				templateKey === 'update-task' ||
+				templateKey === 'parse-prd') &&
+			variant === 'research'
+		) {
+			templateVariant = 'default';
 		}
-		if (research) {
-			testData.params.research = true;
-		}
+
+		// Override detailLevel if needed for research template
 		if (detailLevel) {
 			testData.params.detailLevel = detailLevel;
 		}
@@ -1155,7 +1151,7 @@ async function testSpecificTemplate(
 		const result = await promptManager.loadPrompt(
 			templateKey,
 			testData.params,
-			actualVariant
+			templateVariant
 		);
 
 		console.log(`${colors.green}✓ SUCCESS${colors.reset}\n`);
