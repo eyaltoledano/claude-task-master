@@ -203,90 +203,6 @@ const sampleData = {
 					useResearch: true
 				},
 				variants: ['research']
-			},
-			{
-				name: 'Batch Complexity Analysis',
-				params: {
-					tasks: [
-						{
-							id: 1,
-							title: 'Setup Project',
-							description: 'Initialize repository and basic structure',
-							details: 'Basic project setup.'
-						},
-						{
-							id: 2,
-							title: 'User Authentication',
-							description: 'Implement auth system',
-							details: 'JWT-based authentication.'
-						},
-						{
-							id: 3,
-							title: 'Database Schema',
-							description: 'Design and implement database',
-							details: 'PostgreSQL schema design.'
-						},
-						{
-							id: 4,
-							title: 'API Endpoints',
-							description: 'Create REST API',
-							details: 'Express.js REST endpoints.'
-						},
-						{
-							id: 5,
-							title: 'Frontend Components',
-							description: 'Build UI components',
-							details: 'React component library.'
-						},
-						{
-							id: 6,
-							title: 'State Management',
-							description: 'Implement state management',
-							details: 'Redux store setup.'
-						},
-						{
-							id: 7,
-							title: 'Testing Suite',
-							description: 'Add comprehensive tests',
-							details: 'Jest and Cypress testing.'
-						},
-						{
-							id: 8,
-							title: 'Deployment Pipeline',
-							description: 'Setup CI/CD',
-							details: 'GitHub Actions and AWS deployment.'
-						},
-						{
-							id: 9,
-							title: 'Monitoring',
-							description: 'Add logging and monitoring',
-							details: 'CloudWatch and error tracking.'
-						},
-						{
-							id: 10,
-							title: 'Performance Optimization',
-							description: 'Optimize app performance',
-							details: 'Bundle optimization and caching.'
-						},
-						{
-							id: 11,
-							title: 'Security Audit',
-							description: 'Security review and hardening',
-							details: 'Vulnerability assessment and fixes.'
-						},
-						{
-							id: 12,
-							title: 'Documentation',
-							description: 'Complete project documentation',
-							details: 'API docs and deployment guides.'
-						}
-					],
-					gatheredContext:
-						'Large-scale web application with multiple integration points and high complexity requirements.',
-					threshold: 5,
-					useResearch: false
-				},
-				variants: ['batch']
 			}
 		]
 	},
@@ -698,7 +614,7 @@ class PromptTestMenu {
 			{
 				key: 'analyze-complexity',
 				name: 'Analyze Complexity',
-				variants: ['default', 'research', 'batch']
+				variants: ['default', 'research']
 			},
 			{
 				key: 'research',
@@ -969,7 +885,6 @@ async function runComprehensiveTests(generateDetailed = false) {
 		{ template: 'expand-task', variant: 'complexity-report' },
 		{ template: 'analyze-complexity', variant: 'default' },
 		{ template: 'analyze-complexity', variant: 'research' },
-		{ template: 'analyze-complexity', variant: 'batch' },
 		{ template: 'research', variant: 'low' },
 		{ template: 'research', variant: 'medium' },
 		{ template: 'research', variant: 'high' },
