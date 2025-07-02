@@ -15,6 +15,7 @@ import {
 	getFallbackProvider,
 	getFallbackModelId,
 	getParametersForRole,
+	getResponseLanguage,
 	getUserId,
 	MODEL_MAP,
 	getDebugFlag,
@@ -551,9 +552,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			const messages = [];
-			if (systemPrompt) {
-				messages.push({ role: 'system', content: systemPrompt });
-			}
+			const responseLanguage = getResponseLanguage(effectiveProjectRoot);
+			const systemPromptWithLanguage = `${systemPrompt} \n\n Always respond in ${responseLanguage}.`;
+			messages.push({
+				role: 'system',
+				content: systemPromptWithLanguage.trim()
+			});
 
 			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
 			// {

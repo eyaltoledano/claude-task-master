@@ -141,7 +141,8 @@ const DEFAULT_CONFIG = {
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		responseLanguage: 'English'
 	}
 };
 
@@ -683,6 +684,82 @@ describe('Getter Functions', () => {
 
 		// Assert
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
+	});
+
+	test('getResponseLanguage should return responseLanguage from config', () => {
+		// Arrange
+		// Prepare a config object with responseLanguage property for this test
+		const configWithLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project',
+				responseLanguage: '中文'
+			}
+		});
+
+		// Set up fs.readFileSync to return our test config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('中文');
+	});
+
+	test('getResponseLanguage should return undefined when responseLanguage is not in config', () => {
+		// Arrange
+		const configWithoutLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project'
+				// No responseLanguage property
+			}
+		});
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithoutLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('English');
 	});
 
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)
