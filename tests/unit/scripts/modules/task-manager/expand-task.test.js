@@ -130,11 +130,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/utils/contextGatherer.js',
 	() => ({
 		ContextGatherer: jest.fn().mockImplementation(() => ({
-			gather: jest.fn().mockResolvedValue({
-				contextSummary: 'Mock context summary',
-				allRelatedTaskIds: [],
-				graphVisualization: 'Mock graph'
-			})
+			gather: jest.fn().mockResolvedValue('Mock project context from files')
 		}))
 	})
 );
@@ -670,6 +666,18 @@ describe('expandTask', () => {
 	describe('Complexity Report Integration (Tag-Specific)', () => {
 		test('should use tag-specific complexity report when available', async () => {
 			// Arrange
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt: 'Generate exactly 5 subtasks for complexity report',
+				userPrompt:
+					'Please break this task into 5 parts\n\nUser provided context'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			const tasksPath = 'tasks/tasks.json';
 			const taskId = '1'; // Task in feature-branch
 			const context = {
@@ -716,6 +724,16 @@ describe('expandTask', () => {
 			// Assert - generateTextService called with systemPrompt for 5 subtasks
 			const callArg = generateTextService.mock.calls[0][0];
 			expect(callArg.systemPrompt).toContain('Generate exactly 5 subtasks');
+
+			// Assert - Should use complexity-report variant with expansion prompt
+			expect(mockLoadPrompt).toHaveBeenCalledWith(
+				'expand-task',
+				expect.objectContaining({
+					subtaskCount: 5,
+					expansionPrompt: 'Please break this task into 5 parts'
+				}),
+				'complexity-report'
+			);
 
 			// Clean up stub
 			existsSpy.mockRestore();
@@ -940,13 +958,26 @@ describe('expandTask', () => {
 				false
 			);
 
-			// Assert - Should pass additional context to prompt manager
+			// Assert - Should pass combined additional context to prompt manager
 			expect(mockLoadPrompt).toHaveBeenCalledWith(
 				'expand-task',
 				expect.objectContaining({
-					additionalContext: 'Use React hooks and TypeScript'
+					additionalContext: expect.stringContaining(
+						'Use React hooks and TypeScript'
+					)
 				}),
 				expect.any(String)
+			);
+
+			// Additional assertion to verify the context combining logic
+			const call = mockLoadPrompt.mock.calls[0];
+			const actualAdditionalContext = call[1].additionalContext;
+			expect(actualAdditionalContext).toContain(
+				'Use React hooks and TypeScript'
+			);
+			expect(actualAdditionalContext).toContain('# Project Context');
+			expect(actualAdditionalContext).toContain(
+				'Mock project context from files'
 			);
 		});
 
