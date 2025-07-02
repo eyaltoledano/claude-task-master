@@ -81,9 +81,9 @@ The comprehensive test suite covers:
 - **analyze-complexity** (default variant)
 - **research** (low, medium, high detail variants)
 - **parse-prd** (default variant)
-- **update-subtask** (default, research variants)
-- **update-task** (default, research variants)
-- **update-tasks** (default, research variants)
+- **update-subtask** (default variant with `useResearch` conditional content)
+- **update-task** (default, append variants; research uses `useResearch` conditional content)
+- **update-tasks** (default variant with `useResearch` conditional content)
 
 ### Test Scenarios (19 total)
 - 16 valid template/variant combinations
