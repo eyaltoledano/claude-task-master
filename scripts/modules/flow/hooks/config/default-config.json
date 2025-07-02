@@ -47,6 +47,9 @@
 				"updateTaskStatus": true,
 				"generateSummary": true,
 				"saveMetrics": true,
+				"autoUpdateTaskStatus": true,
+				"autoCreatePR": true,
+				"enableQualityAnalysis": true,
 				"timeout": 10000
 			}
 		},

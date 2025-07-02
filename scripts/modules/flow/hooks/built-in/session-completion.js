@@ -1,6 +1,9 @@
 /**
  * Session Completion Hook - handles post-session cleanup and PR creation
  */
+import { CodeQualityAnalyzer } from '../quality/code-quality-analyzer.js';
+import { formatForTaskUpdate, formatForPRDescription } from '../quality/quality-insights-formatter.js';
+
 export default class SessionCompletionHook {
 	constructor() {
 		this.version = '1.0.0';
@@ -12,6 +15,9 @@ export default class SessionCompletionHook {
 			'pr-created'
 		];
 		this.timeout = 30000; // 30 seconds
+
+		// Initialize quality analyzer
+		this.qualityAnalyzer = new CodeQualityAnalyzer();
 	}
 
 	/**
@@ -23,24 +29,69 @@ export default class SessionCompletionHook {
 		try {
 			const completionResult = {
 				success: true,
-				actions: [],
+				session: {
+					id: session.sessionId || session.operationId,
+					startTime: session.startTime,
+					endTime: new Date().toISOString(),
+					duration: this.calculateSessionDuration(session)
+				},
+				task: {
+					id: task.id,
+					type: task.isSubtask ? 'subtask' : 'task',
+					title: task.title,
+					status: task.status
+				},
+				worktree: {
+					path: worktree.path,
+					branch: worktree.branch || worktree.name
+				},
 				statistics: {},
-				recommendations: []
+				qualityMetrics: null,
+				recommendations: [],
+				actions: []
 			};
 
 			// Collect session statistics
-			if (config.collectStatistics) {
-				completionResult.statistics = await this.collectSessionStatistics(
+			completionResult.statistics = await this.collectSessionStatistics(
+				session,
+				worktree,
+				services
+			);
+
+			// Run code quality analysis
+			try {
+				completionResult.qualityMetrics = await this.analyzeCodeQuality(
 					session,
+					task,
 					worktree,
 					services
 				);
+
+				// Generate quality-based recommendations
+				if (completionResult.qualityMetrics) {
+					const qualityInsights = this.generateQualityInsights(
+						completionResult.qualityMetrics
+					);
+					completionResult.recommendations.push(...qualityInsights);
+				}
+			} catch (qualityError) {
+				console.warn('Code quality analysis failed:', qualityError.message);
+				completionResult.qualityMetrics = {
+					error: qualityError.message,
+					timestamp: new Date().toISOString()
+				};
 			}
 
 			// Update task status if configured
 			if (config.autoUpdateTaskStatus) {
 				await this.updateTaskStatus(task, session, services);
 				completionResult.actions.push('task-status-updated');
+			}
+
+			// Update task with quality metrics
+			if (completionResult.qualityMetrics && completionResult.qualityMetrics.hasChanges) {
+				await this.updateTaskWithQualityMetrics(task, completionResult.qualityMetrics, services);
+				completionResult.actions.push('quality-metrics-added');
 			}
 
 			// Generate completion summary
@@ -60,18 +111,12 @@ export default class SessionCompletionHook {
 					session,
 					task,
 					worktree,
-					services
+					services,
+					completionResult.qualityMetrics
 				);
 				completionResult.prResult = prResult;
 				completionResult.actions.push('pr-created');
 			}
-
-			// Generate recommendations
-			completionResult.recommendations = this.generateRecommendations(
-				session,
-				task,
-				config
-			);
 
 			return completionResult;
 		} catch (error) {
@@ -357,7 +402,7 @@ export default class SessionCompletionHook {
 		return true;
 	}
 
-	async handlePRCreation(session, task, worktree, services) {
+	async handlePRCreation(session, task, worktree, services, qualityMetrics = null) {
 		if (!services.backend || !worktree) {
 			throw new Error(
 				'Backend service or worktree not available for PR creation'
@@ -366,7 +411,7 @@ export default class SessionCompletionHook {
 
 		try {
 			const prTitle = `Task ${task.id}: ${task.title}`;
-			const prDescription = this.generatePRDescription(session, task);
+			const prDescription = this.generatePRDescription(session, task, qualityMetrics);
 
 			const result = await services.backend.completeSubtaskWithPR(
 				worktree.name,
@@ -392,7 +437,7 @@ export default class SessionCompletionHook {
 		}
 	}
 
-	generatePRDescription(session, task) {
+	generatePRDescription(session, task, qualityMetrics = null) {
 		const parts = [
 			`Implemented by Claude Code`,
 			``,
@@ -409,6 +454,15 @@ export default class SessionCompletionHook {
 				? `- Cost: $${session.metadata.totalCost.toFixed(4)}`
 				: null
 		].filter(Boolean);
+
+		// Add quality metrics if available
+		if (qualityMetrics && qualityMetrics.hasChanges) {
+			const qualitySection = formatForPRDescription(qualityMetrics);
+			if (qualitySection) {
+				parts.push('');
+				parts.push(qualitySection);
+			}
+		}
 
 		return parts.join('\n');
 	}
@@ -591,5 +645,109 @@ Stack: ${error?.stack ? error.stack.split('\n')[0] : 'No stack trace'}
 
 	async cleanupOnFailure(worktree, services) {
 		// Implementation would perform failure cleanup
+	}
+
+	async updateTaskWithQualityMetrics(task, qualityMetrics, services) {
+		if (!task || !services.backend || !qualityMetrics) return;
+
+		try {
+			const qualityReport = formatForTaskUpdate(qualityMetrics);
+			const isSubtask = task.isSubtask || String(task.id).includes('.');
+
+			const updateText = `
+<quality-analysis added="${new Date().toISOString()}">
+${qualityReport.summary}
+
+${qualityReport.details}
+</quality-analysis>
+`;
+
+			if (isSubtask) {
+				await services.backend.updateSubtask({
+					id: task.id,
+					prompt: updateText,
+					research: false
+				});
+			} else {
+				await services.backend.updateTask({
+					id: task.id,
+					prompt: updateText,
+					research: false
+				});
+			}
+		} catch (error) {
+			console.warn('Failed to update task with quality metrics:', error);
+		}
+	}
+
+	async analyzeCodeQuality(session, task, worktree, services) {
+		try {
+			return await this.qualityAnalyzer.analyzeSession(session, task, worktree, services);
+		} catch (error) {
+			console.warn('Code quality analysis failed:', error.message);
+			return {
+				error: error.message,
+				timestamp: new Date().toISOString()
+			};
+		}
+	}
+
+	generateQualityInsights(metrics) {
+		const insights = [];
+
+		if (!metrics || metrics.error) {
+			return insights;
+		}
+
+		// Overall score insights
+		if (metrics.overallScore >= 8) {
+			insights.push('✅ High quality code generated');
+		} else if (metrics.overallScore >= 6) {
+			insights.push('⚠️ Code quality is acceptable but could be improved');
+		} else {
+			insights.push('🔧 Code quality needs attention');
+		}
+
+		// Complexity insights
+		if (metrics.aggregateMetrics?.averageComplexity > 15) {
+			insights.push('⚠️ High complexity detected - consider breaking down functions');
+		}
+
+		// Lint insights
+		if (metrics.lintResults?.errorCount > 0) {
+			insights.push(`🔧 ${metrics.lintResults.errorCount} linting errors found`);
+		}
+		if (metrics.lintResults?.warningCount > 0) {
+			insights.push(`⚠️ ${metrics.lintResults.warningCount} linting warnings found`);
+		}
+
+		// Task alignment insights
+		if (metrics.taskAlignment?.keywordCoverage < 0.5) {
+			insights.push('📋 Code may not fully address task requirements');
+		} else if (metrics.taskAlignment?.keywordCoverage > 0.8) {
+			insights.push('✅ Code well-aligned with task requirements');
+		}
+
+		// Comment ratio insights
+		if (metrics.aggregateMetrics?.averageCommentRatio < 0.1) {
+			insights.push('📝 Consider adding more documentation/comments');
+		}
+
+		// Scope insights
+		if (metrics.taskAlignment?.implementationScope === 'very-large') {
+			insights.push('📏 Large implementation - consider breaking into smaller tasks');
+		}
+
+		return insights;
+	}
+
+	calculateSessionDuration(session) {
+		if (!session.startTime) {
+			return 0;
+		}
+
+		const start = new Date(session.startTime);
+		const end = new Date();
+		return Math.round((end - start) / 1000); // Duration in seconds
 	}
 }
