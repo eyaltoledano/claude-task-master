@@ -200,9 +200,10 @@ const sampleData = {
 					gatheredContext:
 						'Modern web application requiring scalable architecture and AI integration.',
 					threshold: 7,
-					useResearch: true
+					useResearch: true,
+					testName: 'research'
 				},
-				variants: ['research']
+				variants: ['default']
 			}
 		]
 	},
@@ -903,7 +904,12 @@ async function runComprehensiveTests(generateDetailed = false) {
 		{ template: 'expand-task', variant: 'research' },
 		{ template: 'expand-task', variant: 'complexity-report' },
 		{ template: 'analyze-complexity', variant: 'default' },
-		{ template: 'analyze-complexity', variant: 'research' },
+		{
+			template: 'analyze-complexity',
+			variant: 'default',
+			useResearch: true,
+			testName: 'research'
+		},
 		{ template: 'research', variant: 'low' },
 		{ template: 'research', variant: 'medium' },
 		{ template: 'research', variant: 'high' },
@@ -1055,7 +1061,10 @@ async function testSpecificTemplate(
 		// Handle special research mode variants
 		let actualVariant = variant;
 		let useResearch = false;
-		if (templateKey === 'add-task' && variant === 'research') {
+		if (
+			(templateKey === 'add-task' || templateKey === 'analyze-complexity') &&
+			variant === 'research'
+		) {
 			actualVariant = 'default';
 			useResearch = true;
 		}
