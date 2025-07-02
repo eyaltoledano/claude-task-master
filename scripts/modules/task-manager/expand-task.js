@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	isSilentMode,
+	getTagAwareFilePath
+} from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -77,7 +83,7 @@ For each subtask, provide:
 - title: Clear, specific title
 - description: Detailed description
 - dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
-- details: Implementation details
+- details: Implementation details, the output should be in string
 - testStrategy: Optional testing approach
 
 
@@ -496,8 +502,17 @@ async function expandTask(
 		let finalSubtaskCount;
 		let complexityReasoningContext = '';
 
-		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+		// Use tag-aware complexity report path
+		const complexityReportPath = getTagAwareFilePath(
+			COMPLEXITY_REPORT_FILE,
+			tag,
+			projectRoot
+		);
 		let taskAnalysis = null;
+
+		logger.info(
+			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+		);
 
 		try {
 			if (fs.existsSync(complexityReportPath)) {
@@ -557,13 +572,22 @@ async function expandTask(
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Combine all context sources into a single additionalContext parameter
+		let combinedAdditionalContext = '';
+		if (additionalContext || complexityReasoningContext) {
+			combinedAdditionalContext =
+				`\n\n${additionalContext}${complexityReasoningContext}`.trim();
+		}
+		if (gatheredContext) {
+			combinedAdditionalContext =
+				`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
+		}
+
 		const promptParams = {
 			task: task,
-			finalSubtaskCount: finalSubtaskCount,
+			subtaskCount: finalSubtaskCount,
 			nextSubtaskId: nextSubtaskId,
-			additionalContext: additionalContext,
-			complexityReasoningContext: complexityReasoningContext,
-			gatheredContext: gatheredContext || '',
+			additionalContext: combinedAdditionalContext,
 			useResearch: useResearch,
 			expansionPrompt: taskAnalysis?.expansionPrompt || null
 		};
