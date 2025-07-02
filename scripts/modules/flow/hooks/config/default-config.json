@@ -55,7 +55,10 @@
 			"config": {
 				"useGlobalSetting": true,
 				"defaultTemplate": "claude-code",
-				"autoLabels": ["claude-code", "auto-generated"],
+				"autoLabels": [
+					"claude-code",
+					"auto-generated"
+				],
 				"timeout": 20000
 			}
 		},
@@ -63,10 +66,10 @@
 			"enabled": true,
 			"config": {
 				"autoMerge": {
-					"enabled": false,
+					"enabled": true,
 					"strictMode": false,
 					"recentActivityWindow": "30 minutes ago",
-					"maxRetries": 3,
+					"maxRetries": 5,
 					"retryDelay": 60000,
 					"safetyChecks": {
 						"validatePRState": true,

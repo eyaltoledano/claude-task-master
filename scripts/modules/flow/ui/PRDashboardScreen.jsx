@@ -3,6 +3,8 @@ import { Box, Text } from 'ink';
 import PRListComponent from './PRListComponent.jsx';
 import PRDetailsPanel from './PRDetailsPanel.jsx';
 import PRActionPanel from './PRActionPanel.jsx';
+import ConfigurationModal from './ConfigurationModal.jsx';
+import { ConfigurationProvider } from './ConfigurationProvider.jsx';
 import { NotificationProvider, useNotification } from './NotificationProvider.jsx';
 
 const Dashboard = ({ backend }) => {
@@ -10,6 +12,7 @@ const Dashboard = ({ backend }) => {
 	const [selectedPR, setSelectedPR] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [showConfigModal, setShowConfigModal] = useState(false);
 	const { addNotification } = useNotification();
 
 	useEffect(() => {
@@ -48,6 +51,14 @@ const Dashboard = ({ backend }) => {
 		addNotification(message);
 	};
 
+	const handleOpenConfig = () => {
+		setShowConfigModal(true);
+	};
+
+	const handleCloseConfig = () => {
+		setShowConfigModal(false);
+	};
+
 	if (loading) {
 		return <Text>Loading PR Dashboard...</Text>;
 	}
@@ -69,9 +80,26 @@ const Dashboard = ({ backend }) => {
 				</Box>
 				<Box flexGrow={1} marginLeft={1} borderStyle="single" flexDirection="column">
 					<PRDetailsPanel pr={selectedPR} backend={backend} />
-					<PRActionPanel pr={selectedPR} backend={backend} onNotification={handleNotification} />
+					<PRActionPanel 
+						pr={selectedPR} 
+						backend={backend} 
+						onNotification={handleNotification}
+						onOpenConfig={handleOpenConfig}
+					/>
 				</Box>
 			</Box>
+			
+			{/* Configuration Modal */}
+			{showConfigModal && (
+				<Box position="absolute" top={0} left={0} width="100%" height="100%">
+					<ConfigurationProvider backend={backend}>
+						<ConfigurationModal
+							onClose={handleCloseConfig}
+							onNotification={handleNotification}
+						/>
+					</ConfigurationProvider>
+				</Box>
+			)}
 		</Box>
 	);
 };

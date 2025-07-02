@@ -4225,4 +4225,65 @@ ${prompt}
 		};
 		return this.executeMerge(prNumber, mergeConfig);
 	}
+
+	/**
+	 * Get current configuration from the hook config file
+	 */
+	async getConfiguration() {
+		try {
+			const fs = await import('fs/promises');
+			const path = await import('path');
+			
+			const configPath = path.join(
+				this.projectRoot,
+				'scripts/modules/flow/hooks/config/default-config.json'
+			);
+			
+			const configData = await fs.readFile(configPath, 'utf8');
+			const fullConfig = JSON.parse(configData);
+			
+			// Return the PR lifecycle management configuration
+			return fullConfig.hooks['pr-lifecycle-management']?.config || {};
+		} catch (error) {
+			console.error('Failed to load configuration:', error);
+			throw new Error(`Configuration load failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Update configuration in the hook config file
+	 */
+	async updateConfiguration(newConfig) {
+		try {
+			const fs = await import('fs/promises');
+			const path = await import('path');
+			
+			const configPath = path.join(
+				this.projectRoot,
+				'scripts/modules/flow/hooks/config/default-config.json'
+			);
+			
+			// Load current full config
+			const configData = await fs.readFile(configPath, 'utf8');
+			const fullConfig = JSON.parse(configData);
+			
+			// Update the PR lifecycle management configuration
+			if (!fullConfig.hooks) {
+				fullConfig.hooks = {};
+			}
+			if (!fullConfig.hooks['pr-lifecycle-management']) {
+				fullConfig.hooks['pr-lifecycle-management'] = {};
+			}
+			
+			fullConfig.hooks['pr-lifecycle-management'].config = newConfig;
+			
+			// Write back to file
+			await fs.writeFile(configPath, JSON.stringify(fullConfig, null, '\t'));
+			
+			return true;
+		} catch (error) {
+			console.error('Failed to update configuration:', error);
+			throw new Error(`Configuration update failed: ${error.message}`);
+		}
+	}
 }
