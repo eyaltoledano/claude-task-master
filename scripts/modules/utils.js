@@ -64,6 +64,51 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 	return undefined;
 }
 
+// --- Tag-Aware Path Resolution Utility ---
+
+/**
+ * Slugifies a tag name to be filesystem-safe
+ * @param {string} tagName - The tag name to slugify
+ * @returns {string} Slugified tag name safe for filesystem use
+ */
+function slugifyTagForFilePath(tagName) {
+	if (!tagName || typeof tagName !== 'string') {
+		return 'unknown-tag';
+	}
+
+	// Replace invalid filesystem characters with hyphens and clean up
+	return tagName
+		.replace(/[^a-zA-Z0-9_-]/g, '-') // Replace invalid chars with hyphens
+		.replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+		.replace(/-+/g, '-') // Collapse multiple hyphens
+		.toLowerCase() // Convert to lowercase
+		.substring(0, 50); // Limit length to prevent overly long filenames
+}
+
+/**
+ * Resolves a file path to be tag-aware, following the pattern used by other commands.
+ * For non-master tags, appends _slugified-tagname before the file extension.
+ * @param {string} basePath - The base file path (e.g., '.taskmaster/reports/task-complexity-report.json')
+ * @param {string|null} tag - The tag name (null, undefined, or 'master' uses base path)
+ * @param {string} [projectRoot='.'] - The project root directory
+ * @returns {string} The resolved file path
+ */
+function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
+	// Use path.parse and format for clean tag insertion
+	const parsedPath = path.parse(basePath);
+	if (!tag || tag === 'master') {
+		return path.join(projectRoot, basePath);
+	}
+
+	// Slugify the tag for filesystem safety
+	const slugifiedTag = slugifyTagForFilePath(tag);
+
+	// Append slugified tag before file extension
+	parsedPath.base = `${parsedPath.name}_${slugifiedTag}${parsedPath.ext}`;
+	const relativePath = path.format(parsedPath);
+	return path.join(projectRoot, relativePath);
+}
+
 // --- Project Root Finding Utility ---
 /**
  * Recursively searches upwards for project root starting from a given directory.
@@ -1338,6 +1383,8 @@ export {
 	addComplexityToTask,
 	resolveEnvVariable,
 	findProjectRoot,
+	getTagAwareFilePath,
+	slugifyTagForFilePath,
 	aggregateTelemetry,
 	getCurrentTag,
 	resolveTag,

@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	isSilentMode,
+	getTagAwareFilePath
+} from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -497,8 +503,17 @@ async function expandTask(
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+		// Use tag-aware complexity report path
+		const complexityReportPath = getTagAwareFilePath(
+			COMPLEXITY_REPORT_FILE,
+			tag,
+			projectRoot
+		);
 		let taskAnalysis = null;
+
+		logger.info(
+			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+		);
 
 		try {
 			if (fs.existsSync(complexityReportPath)) {
