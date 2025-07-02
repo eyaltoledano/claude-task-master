@@ -31,5 +31,6 @@
 		"azureBaseURL": "https://your-endpoint.azure.com/",
 		"defaultTag": "master",
 		"responseLanguage": "English"
-	}
+	},
+	"claudeCode": {}
 }
