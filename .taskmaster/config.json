@@ -29,6 +29,7 @@
 		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
 		"userId": "1234567890",
 		"azureBaseURL": "https://your-endpoint.azure.com/",
-		"defaultTag": "master"
+		"defaultTag": "master",
+		"responseLanguage": "English"
 	}
 }
