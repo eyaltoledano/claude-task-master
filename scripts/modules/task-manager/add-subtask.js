@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { log, readJSON, writeJSON } from '../utils.js';
+import { log, readJSON, writeJSON, getCurrentTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
@@ -25,8 +25,10 @@ async function addSubtask(
 	try {
 		log('info', `Adding subtask to parent task ${parentId}...`);
 
+		const currentTag =
+			context.tag || getCurrentTag(context.projectRoot) || 'master';
 		// Read the existing tasks with proper context
-		const data = readJSON(tasksPath, context.projectRoot, context.tag);
+		const data = readJSON(tasksPath, context.projectRoot, currentTag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
 		}
@@ -137,12 +139,12 @@ async function addSubtask(
 		}
 
 		// Write the updated tasks back to the file with proper context
-		writeJSON(tasksPath, data, context.projectRoot, context.tag);
+		writeJSON(tasksPath, data, context.projectRoot, currentTag);
 
 		// Generate task files if requested
 		if (generateFiles) {
 			log('info', 'Regenerating task files...');
-			// await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
 		}
 
 		return newSubtask;

@@ -247,7 +247,9 @@ describe('setTaskStatus', () => {
 						expect.objectContaining({ id: 2, status: 'done' })
 					])
 				})
-			})
+			}),
+			undefined,
+			'master'
 		);
 		// expect(generateTaskFiles).toHaveBeenCalledWith(
 		// 	tasksPath,
@@ -287,7 +289,9 @@ describe('setTaskStatus', () => {
 						})
 					])
 				})
-			})
+			}),
+			undefined,
+			'master'
 		);
 	});
 
@@ -318,7 +322,9 @@ describe('setTaskStatus', () => {
 						expect.objectContaining({ id: 2, status: 'done' })
 					])
 				})
-			})
+			}),
+			undefined,
+			'master'
 		);
 	});
 
@@ -354,7 +360,9 @@ describe('setTaskStatus', () => {
 						})
 					])
 				})
-			})
+			}),
+			undefined,
+			'master'
 		);
 	});
 
@@ -523,5 +531,46 @@ describe('setTaskStatus', () => {
 			false
 		);
 		expect(result).toBeDefined();
+	});
+
+	// Regression test to ensure tag preservation when updating in multi-tag environment
+	test('should preserve other tags when updating task status', async () => {
+		// Arrange
+		const multiTagData = {
+			master: JSON.parse(JSON.stringify(sampleTasks.master)),
+			'feature-branch': {
+				tasks: [
+					{ id: 10, title: 'FB Task', status: 'pending', dependencies: [] }
+				],
+				metadata: { description: 'Feature branch tasks' }
+			}
+		};
+		const tasksPath = '/mock/path/tasks.json';
+
+		readJSON.mockReturnValue({
+			...multiTagData.master, // resolved view not used
+			tag: 'master',
+			_rawTaggedData: multiTagData
+		});
+
+		// Act
+		await setTaskStatus(tasksPath, '1', 'done', {
+			mcpLog: { info: jest.fn() }
+		});
+
+		// Assert: writeJSON should be called with data containing both tags intact
+		const writeArgs = writeJSON.mock.calls[0];
+		expect(writeArgs[0]).toBe(tasksPath);
+		const writtenData = writeArgs[1];
+		expect(writtenData).toHaveProperty('master');
+		expect(writtenData).toHaveProperty('feature-branch');
+		// master task updated
+		const updatedTask = writtenData.master.tasks.find((t) => t.id === 1);
+		expect(updatedTask.status).toBe('done');
+		// feature-branch untouched
+		expect(writtenData['feature-branch'].tasks[0].status).toBe('pending');
+		// ensure additional args (projectRoot undefined, tag 'master') present
+		expect(writeArgs[2]).toBeUndefined();
+		expect(writeArgs[3]).toBe('master');
 	});
 });
