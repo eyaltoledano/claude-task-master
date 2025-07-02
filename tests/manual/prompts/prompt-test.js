@@ -752,7 +752,7 @@ class PromptTestMenu {
 			// Handle special research mode variants
 			let actualVariant = variant;
 			let useResearch = false;
-			if (templateKey === 'add-task' && variant === 'research') {
+			if ((templateKey === 'add-task' || templateKey === 'update-subtask') && variant === 'research') {
 				actualVariant = 'default';
 				useResearch = true;
 			}
@@ -936,7 +936,12 @@ async function runComprehensiveTests(generateDetailed = false) {
 			testName: 'research'
 		},
 		{ template: 'update-subtask', variant: 'default' },
-		{ template: 'update-subtask', variant: 'research' },
+		{
+			template: 'update-subtask',
+			variant: 'default',
+			useResearch: true,
+			testName: 'research'
+		},
 		{ template: 'update-task', variant: 'default' },
 		{ template: 'update-task', variant: 'append' },
 		{ template: 'update-task', variant: 'research' },
@@ -1096,7 +1101,7 @@ async function testSpecificTemplate(
 		let research = false;
 		let detailLevel = null;
 		if (
-			(templateKey === 'add-task' || templateKey === 'analyze-complexity') &&
+			(templateKey === 'add-task' || templateKey === 'analyze-complexity' || templateKey === 'update-subtask') &&
 			variant === 'research'
 		) {
 			actualVariant = 'default';
