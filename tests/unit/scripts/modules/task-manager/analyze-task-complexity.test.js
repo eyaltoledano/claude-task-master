@@ -2,6 +2,10 @@
  * Tests for the analyze-task-complexity.js module
  */
 import { jest } from '@jest/globals';
+import {
+	createGetTagAwareFilePathMock,
+	createSlugifyTagForFilePathMock
+} from './setup.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
@@ -28,7 +32,16 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	disableSilentMode: jest.fn(),
 	truncate: jest.fn((text) => text),
 	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
-	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {})
+	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {}),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj),
+	getCurrentTag: jest.fn(() => 'master'),
+	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
+	getTagAwareFilePath: createGetTagAwareFilePathMock(),
+	slugifyTagForFilePath: createSlugifyTagForFilePathMock(),
+	markMigrationForNotice: jest.fn(),
+	performCompleteTagMigration: jest.fn(),
+	setTasksForTag: jest.fn(),
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || [])
 }));
 
 jest.unstable_mockModule(
@@ -145,6 +158,19 @@ jest.unstable_mockModule(
 	})
 );
 
+// Mock fs module
+const mockWriteFileSync = jest.fn();
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		existsSync: jest.fn(() => false),
+		readFileSync: jest.fn(),
+		writeFileSync: mockWriteFileSync
+	},
+	existsSync: jest.fn(() => false),
+	readFileSync: jest.fn(),
+	writeFileSync: mockWriteFileSync
+}));
+
 // Import the mocked modules
 const { readJSON, writeJSON, log, CONFIG } = await import(
 	'../../../../../scripts/modules/utils.js'
@@ -153,6 +179,8 @@ const { readJSON, writeJSON, log, CONFIG } = await import(
 const { generateObjectService, generateTextService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
+
+const fs = await import('fs');
 
 // Import the module under test
 const { default: analyzeTaskComplexity } = await import(
@@ -184,40 +212,47 @@ describe('analyzeTaskComplexity', () => {
 	};
 
 	const sampleTasks = {
-		meta: { projectName: 'Test Project' },
-		tasks: [
-			{
-				id: 1,
-				title: 'Task 1',
-				description: 'First task description',
-				status: 'pending',
-				dependencies: [],
-				priority: 'high'
-			},
-			{
-				id: 2,
-				title: 'Task 2',
-				description: 'Second task description',
-				status: 'pending',
-				dependencies: [1],
-				priority: 'medium'
-			},
-			{
-				id: 3,
-				title: 'Task 3',
-				description: 'Third task description',
-				status: 'done',
-				dependencies: [1, 2],
-				priority: 'high'
-			}
-		]
+		master: {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					description: 'First task description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'high'
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					description: 'Second task description',
+					status: 'pending',
+					dependencies: [1],
+					priority: 'medium'
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					description: 'Third task description',
+					status: 'done',
+					dependencies: [1, 2],
+					priority: 'high'
+				}
+			]
+		}
 	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		// Default mock implementations
-		readJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
+		// Default mock implementations - readJSON should return the resolved view with tasks at top level
+		readJSON.mockImplementation((tasksPath, projectRoot, tag) => {
+			return {
+				...sampleTasks.master,
+				tag: tag || 'master',
+				_rawTaggedData: sampleTasks
+			};
+		});
 		generateTextService.mockResolvedValue(sampleApiResponse);
 	});
 
@@ -242,17 +277,16 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(
+			'tasks/tasks.json',
+			undefined,
+			undefined
+		);
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
-		expect(writeJSON).toHaveBeenCalledWith(
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
 			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 5,
-					projectName: 'Test Project'
-				}),
-				complexityAnalysis: expect.any(Array)
-			})
+			expect.stringContaining('"thresholdScore": 5'),
+			'utf8'
 		);
 	});
 
@@ -302,13 +336,10 @@ describe('analyzeTaskComplexity', () => {
 			}
 		});
 
-		expect(writeJSON).toHaveBeenCalledWith(
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
 			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 7
-				})
-			})
+			expect.stringContaining('"thresholdScore": 7'),
+			'utf8'
 		);
 
 		// Reset mocks
@@ -331,13 +362,10 @@ describe('analyzeTaskComplexity', () => {
 			}
 		});
 
-		expect(writeJSON).toHaveBeenCalledWith(
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
 			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 8
-				})
-			})
+			expect.stringContaining('"thresholdScore": 8'),
+			'utf8'
 		);
 	});
 

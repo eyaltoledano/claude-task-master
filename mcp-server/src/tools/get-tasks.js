@@ -28,7 +28,9 @@ export function registerListTasksTool(server) {
 			status: z
 				.string()
 				.optional()
-				.describe("Filter tasks by status (e.g., 'pending', 'done')"),
+				.describe(
+					"Filter tasks by status (e.g., 'pending', 'done') or multiple statuses separated by commas (e.g., 'blocked,deferred')"
+				),
 			withSubtasks: z
 				.boolean()
 				.optional()
@@ -81,15 +83,23 @@ export function registerListTasksTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						status: args.status,
 						withSubtasks: args.withSubtasks,
-						reportPath: complexityReportPath
+						reportPath: complexityReportPath,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				log.info(
 					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
-				return handleApiResult(result, log, 'Error getting tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error getting tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error getting tasks: ${error.message}`);
 				return createErrorResponse(error.message);

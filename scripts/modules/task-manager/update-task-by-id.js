@@ -10,7 +10,10 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	flattenTasksWithSubtasks,
+	findProjectRoot,
+	getCurrentTag
 } from '../utils.js';
 
 import {
@@ -21,11 +24,9 @@ import {
 } from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
-import {
-	getDebugFlag,
-	isApiKeySet // Keep this check
-} from '../config-manager.js';
-import generateTaskFiles from './generate-task-files.js';
+import { getDebugFlag, isApiKeySet } from '../config-manager.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
 // Zod schema for post-parsing validation of the updated task object
 const updatedTaskSchema = z
@@ -35,10 +36,27 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
-		subtasks: z.array(z.any()).optional()
+		priority: z.string().nullable().default('medium'),
+		details: z.string().nullable().default(''),
+		testStrategy: z.string().nullable().default(''),
+		subtasks: z
+			.array(
+				z.object({
+					id: z
+						.number()
+						.int()
+						.positive()
+						.describe('Sequential subtask ID starting from 1'),
+					title: z.string(),
+					description: z.string(),
+					status: z.string(),
+					dependencies: z.array(z.number().int()).nullable().default([]),
+					details: z.string().nullable().default(''),
+					testStrategy: z.string().nullable().default('')
+				})
+			)
+			.nullable()
+			.default([])
 	})
 	.strip(); // Allows parsing even if AI adds extra fields, but validation focuses on schema
 
@@ -197,16 +215,18 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
 }
 
 /**
- * Update a single task by ID using the unified AI service.
+ * Update a task by ID with new information using the unified AI service.
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {number} taskId - Task ID to update
- * @param {string} prompt - Prompt with new context
+ * @param {number} taskId - ID of the task to update
+ * @param {string} prompt - Prompt for generating updated task information
  * @param {boolean} [useResearch=false] - Whether to use the research AI role.
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
- * @returns {Promise<Object|null>} - Updated task data or null if task wasn't updated/found.
+ * @param {boolean} [appendMode=false] - If true, append to details instead of full update.
+ * @returns {Promise<Object|null>} - The updated task or null if update failed.
  */
 async function updateTaskById(
 	tasksPath,
@@ -214,9 +234,10 @@ async function updateTaskById(
 	prompt,
 	useResearch = false,
 	context = {},
-	outputFormat = 'text'
+	outputFormat = 'text',
+	appendMode = false
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -255,8 +276,17 @@ async function updateTaskById(
 			throw new Error(`Tasks file not found: ${tasksPath}`);
 		// --- End Input Validations ---
 
+		// Determine project root
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
+		// Determine the tag to use
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
 		// --- Task Loading and Status Check (Keep existing) ---
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
 		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
@@ -292,6 +322,35 @@ async function updateTaskById(
 			return null;
 		}
 		// --- End Task Loading ---
+
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-task');
+			const searchQuery = `${taskToUpdate.title} ${taskToUpdate.description} ${prompt}`;
+			const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const finalTaskIds = [
+				...new Set([taskId.toString(), ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult;
+			}
+		} catch (contextError) {
+			report('warn', `Could not gather context: ${contextError.message}`);
+		}
+		// --- End Context Gathering ---
 
 		// --- Display Task Info (CLI Only - Keep existing) ---
 		if (outputFormat === 'text') {
@@ -349,8 +408,41 @@ async function updateTaskById(
 			);
 		}
 
-		// --- Build Prompts (Keep EXACT original prompts) ---
-		const systemPrompt = `You are an AI assistant helping to update a software development task based on new context.
+		// --- Build Prompts (Different for append vs full update) ---
+		let systemPrompt;
+		let userPrompt;
+
+		if (appendMode) {
+			// Append mode: generate new content to add to task details
+			systemPrompt = `You are an AI assistant helping to append additional information to a software development task. You will be provided with the task's existing details, context, and a user request string.
+
+Your Goal: Based *only* on the user's request and all the provided context (including existing details if relevant to the request), GENERATE the new text content that should be added to the task's details.
+Focus *only* on generating the substance of the update.
+
+Output Requirements:
+1. Return *only* the newly generated text content as a plain string. Do NOT return a JSON object or any other structured data.
+2. Your string response should NOT include any of the task's original details, unless the user's request explicitly asks to rephrase, summarize, or directly modify existing text.
+3. Do NOT include any timestamps, XML-like tags, markdown, or any other special formatting in your string response.
+4. Ensure the generated text is concise yet complete for the update based on the user request. Avoid conversational fillers or explanations about what you are doing (e.g., do not start with "Okay, here's the update...").`;
+
+			const taskContext = `
+Task: ${JSON.stringify({
+				id: taskToUpdate.id,
+				title: taskToUpdate.title,
+				description: taskToUpdate.description,
+				status: taskToUpdate.status
+			})}
+Current Task Details (for context only):\n${taskToUpdate.details || '(No existing details)'}
+`;
+
+			userPrompt = `Task Context:\n${taskContext}\n\nUser Request: "${prompt}"\n\nBased on the User Request and all the Task Context (including current task details provided above), what is the new information or text that should be appended to this task's details? Return ONLY this new text as a plain string.`;
+
+			if (gatheredContext) {
+				userPrompt += `\n\n# Additional Project Context\n\n${gatheredContext}`;
+			}
+		} else {
+			// Full update mode: use original prompts
+			systemPrompt = `You are an AI assistant helping to update a software development task based on new context.
 You will be given a task and a prompt describing changes or new implementation details.
 Your job is to update the task to reflect these changes, while preserving its basic structure.
 
@@ -366,11 +458,20 @@ Guidelines:
 9. Instead, add a new subtask that clearly indicates what needs to be changed or replaced
 10. Use the existence of completed subtasks as an opportunity to make new subtasks more specific and targeted
 11. Ensure any new subtasks have unique IDs that don't conflict with existing ones
+12. CRITICAL: For subtask IDs, use ONLY numeric values (1, 2, 3, etc.) NOT strings ("1", "2", "3")
+13. CRITICAL: Subtask IDs should start from 1 and increment sequentially (1, 2, 3...) - do NOT use parent task ID as prefix
 
 The changes described in the prompt should be thoughtfully applied to make the task more accurate and actionable.`;
 
-		const taskDataString = JSON.stringify(taskToUpdate, null, 2); // Use original task data
-		const userPrompt = `Here is the task to update:\n${taskDataString}\n\nPlease update this task based on the following new context:\n${prompt}\n\nIMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated task as a valid JSON object.`;
+			const taskDataString = JSON.stringify(taskToUpdate, null, 2);
+			userPrompt = `Here is the task to update:\n${taskDataString}\n\nPlease update this task based on the following new context:\n${prompt}\n\nIMPORTANT: In the task JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.`;
+
+			if (gatheredContext) {
+				userPrompt += `\n\n# Project Context\n\n${gatheredContext}`;
+			}
+
+			userPrompt += `\n\nReturn only the updated task as a valid JSON object.`;
+		}
 		// --- End Build Prompts ---
 
 		let loadingIndicator = null;
@@ -397,7 +498,72 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
-			// Use mainResult (text) for parsing
+			if (appendMode) {
+				// Append mode: handle as plain text
+				const generatedContentString = aiServiceResponse.mainResult;
+				let newlyAddedSnippet = '';
+
+				if (generatedContentString && generatedContentString.trim()) {
+					const timestamp = new Date().toISOString();
+					const formattedBlock = `<info added on ${timestamp}>\n${generatedContentString.trim()}\n</info added on ${timestamp}>`;
+					newlyAddedSnippet = formattedBlock;
+
+					// Append to task details
+					taskToUpdate.details =
+						(taskToUpdate.details ? taskToUpdate.details + '\n' : '') +
+						formattedBlock;
+				} else {
+					report(
+						'warn',
+						'AI response was empty or whitespace after trimming. Original details remain unchanged.'
+					);
+					newlyAddedSnippet = 'No new details were added by the AI.';
+				}
+
+				// Update description with timestamp if prompt is short
+				if (prompt.length < 100) {
+					if (taskToUpdate.description) {
+						taskToUpdate.description += ` [Updated: ${new Date().toLocaleDateString()}]`;
+					}
+				}
+
+				// Write the updated task back to file
+				data.tasks[taskIndex] = taskToUpdate;
+				writeJSON(tasksPath, data, projectRoot, currentTag);
+				report('success', `Successfully appended to task ${taskId}`);
+
+				// Display success message for CLI
+				if (outputFormat === 'text') {
+					console.log(
+						boxen(
+							chalk.green(`Successfully appended to task #${taskId}`) +
+								'\n\n' +
+								chalk.white.bold('Title:') +
+								' ' +
+								taskToUpdate.title +
+								'\n\n' +
+								chalk.white.bold('Newly Added Content:') +
+								'\n' +
+								chalk.white(newlyAddedSnippet),
+							{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+						)
+					);
+				}
+
+				// Display AI usage telemetry for CLI users
+				if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
+					displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
+				}
+
+				// Return the updated task
+				return {
+					updatedTask: taskToUpdate,
+					telemetryData: aiServiceResponse.telemetryData,
+					tagInfo: aiServiceResponse.tagInfo
+				};
+			}
+
+			// Full update mode: Use mainResult (text) for parsing
 			const updatedTask = parseUpdatedTaskFromText(
 				aiServiceResponse.mainResult,
 				taskId,
@@ -426,6 +592,37 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				);
 				updatedTask.status = taskToUpdate.status;
 			}
+			// Fix subtask IDs if they exist (ensure they are numeric and sequential)
+			if (updatedTask.subtasks && Array.isArray(updatedTask.subtasks)) {
+				let currentSubtaskId = 1;
+				updatedTask.subtasks = updatedTask.subtasks.map((subtask) => {
+					// Fix AI-generated subtask IDs that might be strings or use parent ID as prefix
+					const correctedSubtask = {
+						...subtask,
+						id: currentSubtaskId, // Override AI-generated ID with correct sequential ID
+						dependencies: Array.isArray(subtask.dependencies)
+							? subtask.dependencies
+									.map((dep) =>
+										typeof dep === 'string' ? parseInt(dep, 10) : dep
+									)
+									.filter(
+										(depId) =>
+											!Number.isNaN(depId) &&
+											depId >= 1 &&
+											depId < currentSubtaskId
+									)
+							: [],
+						status: subtask.status || 'pending'
+					};
+					currentSubtaskId++;
+					return correctedSubtask;
+				});
+				report(
+					'info',
+					`Fixed ${updatedTask.subtasks.length} subtask IDs to be sequential numeric IDs.`
+				);
+			}
+
 			// Preserve completed subtasks (Keep existing logic)
 			if (taskToUpdate.subtasks?.length > 0) {
 				if (!updatedTask.subtasks) {
@@ -477,9 +674,9 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			// --- End Update Task Data ---
 
 			// --- Write File and Generate (Unchanged) ---
-			writeJSON(tasksPath, data);
+			writeJSON(tasksPath, data, projectRoot, currentTag);
 			report('success', `Successfully updated task ${taskId}`);
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 			// --- End Write File ---
 
 			// --- Display CLI Telemetry ---
@@ -490,7 +687,8 @@ The changes described in the prompt should be thoughtfully applied to make the t
 			// --- Return Success with Telemetry ---
 			return {
 				updatedTask: updatedTask, // Return the updated task object
-				telemetryData: aiServiceResponse.telemetryData // <<< ADD telemetryData
+				telemetryData: aiServiceResponse.telemetryData, // <<< ADD telemetryData
+				tagInfo: aiServiceResponse.tagInfo
 			};
 		} catch (error) {
 			// Catch errors from generateTextService

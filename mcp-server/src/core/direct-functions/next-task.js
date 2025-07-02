@@ -21,9 +21,10 @@ import {
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function nextTaskDirect(args, log) {
+export async function nextTaskDirect(args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, reportPath } = args;
+	const { tasksJsonPath, reportPath, projectRoot } = args;
+	const { session } = context;
 
 	if (!tasksJsonPath) {
 		log.error('nextTaskDirect called without tasksJsonPath');
@@ -45,7 +46,7 @@ export async function nextTaskDirect(args, log) {
 			log.info(`Finding next task from ${tasksJsonPath}`);
 
 			// Read tasks data using the provided path
-			const data = readJSON(tasksJsonPath);
+			const data = readJSON(tasksJsonPath, projectRoot);
 			if (!data || !data.tasks) {
 				disableSilentMode(); // Disable before return
 				return {

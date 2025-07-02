@@ -24,7 +24,8 @@ export function registerFixDependenciesTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -46,7 +47,9 @@ export function registerFixDependenciesTool(server) {
 
 				const result = await fixDependenciesDirect(
 					{
-						tasksJsonPath: tasksJsonPath
+						tasksJsonPath: tasksJsonPath,
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
 					log
 				);
@@ -57,7 +60,13 @@ export function registerFixDependenciesTool(server) {
 					log.error(`Failed to fix dependencies: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error fixing dependencies');
+				return handleApiResult(
+					result,
+					log,
+					'Error fixing dependencies',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in fixDependencies tool: ${error.message}`);
 				return createErrorResponse(error.message);

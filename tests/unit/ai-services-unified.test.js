@@ -119,7 +119,10 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
-	getMcpApiKeyStatus: mockGetMcpApiKeyStatus
+	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
+
+	// Providers without API keys
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -182,6 +185,16 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn()
+	})),
+	ClaudeCodeProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
+	})),
+	GeminiCliProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn()
 	}))
 }));
 
@@ -208,6 +221,9 @@ const mockSanitizePrompt = jest.fn();
 const mockReadComplexityReport = jest.fn();
 const mockFindTaskInComplexityReport = jest.fn();
 const mockAggregateTelemetry = jest.fn();
+const mockGetCurrentTag = jest.fn(() => 'master');
+const mockResolveTag = jest.fn(() => 'master');
+const mockGetTasksForTag = jest.fn(() => []);
 
 jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	LOG_LEVELS: { error: 0, warn: 1, info: 2, debug: 3 },
@@ -232,7 +248,10 @@ jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	sanitizePrompt: mockSanitizePrompt,
 	readComplexityReport: mockReadComplexityReport,
 	findTaskInComplexityReport: mockFindTaskInComplexityReport,
-	aggregateTelemetry: mockAggregateTelemetry
+	aggregateTelemetry: mockAggregateTelemetry,
+	getCurrentTag: mockGetCurrentTag,
+	resolveTag: mockResolveTag,
+	getTasksForTag: mockGetTasksForTag
 }));
 
 // Import the module to test (AFTER mocks)

@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	isSilentMode,
+	getTagAwareFilePath
+} from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -15,6 +21,9 @@ import { generateTextService } from '../ai-services-unified.js';
 import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 // --- Zod Schemas (Keep from previous step) ---
 const subtaskSchema = z
@@ -40,8 +49,9 @@ const subtaskSchema = z
 			),
 		testStrategy: z
 			.string()
-			.optional()
+			.nullable()
 			.describe('Approach for testing this subtask')
+			.default('')
 	})
 	.strict();
 const subtaskArraySchema = z.array(subtaskSchema);
@@ -72,7 +82,7 @@ For each subtask, provide:
 - title: Clear, specific title
 - description: Detailed description
 - dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
-- details: Implementation details
+- details: Implementation details, the output should be in string
 - testStrategy: Optional testing approach
 
 
@@ -285,9 +295,9 @@ function parseSubtasksFromText(
 		const patternStartIndex = jsonToParse.indexOf(targetPattern);
 
 		if (patternStartIndex !== -1) {
-			let openBraces = 0;
-			let firstBraceFound = false;
-			let extractedJsonBlock = '';
+			const openBraces = 0;
+			const firstBraceFound = false;
+			const extractedJsonBlock = '';
 			// ... (loop for brace counting as before) ...
 			// ... (if successful, jsonToParse = extractedJsonBlock) ...
 			// ... (if that fails, fallbacks as before) ...
@@ -349,7 +359,8 @@ function parseSubtasksFromText(
 				? rawSubtask.dependencies
 						.map((dep) => (typeof dep === 'string' ? parseInt(dep, 10) : dep))
 						.filter(
-							(depId) => !isNaN(depId) && depId >= startId && depId < currentId
+							(depId) =>
+								!Number.isNaN(depId) && depId >= startId && depId < currentId
 						)
 				: [],
 			status: 'pending'
@@ -413,12 +424,11 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot } = context;
+	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
-	const projectRoot =
-		contextProjectRoot || path.dirname(path.dirname(tasksPath));
+	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
 
 	// Use mcpLog if available, otherwise use the default console log wrapper
 	const logger = mcpLog || {
@@ -436,7 +446,7 @@ async function expandTask(
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		const taskIndex = data.tasks.findIndex(
@@ -458,14 +468,52 @@ async function expandTask(
 		}
 		// --- End Force Flag Handling ---
 
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
+			const searchQuery = `${task.title} ${task.description}`;
+			const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const finalTaskIds = [
+				...new Set([taskId.toString(), ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult;
+			}
+		} catch (contextError) {
+			logger.warn(`Could not gather context: ${contextError.message}`);
+		}
+		// --- End Context Gathering ---
+
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
 		let promptContent = '';
 		let complexityReasoningContext = '';
 		let systemPrompt; // Declare systemPrompt here
 
-		const complexityReportPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+		// Use tag-aware complexity report path
+		const complexityReportPath = getTagAwareFilePath(
+			COMPLEXITY_REPORT_FILE,
+			tag,
+			projectRoot
+		);
 		let taskAnalysis = null;
+
+		logger.info(
+			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+		);
 
 		try {
 			if (fs.existsSync(complexityReportPath)) {
@@ -498,7 +546,7 @@ async function expandTask(
 
 		// Determine final subtask count
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
-		if (!isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
 			finalSubtaskCount = explicitNumSubtasks;
 			logger.info(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
@@ -512,7 +560,7 @@ async function expandTask(
 			finalSubtaskCount = getDefaultSubtasks(session);
 			logger.info(`Using default number of subtasks: ${finalSubtaskCount}`);
 		}
-		if (isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
+		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
 			logger.warn(
 				`Invalid subtask count determined (${finalSubtaskCount}), defaulting to 3.`
 			);
@@ -528,17 +576,25 @@ async function expandTask(
 			// Append additional context and reasoning
 			promptContent += `\n\n${additionalContext}`.trim();
 			promptContent += `${complexityReasoningContext}`.trim();
+			if (gatheredContext) {
+				promptContent += `\n\n# Project Context\n\n${gatheredContext}`;
+			}
 
 			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
+			systemPrompt = `You are an AI assistant helping with task breakdown. Generate exactly ${finalSubtaskCount} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'details' is a string. Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
 			logger.info(
 				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
 			);
 			// --- End Simplified System Prompt ---
 		} else {
 			// Use standard prompt generation
-			const combinedAdditionalContext =
+			let combinedAdditionalContext =
 				`${additionalContext}${complexityReasoningContext}`.trim();
+			if (gatheredContext) {
+				combinedAdditionalContext =
+					`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
+			}
+
 			if (useResearch) {
 				promptContent = generateResearchUserPrompt(
 					task,
@@ -628,8 +684,8 @@ async function expandTask(
 		// --- End Change: Append instead of replace ---
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
-		writeJSON(tasksPath, data);
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		writeJSON(tasksPath, data, projectRoot, tag);
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		// Display AI Usage Summary for CLI
 		if (
@@ -643,7 +699,8 @@ async function expandTask(
 		// Return the updated task object AND telemetry data
 		return {
 			task,
-			telemetryData: aiServiceResponse?.telemetryData
+			telemetryData: aiServiceResponse?.telemetryData,
+			tagInfo: aiServiceResponse?.tagInfo
 		};
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.

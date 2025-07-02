@@ -46,7 +46,7 @@ export function registerRemoveSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
 
@@ -69,9 +69,11 @@ export function registerRemoveSubtaskTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						convert: args.convert,
-						skipGenerate: args.skipGenerate
+						skipGenerate: args.skipGenerate,
+						projectRoot: args.projectRoot
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -80,7 +82,13 @@ export function registerRemoveSubtaskTool(server) {
 					log.error(`Failed to remove subtask: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error removing subtask');
+				return handleApiResult(
+					result,
+					log,
+					'Error removing subtask',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in removeSubtask tool: ${error.message}`);
 				return createErrorResponse(error.message);

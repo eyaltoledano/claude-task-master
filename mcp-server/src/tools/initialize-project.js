@@ -5,6 +5,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
+import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
 export function registerInitializeProjectTool(server) {
 	server.addTool({
@@ -22,8 +23,18 @@ export function registerInitializeProjectTool(server) {
 			addAliases: z
 				.boolean()
 				.optional()
-				.default(false)
+				.default(true)
 				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+			initGit: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe('Initialize Git repository in project root.'),
+			storeTasksInGit: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
 			yes: z
 				.boolean()
 				.optional()
@@ -35,6 +46,12 @@ export function registerInitializeProjectTool(server) {
 				.string()
 				.describe(
 					'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
+				),
+			rules: z
+				.array(z.enum(RULE_PROFILES))
+				.optional()
+				.describe(
+					`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, context) => {
@@ -48,7 +65,13 @@ export function registerInitializeProjectTool(server) {
 
 				const result = await initializeProjectDirect(args, log, { session });
 
-				return handleApiResult(result, log, 'Initialization failed');
+				return handleApiResult(
+					result,
+					log,
+					'Initialization failed',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				const errorMessage = `Project initialization tool failed: ${error.message || 'Unknown error'}`;
 				log.error(errorMessage, error);

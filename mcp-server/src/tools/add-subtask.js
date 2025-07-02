@@ -52,6 +52,7 @@ export function registerAddSubtaskTool(server) {
 				.describe(
 					'Absolute path to the tasks file (default: tasks/tasks.json)'
 				),
+			tag: z.string().optional().describe('Tag context to operate on'),
 			skipGenerate: z
 				.boolean()
 				.optional()
@@ -88,9 +89,12 @@ export function registerAddSubtaskTool(server) {
 						details: args.details,
 						status: args.status,
 						dependencies: args.dependencies,
-						skipGenerate: args.skipGenerate
+						skipGenerate: args.skipGenerate,
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -99,7 +103,13 @@ export function registerAddSubtaskTool(server) {
 					log.error(`Failed to add subtask: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error adding subtask');
+				return handleApiResult(
+					result,
+					log,
+					'Error adding subtask',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in addSubtask tool: ${error.message}`);
 				return createErrorResponse(error.message);

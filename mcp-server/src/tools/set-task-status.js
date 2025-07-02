@@ -47,9 +47,10 @@ export function registerSetTaskStatusTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
@@ -85,9 +86,12 @@ export function registerSetTaskStatusTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						status: args.status,
-						complexityReportPath
+						complexityReportPath,
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -100,7 +104,13 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error setting task status');
+				return handleApiResult(
+					result,
+					log,
+					'Error setting task status',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);
 				return createErrorResponse(

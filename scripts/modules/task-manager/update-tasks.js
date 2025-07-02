@@ -9,7 +9,8 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	getCurrentTag
 } from '../utils.js';
 
 import {
@@ -23,6 +24,9 @@ import { getDebugFlag } from '../config-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getModelConfiguration } from './models.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 // Zod schema for validating the structure of tasks AFTER parsing
 const updatedTaskSchema = z
@@ -32,10 +36,10 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
-		subtasks: z.array(z.any()).optional() // Keep subtasks flexible for now
+		priority: z.string().nullable(),
+		details: z.string().nullable(),
+		testStrategy: z.string().nullable(),
+		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
 	})
 	.strip(); // Allow potential extra fields during parsing if needed, then validate structure
 const updatedTaskArraySchema = z.array(updatedTaskSchema);
@@ -219,6 +223,7 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
+ * @param {string} [tag=null] - Tag associated with the tasks.
  */
 async function updateTasks(
 	tasksPath,
@@ -228,7 +233,7 @@ async function updateTasks(
 	context = {},
 	outputFormat = 'text' // Default to text for CLI
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	// Use mcpLog if available, otherwise use the imported consoleLog function
 	const logFn = mcpLog || consoleLog;
 	// Flag to easily check which logger type we have
@@ -246,8 +251,17 @@ async function updateTasks(
 				`Updating tasks from ID ${fromId} with prompt: "${prompt}"`
 			);
 
-		// --- Task Loading/Filtering (Unchanged) ---
-		const data = readJSON(tasksPath);
+		// Determine project root
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
+		// Determine the current tag - prioritize explicit tag, then context.tag, then current tag
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
+		// --- Task Loading/Filtering (Updated to pass projectRoot and tag) ---
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		const tasksToUpdate = data.tasks.filter(
@@ -262,6 +276,38 @@ async function updateTasks(
 			return; // Nothing to do
 		}
 		// --- End Task Loading/Filtering ---
+
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update');
+			const searchResults = fuzzySearch.findRelevantTasks(prompt, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const tasksToUpdateIds = tasksToUpdate.map((t) => t.id.toString());
+			const finalTaskIds = [
+				...new Set([...tasksToUpdateIds, ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult; // contextResult is a string
+			}
+		} catch (contextError) {
+			logFn(
+				'warn',
+				`Could not gather additional context: ${contextError.message}`
+			);
+		}
+		// --- End Context Gathering ---
 
 		// --- Display Tasks to Update (CLI Only - Unchanged) ---
 		if (outputFormat === 'text') {
@@ -344,7 +390,13 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 
 		// Keep the original user prompt logic
 		const taskDataString = JSON.stringify(tasksToUpdate, null, 2);
-		const userPrompt = `Here are the tasks to update:\n${taskDataString}\n\nPlease update these tasks based on the following new context:\n${prompt}\n\nIMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated tasks as a valid JSON array.`;
+		let userPrompt = `Here are the tasks to update:\n${taskDataString}\n\nPlease update these tasks based on the following new context:\n${prompt}\n\nIMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.`;
+
+		if (gatheredContext) {
+			userPrompt += `\n\n# Project Context\n\n${gatheredContext}`;
+		}
+
+		userPrompt += `\n\nReturn only the updated tasks as a valid JSON array.`;
 		// --- End Build Prompts ---
 
 		// --- AI Call ---
@@ -381,7 +433,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 				isMCP
 			);
 
-			// --- Update Tasks Data (Unchanged) ---
+			// --- Update Tasks Data (Updated writeJSON call) ---
 			if (!Array.isArray(parsedUpdatedTasks)) {
 				// Should be caught by parser, but extra check
 				throw new Error(
@@ -420,7 +472,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					`Applied updates to ${actualUpdateCount} tasks in the dataset.`
 				);
 
-			writeJSON(tasksPath, data);
+			// Fix: Pass projectRoot and currentTag to writeJSON
+			writeJSON(tasksPath, data, projectRoot, currentTag);
 			if (isMCP)
 				logFn.info(
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
@@ -430,7 +483,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					'success',
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
 				);
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 			if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
 				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
@@ -439,7 +492,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 			return {
 				success: true,
 				updatedTasks: parsedUpdatedTasks,
-				telemetryData: aiServiceResponse.telemetryData
+				telemetryData: aiServiceResponse.telemetryData,
+				tagInfo: aiServiceResponse.tagInfo
 			};
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

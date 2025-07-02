@@ -38,15 +38,17 @@ Taskmaster uses two primary methods for configuration:
           "debug": false,
           "defaultSubtasks": 5,
           "defaultPriority": "medium",
+          "defaultTag": "master",
           "projectName": "Your Project Name",
           "ollamaBaseURL": "http://localhost:11434/api",
-          "azureBaseURL": "https://your-endpoint.azure.com/",
+          "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
           "vertexProjectId": "your-gcp-project-id",
           "vertexLocation": "us-central1",
 		      "responseLanguage": "English"
         }
       }
       ```
+
 
 2.  **Legacy `.taskmasterconfig` File (Backward Compatibility)**
 
@@ -72,6 +74,7 @@ Taskmaster uses two primary methods for configuration:
   - `XAI_API_KEY`: Your X-AI API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
+  - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
   - `AZURE_OPENAI_ENDPOINT`: Required if using Azure OpenAI key (can also be set as `baseURL` for the Azure model role).
   - `OLLAMA_BASE_URL`: Override the default Ollama API URL (Default: `http://localhost:11434/api`).
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
@@ -80,24 +83,67 @@ Taskmaster uses two primary methods for configuration:
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
+## Tagged Task Lists Configuration (v0.17+)
+
+Taskmaster includes a tagged task lists system for multi-context task management.
+
+### Global Tag Settings
+
+```json
+"global": {
+  "defaultTag": "master"
+}
+```
+
+- **`defaultTag`** (string): Default tag context for new operations (default: "master")
+
+### Git Integration
+
+Task Master provides manual git integration through the `--from-branch` option:
+
+- **Manual Tag Creation**: Use `task-master add-tag --from-branch` to create a tag based on your current git branch name
+- **User Control**: No automatic tag switching - you control when and how tags are created
+- **Flexible Workflow**: Supports any git workflow without imposing rigid branch-tag mappings
+
+## State Management File
+
+Taskmaster uses `.taskmaster/state.json` to track tagged system runtime information:
+
+```json
+{
+  "currentTag": "master",
+  "lastSwitched": "2025-06-11T20:26:12.598Z",
+  "migrationNoticeShown": true
+}
+```
+
+- **`currentTag`**: Currently active tag context
+- **`lastSwitched`**: Timestamp of last tag switch
+- **`migrationNoticeShown`**: Whether migration notice has been displayed
+
+This file is automatically created during tagged system migration and should not be manually edited.
+
 ## Example `.env` File (for API Keys)
 
 ```
-# Required API keys for providers configured in .taskmasterconfig
+# Required API keys for providers configured in .taskmaster/config.json
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 PERPLEXITY_API_KEY=pplx-your-key-here
 # OPENAI_API_KEY=sk-your-key-here
 # GOOGLE_API_KEY=AIzaSy...
+# AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
 # etc.
 
 # Optional Endpoint Overrides
-# AZURE_OPENAI_ENDPOINT=https://your-azure-endpoint.openai.azure.com/
+# Use a specific provider's base URL, e.g., for an OpenAI-compatible API
+# OPENAI_BASE_URL=https://api.third-party.com/v1
+#
+# Azure OpenAI Configuration
+# AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/ or https://your-endpoint-name.cognitiveservices.azure.com/openai/deployments
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
-# VERTEX_LOCATION=us-central1
-# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-credentials.json
 ```
 
 ## Troubleshooting
@@ -158,10 +204,111 @@ Google Vertex AI is Google Cloud's enterprise AI platform and requires specific 
    VERTEX_LOCATION=us-central1
    ```
 
-5. **In .taskmasterconfig**:
+5. **In .taskmaster/config.json**:
    ```json
    "global": {
      "vertexProjectId": "my-gcp-project-123",
      "vertexLocation": "us-central1"
    }
    ```
+
+### Azure OpenAI Configuration
+
+Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure cloud platform and requires specific configuration:
+
+1. **Prerequisites**:
+   - An Azure account with an active subscription
+   - Azure OpenAI service resource created in the Azure portal
+   - Azure OpenAI API key and endpoint URL
+   - Deployed models (e.g., gpt-4o, gpt-4o-mini, gpt-4.1, etc) in your Azure OpenAI resource
+
+2. **Authentication**:
+   - Set the `AZURE_OPENAI_API_KEY` environment variable with your Azure OpenAI API key
+   - Configure the endpoint URL using one of the methods below
+
+3. **Configuration Options**:
+
+   **Option 1: Using Global Azure Base URL (affects all Azure models)**
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "azure",
+         "modelId": "gpt-4o",
+         "maxTokens": 16000,
+         "temperature": 0.7
+       },
+       "fallback": {
+         "provider": "azure", 
+         "modelId": "gpt-4o-mini",
+         "maxTokens": 10000,
+         "temperature": 0.7
+       }
+     },
+     "global": {
+       "azureBaseURL": "https://your-resource-name.azure.com/openai/deployments"
+     }
+   }
+   ```
+
+   **Option 2: Using Per-Model Base URLs (recommended for flexibility)**
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "azure",
+         "modelId": "gpt-4o", 
+         "maxTokens": 16000,
+         "temperature": 0.7,
+         "baseURL": "https://your-resource-name.azure.com/openai/deployments"
+       },
+       "research": {
+         "provider": "perplexity",
+         "modelId": "sonar-pro",
+         "maxTokens": 8700,
+         "temperature": 0.1
+       },
+       "fallback": {
+         "provider": "azure",
+         "modelId": "gpt-4o-mini",
+         "maxTokens": 10000, 
+         "temperature": 0.7,
+         "baseURL": "https://your-resource-name.azure.com/openai/deployments"
+       }
+     }
+   }
+   ```
+
+4. **Environment Variables**:
+   ```bash
+   # In .env file
+   AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
+   
+   # Optional: Override endpoint for all Azure models
+   AZURE_OPENAI_ENDPOINT=https://your-resource-name.azure.com/openai/deployments
+   ```
+
+5. **Important Notes**:
+   - **Model Deployment Names**: The `modelId` in your configuration should match the **deployment name** you created in Azure OpenAI Studio, not the underlying model name
+   - **Base URL Priority**: Per-model `baseURL` settings override the global `azureBaseURL` setting
+   - **Endpoint Format**: When using per-model `baseURL`, use the full path including `/openai/deployments`
+
+6. **Troubleshooting**:
+
+   **"Resource not found" errors:**
+   - Ensure your `baseURL` includes the full path: `https://your-resource-name.openai.azure.com/openai/deployments`
+   - Verify that your deployment name in `modelId` exactly matches what's configured in Azure OpenAI Studio
+   - Check that your Azure OpenAI resource is in the correct region and properly deployed
+
+   **Authentication errors:**
+   - Verify your `AZURE_OPENAI_API_KEY` is correct and has not expired
+   - Ensure your Azure OpenAI resource has the necessary permissions
+   - Check that your subscription has not been suspended or reached quota limits
+
+   **Model availability errors:**
+   - Confirm the model is deployed in your Azure OpenAI resource
+   - Verify the deployment name matches your configuration exactly (case-sensitive)
+   - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
+   - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.

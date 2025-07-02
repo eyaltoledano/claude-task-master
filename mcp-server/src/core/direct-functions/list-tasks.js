@@ -16,9 +16,10 @@ import {
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function listTasksDirect(args, log) {
+export async function listTasksDirect(args, log, context = {}) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, reportPath, status, withSubtasks } = args;
+	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot } = args;
+	const { session } = context;
 
 	if (!tasksJsonPath) {
 		log.error('listTasksDirect called without tasksJsonPath');
@@ -50,7 +51,9 @@ export async function listTasksDirect(args, log) {
 				statusFilter,
 				reportPath,
 				withSubtasksFilter,
-				'json'
+				'json',
+				null, // tag
+				{ projectRoot, session } // context
 			);
 
 			if (!resultData || !resultData.tasks) {

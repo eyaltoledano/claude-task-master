@@ -33,9 +33,15 @@ export function registerRemoveTaskTool(server) {
 			confirm: z
 				.boolean()
 				.optional()
-				.describe('Whether to skip confirmation prompt (default: false)')
+				.describe('Whether to skip confirmation prompt (default: false)'),
+			tag: z
+				.string()
+				.optional()
+				.describe(
+					'Specify which tag context to operate on. Defaults to the current active tag.'
+				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
 
@@ -58,9 +64,12 @@ export function registerRemoveTaskTool(server) {
 				const result = await removeTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id
+						id: args.id,
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -69,7 +78,13 @@ export function registerRemoveTaskTool(server) {
 					log.error(`Failed to remove task: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error removing task');
+				return handleApiResult(
+					result,
+					log,
+					'Error removing task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in remove-task tool: ${error.message}`);
 				return createErrorResponse(`Failed to remove task: ${error.message}`);

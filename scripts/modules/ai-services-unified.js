@@ -25,9 +25,15 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	providersWithoutApiKeys
 } from './config-manager.js';
-import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
+import {
+	log,
+	findProjectRoot,
+	resolveEnvVariable,
+	getCurrentTag
+} from './utils.js';
 
 // Import provider classes
 import {
@@ -40,7 +46,9 @@ import {
 	OllamaAIProvider,
 	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	VertexAIProvider,
+	ClaudeCodeProvider,
+	GeminiCliProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -54,7 +62,9 @@ const PROVIDERS = {
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-code': new ClaudeCodeProvider(),
+	'gemini-cli': new GeminiCliProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -85,6 +95,65 @@ function _getCostForModel(providerName, modelId) {
 		outputCost: modelData.cost_per_1m_tokens.output || 0,
 		currency: currency
 	};
+}
+
+// Helper function to get tag information for responses
+function _getTagInfo(projectRoot) {
+	try {
+		if (!projectRoot) {
+			return { currentTag: 'master', availableTags: ['master'] };
+		}
+
+		const currentTag = getCurrentTag(projectRoot);
+
+		// Read available tags from tasks.json
+		let availableTags = ['master']; // Default fallback
+		try {
+			const path = require('path');
+			const fs = require('fs');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+
+			if (fs.existsSync(tasksPath)) {
+				const tasksData = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
+				if (tasksData && typeof tasksData === 'object') {
+					// Check if it's tagged format (has tag-like keys with tasks arrays)
+					const potentialTags = Object.keys(tasksData).filter(
+						(key) =>
+							tasksData[key] &&
+							typeof tasksData[key] === 'object' &&
+							Array.isArray(tasksData[key].tasks)
+					);
+
+					if (potentialTags.length > 0) {
+						availableTags = potentialTags;
+					}
+				}
+			}
+		} catch (readError) {
+			// Silently fall back to default if we can't read tasks file
+			if (getDebugFlag()) {
+				log(
+					'debug',
+					`Could not read tasks file for available tags: ${readError.message}`
+				);
+			}
+		}
+
+		return {
+			currentTag: currentTag || 'master',
+			availableTags: availableTags
+		};
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('debug', `Error getting tag information: ${error.message}`);
+		}
+		return { currentTag: 'master', availableTags: ['master'] };
+	}
 }
 
 // --- Configuration for Retries ---
@@ -162,6 +231,17 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
+	// Claude Code doesn't require an API key
+	if (providerName === 'claude-code') {
+		return 'claude-code-no-key-required';
+	}
+
+	// Gemini CLI can work without an API key (uses CLI auth)
+	if (providerName === 'gemini-cli') {
+		const apiKey = resolveEnvVariable('GEMINI_API_KEY', session, projectRoot);
+		return apiKey || 'gemini-cli-no-key-required';
+	}
+
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -173,7 +253,9 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
+		vertex: 'GOOGLE_API_KEY',
+		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
+		'gemini-cli': 'GEMINI_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
@@ -186,7 +268,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Special handling for providers that can use alternative auth
-	if (providerName === 'ollama' || providerName === 'bedrock') {
+	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 		return apiKey || null;
 	}
 
@@ -247,7 +329,7 @@ async function _attemptProviderCallWithRetries(
 
 			if (isRetryableError(error) && retries < MAX_RETRIES) {
 				retries++;
-				const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retries - 1);
+				const delay = INITIAL_RETRY_DELAY_MS * 2 ** (retries - 1);
 				log(
 					'info',
 					`Something went wrong on the provider side. Retrying in ${delay / 1000}s...`
@@ -328,14 +410,14 @@ async function _unifiedServiceRunner(serviceType, params) {
 		'AI service call failed for all configured roles.';
 
 	for (const currentRole of sequence) {
-		let providerName,
-			modelId,
-			apiKey,
-			roleParams,
-			provider,
-			baseURL,
-			providerResponse,
-			telemetryData = null;
+		let providerName;
+		let modelId;
+		let apiKey;
+		let roleParams;
+		let provider;
+		let baseURL;
+		let providerResponse;
+		let telemetryData = null;
 
 		try {
 			log('info', `New AI service call with role: ${currentRole}`);
@@ -386,7 +468,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -559,9 +641,13 @@ async function _unifiedServiceRunner(serviceType, params) {
 				finalMainResult = providerResponse;
 			}
 
+			// Get tag information for the response
+			const tagInfo = _getTagInfo(effectiveProjectRoot);
+
 			return {
 				mainResult: finalMainResult,
-				telemetryData: telemetryData
+				telemetryData: telemetryData,
+				tagInfo: tagInfo
 			};
 		} catch (error) {
 			const cleanMessage = _extractErrorMessage(error);

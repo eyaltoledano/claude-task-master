@@ -129,7 +129,7 @@ const DEFAULT_CONFIG = {
 		fallback: {
 			provider: 'anthropic',
 			modelId: 'claude-3-5-sonnet',
-			maxTokens: 64000,
+			maxTokens: 8192,
 			temperature: 0.2
 		}
 	},
@@ -267,6 +267,7 @@ describe('Validation Functions', () => {
 		expect(configManager.validateProvider('perplexity')).toBe(true);
 		expect(configManager.validateProvider('ollama')).toBe(true);
 		expect(configManager.validateProvider('openrouter')).toBe(true);
+		expect(configManager.validateProvider('bedrock')).toBe(true);
 	});
 
 	test('validateProvider should return false for invalid providers', () => {
@@ -790,17 +791,25 @@ describe('isConfigFilePresent', () => {
 
 // --- getAllProviders Tests ---
 describe('getAllProviders', () => {
-	test('should return list of providers from supported-models.json', () => {
+	test('should return all providers from ALL_PROVIDERS constant', () => {
 		// Arrange: Ensure config is loaded with real data
 		configManager.getConfig(null, true); // Force load using the mock that returns real data
 
 		// Act
 		const providers = configManager.getAllProviders();
+
 		// Assert
-		// Assert against the actual keys in the REAL loaded data
-		const expectedProviders = Object.keys(REAL_SUPPORTED_MODELS_DATA);
-		expect(providers).toEqual(expect.arrayContaining(expectedProviders));
-		expect(providers.length).toBe(expectedProviders.length);
+		// getAllProviders() should return the same as the ALL_PROVIDERS constant
+		expect(providers).toEqual(configManager.ALL_PROVIDERS);
+		expect(providers.length).toBe(configManager.ALL_PROVIDERS.length);
+
+		// Verify it includes both validated and custom providers
+		expect(providers).toEqual(
+			expect.arrayContaining(configManager.VALIDATED_PROVIDERS)
+		);
+		expect(providers).toEqual(
+			expect.arrayContaining(Object.values(configManager.CUSTOM_PROVIDERS))
+		);
 	});
 });
 
