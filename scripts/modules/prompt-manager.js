@@ -277,6 +277,12 @@ export class PromptManager {
 			}
 		);
 
+		// Handle not helper function like (not variable)
+		rendered = rendered.replace(/\(not\s+(\w+(?:\.\w+)*)\)/g, (match, path) => {
+			const value = this.getNestedValue(variables, path);
+			return !value ? 'true' : 'false';
+		});
+
 		// Handle conditionals {{#if variable}}...{{/if}}
 		rendered = rendered.replace(
 			/\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
