@@ -10,6 +10,5 @@
 	},
 
 	"json.format.enable": true,
-	"json.validate.enable": true,
-	"json.suggest.mode": "allDocuments"
+	"json.validate.enable": true
 }
