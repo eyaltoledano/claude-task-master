@@ -766,6 +766,44 @@ function createProjectStructure(
 	}
 	// =====================================
 
+	// === Add Response Language Step ===
+	if (!isSilentMode() && !dryRun && !options?.yes) {
+		console.log(
+			boxen(chalk.cyan('Configuring Response Language...'), {
+				padding: 0.5,
+				margin: { top: 1, bottom: 0.5 },
+				borderStyle: 'round',
+				borderColor: 'blue'
+			})
+		);
+		log(
+			'info',
+			'Running interactive response language setup. Please input your preferred language.'
+		);
+		try {
+			execSync('npx task-master lang --setup', {
+				stdio: 'inherit',
+				cwd: targetDir
+			});
+			log('success', 'Response Language configured.');
+		} catch (error) {
+			log('error', 'Failed to configure response language:', error.message);
+			log('warn', 'You may need to run "task-master lang --setup" manually.');
+		}
+	} else if (isSilentMode() && !dryRun) {
+		log(
+			'info',
+			'Skipping interactive response language setup in silent (MCP) mode.'
+		);
+		log(
+			'warn',
+			'Please configure response language using "task-master models --set-response-language" or the "models" MCP tool.'
+		);
+	} else if (dryRun) {
+		log('info', 'DRY RUN: Skipping interactive response language setup.');
+	}
+	// =====================================
+
 	// === Add Model Configuration Step ===
 	if (!isSilentMode() && !dryRun && !options?.yes) {
 		console.log(

@@ -139,11 +139,13 @@ const DEFAULT_CONFIG = {
 	global: {
 		logLevel: 'info',
 		debug: false,
+		defaultNumTasks: 10,
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		responseLanguage: 'English'
 	},
 	claudeCode: {}
 };
@@ -913,6 +915,82 @@ describe('Getter Functions', () => {
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
 	});
 
+	test('getResponseLanguage should return responseLanguage from config', () => {
+		// Arrange
+		// Prepare a config object with responseLanguage property for this test
+		const configWithLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project',
+				responseLanguage: '中文'
+			}
+		});
+
+		// Set up fs.readFileSync to return our test config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('中文');
+	});
+
+	test('getResponseLanguage should return undefined when responseLanguage is not in config', () => {
+		// Arrange
+		const configWithoutLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project'
+				// No responseLanguage property
+			}
+		});
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithoutLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('English');
+	});
+
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)
 });
 
@@ -966,6 +1044,117 @@ describe('getAllProviders', () => {
 });
 
 // Add tests for getParametersForRole if needed
+
+// --- defaultNumTasks Tests ---
+describe('Configuration Getters', () => {
+	test('getDefaultNumTasks should return default value when config is valid', () => {
+		// Arrange: Mock fs.readFileSync to return valid config when called with the expected path
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 15
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(15);
+	});
+
+	test('getDefaultNumTasks should return fallback when config value is invalid', () => {
+		// Arrange: Mock fs.readFileSync to return invalid config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 'invalid'
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should return fallback when config value is missing', () => {
+		// Arrange: Mock fs.readFileSync to return config without defaultNumTasks
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should handle non-existent config file', () => {
+		// Arrange: Mock file not existing
+		fsExistsSyncSpy.mockReturnValue(false);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should accept explicit project root', () => {
+		// Arrange: Mock fs.readFileSync to return valid config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 20
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit project root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(20);
+	});
+});
 
 // Note: Tests for setMainModel, setResearchModel were removed as the functions were removed in the implementation.
 // If similar setter functions exist, add tests for them following the writeConfig pattern.

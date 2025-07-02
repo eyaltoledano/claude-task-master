@@ -8,6 +8,7 @@ const mockGetResearchModelId = jest.fn();
 const mockGetFallbackProvider = jest.fn();
 const mockGetFallbackModelId = jest.fn();
 const mockGetParametersForRole = jest.fn();
+const mockGetResponseLanguage = jest.fn();
 const mockGetUserId = jest.fn();
 const mockGetDebugFlag = jest.fn();
 const mockIsApiKeySet = jest.fn();
@@ -98,6 +99,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getFallbackMaxTokens: mockGetFallbackMaxTokens,
 	getFallbackTemperature: mockGetFallbackTemperature,
 	getParametersForRole: mockGetParametersForRole,
+	getResponseLanguage: mockGetResponseLanguage,
 	getUserId: mockGetUserId,
 	getDebugFlag: mockGetDebugFlag,
 	getBaseUrlForRole: mockGetBaseUrlForRole,
@@ -277,6 +279,7 @@ describe('Unified AI Services', () => {
 			if (role === 'fallback') return { maxTokens: 150, temperature: 0.6 };
 			return { maxTokens: 100, temperature: 0.5 }; // Default
 		});
+		mockGetResponseLanguage.mockReturnValue('English');
 		mockResolveEnvVariable.mockImplementation((key) => {
 			if (key === 'ANTHROPIC_API_KEY') return 'mock-anthropic-key';
 			if (key === 'PERPLEXITY_API_KEY') return 'mock-perplexity-key';
@@ -463,6 +466,68 @@ describe('Unified AI Services', () => {
 			expect(mockAnthropicProvider.generateText).toHaveBeenCalledTimes(1);
 		});
 
+		test('should use configured responseLanguage in system prompt', async () => {
+			mockGetResponseLanguage.mockReturnValue('中文');
+			mockAnthropicProvider.generateText.mockResolvedValue('中文回复');
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello'
+			};
+			await generateTextService(params);
+
+			expect(mockAnthropicProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in 中文')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(fakeProjectRoot);
+		});
+
+		test('should pass custom projectRoot to getResponseLanguage', async () => {
+			const customRoot = '/custom/project/root';
+			mockGetResponseLanguage.mockReturnValue('Español');
+			mockAnthropicProvider.generateText.mockResolvedValue(
+				'Respuesta en Español'
+			);
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello',
+				projectRoot: customRoot
+			};
+			await generateTextService(params);
+
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(customRoot);
+			expect(mockAnthropicProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in Español')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
+		});
+
+		// Add more tests for edge cases:
+		// - Missing API keys (should throw from _resolveApiKey)
+		// - Unsupported provider configured (should skip and log)
+		// - Missing provider/model config for a role (should skip and log)
+		// - Missing prompt
+		// - Different initial roles (research, fallback)
+		// - generateObjectService (mock schema, check object result)
+		// - streamTextService (more complex to test, might need stream helpers)
 		test('should skip provider with missing API key and try next in fallback sequence', async () => {
 			// Setup isApiKeySet to return false for anthropic but true for perplexity
 			mockIsApiKeySet.mockImplementation((provider, session, root) => {

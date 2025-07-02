@@ -63,11 +63,13 @@ const DEFAULTS = {
 	global: {
 		logLevel: 'info',
 		debug: false,
+		defaultNumTasks: 10,
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		responseLanguage: 'English'
 	},
 	claudeCode: {}
 };
@@ -508,6 +510,11 @@ function getVertexLocation(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
 }
 
+function getResponseLanguage(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).responseLanguage;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -928,6 +935,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getResponseLanguage,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
