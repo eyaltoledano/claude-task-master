@@ -258,6 +258,18 @@ Use `{{#if variable}}...{{/if}}` for conditional content:
 "user": "{{#if useResearch}}Research and {{/if}}create a task"
 ```
 
+### Equality Helper
+Use `{{#if (eq variable "value")}}...{{/if}}` for string comparisons:
+```
+"user": "{{#if (eq detailLevel \"low\")}}Provide a brief summary{{/if}}"
+"user": "{{#if (eq priority \"high\")}}URGENT: {{/if}}{{taskTitle}}"
+```
+
+The `eq` helper enables clean conditional logic based on parameter values:
+- Compare strings: `(eq detailLevel "medium")`
+- Compare with enum values: `(eq status "pending")`
+- Multiple conditions: `{{#if (eq level "1")}}First{{/if}}{{#if (eq level "2")}}Second{{/if}}`
+
 ### Loops
 Use `{{#each array}}...{{/each}}` to iterate over arrays:
 ```

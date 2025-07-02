@@ -268,11 +268,28 @@ export class PromptManager {
 	renderTemplate(template, variables) {
 		let rendered = template;
 
+		// Handle helper functions like (eq variable "value")
+		rendered = rendered.replace(
+			/\(eq\s+(\w+(?:\.\w+)*)\s+"([^"]+)"\)/g,
+			(match, path, compareValue) => {
+				const value = this.getNestedValue(variables, path);
+				return value === compareValue ? 'true' : 'false';
+			}
+		);
+
 		// Handle conditionals {{#if variable}}...{{/if}}
 		rendered = rendered.replace(
-			/\{\{#if\s+(\w+(?:\.\w+)*)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-			(match, path, content) => {
-				const value = this.getNestedValue(variables, path);
+			/\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
+			(match, condition, content) => {
+				// Handle boolean values and helper function results
+				let value;
+				if (condition === 'true') {
+					value = true;
+				} else if (condition === 'false') {
+					value = false;
+				} else {
+					value = this.getNestedValue(variables, condition);
+				}
 				return value ? content : '';
 			}
 		);
