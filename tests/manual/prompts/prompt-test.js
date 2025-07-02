@@ -495,44 +495,7 @@ Build a next-generation e-commerce platform with AI-driven recommendations, voic
 					projectContext:
 						'Full-stack application migrating from REST to GraphQL for better data fetching.'
 				},
-				variants: ['default']
-			},
-			{
-				name: 'Research-Enhanced Bulk Updates',
-				params: {
-					tasks: [
-						{
-							id: 8,
-							title: 'Dashboard Components',
-							description: 'Create React dashboard components',
-							status: 'pending',
-							dependencies: [],
-							priority: 'medium'
-						},
-						{
-							id: 9,
-							title: 'User Profile Interface',
-							description: 'Build user profile React components',
-							status: 'done',
-							dependencies: [],
-							priority: 'medium'
-						},
-						{
-							id: 10,
-							title: 'Real-time Updates',
-							description: 'Implement live data updates',
-							status: 'pending',
-							dependencies: [8],
-							priority: 'low'
-						}
-					],
-					updatePrompt:
-						'Adopting new React 18 features and concurrent rendering. Need to update all React components to use new hooks and concurrent features for better performance.',
-					useResearch: true,
-					projectContext:
-						'React application upgrade to leverage React 18 performance improvements.'
-				},
-				variants: ['research']
+				variants: ['default', 'research']
 			}
 		]
 	}
@@ -752,22 +715,42 @@ class PromptTestMenu {
 			// Handle special research mode variants
 			let actualVariant = variant;
 			let useResearch = false;
+			let research = false;
+			let detailLevel = null;
 			if (
 				(templateKey === 'add-task' ||
 					templateKey === 'analyze-complexity' ||
 					templateKey === 'update-subtask' ||
-					templateKey === 'update-task') &&
+					templateKey === 'update-task' ||
+					templateKey === 'update-tasks') &&
 				variant === 'research'
 			) {
 				actualVariant = 'default';
 				useResearch = true;
 			}
+			if (templateKey === 'parse-prd' && variant === 'research') {
+				actualVariant = 'default';
+				research = true;
+			}
+			if (
+				templateKey === 'research' &&
+				['low', 'medium', 'high'].includes(variant)
+			) {
+				actualVariant = 'default';
+				detailLevel = variant;
+			}
 
 			const testData = getTestDataForTemplate(templateKey, actualVariant);
 
-			// Override useResearch if needed
+			// Override useResearch, research, or detailLevel if needed
 			if (useResearch) {
 				testData.params.useResearch = true;
+			}
+			if (research) {
+				testData.params.research = true;
+			}
+			if (detailLevel) {
+				testData.params.detailLevel = detailLevel;
 			}
 
 			const result = await this.promptManager.loadPrompt(
@@ -989,6 +972,31 @@ async function runComprehensiveTests(generateDetailed = false) {
 				testCase.params ||
 				getTestDataForTemplate(testCase.template, testCase.variant);
 
+			// Handle variant conversion for consolidated templates
+			let actualVariant = testCase.variant;
+			if (
+				(testCase.template === 'add-task' ||
+					testCase.template === 'analyze-complexity' ||
+					testCase.template === 'update-subtask' ||
+					testCase.template === 'update-task' ||
+					testCase.template === 'update-tasks') &&
+				testCase.variant === 'research'
+			) {
+				actualVariant = 'default';
+			}
+			if (
+				testCase.template === 'parse-prd' &&
+				testCase.variant === 'research'
+			) {
+				actualVariant = 'default';
+			}
+			if (
+				testCase.template === 'research' &&
+				['low', 'medium', 'high'].includes(testCase.variant)
+			) {
+				actualVariant = 'default';
+			}
+
 			// Override test data with custom parameters if specified
 			if (testCase.useResearch !== undefined) {
 				testData.params.useResearch = testCase.useResearch;
@@ -1003,7 +1011,7 @@ async function runComprehensiveTests(generateDetailed = false) {
 			const result = await promptManager.loadPrompt(
 				testCase.template,
 				testData.params,
-				testCase.variant
+				actualVariant
 			);
 
 			const displayName = testCase.testName || testCase.variant;
@@ -1115,7 +1123,8 @@ async function testSpecificTemplate(
 			(templateKey === 'add-task' ||
 				templateKey === 'analyze-complexity' ||
 				templateKey === 'update-subtask' ||
-				templateKey === 'update-task') &&
+				templateKey === 'update-task' ||
+				templateKey === 'update-tasks') &&
 			variant === 'research'
 		) {
 			actualVariant = 'default';
