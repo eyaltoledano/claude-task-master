@@ -81,7 +81,7 @@ dev-debug.log
 # Added by Task Master AI
 # Editor directories and files
 .idea
-#.vscode
+.vscode
 *.suo
 *.ntvs*
 *.njsproj
