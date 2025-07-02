@@ -25,7 +25,7 @@ function formatJSONWithTabs(obj) {
 }
 
 // Structure matches project conventions (see scripts/init.js)
-export function setupMCPConfiguration(projectDir, mcpConfigPath) {
+export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 	// Handle null mcpConfigPath (e.g., for Claude/Codex profiles)
 	if (!mcpConfigPath) {
 		log(
@@ -36,7 +36,7 @@ export function setupMCPConfiguration(projectDir, mcpConfigPath) {
 	}
 
 	// Build the full path to the MCP config file
-	const mcpPath = path.join(projectDir, mcpConfigPath);
+	const mcpPath = path.join(projectRoot, mcpConfigPath);
 	const configDir = path.dirname(mcpPath);
 
 	log('info', `Setting up MCP configuration at ${mcpPath}...`);
@@ -140,11 +140,11 @@ export function setupMCPConfiguration(projectDir, mcpConfigPath) {
 /**
  * Remove Task Master MCP server configuration from an existing mcp.json file
  * Only removes Task Master entries, preserving other MCP servers
- * @param {string} projectDir - Target project directory
+ * @param {string} projectRoot - Target project directory
  * @param {string} mcpConfigPath - Relative path to MCP config file (e.g., '.cursor/mcp.json')
  * @returns {Object} Result object with success status and details
  */
-export function removeTaskMasterMCPConfiguration(projectDir, mcpConfigPath) {
+export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 	// Handle null mcpConfigPath (e.g., for Claude/Codex profiles)
 	if (!mcpConfigPath) {
 		return {
@@ -156,7 +156,7 @@ export function removeTaskMasterMCPConfiguration(projectDir, mcpConfigPath) {
 		};
 	}
 
-	const mcpPath = path.join(projectDir, mcpConfigPath);
+	const mcpPath = path.join(projectRoot, mcpConfigPath);
 
 	let result = {
 		success: false,
