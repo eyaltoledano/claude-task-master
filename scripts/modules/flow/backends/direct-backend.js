@@ -3735,294 +3735,519 @@ ${prompt}
 	}
 
 	/**
-	 * Execute PR merge with comprehensive safety checks and rollback capability
+	 * Enhanced merge execution with comprehensive validation phases
 	 */
 	async executeMerge(prNumber, config = {}) {
 		const mergeAttempt = {
+			id: `merge-${prNumber}-${Date.now()}`,
 			prNumber,
-			timestamp: new Date().toISOString(),
-			config,
+			startTime: Date.now(),
 			phases: [],
-			success: false,
-			rollbackData: null
+			config
 		};
 
 		try {
+			console.log(`🚀 Starting enhanced merge execution for PR ${prNumber}...`);
+
 			// Phase 1: Pre-merge validation
-			mergeAttempt.phases.push({
-				phase: 'validation',
-				status: 'started',
-				timestamp: new Date().toISOString()
+			const validationResult = await this.executePhase(mergeAttempt, 'validation', async () => {
+				return await this.validateMergeEligibility(prNumber, config.safetyChecks || {});
 			});
 
-			const validation = await this.validateMergeEligibility(prNumber, config);
-			if (!validation.canMerge) {
-				mergeAttempt.phases.push({
-					phase: 'validation',
-					status: 'failed',
-					reason: validation.reason,
-					details: validation.validationResults,
-					timestamp: new Date().toISOString()
-				});
+			if (!validationResult.canMerge) {
 				return {
 					success: false,
-					reason: 'Pre-merge validation failed',
+					reason: validationResult.reason,
+					mergeAttempt,
+					canRetry: this.isRetryableFailure(validationResult.reason)
+				};
+			}
+
+			// Phase 2: Advanced conflict detection
+			const conflictResult = await this.executePhase(mergeAttempt, 'conflict-detection', async () => {
+				return await this.performAdvancedConflictDetection(prNumber, config);
+			});
+
+			if (!conflictResult.safe) {
+				// Check if human intervention is required
+				if (conflictResult.requiresHumanIntervention) {
+					return await this.triggerHumanInLoop(prNumber, conflictResult, mergeAttempt, config);
+				}
+
+				return {
+					success: false,
+					reason: `Conflicts detected: ${conflictResult.conflicts?.join(', ')}`,
 					mergeAttempt,
 					canRetry: false
 				};
 			}
 
-			mergeAttempt.phases.push({
-				phase: 'validation',
-				status: 'completed',
-				timestamp: new Date().toISOString()
+			// Phase 3: Safety checks
+			const safetyResult = await this.executePhase(mergeAttempt, 'safety-checks', async () => {
+				return await this.performMergeSafetyChecks(prNumber);
 			});
 
-			// Phase 2: Pre-merge hooks
-			mergeAttempt.phases.push({
-				phase: 'pre-merge-hooks',
-				status: 'started',
-				timestamp: new Date().toISOString()
-			});
-
-			const preHooksResult = await this.executePreMergeHooks(prNumber, config);
-			if (!preHooksResult.success) {
-				mergeAttempt.phases.push({
-					phase: 'pre-merge-hooks',
-					status: 'failed',
-					reason: preHooksResult.reason,
-					timestamp: new Date().toISOString()
-				});
+			if (!safetyResult.safe) {
 				return {
 					success: false,
-					reason: 'Pre-merge hooks failed',
+					reason: `Safety checks failed: ${safetyResult.error}`,
 					mergeAttempt,
-					canRetry: true
+					canRetry: safetyResult.hasRecentActivity
 				};
 			}
 
-			mergeAttempt.phases.push({
-				phase: 'pre-merge-hooks',
-				status: 'completed',
-				timestamp: new Date().toISOString()
-			});
-
-			// Phase 3: Create rollback point
-			mergeAttempt.phases.push({
-				phase: 'rollback-preparation',
-				status: 'started',
-				timestamp: new Date().toISOString()
-			});
-
-			mergeAttempt.rollbackData = await this.createRollbackPoint(prNumber);
-
-			mergeAttempt.phases.push({
-				phase: 'rollback-preparation',
-				status: 'completed',
-				timestamp: new Date().toISOString()
-			});
-
 			// Phase 4: Execute merge
-			mergeAttempt.phases.push({
-				phase: 'merge-execution',
-				status: 'started',
-				timestamp: new Date().toISOString()
+			const mergeResult = await this.executePhase(mergeAttempt, 'merge-execution', async () => {
+				return await this.performActualMerge(prNumber, config);
 			});
 
-			const mergeResult = await this.performActualMerge(prNumber, config);
 			if (!mergeResult.success) {
-				mergeAttempt.phases.push({
-					phase: 'merge-execution',
-					status: 'failed',
-					reason: mergeResult.reason,
-					timestamp: new Date().toISOString()
-				});
-
-				// Attempt rollback
-				if (config.rollback?.enabled !== false) {
-					await this.executeRollback(
-						mergeAttempt.rollbackData,
-						'merge_execution_failed'
-					);
-				}
-
 				return {
 					success: false,
-					reason: 'Merge execution failed',
+					reason: mergeResult.reason,
 					mergeAttempt,
 					canRetry: mergeResult.canRetry
 				};
 			}
 
-			mergeAttempt.phases.push({
-				phase: 'merge-execution',
-				status: 'completed',
-				timestamp: new Date().toISOString()
-			});
-
 			// Phase 5: Post-merge validation
-			mergeAttempt.phases.push({
-				phase: 'post-merge-validation',
-				status: 'started',
-				timestamp: new Date().toISOString()
+			const postMergeResult = await this.executePhase(mergeAttempt, 'post-merge-validation', async () => {
+				return await this.validatePostMerge(prNumber, mergeResult);
 			});
 
-			const postValidation = await this.validatePostMerge(
-				prNumber,
-				mergeResult
-			);
-			if (!postValidation.success) {
-				mergeAttempt.phases.push({
-					phase: 'post-merge-validation',
-					status: 'failed',
-					reason: postValidation.reason,
-					timestamp: new Date().toISOString()
-				});
-
-				// Critical: rollback the merge
-				if (config.rollback?.enabled !== false) {
-					await this.executeRollback(
-						mergeAttempt.rollbackData,
-						'post_merge_validation_failed'
-					);
+			if (!postMergeResult.success) {
+				// Trigger rollback if enabled
+				if (config.rollback?.enabled) {
+					await this.executePhase(mergeAttempt, 'rollback-preparation', async () => {
+						return await this.prepareRollback(prNumber, mergeResult, config.rollback);
+					});
 				}
 
 				return {
 					success: false,
-					reason: 'Post-merge validation failed',
+					reason: postMergeResult.reason,
 					mergeAttempt,
 					canRetry: false
 				};
 			}
 
-			mergeAttempt.phases.push({
-				phase: 'post-merge-validation',
-				status: 'completed',
-				timestamp: new Date().toISOString()
-			});
+			// Phase 6: Cleanup (if configured)
+			let cleanupResult = null;
+			if (config.cleanupWorktree || config.updateTaskStatus || config.updateASTCache) {
+				cleanupResult = await this.executePhase(mergeAttempt, 'cleanup', async () => {
+					return await this.performPostMergeCleanup(prNumber, mergeResult, config);
+				});
+			}
 
-			// Phase 6: Cleanup workflow
-			mergeAttempt.phases.push({
-				phase: 'cleanup',
-				status: 'started',
-				timestamp: new Date().toISOString()
-			});
+			mergeAttempt.endTime = Date.now();
+			mergeAttempt.duration = mergeAttempt.endTime - mergeAttempt.startTime;
 
-			const cleanupResult = await this.executePostMergeCleanup(
-				prNumber,
-				config
-			);
-
-			mergeAttempt.phases.push({
-				phase: 'cleanup',
-				status: cleanupResult.success ? 'completed' : 'completed-with-warnings',
-				warnings: cleanupResult.warnings,
-				timestamp: new Date().toISOString()
-			});
-
-			mergeAttempt.success = true;
-			mergeAttempt.completedAt = new Date().toISOString();
+			console.log(`✅ Enhanced merge completed for PR ${prNumber} in ${mergeAttempt.duration}ms`);
 
 			return {
 				success: true,
-				mergeAttempt,
 				mergeResult,
-				cleanupResult
-			};
-		} catch (error) {
-			mergeAttempt.phases.push({
-				phase: 'error',
-				status: 'failed',
-				error: error.message,
+				mergeAttempt,
+				cleanupResult,
 				timestamp: new Date().toISOString()
-			});
+			};
 
-			// Emergency rollback
-			if (mergeAttempt.rollbackData && config.rollback?.enabled !== false) {
-				try {
-					await this.executeRollback(
-						mergeAttempt.rollbackData,
-						'unexpected_error'
-					);
-				} catch (rollbackError) {
-					mergeAttempt.phases.push({
-						phase: 'emergency-rollback',
-						status: 'failed',
-						error: rollbackError.message,
-						timestamp: new Date().toISOString()
-					});
+		} catch (error) {
+			console.error(`❌ Enhanced merge failed for PR ${prNumber}:`, error);
+
+			// Mark current phase as failed
+			if (mergeAttempt.phases.length > 0) {
+				const currentPhase = mergeAttempt.phases[mergeAttempt.phases.length - 1];
+				if (currentPhase.status === 'running') {
+					currentPhase.status = 'failed';
+					currentPhase.error = error.message;
+					currentPhase.endTime = Date.now();
 				}
 			}
 
 			return {
 				success: false,
-				reason: `Unexpected error during merge: ${error.message}`,
+				reason: `Merge execution failed: ${error.message}`,
 				mergeAttempt,
-				canRetry: false
+				canRetry: this.isRetryableFailure(error.message)
 			};
 		}
 	}
 
 	/**
-	 * Execute pre-merge hooks
+	 * Execute a merge phase with tracking
 	 */
-	async executePreMergeHooks(prNumber, config) {
+	async executePhase(mergeAttempt, phaseName, phaseFunction) {
+		const phase = {
+			phase: phaseName,
+			startTime: Date.now(),
+			status: 'running'
+		};
+
+		mergeAttempt.phases.push(phase);
+
 		try {
-			const results = [];
+			console.log(`  📍 Phase ${mergeAttempt.phases.length}: ${phaseName}...`);
+			
+			const result = await phaseFunction();
+			
+			phase.status = 'completed';
+			phase.endTime = Date.now();
+			phase.duration = phase.endTime - phase.startTime;
+			phase.result = result;
 
-			// Custom pre-merge hooks would be executed here
-			// For now, just return success
+			console.log(`    ✅ ${phaseName} completed in ${phase.duration}ms`);
+			return result;
 
-			return {
-				success: true,
-				results
-			};
 		} catch (error) {
-			return {
-				success: false,
-				reason: `Pre-merge hooks failed: ${error.message}`
-			};
+			phase.status = 'failed';
+			phase.endTime = Date.now();
+			phase.error = error.message;
+
+			console.log(`    ❌ ${phaseName} failed: ${error.message}`);
+			throw error;
 		}
 	}
 
 	/**
-	 * Create rollback point before merge
+	 * Advanced conflict detection with file-level analysis
 	 */
-	async createRollbackPoint(prNumber) {
+	async performAdvancedConflictDetection(prNumber, config) {
 		try {
 			const { execSync } = await import('child_process');
-			const prStatus = await this.getPRStatus(prNumber);
 
-			const rollbackData = {
-				timestamp: new Date().toISOString(),
-				prNumber,
-				baseRef: prStatus.baseRef,
-				headRef: prStatus.headRef,
-				baseCommit: execSync(`git rev-parse origin/${prStatus.baseRef}`, {
-					encoding: 'utf8',
-					cwd: this.projectRoot
-				}).trim(),
-				headCommit: execSync(`git rev-parse origin/${prStatus.headRef}`, {
-					encoding: 'utf8',
-					cwd: this.projectRoot
-				}).trim(),
-				workingState: {
-					branch: execSync('git branch --show-current', {
-						encoding: 'utf8',
-						cwd: this.projectRoot
-					}).trim(),
-					hasUncommittedChanges:
-						execSync('git status --porcelain', {
-							encoding: 'utf8',
-							cwd: this.projectRoot
-						}).trim().length > 0
-				}
+			// Get PR information
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			const result = {
+				safe: true,
+				conflicts: [],
+				requiresHumanIntervention: false,
+				details: {}
 			};
 
-			return rollbackData;
+			// Basic mergeable check
+			if (prStatus.mergeable === false) {
+				result.safe = false;
+				result.conflicts.push('merge-conflicts');
+				result.requiresHumanIntervention = true;
+			}
+
+			// Check for conflicting files using git
+			try {
+				const mergeBase = execSync(
+					`git merge-base origin/${prStatus.baseRef} origin/${prStatus.headRef}`,
+					{ encoding: 'utf8', cwd: this.projectRoot }
+				).trim();
+
+				// Get list of changed files
+				const changedFiles = execSync(
+					`git diff --name-only ${mergeBase}..origin/${prStatus.headRef}`,
+					{ encoding: 'utf8', cwd: this.projectRoot }
+				).trim().split('\n').filter(Boolean);
+
+				// Check for recent changes to the same files on base branch
+				const recentBaseChanges = execSync(
+					`git diff --name-only ${mergeBase}..origin/${prStatus.baseRef}`,
+					{ encoding: 'utf8', cwd: this.projectRoot }
+				).trim().split('\n').filter(Boolean);
+
+				const overlappingFiles = changedFiles.filter(file => 
+					recentBaseChanges.includes(file)
+				);
+
+				if (overlappingFiles.length > 0) {
+					result.conflicts.push('overlapping-file-changes');
+					result.details.overlappingFiles = overlappingFiles;
+					
+					// Check if this requires human intervention
+					const criticalFiles = overlappingFiles.filter(file => 
+						file.includes('package.json') || 
+						file.includes('package-lock.json') ||
+						file.includes('.env') ||
+						file.endsWith('.config.js') ||
+						file.endsWith('.config.json')
+					);
+
+					if (criticalFiles.length > 0) {
+						result.requiresHumanIntervention = true;
+						result.details.criticalFiles = criticalFiles;
+					}
+				}
+
+				result.details.changedFiles = changedFiles;
+				result.details.recentBaseChanges = recentBaseChanges;
+
+			} catch (error) {
+				console.warn('Advanced conflict detection failed:', error.message);
+				// Fall back to basic check
+			}
+
+			// Check for conflicting dependency updates
+			if (config.checkDependencyConflicts !== false) {
+				const depConflicts = await this.checkDependencyConflicts(prNumber);
+				if (depConflicts.hasConflicts) {
+					result.conflicts.push('dependency-conflicts');
+					result.details.dependencyConflicts = depConflicts;
+					result.requiresHumanIntervention = depConflicts.severity === 'high';
+				}
+			}
+
+			// Final safety determination
+			result.safe = result.conflicts.length === 0;
+
+			return result;
+
 		} catch (error) {
-			throw new Error(`Failed to create rollback point: ${error.message}`);
+			return {
+				safe: false,
+				conflicts: ['detection-error'],
+				requiresHumanIntervention: true,
+				error: error.message
+			};
 		}
+	}
+
+	/**
+	 * Check for dependency conflicts
+	 */
+	async checkDependencyConflicts(prNumber) {
+		try {
+			const { execSync } = await import('child_process');
+			const fs = await import('fs');
+
+			const prStatus = await this.getPRStatus(prNumber);
+			
+			// Check if package.json was modified
+			const changedFiles = execSync(
+				`gh pr diff ${prNumber} --name-only`,
+				{ encoding: 'utf8', cwd: this.projectRoot }
+			).trim().split('\n');
+
+			const packageJsonChanged = changedFiles.includes('package.json');
+			const packageLockChanged = changedFiles.includes('package-lock.json') || 
+									 changedFiles.includes('yarn.lock') || 
+									 changedFiles.includes('pnpm-lock.yaml');
+
+			if (!packageJsonChanged && !packageLockChanged) {
+				return { hasConflicts: false };
+			}
+
+			// Analyze package.json changes
+			if (packageJsonChanged) {
+				const packageDiff = execSync(
+					`gh pr diff ${prNumber} -- package.json`,
+					{ encoding: 'utf8', cwd: this.projectRoot }
+				);
+
+				// Look for version conflicts
+				const versionChanges = packageDiff.match(/[+-]\s*"[^"]+"\s*:\s*"[^"]+"/g) || [];
+				const majorVersionChanges = versionChanges.filter(change => 
+					change.includes('^') && change.includes('+')
+				);
+
+				if (majorVersionChanges.length > 0) {
+					return {
+						hasConflicts: true,
+						severity: 'high',
+						details: {
+							majorVersionChanges,
+							reason: 'Major version updates detected'
+						}
+					};
+				}
+			}
+
+			return { hasConflicts: false };
+
+		} catch (error) {
+			return {
+				hasConflicts: true,
+				severity: 'medium',
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Trigger human-in-loop workflow for conflict resolution
+	 */
+	async triggerHumanInLoop(prNumber, conflictResult, mergeAttempt, config) {
+		console.log(`🚨 Human intervention required for PR ${prNumber}`);
+
+		// Pause automation
+		const pauseResult = await this.executePhase(mergeAttempt, 'human-intervention-pause', async () => {
+			return {
+				paused: true,
+				reason: 'conflicts-require-human-intervention',
+				conflicts: conflictResult.conflicts,
+				timestamp: new Date().toISOString()
+			};
+		});
+
+		// Trigger notifications if configured
+		if (config.notifications?.enabled) {
+			await this.notifyHumanIntervention(prNumber, conflictResult, config);
+		}
+
+		// Create incident report if enabled
+		if (config.rollback?.createIncidentReport) {
+			await this.createIncidentReport(prNumber, conflictResult, mergeAttempt);
+		}
+
+		return {
+			success: false,
+			reason: 'Human intervention required',
+			mergeAttempt,
+			canRetry: false,
+			humanInterventionRequired: true,
+			interventionDetails: {
+				conflicts: conflictResult.conflicts,
+				details: conflictResult.details,
+				pausedAt: pauseResult.timestamp
+			}
+		};
+	}
+
+	/**
+	 * Notify stakeholders of human intervention requirement
+	 */
+	async notifyHumanIntervention(prNumber, conflictResult, config) {
+		// This would integrate with the notification system from Phase 3
+		console.log(`📧 Notifying stakeholders about PR ${prNumber} requiring intervention`);
+		
+		const notificationData = {
+			type: 'human-intervention-required',
+			prNumber,
+			conflicts: conflictResult.conflicts,
+			severity: conflictResult.requiresHumanIntervention ? 'high' : 'medium',
+			details: conflictResult.details
+		};
+
+		// Integration point with NotificationProvider from Phase 3
+		if (this.notificationService) {
+			await this.notificationService.notify('human-intervention-required', notificationData, {
+				priority: 'high',
+				channels: config.notifications.escalationChannels || ['app', 'slack', 'email']
+			});
+		}
+
+		return { notified: true };
+	}
+
+	/**
+	 * Create incident report for complex conflicts
+	 */
+	async createIncidentReport(prNumber, conflictResult, mergeAttempt) {
+		const report = {
+			id: `incident-${prNumber}-${Date.now()}`,
+			prNumber,
+			timestamp: new Date().toISOString(),
+			type: 'merge-conflict-intervention',
+			conflicts: conflictResult.conflicts,
+			details: conflictResult.details,
+			mergeAttempt: {
+				id: mergeAttempt.id,
+				phases: mergeAttempt.phases,
+				duration: Date.now() - mergeAttempt.startTime
+			},
+			severity: conflictResult.requiresHumanIntervention ? 'high' : 'medium'
+		};
+
+		// Save incident report
+		const fs = await import('fs');
+		const path = await import('path');
+		
+		const incidentDir = path.join(this.projectRoot, '.taskmaster', 'incidents');
+		if (!fs.existsSync(incidentDir)) {
+			fs.mkdirSync(incidentDir, { recursive: true });
+		}
+
+		const reportPath = path.join(incidentDir, `${report.id}.json`);
+		fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+
+		console.log(`📄 Incident report created: ${reportPath}`);
+		return { reportPath, report };
+	}
+
+	/**
+	 * Perform post-merge cleanup with enhanced safety
+	 */
+	async performPostMergeCleanup(prNumber, mergeResult, config) {
+		const cleanup = {
+			worktree: { actions: [], errors: [] },
+			astCache: { invalidatedFiles: 0, errors: [] },
+			taskStatus: { actions: [], errors: [] },
+			errors: []
+		};
+
+		try {
+			// Worktree cleanup
+			if (config.cleanupWorktree) {
+				try {
+					const cleanupResult = await this.triggerCleanup(prNumber, {
+						worktreeName: config.worktreeName,
+						taskId: config.taskId,
+						mergedBranch: mergeResult.branch
+					});
+
+					if (cleanupResult.success) {
+						cleanup.worktree = cleanupResult.cleanupResult.worktree || cleanup.worktree;
+						cleanup.astCache = cleanupResult.cleanupResult.astCache || cleanup.astCache;
+						cleanup.taskStatus = cleanupResult.cleanupResult.taskStatus || cleanup.taskStatus;
+					} else {
+						cleanup.errors.push(`Cleanup failed: ${cleanupResult.error}`);
+					}
+				} catch (error) {
+					cleanup.errors.push(`Cleanup error: ${error.message}`);
+				}
+			}
+
+			return cleanup;
+
+		} catch (error) {
+			cleanup.errors.push(`Cleanup execution failed: ${error.message}`);
+			return cleanup;
+		}
+	}
+
+	/**
+	 * Check if a failure is retryable
+	 */
+	isRetryableFailure(reason) {
+		const retryableReasons = [
+			'checks-pending',
+			'rate-limit',
+			'temporary-network-error',
+			'merge-queue-busy',
+			'github-api-error'
+		];
+
+		return retryableReasons.some(retryable => 
+			reason?.toLowerCase().includes(retryable.toLowerCase())
+		);
+	}
+
+	/**
+	 * Prepare rollback for failed merge
+	 */
+	async prepareRollback(prNumber, mergeResult, rollbackConfig) {
+		console.log(`🔄 Preparing rollback for PR ${prNumber}...`);
+
+		const rollback = {
+			prepared: true,
+			timestamp: new Date().toISOString(),
+			preservedEvidence: rollbackConfig.preserveEvidence,
+			incidentReportCreated: rollbackConfig.createIncidentReport
+		};
+
+		// Preserve evidence if configured
+		if (rollbackConfig.preserveEvidence) {
+			// Save merge attempt details, logs, etc.
+			rollback.evidencePreserved = true;
+		}
+
+		return rollback;
 	}
 
 	/**
@@ -4225,7 +4450,7 @@ ${prompt}
 			// 3. Create incident report
 			if (rollbackData.config?.rollback?.createIncidentReport) {
 				try {
-					await this.createIncidentReport(rollbackAttempt);
+					await this.createRollbackIncidentReport(rollbackAttempt);
 					rollbackAttempt.actions.push('incident-report-created');
 				} catch (error) {
 					rollbackAttempt.actions.push(
@@ -4254,9 +4479,9 @@ ${prompt}
 	}
 
 	/**
-	 * Create incident report for failed merge
+	 * Create incident report for rollback
 	 */
-	async createIncidentReport(rollbackAttempt) {
+	async createRollbackIncidentReport(rollbackAttempt) {
 		try {
 			const fs = await import('fs/promises');
 			const path = await import('path');

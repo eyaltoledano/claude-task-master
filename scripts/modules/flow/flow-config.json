@@ -193,5 +193,11 @@
 				"minimumPriority": "normal"
 			}
 		}
+	},
+	"conflictDetection": {
+		"checkMergeConflicts": true,
+		"notifyOnConflicts": true,
+		"pauseAutomationOnConflicts": true,
+		"humanInterventionRequired": true
 	}
 }
