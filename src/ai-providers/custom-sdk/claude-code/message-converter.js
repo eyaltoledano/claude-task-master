@@ -115,12 +115,10 @@ export function convertToClaudeCodeMessages(prompt, mode) {
 		finalPrompt = formattedMessages.join('\n\n');
 	}
 
-	// For JSON mode, add explicit instruction to ensure JSON output
+	// For JSON mode, prepare the instruction to be used as system prompt
+	let jsonModeInstruction = null;
 	if (mode?.type === 'object-json') {
-		// Make the JSON instruction even more explicit
-		finalPrompt = `${finalPrompt}
-
-CRITICAL INSTRUCTION: You MUST respond with ONLY valid JSON. Follow these rules EXACTLY:
+		jsonModeInstruction = `CRITICAL INSTRUCTION: You MUST respond with ONLY valid JSON. Follow these rules EXACTLY:
 1. Start your response with an opening brace {
 2. End your response with a closing brace }
 3. Do NOT include any text before the opening brace
@@ -134,6 +132,7 @@ Begin your response with { and end with }`;
 
 	return {
 		messagesPrompt: finalPrompt,
-		systemPrompt
+		systemPrompt,
+		jsonModeInstruction
 	};
 }

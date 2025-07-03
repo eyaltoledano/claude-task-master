@@ -128,16 +128,24 @@ export class ClaudeCodeLanguageModel {
 	 */
 	async doGenerate(options) {
 		await loadClaudeCodeModule();
-		const { messagesPrompt } = convertToClaudeCodeMessages(
+		const { messagesPrompt, jsonModeInstruction } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
 		);
 
 		const abortController = new AbortController();
+		let abortListener;
 		if (options.abortSignal) {
-			options.abortSignal.addEventListener('abort', () =>
-				abortController.abort()
-			);
+			abortListener = () => abortController.abort();
+			options.abortSignal.addEventListener('abort', abortListener, { once: true });
+		}
+
+		// Prepare appendSystemPrompt with JSON instructions if needed
+		let appendSystemPrompt = this.settings.appendSystemPrompt;
+		if (jsonModeInstruction) {
+			appendSystemPrompt = appendSystemPrompt
+				? `${appendSystemPrompt}\n\n${jsonModeInstruction}`
+				: jsonModeInstruction;
 		}
 
 		const queryOptions = {
@@ -146,7 +154,7 @@ export class ClaudeCodeLanguageModel {
 			resume: this.sessionId,
 			pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
 			customSystemPrompt: this.settings.customSystemPrompt,
-			appendSystemPrompt: this.settings.appendSystemPrompt,
+			appendSystemPrompt,
 			maxTurns: this.settings.maxTurns,
 			maxThinkingTokens: this.settings.maxThinkingTokens,
 			cwd: this.settings.cwd,
@@ -231,6 +239,10 @@ export class ClaudeCodeLanguageModel {
 				promptExcerpt: messagesPrompt.substring(0, 200),
 				isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED'
 			});
+		} finally {
+			if (options.abortSignal && abortListener) {
+				options.abortSignal.removeEventListener('abort', abortListener);
+			}
 		}
 
 		// Extract JSON if in object-json mode
@@ -273,16 +285,24 @@ export class ClaudeCodeLanguageModel {
 	 */
 	async doStream(options) {
 		await loadClaudeCodeModule();
-		const { messagesPrompt } = convertToClaudeCodeMessages(
+		const { messagesPrompt, jsonModeInstruction } = convertToClaudeCodeMessages(
 			options.prompt,
 			options.mode
 		);
 
 		const abortController = new AbortController();
+		let abortListener;
 		if (options.abortSignal) {
-			options.abortSignal.addEventListener('abort', () =>
-				abortController.abort()
-			);
+			abortListener = () => abortController.abort();
+			options.abortSignal.addEventListener('abort', abortListener, { once: true });
+		}
+
+		// Prepare appendSystemPrompt with JSON instructions if needed
+		let appendSystemPrompt = this.settings.appendSystemPrompt;
+		if (jsonModeInstruction) {
+			appendSystemPrompt = appendSystemPrompt
+				? `${appendSystemPrompt}\n\n${jsonModeInstruction}`
+				: jsonModeInstruction;
 		}
 
 		const queryOptions = {
@@ -291,7 +311,7 @@ export class ClaudeCodeLanguageModel {
 			resume: this.sessionId,
 			pathToClaudeCodeExecutable: this.settings.pathToClaudeCodeExecutable,
 			customSystemPrompt: this.settings.customSystemPrompt,
-			appendSystemPrompt: this.settings.appendSystemPrompt,
+			appendSystemPrompt,
 			maxTurns: this.settings.maxTurns,
 			maxThinkingTokens: this.settings.maxThinkingTokens,
 			cwd: this.settings.cwd,
@@ -439,6 +459,15 @@ export class ClaudeCodeLanguageModel {
 					});
 
 					controller.close();
+				} finally {
+					if (options.abortSignal && abortListener) {
+						options.abortSignal.removeEventListener('abort', abortListener);
+					}
+				}
+			},
+			cancel: () => {
+				if (options.abortSignal && abortListener) {
+					options.abortSignal.removeEventListener('abort', abortListener);
 				}
 			}
 		});
