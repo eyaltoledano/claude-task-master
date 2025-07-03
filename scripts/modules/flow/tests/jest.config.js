@@ -1,28 +1,97 @@
+/**
+ * Jest Configuration for Task Master Flow Tests
+ * 
+ * ES Modules configuration for testing the Flow system components
+ * including AST processing, cache management, and UI components.
+ */
+
 export default {
-	displayName: 'Flow Tests',
-	testMatch: ['<rootDir>/**/*.test.js'],
+	// Test environment
 	testEnvironment: 'node',
-
-	// Simple module mapping (fixed typo from moduleNameMapping)
-	moduleNameMapper: {
-		'^@/(.*)$': '<rootDir>/../$1'
+	
+	// Enable ES modules support
+	extensionsToTreatAsEsm: ['.js'],
+	
+	// Transform configuration for ES modules
+	transform: {
+		'^.+\\.js$': ['babel-jest', { 
+			presets: [
+				['@babel/preset-env', { 
+					targets: { node: 'current' },
+					modules: false 
+				}]
+			]
+		}]
 	},
-
+	
+	// Module name mapping for easier imports
+	moduleNameMapping: {
+		'^@/(.*)$': '<rootDir>/../$1',
+		'^@tests/(.*)$': '<rootDir>/$1'
+	},
+	
+	// Test file patterns
+	testMatch: [
+		'<rootDir>/**/*.test.js',
+		'<rootDir>/**/*.spec.js'
+	],
+	
+	// Files to ignore
+	testPathIgnorePatterns: [
+		'<rootDir>/node_modules/',
+		'<rootDir>/fixtures/',
+		'<rootDir>/coverage/'
+	],
+	
+	// Setup files
+	setupFilesAfterEnv: [
+		'<rootDir>/setup.js'
+	],
+	
 	// Coverage configuration
+	collectCoverage: false, // Enable manually with --coverage
 	collectCoverageFrom: [
 		'../**/*.js',
-		'../**/*.jsx',
 		'!../node_modules/**',
 		'!../tests/**',
-		'!../dist/**'
+		'!../coverage/**',
+		'!../**/fixtures/**'
 	],
-	coverageReporters: ['text', 'lcov', 'html'],
+	
 	coverageDirectory: '<rootDir>/coverage',
-
-	// Test configuration
-	testTimeout: 10000,
+	coverageReporters: [
+		'text',
+		'lcov',
+		'html'
+	],
+	
+	// Verbose output for better debugging
 	verbose: true,
-
-	// Setup files
-	setupFilesAfterEnv: ['<rootDir>/setup.js']
+	
+	// Clear mocks between tests
+	clearMocks: true,
+	
+	// Restore mocks after each test
+	restoreMocks: true,
+	
+	// Maximum number of concurrent workers
+	maxWorkers: '50%',
+	
+	// Timeout for tests (30 seconds)
+	testTimeout: 30000,
+	
+	// Global setup and teardown
+	globalSetup: undefined,
+	globalTeardown: undefined,
+	
+	// Error handling
+	errorOnDeprecated: true,
+	
+	// Module directories
+	moduleDirectories: [
+		'node_modules',
+		'<rootDir>/../node_modules',
+		'<rootDir>/../../node_modules',
+		'<rootDir>/../../../node_modules'
+	]
 };
