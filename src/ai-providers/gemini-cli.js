@@ -653,4 +653,12 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 			throw error;
 		}
 	}
+
+	getRequiredApiKeyName() {
+		return 'GEMINI_API_KEY';
+	}
+
+	isRequiredApiKey() {
+		return false;
+	}
 }
