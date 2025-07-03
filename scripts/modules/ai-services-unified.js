@@ -15,6 +15,7 @@ import {
 	getFallbackProvider,
 	getFallbackModelId,
 	getParametersForRole,
+	getResponseLanguage,
 	getUserId,
 	MODEL_MAP,
 	getDebugFlag,
@@ -24,7 +25,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	providersWithoutApiKeys
 } from './config-manager.js';
 import {
 	log,
@@ -45,7 +47,8 @@ import {
 	BedrockAIProvider,
 	AzureProvider,
 	VertexAIProvider,
-	ClaudeCodeProvider
+	ClaudeCodeProvider,
+	GeminiCliProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -63,7 +66,8 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
-	'claude-code': new ClaudeCodeProvider()
+	'claude-code': new ClaudeCodeProvider(),
+	'gemini-cli': new GeminiCliProvider()
 };
 
 function _getProvider(providerName) {
@@ -466,10 +470,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (
-				providerName?.toLowerCase() !== 'ollama' &&
-				providerName?.toLowerCase() !== 'mcp'
-			) {
+			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -553,9 +554,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			const messages = [];
-			if (systemPrompt) {
-				messages.push({ role: 'system', content: systemPrompt });
-			}
+			const responseLanguage = getResponseLanguage(effectiveProjectRoot);
+			const systemPromptWithLanguage = `${systemPrompt} \n\n Always respond in ${responseLanguage}.`;
+			messages.push({
+				role: 'system',
+				content: systemPromptWithLanguage.trim()
+			});
 
 			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
 			// {

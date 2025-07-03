@@ -33,7 +33,13 @@ export function registerRemoveTaskTool(server) {
 			confirm: z
 				.boolean()
 				.optional()
-				.describe('Whether to skip confirmation prompt (default: false)')
+				.describe('Whether to skip confirmation prompt (default: false)'),
+			tag: z
+				.string()
+				.optional()
+				.describe(
+					'Specify which tag context to operate on. Defaults to the current active tag.'
+				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -59,7 +65,8 @@ export function registerRemoveTaskTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
 					log,
 					{ session }

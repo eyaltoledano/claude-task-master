@@ -8,8 +8,11 @@ Here's a comprehensive reference of all available commands:
 # Parse a PRD file and generate tasks
 task-master parse-prd <prd-file.txt>
 
-# Limit the number of tasks generated
-task-master parse-prd <prd-file.txt> --num-tasks=10
+# Limit the number of tasks generated (default is 10)
+task-master parse-prd <prd-file.txt> --num-tasks=5
+
+# Allow task master to determine the number of tasks based on complexity
+task-master parse-prd <prd-file.txt> --num-tasks=0
 ```
 
 ## List Tasks
@@ -127,6 +130,9 @@ When marking a task as "done", all of its subtasks will automatically be marked 
 ```bash
 # Expand a specific task with subtasks
 task-master expand --id=<id> --num=<number>
+
+# Expand a task with a dynamic number of subtasks (ignoring complexity report)
+task-master expand --id=<id> --num=0
 
 # Expand with additional context
 task-master expand --id=<id> --prompt="<context>"

@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import { z } from 'zod';
 import { fileURLToPath } from 'url';
-import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
+import { log, findProjectRoot, resolveEnvVariable, isEmpty } from './utils.js';
 import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import {
@@ -11,6 +12,7 @@ import {
 	CUSTOM_PROVIDERS_ARRAY,
 	ALL_PROVIDERS
 } from '../../src/constants/providers.js';
+import { AI_COMMAND_NAMES } from '../../src/constants/commands.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -61,12 +63,15 @@ const DEFAULTS = {
 	global: {
 		logLevel: 'info',
 		debug: false,
+		defaultNumTasks: 10,
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
-		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com'
-	}
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		responseLanguage: 'English'
+	},
+	claudeCode: {}
 };
 
 // --- Internal Config Loading ---
@@ -127,7 +132,8 @@ function _loadAndValidateConfig(explicitRoot = null) {
 							? { ...defaults.models.fallback, ...parsedConfig.models.fallback }
 							: { ...defaults.models.fallback }
 				},
-				global: { ...defaults.global, ...parsedConfig?.global }
+				global: { ...defaults.global, ...parsedConfig?.global },
+				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode }
 			};
 			configSource = `file (${configPath})`; // Update source info
 
@@ -169,6 +175,9 @@ function _loadAndValidateConfig(explicitRoot = null) {
 				);
 				config.models.fallback.provider = undefined;
 				config.models.fallback.modelId = undefined;
+			}
+			if (config.claudeCode && !isEmpty(config.claudeCode)) {
+				config.claudeCode = validateClaudeCodeSettings(config.claudeCode);
 			}
 		} catch (error) {
 			// Use console.error for actual errors during parsing
@@ -275,6 +284,83 @@ function validateProviderModelCombination(providerName, modelId) {
 		// Use .some() to check the 'id' property of objects in the array
 		MODEL_MAP[providerName].some((modelObj) => modelObj.id === modelId)
 	);
+}
+
+/**
+ * Validates Claude Code AI provider custom settings
+ * @param {object} settings The settings to validate
+ * @returns {object} The validated settings
+ */
+function validateClaudeCodeSettings(settings) {
+	// Define the base settings schema without commandSpecific first
+	const BaseSettingsSchema = z.object({
+		maxTurns: z.number().int().positive().optional(),
+		customSystemPrompt: z.string().optional(),
+		appendSystemPrompt: z.string().optional(),
+		permissionMode: z
+			.enum(['default', 'acceptEdits', 'plan', 'bypassPermissions'])
+			.optional(),
+		allowedTools: z.array(z.string()).optional(),
+		disallowedTools: z.array(z.string()).optional(),
+		mcpServers: z
+			.record(
+				z.string(),
+				z.object({
+					type: z.enum(['stdio', 'sse']).optional(),
+					command: z.string(),
+					args: z.array(z.string()).optional(),
+					env: z.record(z.string()).optional(),
+					url: z.string().url().optional(),
+					headers: z.record(z.string()).optional()
+				})
+			)
+			.optional()
+	});
+
+	// Define CommandSpecificSchema using the base schema
+	const CommandSpecificSchema = z.record(
+		z.enum(AI_COMMAND_NAMES),
+		BaseSettingsSchema
+	);
+
+	// Define the full settings schema with commandSpecific
+	const SettingsSchema = BaseSettingsSchema.extend({
+		commandSpecific: CommandSpecificSchema.optional()
+	});
+
+	let validatedSettings = {};
+
+	try {
+		validatedSettings = SettingsSchema.parse(settings);
+	} catch (error) {
+		console.warn(
+			chalk.yellow(
+				`Warning: Invalid Claude Code settings in config: ${error.message}. Falling back to default.`
+			)
+		);
+
+		validatedSettings = {};
+	}
+
+	return validatedSettings;
+}
+
+// --- Claude Code Settings Getters ---
+
+function getClaudeCodeSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	// Ensure Claude Code defaults are applied if Claude Code section is missing
+	return { ...DEFAULTS.claudeCode, ...(config?.claudeCode || {}) };
+}
+
+function getClaudeCodeSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getClaudeCodeSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
 }
 
 // --- Role-Specific Getters ---
@@ -424,6 +510,11 @@ function getVertexLocation(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
 }
 
+function getResponseLanguage(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).responseLanguage;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -501,7 +592,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	const providersWithoutApiKeys = [
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
-		CUSTOM_PROVIDERS.MCP
+		CUSTOM_PROVIDERS.MCP,
+		CUSTOM_PROVIDERS.GEMINI_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -795,15 +887,27 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	return undefined;
 }
 
+// Export the providers without API keys array for use in other modules
+export const providersWithoutApiKeys = [
+	CUSTOM_PROVIDERS.OLLAMA,
+	CUSTOM_PROVIDERS.BEDROCK,
+	CUSTOM_PROVIDERS.GEMINI_CLI,
+	CUSTOM_PROVIDERS.MCP
+];
+
 export {
 	// Core config access
 	getConfig,
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
+	// Claude Code settings
+	getClaudeCodeSettings,
+	getClaudeCodeSettingsForCommand,
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
+	validateClaudeCodeSettings,
 	VALIDATED_PROVIDERS,
 	CUSTOM_PROVIDERS,
 	ALL_PROVIDERS,
@@ -833,6 +937,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getResponseLanguage,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
