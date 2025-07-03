@@ -9,7 +9,8 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	getCurrentTag
 } from '../utils.js';
 
 import {
@@ -222,6 +223,7 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
+ * @param {string} [tag=null] - Tag associated with the tasks.
  */
 async function updateTasks(
 	tasksPath,
@@ -231,7 +233,7 @@ async function updateTasks(
 	context = {},
 	outputFormat = 'text' // Default to text for CLI
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	// Use mcpLog if available, otherwise use the imported consoleLog function
 	const logFn = mcpLog || consoleLog;
 	// Flag to easily check which logger type we have
@@ -255,8 +257,11 @@ async function updateTasks(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// --- Task Loading/Filtering (Unchanged) ---
-		const data = readJSON(tasksPath, projectRoot);
+		// Determine the current tag - prioritize explicit tag, then context.tag, then current tag
+		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
+
+		// --- Task Loading/Filtering (Updated to pass projectRoot and tag) ---
+		const data = readJSON(tasksPath, projectRoot, currentTag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		const tasksToUpdate = data.tasks.filter(
@@ -428,7 +433,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 				isMCP
 			);
 
-			// --- Update Tasks Data (Unchanged) ---
+			// --- Update Tasks Data (Updated writeJSON call) ---
 			if (!Array.isArray(parsedUpdatedTasks)) {
 				// Should be caught by parser, but extra check
 				throw new Error(
@@ -467,7 +472,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					`Applied updates to ${actualUpdateCount} tasks in the dataset.`
 				);
 
-			writeJSON(tasksPath, data);
+			// Fix: Pass projectRoot and currentTag to writeJSON
+			writeJSON(tasksPath, data, projectRoot, currentTag);
 			if (isMCP)
 				logFn.info(
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`

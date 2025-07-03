@@ -132,7 +132,7 @@ async function setTaskStatus(
 
 		// Write the updated raw data back to the file
 		// The writeJSON function will automatically filter out _rawTaggedData
-		writeJSON(tasksPath, rawData);
+		writeJSON(tasksPath, rawData, options.projectRoot, currentTag);
 
 		// Validate dependencies after status update
 		log('info', 'Validating dependencies after status update...');

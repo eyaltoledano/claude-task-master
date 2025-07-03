@@ -1,7 +1,6 @@
-import fs from 'fs';
 import path from 'path';
-
-import { log, readJSON, writeJSON } from '../utils.js';
+import * as fs from 'fs';
+import { readJSON, writeJSON, log, findTaskById } from '../utils.js';
 import generateTaskFiles from './generate-task-files.js';
 import taskExists from './task-exists.js';
 
@@ -172,7 +171,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 			}
 
 			// Save the updated raw data structure
-			writeJSON(tasksPath, fullTaggedData);
+			writeJSON(tasksPath, fullTaggedData, projectRoot, currentTag);
 
 			// Delete task files AFTER saving tasks.json
 			for (const taskIdNum of tasksToDeleteFiles) {
@@ -195,10 +194,10 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 
 			// Generate updated task files ONCE, with context
 			try {
-				// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-				// 	projectRoot,
-				// 	tag: currentTag
-				// });
+				await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+					projectRoot,
+					tag: currentTag
+				});
 				results.messages.push('Task files regenerated successfully.');
 			} catch (genError) {
 				const genErrMsg = `Failed to regenerate task files: ${genError.message}`;
