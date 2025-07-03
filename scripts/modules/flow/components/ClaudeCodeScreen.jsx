@@ -71,19 +71,14 @@ export function ClaudeCodeScreen({
 		if (typeof colorPath === 'string' && colorPath.length > 0) {
 			return colorPath;
 		}
-		console.warn(
-			'[ClaudeCodeScreen] Invalid color path:',
-			colorPath,
-			'using fallback:',
-			fallback
-		);
+		// Silently use fallback instead of logging warnings repeatedly
 		return fallback;
 	};
 
-	// Create backwards-compatible theme object
-	const resolvedTheme = theme; // Store reference to original
+	// Create backwards-compatible theme object with safe defaults
+	const resolvedTheme = theme || {}; // Ensure theme exists
 	const safeTheme = {
-		// Direct access from resolved theme
+		// Direct access from resolved theme with safe defaults
 		border: getColor(resolvedTheme.border, '#334155'),
 		accent: getColor(resolvedTheme.accent, '#22d3ee'),
 		background: getColor(resolvedTheme.background, '#1e293b'),
@@ -92,11 +87,11 @@ export function ClaudeCodeScreen({
 		warning: getColor(resolvedTheme.warning, '#fbbf24'),
 		info: getColor(resolvedTheme.info, '#60a5fa'),
 
-		// Text colors
-		text: getColor(resolvedTheme.text?.primary, '#f1f5f9'),
-		textDim: getColor(resolvedTheme.text?.secondary, '#cbd5e1'),
-		textSecondary: getColor(resolvedTheme.text?.secondary, '#cbd5e1'),
-		textTertiary: getColor(resolvedTheme.text?.tertiary, '#94a3b8'),
+		// Text colors with safe navigation
+		text: getColor(resolvedTheme.text?.primary || resolvedTheme.textPrimary, '#f1f5f9'),
+		textDim: getColor(resolvedTheme.text?.secondary || resolvedTheme.textSecondary, '#cbd5e1'),
+		textSecondary: getColor(resolvedTheme.text?.secondary || resolvedTheme.textSecondary, '#cbd5e1'),
+		textTertiary: getColor(resolvedTheme.text?.tertiary || resolvedTheme.textTertiary, '#94a3b8'),
 
 		// Common status colors (using fallback colors)
 		statusDone: '#34d399',
@@ -1035,14 +1030,47 @@ ${insightSummary}
 	};
 
 	const renderWatchMessage = (msg, idx) => {
-		const timeString = new Date(msg.timestamp).toLocaleTimeString();
+		const timeString = msg.timestamp 
+			? new Date(msg.timestamp).toLocaleTimeString()
+			: new Date().toLocaleTimeString();
+
+		// Helper function to extract content from various message formats
+		const extractContent = (message) => {
+			// Direct content property
+			if (typeof message.content === 'string') {
+				return message.content;
+			}
+			
+			// Nested message structure from Claude Code
+			if (message.message?.content) {
+				if (Array.isArray(message.message.content)) {
+					// Extract text from content array
+					return message.message.content
+						.filter(part => part.type === 'text')
+						.map(part => part.text)
+						.join('');
+				} else if (typeof message.message.content === 'string') {
+					return message.message.content;
+				}
+			}
+			
+			// Legacy format fallback
+			if (message.message?.content?.[0]?.text) {
+				return message.message.content[0].text;
+			}
+			
+			// Last resort - stringify the message for debugging
+			return JSON.stringify(message, null, 2).substring(0, 200) + '...';
+		};
 
 		switch (msg.type) {
 			case 'system':
 				return (
 					<Box key={idx} marginBottom={1}>
 						<Text color={safeTheme.textDim}>[{timeString}] </Text>
-						<Text color={safeTheme.info}>{msg.content}</Text>
+						<Text color={safeTheme.info}>
+							System: {msg.subtype || 'info'} - {extractContent(msg)}
+						</Text>
 					</Box>
 				);
 			case 'user':
@@ -1050,10 +1078,11 @@ ${insightSummary}
 					<Box key={idx} marginBottom={1}>
 						<Text color={safeTheme.textDim}>[{timeString}] </Text>
 						<Text color="cyan">User: </Text>
-						<Text>{msg.message?.content?.[0]?.text || msg.content}</Text>
+						<Text>{extractContent(msg)}</Text>
 					</Box>
 				);
-			case 'assistant':
+			case 'assistant': {
+				const assistantContent = extractContent(msg);
 				return (
 					<Box key={idx} marginBottom={1} flexDirection="column">
 						<Box>
@@ -1063,11 +1092,23 @@ ${insightSummary}
 						<Box marginLeft={2} marginTop={1}>
 							<OverflowableText
 								id={`watch-msg-${idx}`}
-								content={msg.message?.content?.[0]?.text || msg.content || ''}
+								content={assistantContent}
 								maxLines={8}
 								color="white"
 							/>
 						</Box>
+					</Box>
+				);
+			}
+			case 'result':
+				return (
+					<Box key={idx} marginBottom={1}>
+						<Text color={safeTheme.textDim}>[{timeString}] </Text>
+						<Text color={safeTheme.success}>
+							Result: {msg.subtype || 'completed'} | 
+							{msg.num_turns && ` Turns: ${msg.num_turns} |`}
+							{msg.total_cost_usd && ` Cost: $${msg.total_cost_usd.toFixed(4)}`}
+						</Text>
 					</Box>
 				);
 			default:
@@ -1075,7 +1116,8 @@ ${insightSummary}
 					<Box key={idx} marginBottom={1}>
 						<Text color={safeTheme.textDim}>[{timeString}] </Text>
 						<Text color={safeTheme.warning}>
-							[{msg.type}]: {JSON.stringify(msg).substring(0, 100)}...
+							[{msg.type}]: {extractContent(msg).substring(0, 100)}
+							{extractContent(msg).length > 100 ? '...' : ''}
 						</Text>
 					</Box>
 				);

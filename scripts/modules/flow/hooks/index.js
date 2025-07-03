@@ -24,8 +24,9 @@ export {
 	useComponentTheme,
 	useThemedStyles,
 	useThemeTransitions,
-	useThemePersistence
-} from './useTheme.jsx';
+	useThemePersistence,
+	getColor
+} from './useTheme.js';
 
 // Re-export hook utilities for convenience
 export const HookUtils = {
@@ -161,7 +162,7 @@ export class HookManager {
 		try {
 			const configPath = path.join(__dirname, 'config', 'default-config.json');
 			const { default: config } = await import(configPath, {
-				assert: { type: 'json' }
+				with: { type: 'json' }
 			});
 			return config;
 		} catch (error) {
@@ -199,13 +200,21 @@ export class HookManager {
 					continue;
 				}
 
-				const hookPath = path.join(__dirname, 'built-in', `${hookName}.js`);
-				const { default: HookClass } = await import(hookPath);
+				// Use absolute path for ES module import
+				const hookPath = path.resolve(__dirname, 'built-in', `${hookName}.js`);
+				const hookUrl = `file://${hookPath}`;
+				const hookModule = await import(hookUrl);
+				const HookClass = hookModule.default;
+
+				if (!HookClass) {
+					console.error(`❌ Invalid hook ${hookName}: undefined`);
+					continue;
+				}
 
 				const hookInstance = new HookClass();
 
 				// Validate hook
-				const validation = this.validator.validateHook(hookInstance);
+				const validation = await this.validator.validateHook(hookInstance);
 				if (!validation.valid) {
 					console.error(`❌ Invalid hook ${hookName}:`, validation.errors);
 					continue;
@@ -220,7 +229,7 @@ export class HookManager {
 
 				console.log(`✅ Loaded built-in hook: ${hookName}`);
 			} catch (error) {
-				console.error(`❌ Failed to load built-in hook ${hookName}:`, error);
+				console.error(`❌ Failed to load hook ${hookName}: ${error.message}`);
 			}
 		}
 	}
@@ -255,6 +264,7 @@ export class HookManager {
 		const results = [];
 		const hookContext = createHookContext({
 			...context,
+			event,
 			backend: this.backend,
 			storage: this.storage
 		});

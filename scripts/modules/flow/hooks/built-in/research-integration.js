@@ -81,14 +81,24 @@ export default class ResearchIntegrationHook {
 			const existingResearch = utils.extractResearchFromTask(task);
 
 			if (existingResearch && config.autoDetectExisting) {
+				const sessionInfo = existingResearch.sessionCount > 1 
+					? `${existingResearch.sessionCount} research sessions found`
+					: 'Research session found';
+				
+				const lastUpdatedInfo = existingResearch.format === 'current'
+					? `Last updated: ${existingResearch.lastUpdated}`
+					: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
+
 				return {
 					researchStatus: {
 						needed: false,
 						reason: 'existing-research-found',
 						hasExisting: true,
 						lastUpdated: existingResearch.lastUpdated,
+						sessionCount: existingResearch.sessionCount || 1,
+						format: existingResearch.format || 'legacy',
 						confidence: 100,
-						message: 'Research already exists for this task'
+						message: `${sessionInfo}. ${lastUpdatedInfo}`
 					}
 				};
 			}
@@ -113,8 +123,8 @@ export default class ResearchIntegrationHook {
 				),
 				threshold: threshold * 100,
 				message: needsResearch
-					? `Research recommended (${analysis.confidence}% confidence)`
-					: `Research not needed (${analysis.confidence}% confidence)`
+					? `Research recommended (${analysis.confidence}% confidence). Found ${analysis.keywords.length} relevant keywords.`
+					: `Research not needed (${analysis.confidence}% confidence). Task appears straightforward.`
 			};
 
 			return { researchStatus };

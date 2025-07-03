@@ -859,7 +859,7 @@ export class ThemeManager {
 	getColor(colorPath) {
 		// Ensure colorPath is a string
 		if (typeof colorPath !== 'string') {
-			console.warn('getColor called with non-string value:', colorPath);
+			// Silently return default color for non-string values
 			return '#ffffff';
 		}
 
@@ -933,6 +933,11 @@ export const theme = new Proxy(
 	{},
 	{
 		get(target, prop) {
+			// Handle undefined or non-string properties
+			if (!prop || typeof prop !== 'string') {
+				return undefined;
+			}
+
 			const currentTheme = themeManager.getTheme();
 			const colors = currentTheme.colors;
 
@@ -972,7 +977,17 @@ export const theme = new Proxy(
 				priorityLow: colors.state.info.primary
 			};
 
-			return propertyMap[prop] || themeManager.getColor(prop);
+			// Only call getColor with valid string properties
+			if (propertyMap[prop]) {
+				return propertyMap[prop];
+			}
+			
+			// Don't call getColor with Symbol properties or other non-strings
+			if (typeof prop === 'string' && prop.length > 0) {
+				return themeManager.getColor(prop);
+			}
+			
+			return undefined;
 		}
 	}
 );

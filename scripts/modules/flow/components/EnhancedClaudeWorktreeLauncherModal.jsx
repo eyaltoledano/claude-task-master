@@ -157,6 +157,17 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					message: 'Research analysis not available'
 				});
 			}
+
+			// Clear the processing log once analysis is complete
+			setProcessingLog('');
+
+			// Auto-progress if research is not needed or already exists
+			if (researchCheck?.researchStatus && !researchCheck.researchStatus.needed) {
+				// Small delay to let user see the result, then auto-advance
+				setTimeout(() => {
+					prepareReview();
+				}, 1500);
+			}
 		} catch (error) {
 			console.error('Error checking research needs:', error);
 			setResearchStatus({
@@ -165,6 +176,8 @@ export function EnhancedClaudeWorktreeLauncherModal({
 				error: error.message,
 				confidence: 0
 			});
+			// Clear the processing log on error too
+			setProcessingLog('');
 		}
 	}, [tasks, hookService]);
 
@@ -779,6 +792,21 @@ export function EnhancedClaudeWorktreeLauncherModal({
 						<Box marginTop={1}>
 							<Text color="green">
 								✓ Research completed and will be included
+							</Text>
+						</Box>
+					)}
+
+					{/* Show instructions for existing research or when no research is needed */}
+					{!researchStatus.needed && !isRunningResearch && (
+						<Box marginTop={2}>
+							<Text color="green">
+								{researchStatus.hasExisting 
+									? '✓ Existing research found - proceeding automatically...'
+									: '✓ No research needed - proceeding automatically...'
+								}
+							</Text>
+							<Text dimColor>
+								Or press ENTER to continue manually
 							</Text>
 						</Box>
 					)}

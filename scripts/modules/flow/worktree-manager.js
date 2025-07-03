@@ -2,10 +2,10 @@ import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs-extra';
 import { log } from '../utils.js';
-import {
-	initializeWorktreeCache,
-	cleanupWorktreeCache,
-	validateWorktreeCache
+import { 
+	initializeWorktreeCache, 
+	cleanupWorktreeCache, 
+	validateWorktreeCache 
 } from './ast/context/cache-manager.js';
 
 const logger = {
@@ -523,6 +523,75 @@ export class WorktreeManager {
 				// Check if gh cli is available
 				execSync('gh --version', { stdio: 'ignore' });
 
+				// First, commit any uncommitted changes
+				try {
+					// Check if there are changes to commit
+					const statusOutput = execSync('git status --porcelain', { 
+						cwd: worktree.path, 
+						encoding: 'utf8' 
+					});
+					
+					if (statusOutput.trim()) {
+						logger.debug(`Found uncommitted changes: ${statusOutput.split('\n').length} files`);
+						
+						// Stage all changes
+						execSync('git add -A', { cwd: worktree.path, stdio: 'pipe' });
+						
+						const prTitle =
+							options.prTitle ||
+							`Task ${worktree.linkedSubtask.fullId}: ${worktree.linkedSubtask.title}`;
+						
+						// Commit with a proper message
+						const commitMessage = prTitle.replace(/"/g, '\\"'); // Escape quotes
+						execSync(`git commit -m "${commitMessage}"`, { cwd: worktree.path, stdio: 'pipe' });
+						logger.debug('Successfully committed changes');
+					} else {
+						logger.debug('No changes to commit');
+					}
+				} catch (commitError) {
+					// Check if it's actually an error or just no changes
+					if (commitError.message.includes('nothing to commit')) {
+						logger.debug('Nothing to commit, working tree clean');
+					} else {
+						logger.warn('Commit failed:', commitError.message);
+						// Don't throw here, as we might still be able to create a PR
+					}
+				}
+
+				// Push the branch to remote (this handles the "must first push" error)
+				const branchName = worktree.branch || worktreeName;
+				logger.debug(`Pushing branch ${branchName} from ${worktree.path}`);
+				
+				// First check current branch
+				try {
+					const currentBranch = execSync('git branch --show-current', { 
+						cwd: worktree.path, 
+						encoding: 'utf8' 
+					}).trim();
+					logger.debug(`Current branch in worktree: ${currentBranch}`);
+					
+					// Make sure we're on the right branch
+					if (currentBranch !== branchName) {
+						logger.warn(`Branch mismatch: expected ${branchName}, got ${currentBranch}`);
+					}
+				} catch (e) {
+					logger.debug('Could not determine current branch:', e.message);
+				}
+				
+				try {
+					execSync(`git push origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
+					logger.debug(`Successfully pushed branch ${branchName}`);
+				} catch (pushError) {
+					// Try to set upstream and push
+					try {
+						execSync(`git push --set-upstream origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
+						logger.debug(`Successfully pushed branch ${branchName} with --set-upstream`);
+					} catch (upstreamError) {
+						logger.error('Failed to push branch:', upstreamError.message);
+						throw new Error(`Failed to push branch to remote: ${upstreamError.message}`);
+					}
+				}
+
 				// Create PR using gh cli
 				const prTitle =
 					options.prTitle ||
@@ -531,8 +600,12 @@ export class WorktreeManager {
 					options.prBody ||
 					`Completes subtask ${worktree.linkedSubtask.fullId}\n\n${options.prDescription || ''}`;
 
+				// Always use --head flag to explicitly specify the branch
+				// This avoids issues with uncommitted changes or git state
+				logger.debug(`Creating PR from branch ${branchName} to ${worktree.sourceBranch}`);
+
 				const result = execSync(
-					`gh pr create --title "${prTitle}" --body "${prBody}" --base ${worktree.sourceBranch}`,
+					`gh pr create --title "${prTitle}" --body "${prBody}" --base ${worktree.sourceBranch} --head ${branchName}`,
 					{ cwd: worktree.path, encoding: 'utf8' }
 				);
 
@@ -648,7 +721,7 @@ export class WorktreeManager {
 			for (const [name, worktree] of Object.entries(this.config.worktrees)) {
 				if (!fs.existsSync(worktree.path)) {
 					logger.info(`Removing stale worktree entry: ${name}`);
-
+					
 					// Clean up AST cache for the stale worktree
 					try {
 						await cleanupWorktreeCache(worktree.path, this.projectRoot);
@@ -658,7 +731,7 @@ export class WorktreeManager {
 							error.message
 						);
 					}
-
+					
 					delete this.config.worktrees[name];
 					removedCount++;
 				}

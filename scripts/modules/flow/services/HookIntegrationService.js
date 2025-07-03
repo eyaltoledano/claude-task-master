@@ -47,7 +47,13 @@ export class HookIntegrationService {
 			const context = {
 				task,
 				operationId,
-				type: 'research-check'
+				type: 'research-check',
+				action: 'check-needed',
+				config: {
+					autoDetectExisting: true,
+					confidenceThreshold: 0.7,
+					maxSuggestedQueries: 3
+				}
 			};
 
 			const result = await this.hookManager.executeHooks(

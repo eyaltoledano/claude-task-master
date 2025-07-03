@@ -23,6 +23,8 @@ export default function WorktreeDetailsModal({
 	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
+	const [isCreatingPR, setIsCreatingPR] = useState(false);
+	const [prResult, setPrResult] = useState(null);
 	const theme = useComponentTheme('modal');
 
 	// Constants for scrolling
@@ -47,6 +49,120 @@ export default function WorktreeDetailsModal({
 			setError(err.message);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleCreatePR = async () => {
+		if (isCreatingPR) return;
+
+		setIsCreatingPR(true);
+		setError(null);
+		setPrResult(null);
+
+		try {
+			// Find the primary task/subtask for this worktree
+			const primaryTask = linkedTasks.find(task => 
+				task.status === 'done' || task.status === 'in-progress'
+			) || linkedTasks[0];
+
+			if (!primaryTask) {
+				throw new Error('No suitable task found for PR creation');
+			}
+
+			// Generate PR title and description
+			const prTitle = primaryTask.parentId 
+				? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
+				: `Task ${primaryTask.id}: ${primaryTask.title}`;
+			
+			const prDescription = `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
+
+## Changes Made
+- ${details.status.added > 0 ? `${details.status.added} files added` : ''}
+- ${details.status.modified > 0 ? `${details.status.modified} files modified` : ''}
+- ${details.status.deleted > 0 ? `${details.status.deleted} files deleted` : ''}
+
+## Worktree Details
+- Branch: ${worktree.branch}
+- Source: ${details.sourceBranch || 'main'}
+- Path: ${worktree.path}
+
+Completed via Task Master Flow.`;
+
+			// Create PR using backend
+			let result;
+			if (primaryTask.parentId) {
+				// This is a subtask
+				result = await backend.completeSubtaskWithPR(worktree.name, {
+					createPR: true,
+					prTitle,
+					prDescription: prDescription
+				});
+			} else {
+				// This is a main task - create PR manually using gh CLI
+				try {
+					const { exec } = await import('child_process');
+					const { promisify } = await import('util');
+					const execAsync = promisify(exec);
+
+					// Check if gh cli is available
+					await execAsync('gh --version', { stdio: 'ignore' });
+
+					// First, commit any uncommitted changes
+					try {
+						await execAsync('git add .', { cwd: worktree.path });
+						await execAsync(`git commit -m "${prTitle}"`, { cwd: worktree.path });
+					} catch (commitError) {
+						// It's okay if there's nothing to commit
+						console.log('No changes to commit or commit failed:', commitError.message);
+					}
+
+					// Push the branch to remote (this handles the "must first push" error)
+					const branchName = worktree.branch || `task-${primaryTask.id}`;
+					try {
+						await execAsync(`git push origin "${branchName}"`, { cwd: worktree.path });
+					} catch (pushError) {
+						// Try to set upstream and push
+						await execAsync(`git push --set-upstream origin "${branchName}"`, { cwd: worktree.path });
+					}
+
+					// Create PR using gh cli - always use --head flag
+					const sourceBranch = details.sourceBranch || worktree.sourceBranch || 'main';
+					const prCommand = `gh pr create --title "${prTitle}" --body "${prDescription}" --base ${sourceBranch} --head ${branchName}`;
+					
+					const prResult = await execAsync(prCommand, { 
+						cwd: worktree.path, 
+						encoding: 'utf8' 
+					});
+
+					// Extract PR URL from output
+					const prUrl = prResult.stdout.trim().split('\n').pop();
+					
+					result = {
+						success: true,
+						prUrl: prUrl
+					};
+				} catch (ghError) {
+					if (ghError.message.includes('gh: command not found') || ghError.code === 'ENOENT') {
+						throw new Error('GitHub CLI (gh) is not installed. Please install it to create PRs automatically.');
+					}
+					throw new Error(`Failed to create PR: ${ghError.message}`);
+				}
+			}
+
+			if (result && (result.success || result.prUrl)) {
+				setPrResult({
+					success: true,
+					prUrl: result.prUrl,
+					prTitle
+				});
+			} else {
+				throw new Error(result?.error || 'Failed to create PR');
+			}
+		} catch (err) {
+			console.error('Error creating PR:', err);
+			setError(`Failed to create PR: ${err.message}`);
+		} finally {
+			setIsCreatingPR(false);
 		}
 	};
 
@@ -102,20 +218,36 @@ export default function WorktreeDetailsModal({
 			default: {
 				// details
 				const hints = ['ESC close'];
-				if (details && details.length > VISIBLE_ROWS)
-					hints.unshift('↑↓ scroll');
+				// Note: We'll check content length after building detailContent, not here
 				if (linkedTasks.length > 0 && onNavigateToTask) {
 					hints.unshift('v view tasks', 'g jump to task');
 				}
 				hints.unshift('l link/manage tasks');
 				if (linkedTasks.length > 0) hints.unshift('c launch Claude');
+				// Add PR creation hint if there are changes and linked tasks
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				console.log('🔍 [WorktreeDetailsModal] PR hint condition:', {
+					linkedTasksLength: linkedTasks.length,
+					detailsStatus: details?.status,
+					hasChanges,
+					willShowPRHint: linkedTasks.length > 0 && hasChanges
+				});
+				if (linkedTasks.length > 0 && hasChanges) {
+					hints.unshift('p create PR');
+				}
 				if (!worktree.isCurrent) hints.unshift('d delete');
 
 				return {
 					...baseProps,
 					title: `Worktree Details: ${worktree.name}`,
 					preset: error ? 'error' : 'default',
-					keyboardHints: hints
+					hints: hints
 				};
 			}
 		}
@@ -212,6 +344,21 @@ export default function WorktreeDetailsModal({
 		c: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
 				setShowClaudeModal(true);
+			}
+		},
+
+		p: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges) {
+					handleCreatePR();
+				}
 			}
 		}
 	};
@@ -531,8 +678,23 @@ export default function WorktreeDetailsModal({
 	const totalLines = detailContent.length;
 
 	// Main render (details view)
+	const modalProps = getModalProps();
+	const { hints, ...baseModalProps } = modalProps;
+
 	return (
-		<BaseModal {...getModalProps()}>
+		<BaseModal 
+			{...baseModalProps}
+			showCloseHint={false} // We'll show our own hints
+			footer={
+				hints && hints.length > 0 && (
+					<Box justifyContent="center">
+						<Text color={theme.textDim}>
+							{hints.join(' • ')}
+						</Text>
+					</Box>
+				)
+			}
+		>
 			<Box flexDirection="column">
 				{/* Scrollable content */}
 				<Box flexDirection="column" height={VISIBLE_ROWS}>
@@ -578,6 +740,22 @@ export default function WorktreeDetailsModal({
 							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of{' '}
 							{totalLines}
 						</Text>
+					</Box>
+				)}
+
+				{/* PR Creation Status */}
+				{isCreatingPR && (
+					<Box marginTop={1}>
+						<Text color={theme.warning}>⚡ Creating pull request...</Text>
+					</Box>
+				)}
+
+				{/* PR Creation Result */}
+				{prResult && (
+					<Box marginTop={1} flexDirection="column">
+						<Text color={theme.success}>✓ Pull request created successfully!</Text>
+						<Text color={theme.muted}>PR: {prResult.prTitle}</Text>
+						<Text color={theme.accent}>URL: {prResult.prUrl}</Text>
 					</Box>
 				)}
 

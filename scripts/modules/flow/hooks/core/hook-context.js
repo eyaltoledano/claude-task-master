@@ -115,28 +115,74 @@ function createUtilities() {
 		extractResearchFromTask(task) {
 			if (!task || !task.details) return null;
 
-			// Look for research markers in task details
-			const researchPattern =
-				/<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
-			const matches = [...task.details.matchAll(researchPattern)];
+			// Look for research session markers in task details
+			// Pattern: ## Research Session - July 2, 2025 7:32:51 PM
+			const researchSessionPattern = /## Research Session - ([^\\n]+)/g;
+			const matches = [...task.details.matchAll(researchSessionPattern)];
 
-			if (matches.length === 0) return null;
+			if (matches.length === 0) {
+				// Also check for older pattern with info tags
+				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
+				const oldMatches = [...task.details.matchAll(oldPattern)];
+				
+				if (oldMatches.length === 0) return null;
 
-			const research = matches.map((match) => ({
-				timestamp: match[1],
-				content: match[2].trim()
-			}));
+				const research = oldMatches.map((match) => ({
+					timestamp: match[1],
+					content: match[2].trim(),
+					format: 'legacy'
+				}));
+
+				const latestResearch = research.sort(
+					(a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+				)[0];
+
+				return {
+					hasResearch: true,
+					lastUpdated: latestResearch.timestamp,
+					content: latestResearch.content,
+					allEntries: research,
+					format: 'legacy'
+				};
+			}
+
+			// Parse research sessions with the new format
+			const research = matches.map((match) => {
+				const dateTimeStr = match[1].trim();
+				
+				// Extract the content of this research session
+				const sessionStart = match.index;
+				const nextSessionMatch = task.details.indexOf('## Research Session -', sessionStart + 1);
+				const sessionEnd = nextSessionMatch === -1 ? task.details.length : nextSessionMatch;
+				const sessionContent = task.details.substring(sessionStart, sessionEnd).trim();
+
+				return {
+					timestamp: dateTimeStr,
+					content: sessionContent,
+					format: 'current'
+				};
+			});
 
 			// Find the most recent research entry
-			const latestResearch = research.sort(
-				(a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-			)[0];
+			const latestResearch = research.sort((a, b) => {
+				// Try to parse the date strings for proper sorting
+				try {
+					const dateA = new Date(a.timestamp);
+					const dateB = new Date(b.timestamp);
+					return dateB.getTime() - dateA.getTime();
+				} catch (error) {
+					// Fallback to string comparison if date parsing fails
+					return b.timestamp.localeCompare(a.timestamp);
+				}
+			})[0];
 
 			return {
 				hasResearch: true,
 				lastUpdated: latestResearch.timestamp,
 				content: latestResearch.content,
-				allEntries: research
+				allEntries: research,
+				format: 'current',
+				sessionCount: research.length
 			};
 		},
 
@@ -324,3 +370,4 @@ export function validateContext(context) {
 		errors
 	};
 }
+ 
