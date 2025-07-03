@@ -8,6 +8,12 @@ cd scripts/modules/flow/tests
 node run-phase-1-1-tests.js
 ```
 
+### Run All Phase 6.1 Tests
+```bash
+cd scripts/modules/flow/tests
+node run/run-phase-6-1-tests.js
+```
+
 ### Run Specific Test Categories
 ```bash
 # Language Detection (46 tests)
@@ -24,6 +30,18 @@ npx jest unit/ast/analyzers.test.js --verbose
 
 # Parser Registry (25+ tests)
 npx jest unit/ast/parser-registry.test.js --verbose
+
+# Monitoring Dashboard (15+ tests)
+cd scripts/modules/flow/tests && npx jest visual/monitoring-dashboard.test.js --verbose
+
+# Configuration Modal (20+ tests)
+cd scripts/modules/flow/tests && npx jest visual/configuration-modal.test.js --verbose
+
+# Notification Display (18+ tests)  
+cd scripts/modules/flow/tests && npx jest visual/notification-display.test.js --verbose
+
+# Theme Integration (25+ tests)
+cd scripts/modules/flow/tests && npx jest visual/theme-integration.test.js --verbose
 ```
 
 ### Development Commands
@@ -58,6 +76,15 @@ unit/ast/
     └── go-parser.test.js         # 30+ tests - Go parsing
 ```
 
+### Phase 6.1 - Visual & Monitoring Testing (COMPLETE)
+```
+visual/
+├── monitoring-dashboard.test.js       # 15+ tests - Real-time display & metrics
+├── configuration-modal.test.js        # 20+ tests - Settings & form validation
+├── notification-display.test.js       # 18+ tests - Notification system
+└── theme-integration.test.js          # 25+ tests - Theme consistency & accessibility
+```
+
 ### Future Phases (PLANNED)
 ```
 unit/
@@ -67,12 +94,46 @@ unit/
 
 integration/           # Phase 3 - System integration
 e2e/                   # Phase 4 - End-to-end workflows
-visual/                # Phase 6 - UI components
 ```
 
 ---
 
 ## 🧪 Test Patterns
+
+### Phase 6.1 Visual Testing Patterns
+```javascript
+describe('Visual Component Testing', () => {
+  beforeEach(() => {
+    // Mock UI components and interactions
+    mockComponent.render.mockImplementation((props) => {
+      return { success: true, rendered: true, props };
+    });
+  });
+
+  test('should render with correct visual properties', () => {
+    const result = mockComponent.render({ theme: 'dark', size: 'large' });
+    
+    expect(result.success).toBe(true);
+    expect(result.props.theme).toBe('dark');
+    expect(result.props.size).toBe('large');
+  });
+
+  test('should meet accessibility standards', () => {
+    const accessibility = mockComponent.checkAccessibility();
+    
+    expect(accessibility.contrastRatio).toBeGreaterThan(4.5);
+    expect(accessibility.wcagLevel).toBe('AAA');
+  });
+
+  test('should perform within time limits', () => {
+    const startTime = Date.now();
+    mockComponent.render({ complex: true });
+    const executionTime = Date.now() - startTime;
+    
+    expect(executionTime).toBeLessThan(100); // 100ms limit
+  });
+});
+```
 
 ### Basic Test Structure
 ```javascript
@@ -139,6 +200,13 @@ const mockFunction = jest.fn().mockImplementation((input) => {
    - AST structure → `ast-generation.test.js`
    - Parser management → `parser-registry.test.js`
 
+### For Phase 6.1 Visual Features
+1. **Choose the right test file**:
+   - Real-time monitoring → `visual/monitoring-dashboard.test.js`
+   - Settings and configuration → `visual/configuration-modal.test.js`
+   - Notifications and alerts → `visual/notification-display.test.js`
+   - Themes and accessibility → `visual/theme-integration.test.js`
+
 2. **Follow established patterns**:
    - Use descriptive test names
    - Include both success and error cases
@@ -149,6 +217,19 @@ const mockFunction = jest.fn().mockImplementation((input) => {
    ```bash
    npx jest [test-file] --verbose
    node run-phase-1-1-tests.js
+   ```
+
+2. **Follow established visual patterns**:
+   - Include accessibility tests for all UI components
+   - Add performance benchmarks for rendering operations
+   - Test theme consistency across all visual states
+   - Verify user interaction handling and feedback
+
+3. **Test your visual changes**:
+   ```bash
+   cd scripts/modules/flow/tests
+   npx jest visual/[test-file] --verbose
+   node run/run-phase-6-1-tests.js
    ```
 
 ### For New Test Phases
@@ -272,7 +353,8 @@ Phase 1.1 Summary: 7/7 suites passing (216 total tests)
 - **[Main README](./README.md)** - Comprehensive overview
 
 ### Key Files
-- **[Phase 1.1 Runner](./run-phase-1-1-tests.js)** - Test execution
+- **[Phase 1.1 Runner](./run-phase-1-1-tests.js)** - AST system test execution
+- **[Phase 6.1 Runner](./run/run-phase-6-1-tests.js)** - Visual & monitoring test execution
 - **[Jest Config](./jest.config.cjs)** - Framework configuration
 - **[Test Setup](./setup.js)** - Environment initialization
 
@@ -304,6 +386,6 @@ Phase 1.1 Summary: 7/7 suites passing (216 total tests)
 
 ---
 
-**Quick Status**: Phase 1.1 Complete ✅ | 7 Suites | 200+ Tests | ~3s Runtime
+**Quick Status**: Phase 1.1 Complete ✅ | Phase 6.1 Complete ✅ | 11 Total Suites | 280+ Tests | ~8s Runtime
 
 *Keep this guide handy for efficient testing workflow!* 
