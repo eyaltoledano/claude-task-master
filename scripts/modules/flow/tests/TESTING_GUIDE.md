@@ -2,6 +2,28 @@
 
 ## 🚀 Quick Commands
 
+### Enhanced Test Runner (Recommended)
+```bash
+cd scripts/modules/flow/tests
+
+# Run all phases with advanced analytics and parallel execution
+node run-enhanced-tests.js
+
+# Run specific phases with enhanced features
+node run-enhanced-tests.js --phases 1.1,2.1,4.2
+
+# Fast execution (skip fixture generation)
+node run-enhanced-tests.js --no-fixtures
+
+# Create performance baseline for regression detection
+node run-enhanced-tests.js --save-baseline
+
+# See all options
+node run-enhanced-tests.js --help
+```
+
+### Individual Phase Tests
+
 ### Run All Phase 1.1 Tests
 ```bash
 cd scripts/modules/flow/tests
@@ -600,5 +622,13 @@ Phase 1.1 Summary: 7/7 suites passing (216 total tests)
 ---
 
 **Quick Status**: All Phases 1.1-5.2 Complete ✅ | 45+ Test Suites | 1,083+ Tests | Production Ready | Full System Coverage
+
+---
+
+## 📚 Additional Documentation
+
+- **[Enhanced Test Runner Guide](./ENHANCED_TEST_RUNNER.md)**: Complete guide to the advanced test runner with parallel execution, performance regression detection, and CI/CD integration
+- **[Main Testing Documentation](./README.md)**: Comprehensive testing overview and navigation
+- **[Testing Implementation Index](./TESTING_INDEX.md)**: Detailed phase-by-phase implementation status
 
 *Keep this guide handy for efficient testing workflow with the complete Task Master Flow testing infrastructure!* 
