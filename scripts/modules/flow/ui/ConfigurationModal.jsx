@@ -155,221 +155,215 @@ const SafetyTab = () => {
 	const isStrictMode = currentSafetyMode === 'strict';
 
 	return (
-		<Box flexDirection="column" padding={1}>
-			<Text bold>Safety Configuration</Text>
+		<Box flexDirection="column" gap={1}>
+			<Text bold color="cyan">Safety Mode Configuration</Text>
+			
+			<Box flexDirection="column" gap={1} marginLeft={2}>
+				{safetyModeOptions.map((option) => (
+					<Box key={option.value} flexDirection="row" alignItems="center">
+						<Text color={currentSafetyMode === option.value ? 'green' : 'gray'}>
+							{currentSafetyMode === option.value ? '●' : '○'} {option.label}
+						</Text>
+					</Box>
+				))}
+			</Box>
 
-			{/* Safety Mode Selection */}
-			<Box marginTop={1} flexDirection="column">
-				<Text bold color="cyan">Safety Mode:</Text>
-				<Box marginTop={1}>
-					<Select
-						options={safetyModeOptions}
-						defaultValue={currentSafetyMode}
-						onChange={(value) => updateConfig('hooks.builtIn.claudeCodeStop.safetyMode', value)}
-					/>
-				</Box>
-				<Box marginTop={1}>
-					<Text dimColor>
-						{safetyModeOptions.find(opt => opt.value === currentSafetyMode)?.description || ''}
+			<Box marginTop={1}>
+				<Text dimColor>{safetyModeOptions.find(o => o.value === currentSafetyMode)?.description}</Text>
+			</Box>
+
+			<Box flexDirection="column" gap={1} marginTop={2}>
+				<Text bold>Safety Checks</Text>
+				<Box marginLeft={2} flexDirection="column">
+					<Text color={isVibeMode ? 'red' : 'green'}>
+						Git Status: {isVibeMode ? 'Disabled' : 'Enabled'}
+					</Text>
+					<Text color={isVibeMode ? 'red' : 'green'}>
+						Linting: {isVibeMode ? 'Disabled' : 'Enabled'}
+					</Text>
+					<Text color={isVibeMode ? 'red' : 'green'}>
+						Build: {isVibeMode ? 'Disabled' : 'Enabled'}
+					</Text>
+					<Text color={isStrictMode ? 'green' : 'yellow'}>
+						Tests: {isStrictMode ? 'Required' : 'Optional'}
+					</Text>
+					<Text color={isVibeMode ? 'red' : 'green'}>
+						Conflict Detection: {isVibeMode ? 'Disabled' : 'Enabled'}
 					</Text>
 				</Box>
 			</Box>
 
-			{/* Basic Safety Checks */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold>Basic Safety Checks:</Text>
-				
-				<Box marginTop={1} flexDirection="column">
-					<Text>Git Status Check:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true) ? 'Enabled' : 'Disabled'}
-					</Text>
-				</Box>
-
-				<Box marginTop={1} flexDirection="column">
-					<Text>Conflict Detection:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', !isVibeMode) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', !isVibeMode) ? 'Enabled' : 'Disabled'}
-					</Text>
-					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
-				</Box>
-			</Box>
-
-			{/* Build Validation */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold>Build Validation:</Text>
-				
-				<Box marginTop={1} flexDirection="column">
-					<Text>Enable Build Checks:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.build', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.build', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.build', !isVibeMode) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.build', !isVibeMode) ? 'Enabled' : 'Disabled'}
-					</Text>
-					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
-				</Box>
-
-				<Box marginTop={1} flexDirection="column">
-					<Text>Build Timeout (seconds):</Text>
-					<TextInput
-						placeholder="120"
-						defaultValue={String(getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.timeout', 120000) / 1000)}
-						onSubmit={(value) => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.timeout', parseInt(value) * 1000)}
-					/>
-				</Box>
-
-				<Box marginTop={1} flexDirection="column">
-					<Text>Fail on Build Error:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', isStrictMode) ? 'red' : 'yellow'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', isStrictMode) ? 'Fail' : 'Warn'}
+			<Box flexDirection="column" gap={1} marginTop={2}>
+				<Text bold>PR Creation</Text>
+				<Box marginLeft={2} flexDirection="column">
+					<Text color={isStrictMode ? 'yellow' : 'green'}>
+						Auto-create PRs: {isStrictMode ? 'Manual Approval Required' : 'Enabled'}
 					</Text>
 				</Box>
 			</Box>
+		</Box>
+	);
+};
 
-			{/* Lint Validation */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold>Lint Validation:</Text>
-				
-				<Box marginTop={1} flexDirection="column">
-					<Text>Enable Linting Checks:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.linting', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.linting', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.linting', !isVibeMode) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.linting', !isVibeMode) ? 'Enabled' : 'Disabled'}
-					</Text>
-					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
-				</Box>
+const NotificationTab = () => {
+	const { getConfigValue, updateConfig } = useConfiguration();
 
-				<Box marginTop={1} flexDirection="column">
-					<Text>Auto-fix Lint Issues:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false) ? 'Enabled' : 'Disabled'}
-					</Text>
-				</Box>
+	const notificationChannels = [
+		{ 
+			key: 'app', 
+			label: 'In-App Notifications', 
+			description: 'Show notifications in the TUI interface',
+			icon: '📱'
+		},
+		{ 
+			key: 'email', 
+			label: 'Email Notifications', 
+			description: 'Send notifications via email webhook',
+			icon: '📧'
+		},
+		{ 
+			key: 'slack', 
+			label: 'Slack Notifications', 
+			description: 'Send notifications to Slack channel',
+			icon: '💬'
+		},
+		{ 
+			key: 'telegram', 
+			label: 'Telegram Notifications', 
+			description: 'Send notifications via Telegram bot',
+			icon: '✈️'
+		},
+		{ 
+			key: 'sms', 
+			label: 'SMS Notifications', 
+			description: 'Send critical alerts via SMS',
+			icon: '📱'
+		}
+	];
 
-				<Box marginTop={1} flexDirection="column">
-					<Text>Biome Enabled:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true) ? 'Enabled' : 'Disabled'}
-					</Text>
-				</Box>
+	const notificationEvents = [
+		{ key: 'pr-created', label: 'PR Created', description: 'When a new PR is created' },
+		{ key: 'pr-merged', label: 'PR Merged', description: 'When a PR is successfully merged' },
+		{ key: 'checks-failed', label: 'Checks Failed', description: 'When PR checks fail' },
+		{ key: 'session-completed', label: 'Session Completed', description: 'When Claude Code session completes' },
+		{ key: 'error', label: 'Errors', description: 'When errors occur' },
+		{ key: 'critical', label: 'Critical Alerts', description: 'Critical system alerts' }
+	];
 
-				<Box marginTop={1} flexDirection="column">
-					<Text>ESLint Enabled:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true) ? 'Enabled' : 'Disabled'}
-					</Text>
-				</Box>
+	const isNotificationsEnabled = getConfigValue('notifications.enabled', true);
+
+	const getChannelEnabled = (channel) => {
+		return getConfigValue(`notifications.channels.${channel}.enabled`, channel === 'app');
+	};
+
+	const getChannelEvents = (channel) => {
+		return getConfigValue(`notifications.channels.${channel}.events`, []);
+	};
+
+	const toggleChannel = (channel) => {
+		const currentState = getChannelEnabled(channel);
+		updateConfig(`notifications.channels.${channel}.enabled`, !currentState);
+	};
+
+	const toggleChannelEvent = (channel, event) => {
+		const currentEvents = getChannelEvents(channel);
+		const hasEvent = currentEvents.includes(event);
+		
+		if (hasEvent) {
+			const newEvents = currentEvents.filter(e => e !== event);
+			updateConfig(`notifications.channels.${channel}.events`, newEvents);
+		} else {
+			const newEvents = [...currentEvents, event];
+			updateConfig(`notifications.channels.${channel}.events`, newEvents);
+		}
+	};
+
+	return (
+		<Box flexDirection="column" gap={1}>
+			<Text bold color="cyan">Notification Configuration</Text>
+			
+			<Box flexDirection="row" alignItems="center" gap={2}>
+				<Text>Global Notifications:</Text>
+				<Text color={isNotificationsEnabled ? 'green' : 'red'}>
+					{isNotificationsEnabled ? 'Enabled' : 'Disabled'}
+				</Text>
 			</Box>
 
-			{/* Test Validation */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold>Test Validation:</Text>
-				
-				<Box marginTop={1} flexDirection="column">
-					<Text>Require Tests:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.tests', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.tests', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.tests', isStrictMode) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.tests', isStrictMode) ? 'Required' : 'Optional'}
-					</Text>
-					{!isStrictMode && <Text dimColor>(Only required in Strict Mode)</Text>}
-				</Box>
-			</Box>
+			{isNotificationsEnabled && (
+				<>
+					<Box flexDirection="column" gap={1} marginTop={2}>
+						<Text bold>Notification Channels</Text>
+						{notificationChannels.map((channel) => {
+							const isEnabled = getChannelEnabled(channel.key);
+							const events = getChannelEvents(channel.key);
+							
+							return (
+								<Box key={channel.key} flexDirection="column" marginLeft={2} gap={1}>
+									<Box flexDirection="row" alignItems="center" gap={2}>
+										<Text>{channel.icon}</Text>
+										<Text color={isEnabled ? 'green' : 'gray'}>
+											{isEnabled ? '●' : '○'} {channel.label}
+										</Text>
+									</Box>
+									<Box marginLeft={4}>
+										<Text dimColor wrap="wrap">{channel.description}</Text>
+										{isEnabled && events.length > 0 && (
+											<Text color="yellow">
+												Events: {events.join(', ')}
+											</Text>
+										)}
+										{isEnabled && events.length === 0 && (
+											<Text color="red">No events configured</Text>
+										)}
+									</Box>
+								</Box>
+							);
+						})}
+					</Box>
 
-			{/* PR Creation */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold>PR Creation:</Text>
-				
-				<Box marginTop={1} flexDirection="column">
-					<Text>Auto-create PR:</Text>
-					<ConfirmInput
-						message=""
-						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.autoCreatePR', true)}
-						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.autoCreatePR', false)}
-					/>
-					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.autoCreatePR', !isStrictMode) ? 'green' : 'red'}>
-						{getConfigValue('hooks.builtIn.claudeCodeStop.autoCreatePR', !isStrictMode) ? 'Enabled' : 'Disabled'}
-					</Text>
-					{isStrictMode && <Text dimColor>(Disabled in Strict Mode - manual approval required)</Text>}
-				</Box>
-			</Box>
-
-			{/* Mode Summary */}
-			<Box marginTop={2} flexDirection="column">
-				<Text bold color="cyan">Current Mode Summary:</Text>
-				<Box marginTop={1}>
-					{currentSafetyMode === 'vibe' && (
-						<Box flexDirection="column">
-							<Text color="green">✓ Git status check</Text>
-							<Text color="red">✗ Build validation</Text>
-							<Text color="red">✗ Lint validation</Text>
-							<Text color="red">✗ Test requirements</Text>
-							<Text color="red">✗ Conflict detection</Text>
-							<Text color="green">✓ Auto-create PR</Text>
+					<Box flexDirection="column" gap={1} marginTop={2}>
+						<Text bold>Escalation Rules</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text color="green">✓ Immediate: In-app notifications</Text>
+							<Text color="yellow">⏰ 5min delay: In-app + Slack</Text>
+							<Text color="orange">⏰ 15min delay: In-app + Slack + Email</Text>
+							<Text color="red">🚨 Critical: All enabled channels</Text>
 						</Box>
-					)}
-					{currentSafetyMode === 'standard' && (
-						<Box flexDirection="column">
-							<Text color="green">✓ Git status check</Text>
-							<Text color="green">✓ Build validation</Text>
-							<Text color="green">✓ Lint validation</Text>
-							<Text color="yellow">○ Test requirements (optional)</Text>
-							<Text color="green">✓ Conflict detection</Text>
-							<Text color="green">✓ Auto-create PR</Text>
+					</Box>
+
+					<Box flexDirection="column" gap={1} marginTop={2}>
+						<Text bold>Configuration Status</Text>
+						<Box marginLeft={2} flexDirection="column">
+							{notificationChannels.map((channel) => {
+								if (channel.key === 'app') return null; // Skip app channel
+								
+								const isEnabled = getChannelEnabled(channel.key);
+								if (!isEnabled) return null;
+								
+								// Check for required environment variables
+								const envVars = {
+									email: ['EMAIL_WEBHOOK', 'EMAIL_RECIPIENT'],
+									slack: ['SLACK_WEBHOOK'],
+									telegram: ['TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID'],
+									sms: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'SMS_RECIPIENT']
+								};
+								
+								const requiredVars = envVars[channel.key] || [];
+								const missingVars = requiredVars.filter(varName => !process.env[varName]);
+								
+								return (
+									<Box key={channel.key} flexDirection="row" alignItems="center" gap={2}>
+										<Text>{channel.icon}</Text>
+										<Text color={missingVars.length === 0 ? 'green' : 'red'}>
+											{channel.label}: {missingVars.length === 0 ? 'Configured' : `Missing: ${missingVars.join(', ')}`}
+										</Text>
+									</Box>
+								);
+							})}
 						</Box>
-					)}
-					{currentSafetyMode === 'strict' && (
-						<Box flexDirection="column">
-							<Text color="green">✓ Git status check</Text>
-							<Text color="green">✓ Build validation</Text>
-							<Text color="green">✓ Lint validation</Text>
-							<Text color="green">✓ Test requirements</Text>
-							<Text color="green">✓ Conflict detection</Text>
-							<Text color="yellow">○ Manual PR approval</Text>
-						</Box>
-					)}
-				</Box>
-			</Box>
+					</Box>
+				</>
+			)}
 		</Box>
 	);
 };
@@ -454,6 +448,7 @@ const ConfigurationModal = ({ onClose, onNotification }) => {
 			badge: hasChanges ? 'Modified' : null
 		},
 		{ label: 'Safety', component: SafetyTab, badge: null },
+		{ label: 'Notification', component: NotificationTab, badge: null },
 		{ label: 'Rollback', component: RollbackTab, badge: null }
 	];
 

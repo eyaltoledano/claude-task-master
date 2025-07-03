@@ -28,25 +28,31 @@
 				"autoLint": true,
 				"autoBuild": true,
 				"requireTests": true,
-				"skipConflictCheck": false
+				"skipConflictCheck": false,
+				"requireManualApproval": true
 			}
 		},
 		"buildValidation": {
 			"enabled": true,
 			"commands": {
 				"npm": "npm run build",
-				"yarn": "yarn build", 
+				"yarn": "yarn build",
 				"pnpm": "pnpm build"
 			},
-			"timeout": 120000
+			"timeout": 120000,
+			"failOnError": true
 		},
 		"lintValidation": {
 			"enabled": true,
-			"tools": {
+			"tools": ["biome", "eslint", "prettier"],
+			"commands": {
 				"biome": "npx biome check .",
-				"eslint": "npx eslint ."
+				"eslint": "npx eslint .",
+				"prettier": "npx prettier --check ."
 			},
-			"timeout": 30000
+			"timeout": 60000,
+			"failOnError": false,
+			"autoFix": false
 		}
 	},
 	"theme": {
@@ -80,6 +86,112 @@
 			"maxComplexityScore": 8,
 			"includeImports": true,
 			"includeDependencies": true
+		}
+	},
+	"notifications": {
+		"enabled": true,
+		"channels": {
+			"app": {
+				"enabled": true,
+				"duration": 3000
+			},
+			"email": {
+				"enabled": true,
+				"webhook": null,
+				"recipient": null,
+				"events": ["error", "pr-created", "pr-merged", "checks-failed"]
+			},
+			"slack": {
+				"enabled": true,
+				"webhook": null,
+				"events": ["error", "pr-created", "pr-merged", "checks-failed", "session-completed"]
+			},
+			"telegram": {
+				"enabled": true,
+				"token": null,
+				"chatId": null,
+				"events": ["error", "critical", "pr-merged"]
+			},
+			"whatsapp": {
+				"enabled": false,
+				"events": ["critical"]
+			},
+			"sms": {
+				"enabled": true,
+				"service": "twilio",
+				"events": ["critical", "error"]
+			}
+		},
+		"escalation": {
+			"enabled": true,
+			"rules": [
+				{
+					"trigger": "immediate",
+					"channels": ["app"]
+				},
+				{
+					"trigger": "5min",
+					"channels": ["app", "slack"]
+				},
+				{
+					"trigger": "15min",
+					"channels": ["app", "slack", "email"]
+				},
+				{
+					"trigger": "critical",
+					"channels": ["app", "slack", "email", "telegram", "sms"]
+				}
+			]
+		},
+		"templates": {
+			"prCreated": {
+				"title": "PR Created: {{prNumber}}",
+				"message": "Pull request #{{prNumber}} has been created for task {{taskId}}",
+				"priority": "normal"
+			},
+			"prMerged": {
+				"title": "PR Merged: {{prNumber}}",
+				"message": "Pull request #{{prNumber}} has been successfully merged",
+				"priority": "normal"
+			},
+			"checksFailed": {
+				"title": "PR Checks Failed: {{prNumber}}",
+				"message": "Pull request #{{prNumber}} has failing checks: {{failedChecks}}",
+				"priority": "high"
+			},
+			"sessionCompleted": {
+				"title": "Claude Session Completed",
+				"message": "Claude Code session completed for task {{taskId}}",
+				"priority": "normal"
+			},
+			"error": {
+				"title": "Error: {{errorType}}",
+				"message": "An error occurred: {{errorMessage}}",
+				"priority": "high"
+			},
+			"critical": {
+				"title": "Critical Alert: {{alertType}}",
+				"message": "Critical issue detected: {{alertMessage}}",
+				"priority": "critical"
+			}
+		},
+		"preferences": {
+			"quietHours": {
+				"enabled": false,
+				"start": "22:00",
+				"end": "08:00",
+				"timezone": "local",
+				"allowCritical": true
+			},
+			"frequency": {
+				"maxPerHour": 10,
+				"maxPerDay": 50,
+				"cooldownMinutes": 5
+			},
+			"filtering": {
+				"duplicateWindow": "5min",
+				"minimumPriority": "normal"
+			}
 		}
 	}
 }

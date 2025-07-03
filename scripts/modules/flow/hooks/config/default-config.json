@@ -216,7 +216,16 @@
 				}
 			},
 			"prLifecycleManagement": {
-				"enabled": false
+				"enabled": true,
+				"autoMerge": false,
+				"cleanupAfterMerge": true,
+				"requiredChecks": [],
+				"notifications": {
+					"enabled": true,
+					"channels": ["app", "slack"],
+					"escalateAfter": "15min",
+					"criticalEvents": ["checks-failed", "merge-conflicts"]
+				}
 			},
 			"preLaunchValidation": {
 				"enabled": true,
