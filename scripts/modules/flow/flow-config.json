@@ -3,7 +3,11 @@
 		"enabled": true,
 		"permissionMode": "acceptEdits",
 		"defaultMaxTurns": 3,
-		"allowedTools": ["Read", "Write", "Bash"],
+		"allowedTools": [
+			"Read",
+			"Write",
+			"Bash"
+		],
 		"systemPrompts": {
 			"default": "You are Claude Code, an AI assistant helping with software development.",
 			"subtask": "You are Claude Code, helping implement a specific subtask. Focus on the task requirements and context provided."
@@ -44,7 +48,11 @@
 		},
 		"lintValidation": {
 			"enabled": true,
-			"tools": ["biome", "eslint", "prettier"],
+			"tools": [
+				"biome",
+				"eslint",
+				"prettier"
+			],
 			"commands": {
 				"biome": "npx biome check .",
 				"eslint": "npx eslint .",
@@ -73,7 +81,12 @@
 		"enabled": false,
 		"cacheMaxAge": "2h",
 		"cacheMaxSize": "100MB",
-		"supportedLanguages": ["javascript", "typescript", "python", "go"],
+		"supportedLanguages": [
+			"javascript",
+			"typescript",
+			"python",
+			"go"
+		],
 		"excludePatterns": [
 			"node_modules/**",
 			"dist/**",
@@ -99,27 +112,47 @@
 				"enabled": true,
 				"webhook": null,
 				"recipient": null,
-				"events": ["error", "pr-created", "pr-merged", "checks-failed"]
+				"events": [
+					"error",
+					"pr-created",
+					"pr-merged",
+					"checks-failed"
+				]
 			},
 			"slack": {
 				"enabled": true,
 				"webhook": null,
-				"events": ["error", "pr-created", "pr-merged", "checks-failed", "session-completed"]
+				"events": [
+					"error",
+					"pr-created",
+					"pr-merged",
+					"checks-failed",
+					"session-completed"
+				]
 			},
 			"telegram": {
 				"enabled": true,
 				"token": null,
 				"chatId": null,
-				"events": ["error", "critical", "pr-merged"]
+				"events": [
+					"error",
+					"critical",
+					"pr-merged"
+				]
 			},
 			"whatsapp": {
 				"enabled": false,
-				"events": ["critical"]
+				"events": [
+					"critical"
+				]
 			},
 			"sms": {
 				"enabled": true,
 				"service": "twilio",
-				"events": ["critical", "error"]
+				"events": [
+					"critical",
+					"error"
+				]
 			}
 		},
 		"escalation": {
@@ -127,19 +160,34 @@
 			"rules": [
 				{
 					"trigger": "immediate",
-					"channels": ["app"]
+					"channels": [
+						"app"
+					]
 				},
 				{
 					"trigger": "5min",
-					"channels": ["app", "slack"]
+					"channels": [
+						"app",
+						"slack"
+					]
 				},
 				{
 					"trigger": "15min",
-					"channels": ["app", "slack", "email"]
+					"channels": [
+						"app",
+						"slack",
+						"email"
+					]
 				},
 				{
 					"trigger": "critical",
-					"channels": ["app", "slack", "email", "telegram", "sms"]
+					"channels": [
+						"app",
+						"slack",
+						"email",
+						"telegram",
+						"sms"
+					]
 				}
 			]
 		},
@@ -220,7 +268,30 @@
 		"addPRReference": true,
 		"updateMetrics": true,
 		"cascadeSubtasks": false,
-		"supportedStatuses": ["pending", "in-progress", "done", "completed", "review", "deferred", "cancelled", "blocked"],
-		"completionStatuses": ["done", "completed"]
+		"supportedStatuses": [
+			"pending",
+			"in-progress",
+			"done",
+			"completed",
+			"review",
+			"deferred",
+			"cancelled",
+			"blocked"
+		],
+		"completionStatuses": [
+			"done",
+			"completed"
+		]
+	},
+	"branchAwareness": {
+		"enabled": true,
+		"rememberLastBranch": true,
+		"showBranchInStatus": true,
+		"autoDetectBranchSwitch": true,
+		"lastWorkingBranch": "joedanz/tm-flow",
+		"currentBranch": "joedanz/tm-flow",
+		"branchHistory": [],
+		"maxHistorySize": 10,
+		"lastUpdated": "2025-07-03T19:49:59.511Z"
 	}
 }

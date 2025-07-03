@@ -20,6 +20,7 @@ export class WorktreeManager {
 		this.projectRoot = projectRoot;
 		this.configPath = path.join(projectRoot, '.taskmaster/worktrees.json');
 		this.config = this.loadConfig();
+		this.branchManager = null;  // NEW: Will be set by Flow app
 
 		// Ensure the config file exists on disk
 		if (!fs.existsSync(this.configPath)) {
@@ -93,7 +94,8 @@ export class WorktreeManager {
 			config: {
 				worktreesRoot: '../claude-task-master-worktrees',
 				defaultSourceBranch: defaultBranch,
-				autoCreateOnLaunch: true
+				autoCreateOnLaunch: true,
+				useBranchAwareness: true  // NEW: Enable branch awareness integration
 			},
 			worktrees: {}
 		};
@@ -205,8 +207,7 @@ export class WorktreeManager {
 		}
 
 		// Create new worktree
-		const sourceBranch =
-			options.sourceBranch || this.config.config.defaultSourceBranch || 'main';
+		const sourceBranch = this.getSourceBranch(options);
 
 		logger.info(`Creating worktree for task ${taskId}...`);
 
@@ -368,8 +369,7 @@ export class WorktreeManager {
 		}
 
 		// Create new worktree
-		const sourceBranch =
-			options.sourceBranch || this.config.config.defaultSourceBranch || 'main';
+		const sourceBranch = this.getSourceBranch(options);
 
 		logger.info(`Creating worktree for subtask ${taskId}.${subtaskId}...`);
 
@@ -654,6 +654,34 @@ export class WorktreeManager {
 	updateConfig(updates) {
 		this.config.config = { ...this.config.config, ...updates };
 		this.saveConfig();
+	}
+
+	/**
+	 * Set the branch awareness manager (called by Flow app)
+	 */
+	setBranchManager(branchManager) {
+		this.branchManager = branchManager;
+	}
+
+	/**
+	 * Get source branch using branch awareness if available
+	 */
+	getSourceBranch(options = {}) {
+		// If specific source branch provided, use it
+		if (options.sourceBranch) {
+			return options.sourceBranch;
+		}
+
+		// If branch awareness is enabled and available, use it
+		if (this.config.config.useBranchAwareness && this.branchManager) {
+			const sourceBranch = this.branchManager.getSourceBranchForWorktree();
+			if (sourceBranch) {
+				return sourceBranch;
+			}
+		}
+
+		// Fallback to configured default or 'main'
+		return this.config.config.defaultSourceBranch || 'main';
 	}
 
 	async pruneInvalidWorktrees() {

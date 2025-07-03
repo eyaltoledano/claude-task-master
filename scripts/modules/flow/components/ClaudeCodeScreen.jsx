@@ -1036,9 +1036,29 @@ ${insightSummary}
 
 		// Helper function to extract content from various message formats
 		const extractContent = (message) => {
-			// Direct content property
+			// Debug logging for message structure
+			if (message.type === 'assistant' || message.type === 'user') {
+				console.debug('[ClaudeCodeScreen] Extracting content from message:', {
+					type: message.type,
+					hasContent: !!message.content,
+					hasMessage: !!message.message,
+					contentType: typeof message.content,
+					messageContentType: typeof message.message?.content,
+					keys: Object.keys(message)
+				});
+			}
+
+			// Direct content property (string)
 			if (typeof message.content === 'string') {
 				return message.content;
+			}
+			
+			// Direct content property (array from Claude SDK)
+			if (Array.isArray(message.content)) {
+				return message.content
+					.filter(part => part.type === 'text')
+					.map(part => part.text)
+					.join('');
 			}
 			
 			// Nested message structure from Claude Code
@@ -1059,8 +1079,46 @@ ${insightSummary}
 				return message.message.content[0].text;
 			}
 			
-			// Last resort - stringify the message for debugging
-			return JSON.stringify(message, null, 2).substring(0, 200) + '...';
+			// Claude SDK specific formats
+			if (message.text && typeof message.text === 'string') {
+				return message.text;
+			}
+			
+			// For result/system messages, extract relevant info
+			if (message.type === 'result') {
+				let resultText = 'Claude session completed';
+				if (message.num_turns) resultText += ` (${message.num_turns} turns)`;
+				if (message.total_cost_usd) resultText += ` - Cost: $${message.total_cost_usd.toFixed(4)}`;
+				return resultText;
+			}
+			
+			if (message.type === 'system') {
+				let systemText = message.subtype || 'System message';
+				if (message.session_id) systemText += ` (Session: ${message.session_id.substring(0, 8)}...)`;
+				if (message.model) systemText += ` - Model: ${message.model}`;
+				if (message.cwd) systemText += ` - Working dir: ${message.cwd}`;
+				return systemText;
+			}
+			
+			// Tool use messages
+			if (message.type === 'tool_use') {
+				return `🔧 Tool: ${message.name || 'Unknown'}\nInput: ${JSON.stringify(message.input || {}, null, 2)}`;
+			}
+			
+			if (message.type === 'tool_result') {
+				if (message.is_error) {
+					return `❌ Tool Error: ${message.content || 'Unknown error'}`;
+				} else {
+					const content = typeof message.content === 'string' 
+						? message.content 
+						: JSON.stringify(message.content, null, 2);
+					return `✅ Tool Result: ${content.substring(0, 500)}${content.length > 500 ? '...' : ''}`;
+				}
+			}
+			
+			// Last resort - show the raw message for debugging
+			console.warn('[ClaudeCodeScreen] Could not extract content from message:', message);
+			return `[${message.type || 'unknown'}] ${JSON.stringify(message, null, 2).substring(0, 200)}...`;
 		};
 
 		switch (msg.type) {

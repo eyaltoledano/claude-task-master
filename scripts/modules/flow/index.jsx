@@ -35,6 +35,7 @@ import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
+import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -69,6 +70,9 @@ function FlowApp({ backend, options = {} }) {
 	const [nextTask, setNextTask] = useState(null);
 	const [showNextTaskModal, setShowNextTaskModal] = useState(false);
 	const [hookManager, setHookManager] = useState(null);
+	const [branchManager, setBranchManager] = useState(null);
+	const [currentBranch, setCurrentBranch] = useState(null);
+	const [branchInfo, setBranchInfo] = useState(null);
 
 	const { exit } = useApp();
 
@@ -170,6 +174,33 @@ function FlowApp({ backend, options = {} }) {
 				const hooks = getHookManager(currentBackend);
 				await hooks.initialize();
 				setHookManager(hooks);
+
+				// Initialize branch awareness manager
+				const branchMgr = new BranchAwarenessManager(currentBackend.projectRoot || process.cwd());
+				setBranchManager(branchMgr);
+				
+				// Listen for branch changes
+				branchMgr.on('branchChanged', (event) => {
+					setCurrentBranch(event.to);
+					setNotification({
+						message: `Switched to branch: ${event.to}`,
+						type: 'info',
+						duration: 2000
+					});
+				});
+
+				branchMgr.on('initialized', (event) => {
+					setCurrentBranch(event.currentBranch);
+				});
+
+				// Get initial branch info
+				const summary = branchMgr.getBranchSummary();
+				setCurrentBranch(summary.currentBranch);
+
+				// Connect backend to branch manager
+				if (currentBackend.setBranchManager) {
+					currentBackend.setBranchManager(branchMgr);
+				}
 
 				// Check if tasks.json exists
 				const hasFile = await currentBackend.hasTasksFile();
@@ -687,6 +718,9 @@ function FlowApp({ backend, options = {} }) {
 	const contextValue = {
 		backend: currentBackend,
 		hookManager,
+		branchManager,
+		currentBranch,
+		branchInfo,
 		tasks,
 		setTasks,
 		currentTag,
@@ -934,6 +968,13 @@ function FlowApp({ backend, options = {} }) {
 										<Text color={theme.text}>
 											<Text color={theme.accent}>[tag]</Text>{' '}
 											{currentTag || 'master'}
+											{currentBranch && (
+												<>
+													<Text color={theme.textDim}> • </Text>
+													<Text color={theme.accent}>[branch]</Text>{' '}
+													<Text color={theme.text}>{currentBranch}</Text>
+												</>
+											)}
 										</Text>
 									</Box>
 									<Text color={theme.accent}>Task Master AI</Text>

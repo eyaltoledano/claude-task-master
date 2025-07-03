@@ -81,6 +81,7 @@ export class DirectBackend extends FlowBackend {
 		this.tasksJsonPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
 		// Simulated session for API key access
 		this.session = options.session || {};
+		this.branchManager = null;  // NEW: Will be set by Flow app
 	}
 
 	async initialize() {
@@ -4918,4 +4919,25 @@ ${prompt}
 			};
 		}
 	}
+
+	/**
+	 * Set the branch awareness manager (called by Flow app)
+	 */
+	setBranchManager(branchManager) {
+		this.branchManager = branchManager;
+		
+		// If we already have a worktree manager, connect them
+		if (this.worktreeManager) {
+			this.worktreeManager.setBranchManager(branchManager);
+		}
 	}
+
+	/**
+	 * Update telemetry data
+	 */
+	updateTelemetry(data) {
+		if (data && data.telemetryData) {
+			this.telemetryData = data.telemetryData;
+		}
+	}
+}
