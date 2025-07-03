@@ -46,7 +46,7 @@ class ProviderRegistry {
 			return this;
 		}
 
-		log('info', 'Initializing Provider Registry');
+		log('debug', 'Initializing Provider Registry');
 		this._initialized = true;
 		return this;
 	}
