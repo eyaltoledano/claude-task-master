@@ -106,15 +106,28 @@ These templates only have one variant because research mode only changes AI role
 - **update-task** (default, append variants; research uses `useResearch` conditional content)
 - **update-tasks** (default variant with `useResearch` conditional content)
 
-### Test Scenarios (19 total)
+### Test Scenarios (27 total)
 - 16 valid template/variant combinations (including enhanced expand-task with new parameter support)
-- 3 error condition tests (nonexistent variants, templates, missing params)
+- 4 conditional logic validation tests (testing new gt/gte helper functions)
+- 7 error condition tests (nonexistent variants, templates, missing params, invalid detail levels)
 
 ### Validation
 - Parameter schema compliance
 - Template loading success/failure
 - Error handling for invalid inputs
 - Realistic test data for each template type
+- **Output content validation** for conditional logic (NEW)
+
+#### Conditional Logic Testing (NEW)
+The test suite now includes specific validation for the new `gt` (greater than) and `gte` (greater than or equal) helper functions:
+
+**Helper Function Tests:**
+- `conditional-zero-tasks`: Validates `numTasks = 0` produces "an appropriate number of" text
+- `conditional-positive-tasks`: Validates `numTasks = 5` produces "approximately 5" text  
+- `conditional-zero-subtasks`: Validates `subtaskCount = 0` produces "an appropriate number of" text
+- `conditional-positive-subtasks`: Validates `subtaskCount = 3` produces "exactly 3" text
+
+These tests use the new `validateOutput` function to verify that conditional template logic produces the expected rendered content, ensuring our helper functions work correctly beyond just successful template loading.
 
 ## Output Modes
 

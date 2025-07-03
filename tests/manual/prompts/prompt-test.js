@@ -950,6 +950,106 @@ async function runComprehensiveTests(generateDetailed = false) {
 		},
 		{ template: 'update-tasks', variant: 'default' },
 
+		// Conditional logic tests for new helper functions
+		{
+			template: 'parse-prd',
+			variant: 'default',
+			customData: {
+				name: 'Test Zero Tasks Conditional Logic',
+				params: {
+					prdContent: 'Test PRD content for zero tasks validation',
+					numTasks: 0,
+					nextId: 1,
+					prdPath: 'test-zero-tasks.txt',
+					defaultTaskPriority: 'medium',
+					research: false
+				}
+			},
+			testName: 'conditional-zero-tasks',
+			validateOutput: (result) => {
+				return (
+					result.systemPrompt.includes('an appropriate number of') &&
+					!result.systemPrompt.includes('approximately 0')
+				);
+			}
+		},
+		{
+			template: 'expand-task',
+			variant: 'default',
+			customData: {
+				name: 'Test Zero Subtasks Conditional Logic',
+				params: {
+					task: {
+						id: 99,
+						title: 'Test Zero Subtasks Conditional',
+						description: 'Test conditional logic with zero subtasks',
+						details: 'Testing gt helper with zero value'
+					},
+					subtaskCount: 0,
+					nextSubtaskId: 1,
+					additionalContext: 'Testing conditional logic',
+					complexityReasoningContext: '',
+					gatheredContext: 'Test context'
+				}
+			},
+			testName: 'conditional-zero-subtasks',
+			validateOutput: (result) => {
+				return (
+					result.systemPrompt.includes('an appropriate number of') &&
+					!result.systemPrompt.includes('0 specific subtasks')
+				);
+			}
+		},
+		{
+			template: 'parse-prd',
+			variant: 'default',
+			customData: {
+				name: 'Test Positive Tasks Conditional Logic',
+				params: {
+					prdContent: 'Test PRD content for positive tasks validation',
+					numTasks: 5,
+					nextId: 1,
+					prdPath: 'test-positive-tasks.txt',
+					defaultTaskPriority: 'medium',
+					research: false
+				}
+			},
+			testName: 'conditional-positive-tasks',
+			validateOutput: (result) => {
+				return (
+					result.systemPrompt.includes('approximately 5') &&
+					!result.systemPrompt.includes('an appropriate number of')
+				);
+			}
+		},
+		{
+			template: 'expand-task',
+			variant: 'default',
+			customData: {
+				name: 'Test Positive Subtasks Conditional Logic',
+				params: {
+					task: {
+						id: 98,
+						title: 'Test Positive Subtasks Conditional',
+						description: 'Test conditional logic with positive subtasks',
+						details: 'Testing gt helper with positive value'
+					},
+					subtaskCount: 3,
+					nextSubtaskId: 1,
+					additionalContext: 'Testing conditional logic',
+					complexityReasoningContext: '',
+					gatheredContext: 'Test context'
+				}
+			},
+			testName: 'conditional-positive-subtasks',
+			validateOutput: (result) => {
+				return (
+					result.systemPrompt.includes('3 specific subtasks') &&
+					!result.systemPrompt.includes('an appropriate number of')
+				);
+			}
+		},
+
 		// Error condition tests
 		{ template: 'expand-task', variant: 'nonexistent', expectError: true },
 		{ template: 'nonexistent-template', variant: 'default', expectError: true },
@@ -1002,7 +1102,10 @@ async function runComprehensiveTests(generateDetailed = false) {
 
 			// Get test data using scenario variant (research scenarios will be found correctly)
 			const testData =
-				testCase.params ||
+				testCase.customData ||
+				(testCase.params
+					? { name: 'Custom Test Data', params: testCase.params }
+					: null) ||
 				getTestDataForTemplate(testCase.template, scenarioVariant);
 
 			// Override test data with custom parameters if specified
@@ -1045,19 +1148,61 @@ async function runComprehensiveTests(generateDetailed = false) {
 					});
 				}
 			} else {
-				console.log(`✓ PASSED - ${testCase.template} (${displayName})`);
-				passed++;
+				// Check output validation if provided
+				let validationPassed = true;
+				let validationError = null;
 
-				if (generateDetailed) {
-					detailedResults.push({
+				if (testCase.validateOutput) {
+					try {
+						validationPassed = testCase.validateOutput(result);
+						if (!validationPassed) {
+							validationError =
+								'Output validation failed - conditional logic did not produce expected content';
+						}
+					} catch (error) {
+						validationPassed = false;
+						validationError = `Output validation error: ${error.message}`;
+					}
+				}
+
+				if (validationPassed) {
+					console.log(`✓ PASSED - ${testCase.template} (${displayName})`);
+					passed++;
+
+					if (generateDetailed) {
+						detailedResults.push({
+							template: testCase.template,
+							variant: displayName,
+							success: true,
+							prompts: {
+								systemPrompt: result.systemPrompt,
+								userPrompt: result.userPrompt
+							}
+						});
+					}
+				} else {
+					console.log(
+						`✗ FAILED - ${testCase.template} (${displayName}): ${validationError}`
+					);
+					failedTests.push({
 						template: testCase.template,
 						variant: displayName,
-						success: true,
-						prompts: {
-							systemPrompt: result.systemPrompt,
-							userPrompt: result.userPrompt
-						}
+						error: validationError
 					});
+					failed++;
+
+					if (generateDetailed) {
+						detailedResults.push({
+							template: testCase.template,
+							variant: displayName,
+							success: false,
+							error: validationError,
+							prompts: {
+								systemPrompt: result.systemPrompt,
+								userPrompt: result.userPrompt
+							}
+						});
+					}
 				}
 			}
 		} catch (error) {
