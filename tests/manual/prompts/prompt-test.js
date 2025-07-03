@@ -1469,7 +1469,7 @@ function generateHTMLReport(testResults, templateResults = []) {
         .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
         .title { color: #2c3e50; margin: 0; font-size: 2.5em; font-weight: 300; }
         .subtitle { color: #7f8c8d; margin: 10px 0; font-size: 1.1em; }
-        .summary { display: flex; justify-content: center; gap: 30px; margin: 30px 0; }
+        .summary { display: flex; justify-content: center; gap: 30px; margin: 30px 0; flex-wrap: wrap; }
         .stat { text-align: center; padding: 20px; border-radius: 8px; min-width: 120px; }
         .stat.passed { background: #d4edda; color: #155724; }
         .stat.failed { background: #f8d7da; color: #721c24; }
@@ -1477,14 +1477,16 @@ function generateHTMLReport(testResults, templateResults = []) {
         .stat-number { font-size: 2em; font-weight: bold; margin: 0; }
         .stat-label { margin: 5px 0 0 0; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
         .test-section { margin: 40px 0; }
+        .test-grid { display: block; }
+        .test-grid .test-case { margin-bottom: 16px; }
         .section-title { color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 10px; margin-bottom: 20px; font-size: 1.5em; }
         .summary-section { margin: 20px 0; }
-        .template-group { margin: 4px 0; padding: 6px 10px; border-radius: 4px; background: #f8f9fa; border-left: 3px solid #dee2e6; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .template-group { margin: 4px 0; padding: 6px 10px; border-radius: 4px; background: #f8f9fa; border-left: 3px solid #dee2e6; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .template-name { font-size: 0.9em; font-weight: 600; color: #2c3e50; margin-right: 4px; }
-        .template-status { padding: 2px 6px; border-radius: 8px; font-size: 0.7em; font-weight: 600; text-transform: uppercase; margin-left: auto; }
+        .template-status { padding: 2px 6px; border-radius: 8px; font-size: 0.7em; font-weight: 600; text-transform: uppercase; margin-left: auto; flex-shrink: 0; }
         .template-status.passed { background: #d4edda; color: #155724; }
         .template-status.failed { background: #f8d7da; color: #721c24; }
-        .variant-item { padding: 2px 6px; border-radius: 3px; background: white; border: 1px solid #e9ecef; font-size: 0.75em; display: inline-flex; align-items: center; gap: 2px; }
+        .variant-item { padding: 2px 6px; border-radius: 3px; background: white; border: 1px solid #e9ecef; font-size: 0.75em; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
         .variant-item.passed { border-left: 2px solid #28a745; color: #155724; }
         .variant-item.failed { border-left: 2px solid #dc3545; color: #721c24; background: #fff5f5; }
         .variant-name { font-weight: 500; }
@@ -1502,17 +1504,19 @@ function generateHTMLReport(testResults, templateResults = []) {
         .test-case { margin: 8px 0; padding: 12px 16px; border-radius: 6px; border-left: 4px solid #3498db; background: #f8f9fa; }
         .test-case.passed { border-left-color: #28a745; }
         .test-case.failed { border-left-color: #dc3545; background: #fff5f5; }
-        .test-header { margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
-        .test-name { font-weight: 600; color: #2c3e50; font-size: 1em; margin: 0; }
-        .test-status { padding: 4px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 600; text-transform: uppercase; display: inline-block; }
+        .test-header { margin-bottom: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+        .test-name { font-weight: 600; color: #2c3e50; font-size: 1em; margin: 0; flex-shrink: 0; }
+        .test-status { padding: 4px 8px; border-radius: 12px; font-size: 0.7em; font-weight: 600; text-transform: uppercase; display: inline-block; flex-shrink: 0; }
         .test-status.passed { background: #d4edda; color: #155724; }
         .test-status.failed { background: #f8d7da; color: #721c24; }
         .prompt-section { margin-top: 20px; }
         .prompt-title { font-weight: 600; color: #495057; margin: 20px 0 10px 0; font-size: 1em; text-transform: uppercase; letter-spacing: 0.5px; }
-        .prompt-content { background: #f1f3f4; padding: 20px; border-radius: 6px; font-family: 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 0.9em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; border: 1px solid #e9ecef; }
+        .prompt-content { background: #f1f3f4; padding: 20px; border-radius: 6px; font-family: 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 0.9em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; border: 1px solid #e9ecef; overflow-x: auto; }
         .error-message { color: #dc3545; font-style: italic; margin-top: 15px; padding: 10px; background: #fff5f5; border-radius: 4px; }
-        .toggle-button { background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 0.75em; margin: 0; transition: background-color 0.2s; margin-left: auto; }
-        .toggle-button:hover { background: #0056b3; }
+        .toggle-button { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.75em; margin: 0; transition: all 0.2s ease; margin-left: auto; min-height: 44px; min-width: 44px; touch-action: manipulation; user-select: none; }
+        .toggle-button:hover { background: #0056b3; transform: translateY(-1px); }
+        .toggle-button:active { background: #004085; transform: translateY(0); }
+        .toggle-button:focus { outline: 2px solid #80bdff; outline-offset: 2px; }
         .toggle-content { display: none; margin-top: 8px; }
         .toggle-content.expanded { display: block; }
         .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; color: #6c757d; font-size: 0.9em; }
@@ -1520,6 +1524,64 @@ function generateHTMLReport(testResults, templateResults = []) {
         .error-tests-section { margin: 20px 0; }
         .error-section-title { color: #856404; font-size: 1.1em; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid #ffc107; padding-bottom: 5px; }
         .error-group { margin: 4px 0; padding: 6px 10px; border-radius: 4px; background: #fff3cd; border-left: 3px solid #ffc107; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            .container { padding: 20px; }
+            .header { margin-bottom: 25px; padding-bottom: 15px; }
+            .title { font-size: 2em; line-height: 1.2; }
+            .subtitle { font-size: 0.95em; }
+            .summary { gap: 20px; margin: 25px 0; }
+            .stat { min-width: 90px; padding: 12px 8px; }
+            .stat-number { font-size: 1.6em; }
+            .stat-label { font-size: 0.75em; }
+            .section-title { font-size: 1.25em; }
+            .test-section { margin: 25px 0; }
+            .test-grid .test-case { margin-bottom: 10px; }
+            .template-group { gap: 4px; padding: 8px 12px; align-items: center; }
+            .template-name { font-size: 0.85em; flex-shrink: 0; }
+            .template-status { font-size: 0.65em; padding: 3px 6px; flex-shrink: 0; }
+            .variant-item { margin: 1px; padding: 3px 5px; font-size: 0.7em; min-height: 24px; flex-shrink: 0; }
+            .summary-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+            .test-case { margin: 6px 0; padding: 8px 12px; }
+            .test-header { gap: 6px; justify-content: space-between; }
+            .test-name { font-size: 0.9em; }
+            .test-status { font-size: 0.65em; padding: 3px 6px; }
+            .toggle-button { padding: 6px 10px; font-size: 0.7em; min-height: 38px; min-width: 38px; touch-action: manipulation; }
+            .prompt-content { padding: 12px; font-size: 0.75em; }
+            .prompt-title { font-size: 0.85em; margin: 12px 0 6px 0; }
+            .divider { margin: 25px 0; }
+            .footer { margin-top: 25px; font-size: 0.8em; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .title { font-size: 1.7em; }
+            .summary { gap: 12px; }
+            .stat { min-width: 75px; padding: 10px 6px; }
+            .stat-number { font-size: 1.4em; }
+            .stat-label { font-size: 0.7em; }
+            .template-group { gap: 3px; align-items: center; }
+            .template-name { font-size: 0.8em; flex-shrink: 0; }
+            .template-status { font-size: 0.6em; padding: 2px 4px; flex-shrink: 0; }
+            .variant-item { font-size: 0.65em; padding: 2px 4px; min-height: 20px; }
+            .test-header { gap: 4px; justify-content: space-between; align-items: center; }
+            .test-name { font-size: 0.85em; }
+            .test-status { font-size: 0.6em; padding: 2px 4px; }
+            .toggle-button { padding: 6px 10px; font-size: 0.7em; min-height: 40px; min-width: 40px; touch-action: manipulation; }
+            .prompt-content { padding: 10px; font-size: 0.7em; line-height: 1.3; }
+            .test-case { padding: 6px 8px; }
+            .test-grid .test-case { margin-bottom: 8px; }
+        }
+
+        /* Touch-friendly enhancements */
+        @media (hover: none) and (pointer: coarse) {
+            .variant-name a { padding: 6px; margin: -6px; min-height: 44px; display: inline-flex; align-items: center; }
+            .toggle-button { min-height: 44px; min-width: 44px; }
+            .toggle-button:hover { transform: none; } /* Disable hover effects on touch devices */
+        }
     </style>
     <script>
         function togglePrompts(buttonId) {
@@ -1687,7 +1749,8 @@ function generateHTMLReport(testResults, templateResults = []) {
 		// Detailed Prompts Section
 		html += `
         <div class="test-section">
-            <h2 class="section-title">Detailed Prompt Content</h2>`;
+            <h2 class="section-title">Detailed Prompt Content</h2>
+            <div class="test-grid">`;
 
 		realTemplateResults.forEach((result, index) => {
 			const status = result.success ? 'passed' : 'failed';
@@ -1733,7 +1796,7 @@ function generateHTMLReport(testResults, templateResults = []) {
 			html += `</div>`;
 		});
 
-		html += `</div>`;
+		html += `</div></div>`;
 	}
 
 	html += `
