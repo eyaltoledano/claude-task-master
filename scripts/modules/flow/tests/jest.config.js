@@ -12,6 +12,9 @@ export default {
 	// Enable ES modules support (extensionsToTreatAsEsm not needed with type: module in package.json)
 	transform: {},
 	
+	// Inject globals like jest, expect, etc.
+	injectGlobals: true,
+	
 	// Module name mapping for easier imports
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/../$1',
