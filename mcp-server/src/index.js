@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
+import ProviderRegistry from '../../src/provider-registry/index.js';
+import { MCPProvider } from './providers/mcp-provider.js';
 
 // Load environment variables
 dotenv.config();
@@ -65,6 +67,11 @@ class TaskMasterMCPServer {
 			await this.init();
 		}
 
+		this.server.on('connect', (event) => {
+			this.logger.info(`MCP Server connected: ${event.session}`);
+			this.registerRemoteProvider(event.session);
+		});
+
 		// Start the FastMCP server with increased timeout
 		await this.server.start({
 			transportType: 'stdio',
@@ -72,6 +79,36 @@ class TaskMasterMCPServer {
 		});
 
 		return this;
+	}
+
+	/**
+	 * Register both MCP providers with the provider registry
+	 */
+	registerRemoteProvider(session) {
+		// Check if the server has at least one session
+		if (session) {
+			// Make sure session has required capabilities
+			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
+				this.logger.warn(
+					'MCP session missing required sampling capabilities, providers not registered'
+				);
+				return;
+			}
+
+			// Register MCP provider with the Provider Registry
+
+			// Register the unified MCP provider
+			const mcpProvider = new MCPProvider();
+			mcpProvider.setSession(session);
+
+			// Register provider with the registry
+			const providerRegistry = ProviderRegistry.getInstance();
+			providerRegistry.registerProvider('mcp', mcpProvider);
+
+			this.logger.info('MCP provider registered with Provider Registry');
+		} else {
+			this.logger.warn('No MCP sessions available, providers not registered');
+		}
 	}
 
 	/**

@@ -129,25 +129,33 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 const mockAnthropicProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'ANTHROPIC_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockPerplexityProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'PERPLEXITY_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockOpenAIProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockOllamaProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => null),
+	isRequiredApiKey: jest.fn(() => false)
 };
 
 // Mock the provider classes to return our mock instances
@@ -157,44 +165,60 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	GoogleAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'GOOGLE_GENERATIVE_AI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OpenAIProvider: jest.fn(() => mockOpenAIProvider),
 	XAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'XAI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OpenRouterAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'OPENROUTER_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OllamaAIProvider: jest.fn(() => mockOllamaProvider),
 	BedrockAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AWS_ACCESS_KEY_ID'),
+		isRequiredApiKey: jest.fn(() => false)
 	})),
 	AzureProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AZURE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	VertexAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => null),
+		isRequiredApiKey: jest.fn(() => false)
 	})),
 	ClaudeCodeProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
 	})),
 	GeminiCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
 	}))
 }));
 
