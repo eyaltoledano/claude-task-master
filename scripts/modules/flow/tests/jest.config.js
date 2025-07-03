@@ -1,7 +1,7 @@
 /**
  * Jest Configuration for Task Master Flow Tests
  * 
- * ES Modules configuration for testing the Flow system components
+ * Standard Node.js configuration for testing the Flow system components
  * including AST processing, cache management, and UI components.
  */
 
@@ -9,23 +9,8 @@ export default {
 	// Test environment
 	testEnvironment: 'node',
 	
-	// Enable ES modules support
-	extensionsToTreatAsEsm: ['.js'],
-	
-	// Transform configuration for ES modules
-	transform: {
-		'^.+\\.js$': ['babel-jest', { 
-			presets: [
-				['@babel/preset-env', { 
-					targets: { node: 'current' },
-					modules: false 
-				}]
-			]
-		}]
-	},
-	
 	// Module name mapping for easier imports
-	moduleNameMapping: {
+	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/../$1',
 		'^@tests/(.*)$': '<rootDir>/$1'
 	},
