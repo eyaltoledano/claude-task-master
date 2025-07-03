@@ -305,10 +305,10 @@ export class PromptManager {
 			}
 		);
 
-		// Handle conditionals {{#if variable}}...{{/if}}
+		// Handle conditionals with else {{#if variable}}...{{else}}...{{/if}}
 		rendered = rendered.replace(
-			/\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-			(match, condition, content) => {
+			/\{\{#if\s+([^}]+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g,
+			(match, condition, trueContent, falseContent = '') => {
 				// Handle boolean values and helper function results
 				let value;
 				if (condition === 'true') {
@@ -318,7 +318,7 @@ export class PromptManager {
 				} else {
 					value = this.getNestedValue(variables, condition);
 				}
-				return value ? content : '';
+				return value ? trueContent : falseContent;
 			}
 		);
 
