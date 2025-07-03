@@ -975,4 +975,236 @@ export class WorktreeManager {
 			logger.debug(`Could not delete branch ${branchName}:`, error.message);
 		}
 	}
+
+	/**
+	 * Enhanced auto-cleanup integration for Phase 5
+	 * Integrates with CleanupService for comprehensive lifecycle management
+	 */
+	async performIntelligentCleanup(worktreeName, options = {}) {
+		const opts = {
+			preserveUncommitted: true,
+			backupBeforeCleanup: true,
+			updateASTCache: true,
+			updateTaskStatus: true,
+			...options
+		};
+
+		try {
+			// Import CleanupService for comprehensive cleanup
+			const { CleanupService } = await import('./services/CleanupService.js');
+			
+			const cleanupService = new CleanupService({
+				projectRoot: this.projectRoot,
+				worktree: opts,
+				astCache: { enabled: opts.updateASTCache },
+				taskStatus: { enabled: opts.updateTaskStatus }
+			});
+
+			// Get worktree info
+			const worktreeInfo = this.config.worktrees[worktreeName];
+			if (!worktreeInfo) {
+				return { success: true, skipped: 'Worktree not found in registry' };
+			}
+
+			// Prepare merge info for cleanup service
+			const mergeInfo = {
+				worktreeName,
+				mergedBranch: worktreeInfo.branch,
+				taskId: this.extractTaskIdFromWorktree(worktreeInfo),
+				...options.mergeInfo
+			};
+
+			// Perform comprehensive cleanup
+			const cleanupResult = await cleanupService.performPostMergeCleanup(
+				options.prNumber || 'manual',
+				mergeInfo
+			);
+
+			// Update worktree status in our config
+			if (cleanupResult.success) {
+				worktreeInfo.status = 'cleaned';
+				worktreeInfo.cleanedAt = new Date().toISOString();
+				worktreeInfo.cleanupResult = {
+					actions: cleanupResult.worktree?.actions || [],
+					astCacheInvalidated: cleanupResult.astCache?.invalidatedFiles || 0,
+					taskStatusUpdated: !!cleanupResult.taskStatus?.actions?.length
+				};
+				this.saveConfig();
+			}
+
+			return cleanupResult;
+
+		} catch (error) {
+			logger.error('Intelligent cleanup failed:', error);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Extract task ID from worktree info
+	 */
+	extractTaskIdFromWorktree(worktreeInfo) {
+		// Check linkedSubtask first
+		if (worktreeInfo.linkedSubtask?.fullId) {
+			return worktreeInfo.linkedSubtask.fullId;
+		}
+		
+		// Check linkedTask
+		if (worktreeInfo.linkedTask?.fullId) {
+			return worktreeInfo.linkedTask.fullId;
+		}
+		
+		// Fallback to linkedTasks array
+		if (worktreeInfo.linkedTasks?.length > 0) {
+			return worktreeInfo.linkedTasks[0].id;
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Enhanced worktree lifecycle management
+	 */
+	async manageWorktreeLifecycle(worktreeName, event, options = {}) {
+		const worktreeInfo = this.config.worktrees[worktreeName];
+		if (!worktreeInfo) {
+			return { success: false, error: 'Worktree not found' };
+		}
+
+		const lifecycle = {
+			event,
+			timestamp: new Date().toISOString(),
+			worktreeName,
+			...options
+		};
+
+		try {
+			switch (event) {
+				case 'pr-created':
+					return await this.handlePRCreated(worktreeInfo, lifecycle);
+				case 'pr-merged':
+					return await this.handlePRMerged(worktreeInfo, lifecycle);
+				case 'session-completed':
+					return await this.handleSessionCompleted(worktreeInfo, lifecycle);
+				case 'cleanup-requested':
+					return await this.handleCleanupRequested(worktreeInfo, lifecycle);
+				default:
+					return { success: false, error: `Unknown lifecycle event: ${event}` };
+			}
+		} catch (error) {
+			logger.error(`Lifecycle management failed for ${event}:`, error);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Handle PR created event
+	 */
+	async handlePRCreated(worktreeInfo, lifecycle) {
+		worktreeInfo.prUrl = lifecycle.prUrl;
+		worktreeInfo.prNumber = lifecycle.prNumber;
+		worktreeInfo.status = 'pr-created';
+		worktreeInfo.prCreatedAt = lifecycle.timestamp;
+		
+		this.saveConfig();
+		
+		return { 
+			success: true, 
+			action: 'pr-created',
+			worktree: worktreeInfo 
+		};
+	}
+
+	/**
+	 * Handle PR merged event with intelligent cleanup
+	 */
+	async handlePRMerged(worktreeInfo, lifecycle) {
+		worktreeInfo.status = 'pr-merged';
+		worktreeInfo.prMergedAt = lifecycle.timestamp;
+		worktreeInfo.completedAt = lifecycle.timestamp;
+		
+		// Trigger intelligent cleanup if configured
+		if (lifecycle.autoCleanup !== false) {
+			const cleanupResult = await this.performIntelligentCleanup(
+				lifecycle.worktreeName,
+				{
+					prNumber: lifecycle.prNumber,
+					mergeInfo: lifecycle.mergeInfo || {}
+				}
+			);
+			
+			worktreeInfo.cleanupResult = cleanupResult;
+		}
+		
+		this.saveConfig();
+		
+		return { 
+			success: true, 
+			action: 'pr-merged',
+			worktree: worktreeInfo,
+			cleanup: worktreeInfo.cleanupResult
+		};
+	}
+
+	/**
+	 * Handle session completed event
+	 */
+	async handleSessionCompleted(worktreeInfo, lifecycle) {
+		worktreeInfo.lastSessionAt = lifecycle.timestamp;
+		worktreeInfo.sessionResult = lifecycle.sessionResult || {};
+		
+		// Update status if session was successful
+		if (lifecycle.sessionResult?.success) {
+			worktreeInfo.status = 'session-completed';
+		}
+		
+		this.saveConfig();
+		
+		return { 
+			success: true, 
+			action: 'session-completed',
+			worktree: worktreeInfo 
+		};
+	}
+
+	/**
+	 * Handle cleanup requested event
+	 */
+	async handleCleanupRequested(worktreeInfo, lifecycle) {
+		const cleanupResult = await this.performIntelligentCleanup(
+			lifecycle.worktreeName,
+			lifecycle.cleanupOptions || {}
+		);
+		
+		return { 
+			success: true, 
+			action: 'cleanup-requested',
+			cleanup: cleanupResult 
+		};
+	}
+
+	/**
+	 * Get worktree lifecycle status
+	 */
+	getWorktreeLifecycleStatus(worktreeName) {
+		const worktreeInfo = this.config.worktrees[worktreeName];
+		if (!worktreeInfo) {
+			return null;
+		}
+
+		return {
+			name: worktreeName,
+			status: worktreeInfo.status,
+			createdAt: worktreeInfo.createdAt,
+			lastAccessed: worktreeInfo.lastAccessed,
+			prCreatedAt: worktreeInfo.prCreatedAt,
+			prMergedAt: worktreeInfo.prMergedAt,
+			completedAt: worktreeInfo.completedAt,
+			cleanedAt: worktreeInfo.cleanedAt,
+			prUrl: worktreeInfo.prUrl,
+			prNumber: worktreeInfo.prNumber,
+			linkedTask: worktreeInfo.linkedTask || worktreeInfo.linkedSubtask,
+			cleanupResult: worktreeInfo.cleanupResult
+		};
+	}
 }

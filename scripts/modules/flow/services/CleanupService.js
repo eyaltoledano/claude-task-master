@@ -343,84 +343,241 @@ export class CleanupService extends EventEmitter {
 	}
 
 	/**
-	 * Finalize task completion and add PR reference
+	 * Enhanced task completion with existing task management integration
 	 */
 	async finalizeTaskCompletion(taskId, prNumber) {
 		const opts = this.config.taskStatus;
 
 		try {
+			// Import existing task management functions
+			const { default: setTaskStatus } = await import('../../task-manager/set-task-status.js');
+			const { readJSON } = await import('../../utils.js');
+
 			const result = {
 				success: true,
 				taskId,
 				prNumber,
 				actions: [],
-				taskUpdated: false
+				updatedTasks: []
 			};
 
-			// Import task management utilities
-			const { findTasksJsonPath } = await import('../../task-manager.js');
-			const tasksPath = findTasksJsonPath({ projectRoot: this.projectRoot });
-
-			// Read current tasks
-			const tasksData = JSON.parse(await fs.readFile(tasksPath, 'utf8'));
-
-			// Find the task
-			const task = tasksData.tasks.find((t) => String(t.id) === String(taskId));
-			if (!task) {
-				return { ...result, skipped: 'Task not found' };
+			// Get task file path
+			const tasksPath = path.join(this.projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			
+			if (!await fs.pathExists(tasksPath)) {
+				return { ...result, skipped: 'No tasks file found' };
 			}
 
-			// Only update if task is not already done
-			if (task.status === 'done') {
-				return { ...result, skipped: 'Task already completed' };
+			// Read current tasks to understand the task structure
+			const tasksData = readJSON(tasksPath, this.projectRoot);
+			if (!tasksData?.tasks) {
+				return { ...result, skipped: 'No valid tasks found' };
 			}
 
-			// Step 1: Mark task as completed (using existing status)
-			task.status = 'done';
-			task.completedAt = new Date().toISOString();
-			result.actions.push('status-updated');
+			// Determine if this is a subtask or main task
+			const isSubtask = String(taskId).includes('.');
+			let targetTask = null;
+			let targetSubtask = null;
 
-			// Step 2: Add PR reference to task history/details
-			if (opts.addPRReference) {
-				if (!task.prReferences) {
-					task.prReferences = [];
+			if (isSubtask) {
+				const [parentId, subtaskId] = String(taskId).split('.');
+				targetTask = tasksData.tasks.find(t => t.id === parseInt(parentId, 10));
+				if (targetTask?.subtasks) {
+					targetSubtask = targetTask.subtasks.find(st => st.id === parseInt(subtaskId, 10));
 				}
+			} else {
+				targetTask = tasksData.tasks.find(t => t.id === parseInt(taskId, 10));
+			}
 
-				task.prReferences.push({
-					prNumber,
-					mergedAt: new Date().toISOString(),
-					type: 'completion'
-				});
+			if (!targetTask) {
+				return { ...result, skipped: `Task ${taskId} not found` };
+			}
 
-				// Also add to details for visibility
-				const prNote = `\n\n**Completed via PR #${prNumber}** (${new Date().toLocaleDateString()})`;
-				task.details = (task.details || '') + prNote;
+			if (isSubtask && !targetSubtask) {
+				return { ...result, skipped: `Subtask ${taskId} not found` };
+			}
 
+			// Check current status to avoid unnecessary updates
+			const currentStatus = isSubtask ? targetSubtask.status : targetTask.status;
+			if (currentStatus === 'done' || currentStatus === 'completed') {
+				return { ...result, skipped: `Task ${taskId} already completed` };
+			}
+
+			// Update task status using existing task management system
+			const statusUpdateResult = await setTaskStatus(
+				tasksPath,
+				String(taskId),
+				'done',
+				{
+					projectRoot: this.projectRoot,
+					mcpLog: { info: () => {}, error: () => {} } // Minimal MCP mode
+				}
+			);
+
+			if (statusUpdateResult?.success) {
+				result.actions.push('status-updated-to-done');
+				result.updatedTasks = statusUpdateResult.updatedTasks || [];
+			}
+
+			// Add PR reference if configured
+			if (opts.addPRReference && prNumber) {
+				await this.addPRReferenceToTask(taskId, prNumber, tasksPath);
 				result.actions.push('pr-reference-added');
 			}
 
-			// Step 3: Update metrics if configured
+			// Update metrics if configured
 			if (opts.updateMetrics) {
-				if (!task.metrics) {
-					task.metrics = {};
-				}
-
-				task.metrics.completedVia = 'pr-merge';
-				task.metrics.prNumber = prNumber;
-				task.metrics.completionDate = new Date().toISOString();
-
+				await this.updateTaskMetrics(taskId, prNumber);
 				result.actions.push('metrics-updated');
 			}
 
-			// Step 4: Save updated tasks
-			await fs.writeFile(tasksPath, JSON.stringify(tasksData, null, 2));
-			result.taskUpdated = true;
-			result.actions.push('tasks-file-updated');
+			// Handle subtask completion cascading
+			if (isSubtask && opts.cascadeSubtasks !== false) {
+				const cascadeResult = await this.handleSubtaskCompletion(targetTask, targetSubtask, tasksPath);
+				if (cascadeResult.parentUpdated) {
+					result.actions.push('parent-task-evaluated');
+					result.parentTaskStatus = cascadeResult.parentStatus;
+				}
+			}
 
 			this.stats.tasksUpdated++;
 			return result;
+
 		} catch (error) {
-			throw new Error(`Task completion finalization failed: ${error.message}`);
+			this.stats.errors++;
+			throw new Error(`Task completion failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Add PR reference to completed task
+	 */
+	async addPRReferenceToTask(taskId, prNumber, tasksPath) {
+		try {
+			const { readJSON, writeJSON, getCurrentTag } = await import('../../utils.js');
+			
+			const currentTag = getCurrentTag(this.projectRoot) || 'master';
+			const data = readJSON(tasksPath, this.projectRoot, currentTag);
+			
+			if (!data?.tasks) return;
+
+			const isSubtask = String(taskId).includes('.');
+			let targetTask = null;
+			let targetSubtask = null;
+
+			if (isSubtask) {
+				const [parentId, subtaskId] = String(taskId).split('.');
+				targetTask = data.tasks.find(t => t.id === parseInt(parentId, 10));
+				if (targetTask?.subtasks) {
+					targetSubtask = targetTask.subtasks.find(st => st.id === parseInt(subtaskId, 10));
+				}
+			} else {
+				targetTask = data.tasks.find(t => t.id === parseInt(taskId, 10));
+			}
+
+			if (targetTask) {
+				const target = isSubtask ? targetSubtask : targetTask;
+				if (target) {
+					// Add PR reference to task details
+					const prReference = `\n\n**Completed via PR #${prNumber}** (${new Date().toLocaleDateString()})`;
+					
+					if (target.details) {
+						target.details += prReference;
+					} else {
+						target.details = `Task completed via PR #${prNumber}`;
+					}
+
+					// Add completion metadata
+					target.completedAt = new Date().toISOString();
+					target.completedViaPR = prNumber;
+
+					// Write back to file
+					writeJSON(tasksPath, data, this.projectRoot, currentTag);
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to add PR reference:', error.message);
+		}
+	}
+
+	/**
+	 * Handle subtask completion and evaluate parent task
+	 */
+	async handleSubtaskCompletion(parentTask, completedSubtask, tasksPath) {
+		const result = {
+			parentUpdated: false,
+			parentStatus: parentTask.status
+		};
+
+		try {
+			// Check if all subtasks are now completed
+			const allSubtasksCompleted = parentTask.subtasks.every(
+				st => st.status === 'done' || st.status === 'completed'
+			);
+
+			// If all subtasks are done and parent isn't, suggest or auto-update parent
+			if (allSubtasksCompleted && parentTask.status !== 'done' && parentTask.status !== 'completed') {
+				// Auto-update parent task if configured
+				if (this.config.taskStatus.cascadeSubtasks === true) {
+					const { default: setTaskStatus } = await import('../../task-manager/set-task-status.js');
+					
+					await setTaskStatus(
+						tasksPath,
+						String(parentTask.id),
+						'done',
+						{
+							projectRoot: this.projectRoot,
+							mcpLog: { info: () => {}, error: () => {} }
+						}
+					);
+
+					result.parentUpdated = true;
+					result.parentStatus = 'done';
+				} else {
+					// Just log that parent could be updated
+					console.log(`All subtasks of task ${parentTask.id} are complete. Parent task could be marked as done.`);
+				}
+			}
+
+			return result;
+		} catch (error) {
+			console.warn('Failed to handle subtask completion:', error.message);
+			return result;
+		}
+	}
+
+	/**
+	 * Update task completion metrics
+	 */
+	async updateTaskMetrics(taskId, prNumber) {
+		try {
+			const metricsPath = path.join(this.projectRoot, '.taskmaster', 'metrics', 'task-completion.json');
+			await fs.ensureDir(path.dirname(metricsPath));
+
+			let metrics = {};
+			if (await fs.pathExists(metricsPath)) {
+				metrics = await fs.readJson(metricsPath);
+			}
+
+			if (!metrics.completions) {
+				metrics.completions = [];
+			}
+
+			metrics.completions.push({
+				taskId,
+				prNumber,
+				completedAt: new Date().toISOString(),
+				method: 'auto-cleanup'
+			});
+
+			// Keep only last 1000 completions
+			if (metrics.completions.length > 1000) {
+				metrics.completions = metrics.completions.slice(-1000);
+			}
+
+			await fs.writeJson(metricsPath, metrics, { spaces: 2 });
+		} catch (error) {
+			console.warn('Failed to update task metrics:', error.message);
 		}
 	}
 

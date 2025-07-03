@@ -199,5 +199,28 @@
 		"notifyOnConflicts": true,
 		"pauseAutomationOnConflicts": true,
 		"humanInterventionRequired": true
+	},
+	"worktreeLifecycle": {
+		"enabled": true,
+		"autoCleanupOnMerge": true,
+		"preserveUncommitted": true,
+		"backupBeforeCleanup": true,
+		"astCacheInvalidation": true,
+		"taskStatusUpdates": true,
+		"lifecycleEvents": {
+			"trackPRCreation": true,
+			"trackPRMerge": true,
+			"trackSessionCompletion": true,
+			"trackCleanupRequests": true
+		}
+	},
+	"taskStatusIntegration": {
+		"enabled": true,
+		"autoUpdateOnMerge": true,
+		"addPRReference": true,
+		"updateMetrics": true,
+		"cascadeSubtasks": false,
+		"supportedStatuses": ["pending", "in-progress", "done", "completed", "review", "deferred", "cancelled", "blocked"],
+		"completionStatuses": ["done", "completed"]
 	}
 }
