@@ -105,6 +105,39 @@
 				"maxRetries": 3,
 				"timeout": 30000
 			}
+		},
+		"claude-code-stop": {
+			"enabled": true,
+			"config": {
+				"defaultSafetyMode": "standard",
+				"allowModeOverride": true,
+				"enableAutoCommit": true,
+				"enableAutoPR": true,
+				"safetyModes": {
+					"vibe": {
+						"autoLint": false,
+						"autoBuild": false,
+						"requireTests": false,
+						"skipConflictCheck": true,
+						"description": "Fast mode - minimal checks"
+					},
+					"standard": {
+						"autoLint": true,
+						"autoBuild": false,
+						"requireTests": false,
+						"skipConflictCheck": false,
+						"description": "Balanced mode - basic safety checks"
+					},
+					"strict": {
+						"autoLint": true,
+						"autoBuild": true,
+						"requireTests": true,
+						"skipConflictCheck": false,
+						"description": "Safe mode - comprehensive checks"
+					}
+				},
+				"timeout": 60000
+			}
 		}
 	},
 	"global": {

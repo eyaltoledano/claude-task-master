@@ -189,7 +189,8 @@ export class HookManager {
 			'research-integration',
 			'pre-launch-validation',
 			'session-completion',
-			'pr-lifecycle-management'
+			'pr-lifecycle-management',
+			'claude-code-stop'
 		];
 
 		for (const hookName of builtInHooks) {
