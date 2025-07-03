@@ -9,6 +9,46 @@
 			"subtask": "You are Claude Code, helping implement a specific subtask. Focus on the task requirements and context provided."
 		}
 	},
+	"safety": {
+		"mode": "standard",
+		"modes": {
+			"vibe": {
+				"autoLint": false,
+				"autoBuild": false,
+				"requireTests": false,
+				"skipConflictCheck": true
+			},
+			"standard": {
+				"autoLint": true,
+				"autoBuild": true,
+				"requireTests": false,
+				"skipConflictCheck": false
+			},
+			"strict": {
+				"autoLint": true,
+				"autoBuild": true,
+				"requireTests": true,
+				"skipConflictCheck": false
+			}
+		},
+		"buildValidation": {
+			"enabled": true,
+			"commands": {
+				"npm": "npm run build",
+				"yarn": "yarn build", 
+				"pnpm": "pnpm build"
+			},
+			"timeout": 120000
+		},
+		"lintValidation": {
+			"enabled": true,
+			"tools": {
+				"biome": "npx biome check .",
+				"eslint": "npx eslint ."
+			},
+			"timeout": 30000
+		}
+	},
 	"theme": {
 		"default": "auto"
 	},

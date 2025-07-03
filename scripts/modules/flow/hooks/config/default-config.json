@@ -138,6 +138,100 @@
 				},
 				"timeout": 60000
 			}
+		},
+		"builtIn": {
+			"claudeCodeStop": {
+				"enabled": true,
+				"safetyMode": "standard",
+				"autoCreatePR": true,
+				"safetyChecks": {
+					"gitStatus": true,
+					"linting": true,
+					"build": true,
+					"tests": false,
+					"conflictDetection": true
+				},
+				"buildValidation": {
+					"enabled": true,
+					"commands": {
+						"npm": "npm run build",
+						"yarn": "yarn build",
+						"pnpm": "pnpm build"
+					},
+					"timeout": 120000,
+					"failOnError": true
+				},
+				"lintValidation": {
+					"enabled": true,
+					"tools": {
+						"biome": {
+							"command": "npx biome check .",
+							"fixCommand": "npx biome check . --fix",
+							"enabled": true
+						},
+						"eslint": {
+							"command": "npx eslint .",
+							"fixCommand": "npx eslint . --fix",
+							"enabled": true
+						}
+					},
+					"timeout": 30000,
+					"failOnError": false,
+					"autoFix": false
+				},
+				"modes": {
+					"vibe": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": false,
+							"build": false,
+							"tests": false,
+							"conflictDetection": false
+						},
+						"autoCreatePR": true,
+						"requireManualApproval": false
+					},
+					"standard": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": true,
+							"build": true,
+							"tests": false,
+							"conflictDetection": true
+						},
+						"autoCreatePR": true,
+						"requireManualApproval": false
+					},
+					"strict": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": true,
+							"build": true,
+							"tests": true,
+							"conflictDetection": true
+						},
+						"autoCreatePR": false,
+						"requireManualApproval": true
+					}
+				}
+			},
+			"prLifecycleManagement": {
+				"enabled": false
+			},
+			"preLaunchValidation": {
+				"enabled": true,
+				"checkGitStatus": true,
+				"validateDependencies": true,
+				"checkConflicts": true,
+				"buildValidation": {
+					"enabled": true,
+					"respectSafetyMode": true
+				},
+				"lintValidation": {
+					"enabled": true,
+					"respectSafetyMode": true
+				}
+			}
 		}
 	},
 	"global": {

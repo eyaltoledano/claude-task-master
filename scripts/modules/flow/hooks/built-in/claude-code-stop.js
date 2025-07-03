@@ -1,522 +1,694 @@
 /**
- * Claude Code Stop Hook - handles automatic PR creation when Claude Code sessions complete
- * Integrates with existing hook system and supports multiple safety modes
+ * Claude Code Stop Hook - handles post-session cleanup and PR creation
  */
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
 export default class ClaudeCodeStopHook {
 	constructor() {
-		this.name = 'claude-code-stop';
-		this.version = '1.0.0';
-		this.description = 'Automatically creates PRs when Claude Code sessions complete';
-		this.events = ['session-completed', 'session-failed'];
-		this.timeout = 60000; // 1 minute timeout for PR creation
-		
-		// Safety mode configurations
-		this.safetyModes = {
-			vibe: {
-				autoLint: false,
-				autoBuild: false,
-				requireTests: false,
-				skipConflictCheck: true,
-				autoCommit: true,
-				autoPR: true,
-				description: 'Fast mode - minimal checks, just commit and create PR'
-			},
-			standard: {
-				autoLint: true,
-				autoBuild: false,
-				requireTests: false,
-				skipConflictCheck: false,
-				autoCommit: true,
-				autoPR: true,
-				description: 'Balanced mode - basic safety checks before PR creation'
-			},
-			strict: {
-				autoLint: true,
-				autoBuild: true,
-				requireTests: true,
-				skipConflictCheck: false,
-				autoCommit: true,
-				autoPR: false, // Require manual approval in strict mode
-				description: 'Safe mode - comprehensive checks, manual PR approval'
-			}
-		};
+		this.version = '2.0.0';
+		this.description = 'Handles Claude Code session completion with enhanced safety checks and PR creation';
+		this.events = ['claude-code-stop'];
+		this.timeout = 300000; // 5 minutes
 	}
 
 	/**
-	 * Handle session completion - main entry point for Claude Code Stop
+	 * Handle Claude Code session stop
 	 */
-	async onSessionCompleted(context) {
-		const { session, task, worktree, config, services } = context;
-
-		if (!session || !task || !worktree) {
-			return {
-				success: false,
-				error: 'Missing required context (session, task, or worktree)'
-			};
-		}
+	async onClaudeCodeStop(context) {
+		const { config, task, worktree, services, sessionResult } = context;
 
 		try {
-			// Determine safety mode
-			const safetyMode = this.determineSafetyMode(context);
-			const safetyConfig = this.safetyModes[safetyMode];
+			// Get effective safety mode and configuration
+			const safetyMode = this.getSafetyMode(config);
+			const effectiveConfig = this.getEffectiveConfig(config, safetyMode);
 
-			console.log(`🎯 [Claude Code Stop] Processing completion in ${safetyMode} mode`);
-
-			// Check if auto-PR is enabled for this mode
-			if (!safetyConfig.autoPR) {
-				return {
-					success: true,
-					action: 'manual-approval-required',
-					safetyMode,
-					message: `${safetyMode} mode requires manual PR creation`
-				};
-			}
+			console.log(`\n🛡️  Claude Code Stop Hook (Safety Mode: ${safetyMode})`);
 
 			// Run safety checks based on mode
-			const safetyResult = await this.runSafetyChecks(
-				safetyMode,
-				safetyConfig,
-				context
-			);
+			const safetyResults = await this.runSafetyChecks(effectiveConfig, worktree, services);
 
-			if (!safetyResult.passed && safetyMode !== 'vibe') {
-				return {
-					success: false,
-					action: 'safety-checks-failed',
-					safetyMode,
-					errors: safetyResult.errors,
-					warnings: safetyResult.warnings
-				};
+			// Determine if we should proceed with PR creation
+			const shouldCreatePR = this.shouldCreatePR(safetyResults, effectiveConfig, safetyMode);
+
+			if (shouldCreatePR) {
+				await this.createPR(task, worktree, services, effectiveConfig, safetyResults);
+			} else {
+				console.log('❌ PR creation skipped due to safety check failures or configuration');
 			}
 
-			// Create PR automatically
-			const prResult = await this.createAutomaticPR(
-				safetyMode,
-				safetyConfig,
-				context,
-				safetyResult
-			);
-
 			return {
-				success: prResult.success,
-				action: 'pr-created',
+				success: true,
 				safetyMode,
-				prResult,
-				safetyChecks: safetyResult
+				safetyResults,
+				prCreated: shouldCreatePR,
+				timestamp: new Date().toISOString()
 			};
 
 		} catch (error) {
-			console.error('❌ [Claude Code Stop] Error processing completion:', error);
+			console.error('❌ Claude Code Stop Hook failed:', error.message);
 			return {
 				success: false,
 				error: error.message,
-				action: 'error'
+				timestamp: new Date().toISOString()
 			};
 		}
 	}
 
 	/**
-	 * Handle session failure - cleanup and notification
+	 * Get effective safety mode
 	 */
-	async onSessionFailed(context) {
-		const { session, task, worktree, error } = context;
-
-		console.log(`❌ [Claude Code Stop] Session failed for task ${task?.id}:`, error?.message);
-
-		// In the future, this could:
-		// - Notify via configured channels
-		// - Clean up partial work
-		// - Update task status
-		// - Create issue for investigation
-
-		return {
-			success: true,
-			action: 'session-failed-handled',
-			message: 'Session failure processed'
-		};
-	}
-
-	/**
-	 * Determine safety mode from context
-	 */
-	determineSafetyMode(context) {
-		// Priority order: metadata > config > task settings > default
-		const { config, task, session } = context;
-
-		// Check session metadata first (highest priority)
-		if (session?.metadata?.safetyMode) {
-			return session.metadata.safetyMode;
+	getSafetyMode(config) {
+		// Try hook-specific config first
+		if (config.hooks?.builtIn?.claudeCodeStop?.safetyMode) {
+			return config.hooks.builtIn.claudeCodeStop.safetyMode;
+		}
+		
+		// Try flow config
+		if (config.safety?.mode) {
+			return config.safety.mode;
 		}
 
-		// Check global config
-		if (config?.claudeCodeStop?.defaultSafetyMode) {
-			return config.claudeCodeStop.defaultSafetyMode;
-		}
-
-		// Check task-specific settings
-		if (task?.metadata?.safetyMode) {
-			return task.metadata.safetyMode;
-		}
-
-		// Default to standard mode
+		// Default to standard
 		return 'standard';
 	}
 
 	/**
-	 * Run safety checks based on mode
+	 * Get effective configuration based on safety mode
 	 */
-	async runSafetyChecks(safetyMode, safetyConfig, context) {
-		const { worktree, services } = context;
-		const result = {
-			passed: true,
-			errors: [],
-			warnings: [],
-			checks: {}
+	getEffectiveConfig(config, safetyMode) {
+		const baseConfig = config.hooks?.builtIn?.claudeCodeStop || {};
+		const modeConfig = baseConfig.modes?.[safetyMode] || {};
+
+		// Merge configurations with mode-specific overrides
+		return {
+			...baseConfig,
+			...modeConfig,
+			safetyMode
+		};
+	}
+
+	/**
+	 * Run safety checks based on configuration
+	 */
+	async runSafetyChecks(config, worktree, services) {
+		const results = {
+			git: { status: 'skipped' },
+			build: { status: 'skipped' },
+			lint: { status: 'skipped' },
+			tests: { status: 'skipped' },
+			conflicts: { status: 'skipped' },
+			overall: 'pending'
 		};
 
-		console.log(`🔍 [Claude Code Stop] Running ${safetyMode} mode safety checks`);
+		console.log('🔍 Running safety checks...');
 
+		// Git status check
+		if (config.safetyChecks?.gitStatus) {
+			results.git = await this.checkGitStatus(worktree);
+		}
+
+		// Build validation
+		if (config.safetyChecks?.build) {
+			results.build = await this.runBuildValidation(config);
+		}
+
+		// Lint validation
+		if (config.safetyChecks?.linting) {
+			results.lint = await this.runLintValidation(config);
+		}
+
+		// Test validation
+		if (config.safetyChecks?.tests) {
+			results.tests = await this.runTestValidation(config);
+		}
+
+		// Conflict detection
+		if (config.safetyChecks?.conflictDetection) {
+			results.conflicts = await this.checkConflicts(worktree);
+		}
+
+		// Determine overall status
+		const hasErrors = Object.values(results).some(r => r.status === 'failed');
+		const hasWarnings = Object.values(results).some(r => r.status === 'warning');
+		
+		results.overall = hasErrors ? 'failed' : hasWarnings ? 'warning' : 'passed';
+
+		console.log(`✅ Safety checks completed with status: ${results.overall}`);
+		return results;
+	}
+
+	/**
+	 * Check Git status
+	 */
+	async checkGitStatus(worktree) {
 		try {
-			// Git status check (always run)
-			result.checks.gitStatus = await this.checkGitStatus(worktree, services);
-			if (!result.checks.gitStatus.hasChanges) {
-				result.warnings.push('No changes detected in worktree');
-			}
-
-			// Linting check
-			if (safetyConfig.autoLint) {
-				result.checks.lint = await this.runLintCheck(worktree, services);
-				if (!result.checks.lint.passed) {
-					result.errors.push('Linting failed');
-					result.passed = false;
-				}
-			}
-
-			// Build check
-			if (safetyConfig.autoBuild) {
-				result.checks.build = await this.runBuildCheck(worktree, services);
-				if (!result.checks.build.passed) {
-					result.errors.push('Build failed');
-					result.passed = false;
-				}
-			}
-
-			// Test check
-			if (safetyConfig.requireTests) {
-				result.checks.tests = await this.runTestCheck(worktree, services);
-				if (!result.checks.tests.passed) {
-					result.errors.push('Tests failed or missing');
-					result.passed = false;
-				}
-			}
-
-			// Conflict check
-			if (!safetyConfig.skipConflictCheck) {
-				result.checks.conflicts = await this.checkConflicts(worktree, services);
-				if (!result.checks.conflicts.passed) {
-					result.errors.push('Merge conflicts detected');
-					result.passed = false;
-				}
-			}
-
-		} catch (error) {
-			result.errors.push(`Safety check error: ${error.message}`);
-			result.passed = false;
-		}
-
-		return result;
-	}
-
-	/**
-	 * Create automatic PR
-	 */
-	async createAutomaticPR(safetyMode, safetyConfig, context, safetyResult) {
-		const { task, worktree, services } = context;
-
-		try {
-			console.log(`🚀 [Claude Code Stop] Creating automatic PR in ${safetyMode} mode`);
-
-			// Generate PR title and description
-			const prTitle = this.generatePRTitle(task, safetyMode);
-			const prDescription = this.generatePRDescription(task, safetyMode, safetyResult);
-
-			// Use existing PR creation infrastructure
-			if (task.parentId) {
-				// This is a subtask - use existing completeSubtaskWithPR
-				return await services.backend.completeSubtaskWithPR(worktree.name, {
-					createPR: true,
-					prTitle,
-					prDescription,
-					safetyMode,
-					autoGenerated: true
-				});
-			} else {
-				// This is a main task - use direct GitHub CLI
-				return await this.createMainTaskPR(
-					worktree,
-					prTitle,
-					prDescription,
-					safetyMode,
-					services
-				);
-			}
-
-		} catch (error) {
-			console.error('❌ [Claude Code Stop] PR creation failed:', error);
-			return {
-				success: false,
-				error: error.message
-			};
-		}
-	}
-
-	/**
-	 * Generate PR title
-	 */
-	generatePRTitle(task, safetyMode) {
-		const modePrefix = safetyMode === 'vibe' ? '⚡' : safetyMode === 'strict' ? '🔒' : '🤖';
-		
-		if (task.parentId) {
-			return `${modePrefix} Subtask ${task.id}: ${task.title}`;
-		} else {
-			return `${modePrefix} Task ${task.id}: ${task.title}`;
-		}
-	}
-
-	/**
-	 * Generate PR description
-	 */
-	generatePRDescription(task, safetyMode, safetyResult) {
-		const lines = [];
-		
-		lines.push(`## 🤖 Auto-generated PR (${safetyMode} mode)`);
-		lines.push('');
-		
-		if (task.parentId) {
-			lines.push(`**Subtask:** ${task.id} - ${task.title}`);
-			lines.push(`**Parent Task:** ${task.parentId}`);
-		} else {
-			lines.push(`**Task:** ${task.id} - ${task.title}`);
-		}
-		
-		if (task.description) {
-			lines.push('');
-			lines.push('**Description:**');
-			lines.push(task.description);
-		}
-
-		// Add safety check results
-		lines.push('');
-		lines.push('## 🔍 Safety Checks');
-		
-		if (safetyResult.checks) {
-			for (const [checkName, result] of Object.entries(safetyResult.checks)) {
-				const status = result.passed ? '✅' : '❌';
-				lines.push(`- ${status} ${checkName}: ${result.message || 'OK'}`);
-			}
-		}
-
-		if (safetyResult.warnings.length > 0) {
-			lines.push('');
-			lines.push('**Warnings:**');
-			safetyResult.warnings.forEach(warning => lines.push(`- ⚠️ ${warning}`));
-		}
-
-		lines.push('');
-		lines.push('---');
-		lines.push(`*Generated by Claude Code Stop Hook v${this.version}*`);
-
-		return lines.join('\n');
-	}
-
-	/**
-	 * Create PR for main task using GitHub CLI
-	 */
-	async createMainTaskPR(worktree, prTitle, prDescription, safetyMode, services) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Commit changes first
-			const branchName = worktree.branch || worktree.name;
-			await execAsync('git add .', { cwd: worktree.path });
-			await execAsync(`git commit -m "${prTitle}"`, { cwd: worktree.path });
+			console.log('  📋 Checking git status...');
 			
-			// Push branch
-			await execAsync(`git push --set-upstream origin "${branchName}"`, { 
-				cwd: worktree.path 
-			});
+			if (!worktree?.path) {
+				return { status: 'skipped', reason: 'no-worktree' };
+			}
 
-			// Create PR with explicit head flag
-			const sourceBranch = worktree.sourceBranch || 'main';
-			const prCommand = `gh pr create --title "${prTitle}" --body "${prDescription}" --base ${sourceBranch} --head ${branchName}`;
-			
-			const prResult = await execAsync(prCommand, {
-				cwd: worktree.path,
-				encoding: 'utf8'
-			});
+			const originalCwd = process.cwd();
+			process.chdir(worktree.path);
 
-			// Extract PR URL from output
-			const prUrl = prResult.stdout.trim().split('\n').pop();
-			const prNumber = prUrl.split('/').pop();
-
-			return {
-				success: true,
-				prUrl,
-				prNumber,
-				prTitle,
-				prDescription,
-				safetyMode,
-				autoGenerated: true
-			};
-
-		} catch (error) {
-			return {
-				success: false,
-				error: error.message
-			};
-		}
-	}
-
-	// Safety check implementations
-	async checkGitStatus(worktree, services) {
-		try {
-			const { execSync } = await import('child_process');
-			const statusOutput = execSync('git status --porcelain', {
-				cwd: worktree.path,
-				encoding: 'utf8'
-			});
-
-			return {
-				passed: true,
-				hasChanges: statusOutput.trim().length > 0,
-				message: statusOutput.trim() ? 'Changes detected' : 'No changes'
-			};
-		} catch (error) {
-			return {
-				passed: false,
-				hasChanges: false,
-				message: `Git status check failed: ${error.message}`
-			};
-		}
-	}
-
-	async runLintCheck(worktree, services) {
-		try {
-			const { execSync } = await import('child_process');
-			
-			// Try biome first, then eslint
 			try {
-				execSync('npx biome check --reporter=summary', {
-					cwd: worktree.path,
-					stdio: 'pipe'
-				});
-				return { passed: true, message: 'Biome linting passed' };
-			} catch (biomeError) {
-				try {
-					execSync('npx eslint .', {
-						cwd: worktree.path,
-						stdio: 'pipe'
-					});
-					return { passed: true, message: 'ESLint passed' };
-				} catch (eslintError) {
+				// Check for uncommitted changes
+				const statusOutput = execSync('git status --porcelain', { encoding: 'utf8' });
+				const hasChanges = statusOutput.trim().length > 0;
+
+				if (hasChanges) {
+					console.log('    ⚠️  Uncommitted changes detected');
 					return { 
-						passed: false, 
-						message: 'Linting failed (tried biome and eslint)' 
+						status: 'warning', 
+						message: 'Uncommitted changes detected',
+						changes: statusOutput.trim().split('\n')
 					};
 				}
+
+				console.log('    ✅ Git status clean');
+				return { status: 'passed', message: 'No uncommitted changes' };
+
+			} finally {
+				process.chdir(originalCwd);
 			}
+
 		} catch (error) {
-			return {
-				passed: false,
-				message: `Lint check error: ${error.message}`
-			};
+			console.log(`    ❌ Git status check failed: ${error.message}`);
+			return { status: 'failed', error: error.message };
 		}
 	}
 
-	async runBuildCheck(worktree, services) {
+	/**
+	 * Run build validation
+	 */
+	async runBuildValidation(config) {
 		try {
-			const { execSync } = await import('child_process');
+			console.log('  🔨 Running build validation...');
+
+			// Detect build command
+			const buildInfo = await this.detectBuildCommand();
 			
-			// Try common build commands
-			const buildCommands = ['npm run build', 'yarn build', 'pnpm build'];
+			if (!buildInfo.hasPackageJson) {
+				console.log('    ⏭️  No package.json found, skipping build');
+				return { status: 'skipped', reason: 'no-package-json' };
+			}
+
+			if (!buildInfo.hasBuildScript) {
+				console.log('    ⏭️  No build script found, skipping build');
+				return { status: 'skipped', reason: 'no-build-script' };
+			}
+
+			// Run build
+			const startTime = Date.now();
+			console.log(`    🚀 Running: ${buildInfo.command}`);
+
+			try {
+				const output = execSync(buildInfo.command, {
+					encoding: 'utf8',
+					timeout: config.buildValidation?.timeout || 120000,
+					stdio: 'pipe'
+				});
+
+				const duration = Date.now() - startTime;
+				console.log(`    ✅ Build completed in ${duration}ms`);
+
+				return {
+					status: 'passed',
+					command: buildInfo.command,
+					duration,
+					output: output.trim()
+				};
+
+			} catch (error) {
+				const duration = Date.now() - startTime;
+				console.log(`    ❌ Build failed after ${duration}ms`);
+
+				const shouldFail = config.buildValidation?.failOnError || config.safetyMode === 'strict';
+				
+				return {
+					status: shouldFail ? 'failed' : 'warning',
+					command: buildInfo.command,
+					duration,
+					error: error.message,
+					output: error.stdout || error.stderr || 'No output'
+				};
+			}
+
+		} catch (error) {
+			console.log(`    ❌ Build validation error: ${error.message}`);
+			return { status: 'failed', error: error.message };
+		}
+	}
+
+	/**
+	 * Run lint validation
+	 */
+	async runLintValidation(config) {
+		try {
+			console.log('  🧹 Running lint validation...');
+
+			// Detect linting tools
+			const lintTools = await this.detectLintingTools();
 			
-			for (const cmd of buildCommands) {
+			if (lintTools.length === 0) {
+				console.log('    ⏭️  No linting tools detected');
+				return { status: 'skipped', reason: 'no-lint-tools' };
+			}
+
+			const results = [];
+			let hasErrors = false;
+			let hasWarnings = false;
+
+			for (const tool of lintTools) {
+				// Check if tool is enabled in config
+				const toolEnabled = config.lintValidation?.tools?.[tool.name]?.enabled !== false;
+				if (!toolEnabled) {
+					console.log(`    ⏭️  ${tool.name} disabled in configuration`);
+					continue;
+				}
+
+				console.log(`    🔍 Running ${tool.name}...`);
+
 				try {
-					execSync(cmd, {
-						cwd: worktree.path,
+					const output = execSync(tool.command, {
+						encoding: 'utf8',
+						timeout: config.lintValidation?.timeout || 30000,
 						stdio: 'pipe'
 					});
-					return { passed: true, message: `Build passed (${cmd})` };
-				} catch (cmdError) {
-					// Try next command
+
+					console.log(`    ✅ ${tool.name} passed`);
+					results.push({
+						tool: tool.name,
+						status: 'passed',
+						command: tool.command,
+						output: output.trim()
+					});
+
+				} catch (error) {
+					console.log(`    ⚠️  ${tool.name} found issues`);
+
+					// Try auto-fix if enabled
+					if (config.lintValidation?.autoFix) {
+						const fixCommand = config.lintValidation.tools?.[tool.name]?.fixCommand;
+						if (fixCommand) {
+							try {
+								console.log(`    🔧 Auto-fixing with: ${fixCommand}`);
+								execSync(fixCommand, { encoding: 'utf8', stdio: 'pipe' });
+								console.log(`    ✅ ${tool.name} auto-fixed`);
+							} catch (fixError) {
+								console.log(`    ❌ Auto-fix failed: ${fixError.message}`);
+							}
+						}
+					}
+
+					const shouldFail = config.lintValidation?.failOnError || config.safetyMode === 'strict';
+					if (shouldFail) {
+						hasErrors = true;
+					} else {
+						hasWarnings = true;
+					}
+
+					results.push({
+						tool: tool.name,
+						status: shouldFail ? 'failed' : 'warning',
+						command: tool.command,
+						error: error.message,
+						output: error.stdout || error.stderr || 'No output'
+					});
 				}
 			}
 
-			return { passed: false, message: 'No working build command found' };
-		} catch (error) {
+			const overallStatus = hasErrors ? 'failed' : hasWarnings ? 'warning' : 'passed';
+			console.log(`    📊 Lint validation completed: ${overallStatus}`);
+
 			return {
-				passed: false,
-				message: `Build check error: ${error.message}`
+				status: overallStatus,
+				tools: results,
+				summary: {
+					total: results.length,
+					passed: results.filter(r => r.status === 'passed').length,
+					warnings: results.filter(r => r.status === 'warning').length,
+					failed: results.filter(r => r.status === 'failed').length
+				}
 			};
+
+		} catch (error) {
+			console.log(`    ❌ Lint validation error: ${error.message}`);
+			return { status: 'failed', error: error.message };
 		}
 	}
 
-	async runTestCheck(worktree, services) {
+	/**
+	 * Run test validation
+	 */
+	async runTestValidation(config) {
 		try {
-			const { execSync } = await import('child_process');
+			console.log('  🧪 Running test validation...');
+
+			// Detect test command
+			const testInfo = await this.detectTestCommand();
 			
-			// Try common test commands
-			const testCommands = ['npm test', 'yarn test', 'pnpm test'];
-			
-			for (const cmd of testCommands) {
-				try {
-					execSync(cmd, {
-						cwd: worktree.path,
-						stdio: 'pipe'
-					});
-					return { passed: true, message: `Tests passed (${cmd})` };
-				} catch (cmdError) {
-					// Try next command
+			if (!testInfo.hasTestScript) {
+				const message = 'No test script found in package.json';
+				console.log(`    ⚠️  ${message}`);
+				
+				// In strict mode, missing tests is an error
+				if (config.safetyMode === 'strict') {
+					return { status: 'failed', reason: 'no-test-script', message };
+				} else {
+					return { status: 'warning', reason: 'no-test-script', message };
 				}
 			}
 
-			return { passed: false, message: 'No working test command found or tests failed' };
+			// Run tests
+			const startTime = Date.now();
+			console.log(`    🧪 Running: ${testInfo.command}`);
+
+			try {
+				const output = execSync(testInfo.command, {
+					encoding: 'utf8',
+					timeout: config.testValidation?.timeout || 180000, // 3 minutes
+					stdio: 'pipe'
+				});
+
+				const duration = Date.now() - startTime;
+				console.log(`    ✅ Tests passed in ${duration}ms`);
+
+				return {
+					status: 'passed',
+					command: testInfo.command,
+					duration,
+					output: output.trim()
+				};
+
+			} catch (error) {
+				const duration = Date.now() - startTime;
+				console.log(`    ❌ Tests failed after ${duration}ms`);
+
+				return {
+					status: 'failed',
+					command: testInfo.command,
+					duration,
+					error: error.message,
+					output: error.stdout || error.stderr || 'No output'
+				};
+			}
+
 		} catch (error) {
-			return {
-				passed: false,
-				message: `Test check error: ${error.message}`
-			};
+			console.log(`    ❌ Test validation error: ${error.message}`);
+			return { status: 'failed', error: error.message };
 		}
 	}
 
-	async checkConflicts(worktree, services) {
+	/**
+	 * Check for conflicts
+	 */
+	async checkConflicts(worktree) {
 		try {
-			const { execSync } = await import('child_process');
+			console.log('  🔍 Checking for conflicts...');
 			
-			// Fetch latest changes
-			execSync('git fetch origin', { cwd: worktree.path, stdio: 'pipe' });
-			
-			// Check for conflicts with base branch
-			const sourceBranch = worktree.sourceBranch || 'main';
-			const mergeBase = execSync(`git merge-base HEAD origin/${sourceBranch}`, {
-				cwd: worktree.path,
-				encoding: 'utf8'
-			}).trim();
+			if (!worktree?.path) {
+				return { status: 'skipped', reason: 'no-worktree' };
+			}
 
-			// Try a test merge
-			execSync(`git merge-tree ${mergeBase} HEAD origin/${sourceBranch}`, {
-				cwd: worktree.path,
-				stdio: 'pipe'
+			const originalCwd = process.cwd();
+			process.chdir(worktree.path);
+
+			try {
+				// Check for merge conflicts
+				const conflictFiles = [];
+				
+				// Look for conflict markers in tracked files
+				try {
+					const trackedFiles = execSync('git ls-files', { encoding: 'utf8' })
+						.trim().split('\n').filter(Boolean);
+
+					for (const file of trackedFiles) {
+						if (fs.existsSync(file)) {
+							const content = fs.readFileSync(file, 'utf8');
+							if (content.includes('<<<<<<<') || content.includes('>>>>>>>')) {
+								conflictFiles.push(file);
+							}
+						}
+					}
+				} catch (error) {
+					// Ignore errors reading files
+				}
+
+				if (conflictFiles.length > 0) {
+					console.log(`    ❌ Conflict markers found in ${conflictFiles.length} files`);
+					return {
+						status: 'failed',
+						message: `Conflict markers found in ${conflictFiles.length} files`,
+						conflicts: conflictFiles
+					};
+				}
+
+				console.log('    ✅ No conflicts detected');
+				return { status: 'passed', message: 'No conflicts detected' };
+
+			} finally {
+				process.chdir(originalCwd);
+			}
+
+		} catch (error) {
+			console.log(`    ❌ Conflict check failed: ${error.message}`);
+			return { status: 'failed', error: error.message };
+		}
+	}
+
+	/**
+	 * Determine if PR should be created
+	 */
+	shouldCreatePR(safetyResults, config, safetyMode) {
+		// Check if auto-create PR is enabled
+		if (!config.autoCreatePR) {
+			console.log('📝 Auto-create PR is disabled');
+			return false;
+		}
+
+		// In strict mode, require manual approval if there are any failures
+		if (safetyMode === 'strict' && safetyResults.overall !== 'passed') {
+			console.log('🔒 Strict mode: Manual approval required due to safety check issues');
+			return false;
+		}
+
+		// In other modes, only block on failures (not warnings)
+		if (safetyResults.overall === 'failed') {
+			console.log('❌ Safety checks failed, blocking PR creation');
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Create PR
+	 */
+	async createPR(task, worktree, services, config, safetyResults) {
+		try {
+			console.log('🚀 Creating PR...');
+
+			if (!worktree?.path) {
+				throw new Error('No worktree available for PR creation');
+			}
+
+			// Use existing completeSubtaskWithPR for subtasks, direct GitHub CLI for main tasks
+			if (task?.isSubtask || String(task?.id).includes('.')) {
+				console.log('  📝 Creating PR for subtask...');
+				await services.backend?.completeSubtaskWithPR?.(task.id, worktree);
+			} else {
+				console.log('  📝 Creating PR for main task...');
+				await this.createMainTaskPR(task, worktree, safetyResults);
+			}
+
+			console.log('✅ PR created successfully');
+
+		} catch (error) {
+			console.error('❌ Failed to create PR:', error.message);
+			throw error;
+		}
+	}
+
+	/**
+	 * Create PR for main task
+	 */
+	async createMainTaskPR(task, worktree, safetyResults) {
+		const originalCwd = process.cwd();
+		process.chdir(worktree.path);
+
+		try {
+			// Commit any remaining changes
+			try {
+				execSync('git add .', { stdio: 'pipe' });
+				execSync(`git commit -m "Complete task ${task.id}: ${task.title}"`, { stdio: 'pipe' });
+			} catch (error) {
+				// Ignore if nothing to commit
+			}
+
+			// Push the branch
+			execSync(`git push origin ${worktree.branch}`, { stdio: 'pipe' });
+
+			// Create PR with safety results in description
+			const safetyReport = this.generateSafetyReport(safetyResults);
+			const prTitle = `Task ${task.id}: ${task.title}`;
+			const prBody = `${task.description || ''}\n\n## Safety Check Results\n\n${safetyReport}`;
+
+			execSync(
+				`gh pr create --title "${prTitle}" --body "${prBody}" --head ${worktree.branch}`,
+				{ stdio: 'pipe' }
+			);
+
+		} finally {
+			process.chdir(originalCwd);
+		}
+	}
+
+	/**
+	 * Generate safety report for PR description
+	 */
+	generateSafetyReport(safetyResults) {
+		const statusIcon = (status) => {
+			switch (status) {
+				case 'passed': return '✅';
+				case 'warning': return '⚠️';
+				case 'failed': return '❌';
+				case 'skipped': return '⏭️';
+				default: return '❓';
+			}
+		};
+
+		let report = '';
+		
+		if (safetyResults.git.status !== 'skipped') {
+			report += `${statusIcon(safetyResults.git.status)} **Git Status**: ${safetyResults.git.message || safetyResults.git.status}\n`;
+		}
+		
+		if (safetyResults.build.status !== 'skipped') {
+			report += `${statusIcon(safetyResults.build.status)} **Build**: ${safetyResults.build.command || 'Build check'} - ${safetyResults.build.status}\n`;
+		}
+		
+		if (safetyResults.lint.status !== 'skipped') {
+			const lintSummary = safetyResults.lint.summary || { total: 0, passed: 0, warnings: 0, failed: 0 };
+			report += `${statusIcon(safetyResults.lint.status)} **Lint**: ${lintSummary.passed}/${lintSummary.total} tools passed\n`;
+		}
+		
+		if (safetyResults.tests.status !== 'skipped') {
+			report += `${statusIcon(safetyResults.tests.status)} **Tests**: ${safetyResults.tests.message || safetyResults.tests.status}\n`;
+		}
+		
+		if (safetyResults.conflicts.status !== 'skipped') {
+			report += `${statusIcon(safetyResults.conflicts.status)} **Conflicts**: ${safetyResults.conflicts.message || safetyResults.conflicts.status}\n`;
+		}
+
+		return report || 'No safety checks performed.';
+	}
+
+	/**
+	 * Helper methods (reusing from pre-launch validation)
+	 */
+	async detectBuildCommand() {
+		const hasPackageJson = fs.existsSync('package.json');
+		if (!hasPackageJson) {
+			return { hasPackageJson: false, hasBuildScript: false };
+		}
+
+		const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+		const hasBuildScript = packageJson.scripts && packageJson.scripts.build;
+
+		// Detect package manager
+		let packageManager = 'npm';
+		if (fs.existsSync('yarn.lock')) {
+			packageManager = 'yarn';
+		} else if (fs.existsSync('pnpm-lock.yaml')) {
+			packageManager = 'pnpm';
+		}
+
+		return {
+			hasPackageJson,
+			hasBuildScript,
+			packageManager,
+			buildScript: packageJson.scripts?.build,
+			command: hasBuildScript ? `${packageManager} run build` : null
+		};
+	}
+
+	async detectTestCommand() {
+		const hasPackageJson = fs.existsSync('package.json');
+		if (!hasPackageJson) {
+			return { hasPackageJson: false, hasTestScript: false };
+		}
+
+		const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+		const hasTestScript = packageJson.scripts && packageJson.scripts.test;
+
+		// Detect package manager
+		let packageManager = 'npm';
+		if (fs.existsSync('yarn.lock')) {
+			packageManager = 'yarn';
+		} else if (fs.existsSync('pnpm-lock.yaml')) {
+			packageManager = 'pnpm';
+		}
+
+		return {
+			hasPackageJson,
+			hasTestScript,
+			packageManager,
+			testScript: packageJson.scripts?.test,
+			command: hasTestScript ? `${packageManager} run test` : null
+		};
+	}
+
+	async detectLintingTools() {
+		const tools = [];
+
+		// Check for Biome
+		if (fs.existsSync('biome.json') || fs.existsSync('biome.jsonc')) {
+			tools.push({
+				name: 'biome',
+				command: 'npx biome check .',
+				configFile: fs.existsSync('biome.json') ? 'biome.json' : 'biome.jsonc'
 			});
-
-			return { passed: true, message: 'No merge conflicts detected' };
-		} catch (error) {
-			return {
-				passed: false,
-				message: 'Potential merge conflicts detected'
-			};
 		}
+
+		// Check for ESLint
+		const eslintConfigs = [
+			'.eslintrc.js',
+			'.eslintrc.json',
+			'.eslintrc.yml',
+			'.eslintrc.yaml',
+			'eslint.config.js'
+		];
+
+		for (const config of eslintConfigs) {
+			if (fs.existsSync(config)) {
+				tools.push({
+					name: 'eslint',
+					command: 'npx eslint .',
+					configFile: config
+				});
+				break;
+			}
+		}
+
+		// Check package.json for eslint config
+		if (tools.find(t => t.name === 'eslint') === undefined) {
+			try {
+				const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+				if (packageJson.eslintConfig) {
+					tools.push({
+						name: 'eslint',
+						command: 'npx eslint .',
+						configFile: 'package.json'
+					});
+				}
+			} catch (error) {
+				// Ignore errors reading package.json
+			}
+		}
+
+		return tools;
 	}
 } 

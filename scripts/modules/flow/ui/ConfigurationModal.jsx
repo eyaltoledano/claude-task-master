@@ -132,110 +132,243 @@ const AutoMergeTab = () => {
 const SafetyTab = () => {
 	const { getConfigValue, updateConfig } = useConfiguration();
 
+	const safetyModeOptions = [
+		{ 
+			label: 'Vibe Mode (Fast & Minimal)', 
+			value: 'vibe',
+			description: 'Skip most checks, fast iteration'
+		},
+		{ 
+			label: 'Standard Mode (Balanced)', 
+			value: 'standard',
+			description: 'Basic safety checks, auto-create PRs'
+		},
+		{ 
+			label: 'Strict Mode (Comprehensive)', 
+			value: 'strict',
+			description: 'All checks required, manual approval'
+		}
+	];
+
+	const currentSafetyMode = getConfigValue('hooks.builtIn.claudeCodeStop.safetyMode', 'standard');
+	const isVibeMode = currentSafetyMode === 'vibe';
+	const isStrictMode = currentSafetyMode === 'strict';
+
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Text bold>Safety Configuration</Text>
 
+			{/* Safety Mode Selection */}
 			<Box marginTop={1} flexDirection="column">
-				<Text>Validate PR State:</Text>
-				<ConfirmInput
-					message=""
-					onConfirm={() =>
-						updateConfig('autoMerge.safetyChecks.validatePRState', true)
-					}
-					onCancel={() =>
-						updateConfig('autoMerge.safetyChecks.validatePRState', false)
-					}
-				/>
-				<Text
-					color={
-						getConfigValue('autoMerge.safetyChecks.validatePRState', true)
-							? 'green'
-							: 'red'
-					}
-				>
-					{getConfigValue('autoMerge.safetyChecks.validatePRState', true)
-						? 'Enabled'
-						: 'Disabled'}
-				</Text>
+				<Text bold color="cyan">Safety Mode:</Text>
+				<Box marginTop={1}>
+					<Select
+						options={safetyModeOptions}
+						defaultValue={currentSafetyMode}
+						onChange={(value) => updateConfig('hooks.builtIn.claudeCodeStop.safetyMode', value)}
+					/>
+				</Box>
+				<Box marginTop={1}>
+					<Text dimColor>
+						{safetyModeOptions.find(opt => opt.value === currentSafetyMode)?.description || ''}
+					</Text>
+				</Box>
 			</Box>
 
-			<Box marginTop={1} flexDirection="column">
-				<Text>Validate Required Checks:</Text>
-				<ConfirmInput
-					message=""
-					onConfirm={() =>
-						updateConfig('autoMerge.safetyChecks.validateRequiredChecks', true)
-					}
-					onCancel={() =>
-						updateConfig('autoMerge.safetyChecks.validateRequiredChecks', false)
-					}
-				/>
-				<Text
-					color={
-						getConfigValue(
-							'autoMerge.safetyChecks.validateRequiredChecks',
-							true
-						)
-							? 'green'
-							: 'red'
-					}
-				>
-					{getConfigValue('autoMerge.safetyChecks.validateRequiredChecks', true)
-						? 'Enabled'
-						: 'Disabled'}
-				</Text>
+			{/* Basic Safety Checks */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold>Basic Safety Checks:</Text>
+				
+				<Box marginTop={1} flexDirection="column">
+					<Text>Git Status Check:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.gitStatus', true) ? 'Enabled' : 'Disabled'}
+					</Text>
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>Conflict Detection:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', !isVibeMode) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.conflictDetection', !isVibeMode) ? 'Enabled' : 'Disabled'}
+					</Text>
+					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
+				</Box>
 			</Box>
 
-			<Box marginTop={1} flexDirection="column">
-				<Text>Validate No Conflicts:</Text>
-				<ConfirmInput
-					message=""
-					onConfirm={() =>
-						updateConfig('autoMerge.safetyChecks.validateNoConflicts', true)
-					}
-					onCancel={() =>
-						updateConfig('autoMerge.safetyChecks.validateNoConflicts', false)
-					}
-				/>
-				<Text
-					color={
-						getConfigValue('autoMerge.safetyChecks.validateNoConflicts', true)
-							? 'green'
-							: 'red'
-					}
-				>
-					{getConfigValue('autoMerge.safetyChecks.validateNoConflicts', true)
-						? 'Enabled'
-						: 'Disabled'}
-				</Text>
+			{/* Build Validation */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold>Build Validation:</Text>
+				
+				<Box marginTop={1} flexDirection="column">
+					<Text>Enable Build Checks:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.build', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.build', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.build', !isVibeMode) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.build', !isVibeMode) ? 'Enabled' : 'Disabled'}
+					</Text>
+					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>Build Timeout (seconds):</Text>
+					<TextInput
+						placeholder="120"
+						defaultValue={String(getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.timeout', 120000) / 1000)}
+						onSubmit={(value) => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.timeout', parseInt(value) * 1000)}
+					/>
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>Fail on Build Error:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', isStrictMode) ? 'red' : 'yellow'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.buildValidation.failOnError', isStrictMode) ? 'Fail' : 'Warn'}
+					</Text>
+				</Box>
 			</Box>
 
-			<Box marginTop={1} flexDirection="column">
-				<Text>Validate Recent Activity:</Text>
-				<ConfirmInput
-					message=""
-					onConfirm={() =>
-						updateConfig('autoMerge.safetyChecks.validateRecentActivity', true)
-					}
-					onCancel={() =>
-						updateConfig('autoMerge.safetyChecks.validateRecentActivity', false)
-					}
-				/>
-				<Text
-					color={
-						getConfigValue(
-							'autoMerge.safetyChecks.validateRecentActivity',
-							true
-						)
-							? 'green'
-							: 'red'
-					}
-				>
-					{getConfigValue('autoMerge.safetyChecks.validateRecentActivity', true)
-						? 'Enabled'
-						: 'Disabled'}
-				</Text>
+			{/* Lint Validation */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold>Lint Validation:</Text>
+				
+				<Box marginTop={1} flexDirection="column">
+					<Text>Enable Linting Checks:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.linting', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.linting', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.linting', !isVibeMode) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.linting', !isVibeMode) ? 'Enabled' : 'Disabled'}
+					</Text>
+					{isVibeMode && <Text dimColor>(Disabled in Vibe Mode)</Text>}
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>Auto-fix Lint Issues:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.autoFix', false) ? 'Enabled' : 'Disabled'}
+					</Text>
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>Biome Enabled:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.biome.enabled', true) ? 'Enabled' : 'Disabled'}
+					</Text>
+				</Box>
+
+				<Box marginTop={1} flexDirection="column">
+					<Text>ESLint Enabled:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.lintValidation.tools.eslint.enabled', true) ? 'Enabled' : 'Disabled'}
+					</Text>
+				</Box>
+			</Box>
+
+			{/* Test Validation */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold>Test Validation:</Text>
+				
+				<Box marginTop={1} flexDirection="column">
+					<Text>Require Tests:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.tests', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.safetyChecks.tests', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.tests', isStrictMode) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.safetyChecks.tests', isStrictMode) ? 'Required' : 'Optional'}
+					</Text>
+					{!isStrictMode && <Text dimColor>(Only required in Strict Mode)</Text>}
+				</Box>
+			</Box>
+
+			{/* PR Creation */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold>PR Creation:</Text>
+				
+				<Box marginTop={1} flexDirection="column">
+					<Text>Auto-create PR:</Text>
+					<ConfirmInput
+						message=""
+						onConfirm={() => updateConfig('hooks.builtIn.claudeCodeStop.autoCreatePR', true)}
+						onCancel={() => updateConfig('hooks.builtIn.claudeCodeStop.autoCreatePR', false)}
+					/>
+					<Text color={getConfigValue('hooks.builtIn.claudeCodeStop.autoCreatePR', !isStrictMode) ? 'green' : 'red'}>
+						{getConfigValue('hooks.builtIn.claudeCodeStop.autoCreatePR', !isStrictMode) ? 'Enabled' : 'Disabled'}
+					</Text>
+					{isStrictMode && <Text dimColor>(Disabled in Strict Mode - manual approval required)</Text>}
+				</Box>
+			</Box>
+
+			{/* Mode Summary */}
+			<Box marginTop={2} flexDirection="column">
+				<Text bold color="cyan">Current Mode Summary:</Text>
+				<Box marginTop={1}>
+					{currentSafetyMode === 'vibe' && (
+						<Box flexDirection="column">
+							<Text color="green">✓ Git status check</Text>
+							<Text color="red">✗ Build validation</Text>
+							<Text color="red">✗ Lint validation</Text>
+							<Text color="red">✗ Test requirements</Text>
+							<Text color="red">✗ Conflict detection</Text>
+							<Text color="green">✓ Auto-create PR</Text>
+						</Box>
+					)}
+					{currentSafetyMode === 'standard' && (
+						<Box flexDirection="column">
+							<Text color="green">✓ Git status check</Text>
+							<Text color="green">✓ Build validation</Text>
+							<Text color="green">✓ Lint validation</Text>
+							<Text color="yellow">○ Test requirements (optional)</Text>
+							<Text color="green">✓ Conflict detection</Text>
+							<Text color="green">✓ Auto-create PR</Text>
+						</Box>
+					)}
+					{currentSafetyMode === 'strict' && (
+						<Box flexDirection="column">
+							<Text color="green">✓ Git status check</Text>
+							<Text color="green">✓ Build validation</Text>
+							<Text color="green">✓ Lint validation</Text>
+							<Text color="green">✓ Test requirements</Text>
+							<Text color="green">✓ Conflict detection</Text>
+							<Text color="yellow">○ Manual PR approval</Text>
+						</Box>
+					)}
+				</Box>
 			</Box>
 		</Box>
 	);
