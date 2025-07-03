@@ -99,7 +99,7 @@ This can be automated through Github Actions
 
 - **Merge Conflicts in Changeset Files**: Resolve just like any other merge conflict
 - **Multiple Changes in One PR**: Create multiple changesets if changes affect different areas
-- **Accidentally Committed Without Changeset**: Create the changeset after the fact and commit it separately
+- **Accidentally Committed Without Changeset**: Create the changeset after the fact by running `npx changeset` and commit it separately.
 
 ## Additional Resources
 
