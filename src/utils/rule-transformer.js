@@ -198,11 +198,11 @@ export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
 /**
  * Convert all Cursor rules to profile rules for a specific profile
  */
-export function convertAllRulesToProfileRules(projectDir, profile) {
+export function convertAllRulesToProfileRules(projectRoot, profile) {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = path.dirname(__filename);
 	const sourceDir = path.join(__dirname, '..', '..', 'assets', 'rules');
-	const targetDir = path.join(projectDir, profile.rulesDir);
+	const targetDir = path.join(projectRoot, profile.rulesDir);
 	const assetsDir = path.join(__dirname, '..', '..', 'assets');
 
 	let success = 0;
@@ -211,7 +211,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
-			profile.onAddRulesProfile(projectDir, assetsDir);
+			profile.onAddRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
@@ -292,7 +292,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	// 3. Setup MCP configuration (if enabled)
 	if (profile.mcpConfig !== false) {
 		try {
-			setupMCPConfiguration(projectDir, profile.mcpConfigPath);
+			setupMCPConfiguration(projectRoot, profile.mcpConfigPath);
 			log(
 				'debug',
 				`[Rule Transformer] Setup MCP configuration for ${profile.profileName}`
@@ -308,7 +308,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	// 4. Call post-conversion hook (for finalization)
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
 		try {
-			profile.onPostConvertRulesProfile(projectDir, assetsDir);
+			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
@@ -327,13 +327,13 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 
 /**
  * Remove only Task Master specific files from a profile, leaving other existing rules intact
- * @param {string} projectDir - Target project directory
+ * @param {string} projectRoot - Target project directory
  * @param {Object} profile - Profile configuration
  * @returns {Object} Result object
  */
-export function removeProfileRules(projectDir, profile) {
-	const targetDir = path.join(projectDir, profile.rulesDir);
-	const profileDir = path.join(projectDir, profile.profileDir);
+export function removeProfileRules(projectRoot, profile) {
+	const targetDir = path.join(projectRoot, profile.rulesDir);
+	const profileDir = path.join(projectRoot, profile.profileDir);
 
 	const result = {
 		profileName: profile.profileName,
@@ -350,7 +350,7 @@ export function removeProfileRules(projectDir, profile) {
 		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
 		if (typeof profile.onRemoveRulesProfile === 'function') {
 			try {
-				profile.onRemoveRulesProfile(projectDir);
+				profile.onRemoveRulesProfile(projectRoot);
 				log(
 					'debug',
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
@@ -439,7 +439,7 @@ export function removeProfileRules(projectDir, profile) {
 		if (profile.mcpConfig !== false) {
 			try {
 				result.mcpResult = removeTaskMasterMCPConfiguration(
-					projectDir,
+					projectRoot,
 					profile.mcpConfigPath
 				);
 				if (result.mcpResult.hasOtherServers) {
@@ -494,7 +494,7 @@ export function removeProfileRules(projectDir, profile) {
 		result.success = true;
 		log(
 			'debug',
-			`[Rule Transformer] Successfully removed ${profile.profileName} Task Master files from ${projectDir}`
+			`[Rule Transformer] Successfully removed ${profile.profileName} Task Master files from ${projectRoot}`
 		);
 	} catch (error) {
 		result.error = error.message;

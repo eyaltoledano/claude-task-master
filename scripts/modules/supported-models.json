@@ -713,5 +713,27 @@
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 64000
 		}
+	],
+	"gemini-cli": [
+		{
+			"id": "gemini-2.5-pro",
+			"swe_score": 0.72,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 65536
+		},
+		{
+			"id": "gemini-2.5-flash",
+			"swe_score": 0.71,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 65536
+		}
 	]
 }
