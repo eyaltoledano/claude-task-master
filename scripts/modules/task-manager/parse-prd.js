@@ -148,10 +148,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				report(overwriteError.message, 'error');
 				if (outputFormat === 'text') {
 					console.error(chalk.red(overwriteError.message));
-					process.exit(1);
-				} else {
-					throw overwriteError;
 				}
+				throw overwriteError;
 			} else {
 				// Force overwrite is true
 				report(
@@ -175,6 +173,11 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
+
+		// Get defaultTaskPriority from config
+		const { getDefaultPriority } = await import('../config-manager.js');
+		const defaultTaskPriority = getDefaultPriority(projectRoot) || 'medium';
+
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'parse-prd',
 			{
@@ -182,7 +185,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				numTasks,
 				nextId,
 				prdContent,
-				prdPath
+				prdPath,
+				defaultTaskPriority
 			}
 		);
 
@@ -365,11 +369,9 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				// Use projectRoot for debug flag check
 				console.error(error);
 			}
-
-			process.exit(1);
-		} else {
-			throw error; // Re-throw for JSON output
 		}
+
+		throw error; // Always re-throw for proper error handling
 	}
 }
 

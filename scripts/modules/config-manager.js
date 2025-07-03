@@ -61,6 +61,7 @@ const DEFAULTS = {
 	global: {
 		logLevel: 'info',
 		debug: false,
+		defaultNumTasks: 10,
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
@@ -500,7 +501,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Providers that don't require API keys for authentication
 	const providersWithoutApiKeys = [
 		CUSTOM_PROVIDERS.OLLAMA,
-		CUSTOM_PROVIDERS.BEDROCK
+		CUSTOM_PROVIDERS.BEDROCK,
+		CUSTOM_PROVIDERS.GEMINI_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -793,6 +795,13 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	}
 	return undefined;
 }
+
+// Export the providers without API keys array for use in other modules
+export const providersWithoutApiKeys = [
+	CUSTOM_PROVIDERS.OLLAMA,
+	CUSTOM_PROVIDERS.BEDROCK,
+	CUSTOM_PROVIDERS.GEMINI_CLI
+];
 
 export {
 	// Core config access

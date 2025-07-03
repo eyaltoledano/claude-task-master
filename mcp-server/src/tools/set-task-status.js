@@ -47,7 +47,8 @@ export function registerSetTaskStatusTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -86,7 +87,8 @@ export function registerSetTaskStatusTool(server) {
 						id: args.id,
 						status: args.status,
 						complexityReportPath,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: args.tag
 					},
 					log,
 					{ session }

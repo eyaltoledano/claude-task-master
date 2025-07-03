@@ -47,7 +47,9 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getDefaultNumTasks: jest.fn(() => 10),
+		getDefaultPriority: jest.fn(() => 'medium')
 	})
 );
 
@@ -73,9 +75,21 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn().mockResolvedValue({
-				systemPrompt: 'Mocked system prompt for parse-prd',
-				userPrompt: 'Mocked user prompt for parse-prd'
+			loadPrompt: jest.fn().mockImplementation((templateName, params) => {
+				// Create dynamic mock prompts based on the parameters
+				const { numTasks } = params || {};
+				let numTasksText = '';
+
+				if (numTasks > 0) {
+					numTasksText = `approximately ${numTasks}`;
+				} else {
+					numTasksText = 'an appropriate number of';
+				}
+
+				return Promise.resolve({
+					systemPrompt: 'Mocked system prompt for parse-prd',
+					userPrompt: `Generate ${numTasksText} top-level development tasks from the PRD content.`
+				});
 			})
 		})
 	})
@@ -106,13 +120,15 @@ jest.unstable_mockModule('path', () => ({
 }));
 
 // Import the mocked modules
-const { readJSON, writeJSON, log, promptYesNo } = await import(
+const { readJSON, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
 const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
+
+// Note: getDefaultNumTasks validation happens at CLI/MCP level, not in the main parse-prd module
 const generateTaskFiles = (
 	await import(
 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
@@ -357,33 +373,23 @@ describe('parsePRD', () => {
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
 	});
 
-	test('should call process.exit when tasks in tag exist without force flag in CLI mode', async () => {
+	test('should throw error when tasks in tag exist without force flag in CLI mode', async () => {
 		// Setup mocks to simulate tasks.json already exists with tasks in the target tag
 		fs.default.existsSync.mockReturnValue(true);
 		fs.default.readFileSync.mockReturnValueOnce(
 			JSON.stringify(existingTasksData)
 		);
 
-		// Mock process.exit for this specific test
-		const mockProcessExit = jest
-			.spyOn(process, 'exit')
-			.mockImplementation((code) => {
-				throw new Error(`process.exit: ${code}`);
-			});
-
-		// Call the function without mcpLog (CLI mode) and expect it to throw due to mocked process.exit
+		// Call the function without mcpLog (CLI mode) and expect it to throw an error
+		// In test environment, process.exit is prevented and error is thrown instead
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3)
-		).rejects.toThrow('process.exit: 1');
-
-		// Verify process.exit was called with code 1
-		expect(mockProcessExit).toHaveBeenCalledWith(1);
+		).rejects.toThrow(
+			"Tag 'master' already contains 2 tasks. Use --force to overwrite or --append to add to existing tasks."
+		);
 
 		// Verify the file was NOT written
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
-
-		// Restore the mock
-		mockProcessExit.mockRestore();
 	});
 
 	test('should append new tasks when append option is true', async () => {
@@ -444,5 +450,124 @@ describe('parsePRD', () => {
 
 		// Verify prompt was NOT called with append flag
 		expect(promptYesNo).not.toHaveBeenCalled();
+	});
+
+	describe('Dynamic Task Generation', () => {
+		test('should use dynamic prompting when numTasks is 0', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with numTasks=0 for dynamic generation
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the prompt
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+			expect(callArgs.prompt).not.toContain('approximately 0');
+		});
+
+		test('should use specific count prompting when numTasks is positive', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with specific numTasks
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 5);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+
+			// Get the call arguments to verify the prompt
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('approximately 5');
+			expect(callArgs.prompt).not.toContain('an appropriate number of');
+		});
+
+		test('should accept 0 as valid numTasks value', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with numTasks=0 - should not throw error
+			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+
+			// Verify it completed successfully
+			expect(result).toEqual({
+				success: true,
+				tasksPath: 'tasks/tasks.json',
+				telemetryData: {}
+			});
+		});
+
+		test('should use dynamic prompting when numTasks is negative (no validation in main module)', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with negative numTasks
+			// Note: The main parse-prd.js module doesn't validate numTasks - validation happens at CLI/MCP level
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', -5);
+
+			// Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			// Negative values are treated as <= 0, so should use dynamic prompting
+			expect(callArgs.prompt).toContain('an appropriate number of');
+			expect(callArgs.prompt).not.toContain('approximately -5');
+		});
+	});
+
+	describe('Configuration Integration', () => {
+		test('should use dynamic prompting when numTasks is null', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with null numTasks
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', null);
+
+			// Verify generateObjectService was called with dynamic prompting
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+		});
+
+		test('should use dynamic prompting when numTasks is invalid string', async () => {
+			// Setup mocks to simulate normal conditions (no existing output file)
+			fs.default.existsSync.mockImplementation((p) => {
+				if (p === 'tasks/tasks.json') return false; // Output file doesn't exist
+				if (p === 'tasks') return true; // Directory exists
+				return false;
+			});
+
+			// Call the function with invalid numTasks (string that's not a number)
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 'invalid');
+
+			// Verify generateObjectService was called with dynamic prompting
+			// Note: The main module doesn't validate - it just uses the value as-is
+			// Since 'invalid' > 0 is false, it uses dynamic prompting
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
+			expect(callArgs.prompt).toContain('an appropriate number of');
+		});
 	});
 });

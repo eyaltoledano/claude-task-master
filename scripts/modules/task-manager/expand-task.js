@@ -62,128 +62,6 @@ const subtaskWrapperSchema = z.object({
 // --- End Zod Schemas ---
 
 /**
- * Generates the system prompt for the main AI role (e.g., Claude).
- * @param {number} subtaskCount - The target number of subtasks.
- * @returns {string} The system prompt.
- */
-function generateMainSystemPrompt(subtaskCount) {
-	return `You are an AI assistant helping with task breakdown for software development.
-You need to break down a high-level task into ${subtaskCount} specific subtasks that can be implemented one by one.
-
-Subtasks should:
-1. Be specific and actionable implementation steps
-2. Follow a logical sequence
-3. Each handle a distinct part of the parent task
-4. Include clear guidance on implementation approach
-5. Have appropriate dependency chains between subtasks (using the new sequential IDs)
-6. Collectively cover all aspects of the parent task
-
-For each subtask, provide:
-- id: Sequential integer starting from the provided nextSubtaskId
-- title: Clear, specific title
-- description: Detailed description
-- dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
-- details: Implementation details, the output should be in string
-- testStrategy: Optional testing approach
-
-
-Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array matching the structure described. Do not include any explanatory text, markdown formatting, or code block markers.`;
-}
-
-/**
- * Generates the user prompt for the main AI role (e.g., Claude).
- * @param {Object} task - The parent task object.
- * @param {number} subtaskCount - The target number of subtasks.
- * @param {string} additionalContext - Optional additional context.
- * @param {number} nextSubtaskId - The starting ID for the new subtasks.
- * @returns {string} The user prompt.
- */
-function generateMainUserPrompt(
-	task,
-	subtaskCount,
-	additionalContext,
-	nextSubtaskId
-) {
-	const contextPrompt = additionalContext
-		? `\n\nAdditional context: ${additionalContext}`
-		: '';
-	const schemaDescription = `
-{
-  "subtasks": [
-    {
-      "id": ${nextSubtaskId}, // First subtask ID
-      "title": "Specific subtask title",
-      "description": "Detailed description",
-      "dependencies": [], // e.g., [${nextSubtaskId + 1}] if it depends on the next
-      "details": "Implementation guidance",
-      "testStrategy": "Optional testing approach"
-    },
-    // ... (repeat for a total of ${subtaskCount} subtasks with sequential IDs)
-  ]
-}`;
-
-	return `Break down this task into exactly ${subtaskCount} specific subtasks:
-
-Task ID: ${task.id}
-Title: ${task.title}
-Description: ${task.description}
-Current details: ${task.details || 'None'}
-${contextPrompt}
-
-Return ONLY the JSON object containing the "subtasks" array, matching this structure:
-${schemaDescription}`;
-}
-
-/**
- * Generates the user prompt for the research AI role (e.g., Perplexity).
- * @param {Object} task - The parent task object.
- * @param {number} subtaskCount - The target number of subtasks.
- * @param {string} additionalContext - Optional additional context.
- * @param {number} nextSubtaskId - The starting ID for the new subtasks.
- * @returns {string} The user prompt.
- */
-function generateResearchUserPrompt(
-	task,
-	subtaskCount,
-	additionalContext,
-	nextSubtaskId
-) {
-	const contextPrompt = additionalContext
-		? `\n\nConsider this context: ${additionalContext}`
-		: '';
-	const schemaDescription = `
-{
-  "subtasks": [
-    {
-      "id": <number>, // Sequential ID starting from ${nextSubtaskId}
-      "title": "<string>",
-      "description": "<string>",
-      "dependencies": [<number>], // e.g., [${nextSubtaskId + 1}]. If no dependencies, use an empty array [].
-      "details": "<string>",
-      "testStrategy": "<string>" // Optional
-    },
-    // ... (repeat for ${subtaskCount} subtasks)
-  ]
-}`;
-
-	return `Analyze the following task and break it down into exactly ${subtaskCount} specific subtasks using your research capabilities. Assign sequential IDs starting from ${nextSubtaskId}.
-
-Parent Task:
-ID: ${task.id}
-Title: ${task.title}
-Description: ${task.description}
-Current details: ${task.details || 'None'}
-${contextPrompt}
-
-CRITICAL: Respond ONLY with a valid JSON object containing a single key "subtasks". The value must be an array of the generated subtasks, strictly matching this structure:
-${schemaDescription}
-
-Important: For the 'dependencies' field, if a subtask has no dependencies, you MUST use an empty array, for example: "dependencies": []. Do not use null or omit the field.
-
-Do not include ANY explanatory text, markdown, or code block markers. Just the JSON object.`;
-}
-
-/**
  * Parse subtasks from AI's text response. Includes basic cleanup.
  * @param {string} text - Response text from AI.
  * @param {number} startId - Starting subtask ID expected.
@@ -545,7 +423,7 @@ async function expandTask(
 
 		// Determine final subtask count
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
-		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks > 0) {
+		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks >= 0) {
 			finalSubtaskCount = explicitNumSubtasks;
 			logger.info(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
@@ -559,7 +437,7 @@ async function expandTask(
 			finalSubtaskCount = getDefaultSubtasks(session);
 			logger.info(`Using default number of subtasks: ${finalSubtaskCount}`);
 		}
-		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount <= 0) {
+		if (Number.isNaN(finalSubtaskCount) || finalSubtaskCount < 0) {
 			logger.warn(
 				`Invalid subtask count determined (${finalSubtaskCount}), defaulting to 3.`
 			);
@@ -587,7 +465,9 @@ async function expandTask(
 			task: task,
 			subtaskCount: finalSubtaskCount,
 			nextSubtaskId: nextSubtaskId,
-			additionalContext: combinedAdditionalContext,
+			additionalContext: additionalContext,
+			complexityReasoningContext: complexityReasoningContext,
+			gatheredContext: gatheredContext,
 			useResearch: useResearch,
 			expansionPrompt: taskAnalysis?.expansionPrompt || null
 		};
@@ -614,7 +494,7 @@ async function expandTask(
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
 			loadingIndicator = startLoadingIndicator(
-				`Generating ${finalSubtaskCount} subtasks...\n`
+				`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 			);
 		}
 

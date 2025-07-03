@@ -106,8 +106,8 @@ All prompt templates are validated against JSON schemas located in `/src/prompts
 **Usage**: Used by `task-master add-task` command to create new tasks with AI assistance.
 
 ### 3. expand-task.json
-**Purpose**: Break down a task into detailed subtasks  
-**Variants**: `default`, `research` (when research mode is enabled)
+**Purpose**: Break down a task into detailed subtasks with three sophisticated strategies  
+**Variants**: `complexity-report` (when expansionPrompt exists), `research` (when research mode is enabled), `default` (standard case)
 
 **Required Parameters**:
 - `subtaskCount` (number): Number of subtasks to generate
@@ -115,10 +115,18 @@ All prompt templates are validated against JSON schemas located in `/src/prompts
 - `nextSubtaskId` (number): Starting ID for new subtasks
 
 **Optional Parameters**:
-- `additionalContext` (string): Additional context for expansion
+- `additionalContext` (string): Additional context for expansion (default: "")
+- `complexityReasoningContext` (string): Complexity analysis reasoning context (default: "")
+- `gatheredContext` (string): Gathered project context (default: "")
 - `useResearch` (boolean): Use research mode (default: false)
+- `expansionPrompt` (string): Expansion prompt from complexity report
 
-**Usage**: Used by `task-master expand` command to break complex tasks into manageable subtasks.
+**Variant Selection Strategy**:
+1. **complexity-report**: Used when `expansionPrompt` exists (highest priority)
+2. **research**: Used when `useResearch === true && !expansionPrompt`
+3. **default**: Standard fallback strategy
+
+**Usage**: Used by `task-master expand` command to break complex tasks into manageable subtasks using the most appropriate strategy based on available context and complexity analysis.
 
 ### 4. update-task.json
 **Purpose**: Update a single task with new information, supporting full updates and append mode  
@@ -283,6 +291,28 @@ The `not` helper enables clean negative conditional logic:
 - Negate boolean values: `(not useResearch)`
 - Negate truthy/falsy values: `(not emptyArray)`
 - Cleaner than separate boolean parameters: No need for `notUseResearch` flags
+
+#### Numeric Comparison Helpers
+Use `{{#if (gt variable number)}}...{{/if}}` for greater than comparisons:
+```
+"user": "generate {{#if (gt numTasks 0)}}approximately {{numTasks}}{{else}}an appropriate number of{{/if}} top-level development tasks"
+"user": "{{#if (gt complexity 5)}}This is a complex task{{/if}}"
+"system": "create {{#if (gt subtaskCount 0)}}exactly {{subtaskCount}}{{else}}an appropriate number of{{/if}} subtasks"
+```
+
+Use `{{#if (gte variable number)}}...{{/if}}` for greater than or equal comparisons:
+```
+"user": "{{#if (gte priority 8)}}HIGH PRIORITY{{/if}}"
+"user": "{{#if (gte threshold 1)}}Analysis enabled{{/if}}"
+"system": "{{#if (gte complexityScore 8)}}Use detailed breakdown approach{{/if}}"
+```
+
+The numeric comparison helpers enable sophisticated conditional logic:
+- **Dynamic counting**: `{{#if (gt numTasks 0)}}exactly {{numTasks}}{{else}}an appropriate number of{{/if}}`
+- **Threshold-based behavior**: `(gte complexityScore 8)` for high-complexity handling
+- **Zero checks**: `(gt subtaskCount 0)` for conditional content generation
+- **Decimal support**: `(gt score 7.5)` for fractional comparisons
+- **Enhanced prompt sophistication**: Enables parse-prd and expand-task logic matching GitHub specifications
 
 ### Loops
 Use `{{#each array}}...{{/each}}` to iterate over arrays:

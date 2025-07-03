@@ -1,0 +1,53 @@
+{
+	"version": "1.0.0",
+	"worktrees": {
+		"claude-task-master": {
+			"path": "/Users/danziger/claude-task-master",
+			"linkedTasks": [
+				{
+					"id": "105",
+					"type": "task",
+					"tag": "master"
+				}
+			],
+			"createdAt": "2025-06-26T13:11:40.099Z",
+			"lastUpdated": "2025-06-26T15:34:24.747Z",
+			"description": "Test linking",
+			"status": "active"
+		},
+		"claude-task-master-test-feature": {
+			"path": "/Users/danziger/claude-task-master-test-feature",
+			"linkedTasks": [
+				{
+					"id": "1",
+					"type": "task",
+					"tag": "master"
+				},
+				{
+					"id": "105.1",
+					"type": "subtask",
+					"tag": "master"
+				},
+				{
+					"id": "105",
+					"type": "task",
+					"tag": "master"
+				},
+				{
+					"id": "105.2",
+					"type": "subtask",
+					"tag": "master"
+				},
+				{
+					"id": "105.3",
+					"type": "subtask",
+					"tag": "master"
+				}
+			],
+			"createdAt": "2025-06-26T15:06:04.238Z",
+			"lastUpdated": "2025-06-26T15:43:43.450Z",
+			"description": "",
+			"status": "active"
+		}
+	}
+}

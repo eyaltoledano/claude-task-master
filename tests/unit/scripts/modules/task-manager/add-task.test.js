@@ -270,7 +270,9 @@ describe('addTask', () => {
 						})
 					])
 				})
-			})
+			}),
+			'/mock/project/root', // projectRoot parameter
+			'master' // tag parameter
 		);
 		expect(result).toEqual(
 			expect.objectContaining({
@@ -311,7 +313,9 @@ describe('addTask', () => {
 						})
 					])
 				})
-			})
+			}),
+			'/mock/project/root', // projectRoot parameter
+			'master' // tag parameter
 		);
 	});
 
@@ -346,7 +350,9 @@ describe('addTask', () => {
 						})
 					])
 				})
-			})
+			}),
+			'/mock/project/root', // projectRoot parameter
+			'master' // tag parameter
 		);
 		expect(context.mcpLog.warn).toHaveBeenCalledWith(
 			expect.stringContaining(
@@ -378,7 +384,9 @@ describe('addTask', () => {
 						})
 					])
 				})
-			})
+			}),
+			'/mock/project/root', // projectRoot parameter
+			'master' // tag parameter
 		);
 	});
 
@@ -413,7 +421,9 @@ describe('addTask', () => {
 						})
 					])
 				})
-			})
+			}),
+			'/mock/project/root', // projectRoot parameter
+			'master' // tag parameter
 		);
 	});
 

@@ -89,7 +89,7 @@ These templates have `useResearch` or `research` parameters that modify prompt c
 
 ### Templates with Legitimate Separate Variants
 These templates have genuinely different prompts for different use cases:
-- **expand-task** (default, research, complexity-report variants)
+- **expand-task** (default, research, complexity-report variants) - Three sophisticated strategies with advanced parameter support
 - **research** (low, medium, high detail level variants)
 
 ### Single Variant Templates
@@ -98,16 +98,16 @@ These templates only have one variant because research mode only changes AI role
 
 ### Prompt Templates (8 total)
 - **add-task** (default, research variants)
-- **expand-task** (default, research, complexity-report variants)
+- **expand-task** (default, research, complexity-report variants) - Enhanced with sophisticated parameter support and context handling
 - **analyze-complexity** (default variant)
 - **research** (low, medium, high detail variants)
-- **parse-prd** (default variant)
+- **parse-prd** (default variant) - Enhanced with sophisticated numTasks conditional logic
 - **update-subtask** (default variant with `useResearch` conditional content)
 - **update-task** (default, append variants; research uses `useResearch` conditional content)
 - **update-tasks** (default variant with `useResearch` conditional content)
 
 ### Test Scenarios (19 total)
-- 16 valid template/variant combinations
+- 16 valid template/variant combinations (including enhanced expand-task with new parameter support)
 - 3 error condition tests (nonexistent variants, templates, missing params)
 
 ### Validation

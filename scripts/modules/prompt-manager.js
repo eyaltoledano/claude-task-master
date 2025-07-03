@@ -283,6 +283,28 @@ export class PromptManager {
 			return !value ? 'true' : 'false';
 		});
 
+		// Handle gt (greater than) helper function like (gt variable 0)
+		rendered = rendered.replace(
+			/\(gt\s+(\w+(?:\.\w+)*)\s+(\d+(?:\.\d+)?)\)/g,
+			(match, path, compareValue) => {
+				const value = this.getNestedValue(variables, path);
+				const numValue = parseFloat(compareValue);
+				return typeof value === 'number' && value > numValue ? 'true' : 'false';
+			}
+		);
+
+		// Handle gte (greater than or equal) helper function like (gte variable 0)
+		rendered = rendered.replace(
+			/\(gte\s+(\w+(?:\.\w+)*)\s+(\d+(?:\.\d+)?)\)/g,
+			(match, path, compareValue) => {
+				const value = this.getNestedValue(variables, path);
+				const numValue = parseFloat(compareValue);
+				return typeof value === 'number' && value >= numValue
+					? 'true'
+					: 'false';
+			}
+		);
+
 		// Handle conditionals {{#if variable}}...{{/if}}
 		rendered = rendered.replace(
 			/\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g,

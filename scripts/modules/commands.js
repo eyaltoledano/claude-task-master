@@ -69,7 +69,9 @@ import {
 	ConfigurationError,
 	isConfigFilePresent,
 	getAvailableModels,
-	getBaseUrlForRole
+	getBaseUrlForRole,
+	getDefaultNumTasks,
+	getDefaultSubtasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -803,7 +805,11 @@ function registerCommands(programInstance) {
 			'Path to the PRD file (alternative to positional argument)'
 		)
 		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
-		.option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
+		.option(
+			'-n, --num-tasks <number>',
+			'Number of tasks to generate',
+			getDefaultNumTasks()
+		)
 		.option('-f, --force', 'Skip confirmation when overwriting existing tasks')
 		.option(
 			'--append',
@@ -3421,6 +3427,10 @@ ${result.result}
 			'--vertex',
 			'Allow setting a custom Vertex AI model ID (use with --set-*) '
 		)
+		.option(
+			'--gemini-cli',
+			'Allow setting a Gemini CLI model ID (use with --set-*)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3435,6 +3445,7 @@ Examples:
   $ task-master models --set-main sonnet --claude-code           # Set Claude Code model for main role
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
+  $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3448,12 +3459,13 @@ Examples:
 				options.openrouter,
 				options.ollama,
 				options.bedrock,
-				options.claudeCode
+				options.claudeCode,
+				options.geminiCli
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3497,7 +3509,9 @@ Examples:
 									? 'bedrock'
 									: options.claudeCode
 										? 'claude-code'
-										: undefined
+										: options.geminiCli
+											? 'gemini-cli'
+											: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3521,7 +3535,9 @@ Examples:
 									? 'bedrock'
 									: options.claudeCode
 										? 'claude-code'
-										: undefined
+										: options.geminiCli
+											? 'gemini-cli'
+											: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3547,7 +3563,9 @@ Examples:
 									? 'bedrock'
 									: options.claudeCode
 										? 'claude-code'
-										: undefined
+										: options.geminiCli
+											? 'gemini-cli'
+											: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

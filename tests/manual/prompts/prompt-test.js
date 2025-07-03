@@ -97,8 +97,10 @@ const sampleData = {
 					nextSubtaskId: 1,
 					additionalContext:
 						'Use React components and Chart.js for visualizations.',
-					useResearch: false,
-					expansionPrompt: ''
+					complexityReasoningContext: '',
+					gatheredContext:
+						'React application with existing user authentication and data models for user activities and preferences.',
+					useResearch: false
 				},
 				variants: ['default']
 			},
@@ -116,8 +118,11 @@ const sampleData = {
 					nextSubtaskId: 1,
 					additionalContext:
 						'Current tech stack: Node.js, PostgreSQL, Redis. Consider Docker and Kubernetes.',
-					useResearch: true,
-					expansionPrompt: ''
+					complexityReasoningContext:
+						'\nComplexity Analysis Reasoning: This task involves significant architectural changes requiring careful planning, service decomposition, data migration, and deployment orchestration.',
+					gatheredContext:
+						'Monolithic Express.js application with tightly coupled modules, shared database, and existing API contracts that need to be maintained during migration.',
+					useResearch: true
 				},
 				variants: ['research']
 			},
@@ -135,6 +140,10 @@ const sampleData = {
 					nextSubtaskId: 1,
 					additionalContext:
 						'Existing data is in PostgreSQL. Consider Elasticsearch integration.',
+					complexityReasoningContext:
+						'\nComplexity Analysis Reasoning: High complexity due to search infrastructure requirements, indexing strategy design, query optimization needs, and performance considerations.',
+					gatheredContext:
+						'E-commerce application with product catalog, user reviews, and inventory data stored in PostgreSQL. Current simple search using LIKE queries is insufficient for growing data volume.',
 					useResearch: false,
 					expansionPrompt:
 						'Break down this complex search implementation focusing on: 1) Search infrastructure setup, 2) Indexing strategy, 3) Query optimization, 4) User interface components, 5) Performance testing and monitoring.'
