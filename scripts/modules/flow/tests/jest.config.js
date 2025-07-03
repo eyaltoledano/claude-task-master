@@ -1,13 +1,16 @@
 /**
  * Jest Configuration for Task Master Flow Tests
  * 
- * Standard Node.js configuration for testing the Flow system components
- * including AST processing, cache management, and UI components.
+ * ES Modules configuration for testing the Flow system components
+ * including AST processing, cache management, and service testing.
  */
 
 export default {
 	// Test environment
 	testEnvironment: 'node',
+	
+	// Enable ES modules support (extensionsToTreatAsEsm not needed with type: module in package.json)
+	transform: {},
 	
 	// Module name mapping for easier imports
 	moduleNameMapper: {
@@ -62,8 +65,8 @@ export default {
 	// Maximum number of concurrent workers
 	maxWorkers: '50%',
 	
-	// Timeout for tests (30 seconds)
-	testTimeout: 30000,
+	// Timeout for tests (10 seconds for service tests)
+	testTimeout: 10000,
 	
 	// Global setup and teardown
 	globalSetup: undefined,
@@ -78,5 +81,10 @@ export default {
 		'<rootDir>/../node_modules',
 		'<rootDir>/../../node_modules',
 		'<rootDir>/../../../node_modules'
+	],
+	
+	// Transform ignore patterns for ES modules
+	transformIgnorePatterns: [
+		'node_modules/(?!(some-esm-package)/)'
 	]
 };
