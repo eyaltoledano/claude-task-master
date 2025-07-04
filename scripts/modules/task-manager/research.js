@@ -12,6 +12,7 @@ import { highlight } from 'cli-highlight';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { generateTextService } from '../ai-services-unified.js';
+import { getPromptManager } from '../prompt-manager.js';
 import {
 	log as consoleLog,
 	findProjectRoot,
@@ -190,14 +191,26 @@ async function performResearch(
 		const gatheredContext = contextResult.context;
 		const tokenBreakdown = contextResult.tokenBreakdown;
 
-		// Build system prompt based on detail level
-		const systemPrompt = buildResearchSystemPrompt(detailLevel, projectRoot);
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
 
-		// Build user prompt with context
-		const userPrompt = buildResearchUserPrompt(
-			query,
-			gatheredContext,
-			detailLevel
+		const promptParams = {
+			query: query,
+			gatheredContext: gatheredContext || '',
+			detailLevel: detailLevel,
+			projectInfo: {
+				root: projectRoot,
+				taskCount: finalTaskIds.length,
+				fileCount: filePaths.length
+			}
+		};
+
+		// Select variant based on detail level
+		const variantKey = detailLevel; // 'low', 'medium', or 'high'
+		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+			'research',
+			promptParams,
+			variantKey
 		);
 
 		// Count tokens for system and user prompts
@@ -347,94 +360,6 @@ async function performResearch(
 
 		throw error;
 	}
-}
-
-/**
- * Build system prompt for research based on detail level
- * @param {string} detailLevel - Detail level: 'low', 'medium', 'high'
- * @param {string} projectRoot - Project root for context
- * @returns {string} System prompt
- */
-function buildResearchSystemPrompt(detailLevel, projectRoot) {
-	const basePrompt = `You are an expert AI research assistant helping with a software development project. You have access to project context including tasks, files, and project structure.
-
-Your role is to provide comprehensive, accurate, and actionable research responses based on the user's query and the provided project context.`;
-
-	const detailInstructions = {
-		low: `
-**Response Style: Concise & Direct**
-- Provide brief, focused answers (2-4 paragraphs maximum)
-- Focus on the most essential information
-- Use bullet points for key takeaways
-- Avoid lengthy explanations unless critical
-- Skip pleasantries, introductions, and conclusions
-- No phrases like "Based on your project context" or "I'll provide guidance"
-- No summary outros or alignment statements
-- Get straight to the actionable information
-- Use simple, direct language - users want info, not explanation`,
-
-		medium: `
-**Response Style: Balanced & Comprehensive**
-- Provide thorough but well-structured responses (4-8 paragraphs)
-- Include relevant examples and explanations
-- Balance depth with readability
-- Use headings and bullet points for organization`,
-
-		high: `
-**Response Style: Detailed & Exhaustive**
-- Provide comprehensive, in-depth analysis (8+ paragraphs)
-- Include multiple perspectives and approaches
-- Provide detailed examples, code snippets, and step-by-step guidance
-- Cover edge cases and potential pitfalls
-- Use clear structure with headings, subheadings, and lists`
-	};
-
-	return `${basePrompt}
-
-${detailInstructions[detailLevel]}
-
-**Guidelines:**
-- Always consider the project context when formulating responses
-- Reference specific tasks, files, or project elements when relevant
-- Provide actionable insights that can be applied to the project
-- If the query relates to existing project tasks, suggest how the research applies to those tasks
-- Use markdown formatting for better readability
-- Be precise and avoid speculation unless clearly marked as such
-
-**For LOW detail level specifically:**
-- Start immediately with the core information
-- No introductory phrases or context acknowledgments
-- No concluding summaries or project alignment statements
-- Focus purely on facts, steps, and actionable items`;
-}
-
-/**
- * Build user prompt with query and context
- * @param {string} query - User's research query
- * @param {string} gatheredContext - Gathered project context
- * @param {string} detailLevel - Detail level for response guidance
- * @returns {string} Complete user prompt
- */
-function buildResearchUserPrompt(query, gatheredContext, detailLevel) {
-	let prompt = `# Research Query
-
-${query}`;
-
-	if (gatheredContext && gatheredContext.trim()) {
-		prompt += `
-
-# Project Context
-
-${gatheredContext}`;
-	}
-
-	prompt += `
-
-# Instructions
-
-Please research and provide a ${detailLevel}-detail response to the query above. Consider the project context provided and make your response as relevant and actionable as possible for this specific project.`;
-
-	return prompt;
 }
 
 /**

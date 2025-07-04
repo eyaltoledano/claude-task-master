@@ -53,6 +53,8 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"ai": "^4.3.10",
+		"ajv": "^8.17.1",
+		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"cli-highlight": "^2.1.11",
@@ -79,7 +81,15 @@
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
-		"ai-sdk-provider-gemini-cli": "^0.0.3"
+		"ai-sdk-provider-gemini-cli": "^0.0.3",
+		"@biomejs/cli-linux-x64": "^1.9.4",
+		"@biomejs/cli-win32-x64": "^1.9.4",
+		"@biomejs/cli-darwin-x64": "^1.9.4",
+		"@biomejs/cli-linux-arm64": "^1.9.4",
+		"@biomejs/cli-win32-arm64": "^1.9.4",
+		"@biomejs/cli-darwin-arm64": "^1.9.4",
+		"@biomejs/cli-linux-x64-musl": "^1.9.4",
+		"@biomejs/cli-linux-arm64-musl": "^1.9.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
