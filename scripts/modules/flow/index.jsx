@@ -37,6 +37,7 @@ import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
+import { initializeNextTaskService } from './services/NextTaskService.js';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -179,6 +180,15 @@ function FlowApp({ backend, options = {} }) {
 
 				// Initialize hook integration service
 				await initializeHookIntegration(currentBackend);
+
+				// Initialize next task service with default configuration
+				await initializeNextTaskService(currentBackend, {
+					autoProgressToNext: true,
+					progressDelay: 2000, // 2 seconds
+					requireCleanWorktree: false, // Relaxed for development
+					maxRetries: 2,
+					retryDelay: 3000
+				});
 
 				// Initialize branch awareness manager
 				const branchMgr = new BranchAwarenessManager(currentBackend.projectRoot || process.cwd());

@@ -4,6 +4,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { getNextTaskService, isNextTaskServiceInitialized } from '../../services/NextTaskService.js';
 
 export default class ClaudeCodeStopHook {
 	constructor() {
@@ -33,11 +34,21 @@ export default class ClaudeCodeStopHook {
 			// Step 2: Use WorktreeManager.completeSubtask() for comprehensive workflow
 			const workflowResult = await this.executeWorkflow(task, worktree, services, effectiveConfig, safetyMode, repoInfo);
 
+			// Step 3: Execute next task progression (if workflow was successful)
+			let nextTaskResult = null;
+			if (workflowResult.success) {
+				console.log('🎯 Workflow completed successfully, checking for next task progression...');
+				nextTaskResult = await this.executeNextTaskProgression(task, worktree, services, effectiveConfig);
+			} else {
+				console.log('⚠️ Workflow had issues, skipping next task progression');
+			}
+
 			return {
 				success: true,
 				safetyMode,
 				repositoryType: repoInfo.type,
 				workflow: workflowResult,
+				nextTask: nextTaskResult,
 				timestamp: new Date().toISOString()
 			};
 
@@ -1337,5 +1348,159 @@ export default class ClaudeCodeStopHook {
 			prUrl: prResult.prUrl,
 			taskId: task.id
 		};
+	}
+
+	/**
+	 * Execute next task progression using NextTaskService
+	 * Phase 2 Implementation - Auto-progression to next available task
+	 */
+	async executeNextTaskProgression(currentTask, currentWorktree, services, config) {
+		try {
+			console.log('\n🎯 [Claude Code Stop] Starting next task progression...');
+
+			// Check if NextTaskService is initialized
+			if (!isNextTaskServiceInitialized()) {
+				console.log('⚠️ NextTaskService not initialized, skipping progression');
+				return {
+					success: false,
+					skipped: true,
+					reason: 'NextTaskService not initialized'
+				};
+			}
+
+			const nextTaskService = getNextTaskService();
+
+			// Check configuration
+			const progressionConfig = config.nextTaskProgression || {};
+			const isEnabled = progressionConfig.enabled !== false; // Default to enabled
+
+			if (!isEnabled) {
+				console.log('📝 Next task progression disabled in configuration');
+				return {
+					success: true,
+					skipped: true,
+					reason: 'Disabled in configuration',
+					message: 'Auto-progression disabled - ready for manual task selection'
+				};
+			}
+
+			// Build current context for the NextTaskService
+			const currentContext = {
+				task: currentTask,
+				worktree: currentWorktree,
+				completedAt: new Date().toISOString()
+			};
+
+			// Configure progression options
+			const progressionOptions = {
+				skipDelay: progressionConfig.skipDelay || false,
+				forceProgression: progressionConfig.forceProgression || false,
+				enableRetries: progressionConfig.enableRetries !== false, // Default to enabled
+				currentWorktree: currentWorktree
+			};
+
+			console.log('🚀 Executing next task progression workflow...');
+			const progressionResult = await nextTaskService.executeNextTaskProgression(currentContext, progressionOptions);
+
+			if (progressionResult.success) {
+				if (progressionResult.completed) {
+					console.log('🎉 All tasks completed! Project finished!');
+					return {
+						success: true,
+						completed: true,
+						message: progressionResult.message,
+						suggestions: progressionResult.suggestions
+					};
+				}
+
+				if (progressionResult.skipped) {
+					console.log(`⏭️ Next task progression skipped: ${progressionResult.reason}`);
+					return {
+						success: true,
+						skipped: true,
+						reason: progressionResult.reason,
+						message: progressionResult.message
+					};
+				}
+
+				// Successfully progressed to next task
+				console.log(`✅ Successfully progressed to task ${progressionResult.nextTask.id}`);
+				
+				// Log the transition for visibility
+				this.logTaskTransition(currentTask, progressionResult.nextTask);
+
+				return {
+					success: true,
+					progressed: true,
+					previousTask: {
+						id: currentTask.id,
+						title: currentTask.title,
+						status: 'completed'
+					},
+					nextTask: {
+						id: progressionResult.nextTask.id,
+						title: progressionResult.nextTask.title,
+						status: 'in-progress'
+					},
+					worktree: progressionResult.worktree,
+					validationResult: progressionResult.validationResult,
+					message: progressionResult.message,
+					telemetryData: progressionResult.telemetryData
+				};
+
+			} else {
+				// Progression failed
+				console.error(`❌ Next task progression failed: ${progressionResult.error}`);
+				
+				if (progressionResult.requiresManualIntervention) {
+					console.log('👨‍💻 Manual intervention required for next task');
+					return {
+						success: false,
+						requiresManualIntervention: true,
+						error: progressionResult.error,
+						nextTask: progressionResult.nextTask,
+						validationResult: progressionResult.validationResult,
+						message: 'Please manually review and start the next task'
+					};
+				}
+
+				return {
+					success: false,
+					error: progressionResult.error,
+					phase: progressionResult.phase,
+					retryCount: progressionResult.retryCount,
+					message: 'Next task progression failed - manual intervention may be required'
+				};
+			}
+
+		} catch (error) {
+			console.error('❌ [Claude Code Stop] Next task progression error:', error.message);
+			return {
+				success: false,
+				error: error.message,
+				phase: 'exception',
+				message: 'Unexpected error during next task progression'
+			};
+		}
+	}
+
+	/**
+	 * Log task transition for visibility
+	 */
+	logTaskTransition(fromTask, toTask) {
+		console.log('\n📋 Task Transition Summary:');
+		console.log(`  ✅ Completed: ${fromTask.id} - ${fromTask.title}`);
+		console.log(`  🎯 Starting:  ${toTask.id} - ${toTask.title}`);
+		
+		if (toTask.dependencies && toTask.dependencies.length > 0) {
+			console.log(`  📎 Dependencies: ${toTask.dependencies.join(', ')}`);
+		}
+		
+		if (toTask.subtasks && toTask.subtasks.length > 0) {
+			const pendingSubtasks = toTask.subtasks.filter(st => st.status === 'pending').length;
+			console.log(`  📝 Subtasks: ${pendingSubtasks}/${toTask.subtasks.length} pending`);
+		}
+		
+		console.log(''); // Empty line for readability
 	}
 } 
