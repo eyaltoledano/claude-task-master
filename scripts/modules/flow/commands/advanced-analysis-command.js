@@ -16,7 +16,7 @@ export function registerAdvancedAnalysisCommands(program, context) {
 		.command('advanced:analyze')
 		.description('Run comprehensive advanced analysis on project or file')
 		.option('-f, --file <file>', 'Analyze specific file')
-		.option('-p, --project <path>', 'Analyze entire project', '.')
+		.option('-p, --project-root <path>', 'Analyze entire project', '.')
 		.option('--cross-language', 'Enable cross-language analysis', true)
 		.option('--refactoring', 'Enable refactoring suggestions', true)
 		.option('--patterns', 'Enable pattern detection', true)
@@ -46,8 +46,8 @@ export function registerAdvancedAnalysisCommands(program, context) {
 					// File analysis would require parsing the file first
 					console.log('File analysis requires AST parsing integration');
 				} else {
-					console.log(`🔍 Analyzing project: ${options.project}`);
-					const results = await engine.analyzeProject(options.project);
+					console.log(`🔍 Analyzing project: ${options.projectRoot}`);
+					const results = await engine.analyzeProject(options.projectRoot);
 
 					console.log('\n📊 Analysis Results:');
 					console.log(`- Project Path: ${results.projectPath}`);

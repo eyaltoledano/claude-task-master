@@ -1569,11 +1569,15 @@ export class DirectBackend extends FlowBackend {
 
 	async getWorktreeTasks(worktreeName) {
 		try {
+			console.log(`🔍 [getWorktreeTasks] Called for worktree: "${worktreeName}"`);
 			const config = await this.getWorktreesConfig();
 
 			if (!config.worktrees[worktreeName]) {
+				console.log(`🔍 [getWorktreeTasks] No config found for worktree: "${worktreeName}"`);
 				return [];
 			}
+
+			console.log(`🔍 [getWorktreeTasks] Worktree config:`, config.worktrees[worktreeName]);
 
 			// Load tasks directly from JSON file to get ALL fields including 'details'
 			const tasksPath = path.join(
@@ -1588,7 +1592,10 @@ export class DirectBackend extends FlowBackend {
 			const tag =
 				config.worktrees[worktreeName].linkedTasks[0]?.tag || 'master';
 
+			console.log(`🔍 [getWorktreeTasks] Using tag: "${tag}"`);
+
 			if (!tasksData[tag]) {
+				console.log(`🔍 [getWorktreeTasks] No tasks data found for tag: "${tag}"`);
 				return [];
 			}
 
@@ -1596,11 +1603,13 @@ export class DirectBackend extends FlowBackend {
 			const linkedTaskIds = config.worktrees[worktreeName].linkedTasks.map(
 				(t) => t.id
 			);
+			console.log(`🔍 [getWorktreeTasks] Looking for linked task IDs:`, linkedTaskIds);
 			const linkedTasks = [];
 
 			// Find linked tasks and subtasks
 			for (const task of allTasks) {
 				if (linkedTaskIds.includes(task.id.toString())) {
+					console.log(`🔍 [getWorktreeTasks] Found parent task: ${task.id}`);
 					linkedTasks.push(task);
 				}
 				// Check subtasks
@@ -1608,6 +1617,7 @@ export class DirectBackend extends FlowBackend {
 					for (const subtask of task.subtasks) {
 						const subtaskId = `${task.id}.${subtask.id}`;
 						if (linkedTaskIds.includes(subtaskId)) {
+							console.log(`🔍 [getWorktreeTasks] Found subtask: ${subtaskId}`);
 							// Include ALL fields from subtask
 							linkedTasks.push({
 								...subtask,
@@ -1623,6 +1633,7 @@ export class DirectBackend extends FlowBackend {
 				}
 			}
 
+			console.log(`🔍 [getWorktreeTasks] Final result:`, linkedTasks);
 			return linkedTasks;
 		} catch (error) {
 			this.log.error(`Error getting worktree tasks: ${error.message}`);

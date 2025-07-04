@@ -1173,65 +1173,58 @@ Completed via Task Master Flow.`
 		}
 	}
 
-	// Linked Tasks - show all of them with subtask prominence
-	const subtasks = linkedTasks.filter(task => task.parentId);
-	const parentTasks = linkedTasks.filter(task => !task.parentId);
+	// Linked Task - show the single linked subtask (1:1 relationship)
+	console.log('🔍 [WorktreeDetailsModal] linkedTasks:', linkedTasks);
+	const linkedSubtask = linkedTasks.find(task => task.parentId);
+	console.log('🔍 [WorktreeDetailsModal] linkedSubtask found:', linkedSubtask);
 	
 	detailContent.push({
 		type: 'header',
-		content: `Linked Tasks (${linkedTasks.length}):`
+		content: 'Linked Subtask:'
 	});
 	
-	if (linkedTasks.length === 0) {
+	if (!linkedSubtask) {
 		detailContent.push({
 			type: 'text',
-			content: '  No tasks linked to this worktree',
-			color: theme.muted,
+			content: '  No subtask linked to this worktree',
+			color: theme.warning,
 			indent: 2
 		});
-	} else {
-		// Show primary subtask first (most common case)
-		if (subtasks.length > 0) {
-			const primarySubtask = subtasks[0]; // First subtask is primary
-			const statusIcon = primarySubtask.status === 'done' ? ' ✓' : 
-							   primarySubtask.status === 'in-progress' ? ' ⚡' : '';
-			
+		
+		// Debug: show what tasks we do have
+		if (linkedTasks.length > 0) {
 			detailContent.push({
 				type: 'text',
-				content: `  🎯 Primary: Subtask ${primarySubtask.id} - ${primarySubtask.title}${statusIcon}`,
-				color: theme.accent,
+				content: `  Debug: Found ${linkedTasks.length} linked tasks`,
+				color: theme.muted,
 				indent: 2
 			});
-			
-			// Show additional subtasks if any
-			if (subtasks.length > 1) {
-				subtasks.slice(1).forEach((task) => {
-					const statusIcon = task.status === 'done' ? ' ✓' : 
-									   task.status === 'in-progress' ? ' ⚡' : '';
-					detailContent.push({
-						type: 'task',
-						content: `  └─ Subtask ${task.id}: ${task.title}${statusIcon}`,
-						status: task.status,
-						indent: 2
-					});
-				});
-			}
-		}
-		
-		// Show parent tasks
-		if (parentTasks.length > 0) {
-			if (subtasks.length > 0) {
-				detailContent.push({ type: 'blank' });
-			}
-			parentTasks.forEach((task) => {
-				const statusIcon = task.status === 'done' ? ' ✓' : 
-								   task.status === 'in-progress' ? ' ⚡' : '';
+			linkedTasks.forEach((task, index) => {
 				detailContent.push({
-					type: 'task',
-					content: `  • Task ${task.id}: ${task.title}${statusIcon}`,
-					status: task.status,
+					type: 'text',
+					content: `    ${index}: id=${task.id}, parentId=${task.parentId}, title=${task.title}`,
+					color: theme.muted,
 					indent: 2
 				});
+			});
+		}
+	} else {
+		const statusIcon = linkedSubtask.status === 'done' ? ' ✓' : 
+						   linkedSubtask.status === 'in-progress' ? ' ⚡' : '';
+		
+		detailContent.push({
+			type: 'text',
+			content: `  🎯 Subtask ${linkedSubtask.id}: ${linkedSubtask.title}${statusIcon}`,
+			color: theme.accent,
+			indent: 2
+		});
+		
+		if (linkedSubtask.description) {
+			detailContent.push({
+				type: 'text',
+				content: `     ${linkedSubtask.description}`,
+				color: theme.textDim,
+				indent: 2
 			});
 		}
 	}

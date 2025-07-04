@@ -54,6 +54,14 @@ export default function GitWorktreeScreen({
 		loadWorktrees();
 	}, [loadWorktrees]);
 
+	// Handle navigation data to auto-open details modal
+	useEffect(() => {
+		if (navigationData?.selectedWorktree && navigationData?.showDetails) {
+			setWorktreeDetails(navigationData.selectedWorktree);
+			setShowDetailsModal(true);
+		}
+	}, [navigationData]);
+
 	// Handle worktree operations
 	const handleAddWorktree = useCallback(
 		async (name, source, checkout = false) => {
