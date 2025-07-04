@@ -198,7 +198,7 @@ export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
 /**
  * Convert all Cursor rules to profile rules for a specific profile
  */
-export function convertAllRulesToProfileRules(projectDir, profile) {
+export function convertAllRulesToProfileRules(projectRoot, profile) {
 	// Handle simple profiles (Claude, Codex) that just copy files to root
 	const isSimpleProfile = Object.keys(profile.fileMap).length === 0;
 	if (isSimpleProfile) {
@@ -208,7 +208,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 		const assetsDir = path.join(__dirname, '..', '..', 'assets');
 
 		if (typeof profile.onPostConvertRulesProfile === 'function') {
-			profile.onPostConvertRulesProfile(projectDir, assetsDir);
+			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
 		}
 		return { success: 1, failed: 0 };
 	}
@@ -216,7 +216,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = path.dirname(__filename);
 	const sourceDir = path.join(__dirname, '..', '..', 'assets', 'rules');
-	const targetDir = path.join(projectDir, profile.rulesDir);
+	const targetDir = path.join(projectRoot, profile.rulesDir);
 
 	// Ensure target directory exists
 	if (!fs.existsSync(targetDir)) {
@@ -225,7 +225,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 
 	// Setup MCP configuration if enabled
 	if (profile.mcpConfig !== false) {
-		setupMCPConfiguration(projectDir, profile.mcpConfigPath);
+		setupMCPConfiguration(projectRoot, profile.mcpConfigPath);
 	}
 
 	let success = 0;
@@ -286,7 +286,7 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 	// Call post-processing hook if defined (e.g., for Roo's rules-*mode* folders)
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
 		const assetsDir = path.join(__dirname, '..', '..', 'assets');
-		profile.onPostConvertRulesProfile(projectDir, assetsDir);
+		profile.onPostConvertRulesProfile(projectRoot, assetsDir);
 	}
 
 	return { success, failed };
@@ -294,13 +294,13 @@ export function convertAllRulesToProfileRules(projectDir, profile) {
 
 /**
  * Remove only Task Master specific files from a profile, leaving other existing rules intact
- * @param {string} projectDir - Target project directory
+ * @param {string} projectRoot - Target project directory
  * @param {Object} profile - Profile configuration
  * @returns {Object} Result object
  */
-export function removeProfileRules(projectDir, profile) {
-	const targetDir = path.join(projectDir, profile.rulesDir);
-	const profileDir = path.join(projectDir, profile.profileDir);
+export function removeProfileRules(projectRoot, profile) {
+	const targetDir = path.join(projectRoot, profile.rulesDir);
+	const profileDir = path.join(projectRoot, profile.profileDir);
 
 	const result = {
 		profileName: profile.profileName,
@@ -320,12 +320,12 @@ export function removeProfileRules(projectDir, profile) {
 		if (isSimpleProfile) {
 			// For simple profiles, just call their removal hook and return
 			if (typeof profile.onRemoveRulesProfile === 'function') {
-				profile.onRemoveRulesProfile(projectDir);
+				profile.onRemoveRulesProfile(projectRoot);
 			}
 			result.success = true;
 			log(
 				'debug',
-				`[Rule Transformer] Successfully removed ${profile.profileName} files from ${projectDir}`
+				`[Rule Transformer] Successfully removed ${profile.profileName} files from ${projectRoot}`
 			);
 			return result;
 		}
@@ -418,7 +418,7 @@ export function removeProfileRules(projectDir, profile) {
 		// 2. Handle MCP configuration - only remove Task Master, preserve other servers
 		if (profile.mcpConfig !== false) {
 			result.mcpResult = removeTaskMasterMCPConfiguration(
-				projectDir,
+				projectRoot,
 				profile.mcpConfigPath
 			);
 			if (result.mcpResult.hasOtherServers) {
@@ -432,7 +432,7 @@ export function removeProfileRules(projectDir, profile) {
 
 		// 3. Call removal hook if defined (e.g., Roo's custom cleanup)
 		if (typeof profile.onRemoveRulesProfile === 'function') {
-			profile.onRemoveRulesProfile(projectDir);
+			profile.onRemoveRulesProfile(projectRoot);
 		}
 
 		// 4. Only remove profile directory if:
@@ -490,7 +490,7 @@ export function removeProfileRules(projectDir, profile) {
 		result.success = true;
 		log(
 			'debug',
-			`[Rule Transformer] Successfully removed ${profile.profileName} Task Master files from ${projectDir}`
+			`[Rule Transformer] Successfully removed ${profile.profileName} Task Master files from ${projectRoot}`
 		);
 	} catch (error) {
 		result.error = error.message;

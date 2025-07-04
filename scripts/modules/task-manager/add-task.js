@@ -28,6 +28,7 @@ import {
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
+import generateTaskFiles from './generate-task-files.js';
 
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
@@ -553,18 +554,18 @@ async function addTask(
 		report('DEBUG: Writing tasks.json...', 'debug');
 		// Write the updated raw data back to the file
 		// The writeJSON function will automatically filter out _rawTaggedData
-		writeJSON(tasksPath, rawData);
+		writeJSON(tasksPath, rawData, projectRoot, targetTag);
 		report('DEBUG: tasks.json written.', 'debug');
 
 		// Generate markdown task files
-		// report('Generating task files...', 'info');
-		// report('DEBUG: Calling generateTaskFiles...', 'debug');
-		// // Pass mcpLog if available to generateTaskFiles
-		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-		// 	projectRoot,
-		// 	tag: targetTag
-		// });
-		// report('DEBUG: generateTaskFiles finished.', 'debug');
+		report('Generating task files...', 'info');
+		report('DEBUG: Calling generateTaskFiles...', 'debug');
+		// Pass mcpLog if available to generateTaskFiles
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+			projectRoot,
+			tag: targetTag
+		});
+		report('DEBUG: generateTaskFiles finished.', 'debug');
 
 		// Show success message - only for text output (CLI)
 		if (outputFormat === 'text') {

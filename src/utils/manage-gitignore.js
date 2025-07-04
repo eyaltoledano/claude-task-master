@@ -170,7 +170,7 @@ function validateInputs(targetPath, content, storeTasksInGit) {
  */
 function createNewGitignoreFile(targetPath, templateLines, log) {
 	try {
-		fs.writeFileSync(targetPath, templateLines.join('\n'));
+		fs.writeFileSync(targetPath, templateLines.join('\n') + '\n');
 		if (typeof log === 'function') {
 			log('success', `Created ${targetPath} with full template`);
 		}
@@ -223,7 +223,7 @@ function mergeWithExistingFile(
 		finalLines.push(...buildTaskFilesSection(storeTasksInGit));
 
 		// Write result
-		fs.writeFileSync(targetPath, finalLines.join('\n'));
+		fs.writeFileSync(targetPath, finalLines.join('\n') + '\n');
 
 		if (typeof log === 'function') {
 			const hasNewContent =

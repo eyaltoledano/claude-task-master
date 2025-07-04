@@ -1,10 +1,17 @@
-# Available Models as of June 21, 2025
+# Available Models as of July 2, 2025
 
 ## Main Models
 
 | Provider    | Model Name                                     | SWE Score | Input Cost | Output Cost |
 | ----------- | ---------------------------------------------- | --------- | ---------- | ----------- |
+| bedrock     | us.anthropic.claude-3-haiku-20240307-v1:0      | 0.4       | 0.25       | 1.25        |
+| bedrock     | us.anthropic.claude-3-opus-20240229-v1:0       | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0   | 0.49      | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0   | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-7-sonnet-20250219-v1:0   | 0.623     | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
+| bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
 | anthropic   | claude-sonnet-4-20250514                       | 0.727     | 3          | 15          |
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
@@ -67,29 +74,46 @@
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 
 ## Research Models
 
-| Provider    | Model Name                 | SWE Score | Input Cost | Output Cost |
-| ----------- | -------------------------- | --------- | ---------- | ----------- |
-| bedrock     | us.deepseek.r1-v1:0        | —         | 1.35       | 5.4         |
-| openai      | gpt-4o-search-preview      | 0.33      | 2.5        | 10          |
-| openai      | gpt-4o-mini-search-preview | 0.3       | 0.15       | 0.6         |
-| perplexity  | sonar-pro                  | —         | 3          | 15          |
-| perplexity  | sonar                      | —         | 1          | 1           |
-| perplexity  | deep-research              | 0.211     | 2          | 8           |
-| perplexity  | sonar-reasoning-pro        | 0.211     | 2          | 8           |
-| perplexity  | sonar-reasoning            | 0.211     | 1          | 5           |
-| xai         | grok-3                     | —         | 3          | 15          |
-| xai         | grok-3-fast                | —         | 5          | 25          |
-| claude-code | opus                       | 0.725     | 0          | 0           |
-| claude-code | sonnet                     | 0.727     | 0          | 0           |
+| Provider    | Model Name                                   | SWE Score | Input Cost | Output Cost |
+| ----------- | -------------------------------------------- | --------- | ---------- | ----------- |
+| bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0 | 0.49      | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0 | 0.49      | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-7-sonnet-20250219-v1:0 | 0.623     | 3          | 15          |
+| bedrock     | us.anthropic.claude-opus-4-20250514-v1:0     | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0   | 0.727     | 3          | 15          |
+| bedrock     | us.deepseek.r1-v1:0                          | —         | 1.35       | 5.4         |
+| openai      | gpt-4o-search-preview                        | 0.33      | 2.5        | 10          |
+| openai      | gpt-4o-mini-search-preview                   | 0.3       | 0.15       | 0.6         |
+| perplexity  | sonar-pro                                    | —         | 3          | 15          |
+| perplexity  | sonar                                        | —         | 1          | 1           |
+| perplexity  | deep-research                                | 0.211     | 2          | 8           |
+| perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
+| perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
+| xai         | grok-3                                       | —         | 3          | 15          |
+| xai         | grok-3-fast                                  | —         | 5          | 25          |
+| claude-code | opus                                         | 0.725     | 0          | 0           |
+| claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
 
 ## Fallback Models
 
 | Provider    | Model Name                                     | SWE Score | Input Cost | Output Cost |
 | ----------- | ---------------------------------------------- | --------- | ---------- | ----------- |
+| bedrock     | us.anthropic.claude-3-haiku-20240307-v1:0      | 0.4       | 0.25       | 1.25        |
+| bedrock     | us.anthropic.claude-3-opus-20240229-v1:0       | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0   | 0.49      | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0   | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-7-sonnet-20250219-v1:0   | 0.623     | 3          | 15          |
+| bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
+| bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
+| bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
 | anthropic   | claude-sonnet-4-20250514                       | 0.727     | 3          | 15          |
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
@@ -141,3 +165,5 @@
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
+| gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |

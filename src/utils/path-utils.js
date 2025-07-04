@@ -25,6 +25,9 @@ import { getLoggerOrDefault } from './logger-utils.js';
 export function normalizeProjectRoot(projectRoot) {
 	if (!projectRoot) return projectRoot;
 
+	// Ensure it's a string
+	projectRoot = String(projectRoot);
+
 	// Split the path into segments
 	const segments = projectRoot.split(path.sep);
 
