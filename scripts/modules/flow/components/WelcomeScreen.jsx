@@ -142,7 +142,7 @@ export function WelcomeScreen() {
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
-								<Text color={theme.accent}>/trees</Text>
+								<Text color={theme.accent}>/work</Text>
 							</Box>
 							<Box width={34}>
 								<Text>Manage Git worktrees</Text>

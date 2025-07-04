@@ -98,7 +98,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
-			{ name: '/trees', description: 'Manage Git worktrees' },
+			{ name: '/work', description: 'Manage Git worktrees' },
 			{ name: '/claude', description: 'Claude Code assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
@@ -383,7 +383,7 @@ function FlowApp({ backend, options = {} }) {
 						});
 					}
 					break;
-				case 'theme':
+				case 'theme': {
 					// Cycle through auto -> light -> dark -> auto
 					let newTheme;
 					if (currentTheme === 'auto') {
@@ -415,6 +415,7 @@ function FlowApp({ backend, options = {} }) {
 						duration: 3000
 					});
 					break;
+				}
 				case 'models':
 					// Launch the interactive models setup
 					launchSetupCommand('models', ['--setup']);
@@ -426,7 +427,7 @@ function FlowApp({ backend, options = {} }) {
 				case 'chat':
 					setCurrentScreen('chat');
 					break;
-				case 'trees':
+				case 'work':
 					setCurrentScreen('worktrees');
 					break;
 				case 'claude':
@@ -594,7 +595,7 @@ function FlowApp({ backend, options = {} }) {
 					case 'r':
 						launchSetupCommand('rules', ['--setup']);
 						break;
-					case 'd':
+					case 'd': {
 						// Theme toggle
 						let newTheme;
 						if (currentTheme === 'auto') {
@@ -626,6 +627,7 @@ function FlowApp({ backend, options = {} }) {
 							duration: 3000
 						});
 						break;
+					}
 					case 'q':
 						exit();
 						break;
