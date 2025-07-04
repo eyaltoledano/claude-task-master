@@ -1,10 +1,10 @@
-import path from 'path';
-import fs from 'fs';
 import {
 	getConfig,
 	isConfigFilePresent,
 	writeConfig
 } from '../config-manager.js';
+import { findConfigPath } from '../../../src/utils/path-utils.js';
+import { log } from '../utils.js';
 
 function setResponseLanguage(lang, options = {}) {
 	const { mcpLog, projectRoot } = options;
@@ -15,23 +15,18 @@ function setResponseLanguage(lang, options = {}) {
 		}
 	};
 
-	let configPath;
-	let configExists = false;
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
 
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
-	}
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
 
 	if (!configExists) {
 		return {
@@ -39,7 +34,7 @@ function setResponseLanguage(lang, options = {}) {
 			error: {
 				code: 'CONFIG_MISSING',
 				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
+					'The configuration file is missing. Run "task-master models --setup" to create it.'
 			}
 		};
 	}
@@ -65,7 +60,7 @@ function setResponseLanguage(lang, options = {}) {
 				success: false,
 				error: {
 					code: 'WRITE_ERROR',
-					message: 'Error writing updated configuration to .taskmasterconfig'
+					message: 'Error writing updated configuration to configuration file'
 				}
 			};
 		}
