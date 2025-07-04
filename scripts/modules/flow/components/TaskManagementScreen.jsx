@@ -226,6 +226,9 @@ export function TaskManagementScreen() {
 			else if (isSearching) {
 				setIsSearching(false);
 				setSearchQuery('');
+			} else if (viewMode === 'list') {
+				// ESC from list view goes back to main menu
+				setCurrentScreen('welcome');
 			}
 			return;
 		}
@@ -1327,6 +1330,45 @@ Focus on: current industry standards, common pitfalls, security considerations
 			reloadTasks(); // Reload tasks to show updated details
 		} catch (error) {
 			setToast({ message: `Research failed: ${error.message}`, type: 'error' });
+		}
+	};
+
+	const cycleFilter = () => {
+		const filters = ['all', 'pending', 'in-progress', 'done'];
+		const currentIndex = filters.indexOf(filter);
+		const nextIndex = (currentIndex + 1) % filters.length;
+		setFilter(filters[nextIndex]);
+		setSelectedIndex(0);
+		setScrollOffset(0);
+	};
+
+	const cyclePriorityFilter = () => {
+		const priorities = ['all', 'high', 'medium', 'low'];
+		const currentIndex = priorities.indexOf(priorityFilter);
+		const nextIndex = (currentIndex + 1) % priorities.length;
+		setPriorityFilter(priorities[nextIndex]);
+		setSelectedIndex(0);
+		setScrollOffset(0);
+	};
+
+	// Navigation functions for list view
+	const handleDownArrow = () => {
+		const newIndex = Math.min(selectedIndex + 1, filteredTasks.length - 1);
+		setSelectedIndex(newIndex);
+
+		// Adjust scroll if needed
+		if (newIndex >= scrollOffset + VISIBLE_ROWS) {
+			setScrollOffset(newIndex - VISIBLE_ROWS + 1);
+		}
+	};
+
+	const handleUpArrow = () => {
+		const newIndex = Math.max(selectedIndex - 1, 0);
+		setSelectedIndex(newIndex);
+
+		// Adjust scroll if needed
+		if (newIndex < scrollOffset) {
+			setScrollOffset(newIndex);
 		}
 	};
 
