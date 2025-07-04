@@ -1,9 +1,51 @@
 import { backgroundOperations } from './BackgroundOperationsManager.js';
 import { v4 as uuidv4 } from 'uuid';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 export class BackgroundClaudeCode {
 	constructor(backend) {
 		this.backend = backend;
+		this.flowConfig = null;
+	}
+
+	/**
+	 * Load flow configuration for Claude Code settings
+	 */
+	getFlowConfig() {
+		if (this.flowConfig) {
+			return this.flowConfig;
+		}
+
+		try {
+			// Try to find the flow-config.json file relative to the project root
+			const configPath = path.join(process.cwd(), 'scripts/modules/flow/flow-config.json');
+			const configData = readFileSync(configPath, 'utf8');
+			this.flowConfig = JSON.parse(configData);
+			return this.flowConfig;
+		} catch (error) {
+			console.warn('Could not load flow-config.json, using defaults:', error.message);
+			// Return default configuration
+			return {
+				claudeCode: {
+					enabled: true,
+					permissionMode: 'acceptEdits',
+					headlessPermissionMode: 'auto',
+					defaultMaxTurns: 10,
+					headlessMaxTurns: 15,
+					headless: {
+						enabled: true,
+						autoAcceptEdits: true,
+						captureOutput: true,
+						maxTurns: 15,
+						permissionMode: 'auto',
+						timeoutMinutes: 30,
+						enableAutoCommit: true,
+						enableAutoPR: true
+					}
+				}
+			};
+		}
 	}
 
 	/**
@@ -110,6 +152,27 @@ export class BackgroundClaudeCode {
 					}
 				}
 
+				// Get flow configuration for headless settings
+				const config = this.getFlowConfig();
+				const claudeConfig = config.claudeCode || {};
+				const headlessConfig = claudeConfig.headless || {};
+
+				// Resolve final configuration
+				const finalConfig = {
+					maxTurns: metadata.maxTurns || headlessConfig.maxTurns || claudeConfig.headlessMaxTurns || 15,
+					permissionMode: headlessConfig.permissionMode || claudeConfig.headlessPermissionMode || 'auto',
+					allowedTools: metadata.allowedTools || claudeConfig.allowedTools,
+					captureOutput: headlessConfig.captureOutput !== false,
+					autoAcceptEdits: headlessConfig.autoAcceptEdits !== false
+				};
+
+				console.log(`🤖 [BackgroundClaudeCode] Starting headless session with config:`, {
+					permissionMode: finalConfig.permissionMode,
+					maxTurns: finalConfig.maxTurns,
+					autoAcceptEdits: finalConfig.autoAcceptEdits,
+					captureOutput: finalConfig.captureOutput
+				});
+
 				// Use launchClaudeHeadless which properly prepares CLAUDE.md
 				result = await this.backend.launchClaudeHeadless(
 					worktree,
@@ -117,10 +180,11 @@ export class BackgroundClaudeCode {
 					prompt,
 					{
 						persona: metadata.persona || options.persona,
-						maxTurns: metadata.maxTurns || 10,
-						permissionMode: 'acceptEdits',
-						allowedTools: metadata.allowedTools,
-						captureOutput: true,
+						maxTurns: finalConfig.maxTurns,
+						permissionMode: finalConfig.permissionMode,
+						allowedTools: finalConfig.allowedTools,
+						captureOutput: finalConfig.captureOutput,
+						autoAcceptEdits: finalConfig.autoAcceptEdits,
 						abortController: options.abortController,
 						onProgress: (message) => {
 							// Add message to the operation
