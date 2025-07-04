@@ -22,10 +22,9 @@ import { createAnalyzerDispatcher } from '../analyzers/analyzer-dispatcher.js';
 import ContextBuilder from './context-builder.js';
 import fs from 'fs-extra';
 import path from 'path';
-import globPkg from 'glob';
+import { glob } from 'glob';
 import { createRequire } from 'module';
 import { EventEmitter } from 'events';
-const { glob } = globPkg;
 
 const require = createRequire(import.meta.url);
 
