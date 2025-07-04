@@ -26,14 +26,21 @@ export default class ClaudeCodeStopHook {
 
 			console.log(`\n🛡️  Claude Code Stop Hook (Safety Mode: ${safetyMode})`);
 
-			// Run safety checks based on mode
+			// Step 1: Commit changes immediately (following dev_workflow.mdc)
+			const commitResult = await this.commitSessionChanges(task, worktree, services);
+			
+			// Step 2: Update task status to 'done' 
+			const statusResult = await this.updateTaskStatus(task, services);
+
+			// Step 3: Run safety checks for PR readiness
 			const safetyResults = await this.runSafetyChecks(effectiveConfig, worktree, services);
 
-			// Determine if we should proceed with PR creation
+			// Step 4: Determine if we should proceed with PR creation
 			const shouldCreatePR = this.shouldCreatePR(safetyResults, effectiveConfig, safetyMode);
 
+			let prResult = null;
 			if (shouldCreatePR) {
-				await this.createPR(task, worktree, services, effectiveConfig, safetyResults);
+				prResult = await this.createPR(task, worktree, services, effectiveConfig, safetyResults);
 			} else {
 				console.log('❌ PR creation skipped due to safety check failures or configuration');
 			}
@@ -41,8 +48,11 @@ export default class ClaudeCodeStopHook {
 			return {
 				success: true,
 				safetyMode,
+				commitResult,
+				statusResult,
 				safetyResults,
 				prCreated: shouldCreatePR,
+				prResult,
 				timestamp: new Date().toISOString()
 			};
 
@@ -495,20 +505,29 @@ export default class ClaudeCodeStopHook {
 				throw new Error('No worktree available for PR creation');
 			}
 
+			let prResult;
 			// Use existing completeSubtaskWithPR for subtasks, direct GitHub CLI for main tasks
 			if (task?.isSubtask || String(task?.id).includes('.')) {
 				console.log('  📝 Creating PR for subtask...');
-				await services.backend?.completeSubtaskWithPR?.(task.id, worktree);
+				prResult = await services.backend?.completeSubtaskWithPR?.(task.id, worktree);
 			} else {
 				console.log('  📝 Creating PR for main task...');
-				await this.createMainTaskPR(task, worktree, safetyResults);
+				prResult = await this.createMainTaskPR(task, worktree, safetyResults);
 			}
 
 			console.log('✅ PR created successfully');
+			return {
+				success: true,
+				message: 'PR created successfully',
+				prResult
+			};
 
 		} catch (error) {
 			console.error('❌ Failed to create PR:', error.message);
-			throw error;
+			return {
+				success: false,
+				error: error.message
+			};
 		}
 	}
 
@@ -520,26 +539,32 @@ export default class ClaudeCodeStopHook {
 		process.chdir(worktree.path);
 
 		try {
-			// Commit any remaining changes
-			try {
-				execSync('git add .', { stdio: 'pipe' });
-				execSync(`git commit -m "Complete task ${task.id}: ${task.title}"`, { stdio: 'pipe' });
-			} catch (error) {
-				// Ignore if nothing to commit
-			}
-
-			// Push the branch
-			execSync(`git push origin ${worktree.branch}`, { stdio: 'pipe' });
+			// Push the branch (changes already committed in commitSessionChanges)
+			console.log(`  📤 Pushing branch ${worktree.branch}...`);
+			execSync(`git push origin ${worktree.branch}`, { stdio: 'inherit' });
 
 			// Create PR with safety results in description
 			const safetyReport = this.generateSafetyReport(safetyResults);
 			const prTitle = `Task ${task.id}: ${task.title}`;
 			const prBody = `${task.description || ''}\n\n## Safety Check Results\n\n${safetyReport}`;
 
-			execSync(
+			console.log('  📋 Creating GitHub PR...');
+			const prOutput = execSync(
 				`gh pr create --title "${prTitle}" --body "${prBody}" --head ${worktree.branch}`,
-				{ stdio: 'pipe' }
+				{ encoding: 'utf8' }
 			);
+
+			// Extract PR URL from output
+			const prUrlMatch = prOutput.match(/https:\/\/github\.com\/[^\s]+/);
+			const prUrl = prUrlMatch ? prUrlMatch[0] : null;
+
+			return {
+				success: true,
+				prUrl,
+				title: prTitle,
+				description: prBody,
+				branch: worktree.branch
+			};
 
 		} finally {
 			process.chdir(originalCwd);
@@ -690,5 +715,125 @@ export default class ClaudeCodeStopHook {
 		}
 
 		return tools;
+	}
+
+	/**
+	 * Commit session changes immediately after Claude completion
+	 */
+	async commitSessionChanges(task, worktree, services) {
+		try {
+			console.log('💾 Committing session changes...');
+			
+			if (!worktree?.path) {
+				return { success: false, error: 'No worktree available' };
+			}
+
+			const originalCwd = process.cwd();
+			process.chdir(worktree.path);
+
+			try {
+				// Check if there are any changes to commit
+				let hasChanges = false;
+				try {
+					const status = execSync('git status --porcelain', { encoding: 'utf8' });
+					hasChanges = status.trim().length > 0;
+				} catch (error) {
+					return { success: false, error: `Git status check failed: ${error.message}` };
+				}
+
+				if (!hasChanges) {
+					console.log('  ℹ️  No changes to commit');
+					return { success: true, message: 'No changes to commit', hasChanges: false };
+				}
+
+				// Stage all changes
+				try {
+					execSync('git add .', { stdio: 'inherit' });
+					console.log('  ✅ Changes staged');
+				} catch (error) {
+					return { success: false, error: `Failed to stage changes: ${error.message}` };
+				}
+
+				// Create commit message
+				const commitMessage = task?.isSubtask || String(task?.id).includes('.')
+					? `Complete subtask ${task.id}: ${task.title || 'Claude Code session'}`
+					: `Complete task ${task.id}: ${task.title || 'Claude Code session'}`;
+
+				// Commit changes
+				try {
+					execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
+					console.log(`  ✅ Changes committed: ${commitMessage}`);
+				} catch (error) {
+					return { success: false, error: `Failed to commit changes: ${error.message}` };
+				}
+
+				// Get commit hash for reference
+				let commitHash;
+				try {
+					commitHash = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+				} catch (error) {
+					// Not critical if we can't get the hash
+					commitHash = 'unknown';
+				}
+
+				return {
+					success: true,
+					message: 'Changes committed successfully',
+					hasChanges: true,
+					commitMessage,
+					commitHash: commitHash.substring(0, 8) // Short hash
+				};
+
+			} finally {
+				process.chdir(originalCwd);
+			}
+
+		} catch (error) {
+			console.error('❌ Failed to commit session changes:', error.message);
+			return { success: false, error: error.message };
+		}
+	}
+
+	/**
+	 * Update task status to 'done' after successful session
+	 */
+	async updateTaskStatus(task, services) {
+		try {
+			console.log('📝 Updating task status to done...');
+			
+			if (!task?.id) {
+				return { success: false, error: 'No task ID available' };
+			}
+
+			if (!services?.backend) {
+				return { success: false, error: 'Backend service not available' };
+			}
+
+			// Update task status to 'done'
+			const result = await services.backend.setTaskStatus({
+				id: task.id,
+				status: 'done'
+			});
+
+			if (result?.success) {
+				console.log(`  ✅ Task ${task.id} marked as done`);
+				return {
+					success: true,
+					message: `Task ${task.id} marked as done`,
+					taskId: task.id,
+					previousStatus: task.status,
+					newStatus: 'done'
+				};
+			} else {
+				return { 
+					success: false, 
+					error: result?.error || 'Failed to update task status' 
+				};
+			}
+
+		} catch (error) {
+			console.error('❌ Failed to update task status:', error.message);
+			return { success: false, error: error.message };
+		}
 	}
 } 

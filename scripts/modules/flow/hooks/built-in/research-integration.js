@@ -112,10 +112,10 @@ export default class ResearchIntegrationHook {
 					sessionInfo = existingResearch.sessionCount > 1 
 						? `${existingResearch.sessionCount} research sessions found in subtask`
 						: 'Research session found in subtask';
-					
+				
 					lastUpdatedInfo = existingResearch.format === 'current'
-						? `Last updated: ${existingResearch.lastUpdated}`
-						: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
+					? `Last updated: ${existingResearch.lastUpdated}`
+					: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
 
 					message = `${sessionInfo}. ${lastUpdatedInfo}`;
 				} else if (hasResearchInParent) {

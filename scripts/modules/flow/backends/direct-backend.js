@@ -1639,18 +1639,18 @@ export class DirectBackend extends FlowBackend {
 			for (const [name, data] of Object.entries(config.worktrees)) {
 				let hasTask = false;
 
-				// Check if it has the old linkedTasks array structure
-				if (data.linkedTasks && Array.isArray(data.linkedTasks)) {
-					hasTask = data.linkedTasks.some((t) => t.id === taskId);
-				}
+				// We are in development, so we will only support the new `linkedSubtask` structure.
+				// No fallbacks to the old `linkedTasks` array.
+				if (data.linkedSubtask) {
+					const { fullId, taskId: parentId } = data.linkedSubtask;
 
-				// Check if it has the new linkedSubtask structure
-				if (!hasTask && data.linkedSubtask) {
-					// Check if the task ID matches the parent task ID
-					hasTask = String(data.linkedSubtask.taskId) === String(taskId);
-					// Or check if it matches the full subtask ID
-					if (!hasTask) {
-						hasTask = data.linkedSubtask.fullId === taskId;
+					// Check if the incoming taskId matches the full subtask ID (e.g., "6.1")
+					// or the parent task ID (e.g., "6").
+					// We compare as strings to avoid type mismatch issues.
+					if (String(taskId).includes('.')) {
+						hasTask = String(fullId) === String(taskId);
+					} else {
+						hasTask = String(parentId) === String(taskId);
 					}
 				}
 
@@ -1658,15 +1658,16 @@ export class DirectBackend extends FlowBackend {
 					worktrees.push({
 						name,
 						path: data.path,
-						description: data.description || data.linkedSubtask?.title || '',
-						status: data.status || 'active'
+						branch: data.branch,
+						status: data.status,
+						linkedSubtask: data.linkedSubtask
 					});
 				}
 			}
 
 			return worktrees;
 		} catch (error) {
-			this.log.error(`Error getting task worktrees: ${error.message}`);
+			console.error('Error getting task worktrees:', error);
 			return [];
 		}
 	}
@@ -5260,11 +5261,15 @@ ${prompt}
 		try {
 			// Use the BranchAwarenessManager if available
 			if (this.branchManager) {
+				const remoteData = await this.branchManager.detectRemoteRepository();
 				return {
-					isGitHub: await this.branchManager.isGitHubRepository(),
-					provider: await this.branchManager.detectRemoteRepository(),
+					isGitHub: remoteData.isGitHub,
+					provider: remoteData.provider,
 					hasGitHubCLI: await this.branchManager.canCreatePullRequests(),
-					remoteInfo: await this.branchManager.getRemoteInfo()
+					remoteInfo: await this.branchManager.getRemoteInfo(),
+					error: remoteData.error || null,
+					hasRemote: remoteData.hasRemote,
+					url: remoteData.url
 				};
 			}
 

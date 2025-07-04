@@ -244,9 +244,7 @@ export function TaskManagementScreen() {
 				else if (key.upArrow) handleUpArrow();
 				else if (key.return && filteredTasks.length > 0) {
 					const task = filteredTasks[selectedIndex];
-					setSelectedTask(task);
-					setViewMode('detail');
-					setDetailScrollOffset(0);
+					showTaskDetail(task);
 				} else if (input === 'f') cycleFilter();
 				else if (input === 'p') cyclePriorityFilter();
 				else if (input === 't' && filteredTasks.length > 0) {
@@ -297,8 +295,27 @@ export function TaskManagementScreen() {
 					});
 				} else if (input === 'c') {
 					handleClaudeSession();
-				}
-				else if (input === 'r') setShowResearchModal(true);
+				} else if (input === 'w') {
+					// Jump to worktree from subtask detail
+					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+					const worktrees = subtaskWorktrees.get(subtaskId) || [];
+					
+					if (worktrees.length > 0) {
+						// Navigate to the first (and only) linked worktree
+						const worktree = worktrees[0];
+						setCurrentScreen('worktree-details', { 
+							worktree: { 
+								name: worktree.name, 
+								path: worktree.path 
+							} 
+						});
+					} else {
+						setToast({
+							message: 'No worktrees linked to this subtask',
+							type: 'warning'
+						});
+					}
+				} else if (input === 'r') setShowResearchModal(true);
 				break;
 		}
 	});
@@ -326,11 +343,13 @@ export function TaskManagementScreen() {
 				const subtaskWorktreePromises = fullTask.subtasks.map(
 					async (subtask) => {
 						const subtaskId = `${fullTask.id}.${subtask.id}`;
+						
 						try {
 							const subtaskWorktrees =
 								await backend.getTaskWorktrees(subtaskId);
 							return { subtaskId, worktrees: subtaskWorktrees || [] };
 						} catch (error) {
+							console.error(`Error fetching worktrees for ${subtaskId}:`, error);
 							return { subtaskId, worktrees: [] };
 						}
 					}
@@ -340,6 +359,7 @@ export function TaskManagementScreen() {
 				const subtaskWorktreeResults = await Promise.all(
 					subtaskWorktreePromises
 				);
+				
 				const subtaskWorktreeMap = new Map(
 					subtaskWorktreeResults.map((result) => [
 						result.subtaskId,
@@ -1288,6 +1308,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 				setRepoInfo(info);
 			} catch (error) {
 				console.warn('Failed to detect repository info:', error.message);
+				setRepoInfo(null); // Ensure repoInfo is null on error
 			}
 		};
 
@@ -1968,7 +1989,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 			});
 
 			// Add workflow status information
-			if (gitStatus) {
+			if (gitStatus && repoInfo && typeof repoInfo === 'object' && !repoInfo.error) {
 				contentLines.push({ type: 'spacer' });
 				contentLines.push({
 					type: 'workflow-status',
