@@ -101,8 +101,7 @@ export async function removeTaskDirect(args, log, context = {}) {
 					success: false,
 					error: {
 						code: 'REMOVE_TASK_ERROR',
-						message: result.errors.join('; ') || 'Failed to remove tasks',
-						details: result.errors
+						message: result.error || 'Failed to remove tasks'
 					}
 				};
 			}
@@ -114,10 +113,9 @@ export async function removeTaskDirect(args, log, context = {}) {
 				data: {
 					totalTasks: taskIdArray.length,
 					successful: result.removedTasks.length,
-					failed: result.errors.length,
+					failed: taskIdArray.length - result.removedTasks.length,
 					removedTasks: result.removedTasks,
-					messages: result.messages,
-					errors: result.errors,
+					message: result.message,
 					tasksPath: tasksJsonPath,
 					tag: data.tag || tag || 'master'
 				}

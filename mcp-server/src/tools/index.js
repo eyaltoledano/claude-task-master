@@ -29,6 +29,7 @@ import { registerRemoveTaskTool } from './remove-task.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
+import { registerResponseLanguageTool } from './response-language.js';
 import { registerAddTagTool } from './add-tag.js';
 import { registerDeleteTagTool } from './delete-tag.js';
 import { registerListTagsTool } from './list-tags.js';
@@ -83,6 +84,7 @@ export function registerTaskMasterTools(server) {
 		registerRemoveDependencyTool(server);
 		registerValidateDependenciesTool(server);
 		registerFixDependenciesTool(server);
+		registerResponseLanguageTool(server);
 
 		// Group 7: Tag Management
 		registerListTagsTool(server);

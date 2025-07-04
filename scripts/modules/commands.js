@@ -42,7 +42,8 @@ import {
 	findTaskById,
 	taskExists,
 	moveTask,
-	migrateProject
+	migrateProject,
+	setResponseLanguage
 } from './task-manager.js';
 
 import {
@@ -3659,6 +3660,63 @@ Examples:
 			}
 			// --- IMPORTANT: Exit after displaying status ---
 			return; // Stop execution here
+		});
+
+	// response-language command
+	programInstance
+		.command('lang')
+		.description('Manage response language settings')
+		.option('--response <response_language>', 'Set the response language')
+		.option('--setup', 'Run interactive setup to configure response language')
+		.action(async (options) => {
+			const projectRoot = findProjectRoot(); // Find project root for context
+			const { response, setup } = options;
+			console.log(
+				chalk.blue('Response language set to:', JSON.stringify(options))
+			);
+			let responseLanguage = response || 'English';
+			if (setup) {
+				console.log(
+					chalk.blue('Starting interactive response language setup...')
+				);
+				try {
+					const userResponse = await inquirer.prompt([
+						{
+							type: 'input',
+							name: 'responseLanguage',
+							message: 'Input your preferred response language',
+							default: 'English'
+						}
+					]);
+
+					console.log(
+						chalk.blue(
+							'Response language set to:',
+							userResponse.responseLanguage
+						)
+					);
+					responseLanguage = userResponse.responseLanguage;
+				} catch (setupError) {
+					console.error(
+						chalk.red('\\nInteractive setup failed unexpectedly:'),
+						setupError.message
+					);
+				}
+			}
+
+			const result = setResponseLanguage(responseLanguage, {
+				projectRoot
+			});
+
+			if (result.success) {
+				console.log(chalk.green(`✅ ${result.data.message}`));
+			} else {
+				console.error(
+					chalk.red(
+						`❌ Error setting response language: ${result.error.message}`
+					)
+				);
+			}
 		});
 
 	// move-task command

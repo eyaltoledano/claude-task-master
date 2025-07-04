@@ -44,7 +44,8 @@ Taskmaster uses two primary methods for configuration:
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
           "vertexProjectId": "your-gcp-project-id",
-          "vertexLocation": "us-central1"
+          "vertexLocation": "us-central1",
+		      "responseLanguage": "English"
         }
       }
       ```
