@@ -9,6 +9,8 @@ import {
 } from './ast/context/cache-manager.js';
 import { GitWorkflowManager } from './services/GitWorkflowManager.js';
 import { LocalMergeManager } from './services/LocalMergeManager.js';
+import { TaskStatusManager } from './services/TaskStatusManager.js';
+import { WorkflowValidator } from './services/WorkflowValidator.js';
 
 const logger = {
 	info: (msg) => log('info', msg),
@@ -27,6 +29,8 @@ export class WorktreeManager {
 		// Initialize workflow managers
 		this.gitWorkflowManager = new GitWorkflowManager(projectRoot);
 		this.localMergeManager = new LocalMergeManager(projectRoot);
+		this.taskStatusManager = null; // Will be initialized when directBackend is set
+		this.workflowValidator = null; // Will be initialized when directBackend is set
 
 		// Ensure the config file exists on disk
 		if (!fs.existsSync(this.configPath)) {
@@ -721,15 +725,24 @@ export class WorktreeManager {
 				};
 			}
 
-			// Step 4: Handle workflow choice
+			// Step 4: Validate workflow readiness (if validator available)
+			let validationResults = null;
+			if (this.workflowValidator && worktree.linkedSubtask) {
+				validationResults = await this.workflowValidator.validateTaskReadyForPR(
+					worktree.linkedSubtask.fullId,
+					worktree.path
+				);
+			}
+
+			// Step 5: Handle workflow choice
 			if (options.workflowChoice === 'create-pr' && repoInfo.isGitHub && repoInfo.canCreatePR) {
-				return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo);
+				return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo, validationResults);
 			} else if (options.workflowChoice === 'merge-local') {
 				return await this.localMergeWorkflow(worktreeName, worktree, options);
 			} else if (options.createPR) {
 				// Legacy support - if createPR is true, try PR creation
 				if (repoInfo.isGitHub && repoInfo.canCreatePR) {
-					return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo);
+					return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo, validationResults);
 				} else {
 					return {
 						success: false,
@@ -749,6 +762,7 @@ export class WorktreeManager {
 					reason: 'workflow-choice-needed',
 					options: mergeOptions,
 					repoInfo,
+					validation: validationResults,
 					worktree: {
 						name: worktreeName,
 						path: worktree.path,
@@ -771,7 +785,7 @@ export class WorktreeManager {
 	/**
 	 * Handle PR creation workflow
 	 */
-	async createPRWorkflow(worktreeName, worktree, options, repoInfo) {
+	async createPRWorkflow(worktreeName, worktree, options, repoInfo, validationResults = null) {
 		try {
 			// Push the branch to remote
 			const branchName = worktree.branch || worktreeName;
@@ -817,6 +831,15 @@ export class WorktreeManager {
 			worktree.prUrl = prUrl;
 			this.saveConfig();
 
+			// Update task status using TaskStatusManager
+			if (this.taskStatusManager && worktree.linkedSubtask) {
+				await this.taskStatusManager.handleWorkflowCompletion(
+					worktree.linkedSubtask.fullId,
+					'pr-created',
+					{ prUrl }
+				);
+			}
+
 			logger.success(`PR created: ${prUrl}`);
 
 			return {
@@ -824,6 +847,7 @@ export class WorktreeManager {
 				workflowType: 'pr-created',
 				prUrl,
 				worktree,
+				validation: validationResults,
 				message: 'Pull request created successfully'
 			};
 
@@ -868,6 +892,18 @@ export class WorktreeManager {
 			// Update worktree status
 			worktree.status = 'completed';
 			worktree.completedAt = new Date().toISOString();
+			
+			// Update task status using TaskStatusManager
+			if (this.taskStatusManager && worktree.linkedSubtask) {
+				await this.taskStatusManager.handleWorkflowCompletion(
+					worktree.linkedSubtask.fullId,
+					'merged-locally',
+					{ 
+						targetBranch: mergeResult.targetBranch,
+						mergeCommit: mergeResult.mergeCommit 
+					}
+				);
+			}
 			
 			// Remove from config if cleanup was successful
 			if (mergeResult.cleanup.actions.includes('worktree-removed')) {
@@ -930,6 +966,15 @@ export class WorktreeManager {
 	 */
 	setBranchManager(branchManager) {
 		this.branchManager = branchManager;
+	}
+
+	/**
+	 * Set the direct backend and initialize TaskStatusManager (called by Flow app)
+	 */
+	setDirectBackend(directBackend) {
+		this.directBackend = directBackend;
+		this.taskStatusManager = new TaskStatusManager(directBackend);
+		this.workflowValidator = new WorkflowValidator(directBackend, this.gitWorkflowManager);
 	}
 
 	/**
