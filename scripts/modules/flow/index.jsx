@@ -36,6 +36,7 @@ import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
+import { initializeHookIntegration } from './services/HookIntegrationService.js';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -175,6 +176,9 @@ function FlowApp({ backend, options = {} }) {
 				const hooks = getHookManager(currentBackend);
 				await hooks.initialize();
 				setHookManager(hooks);
+
+				// Initialize hook integration service
+				await initializeHookIntegration(currentBackend);
 
 				// Initialize branch awareness manager
 				const branchMgr = new BranchAwarenessManager(currentBackend.projectRoot || process.cwd());

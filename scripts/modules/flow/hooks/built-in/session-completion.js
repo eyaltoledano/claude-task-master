@@ -349,31 +349,9 @@ export default class SessionCompletionHook {
 	}
 
 	async updateTaskStatus(task, session, services) {
-		if (!task || !services.backend) return;
-
-		try {
-			// Determine if session was successful
-			const wasSuccessful = session.status === 'completed' && !session.error;
-
-			if (wasSuccessful) {
-				// Update task status to completed
-				const isSubtask = task.isSubtask || String(task.id).includes('.');
-
-				if (isSubtask) {
-					await services.backend.setTaskStatus({
-						id: task.id,
-						status: 'done'
-					});
-				} else {
-					await services.backend.setTaskStatus({
-						id: task.id,
-						status: 'done'
-					});
-				}
-			}
-		} catch (error) {
-			console.warn('Failed to update task status:', error);
-		}
+		// Task status updates are now handled by claude-code-stop hook
+		// This method remains for backward compatibility but delegates to the main workflow
+		console.log('🔄 [SessionCompletionHook] Task status update delegated to claude-code-stop hook');
 	}
 
 	async generateCompletionSummary(session, task, worktree) {

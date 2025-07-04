@@ -409,14 +409,37 @@ export class BackgroundClaudeCode {
 				}
 			};
 
+			// Build services context with backend
+			const services = {
+				backend: this.backend
+			};
+
 			if (isFailure) {
 				// Trigger session failed hook
 				console.log(`🔄 [BackgroundClaudeCode] Triggering session failure hook for task ${task.id}`);
 				await hookIntegration.notifySessionFailed(session, result.error, task, worktree);
 			} else {
-				// Trigger session completion hook
+				// Trigger session completion hook (which includes task status updates)
 				console.log(`🔄 [BackgroundClaudeCode] Triggering session completion hook for task ${task.id}`);
-				await hookIntegration.notifySessionCompleted(session, task, worktree, config);
+				await hookIntegration.notifySessionCompleted(session, task, worktree, {
+					...config,
+					services
+				});
+
+				// Also trigger claude-code-stop hook directly for the specific hook functionality
+				const { getHookIntegration } = await import('./HookIntegrationService.js');
+				const hookInstance = getHookIntegration();
+				if (hookInstance?.hookManager) {
+					const { HOOK_EVENTS } = await import('../hooks/index.js');
+					const stopContext = {
+						config,
+						task,
+						worktree,
+						services,
+						sessionResult: result
+					};
+					await hookInstance.hookManager.executeHooks(HOOK_EVENTS.CLAUDE_CODE_STOP || 'claude-code-stop', stopContext);
+				}
 			}
 
 		} catch (error) {

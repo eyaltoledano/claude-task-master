@@ -26,33 +26,18 @@ export default class ClaudeCodeStopHook {
 
 			console.log(`\n🛡️  Claude Code Stop Hook (Safety Mode: ${safetyMode})`);
 
-			// Step 1: Commit changes immediately (following dev_workflow.mdc)
-			const commitResult = await this.commitSessionChanges(task, worktree, services);
-			
-			// Step 2: Update task status to 'done' 
-			const statusResult = await this.updateTaskStatus(task, services);
+			// Step 1: Detect repository type for workflow decision
+			const repoInfo = await this.detectRepositoryType(services);
+			console.log(`📍 Repository type: ${repoInfo.type} (${repoInfo.hasRemote ? 'remote' : 'local'})`);
 
-			// Step 3: Run safety checks for PR readiness
-			const safetyResults = await this.runSafetyChecks(effectiveConfig, worktree, services);
-
-			// Step 4: Determine if we should proceed with PR creation
-			const shouldCreatePR = this.shouldCreatePR(safetyResults, effectiveConfig, safetyMode);
-
-			let prResult = null;
-			if (shouldCreatePR) {
-				prResult = await this.createPR(task, worktree, services, effectiveConfig, safetyResults);
-			} else {
-				console.log('❌ PR creation skipped due to safety check failures or configuration');
-			}
+			// Step 2: Use WorktreeManager.completeSubtask() for comprehensive workflow
+			const workflowResult = await this.executeWorkflow(task, worktree, services, effectiveConfig, safetyMode, repoInfo);
 
 			return {
 				success: true,
 				safetyMode,
-				commitResult,
-				statusResult,
-				safetyResults,
-				prCreated: shouldCreatePR,
-				prResult,
+				repositoryType: repoInfo.type,
+				workflow: workflowResult,
 				timestamp: new Date().toISOString()
 			};
 
@@ -835,5 +820,522 @@ export default class ClaudeCodeStopHook {
 			console.error('❌ Failed to update task status:', error.message);
 			return { success: false, error: error.message };
 		}
+	}
+
+	/**
+	 * Detect repository type and capabilities
+	 */
+	async detectRepositoryType(services) {
+		try {
+			// Use backend's repository detection if available
+			if (services.backend?.detectRemoteRepository) {
+				const repoInfo = await services.backend.detectRemoteRepository();
+				return {
+					type: repoInfo.isGitHub ? 'github' : (repoInfo.hasRemote ? 'remote' : 'local'),
+					hasRemote: repoInfo.hasRemote,
+					isGitHub: repoInfo.isGitHub,
+					canCreatePR: repoInfo.hasGitHubCLI || false,
+					provider: repoInfo.provider || 'unknown',
+					url: repoInfo.url || null
+				};
+			}
+
+			// Fallback detection
+			try {
+				const remoteUrl = execSync('git remote get-url origin', { 
+					encoding: 'utf8', 
+					stdio: 'pipe' 
+				}).trim();
+				
+				const isGitHub = remoteUrl.includes('github.com');
+				
+				// Check GitHub CLI availability
+				let hasGitHubCLI = false;
+				try {
+					execSync('gh --version', { stdio: 'ignore' });
+					hasGitHubCLI = true;
+				} catch {
+					hasGitHubCLI = false;
+				}
+
+				return {
+					type: isGitHub ? 'github' : 'remote',
+					hasRemote: true,
+					isGitHub,
+					canCreatePR: isGitHub && hasGitHubCLI,
+					provider: isGitHub ? 'GitHub' : 'Unknown',
+					url: remoteUrl
+				};
+			} catch {
+				// No remote found
+				return {
+					type: 'local',
+					hasRemote: false,
+					isGitHub: false,
+					canCreatePR: false,
+					provider: 'local',
+					url: null
+				};
+			}
+		} catch (error) {
+			console.warn('Repository detection failed:', error.message);
+			return {
+				type: 'unknown',
+				hasRemote: false,
+				isGitHub: false,
+				canCreatePR: false,
+				provider: 'unknown',
+				url: null,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Execute the appropriate workflow based on repository type and configuration
+	 */
+	async executeWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+		try {
+			console.log('🔄 Executing integrated workflow...');
+
+			// For subtasks, use the existing WorktreeManager workflow
+			if (task?.isSubtask || String(task?.id).includes('.')) {
+				return await this.executeSubtaskWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+			} else {
+				return await this.executeTaskWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+			}
+
+		} catch (error) {
+			console.error('❌ Workflow execution failed:', error.message);
+			return {
+				success: false,
+				error: error.message,
+				phase: 'workflow-execution'
+			};
+		}
+	}
+
+	/**
+	 * Execute subtask workflow using WorktreeManager.completeSubtask()
+	 */
+	async executeSubtaskWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+		try {
+			console.log('📋 Executing subtask workflow...');
+
+			const workflowChoice = this.determineWorkflowChoice(repoInfo, config, safetyMode);
+			console.log(`🔀 Workflow choice: ${workflowChoice}`);
+
+			// For PR workflow, do NOT mark task as done yet - wait for PR merge
+			// For local merge workflow, mark as done after merge completes
+			const shouldMarkDoneNow = workflowChoice === 'merge-local';
+
+			// Prepare options for WorktreeManager.completeSubtask()
+			const options = {
+				autoCommit: true,
+				commitMessage: `Complete subtask ${task.id}: ${task.title || 'Claude Code session'}`,
+				commitType: 'feat',
+				workflowChoice,
+				// Don't auto-mark as done if we're creating a PR
+				autoMarkDone: shouldMarkDoneNow
+			};
+
+			// Use the worktree name to call completeSubtask
+			const worktreeName = worktree.name || `task-${task.id}`;
+			
+			if (!services.backend?.completeSubtask) {
+				throw new Error('Backend completeSubtask method not available');
+			}
+
+			const result = await services.backend.completeSubtask(worktreeName, options);
+
+			if (result.success) {
+				console.log('✅ Subtask workflow completed successfully');
+				
+				// Handle task status updates based on workflow choice
+				const statusResult = await this.handleTaskStatusAfterWorkflow(
+					task, services, workflowChoice, result
+				);
+
+				return {
+					success: true,
+					workflowType: 'subtask',
+					workflowChoice,
+					taskStatusUpdated: statusResult.updated,
+					parentTaskChecked: statusResult.parentChecked,
+					result
+				};
+			} else if (result.reason === 'workflow-choice-needed') {
+				// Handle case where user choice is needed
+				console.log('🤔 Workflow choice needed, applying automatic decision...');
+				
+				// Make automatic choice based on repository type and safety mode
+				const autoChoice = this.makeAutomaticWorkflowChoice(repoInfo, config, safetyMode);
+				const autoShouldMarkDone = autoChoice === 'merge-local';
+				
+				const retryOptions = { 
+					...options, 
+					workflowChoice: autoChoice,
+					autoMarkDone: autoShouldMarkDone
+				};
+
+				const retryResult = await services.backend.completeSubtask(worktreeName, retryOptions);
+				
+				// Handle status updates for retry case
+				const statusResult = await this.handleTaskStatusAfterWorkflow(
+					task, services, autoChoice, retryResult
+				);
+				
+				return {
+					success: retryResult.success,
+					workflowType: 'subtask',
+					workflowChoice: autoChoice,
+					automaticChoice: true,
+					taskStatusUpdated: statusResult.updated,
+					parentTaskChecked: statusResult.parentChecked,
+					result: retryResult
+				};
+			} else {
+				console.log('⚠️ Subtask workflow completed with issues:', result.reason);
+				return {
+					success: false,
+					workflowType: 'subtask',
+					error: result.error || result.reason,
+					result
+				};
+			}
+
+		} catch (error) {
+			console.error('❌ Subtask workflow failed:', error.message);
+			
+			// Fallback to manual commit and status update
+			console.log('🔄 Falling back to manual workflow...');
+			return await this.executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+		}
+	}
+
+	/**
+	 * Execute task workflow (for main tasks, not subtasks)
+	 */
+	async executeTaskWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+		try {
+			console.log('📄 Executing main task workflow...');
+
+			// For main tasks, use the manual workflow since WorktreeManager.completeSubtask() 
+			// is specifically for subtasks
+			const result = await this.executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+			
+			// Add workflow type for consistency
+			result.workflowType = 'task';
+			result.isMainTask = true;
+			
+			return result;
+
+		} catch (error) {
+			console.error('❌ Task workflow failed:', error.message);
+			return {
+				success: false,
+				workflowType: 'task',
+				error: error.message,
+				phase: 'task-workflow'
+			};
+		}
+	}
+
+	/**
+	 * Execute fallback workflow with manual steps
+	 */
+	async executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+		const results = {
+			success: true,
+			workflowType: 'fallback',
+			steps: {}
+		};
+
+		try {
+			// Step 1: Commit changes
+			console.log('💾 Step 1: Committing changes...');
+			results.steps.commit = await this.commitSessionChanges(task, worktree, services);
+			
+			if (!results.steps.commit.success) {
+				console.log('⚠️ Commit failed, but continuing...');
+			}
+
+			// Step 2: Run safety checks if configured
+			if (config.runSafetyChecks !== false) {
+				console.log('🔍 Step 2: Running safety checks...');
+				results.steps.safetyChecks = await this.runSafetyChecks(config, worktree, services);
+			}
+
+			// Step 3: Handle repository workflow
+			const workflowChoice = this.determineWorkflowChoice(repoInfo, config, safetyMode);
+			console.log(`🔀 Step 3: Executing ${workflowChoice} workflow...`);
+
+			if (workflowChoice === 'create-pr' && repoInfo.canCreatePR) {
+				results.steps.pr = await this.createPR(task, worktree, services, config, results.steps.safetyChecks);
+				// For PR workflow, do NOT mark task as done - it will be done when PR merges
+				console.log('📝 PR created - task status will be updated when PR is merged');
+				results.steps.taskStatusDeferred = true;
+			} else if (workflowChoice === 'merge-local') {
+				results.steps.merge = await this.executeLocalMerge(task, worktree, services);
+				
+				// For local merge, mark task as done after merge completes
+				if (results.steps.merge.success) {
+					console.log('📝 Step 4: Updating task status after local merge...');
+					const statusResult = await this.handleTaskStatusAfterWorkflow(
+						task, services, workflowChoice, { success: true }
+					);
+					results.steps.taskStatus = statusResult;
+				}
+			} else {
+				console.log('ℹ️ No additional workflow steps required');
+				results.steps.workflow = { 
+					success: true, 
+					message: 'No additional workflow steps required',
+					choice: workflowChoice 
+				};
+				
+				// If no special workflow, mark task as done now
+				console.log('📝 Step 4: Updating task status...');
+				const statusResult = await this.handleTaskStatusAfterWorkflow(
+					task, services, workflowChoice, { success: true }
+				);
+				results.steps.taskStatus = statusResult;
+			}
+
+			return results;
+
+		} catch (error) {
+			console.error('❌ Fallback workflow failed:', error.message);
+			results.success = false;
+			results.error = error.message;
+			return results;
+		}
+	}
+
+	/**
+	 * Determine the appropriate workflow choice based on repository type and configuration
+	 */
+	determineWorkflowChoice(repoInfo, config, safetyMode) {
+		// Force local merge for local repositories
+		if (!repoInfo.hasRemote) {
+			return 'merge-local';
+		}
+
+		// Check if PR creation is disabled
+		if (config.enableAutoPR === false) {
+			return 'merge-local';
+		}
+
+		// For GitHub repositories with CLI, prefer PR creation
+		if (repoInfo.isGitHub && repoInfo.canCreatePR) {
+			return 'create-pr';
+		}
+
+		// For other remote repositories, use local merge
+		if (repoInfo.hasRemote) {
+			return 'merge-local';
+		}
+
+		// Default to local merge
+		return 'merge-local';
+	}
+
+	/**
+	 * Make automatic workflow choice when WorktreeManager needs a decision
+	 */
+	makeAutomaticWorkflowChoice(repoInfo, config, safetyMode) {
+		const choice = this.determineWorkflowChoice(repoInfo, config, safetyMode);
+		console.log(`🤖 Automatic workflow choice: ${choice}`);
+		return choice;
+	}
+
+	/**
+	 * Execute local merge workflow
+	 */
+	async executeLocalMerge(task, worktree, services) {
+		try {
+			console.log('🔗 Executing local merge...');
+			
+			// This would integrate with LocalMergeManager if available
+			// For now, just return success since changes are already committed
+			return {
+				success: true,
+				message: 'Changes committed and ready for manual merge',
+				type: 'local-merge',
+				branch: worktree.branch || worktree.name
+			};
+
+		} catch (error) {
+			console.error('❌ Local merge failed:', error.message);
+			return {
+				success: false,
+				error: error.message,
+				type: 'local-merge'
+			};
+		}
+	}
+
+	/**
+	 * Handle task status updates based on workflow choice and completion status
+	 */
+	async handleTaskStatusAfterWorkflow(task, services, workflowChoice, workflowResult) {
+		try {
+			const result = {
+				updated: false,
+				parentChecked: false,
+				parentUpdated: false,
+				taskId: task.id,
+				workflowChoice
+			};
+
+			// For PR workflows, do NOT mark as done - wait for PR merge
+			if (workflowChoice === 'create-pr') {
+				console.log(`📝 Deferring status update for ${task.id} - waiting for PR merge`);
+				result.deferred = true;
+				result.reason = 'waiting-for-pr-merge';
+				return result;
+			}
+
+			// For other workflows, mark as done if workflow was successful
+			if (!workflowResult?.success) {
+				console.log(`📝 Skipping status update for ${task.id} - workflow not successful`);
+				result.skipped = true;
+				result.reason = 'workflow-failed';
+				return result;
+			}
+
+			// Update the current task/subtask to done
+			console.log(`📝 Marking ${task.id} as done...`);
+			const statusResult = await this.updateTaskStatus(task, services);
+			
+			if (statusResult.success) {
+				result.updated = true;
+				console.log(`✅ Task ${task.id} marked as done`);
+
+				// If this is a subtask, check if parent task should be marked as done
+				if (task.isSubtask || String(task.id).includes('.')) {
+					const parentResult = await this.checkAndUpdateParentTask(task, services);
+					result.parentChecked = true;
+					result.parentUpdated = parentResult.updated;
+					result.parentTaskId = parentResult.parentTaskId;
+					
+					if (parentResult.updated) {
+						console.log(`✅ Parent task ${parentResult.parentTaskId} also marked as done`);
+					}
+				}
+			} else {
+				console.log(`⚠️ Failed to mark ${task.id} as done:`, statusResult.error);
+				result.error = statusResult.error;
+			}
+
+			return result;
+
+		} catch (error) {
+			console.error('❌ Error handling task status after workflow:', error.message);
+			return {
+				updated: false,
+				parentChecked: false,
+				taskId: task.id,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Check if all subtasks are complete and update parent task if so
+	 */
+	async checkAndUpdateParentTask(subtask, services) {
+		try {
+			const subtaskId = String(subtask.id);
+			const parentTaskId = subtaskId.includes('.') ? subtaskId.split('.')[0] : null;
+			
+			if (!parentTaskId) {
+				return { updated: false, reason: 'not-a-subtask' };
+			}
+
+			console.log(`🔍 Checking parent task ${parentTaskId} completion status...`);
+
+			// Get the parent task to check all its subtasks
+			if (!services.backend?.getTask) {
+				console.log('⚠️ Backend getTask method not available');
+				return { updated: false, parentTaskId, reason: 'backend-unavailable' };
+			}
+
+			const parentTask = await services.backend.getTask({ id: parentTaskId });
+			
+			if (!parentTask || !parentTask.subtasks || parentTask.subtasks.length === 0) {
+				console.log(`⚠️ Parent task ${parentTaskId} not found or has no subtasks`);
+				return { updated: false, parentTaskId, reason: 'parent-not-found' };
+			}
+
+			// Check if all subtasks are done
+			const allSubtasksDone = parentTask.subtasks.every(st => 
+				st.status === 'done' || st.status === 'completed'
+			);
+
+			if (allSubtasksDone && parentTask.status !== 'done' && parentTask.status !== 'completed') {
+				console.log(`🎯 All subtasks of task ${parentTaskId} are complete - marking parent as done`);
+				
+				const parentStatusResult = await services.backend.setTaskStatus({
+					id: parentTaskId,
+					status: 'done'
+				});
+
+				if (parentStatusResult?.success) {
+					return { 
+						updated: true, 
+						parentTaskId,
+						message: `Parent task ${parentTaskId} marked as done` 
+					};
+				} else {
+					return { 
+						updated: false, 
+						parentTaskId,
+						error: parentStatusResult?.error || 'Failed to update parent status'
+					};
+				}
+			} else {
+				const remainingSubtasks = parentTask.subtasks.filter(st => 
+					st.status !== 'done' && st.status !== 'completed'
+				).length;
+				
+				console.log(`📊 Parent task ${parentTaskId} status: ${parentTask.status}, remaining subtasks: ${remainingSubtasks}`);
+				return { 
+					updated: false, 
+					parentTaskId,
+					reason: remainingSubtasks > 0 ? 'subtasks-remaining' : 'parent-already-done',
+					remainingSubtasks
+				};
+			}
+
+		} catch (error) {
+			console.error('❌ Error checking parent task:', error.message);
+			return { 
+				updated: false, 
+				parentTaskId: parentTaskId || 'unknown',
+				error: error.message 
+			};
+		}
+	}
+
+	/**
+	 * TODO: Phase 3 - PR Merge Monitoring
+	 * This method will be implemented to monitor PR status and update task status when merged
+	 */
+	async handlePRMergeMonitoring(task, prResult, services) {
+		// Future implementation will:
+		// 1. Set up periodic monitoring of PR status
+		// 2. Detect when PR is merged successfully  
+		// 3. Call handleTaskStatusAfterWorkflow with 'pr-merged' workflow choice
+		// 4. Clean up associated worktrees and branches
+		// 5. Handle parent task completion checking for subtasks
+		
+		console.log(`📝 TODO: Set up PR merge monitoring for task ${task.id}, PR: ${prResult.prUrl}`);
+		return {
+			monitoringSetup: false,
+			reason: 'phase-3-not-implemented',
+			prUrl: prResult.prUrl,
+			taskId: task.id
+		};
 	}
 } 

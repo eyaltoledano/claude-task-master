@@ -353,6 +353,7 @@ export class HookIntegrationService {
 				session,
 				task,
 				worktree,
+				services: config.services || { backend: this.backend },
 				config: {
 					collectStatistics: true,
 					autoUpdateTaskStatus: true,
@@ -633,4 +634,41 @@ export class HookIntegrationService {
 }
 
 // Export singleton instance
-export const hookIntegration = new HookIntegrationService();
+let hookIntegrationInstance = null;
+
+/**
+ * Initialize the hook integration singleton with a backend
+ */
+export async function initializeHookIntegration(backend) {
+	if (!hookIntegrationInstance) {
+		hookIntegrationInstance = new HookIntegrationService(backend);
+		await hookIntegrationInstance.initialize();
+	}
+	return hookIntegrationInstance;
+}
+
+/**
+ * Get the hook integration singleton instance
+ */
+export function getHookIntegration() {
+	return hookIntegrationInstance;
+}
+
+// Legacy export for backward compatibility
+export const hookIntegration = {
+	get initialized() {
+		return hookIntegrationInstance?.initialized || false;
+	},
+	async notifySessionCompleted(...args) {
+		if (hookIntegrationInstance) {
+			return await hookIntegrationInstance.notifySessionCompleted(...args);
+		}
+		return { success: true };
+	},
+	async notifySessionFailed(...args) {
+		if (hookIntegrationInstance) {
+			return await hookIntegrationInstance.notifySessionFailed(...args);
+		}
+		return { success: true };
+	}
+};
