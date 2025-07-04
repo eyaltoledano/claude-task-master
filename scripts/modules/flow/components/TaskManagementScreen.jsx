@@ -11,6 +11,10 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
 import { EnhancedClaudeWorktreeLauncherModal } from './EnhancedClaudeWorktreeLauncherModal.jsx';
 import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
+import { WorkflowDecisionModal } from './WorkflowDecisionModal.jsx';
+import { WorkflowStatusIndicator, GitStatusIndicator } from './WorkflowStatusIndicator.jsx';
+import { WorkflowGuide } from './WorkflowGuide.jsx';
+import { CommitAssistant } from './CommitAssistant.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
@@ -57,6 +61,12 @@ export function TaskManagementScreen() {
 	const [showStreamingModal, setShowStreamingModal] = useState(false);
 	const [showProgressModal, setShowProgressModal] = useState(false);
 	const [progressModalData, setProgressModalData] = useState(null);
+	const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+	const [workflowModalData, setWorkflowModalData] = useState(null);
+	const [showCommitAssistant, setShowCommitAssistant] = useState(false);
+	const [commitAssistantData, setCommitAssistantData] = useState(null);
+	const [gitStatus, setGitStatus] = useState(null);
+	const [repoInfo, setRepoInfo] = useState(null);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -386,6 +396,38 @@ export function TaskManagementScreen() {
 			} else if (input === 'l' || input === 'L') {
 				// Log completion for this subtask
 				handleLogCompletion();
+			} else if (input === 'W') {
+				// Workflow decision modal
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				if (worktrees.length > 0) {
+					handleWorkflowDecision(worktrees[0], {
+						...selectedSubtask,
+						parentId: selectedTask.id,
+						parentTitle: selectedTask.title
+					});
+				} else {
+					setToast({
+						message: 'No worktrees available for workflow decisions',
+						type: 'warning'
+					});
+				}
+			} else if (input === 'C') {
+				// Commit assistant
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				if (worktrees.length > 0 && gitStatus) {
+					handleCommitAssistance(worktrees[0], {
+						...selectedSubtask,
+						parentId: selectedTask.id,
+						parentTitle: selectedTask.title
+					}, gitStatus);
+				} else {
+					setToast({
+						message: 'No worktrees with changes available for commit assistance',
+						type: 'warning'
+					});
+				}
 			}
 			return;
 		}
@@ -1317,6 +1359,123 @@ Focus on: current industry standards, common pitfalls, security considerations
 		setProgressModalData(null);
 	};
 
+	// Enhanced workflow handlers for Phase 3
+	const handleWorkflowDecision = (worktree, taskInfo) => {
+		setWorkflowModalData({
+			worktree,
+			taskInfo
+		});
+		setShowWorkflowModal(true);
+	};
+
+	const handleWorkflowChoice = async (choice, options) => {
+		try {
+			// Delegate to existing worktree completion logic
+			const result = await backend.completeSubtask(options.workflowOption.worktree?.name || 'unknown', {
+				workflowChoice: choice,
+				...options
+			});
+
+			if (result.success) {
+				setToast({
+					message: `Workflow completed: ${choice}`,
+					type: 'success'
+				});
+				// Refresh task data
+				await reloadTasks();
+			} else {
+				setToast({
+					message: result.error || 'Workflow failed',
+					type: 'error'
+				});
+			}
+		} catch (error) {
+			setToast({
+				message: `Workflow error: ${error.message}`,
+				type: 'error'
+			});
+		} finally {
+			setShowWorkflowModal(false);
+			setWorkflowModalData(null);
+		}
+	};
+
+	const handleCommitAssistance = (worktree, subtaskInfo, gitStatus) => {
+		setCommitAssistantData({
+			worktree,
+			subtaskInfo,
+			gitStatus
+		});
+		setShowCommitAssistant(true);
+	};
+
+	const handleCommit = async (commitMessage, options) => {
+		try {
+			const result = await backend.commitSubtaskProgress(
+				options.worktree?.path || commitAssistantData.worktree?.path,
+				commitAssistantData.subtaskInfo,
+				commitMessage,
+				options
+			);
+
+			if (result.success) {
+				setToast({
+					message: 'Changes committed successfully',
+					type: 'success'
+				});
+				// Refresh git status
+				await loadGitStatus();
+			} else {
+				setToast({
+					message: result.error || 'Commit failed',
+					type: 'error'
+				});
+			}
+		} catch (error) {
+			setToast({
+				message: `Commit error: ${error.message}`,
+				type: 'error'
+			});
+		} finally {
+			setShowCommitAssistant(false);
+			setCommitAssistantData(null);
+		}
+	};
+
+	// Load git and repo info when subtask changes
+	useEffect(() => {
+		const loadGitStatus = async () => {
+			if (!selectedTask || !selectedSubtask) return;
+			
+			try {
+				// Find worktree for current subtask
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				
+				if (worktrees.length > 0) {
+					const status = await backend.getWorktreeGitStatus(worktrees[0].path);
+					setGitStatus(status);
+				}
+			} catch (error) {
+				console.warn('Failed to load git status:', error.message);
+			}
+		};
+
+		const loadRepoInfo = async () => {
+			try {
+				const info = await backend.detectRemoteRepository();
+				setRepoInfo(info);
+			} catch (error) {
+				console.warn('Failed to detect repository info:', error.message);
+			}
+		};
+
+		if (selectedSubtask && viewMode === 'subtask-detail') {
+			loadGitStatus();
+			loadRepoInfo();
+		}
+	}, [selectedSubtask, viewMode, selectedTask, subtaskWorktrees, backend]);
+
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
 		// Determine default number of subtasks based on complexity report
@@ -1919,6 +2078,18 @@ Focus on: current industry standards, common pitfalls, security considerations
 					color: theme.text
 				});
 			});
+
+			// Add workflow status information
+			if (gitStatus) {
+				contentLines.push({ type: 'spacer' });
+				contentLines.push({
+					type: 'workflow-status',
+					task: selectedSubtask,
+					worktree: worktrees[0],
+					gitStatus,
+					repoInfo
+				});
+			}
 		} else {
 			contentLines.push({
 				type: 'field',
@@ -2007,6 +2178,18 @@ Focus on: current industry standards, common pitfalls, security considerations
 							);
 						} else if (line.type === 'spacer') {
 							return <Box key={index} height={1} />;
+						} else if (line.type === 'workflow-status') {
+							return (
+								<Box key={index} marginTop={1} marginBottom={1}>
+									<WorkflowStatusIndicator
+										task={line.task}
+										worktree={line.worktree}
+										gitStatus={line.gitStatus}
+										repoInfo={line.repoInfo}
+										compact={false}
+									/>
+								</Box>
+							);
 						}
 						return null;
 					})}
@@ -2042,7 +2225,8 @@ Focus on: current industry standards, common pitfalls, security considerations
 					<Text color={theme.text}>
 						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}w
 						work on subtask •{' '}
-						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p progress • e exploration • l completion • ESC
+						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p progress • e exploration • l completion
+						{worktrees.length > 0 && gitStatus ? ' • W workflow • C commit' : ''} • ESC
 						back
 					</Text>
 				</Box>
@@ -2310,6 +2494,35 @@ Focus on: current industry standards, common pitfalls, security considerations
 					onSave={handleProgressSave}
 					onCancel={handleProgressCancel}
 					backend={backend}
+				/>
+			)}
+
+			{/* Workflow Decision Modal */}
+			{showWorkflowModal && workflowModalData && (
+				<WorkflowDecisionModal
+					worktree={workflowModalData.worktree}
+					taskInfo={workflowModalData.taskInfo}
+					backend={backend}
+					onDecision={handleWorkflowChoice}
+					onClose={() => {
+						setShowWorkflowModal(false);
+						setWorkflowModalData(null);
+					}}
+				/>
+			)}
+
+			{/* Commit Assistant Modal */}
+			{showCommitAssistant && commitAssistantData && (
+				<CommitAssistant
+					worktree={commitAssistantData.worktree}
+					subtaskInfo={commitAssistantData.subtaskInfo}
+					gitStatus={commitAssistantData.gitStatus}
+					backend={backend}
+					onCommit={handleCommit}
+					onClose={() => {
+						setShowCommitAssistant(false);
+						setCommitAssistantData(null);
+					}}
 				/>
 			)}
 

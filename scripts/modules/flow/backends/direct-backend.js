@@ -5248,4 +5248,182 @@ ${prompt}
 			this.telemetryData = data.telemetryData;
 		}
 	}
+
+	// Phase 3: Enhanced workflow methods
+	/**
+	 * Detect remote repository information
+	 * @returns {Promise<Object>} Repository information
+	 */
+	async detectRemoteRepository() {
+		try {
+			// Use the BranchAwarenessManager if available
+			if (this.branchManager) {
+				return {
+					isGitHub: await this.branchManager.isGitHubRepository(),
+					provider: await this.branchManager.detectRemoteRepository(),
+					hasGitHubCLI: await this.branchManager.canCreatePullRequests(),
+					remoteInfo: await this.branchManager.getRemoteInfo()
+				};
+			}
+
+			// Fallback implementation
+			const execAsync = promisify(exec);
+			
+			try {
+				const { stdout } = await execAsync('git remote get-url origin', {
+					cwd: this.projectRoot
+				});
+				
+				const remoteUrl = stdout.trim();
+				const isGitHub = remoteUrl.includes('github.com');
+				
+				let hasGitHubCLI = false;
+				try {
+					await execAsync('gh auth status');
+					hasGitHubCLI = true;
+				} catch (error) {
+					// GitHub CLI not available or not authenticated
+				}
+
+				return {
+					isGitHub,
+					provider: isGitHub ? 'GitHub' : 'Unknown',
+					hasGitHubCLI: isGitHub && hasGitHubCLI,
+					remoteInfo: {
+						url: remoteUrl,
+						isGitHub
+					}
+				};
+			} catch (error) {
+				// Not a git repository or no remote
+				return {
+					isGitHub: false,
+					provider: 'Local',
+					hasGitHubCLI: false,
+					remoteInfo: null
+				};
+			}
+		} catch (error) {
+			console.warn('Failed to detect repository info:', error.message);
+			return {
+				isGitHub: false,
+				provider: 'Local',
+				hasGitHubCLI: false,
+				remoteInfo: null
+			};
+		}
+	}
+
+	/**
+	 * Commit subtask progress with proper commit message
+	 * @param {string} worktreePath - Path to the worktree
+	 * @param {Object} subtaskInfo - Subtask information
+	 * @param {string} commitMessage - Commit message
+	 * @param {Object} options - Commit options
+	 * @returns {Promise<Object>} Commit result
+	 */
+	async commitSubtaskProgress(worktreePath, subtaskInfo, commitMessage, options = {}) {
+		try {
+			const execAsync = promisify(exec);
+			
+			// Stage all changes if auto-stage is enabled
+			if (options.autoStage !== false) {
+				await execAsync('git add .', { cwd: worktreePath });
+			}
+			
+			// Commit with the provided message
+			await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, {
+				cwd: worktreePath
+			});
+			
+			return {
+				success: true,
+				message: 'Changes committed successfully',
+				commitHash: await this.getLatestCommitHash(worktreePath)
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: `Commit failed: ${error.message}`
+			};
+		}
+	}
+
+	/**
+	 * Get the latest commit hash from a worktree
+	 * @param {string} worktreePath - Path to the worktree
+	 * @returns {Promise<string>} Latest commit hash
+	 */
+	async getLatestCommitHash(worktreePath) {
+		try {
+			const execAsync = promisify(exec);
+			const { stdout } = await execAsync('git rev-parse HEAD', {
+				cwd: worktreePath
+			});
+			return stdout.trim();
+		} catch (error) {
+			return null;
+		}
+	}
+
+	/**
+	 * Generate commit message suggestions based on subtask and changes
+	 * @param {Object} subtaskInfo - Subtask information
+	 * @param {Object} gitStatus - Git status information
+	 * @param {string} messageType - Type of commit message (feat, fix, etc.)
+	 * @returns {Promise<Object>} Generated commit message
+	 */
+	async generateCommitMessage(subtaskInfo, gitStatus, messageType = 'feat') {
+		try {
+			const taskId = subtaskInfo.parentId || 'unknown';
+			const subtaskId = subtaskInfo.id || 'unknown';
+			const title = subtaskInfo.title || 'Subtask work';
+			
+			// Generate main commit message
+			const mainMessage = `${messageType}(task-${taskId}): Complete subtask ${taskId}.${subtaskId} - ${title}`;
+			
+			// Generate body with implementation details
+			const bodyLines = [];
+			
+			if (gitStatus.modified > 0) {
+				bodyLines.push(`- Modified ${gitStatus.modified} file${gitStatus.modified > 1 ? 's' : ''}`);
+			}
+			if (gitStatus.added > 0) {
+				bodyLines.push(`- Added ${gitStatus.added} file${gitStatus.added > 1 ? 's' : ''}`);
+			}
+			if (gitStatus.deleted > 0) {
+				bodyLines.push(`- Deleted ${gitStatus.deleted} file${gitStatus.deleted > 1 ? 's' : ''}`);
+			}
+			
+			// Add subtask context
+			bodyLines.push('');
+			bodyLines.push(`Subtask ${taskId}.${subtaskId}: ${title}`);
+			bodyLines.push(`Relates to Task ${taskId}: ${subtaskInfo.parentTitle || 'Main task'}`);
+			
+			const fullMessage = `${mainMessage}\n\n${bodyLines.join('\n')}`;
+			
+			return {
+				success: true,
+				message: fullMessage,
+				mainMessage,
+				body: bodyLines.join('\n')
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to generate commit message: ${error.message}`
+			};
+		}
+	}
+
+	createLogWrapper() {
+		return {
+			debug: this.log.debug,
+			info: this.log.info,
+			warn: this.log.warn,
+			error: this.log.error,
+			success: this.log.success,
+			log: this.log.log
+		};
+	}
 }
