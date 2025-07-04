@@ -46,7 +46,7 @@ export async function formatEnhancedClaudeContext(
 
 	// 📋 ALWAYS INCLUDE: Detailed Task Information (Core Section)
 	if (tasks.length > 0) {
-		context += generateDetailedTaskSection(tasks, options);
+		context += await generateDetailedTaskSection(tasks, options);
 	}
 
 	// 🎯 CONDITIONAL: Enhanced Task Analysis
@@ -163,29 +163,39 @@ Claude will work with task details and basic project context.
 /**
  * Generate Detailed Task Information section with parent context
  */
-function generateDetailedTaskSection(tasks, options) {
+async function generateDetailedTaskSection(tasks, options) {
 	let section = '## 📋 Tasks to Implement\n\n';
 
-	tasks.forEach((task) => {
-		// Check if this is a subtask by looking at the ID or isSubtask property
+	for (const task of tasks) {
 		const isSubtask = task.isSubtask || String(task.id).includes('.');
 		const taskType = isSubtask ? 'Subtask' : 'Task';
 
-		// If this is a subtask, first show parent task context
 		if (isSubtask && task.parentTask) {
-			section += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
-
-			if (task.parentTask.description) {
-				section += `**Parent Description:**\n${task.parentTask.description}\n\n`;
+			let parent = task.parentTask;
+			// Defensive check: If parentTask is incomplete, re-fetch it using the backend
+			if (options.backend && (!parent.details || !parent.description)) {
+				try {
+					const fullParent = await options.backend.getTask(parent.id);
+					if (fullParent) {
+						parent = fullParent; // Use the complete parent task object
+					}
+				} catch (error) {
+					// Ignore if fetch fails, proceed with what we have
+				}
 			}
 
-			if (task.parentTask.details) {
-				section += `**Parent Implementation Details:**\n${task.parentTask.details}\n\n`;
+			section += `### Parent Task Context: ${parent.id}: ${parent.title}\n\n`;
+
+			if (parent.description) {
+				section += `**Parent Description:**\n${parent.description}\n\n`;
 			}
 
-			// Check for parent test strategy
+			if (parent.details) {
+				section += `**Parent Implementation Details:**\n${parent.details}\n\n`;
+			}
+
 			const parentTestStrategy =
-				task.parentTask.testStrategy || task.parentTask.test_strategy || null;
+				parent.testStrategy || parent.test_strategy || null;
 			if (parentTestStrategy !== null && parentTestStrategy !== '') {
 				section += `**Parent Test Strategy:**\n${parentTestStrategy}\n\n`;
 			}
@@ -204,12 +214,10 @@ function generateDetailedTaskSection(tasks, options) {
 			section += `**Implementation Details:**\n${task.details}\n\n`;
 		}
 
-		// Check for test strategy (handle empty strings)
 		const testStrategy = task.testStrategy || task.test_strategy || null;
 		if (testStrategy !== null && testStrategy !== '') {
 			section += `**Test Strategy:**\n${testStrategy}\n\n`;
 		} else if (isSubtask) {
-			// For subtasks without test strategy, add a placeholder
 			section += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
 		}
 
@@ -217,23 +225,16 @@ function generateDetailedTaskSection(tasks, options) {
 			section += `**Dependencies:** ${task.dependencies.join(', ')}\n\n`;
 		}
 
-		// Only show subtasks section if this is a parent task with subtasks
 		if (!isSubtask && task.subtasks && task.subtasks.length > 0) {
 			section += `**Subtasks:**\n`;
 			for (const subtask of task.subtasks) {
 				section += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
-				if (subtask.details) {
-					section += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
-				}
-				if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
-					section += `  - Test Strategy: ${subtask.testStrategy}\n`;
-				}
 			}
 			section += '\n';
 		}
 
 		section += '\n---\n\n';
-	});
+	}
 
 	return section;
 }

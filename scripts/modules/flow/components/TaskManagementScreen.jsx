@@ -288,7 +288,6 @@ export function TaskManagementScreen() {
 				break;
 
 			case 'subtask-detail':
-				console.log('[TaskManagementScreen] subtask-detail keypress:', input, key);
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
 				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
 				else if (input === 't') {
@@ -297,7 +296,6 @@ export function TaskManagementScreen() {
 						id: `${selectedTask.id}.${selectedSubtask.id}`
 					});
 				} else if (input === 'c') {
-					console.log('[TaskManagementScreen] c key pressed, calling handleClaudeSession');
 					handleClaudeSession();
 				}
 				else if (input === 'r') setShowResearchModal(true);
@@ -468,29 +466,21 @@ export function TaskManagementScreen() {
 	};
 
 	const handleClaudeSession = async () => {
-		console.log('[TaskManagementScreen] handleClaudeSession called');
-		console.log('[TaskManagementScreen] selectedTask:', selectedTask?.id);
-		console.log('[TaskManagementScreen] selectedSubtask:', selectedSubtask?.id);
-		
 		if (!selectedTask || !selectedSubtask) {
-			console.error('[TaskManagementScreen] Missing selectedTask or selectedSubtask');
 			return;
 		}
 
 		try {
-			console.log('[TaskManagementScreen] Checking for existing worktrees...');
 			// Check for existing worktrees for this subtask (but don't create)
 			const worktrees = await backend.getTaskWorktrees(
 				`${selectedTask.id}.${selectedSubtask.id}`
 			);
-			console.log('[TaskManagementScreen] Found worktrees:', worktrees);
 
 			let worktreeToUse = null;
 
 			if (worktrees && worktrees.length > 0) {
 				// Use the first linked worktree if it exists
 				worktreeToUse = worktrees[0];
-				console.log('[TaskManagementScreen] Using existing worktree:', worktreeToUse);
 			}
 
 			// Fetch full parent task details to ensure we have complete information
@@ -512,26 +502,25 @@ export function TaskManagementScreen() {
 
 
 			// Prepare task data for the Claude launcher modal
-			const taskData = [
-				{
-					id: `${selectedTask.id}.${selectedSubtask.id}`,
-					title: subtaskWithFullDetails.title,
-					description: subtaskWithFullDetails.description,
-					details: subtaskWithFullDetails.details,
-					status: subtaskWithFullDetails.status,
-					isSubtask: true,
-					parentTask: {
-						id: fullParentTask.id,
-						title: fullParentTask.title,
-						description: fullParentTask.description,
-						details: fullParentTask.details,
-						testStrategy: fullParentTask.testStrategy || fullParentTask.test_strategy
-					}
+			const taskData = {
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: subtaskWithFullDetails.title,
+				description: subtaskWithFullDetails.description,
+				details: subtaskWithFullDetails.details,
+				status: subtaskWithFullDetails.status,
+				isSubtask: true,
+				parentTask: {
+					id: fullParentTask.id,
+					title: fullParentTask.title,
+					description: fullParentTask.description,
+					details: fullParentTask.details,
+					testStrategy:
+						fullParentTask.testStrategy || fullParentTask.test_strategy
 				}
-			];
+			};
 
 			// Set modal data and worktree
-			setModalTaskData(taskData);
+			setModalTaskData([taskData]); // Modal expects an array of tasks
 			setClaudeWorktree(worktreeToUse);
 			setShowClaudeLauncherModal(true);
 		} catch (error) {
@@ -860,6 +849,8 @@ export function TaskManagementScreen() {
 				id: selectedTask.id,
 				title: selectedTask.title,
 				description: selectedTask.description,
+				details: selectedTask.details,
+				testStrategy: selectedTask.testStrategy || selectedTask.test_strategy,
 				subtasks: selectedTask.subtasks
 			},
 			dependencies: dependencies.filter(Boolean),

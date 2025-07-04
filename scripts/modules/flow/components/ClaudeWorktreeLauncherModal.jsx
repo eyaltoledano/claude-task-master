@@ -653,8 +653,8 @@ export function ClaudeWorktreeLauncherModal({
 									parentTask: task.parentTask || null
 								};
 
-								// If this is a subtask, fetch complete parent task information
-								if (taskData.isSubtask && task.id.includes('.')) {
+								// If this is a subtask and we don't already have parent task data, fetch it
+								if (taskData.isSubtask && task.id.includes('.') && !task.parentTask) {
 									const parentTaskId = task.id.split('.')[0];
 									try {
 										const parentTask = await backend.getTask(parentTaskId);

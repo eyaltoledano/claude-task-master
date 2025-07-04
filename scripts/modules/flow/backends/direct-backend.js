@@ -2315,7 +2315,8 @@ export class DirectBackend extends FlowBackend {
 						includeDependencyAnalysis: true,
 						includeComplexityInsights: true,
 						includeImplementationGuidance: true,
-						detailLevel: 'comprehensive'
+						detailLevel: 'comprehensive',
+						backend: this // Pass backend instance for re-fetching
 						}
 					);
 					
@@ -2329,7 +2330,8 @@ export class DirectBackend extends FlowBackend {
 						enhancedTasks,
 						{
 						worktreePath: worktree.path,
-						detailLevel: 'basic'
+						detailLevel: 'basic',
+						backend: this // Pass backend instance for re-fetching
 						}
 					);
 					
