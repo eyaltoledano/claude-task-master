@@ -207,14 +207,8 @@ export default function GitWorktreeScreen({
 		} else if (key.return && linkedWorktrees.length > 0) {
 			const selected = linkedWorktrees[selectedIndex];
 			if (selected) {
-				if (selected.isCurrent) {
-					setToast({ message: 'Already in this worktree', type: 'info' });
-				} else {
-					setToast({
-						message: `To switch worktrees: exit Flow and run 'cd ${selected.path}'`,
-						type: 'info'
-					});
-				}
+				setWorktreeDetails(selected);
+				setShowDetailsModal(true);
 			}
 		} else if (input === 'a') {
 			setShowAddModal(true);
@@ -539,7 +533,7 @@ export default function GitWorktreeScreen({
 				<Box flexDirection="column">
 					<Box>
 						<Text color={theme.text}>
-							↑↓ navigate • Enter switch • a add • d delete • v view • p prune
+							↑↓ navigate • Enter/v view • a add • d delete • p prune
 						</Text>
 					</Box>
 					<Box>
