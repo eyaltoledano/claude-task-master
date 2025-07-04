@@ -216,7 +216,7 @@ export function TaskManagementScreen() {
 	// Unified keypress handler
 	useInput((input, key) => {
 		// If any modal is open, let it handle the input, except for global ESC
-		if (key.escape) {
+			if (key.escape) {
 			if (showResearchModal) return setShowResearchModal(false);
 			if (showExpandOptions) return setShowExpandOptions(false);
 			// Other modal escape logic can go here...
@@ -262,25 +262,25 @@ export function TaskManagementScreen() {
 				break;
 
 			case 'subtasks':
-				if (key.downArrow) {
+			if (key.downArrow) {
 					const max = selectedTask.subtasks.length - 1;
 					const newIndex = Math.min(selectedSubtaskIndex + 1, max);
-					setSelectedSubtaskIndex(newIndex);
-					if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
-						setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
-					}
-				} else if (key.upArrow) {
-					const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
-					setSelectedSubtaskIndex(newIndex);
-					if (newIndex < subtasksScrollOffset) {
-						setSubtasksScrollOffset(newIndex);
-					}
-				} else if (key.return) {
+				setSelectedSubtaskIndex(newIndex);
+				if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
+					setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
+				}
+			} else if (key.upArrow) {
+				const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
+				setSelectedSubtaskIndex(newIndex);
+				if (newIndex < subtasksScrollOffset) {
+					setSubtasksScrollOffset(newIndex);
+				}
+			} else if (key.return) {
 					setSelectedSubtask(selectedTask.subtasks[selectedSubtaskIndex]);
-					setViewMode('subtask-detail');
+				setViewMode('subtask-detail');
 					setDetailScrollOffset(0);
-				} else if (input === 't') {
-					const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+			} else if (input === 't') {
+				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
 					cycleTaskStatus({ ...subtask, id: `${selectedTask.id}.${subtask.id}` });
 				}
 				break;
@@ -295,31 +295,31 @@ export function TaskManagementScreen() {
 					});
 				} else if (input === 'c') {
 					handleClaudeSession();
-				} else if (input === 'w') {
-					handleWorkOnSubtask();
-				} else if (input === 'g') {
+			} else if (input === 'w') {
+				handleWorkOnSubtask();
+			} else if (input === 'g') {
 					// Jump to worktree from subtask detail
-					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-					const worktrees = subtaskWorktrees.get(subtaskId) || [];
+				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+				const worktrees = subtaskWorktrees.get(subtaskId) || [];
 					
-					if (worktrees.length > 0) {
-						// Navigate to worktree detail page for the first linked worktree
-						setCurrentScreen('worktrees', {
-							selectedWorktree: worktrees[0],
-							showDetails: true
-						});
-					} else {
-						setToast({
-							message: 'No worktrees linked to this subtask',
-							type: 'warning'
-						});
-					}
+				if (worktrees.length > 0) {
+					// Navigate to worktree detail page for the first linked worktree
+					setCurrentScreen('worktrees', {
+						selectedWorktree: worktrees[0],
+						showDetails: true
+					});
+				} else {
+					setToast({
+						message: 'No worktrees linked to this subtask',
+						type: 'warning'
+					});
+				}
 				} else if (input === 'p') {
-					handleLogProgress();
+				handleLogProgress();
 				} else if (input === 'e') {
-					handleLogExploration();
+				handleLogExploration();
 				} else if (input === 'l') {
-					handleLogCompletion();
+				handleLogCompletion();
 				} else if (input === 'r') setShowResearchModal(true);
 				break;
 		}
@@ -824,10 +824,10 @@ export function TaskManagementScreen() {
 
 				researchContext = researchResult.response || researchResult;
 
-				setToast({
+						setToast({
 					message: 'Research completed and saved to subtask',
-					type: 'success'
-				});
+							type: 'success'
+						});
 			} catch (error) {
 				console.error('Research failed:', error);
 				// Continue without research
@@ -1626,7 +1626,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 										<Text bold color={theme.textDim} width={15}>
 											{line.label}
 										</Text>
-										<Text color={line.color || theme.text}>{line.value}</Text>
+											<Text color={line.color || theme.text}>{line.value}</Text>
 									</Box>
 								);
 							} else if (line.type === 'header') {
@@ -2073,7 +2073,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 									<Text bold color={theme.textDim} width={15}>
 										{line.label}
 									</Text>
-									<Text color={line.color || theme.text}>{line.value}</Text>
+										<Text color={line.color || theme.text}>{line.value}</Text>
 								</Box>
 							);
 						} else if (line.type === 'header') {

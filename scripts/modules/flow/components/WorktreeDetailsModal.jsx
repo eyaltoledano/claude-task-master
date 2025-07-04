@@ -248,7 +248,7 @@ Completed via Task Master Flow.`
 				}
 				
 				hints.push('ESC close');
-				
+
 				return {
 					...baseProps,
 					title: `Worktree: ${worktree.name}`,
@@ -790,6 +790,76 @@ Completed via Task Master Flow.`
 		(worktree.isBare ? '[BARE] ' : '');
 	detailContent.push({ type: 'text', content: statusText });
 
+	// Linked Subtask - show early in the modal for visibility
+	console.log('🔍 [WorktreeDetailsModal] linkedTasks:', linkedTasks);
+	const linkedSubtask = linkedTasks.find(task => task.parentId);
+	console.log('🔍 [WorktreeDetailsModal] linkedSubtask found:', linkedSubtask);
+	
+	detailContent.push({ type: 'blank' });
+	detailContent.push({
+		type: 'header',
+		content: 'Linked Subtask:'
+	});
+	
+	if (!linkedSubtask) {
+		detailContent.push({
+			type: 'text',
+			content: '  No subtask linked to this worktree',
+			color: theme.warning,
+			indent: 2
+		});
+		
+		// Debug: show what tasks we do have
+		if (linkedTasks.length > 0) {
+			detailContent.push({
+				type: 'text',
+				content: `  Debug: Found ${linkedTasks.length} linked tasks`,
+				color: theme.muted,
+				indent: 2
+			});
+			linkedTasks.forEach((task, index) => {
+				detailContent.push({
+					type: 'text',
+					content: `    ${index}: id=${task.id}, parentId=${task.parentId}, title=${task.title}`,
+					color: theme.muted,
+					indent: 2
+				});
+			});
+		}
+	} else {
+		const statusIcon = linkedSubtask.status === 'done' ? ' ✓' : 
+						   linkedSubtask.status === 'in-progress' ? ' ⚡' : '';
+
+		detailContent.push({
+			type: 'text',
+			content: `  🎯 Subtask ${linkedSubtask.id}: ${linkedSubtask.title}${statusIcon}`,
+			color: theme.accent,
+			indent: 2
+		});
+		
+		if (linkedSubtask.description) {
+			detailContent.push({
+				type: 'text',
+				content: `     ${linkedSubtask.description}`,
+				color: theme.textDim,
+				indent: 2
+			});
+		}
+
+		// Show a truncated version of details if available
+		if (linkedSubtask.details) {
+			const detailsPreview = linkedSubtask.details.length > 100 
+				? linkedSubtask.details.substring(0, 100) + '...'
+				: linkedSubtask.details;
+			detailContent.push({
+				type: 'text',
+				content: `     Details: ${detailsPreview}`,
+				color: theme.textDim,
+				indent: 2
+			});
+		}
+	}
+
 	// Add Git Status section (new)
 	if (gitStatus) {
 		detailContent.push({ type: 'blank' });
@@ -1173,61 +1243,7 @@ Completed via Task Master Flow.`
 		}
 	}
 
-	// Linked Task - show the single linked subtask (1:1 relationship)
-	console.log('🔍 [WorktreeDetailsModal] linkedTasks:', linkedTasks);
-	const linkedSubtask = linkedTasks.find(task => task.parentId);
-	console.log('🔍 [WorktreeDetailsModal] linkedSubtask found:', linkedSubtask);
-	
-	detailContent.push({
-		type: 'header',
-		content: 'Linked Subtask:'
-	});
-	
-	if (!linkedSubtask) {
-		detailContent.push({
-			type: 'text',
-			content: '  No subtask linked to this worktree',
-			color: theme.warning,
-			indent: 2
-		});
-		
-		// Debug: show what tasks we do have
-		if (linkedTasks.length > 0) {
-			detailContent.push({
-				type: 'text',
-				content: `  Debug: Found ${linkedTasks.length} linked tasks`,
-				color: theme.muted,
-				indent: 2
-			});
-			linkedTasks.forEach((task, index) => {
-				detailContent.push({
-					type: 'text',
-					content: `    ${index}: id=${task.id}, parentId=${task.parentId}, title=${task.title}`,
-					color: theme.muted,
-					indent: 2
-				});
-			});
-		}
-	} else {
-		const statusIcon = linkedSubtask.status === 'done' ? ' ✓' : 
-						   linkedSubtask.status === 'in-progress' ? ' ⚡' : '';
-		
-		detailContent.push({
-			type: 'text',
-			content: `  🎯 Subtask ${linkedSubtask.id}: ${linkedSubtask.title}${statusIcon}`,
-			color: theme.accent,
-			indent: 2
-		});
-		
-		if (linkedSubtask.description) {
-			detailContent.push({
-				type: 'text',
-				content: `     ${linkedSubtask.description}`,
-				color: theme.textDim,
-				indent: 2
-			});
-		}
-	}
+
 
 	// Calculate visible content based on scroll offset
 	const visibleContent = detailContent.slice(

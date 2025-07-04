@@ -16,7 +16,7 @@
 			"enabled": true,
 			"config": {
 				"autoDetectExisting": true,
-				"confidenceThreshold": 0.4,
+				"confidenceThreshold": 0.7,
 				"maxSuggestedQueries": 3,
 				"cacheResults": true,
 				"timeout": 30000
