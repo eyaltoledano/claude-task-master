@@ -1,7 +1,9 @@
 /**
  * PR Monitoring Service - Real-time PR status monitoring with intelligent retry logic
+ * Phase 3 Enhancement: Comprehensive task status updates and worktree cleanup
  */
 import { EventEmitter } from 'events';
+import { getNextTaskService, isNextTaskServiceInitialized } from './NextTaskService.js';
 
 export class PRMonitoringService extends EventEmitter {
 	constructor(backend, options = {}) {
@@ -231,6 +233,7 @@ export class PRMonitoringService extends EventEmitter {
 
 	/**
 	 * Handle state transitions
+	 * Phase 3: Enhanced with task status updates and cleanup
 	 */
 	async handleStateTransition(prNumber, newState, prStatus, config) {
 		switch (newState) {
@@ -242,15 +245,23 @@ export class PRMonitoringService extends EventEmitter {
 				});
 				break;
 
-			case 'merged':
-				this.emit('readyForCleanup', {
+			case 'merged': {
+				console.log(`🎉 PR ${prNumber} merged successfully! Starting cleanup and task completion...`);
+				
+				// Execute comprehensive merge completion workflow
+				const mergeResult = await this.handlePRMergeComplete(prNumber, prStatus, config);
+				
+				this.emit('mergeComplete', {
 					prNumber,
 					prStatus,
-					config: config.config
+					config: config.config,
+					mergeResult
 				});
+				
 				// Stop monitoring merged PRs
 				await this.stopMonitoring(prNumber, 'merged');
 				break;
+			}
 
 			case 'checks-failed':
 				this.emit('checksFailed', {
@@ -269,10 +280,23 @@ export class PRMonitoringService extends EventEmitter {
 				});
 				break;
 
-			case 'closed':
+			case 'closed': {
+				console.log(`🔒 PR ${prNumber} closed without merging. Handling cleanup...`);
+				
+				// Handle closed PR (no merge)
+				const closeResult = await this.handlePRClosed(prNumber, prStatus, config);
+				
+				this.emit('prClosed', {
+					prNumber,
+					prStatus,
+					config: config.config,
+					closeResult
+				});
+				
 				// Stop monitoring closed PRs
 				await this.stopMonitoring(prNumber, 'closed');
 				break;
+			}
 		}
 	}
 
@@ -355,6 +379,286 @@ export class PRMonitoringService extends EventEmitter {
 	}
 
 	/**
+	 * Phase 3: Handle complete PR merge workflow
+	 * - Update task status to 'done' 
+	 * - Clean up worktrees and branches
+	 * - Handle parent task completion (for subtasks)
+	 * - Trigger next task progression
+	 */
+	async handlePRMergeComplete(prNumber, prStatus, config) {
+		const results = {
+			success: true,
+			steps: {},
+			workflowType: 'pr-merged',
+			prNumber,
+			prUrl: prStatus.url
+		};
+
+		try {
+			// Step 1: Update task status to 'done'
+			if (config.config.taskId) {
+				console.log(`📝 Updating task ${config.config.taskId} status to 'done'...`);
+				try {
+					const statusResult = await this.backend.setTaskStatus({
+						id: config.config.taskId,
+						status: 'done'
+					});
+					
+					results.steps.taskStatus = {
+						success: statusResult?.success || true,
+						taskId: config.config.taskId,
+						previousStatus: 'in-progress',
+						newStatus: 'done'
+					};
+					
+					console.log(`  ✅ Task ${config.config.taskId} marked as done`);
+				} catch (error) {
+					console.error(`  ❌ Failed to update task status: ${error.message}`);
+					results.steps.taskStatus = {
+						success: false,
+						error: error.message,
+						taskId: config.config.taskId
+					};
+				}
+			}
+
+			// Step 2: Clean up worktree and branch  
+			if (config.config.worktreeName && config.config.cleanupAfterMerge !== false) {
+				console.log(`🧹 Cleaning up worktree: ${config.config.worktreeName}...`);
+				try {
+					const cleanupResult = await this.cleanupWorktreeAfterMerge(
+						config.config.worktreeName, 
+						prStatus, 
+						config.config
+					);
+					
+					results.steps.cleanup = cleanupResult;
+					console.log(`  ✅ Worktree cleanup completed`);
+				} catch (error) {
+					console.error(`  ❌ Worktree cleanup failed: ${error.message}`);
+					results.steps.cleanup = {
+						success: false,
+						error: error.message,
+						worktreeName: config.config.worktreeName
+					};
+				}
+			}
+
+			// Step 3: Handle parent task completion (for subtasks)
+			if (config.config.taskId && String(config.config.taskId).includes('.')) {
+				console.log(`👨‍👩‍👧‍👦 Checking parent task completion for subtask ${config.config.taskId}...`);
+				try {
+					const parentResult = await this.checkAndUpdateParentTaskCompletion(config.config.taskId);
+					results.steps.parentTaskCheck = parentResult;
+					
+					if (parentResult.parentCompleted) {
+						console.log(`  ✅ Parent task ${parentResult.parentTaskId} marked as done`);
+					}
+				} catch (error) {
+					console.error(`  ❌ Parent task check failed: ${error.message}`);
+					results.steps.parentTaskCheck = {
+						success: false,
+						error: error.message
+					};
+				}
+			}
+
+			// Step 4: Trigger next task progression (if enabled)
+			if (isNextTaskServiceInitialized() && config.config.autoProgressToNext !== false) {
+				console.log(`🎯 Triggering next task progression...`);
+				try {
+					const nextTaskService = getNextTaskService();
+					const nextResult = await nextTaskService.progressToNextTask({
+						completedTaskId: config.config.taskId,
+						completionType: 'pr-merged',
+						context: { prNumber, prUrl: prStatus.url }
+					});
+					
+					results.steps.nextTask = nextResult;
+					
+					if (nextResult.success && nextResult.nextTask) {
+						console.log(`  ✅ Next task identified: ${nextResult.nextTask.id}`);
+					} else {
+						console.log(`  ℹ️ No next task available or progression skipped`);
+					}
+				} catch (error) {
+					console.error(`  ❌ Next task progression failed: ${error.message}`);
+					results.steps.nextTask = {
+						success: false,
+						error: error.message
+					};
+				}
+			}
+
+			console.log(`🎉 PR merge completion workflow finished for PR ${prNumber}`);
+			return results;
+
+		} catch (error) {
+			console.error(`❌ PR merge completion workflow failed: ${error.message}`);
+			results.success = false;
+			results.error = error.message;
+			return results;
+		}
+	}
+
+	/**
+	 * Phase 3: Handle PR closed without merge
+	 * - Reset task status back to 'pending' or 'in-progress'
+	 * - Preserve worktree for potential retry
+	 * - Log closure reason
+	 */
+	async handlePRClosed(prNumber, prStatus, config) {
+		const results = {
+			success: true,
+			steps: {},
+			workflowType: 'pr-closed',
+			prNumber,
+			prUrl: prStatus.url
+		};
+
+		try {
+			// Step 1: Reset task status 
+			if (config.config.taskId) {
+				console.log(`📝 Resetting task ${config.config.taskId} status (PR closed without merge)...`);
+				try {
+					const statusResult = await this.backend.setTaskStatus({
+						id: config.config.taskId,
+						status: 'pending' // Reset to pending for potential retry
+					});
+					
+					results.steps.taskStatus = {
+						success: statusResult?.success || true,
+						taskId: config.config.taskId,
+						previousStatus: 'in-progress',
+						newStatus: 'pending',
+						reason: 'pr-closed-without-merge'
+					};
+					
+					console.log(`  ✅ Task ${config.config.taskId} reset to pending`);
+				} catch (error) {
+					console.error(`  ❌ Failed to reset task status: ${error.message}`);
+					results.steps.taskStatus = {
+						success: false,
+						error: error.message,
+						taskId: config.config.taskId
+					};
+				}
+			}
+
+			// Step 2: Preserve worktree (don't clean up)
+			if (config.config.worktreeName) {
+				console.log(`📁 Preserving worktree ${config.config.worktreeName} for potential retry...`);
+				results.steps.worktreePreserved = {
+					success: true,
+					worktreeName: config.config.worktreeName,
+					reason: 'pr-closed-preserve-for-retry'
+				};
+			}
+
+			console.log(`🔒 PR ${prNumber} closure handled, task available for retry`);
+			return results;
+
+		} catch (error) {
+			console.error(`❌ PR closure handling failed: ${error.message}`);
+			results.success = false;
+			results.error = error.message;
+			return results;
+		}
+	}
+
+	/**
+	 * Clean up worktree and branch after successful PR merge
+	 */
+	async cleanupWorktreeAfterMerge(worktreeName, prStatus, config) {
+		try {
+			// Use backend's worktree cleanup if available
+			if (this.backend?.cleanupWorktree) {
+				return await this.backend.cleanupWorktree(worktreeName, {
+					reason: 'pr-merged',
+					prUrl: prStatus.url,
+					preserveBranch: config.preserveBranchAfterMerge || false
+				});
+			}
+
+			// Fallback cleanup (basic implementation)
+			console.log(`🧹 Performing basic worktree cleanup for ${worktreeName}...`);
+			return {
+				success: true,
+				worktreeName,
+				cleanupType: 'basic',
+				message: 'Worktree cleanup deferred to manual process'
+			};
+
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message,
+				worktreeName
+			};
+		}
+	}
+
+	/**
+	 * Check if all subtasks of a parent task are complete, and mark parent as done if so
+	 */
+	async checkAndUpdateParentTaskCompletion(subtaskId) {
+		try {
+			const parentTaskId = String(subtaskId).split('.')[0];
+			
+			// Get parent task and all its subtasks
+			const parentTask = await this.backend.getTask({ id: parentTaskId });
+			
+			if (!parentTask?.success || !parentTask.data?.subtasks?.length) {
+				return {
+					success: true,
+					parentTaskId,
+					parentCompleted: false,
+					reason: 'no-subtasks-or-parent-not-found'
+				};
+			}
+
+			// Check if all subtasks are done
+			const subtasks = parentTask.data.subtasks;
+			const completedSubtasks = subtasks.filter(st => st.status === 'done');
+			const allSubtasksComplete = completedSubtasks.length === subtasks.length;
+
+			if (allSubtasksComplete) {
+				console.log(`🎯 All subtasks complete for parent task ${parentTaskId}, marking as done...`);
+				
+				const statusResult = await this.backend.setTaskStatus({
+					id: parentTaskId,
+					status: 'done'
+				});
+				
+				return {
+					success: true,
+					parentTaskId,
+					parentCompleted: true,
+					totalSubtasks: subtasks.length,
+					completedSubtasks: completedSubtasks.length,
+					statusUpdate: statusResult
+				};
+			} else {
+				return {
+					success: true,
+					parentTaskId,
+					parentCompleted: false,
+					totalSubtasks: subtasks.length,
+					completedSubtasks: completedSubtasks.length,
+					reason: 'subtasks-still-pending'
+				};
+			}
+
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message,
+				subtaskId
+			};
+		}
+	}
+
+	/**
 	 * Shutdown the monitoring service
 	 */
 	async shutdown() {
@@ -366,4 +670,37 @@ export class PRMonitoringService extends EventEmitter {
 		console.log(`🛑 PR Monitoring Service shutdown (monitored ${this.monitoredPRs.size} PRs)`);
 		return { success: true };
 	}
+}
+
+// Singleton management for PRMonitoringService
+let prMonitoringServiceInstance = null;
+
+/**
+ * Initialize the PR monitoring singleton with a backend
+ */
+export async function initializePRMonitoringService(backend, options = {}) {
+	if (!prMonitoringServiceInstance) {
+		prMonitoringServiceInstance = new PRMonitoringService(backend, {
+			checkInterval: options.prMergeCheckInterval || 30000, // 30 seconds
+			maxRetries: options.maxRetries || 3,
+			timeoutMs: options.timeoutMs || 300000, // 5 minutes
+			...options
+		});
+		await prMonitoringServiceInstance.initialize();
+	}
+	return prMonitoringServiceInstance;
+}
+
+/**
+ * Get the PR monitoring singleton instance
+ */
+export function getPRMonitoringService() {
+	return prMonitoringServiceInstance;
+}
+
+/**
+ * Check if PR monitoring service is initialized
+ */
+export function isPRMonitoringServiceInitialized() {
+	return prMonitoringServiceInstance !== null && prMonitoringServiceInstance.intervalId !== null;
 } 

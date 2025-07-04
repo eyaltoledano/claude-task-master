@@ -38,6 +38,7 @@ import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
+import { initializePRMonitoringService } from './services/PRMonitoringService.js';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -188,6 +189,15 @@ function FlowApp({ backend, options = {} }) {
 					requireCleanWorktree: false, // Relaxed for development
 					maxRetries: 2,
 					retryDelay: 3000
+				});
+
+				// Initialize PR monitoring service for Phase 3 functionality
+				await initializePRMonitoringService(currentBackend, {
+					prMergeCheckInterval: 30000, // Check PR status every 30 seconds
+					maxRetries: 3,
+					timeoutMs: 300000, // 5 minute timeout
+					cleanupAfterMerge: true,
+					autoProgressToNext: true
 				});
 
 				// Initialize branch awareness manager

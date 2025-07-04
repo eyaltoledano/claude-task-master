@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { getNextTaskService, isNextTaskServiceInitialized } from '../../services/NextTaskService.js';
+import { getPRMonitoringService, isPRMonitoringServiceInitialized } from '../../services/PRMonitoringService.js';
 
 export default class ClaudeCodeStopHook {
 	constructor() {
@@ -1188,6 +1189,7 @@ export default class ClaudeCodeStopHook {
 
 	/**
 	 * Handle task status updates based on workflow choice and completion status
+	 * Phase 3: Enhanced with PR monitoring integration
 	 */
 	async handleTaskStatusAfterWorkflow(task, services, workflowChoice, workflowResult) {
 		try {
@@ -1199,11 +1201,24 @@ export default class ClaudeCodeStopHook {
 				workflowChoice
 			};
 
-			// For PR workflows, do NOT mark as done - wait for PR merge
+			// For PR workflows, start monitoring instead of marking done immediately
 			if (workflowChoice === 'create-pr') {
-				console.log(`📝 Deferring status update for ${task.id} - waiting for PR merge`);
-				result.deferred = true;
-				result.reason = 'waiting-for-pr-merge';
+				if (workflowResult?.success && workflowResult.prUrl) {
+					console.log(`📝 PR created successfully, starting monitoring for ${task.id}...`);
+					const monitoringResult = await this.startPRMonitoring(task, workflowResult, services);
+					
+					result.deferred = true;
+					result.reason = 'pr-monitoring-started';
+					result.prUrl = workflowResult.prUrl;
+					result.monitoringResult = monitoringResult;
+					result.message = 'Task status will be updated automatically when PR is merged';
+				} else {
+					console.log(`❌ PR creation failed for ${task.id} - keeping task pending`);
+					result.deferred = true;
+					result.reason = 'pr-creation-failed';
+					result.error = workflowResult?.error || 'PR creation failed';
+					result.message = 'Task remains pending due to PR creation failure';
+				}
 				return result;
 			}
 
@@ -1330,24 +1345,95 @@ export default class ClaudeCodeStopHook {
 	}
 
 	/**
-	 * TODO: Phase 3 - PR Merge Monitoring
-	 * This method will be implemented to monitor PR status and update task status when merged
+	 * Phase 3: Start PR monitoring for automatic task completion when PR is merged
 	 */
-	async handlePRMergeMonitoring(task, prResult, services) {
-		// Future implementation will:
-		// 1. Set up periodic monitoring of PR status
-		// 2. Detect when PR is merged successfully  
-		// 3. Call handleTaskStatusAfterWorkflow with 'pr-merged' workflow choice
-		// 4. Clean up associated worktrees and branches
-		// 5. Handle parent task completion checking for subtasks
-		
-		console.log(`📝 TODO: Set up PR merge monitoring for task ${task.id}, PR: ${prResult.prUrl}`);
-		return {
-			monitoringSetup: false,
-			reason: 'phase-3-not-implemented',
-			prUrl: prResult.prUrl,
-			taskId: task.id
-		};
+	async startPRMonitoring(task, prResult, services) {
+		try {
+			if (!isPRMonitoringServiceInitialized()) {
+				console.log('⚠️ PR monitoring service not initialized, cannot start monitoring');
+				return {
+					monitoringSetup: false,
+					reason: 'service-not-initialized',
+					prUrl: prResult.prUrl,
+					taskId: task.id
+				};
+			}
+
+			const prMonitoringService = getPRMonitoringService();
+			
+			// Extract PR number from URL
+			const prNumber = this.extractPRNumberFromUrl(prResult.prUrl);
+			
+			if (!prNumber) {
+				console.log(`⚠️ Could not extract PR number from URL: ${prResult.prUrl}`);
+				return {
+					monitoringSetup: false,
+					reason: 'invalid-pr-url',
+					prUrl: prResult.prUrl,
+					taskId: task.id
+				};
+			}
+
+			// Start monitoring with comprehensive configuration
+			const monitoringConfig = {
+				taskId: task.id,
+				worktreeName: prResult.worktreeName || `task-${task.id}`,
+				autoMerge: false, // Let humans decide when to merge
+				cleanupAfterMerge: true,
+				notifyOnStatusChange: true,
+				autoProgressToNext: true, // Enable auto-progression to next task
+				requiredChecks: prResult.requiredChecks || [],
+				maxMonitoringTime: 24 * 60 * 60 * 1000 // 24 hours
+			};
+
+			console.log(`🔍 Starting PR monitoring for task ${task.id}, PR #${prNumber}...`);
+			const monitoringResult = await prMonitoringService.startMonitoring(prNumber, monitoringConfig);
+
+			if (monitoringResult) {
+				console.log(`✅ PR monitoring started for PR #${prNumber}`);
+				return {
+					monitoringSetup: true,
+					prNumber,
+					prUrl: prResult.prUrl,
+					taskId: task.id,
+					config: monitoringConfig,
+					monitoringStarted: new Date().toISOString()
+				};
+			} else {
+				console.log(`❌ Failed to start PR monitoring for PR #${prNumber}`);
+				return {
+					monitoringSetup: false,
+					reason: 'monitoring-start-failed',
+					prNumber,
+					prUrl: prResult.prUrl,
+					taskId: task.id
+				};
+			}
+
+		} catch (error) {
+			console.error(`❌ Error starting PR monitoring: ${error.message}`);
+			return {
+				monitoringSetup: false,
+				reason: 'error',
+				error: error.message,
+				prUrl: prResult.prUrl,
+				taskId: task.id
+			};
+		}
+	}
+
+	/**
+	 * Extract PR number from GitHub PR URL
+	 */
+	extractPRNumberFromUrl(prUrl) {
+		try {
+			// Match GitHub PR URLs like: https://github.com/owner/repo/pull/123
+			const match = prUrl.match(/\/pull\/(\d+)$/);
+			return match ? parseInt(match[1], 10) : null;
+		} catch (error) {
+			console.error('Error extracting PR number:', error.message);
+			return null;
+		}
 	}
 
 	/**
