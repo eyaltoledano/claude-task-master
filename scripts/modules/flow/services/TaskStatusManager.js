@@ -10,6 +10,7 @@
  */
 
 import { log } from '../../utils.js';
+import { DirectBackend } from '../backends/direct-backend.js';
 
 const logger = {
     info: (msg) => log('info', msg),
@@ -19,213 +20,258 @@ const logger = {
 };
 
 export class TaskStatusManager {
-    constructor(directBackend) {
-        this.directBackend = directBackend;
+    constructor() {
+        this.backend = new DirectBackend();
     }
 
     /**
-     * Update task/subtask status for a specific workflow step
+     * Update task status based on workflow step
+     * @param {string} taskId - Task ID (e.g., '4' or '4.1' for subtask)
+     * @param {string} step - Workflow step
+     * @param {Object} additionalInfo - Additional context information
+     * @returns {Promise<Object>} Update result
      */
     async updateStatusForWorkflowStep(taskId, step, additionalInfo = {}) {
         try {
-            switch(step) {
+            console.log(`[TaskStatusManager] Updating status for ${taskId}, step: ${step}`);
+            
+            switch (step) {
                 case 'start-implementation':
-                    return await this.setTaskStatus(taskId, 'in-progress');
+                    return await this._handleStartImplementation(taskId, additionalInfo);
                 
                 case 'commit-progress':
-                    return await this.updateSubtask(
-                        taskId, 
-                        `Progress committed: ${additionalInfo.commitMessage}`
-                    );
+                    return await this._handleCommitProgress(taskId, additionalInfo);
                 
                 case 'complete-implementation':
-                    return await this.setTaskStatus(taskId, 'done');
+                    return await this._handleCompleteImplementation(taskId, additionalInfo);
                 
                 case 'pr-created':
-                    return await this.updateTask(
-                        taskId, 
-                        `PR created: ${additionalInfo.prUrl}\n\nPR is ready for review and merge.`
-                    );
+                    return await this._handlePRCreated(taskId, additionalInfo);
                 
-                case 'merged-locally': {
-                    const mergeMessage = `Changes merged locally to ${additionalInfo.targetBranch}\n\nMerge commit: ${additionalInfo.mergeCommit}`;
-                    await this.updateTask(taskId, mergeMessage);
-                    return await this.setTaskStatus(taskId, 'done');
-                }
+                case 'merged':
+                    return await this._handleMerged(taskId, additionalInfo);
                 
-                case 'pr-merged':
-                    await this.updateTask(taskId, `PR merged: ${additionalInfo.prUrl}`);
-                    return await this.setTaskStatus(taskId, 'done');
-
+                case 'subtask-progress':
+                    return await this._handleSubtaskProgress(taskId, additionalInfo);
+                
                 default:
-                    logger.debug(`Unknown workflow step: ${step}`);
-                    return { success: false, error: `Unknown workflow step: ${step}` };
+                    throw new Error(`Unknown workflow step: ${step}`);
             }
         } catch (error) {
-            logger.error(`Failed to update status for workflow step ${step}:`, error);
-            return { success: false, error: error.message };
+            console.error(`[TaskStatusManager] Error updating status for ${taskId}:`, error);
+            throw error;
         }
     }
 
     /**
-     * Set task or subtask status
+     * Validate that a status transition is valid
+     * @param {string} currentStatus - Current task status
+     * @param {string} newStatus - Proposed new status
+     * @param {string} step - Workflow step
+     * @returns {Object} Validation result
      */
-    async setTaskStatus(taskId, status) {
+    validateStatusTransition(currentStatus, newStatus, step) {
+        const validTransitions = {
+            'pending': ['in-progress', 'deferred', 'cancelled'],
+            'in-progress': ['done', 'pending', 'review', 'deferred', 'cancelled'],
+            'review': ['done', 'in-progress', 'pending'],
+            'done': ['pending', 'in-progress'], // Allow reopening if needed
+            'deferred': ['pending', 'in-progress'],
+            'cancelled': ['pending']
+        };
+
+        const allowed = validTransitions[currentStatus] || [];
+        const isValid = allowed.includes(newStatus);
+
+        return {
+            isValid,
+            reason: isValid ? null : `Invalid transition from ${currentStatus} to ${newStatus}`,
+            step,
+            validOptions: allowed
+        };
+    }
+
+    /**
+     * Get workflow steps completed for a task
+     * @param {string} taskId - Task ID
+     * @returns {Promise<Array>} Array of completed workflow steps
+     */
+    async getWorkflowStepsForTask(taskId) {
         try {
-            logger.debug(`Setting status for ${taskId} to ${status}`);
-            
-            const result = await this.directBackend.setSubtaskStatus(taskId, status);
-            
-            if (result.success) {
-                logger.success(`Task ${taskId} status updated to ${status}`);
-            } else {
-                logger.error(`Failed to update task ${taskId} status:`, result.error);
+            const task = await this.backend.getTask(taskId);
+            if (!task) {
+                throw new Error(`Task ${taskId} not found`);
             }
+
+            // Parse workflow steps from task details/history
+            const steps = [];
             
-            return result;
+            // Check current status
+            if (task.status === 'in-progress') {
+                steps.push('start-implementation');
+            }
+            if (task.status === 'done') {
+                steps.push('complete-implementation');
+            }
+
+            // Parse details for workflow metadata
+            if (task.details && task.details.includes('PR created:')) {
+                steps.push('pr-created');
+            }
+            if (task.details && task.details.includes('Merged:')) {
+                steps.push('merged');
+            }
+
+            return steps;
         } catch (error) {
-            logger.error(`Error setting task status for ${taskId}:`, error);
-            return { success: false, error: error.message };
+            console.error(`[TaskStatusManager] Error getting workflow steps for ${taskId}:`, error);
+            return [];
         }
     }
 
     /**
      * Update subtask with progress information
+     * @param {string} subtaskId - Subtask ID (e.g., '4.1')
+     * @param {Object} progressInfo - Progress information
+     * @returns {Promise<Object>} Update result
      */
-    async updateSubtask(subtaskId, progressMessage) {
+    async updateSubtaskWithProgress(subtaskId, progressInfo) {
         try {
-            logger.debug(`Updating subtask ${subtaskId} with progress`);
+            const timestamp = new Date().toISOString();
+            let progressEntry = `\n\n### Progress Update - ${timestamp}\n${progressInfo.message}`;
             
-            const result = await this.directBackend.updateSubtask(subtaskId, progressMessage);
-            
-            if (result.success) {
-                logger.success(`Subtask ${subtaskId} updated with progress`);
-            } else {
-                logger.error(`Failed to update subtask ${subtaskId}:`, result.error);
+            if (progressInfo.findings) {
+                progressEntry += `\n\n**Findings:**\n${progressInfo.findings}`;
             }
-            
-            return result;
+            if (progressInfo.decisions) {
+                progressEntry += `\n\n**Decisions Made:**\n${progressInfo.decisions}`;
+            }
+            if (progressInfo.nextSteps) {
+                progressEntry += `\n\n**Next Steps:**\n${progressInfo.nextSteps}`;
+            }
+
+            return await this.backend.updateSubtask(subtaskId, progressEntry);
         } catch (error) {
-            logger.error(`Error updating subtask ${subtaskId}:`, error);
-            return { success: false, error: error.message };
+            console.error(`[TaskStatusManager] Error updating subtask progress for ${subtaskId}:`, error);
+            throw error;
         }
     }
 
     /**
-     * Update task with information
+     * Update task with workflow metadata
+     * @param {string} taskId - Task ID
+     * @param {Object} metadata - Workflow metadata
+     * @returns {Promise<Object>} Update result
      */
-    async updateTask(taskId, message) {
+    async updateTaskWithMetadata(taskId, metadata) {
         try {
-            logger.debug(`Updating task ${taskId} with information`);
+            const timestamp = new Date().toISOString();
+            let updateMessage = `\n\n### Workflow Update - ${timestamp}\n`;
             
-            const result = await this.directBackend.updateTask(taskId, message);
-            
-            if (result.success) {
-                logger.success(`Task ${taskId} updated with information`);
-            } else {
-                logger.error(`Failed to update task ${taskId}:`, result.error);
+            if (metadata.prUrl) {
+                updateMessage += `**PR Created:** ${metadata.prUrl}\n`;
             }
-            
-            return result;
+            if (metadata.commitHash) {
+                updateMessage += `**Commit:** ${metadata.commitHash}\n`;
+            }
+            if (metadata.branch) {
+                updateMessage += `**Branch:** ${metadata.branch}\n`;
+            }
+            if (metadata.mergeDetails) {
+                updateMessage += `**Merge Details:** ${metadata.mergeDetails}\n`;
+            }
+
+            return await this.backend.updateTask(taskId, updateMessage);
         } catch (error) {
-            logger.error(`Error updating task ${taskId}:`, error);
-            return { success: false, error: error.message };
+            console.error(`[TaskStatusManager] Error updating task metadata for ${taskId}:`, error);
+            throw error;
         }
     }
 
-    /**
-     * Handle workflow completion - comprehensive status update
-     */
-    async handleWorkflowCompletion(taskId, completionType, completionInfo = {}) {
-        try {
-            logger.info(`Handling workflow completion for ${taskId}: ${completionType}`);
+    // Private helper methods for handling specific workflow steps
 
-            const updates = [];
+    async _handleStartImplementation(taskId, additionalInfo) {
+        const result = await this.backend.setTaskStatus(taskId, 'in-progress');
+        
+        if (additionalInfo.worktree) {
+            await this.updateTaskWithMetadata(taskId, {
+                branch: additionalInfo.worktree.branch,
+                worktreePath: additionalInfo.worktree.path
+            });
+        }
+        
+        return result;
+    }
 
-            switch(completionType) {
-                case 'pr-created':
-                    updates.push(
-                        await this.updateStatusForWorkflowStep(taskId, 'pr-created', completionInfo)
-                    );
-                    break;
-
-                case 'merged-locally':
-                    updates.push(
-                        await this.updateStatusForWorkflowStep(taskId, 'merged-locally', completionInfo)
-                    );
-                    break;
-
-                case 'pr-merged':
-                    updates.push(
-                        await this.updateStatusForWorkflowStep(taskId, 'pr-merged', completionInfo)
-                    );
-                    break;
-
-                default:
-                    logger.debug(`Unknown completion type: ${completionType}`);
-                    return { success: false, error: `Unknown completion type: ${completionType}` };
-            }
-
-            const allSuccessful = updates.every(update => update.success);
-
-            return {
-                success: allSuccessful,
-                updates,
-                completionType,
-                taskId
-            };
-
-        } catch (error) {
-            logger.error(`Error handling workflow completion for ${taskId}:`, error);
-            return { success: false, error: error.message };
+    async _handleCommitProgress(taskId, additionalInfo) {
+        const progressInfo = {
+            message: `Progress committed: ${additionalInfo.commitMessage}`,
+            findings: additionalInfo.findings,
+            decisions: additionalInfo.decisions
+        };
+        
+        if (taskId.includes('.')) {
+            // This is a subtask
+            return await this.updateSubtaskWithProgress(taskId, progressInfo);
+        } else {
+            // This is a main task
+            return await this.updateTaskWithMetadata(taskId, {
+                commitHash: additionalInfo.commitHash,
+                commitMessage: additionalInfo.commitMessage
+            });
         }
     }
 
-    /**
-     * Validate task readiness for workflow step
-     */
-    async validateTaskReadiness(taskId, workflowStep) {
-        try {
-            logger.debug(`Validating task ${taskId} readiness for ${workflowStep}`);
-
-            // Get task details
-            const taskResult = await this.directBackend.getTask(taskId);
-            
-            if (!taskResult.success) {
-                return { ready: false, reason: 'task-not-found', error: taskResult.error };
-            }
-
-            const task = taskResult.data;
-
-            switch(workflowStep) {
-                case 'start-implementation':
-                    return {
-                        ready: task.status === 'pending',
-                        reason: task.status !== 'pending' ? 'task-not-pending' : null,
-                        currentStatus: task.status
-                    };
-
-                case 'complete-implementation':
-                    return {
-                        ready: task.status === 'in-progress',
-                        reason: task.status !== 'in-progress' ? 'task-not-in-progress' : null,
-                        currentStatus: task.status
-                    };
-
-                case 'pr-creation':
-                    return {
-                        ready: ['in-progress', 'done'].includes(task.status),
-                        reason: !['in-progress', 'done'].includes(task.status) ? 'task-not-ready-for-pr' : null,
-                        currentStatus: task.status
-                    };
-
-                default:
-                    return { ready: true, reason: null };
-            }
-
-        } catch (error) {
-            logger.error(`Error validating task readiness for ${taskId}:`, error);
-            return { ready: false, reason: 'validation-error', error: error.message };
+    async _handleCompleteImplementation(taskId, additionalInfo) {
+        await this.backend.setTaskStatus(taskId, 'done');
+        
+        const completionInfo = {
+            message: 'Implementation completed',
+            summary: additionalInfo.summary || 'Task implementation finished',
+            testingStatus: additionalInfo.testingStatus || 'Tests completed'
+        };
+        
+        if (taskId.includes('.')) {
+            return await this.updateSubtaskWithProgress(taskId, completionInfo);
+        } else {
+            return await this.updateTaskWithMetadata(taskId, {
+                completionTime: new Date().toISOString(),
+                summary: additionalInfo.summary
+            });
         }
+    }
+
+    async _handlePRCreated(taskId, additionalInfo) {
+        const metadata = {
+            prUrl: additionalInfo.prUrl,
+            branch: additionalInfo.branch,
+            commitHash: additionalInfo.commitHash
+        };
+        
+        return await this.updateTaskWithMetadata(taskId, metadata);
+    }
+
+    async _handleMerged(taskId, additionalInfo) {
+        await this.backend.setTaskStatus(taskId, 'done');
+        
+        const metadata = {
+            mergeDetails: `Merged ${additionalInfo.branch} to ${additionalInfo.targetBranch || 'main'}`,
+            mergeTime: new Date().toISOString(),
+            mergeType: additionalInfo.mergeType || 'local'
+        };
+        
+        return await this.updateTaskWithMetadata(taskId, metadata);
+    }
+
+    async _handleSubtaskProgress(taskId, additionalInfo) {
+        const progressInfo = {
+            message: additionalInfo.message || 'Subtask progress update',
+            findings: additionalInfo.findings,
+            implementation: additionalInfo.implementation,
+            challenges: additionalInfo.challenges,
+            nextSteps: additionalInfo.nextSteps
+        };
+        
+        return await this.updateSubtaskWithProgress(taskId, progressInfo);
     }
 } 

@@ -29,8 +29,8 @@ export class WorktreeManager {
 		// Initialize workflow managers
 		this.gitWorkflowManager = new GitWorkflowManager(projectRoot);
 		this.localMergeManager = new LocalMergeManager(projectRoot);
-		this.taskStatusManager = null; // Will be initialized when directBackend is set
-		this.workflowValidator = null; // Will be initialized when directBackend is set
+		this.taskStatusManager = new TaskStatusManager();
+		this.workflowValidator = new WorkflowValidator();
 
 		// Ensure the config file exists on disk
 		if (!fs.existsSync(this.configPath)) {
@@ -725,14 +725,13 @@ export class WorktreeManager {
 				};
 			}
 
-			// Step 4: Validate workflow readiness (if validator available)
-			let validationResults = null;
-			if (this.workflowValidator && worktree.linkedSubtask) {
-				validationResults = await this.workflowValidator.validateTaskReadyForPR(
-					worktree.linkedSubtask.fullId,
-					worktree.path
-				);
-			}
+					// Step 4: Validate workflow readiness
+		let validationResults = null;
+		if (worktree.linkedSubtask) {
+			validationResults = await this.workflowValidator.validateTaskReadyForPR(
+				worktree.linkedSubtask.fullId
+			);
+		}
 
 			// Step 5: Handle workflow choice
 			if (options.workflowChoice === 'create-pr' && repoInfo.isGitHub && repoInfo.canCreatePR) {
@@ -832,11 +831,11 @@ export class WorktreeManager {
 			this.saveConfig();
 
 			// Update task status using TaskStatusManager
-			if (this.taskStatusManager && worktree.linkedSubtask) {
-				await this.taskStatusManager.handleWorkflowCompletion(
+			if (worktree.linkedSubtask) {
+				await this.taskStatusManager.updateStatusForWorkflowStep(
 					worktree.linkedSubtask.fullId,
 					'pr-created',
-					{ prUrl }
+					{ prUrl, branch: branchName, commitHash: gitStatus.lastCommit }
 				);
 			}
 
@@ -894,13 +893,14 @@ export class WorktreeManager {
 			worktree.completedAt = new Date().toISOString();
 			
 			// Update task status using TaskStatusManager
-			if (this.taskStatusManager && worktree.linkedSubtask) {
-				await this.taskStatusManager.handleWorkflowCompletion(
+			if (worktree.linkedSubtask) {
+				await this.taskStatusManager.updateStatusForWorkflowStep(
 					worktree.linkedSubtask.fullId,
-					'merged-locally',
+					'merged',
 					{ 
+						branch: worktree.branch,
 						targetBranch: mergeResult.targetBranch,
-						mergeCommit: mergeResult.mergeCommit 
+						mergeType: 'local'
 					}
 				);
 			}
@@ -969,12 +969,10 @@ export class WorktreeManager {
 	}
 
 	/**
-	 * Set the direct backend and initialize TaskStatusManager (called by Flow app)
+	 * Set the direct backend (called by Flow app)
 	 */
 	setDirectBackend(directBackend) {
 		this.directBackend = directBackend;
-		this.taskStatusManager = new TaskStatusManager(directBackend);
-		this.workflowValidator = new WorkflowValidator(directBackend, this.gitWorkflowManager);
 	}
 
 	/**

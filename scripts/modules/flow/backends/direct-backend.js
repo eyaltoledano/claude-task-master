@@ -5426,4 +5426,213 @@ ${prompt}
 			log: this.log.log
 		};
 	}
+
+	// Phase 5: Workflow Pattern Enforcement Methods
+
+	/**
+	 * Validate task readiness for PR creation
+	 * @param {string} taskId - Task ID
+	 * @returns {Promise<Object>} Validation result
+	 */
+	async validateTaskReadyForPR(taskId) {
+		try {
+			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const validator = new WorkflowValidator();
+			return await validator.validateTaskReadyForPR(taskId);
+		} catch (error) {
+			console.error('Error validating task for PR:', error);
+			return {
+				isReady: false,
+				errors: [`Validation error: ${error.message}`],
+				warnings: [],
+				suggestions: []
+			};
+		}
+	}
+
+	/**
+	 * Validate subtask implementation pattern
+	 * @param {string} subtaskId - Subtask ID
+	 * @returns {Promise<Object>} Validation result
+	 */
+	async validateSubtaskImplementationPattern(subtaskId) {
+		try {
+			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const validator = new WorkflowValidator();
+			return await validator.validateSubtaskImplementationPattern(subtaskId);
+		} catch (error) {
+			console.error('Error validating implementation pattern:', error);
+			return {
+				isValid: false,
+				hasRequiredIssues: true,
+				errors: [`Pattern validation error: ${error.message}`],
+				warnings: [],
+				phases: { exploration: false, implementation: false, completion: false }
+			};
+		}
+	}
+
+	/**
+	 * Validate commit message format
+	 * @param {string} message - Commit message
+	 * @returns {Object} Validation result
+	 */
+	async validateCommitMessageFormat(message) {
+		try {
+			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const validator = new WorkflowValidator();
+			return validator.validateCommitMessageFormat(message);
+		} catch (error) {
+			console.error('Error validating commit message:', error);
+			return {
+				isValid: false,
+				errors: [`Validation error: ${error.message}`],
+				warnings: [],
+				suggestions: []
+			};
+		}
+	}
+
+	/**
+	 * Validate workflow prerequisites
+	 * @param {string} workflowType - Workflow type
+	 * @param {Object} context - Context
+	 * @returns {Promise<Object>} Validation result
+	 */
+	async validateWorkflowPrerequisites(workflowType, context = {}) {
+		try {
+			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const validator = new WorkflowValidator();
+			return await validator.validateWorkflowPrerequisites(workflowType, context);
+		} catch (error) {
+			console.error('Error validating workflow prerequisites:', error);
+			return {
+				isReady: false,
+				errors: [`Prerequisites validation error: ${error.message}`],
+				warnings: [],
+				prerequisites: {}
+			};
+		}
+	}
+
+	/**
+	 * Generate workflow recommendations
+	 * @param {string} taskId - Task ID
+	 * @param {Object} currentState - Current state
+	 * @returns {Promise<Object>} Recommendations
+	 */
+	async generateWorkflowRecommendations(taskId, currentState = {}) {
+		try {
+			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const validator = new WorkflowValidator();
+			return await validator.generateWorkflowRecommendations(taskId, currentState);
+		} catch (error) {
+			console.error('Error generating recommendations:', error);
+			return {
+				immediate: [],
+				suggested: [],
+				warnings: [`Recommendations error: ${error.message}`]
+			};
+		}
+	}
+
+	/**
+	 * Update task status for workflow step
+	 * @param {string} taskId - Task ID
+	 * @param {string} step - Workflow step
+	 * @param {Object} additionalInfo - Additional information
+	 * @returns {Promise<Object>} Update result
+	 */
+	async updateStatusForWorkflowStep(taskId, step, additionalInfo = {}) {
+		try {
+			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const statusManager = new TaskStatusManager();
+			return await statusManager.updateStatusForWorkflowStep(taskId, step, additionalInfo);
+		} catch (error) {
+			console.error('Error updating status for workflow step:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Validate status transition
+	 * @param {string} currentStatus - Current status
+	 * @param {string} newStatus - New status
+	 * @param {string} step - Workflow step
+	 * @returns {Object} Validation result
+	 */
+	async validateStatusTransition(currentStatus, newStatus, step) {
+		try {
+			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const statusManager = new TaskStatusManager();
+			return statusManager.validateStatusTransition(currentStatus, newStatus, step);
+		} catch (error) {
+			console.error('Error validating status transition:', error);
+			return {
+				isValid: false,
+				reason: `Validation error: ${error.message}`,
+				step,
+				validOptions: []
+			};
+		}
+	}
+
+	/**
+	 * Get workflow steps for task
+	 * @param {string} taskId - Task ID
+	 * @returns {Promise<Array>} Workflow steps
+	 */
+	async getWorkflowStepsForTask(taskId) {
+		try {
+			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const statusManager = new TaskStatusManager();
+			return await statusManager.getWorkflowStepsForTask(taskId);
+		} catch (error) {
+			console.error('Error getting workflow steps:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Update subtask with structured progress
+	 * @param {string} subtaskId - Subtask ID
+	 * @param {Object} progressInfo - Progress information
+	 * @returns {Promise<Object>} Update result
+	 */
+	async updateSubtaskWithProgress(subtaskId, progressInfo) {
+		try {
+			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const statusManager = new TaskStatusManager();
+			return await statusManager.updateSubtaskWithProgress(subtaskId, progressInfo);
+		} catch (error) {
+			console.error('Error updating subtask with progress:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Update task with workflow metadata
+	 * @param {string} taskId - Task ID
+	 * @param {Object} metadata - Workflow metadata
+	 * @returns {Promise<Object>} Update result
+	 */
+	async updateTaskWithMetadata(taskId, metadata) {
+		try {
+			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const statusManager = new TaskStatusManager();
+			return await statusManager.updateTaskWithMetadata(taskId, metadata);
+		} catch (error) {
+			console.error('Error updating task with metadata:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
 }
