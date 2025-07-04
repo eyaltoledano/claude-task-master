@@ -1,28 +1,26 @@
 /**
- * Enhanced CLAUDE.md Formatter - Phase 2.3 Implementation
+ * Unified CLAUDE.md Formatter
  *
- * Transforms sophisticated AST analysis results from Phase 2.1 and 2.2 into rich,
- * task-aware CLAUDE.md context files that provide Claude with comprehensive
- * implementation guidance.
+ * Single formatter that always generates complete task context and conditionally
+ * adds enhanced AST analysis sections when available. Provides graceful degradation
+ * while maintaining DRY principles.
  *
  * Features:
- * - Task-aware context prioritization
- * - Multi-language pattern detection and framework insights
- * - Advanced complexity analysis and technical debt assessment
- * - Dependency mapping and circular dependency detection
- * - Actionable implementation recommendations
- * - Rich markdown formatting with visual elements
+ * - Always includes complete task details with parent context
+ * - Conditionally adds AST-powered insights when available
+ * - Graceful degradation when AST analysis fails
+ * - Single source of truth for CLAUDE.md generation
  *
  * @author Task Master Flow
- * @version 2.3.0
+ * @version 3.0.0 (Unified)
  */
 
 /**
- * Format enhanced AST analysis into a rich CLAUDE.md context file
- * @param {Object} enhancedResults - Results from enhanced AST analysis
+ * Format comprehensive CLAUDE.md context with conditional enhancements
+ * @param {Object} enhancedResults - Results from enhanced AST analysis (may be null/failed)
  * @param {Array} tasks - Current tasks for context
  * @param {Object} options - Formatting options
- * @returns {Promise<string>} Rich CLAUDE.md content
+ * @returns {Promise<string>} Complete CLAUDE.md content
  */
 export async function formatEnhancedClaudeContext(
 	enhancedResults,
@@ -40,24 +38,29 @@ export async function formatEnhancedClaudeContext(
 		detailLevel = 'comprehensive' // basic, standard, comprehensive
 	} = options;
 
-	if (!enhancedResults || !enhancedResults.success) {
-		return generateFallbackContext(enhancedResults, tasks, options);
+	// Determine if enhanced analysis is available and successful
+	const hasEnhancedAnalysis = enhancedResults && enhancedResults.success && enhancedResults.enabled;
+	
+	// Start with unified header
+	let context = generateUnifiedHeader(worktreePath, enhancedResults, hasEnhancedAnalysis);
+
+	// 📋 ALWAYS INCLUDE: Detailed Task Information (Core Section)
+	if (tasks.length > 0) {
+		context += generateDetailedTaskSection(tasks, options);
 	}
 
-	let context = generateHeader(worktreePath, enhancedResults.metadata);
-
-	// 🎯 Task Analysis Section
-	if (includeTaskAnalysis && tasks.length > 0) {
+	// 🎯 CONDITIONAL: Enhanced Task Analysis
+	if (hasEnhancedAnalysis && includeTaskAnalysis && tasks.length > 0) {
 		context += generateTaskAnalysisSection(enhancedResults, tasks, options);
 	}
 
-	// 🏗️ Architecture Overview Section
-	if (includeArchitectureOverview) {
+	// 🏗️ CONDITIONAL: Architecture Overview
+	if (hasEnhancedAnalysis && includeArchitectureOverview) {
 		context += generateArchitectureOverviewSection(enhancedResults, options);
 	}
 
-	// 📊 Prioritized Code Context Section
-	if (includePrioritizedContext) {
+	// 📊 CONDITIONAL: Prioritized Code Context
+	if (hasEnhancedAnalysis && includePrioritizedContext) {
 		context += generatePrioritizedContextSection(
 			enhancedResults,
 			tasks,
@@ -65,18 +68,18 @@ export async function formatEnhancedClaudeContext(
 		);
 	}
 
-	// 🔗 Dependencies & Relationships Section
-	if (includeDependencyAnalysis) {
+	// 🔗 CONDITIONAL: Dependencies & Relationships
+	if (hasEnhancedAnalysis && includeDependencyAnalysis) {
 		context += generateDependencyAnalysisSection(enhancedResults, options);
 	}
 
-	// ⚠️ Complexity Insights Section
-	if (includeComplexityInsights) {
+	// ⚠️ CONDITIONAL: Complexity Insights
+	if (hasEnhancedAnalysis && includeComplexityInsights) {
 		context += generateComplexityInsightsSection(enhancedResults, options);
 	}
 
-	// 💡 Implementation Guidance Section
-	if (includeImplementationGuidance && tasks.length > 0) {
+	// 💡 CONDITIONAL: Implementation Guidance
+	if (hasEnhancedAnalysis && includeImplementationGuidance && tasks.length > 0) {
 		context += generateImplementationGuidanceSection(
 			enhancedResults,
 			tasks,
@@ -84,98 +87,155 @@ export async function formatEnhancedClaudeContext(
 		);
 	}
 
-	// Add performance metrics footer
-	context += generatePerformanceMetrics(enhancedResults.metadata);
+	// 📈 CONDITIONAL: Performance metrics footer (only if enhanced analysis ran)
+	if (hasEnhancedAnalysis) {
+		context += generatePerformanceMetrics(enhancedResults.metadata);
+	} else {
+		context += generateBasicFooter(enhancedResults);
+	}
 
 	return context;
 }
 
 /**
- * Generate the header section with metadata
+ * Generate unified header that adapts to analysis availability
  */
-function generateHeader(worktreePath, metadata) {
+function generateUnifiedHeader(worktreePath, enhancedResults, hasEnhancedAnalysis) {
 	const timestamp = new Date().toLocaleString();
 
-	return `# 🌟 Enhanced Task Implementation Context
+	if (hasEnhancedAnalysis) {
+		// Enhanced header with AST analysis info
+		return `# 🌟 Enhanced Task Implementation Context
 
 *Generated by Task Master Flow with AST-powered code intelligence*
 
 **Worktree:** \`${worktreePath || 'Current'}\`  
 **Generated:** ${timestamp}  
-**Analysis Engine:** ${metadata?.phase || 'Enhanced AST'} (${metadata?.filesAnalyzed || 0} files analyzed)
+**Analysis Engine:** ${enhancedResults.metadata?.phase || 'Enhanced AST'} (${enhancedResults.metadata?.filesAnalyzed || 0} files analyzed)
 
 ---
 
 `;
+	} else {
+		// Basic header with fallback explanation
+		const errorInfo = enhancedResults?.error ? ` (${enhancedResults.error})` : '';
+		return `# 📋 Task Implementation Context
+
+*Generated by Task Master Flow*
+
+**Worktree:** \`${worktreePath || 'Current'}\`  
+**Generated:** ${timestamp}  
+**Analysis Mode:** Basic${errorInfo}
+
+---
+
+`;
+	}
 }
 
 /**
- * Generate fallback context when enhanced analysis fails
+ * Generate basic footer when enhanced analysis is not available
  */
-function generateFallbackContext(enhancedResults, tasks, options) {
-	let context = `# Task Implementation Context
+function generateBasicFooter(enhancedResults) {
+	let footer = `## 📝 Analysis Notes
 
-*Enhanced AST analysis unavailable - using fallback context*
+**Enhanced Analysis:** Not available`;
+	
+	if (enhancedResults?.error) {
+		footer += ` (${enhancedResults.error})`;
+	}
+	
+	footer += `
+- AST-powered insights: ❌
+- Code structure analysis: ❌  
+- Framework detection: ❌
 
+Claude will work with task details and basic project context.
+
+---
+
+*This context was generated by Task Master Flow. Enhanced code analysis was not available for this session.*
 `;
 
-	if (enhancedResults?.error) {
-		context += `**Analysis Error:** ${enhancedResults.error}\n\n`;
-	}
+	return footer;
+}
 
-	if (tasks.length > 0) {
-		context += '## Tasks to Implement\n\n';
-		tasks.forEach((task) => {
-			// Check if this is a subtask by looking at the ID or isSubtask property
-			const isSubtask = task.isSubtask || String(task.id).includes('.');
-			const taskType = isSubtask ? 'Subtask' : 'Task';
+/**
+ * Generate Detailed Task Information section with parent context
+ */
+function generateDetailedTaskSection(tasks, options) {
+	let section = '## 📋 Tasks to Implement\n\n';
 
-			// If this is a subtask, first show parent task context
-			if (isSubtask && task.parentTask) {
-				context += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
+	tasks.forEach((task) => {
+		// Check if this is a subtask by looking at the ID or isSubtask property
+		const isSubtask = task.isSubtask || String(task.id).includes('.');
+		const taskType = isSubtask ? 'Subtask' : 'Task';
 
-				if (task.parentTask.description) {
-					context += `**Parent Description:** ${task.parentTask.description}\n\n`;
+		// If this is a subtask, first show parent task context
+		if (isSubtask && task.parentTask) {
+			section += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
+
+			if (task.parentTask.description) {
+				section += `**Parent Description:**\n${task.parentTask.description}\n\n`;
+			}
+
+			if (task.parentTask.details) {
+				section += `**Parent Implementation Details:**\n${task.parentTask.details}\n\n`;
+			}
+
+			// Check for parent test strategy
+			const parentTestStrategy =
+				task.parentTask.testStrategy || task.parentTask.test_strategy || null;
+			if (parentTestStrategy !== null && parentTestStrategy !== '') {
+				section += `**Parent Test Strategy:**\n${parentTestStrategy}\n\n`;
+			}
+
+			section += '---\n\n';
+		}
+
+		section += `### ${taskType} to Implement: ${task.id}: ${task.title}\n\n`;
+		section += `**Status:** ${task.status}\n\n`;
+
+		if (task.description) {
+			section += `**Description:**\n${task.description}\n\n`;
+		}
+
+		if (task.details) {
+			section += `**Implementation Details:**\n${task.details}\n\n`;
+		}
+
+		// Check for test strategy (handle empty strings)
+		const testStrategy = task.testStrategy || task.test_strategy || null;
+		if (testStrategy !== null && testStrategy !== '') {
+			section += `**Test Strategy:**\n${testStrategy}\n\n`;
+		} else if (isSubtask) {
+			// For subtasks without test strategy, add a placeholder
+			section += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
+		}
+
+		if (task.dependencies && task.dependencies.length > 0) {
+			section += `**Dependencies:** ${task.dependencies.join(', ')}\n\n`;
+		}
+
+		// Only show subtasks section if this is a parent task with subtasks
+		if (!isSubtask && task.subtasks && task.subtasks.length > 0) {
+			section += `**Subtasks:**\n`;
+			for (const subtask of task.subtasks) {
+				section += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
+				if (subtask.details) {
+					section += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
 				}
-
-				if (task.parentTask.details) {
-					context += `**Parent Implementation Details:** ${task.parentTask.details}\n\n`;
+				if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
+					section += `  - Test Strategy: ${subtask.testStrategy}\n`;
 				}
-
-				// Check for parent test strategy
-				const parentTestStrategy =
-					task.parentTask.testStrategy || task.parentTask.test_strategy || null;
-				if (parentTestStrategy !== null && parentTestStrategy !== '') {
-					context += `**Parent Test Strategy:** ${parentTestStrategy}\n\n`;
-				}
-
-				context += '---\n\n';
 			}
+			section += '\n';
+		}
 
-			context += `### ${taskType} to Implement: ${task.id}: ${task.title}\n`;
-			context += `**Status:** ${task.status}\n\n`;
-			if (task.description) {
-				context += `**Description:** ${task.description}\n\n`;
-			}
-			if (task.details) {
-				context += `**Implementation Details:** ${task.details}\n\n`;
-			}
+		section += '\n---\n\n';
+	});
 
-			// Check for test strategy (handle empty strings)
-			const testStrategy = task.testStrategy || task.test_strategy || null;
-			if (testStrategy !== null && testStrategy !== '') {
-				context += `**Test Strategy:** ${testStrategy}\n\n`;
-			} else if (isSubtask) {
-				// For subtasks without test strategy, add a placeholder
-				context += `**Test Strategy:** (No specific test strategy defined for this subtask)\n\n`;
-			}
-		});
-	}
-
-	context +=
-		'## Note\n\nEnhanced code analysis is currently unavailable. Claude will work with basic project context.\n\n';
-
-	return context;
+	return section;
 }
 
 /**

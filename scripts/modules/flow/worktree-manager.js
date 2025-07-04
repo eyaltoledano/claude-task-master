@@ -7,6 +7,8 @@ import {
 	cleanupWorktreeCache, 
 	validateWorktreeCache 
 } from './ast/context/cache-manager.js';
+import { GitWorkflowManager } from './services/GitWorkflowManager.js';
+import { LocalMergeManager } from './services/LocalMergeManager.js';
 
 const logger = {
 	info: (msg) => log('info', msg),
@@ -21,6 +23,10 @@ export class WorktreeManager {
 		this.configPath = path.join(projectRoot, '.taskmaster/worktrees.json');
 		this.config = this.loadConfig();
 		this.branchManager = null;  // NEW: Will be set by Flow app
+		
+		// Initialize workflow managers
+		this.gitWorkflowManager = new GitWorkflowManager(projectRoot);
+		this.localMergeManager = new LocalMergeManager(projectRoot);
 
 		// Ensure the config file exists on disk
 		if (!fs.existsSync(this.configPath)) {
@@ -53,7 +59,9 @@ export class WorktreeManager {
 
 				// Ensure all required fields exist
 				if (!rawConfig.config.worktreesRoot) {
-					rawConfig.config.worktreesRoot = '../claude-task-master-worktrees';
+					// Use dynamic project name instead of hardcoded value
+					const projectName = path.basename(this.projectRoot);
+					rawConfig.config.worktreesRoot = `../${projectName}-worktrees`;
 				}
 				if (!rawConfig.config.defaultSourceBranch) {
 					rawConfig.config.defaultSourceBranch = 'main';
@@ -76,26 +84,74 @@ export class WorktreeManager {
 	}
 
 	getDefaultConfig() {
-		// Try to detect current branch
+		// Try to detect current branch more robustly for new repositories
 		let defaultBranch = 'main';
 		try {
-			const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-				cwd: this.projectRoot,
-				encoding: 'utf8'
-			}).trim();
-			if (currentBranch && currentBranch !== 'HEAD') {
-				defaultBranch = currentBranch;
+			// First check if repository has any commits
+			try {
+				execSync('git rev-parse HEAD', {
+					cwd: this.projectRoot,
+					stdio: 'ignore'
+				});
+				
+				// Repository has commits, get current branch normally
+				const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+					cwd: this.projectRoot,
+					encoding: 'utf8'
+				}).trim();
+				
+				if (currentBranch && currentBranch !== 'HEAD') {
+					defaultBranch = currentBranch;
+				}
+			} catch {
+				// No commits yet, try to detect the default branch name
+				logger.debug('Repository has no commits, detecting default branch name...');
+				
+				try {
+					// Try git branch --show-current (works even without commits)
+					const currentBranch = execSync('git branch --show-current', {
+						cwd: this.projectRoot,
+						encoding: 'utf8'
+					}).trim();
+					
+					if (currentBranch) {
+						defaultBranch = currentBranch;
+						logger.debug(`Detected default branch name: ${currentBranch}`);
+					}
+				} catch {
+					// Try symbolic-ref as another fallback
+					try {
+						const ref = execSync('git symbolic-ref HEAD', {
+							cwd: this.projectRoot,
+							encoding: 'utf8'
+						}).trim();
+						
+						const branchName = ref.replace('refs/heads/', '');
+						if (branchName) {
+							defaultBranch = branchName;
+							logger.debug(`Detected branch from symbolic-ref: ${branchName}`);
+						}
+					} catch {
+						// Final fallback to 'main'
+						logger.debug('Could not detect branch name, using "main" as default');
+						defaultBranch = 'main';
+					}
+				}
 			}
 		} catch (error) {
-			logger.debug('Could not detect current branch, using main as default');
+			logger.debug('Could not detect current branch, using main as default:', error.message);
 		}
+
+		// Get project name from the project root directory
+		const projectName = path.basename(this.projectRoot);
+		const worktreesRoot = `../${projectName}-worktrees`;
 
 		return {
 			config: {
-				worktreesRoot: '../claude-task-master-worktrees',
+				worktreesRoot: worktreesRoot,
 				defaultSourceBranch: defaultBranch,
 				autoCreateOnLaunch: true,
-				useBranchAwareness: true  // NEW: Enable branch awareness integration
+				useBranchAwareness: true  // Enable branch awareness integration
 			},
 			worktrees: {}
 		};
@@ -213,7 +269,7 @@ export class WorktreeManager {
 
 		try {
 			// Create worktree with new branch
-			const actualBranchName = await this.createWorktree(
+			const worktreeResult = await this.createWorktree(
 				worktreeName,
 				worktreePath,
 				sourceBranch
@@ -222,7 +278,7 @@ export class WorktreeManager {
 			// Link to task
 			const worktreeData = {
 				path: worktreePath,
-				branch: actualBranchName, // Use the actual branch name returned
+				branch: worktreeResult.branch, // Use the actual branch name returned
 				sourceBranch,
 				linkedTask: {
 					taskId,
@@ -375,7 +431,7 @@ export class WorktreeManager {
 
 		try {
 			// Create worktree with new branch
-			const actualBranchName = await this.createWorktree(
+			const worktreeResult = await this.createWorktree(
 				worktreeName,
 				worktreePath,
 				sourceBranch
@@ -384,7 +440,7 @@ export class WorktreeManager {
 			// Link to subtask
 			const worktreeData = {
 				path: worktreePath,
-				branch: actualBranchName, // Use the actual branch name returned
+				branch: worktreeResult.branch, // Use the actual branch name returned
 				sourceBranch,
 				linkedSubtask: {
 					taskId,
@@ -443,71 +499,165 @@ export class WorktreeManager {
 			);
 			try {
 				// Try to remove via git first
-				execSync(`git worktree remove --force "${worktreePath}"`, {
+				execSync(`git worktree remove --force \"${worktreePath}\"`, {
 					cwd: this.projectRoot,
 					stdio: 'pipe'
 				});
 			} catch (error) {
 				logger.debug('Git worktree remove failed, attempting manual cleanup');
-				try {
-					await fs.remove(worktreePath);
-				} catch (fsError) {
-					logger.error(
-						`Failed to clean up existing worktree directory: ${fsError.message}`
-					);
-					throw new Error(
-						`Worktree directory already exists at ${worktreePath} and could not be cleaned up`
-					);
-				}
+				// Fallback to manual removal
+				await fs.remove(worktreePath);
 			}
 		}
 
-		// Simple creation - the calling method handles any cleanup if needed
+		// Detect if we're in a repository with no commits
+		let hasCommits = false;
+		let actualBranch = sourceBranch;
+		
 		try {
-			if (forceCreate) {
-				// Force create with -b flag
-				execSync(
-					`git worktree add -b ${name} "${worktreePath}" ${sourceBranch}`,
-					{
-						cwd: this.projectRoot,
-						stdio: 'pipe'
-					}
-				);
-			} else {
-				// Check if branch exists
-				let branchExists = false;
+			execSync('git rev-parse HEAD', {
+				cwd: this.projectRoot,
+				stdio: 'ignore'
+			});
+			hasCommits = true;
+		} catch {
+			hasCommits = false;
+			logger.info('Creating worktree in initial repository. Making initial commit first...');
+		}
+
+		// If no commits, create initial commit first
+		if (!hasCommits) {
+			try {
+				// Detect the actual current branch name (could be main, master, or custom)
 				try {
-					execSync(`git show-ref --verify --quiet refs/heads/${name}`, {
+					actualBranch = execSync('git branch --show-current', {
 						cwd: this.projectRoot,
-						stdio: 'ignore'
-					});
-					branchExists = true;
+						encoding: 'utf8'
+					}).trim();
 				} catch {
-					branchExists = false;
+					// Fallback to checking symbolic-ref
+					try {
+						const ref = execSync('git symbolic-ref HEAD', {
+							cwd: this.projectRoot,
+							encoding: 'utf8'
+						}).trim();
+						actualBranch = ref.replace('refs/heads/', '');
+					} catch {
+						// Last resort: use sourceBranch or default to main
+						actualBranch = sourceBranch || 'main';
+					}
 				}
 
-				if (branchExists) {
-					// Branch exists, create worktree without -b flag
-					execSync(`git worktree add "${worktreePath}" ${name}`, {
+				// Create only minimal necessary files for git to work
+				const gitignorePath = path.join(this.projectRoot, '.gitignore');
+				
+				if (!fs.existsSync(gitignorePath)) {
+					await fs.writeFile(gitignorePath, '# Generated by Task Master Flow\nnode_modules/\n.env\n.taskmaster/\n*-worktrees/\n');
+				}
+
+				// Create a minimal placeholder file if no files exist
+				const files = await fs.readdir(this.projectRoot);
+				const hasFiles = files.some(file => !file.startsWith('.') && file !== '.gitignore');
+				
+				if (!hasFiles) {
+					const placeholderPath = path.join(this.projectRoot, '.taskmaster-placeholder');
+					await fs.writeFile(placeholderPath, 'This file allows git to create the initial commit. It can be safely deleted.\n');
+					
+					// Add and commit the placeholder
+					execSync('git add .gitignore .taskmaster-placeholder', {
 						cwd: this.projectRoot,
 						stdio: 'pipe'
 					});
 				} else {
-					// Branch doesn't exist, create with -b flag
-					execSync(
-						`git worktree add -b ${name} "${worktreePath}" ${sourceBranch}`,
-						{
-							cwd: this.projectRoot,
-							stdio: 'pipe'
-						}
-					);
+					// Just add the .gitignore
+					execSync('git add .gitignore', {
+						cwd: this.projectRoot,
+						stdio: 'pipe'
+					});
 				}
+				
+				execSync('git commit -m "Initial commit (created by Task Master Flow)"', {
+					cwd: this.projectRoot,
+					stdio: 'pipe'
+				});
+				
+				logger.info(`Created initial commit on branch ${actualBranch}`);
+				
+			} catch (commitError) {
+				throw new Error(`Failed to create initial commit: ${commitError.message}`);
 			}
+		}
 
-			return name;
+		// Create worktree with a new branch (can't use same branch that's checked out)
+		// Generate a unique branch name and clean up any existing one
+		const baseBranchName = `${name}-branch`;
+		let worktreeBranch = baseBranchName;
+		
+		// Clean up any existing branch with this name first
+		try {
+			// Check if branch exists
+			execSync(`git show-ref --verify --quiet refs/heads/${worktreeBranch}`, {
+				cwd: this.projectRoot,
+				stdio: 'ignore'
+			});
+			
+			// Branch exists, try to delete it
+			logger.debug(`Branch ${worktreeBranch} already exists, attempting to delete it...`);
+			
+			try {
+				// First try to force delete the branch
+				execSync(`git branch -D ${worktreeBranch}`, {
+					cwd: this.projectRoot,
+					stdio: 'pipe'
+				});
+				logger.debug(`Successfully deleted existing branch ${worktreeBranch}`);
+			} catch (deleteError) {
+				// If deletion fails, try a different branch name
+				const timestamp = Date.now();
+				worktreeBranch = `${baseBranchName}-${timestamp}`;
+				logger.debug(`Could not delete existing branch, using ${worktreeBranch} instead`);
+			}
+		} catch {
+			// Branch doesn't exist, which is good
+			logger.debug(`Branch ${worktreeBranch} doesn't exist, proceeding with creation`);
+		}
+		
+		try {
+			logger.debug(`Creating worktree at ${worktreePath} with branch ${worktreeBranch} from ${actualBranch}`);
+			
+			const output = execSync(
+				`git worktree add -b \"${worktreeBranch}\" \"${worktreePath}\" \"${actualBranch}\"`,
+				{
+					cwd: this.projectRoot,
+					encoding: 'utf8',
+					stdio: 'pipe'
+				}
+			);
+
+			logger.info(`Created worktree ${name} at ${worktreePath}`);
+			logger.debug(`Git worktree output: ${output}`);
+
+			return {
+				name,
+				path: worktreePath,
+				branch: worktreeBranch,
+				sourceBranch: actualBranch,
+				created: true
+			};
 		} catch (error) {
-			logger.error(`Failed to create worktree: ${error.message}`);
-			throw error;
+			const errorMessage = error.message || error.toString();
+			
+			if (errorMessage.includes('already exists') || errorMessage.includes('already checked out')) {
+				throw new Error(
+					`Failed to create worktree: A branch named '${worktreeBranch}' already exists or '${actualBranch}' is already checked out. This may indicate a git state issue - try cleaning up existing worktrees manually.`
+				);
+			} else if (errorMessage.includes('not a valid object name') || errorMessage.includes('invalid reference')) {
+				throw new Error(
+					`Failed to create worktree: The source branch "${actualBranch}" does not exist or has no commits. This often happens in new repositories. Please make sure the source branch exists and has at least one commit.`
+				);
+			} else {
+				throw new Error(`Failed to create worktree: ${errorMessage}`);
+			}
 		}
 	}
 
@@ -515,117 +665,236 @@ export class WorktreeManager {
 		const worktree = this.config.worktrees[worktreeName];
 		if (!worktree) throw new Error('Worktree not found');
 
-		worktree.status = 'completed';
-		worktree.completedAt = new Date().toISOString();
+		try {
+			// Step 1: Check git status using GitWorkflowManager
+			const gitStatus = await this.gitWorkflowManager.validateCommitReadiness(worktree.path);
+			
+			if (gitStatus.hasUncommittedChanges && !options.autoCommit) {
+				return {
+					success: false,
+					reason: 'uncommitted-changes',
+					gitStatus,
+					message: 'Worktree has uncommitted changes that must be committed first',
+					actions: ['commit-changes', 'auto-commit', 'discard-changes']
+				};
+			}
 
-		if (options.createPR) {
-			try {
-				// Check if gh cli is available
-				execSync('gh --version', { stdio: 'ignore' });
+			// Step 2: Auto-commit if requested and there are changes
+			if (gitStatus.hasUncommittedChanges && options.autoCommit) {
+				const subtaskInfo = {
+					id: worktree.linkedSubtask?.fullId || worktreeName,
+					title: worktree.linkedSubtask?.title || 'Completed subtask',
+					details: options.commitDetails || 'Implementation completed'
+				};
 
-				// First, commit any uncommitted changes
-				try {
-					// Check if there are changes to commit
-					const statusOutput = execSync('git status --porcelain', { 
-						cwd: worktree.path, 
-						encoding: 'utf8' 
-					});
-					
-					if (statusOutput.trim()) {
-						logger.debug(`Found uncommitted changes: ${statusOutput.split('\n').length} files`);
-						
-						// Stage all changes
-						execSync('git add -A', { cwd: worktree.path, stdio: 'pipe' });
-						
-						const prTitle =
-							options.prTitle ||
-							`Task ${worktree.linkedSubtask.fullId}: ${worktree.linkedSubtask.title}`;
-						
-						// Commit with a proper message
-						const commitMessage = prTitle.replace(/"/g, '\\"'); // Escape quotes
-						execSync(`git commit -m "${commitMessage}"`, { cwd: worktree.path, stdio: 'pipe' });
-						logger.debug('Successfully committed changes');
-					} else {
-						logger.debug('No changes to commit');
+				const commitResult = await this.gitWorkflowManager.commitSubtaskProgress(
+					worktree.path,
+					subtaskInfo,
+					{
+						customMessage: options.commitMessage,
+						commitType: options.commitType || 'feat'
 					}
-				} catch (commitError) {
-					// Check if it's actually an error or just no changes
-					if (commitError.message.includes('nothing to commit')) {
-						logger.debug('Nothing to commit, working tree clean');
-					} else {
-						logger.warn('Commit failed:', commitError.message);
-						// Don't throw here, as we might still be able to create a PR
-					}
-				}
-
-				// Push the branch to remote (this handles the "must first push" error)
-				const branchName = worktree.branch || worktreeName;
-				logger.debug(`Pushing branch ${branchName} from ${worktree.path}`);
-				
-				// First check current branch
-				try {
-					const currentBranch = execSync('git branch --show-current', { 
-						cwd: worktree.path, 
-						encoding: 'utf8' 
-					}).trim();
-					logger.debug(`Current branch in worktree: ${currentBranch}`);
-					
-					// Make sure we're on the right branch
-					if (currentBranch !== branchName) {
-						logger.warn(`Branch mismatch: expected ${branchName}, got ${currentBranch}`);
-					}
-				} catch (e) {
-					logger.debug('Could not determine current branch:', e.message);
-				}
-				
-				try {
-					execSync(`git push origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
-					logger.debug(`Successfully pushed branch ${branchName}`);
-				} catch (pushError) {
-					// Try to set upstream and push
-					try {
-						execSync(`git push --set-upstream origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
-						logger.debug(`Successfully pushed branch ${branchName} with --set-upstream`);
-					} catch (upstreamError) {
-						logger.error('Failed to push branch:', upstreamError.message);
-						throw new Error(`Failed to push branch to remote: ${upstreamError.message}`);
-					}
-				}
-
-				// Create PR using gh cli
-				const prTitle =
-					options.prTitle ||
-					`Task ${worktree.linkedSubtask.fullId}: ${worktree.linkedSubtask.title}`;
-				const prBody =
-					options.prBody ||
-					`Completes subtask ${worktree.linkedSubtask.fullId}\n\n${options.prDescription || ''}`;
-
-				// Always use --head flag to explicitly specify the branch
-				// This avoids issues with uncommitted changes or git state
-				logger.debug(`Creating PR from branch ${branchName} to ${worktree.sourceBranch}`);
-
-				const result = execSync(
-					`gh pr create --title "${prTitle}" --body "${prBody}" --base ${worktree.sourceBranch} --head ${branchName}`,
-					{ cwd: worktree.path, encoding: 'utf8' }
 				);
 
-				// Extract PR URL from output
-				const prUrl = result.trim().split('\n').pop();
-				worktree.prUrl = prUrl;
-
-				logger.success(`PR created: ${prUrl}`);
-			} catch (error) {
-				if (error.message.includes('gh: command not found')) {
-					throw new Error(
-						'GitHub CLI (gh) is not installed. Please install it to create PRs automatically.'
-					);
+				if (!commitResult.success) {
+					return {
+						success: false,
+						reason: 'commit-failed',
+						error: commitResult.error,
+						message: 'Failed to commit changes automatically'
+					};
 				}
-				throw error;
-			}
-		}
 
-		this.saveConfig();
-		return worktree;
+				logger.success(`Committed changes: ${commitResult.commitHash}`);
+			}
+
+			// Step 3: Detect remote repository type
+			let repoInfo = null;
+			if (this.branchManager) {
+				repoInfo = await this.branchManager.detectRemoteRepository();
+			} else {
+				// Fallback detection
+				repoInfo = {
+					hasRemote: false,
+					isGitHub: false,
+					canCreatePR: false
+				};
+			}
+
+			// Step 4: Handle workflow choice
+			if (options.workflowChoice === 'create-pr' && repoInfo.isGitHub && repoInfo.canCreatePR) {
+				return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo);
+			} else if (options.workflowChoice === 'merge-local') {
+				return await this.localMergeWorkflow(worktreeName, worktree, options);
+			} else if (options.createPR) {
+				// Legacy support - if createPR is true, try PR creation
+				if (repoInfo.isGitHub && repoInfo.canCreatePR) {
+					return await this.createPRWorkflow(worktreeName, worktree, options, repoInfo);
+				} else {
+					return {
+						success: false,
+						reason: 'pr-not-available',
+						message: repoInfo.hasRemote ? 
+							'GitHub CLI not available for PR creation' : 
+							'No GitHub remote detected',
+						repoInfo
+					};
+				}
+			} else {
+				// No specific workflow choice - return options for user to choose
+				const mergeOptions = await this.localMergeManager.offerMergeOptions(worktree, repoInfo);
+				
+				return {
+					success: false,
+					reason: 'workflow-choice-needed',
+					options: mergeOptions,
+					repoInfo,
+					worktree: {
+						name: worktreeName,
+						path: worktree.path,
+						branch: worktree.branch,
+						linkedSubtask: worktree.linkedSubtask
+					}
+				};
+			}
+
+		} catch (error) {
+			logger.error('Failed to complete subtask:', error);
+			return {
+				success: false,
+				error: error.message,
+				reason: 'workflow-error'
+			};
+		}
+	}
+
+	/**
+	 * Handle PR creation workflow
+	 */
+	async createPRWorkflow(worktreeName, worktree, options, repoInfo) {
+		try {
+			// Push the branch to remote
+			const branchName = worktree.branch || worktreeName;
+			logger.debug(`Pushing branch ${branchName} from ${worktree.path}`);
+			
+			try {
+				execSync(`git push origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
+				logger.debug(`Successfully pushed branch ${branchName}`);
+			} catch (pushError) {
+				// Try to set upstream and push
+				try {
+					execSync(`git push --set-upstream origin "${branchName}"`, { cwd: worktree.path, stdio: 'pipe' });
+					logger.debug(`Successfully pushed branch ${branchName} with --set-upstream`);
+				} catch (upstreamError) {
+					return {
+						success: false,
+						reason: 'push-failed',
+						error: upstreamError.message,
+						message: 'Failed to push branch to remote'
+					};
+				}
+			}
+
+			// Create PR using gh cli
+			const prTitle = options.prTitle || 
+				`Task ${worktree.linkedSubtask?.fullId || worktreeName}: ${worktree.linkedSubtask?.title || 'Completed'}`;
+			const prBody = options.prBody || 
+				`Completes subtask ${worktree.linkedSubtask?.fullId || worktreeName}\n\n${options.prDescription || ''}`;
+
+			logger.debug(`Creating PR from branch ${branchName} to ${worktree.sourceBranch}`);
+
+			const result = execSync(
+				`gh pr create --title "${prTitle}" --body "${prBody}" --base ${worktree.sourceBranch} --head ${branchName}`,
+				{ cwd: worktree.path, encoding: 'utf8' }
+			);
+
+			// Extract PR URL from output
+			const prUrl = result.trim().split('\n').pop();
+			
+			// Update worktree status
+			worktree.status = 'completed';
+			worktree.completedAt = new Date().toISOString();
+			worktree.prUrl = prUrl;
+			this.saveConfig();
+
+			logger.success(`PR created: ${prUrl}`);
+
+			return {
+				success: true,
+				workflowType: 'pr-created',
+				prUrl,
+				worktree,
+				message: 'Pull request created successfully'
+			};
+
+		} catch (error) {
+			if (error.message.includes('gh: command not found')) {
+				return {
+					success: false,
+					reason: 'gh-cli-missing',
+					message: 'GitHub CLI (gh) is not installed. Please install it to create PRs automatically.',
+					error: error.message
+				};
+			}
+			
+			return {
+				success: false,
+				reason: 'pr-creation-failed',
+				error: error.message,
+				message: 'Failed to create pull request'
+			};
+		}
+	}
+
+	/**
+	 * Handle local merge workflow
+	 */
+	async localMergeWorkflow(worktreeName, worktree, options) {
+		try {
+			const targetBranch = options.targetBranch || 'main';
+			
+			// Perform local merge
+			const mergeResult = await this.localMergeManager.performLocalMerge(worktree, targetBranch);
+			
+			if (!mergeResult.success) {
+				return {
+					success: false,
+					reason: mergeResult.reason,
+					details: mergeResult,
+					message: mergeResult.error || 'Local merge failed'
+				};
+			}
+
+			// Update worktree status
+			worktree.status = 'completed';
+			worktree.completedAt = new Date().toISOString();
+			
+			// Remove from config if cleanup was successful
+			if (mergeResult.cleanup.actions.includes('worktree-removed')) {
+				delete this.config.worktrees[worktreeName];
+			}
+			
+			this.saveConfig();
+
+			logger.success(`Local merge completed: ${mergeResult.mergeCommit}`);
+
+			return {
+				success: true,
+				workflowType: 'merged-locally',
+				mergeCommit: mergeResult.mergeCommit,
+				targetBranch: mergeResult.targetBranch,
+				cleanup: mergeResult.cleanup,
+				message: 'Changes merged locally and worktree cleaned up'
+			};
+
+		} catch (error) {
+			return {
+				success: false,
+				reason: 'local-merge-failed',
+				error: error.message,
+				message: 'Failed to perform local merge'
+			};
+		}
 	}
 
 	getWorktreePath(name) {
@@ -676,12 +945,76 @@ export class WorktreeManager {
 		if (this.config.config.useBranchAwareness && this.branchManager) {
 			const sourceBranch = this.branchManager.getSourceBranchForWorktree();
 			if (sourceBranch) {
+				logger.debug(`Using branch awareness source branch: ${sourceBranch}`);
 				return sourceBranch;
 			}
 		}
 
+		// Try to detect current branch if branch awareness is not available
+		let detectedBranch = null;
+		try {
+			// Check if repository has any commits first
+			try {
+				execSync('git rev-parse HEAD', {
+					cwd: this.projectRoot,
+					stdio: 'ignore'
+				});
+				
+				// Repository has commits, get current branch
+				const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+					cwd: this.projectRoot,
+					encoding: 'utf8'
+				}).trim();
+				
+				if (currentBranch && currentBranch !== 'HEAD') {
+					detectedBranch = currentBranch;
+					logger.debug(`Detected current branch for worktree source: ${detectedBranch}`);
+				}
+			} catch {
+				// No commits yet, try to detect the default branch name
+				logger.debug('Repository has no commits, detecting default branch name for worktree...');
+				
+				try {
+					const currentBranch = execSync('git branch --show-current', {
+						cwd: this.projectRoot,
+						encoding: 'utf8'
+					}).trim();
+					
+					if (currentBranch) {
+						detectedBranch = currentBranch;
+						logger.debug(`Detected default branch name for worktree: ${detectedBranch}`);
+					}
+				} catch {
+					// Try symbolic-ref as fallback
+					try {
+						const ref = execSync('git symbolic-ref HEAD', {
+							cwd: this.projectRoot,
+							encoding: 'utf8'
+						}).trim();
+						
+						const branchName = ref.replace('refs/heads/', '');
+						if (branchName) {
+							detectedBranch = branchName;
+							logger.debug(`Detected branch from symbolic-ref for worktree: ${branchName}`);
+						}
+					} catch {
+						logger.debug('Could not detect any branch name for worktree source');
+					}
+				}
+			}
+		} catch (error) {
+			logger.debug('Failed to detect current branch for worktree:', error.message);
+		}
+
+		// Use detected branch if available
+		if (detectedBranch) {
+			return detectedBranch;
+		}
+
 		// Fallback to configured default or 'main'
-		return this.config.config.defaultSourceBranch || 'main';
+		const fallbackBranch = this.config.config.defaultSourceBranch || 'main';
+		logger.debug(`Using fallback source branch: ${fallbackBranch}`);
+		return fallbackBranch;
 	}
 
 	async pruneInvalidWorktrees() {
@@ -838,7 +1171,7 @@ export class WorktreeManager {
 
 		try {
 			// Create fresh worktree
-			const actualBranchName = await this.createWorktree(
+			const worktreeResult = await this.createWorktree(
 				worktreeName,
 				worktreePath,
 				sourceBranch,
@@ -848,7 +1181,7 @@ export class WorktreeManager {
 			// Link to subtask
 			const worktreeData = {
 				path: worktreePath,
-				branch: actualBranchName,
+				branch: worktreeResult.branch,
 				sourceBranch,
 				linkedSubtask: {
 					taskId,

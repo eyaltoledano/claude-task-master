@@ -905,6 +905,97 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
+	/**
+	 * Get enhanced git status information for a worktree
+	 * @param {string} worktreePath - Path to the worktree
+	 * @returns {Promise<Object>} Git status information with workflow integration
+	 */
+	async getWorktreeGitStatus(worktreePath) {
+		try {
+			const { exec } = await import('child_process');
+			const { promisify } = await import('util');
+			const execAsync = promisify(exec);
+
+			// Get git status information
+			const status = {
+				hasUncommittedChanges: false,
+				staged: 0,
+				modified: 0,
+				untracked: 0,
+				deleted: 0,
+				ahead: 0,
+				behind: 0,
+				isClean: true,
+				trackingBranch: null
+			};
+
+			// Get porcelain status
+			try {
+				const { stdout: statusOutput } = await execAsync(
+					'git status --porcelain',
+					{ cwd: worktreePath }
+				);
+				
+				const statusLines = statusOutput.trim().split('\n').filter(Boolean);
+				
+				if (statusLines.length > 0) {
+					status.hasUncommittedChanges = true;
+					status.isClean = false;
+					
+					// Count different types of changes
+					statusLines.forEach(line => {
+						const staged = line[0];
+						const working = line[1];
+						
+						// Check staged changes
+						if (staged === 'A' || staged === 'M' || staged === 'D' || staged === 'R' || staged === 'C') {
+							status.staged++;
+						}
+						
+						// Check working directory changes
+						if (working === 'M') {
+							status.modified++;
+						} else if (working === 'D') {
+							status.deleted++;
+						} else if (line.startsWith('??')) {
+							status.untracked++;
+						}
+					});
+				}
+			} catch (e) {
+				// If git status fails, assume clean
+				this.log.debug('Git status failed:', e.message);
+			}
+
+			// Get tracking branch info
+			try {
+				const { stdout: trackingOutput } = await execAsync(
+					'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+					{ cwd: worktreePath }
+				);
+				status.trackingBranch = trackingOutput.trim();
+
+				// Get ahead/behind counts
+				const { stdout: revListOutput } = await execAsync(
+					'git rev-list --left-right --count HEAD...@{u}',
+					{ cwd: worktreePath }
+				);
+				const [ahead, behind] = revListOutput.trim().split('\t').map(Number);
+				status.ahead = ahead || 0;
+				status.behind = behind || 0;
+			} catch (e) {
+				// No tracking branch or not connected to remote
+				status.trackingBranch = null;
+				status.ahead = 0;
+				status.behind = 0;
+			}
+
+			return status;
+		} catch (error) {
+			throw new Error('Failed to get git status: ' + error.message);
+		}
+	}
+
 	async addWorktree(name, options = {}) {
 		try {
 			const { exec } = await import('child_process');
@@ -2680,48 +2771,84 @@ ${prompt}
 			const logFn = options.mcpLog || this.log;
 
 			for (const task of tasks) {
-				if (!this.hasResearchInTask(task)) {
-					logFn.info(`Task ${task.id} has no research. Running research...`);
+				// Check if this is a subtask (ID contains a dot)
+				const isSubtask = task.id.toString().includes('.');
+				let taskToCheck = task;
+				let parentTaskId = null;
+
+				if (isSubtask) {
+					// For subtasks, we need to check the parent task for research
+					parentTaskId = task.id.toString().split('.')[0];
+					try {
+						const parentTask = await this.getTask(parentTaskId);
+						if (parentTask) {
+							taskToCheck = parentTask;
+							logFn.info(`Checking parent task ${parentTaskId} for research instead of subtask ${task.id}`);
+						}
+					} catch (error) {
+						logFn.warn(`Could not fetch parent task ${parentTaskId} for subtask ${task.id}: ${error.message}`);
+						// Fall back to checking the subtask itself
+					}
+				} else {
+					// For main tasks, fetch complete task data to check for existing research
+					try {
+						const fullTaskData = await this.getTask(task.id.toString());
+						if (fullTaskData) {
+							taskToCheck = fullTaskData;
+							// Update the original task object with complete data for later use
+							Object.assign(task, fullTaskData);
+						}
+					} catch (error) {
+						logFn.warn(`Could not fetch complete task data for ${task.id}: ${error.message}`);
+						// Continue with the task we have
+					}
+				}
+
+				// Check for research in the task we determined (parent for subtasks, self for main tasks)
+				if (!this.hasResearchInTask(taskToCheck)) {
+					const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
+					logFn.info(`Task ${targetTaskId} has no research. Running research...`);
 
 					try {
-						// Build research query based on task
-						const researchQuery = `Task ${task.id}: ${task.title}\n\nDescription: ${task.description || 'No description'}\n\nDetails: ${task.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
+						// Build research query based on the target task (parent for subtasks)
+						const researchQuery = `Task ${targetTaskId}: ${taskToCheck.title}\n\nDescription: ${taskToCheck.description || 'No description'}\n\nDetails: ${taskToCheck.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
 
-						// Run research
+						// Run research and save to the target task (parent for subtasks)
 						const researchResult = await this.research({
 							query: researchQuery,
-							taskIds: [task.id.toString()],
+							taskIds: [targetTaskId],
 							includeProjectTree: true,
 							detailLevel: 'high',
-							saveTo: task.id.toString()
+							saveTo: targetTaskId
 						});
 
 						if (researchResult.success) {
-							logFn.info(`Research completed and saved to task ${task.id}`);
+							logFn.info(`Research completed and saved to task ${targetTaskId}`);
 
-							// Reload task to get updated details with research
-							const updatedTask = await this.getTask(task.id.toString());
-							if (updatedTask) {
-								// Update the task object in the array with the new details
+							// Reload the target task to get updated details with research
+							const updatedTask = await this.getTask(targetTaskId);
+							if (updatedTask && !isSubtask) {
+								// Only update the original task object if it's not a subtask
 								Object.assign(task, updatedTask);
 							}
 						} else {
 							logFn.warn(
-								`Research failed for task ${task.id}: ${researchResult.error}`
+								`Research failed for task ${targetTaskId}: ${researchResult.error}`
 							);
 						}
 					} catch (error) {
 						logFn.error(
-							`Error running research for task ${task.id}: ${error.message}`
+							`Error running research for task ${targetTaskId}: ${error.message}`
 						);
 					}
 				} else {
+					const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
 					logFn.info(
-						`Task ${task.id} already has research - skipping research generation`
+						`Task ${targetTaskId} already has research - skipping research generation`
 					);
 					// Show a snippet of the existing research
-					if (task.details) {
-						const researchMatch = task.details.match(
+					if (taskToCheck.details) {
+						const researchMatch = taskToCheck.details.match(
 							/research session.*?(?=\n|$)/i
 						);
 						if (researchMatch) {
@@ -3047,10 +3174,33 @@ ${prompt}
 			return toolCounts;
 		}
 
-		async completeSubtaskWithPR(worktreeName, options = {}) {
-			const worktreeManager = new WorktreeManager(this.projectRoot);
-			return await worktreeManager.completeSubtask(worktreeName, options);
+			async completeSubtaskWithPR(worktreeName, options = {}) {
+		const worktreeManager = new WorktreeManager(this.projectRoot);
+		return await worktreeManager.completeSubtask(worktreeName, options);
+	}
+
+	/**
+	 * Complete a subtask with enhanced workflow options
+	 * @param {string} worktreeName - Name of the worktree
+	 * @param {Object} options - Workflow options
+	 * @returns {Promise<Object>} Workflow result
+	 */
+	async completeSubtask(worktreeName, options = {}) {
+		try {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
+			
+			// Set branch manager if available
+			if (this.branchManager) {
+				manager.setBranchManager(this.branchManager);
+			}
+			
+			return await manager.completeSubtask(worktreeName, options);
+		} catch (error) {
+			this.log.error('Error in completeSubtask:', error);
+			throw error;
 		}
+	}
 
 		// Create PR from Claude session
 		async createPRFromClaudeSession(sessionId, options = {}) {

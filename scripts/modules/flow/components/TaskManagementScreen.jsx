@@ -670,6 +670,15 @@ export function TaskManagementScreen() {
 		if (!selectedTask || !selectedSubtask) return;
 
 		try {
+			// Fetch full parent task details to ensure we have complete information
+			let fullParentTask = selectedTask;
+			try {
+				fullParentTask = await backend.getTask(selectedTask.id);
+			} catch (error) {
+				console.warn('Could not fetch full parent task details:', error);
+				// Continue with the task we have
+			}
+
 			// Prepare task data for the Claude launcher modal
 			const taskData = [
 				{
@@ -680,9 +689,11 @@ export function TaskManagementScreen() {
 					status: selectedSubtask.status,
 					isSubtask: true,
 					parentTask: {
-						id: selectedTask.id,
-						title: selectedTask.title,
-						description: selectedTask.description
+						id: fullParentTask.id,
+						title: fullParentTask.title,
+						description: fullParentTask.description,
+						details: fullParentTask.details,
+						testStrategy: fullParentTask.testStrategy || fullParentTask.test_strategy
 					}
 				}
 			];
@@ -836,10 +847,28 @@ export function TaskManagementScreen() {
 			})
 		);
 
+		// Fetch full subtask details to check for existing research
+		// (details field is stripped from list operations for performance)
+		let subtaskWithDetails = selectedSubtask;
+		try {
+			const fullTask = await backend.getTask(selectedTask.id);
+			if (fullTask && fullTask.subtasks) {
+				const fullSubtask = fullTask.subtasks.find(
+					st => st.id === selectedSubtask.id
+				);
+				if (fullSubtask) {
+					subtaskWithDetails = fullSubtask;
+				}
+			}
+		} catch (error) {
+			console.warn('Could not fetch full subtask details:', error);
+			// Continue with the subtask we have
+		}
+
 		// Check if research has already been run
 		const hasExistingResearch =
-			selectedSubtask.details &&
-			selectedSubtask.details.includes('<info added on');
+			subtaskWithDetails.details &&
+			subtaskWithDetails.details.includes('<info added on');
 
 		// Run automatic research only if it hasn't been done before
 		const researchQuery = buildResearchQuery();
@@ -913,7 +942,7 @@ ${researchContext}
 
 			// Extract existing research from details if possible
 			// This helps pass it along to the Claude context
-			const detailLines = selectedSubtask.details.split('\n');
+			const detailLines = subtaskWithDetails.details.split('\n');
 			let inResearchSection = false;
 			const researchLines = [];
 
@@ -940,7 +969,7 @@ ${researchContext}
 				id: `${selectedTask.id}.${selectedSubtask.id}`,
 				title: selectedSubtask.title,
 				description: selectedSubtask.description,
-				details: selectedSubtask.details,
+				details: subtaskWithDetails.details,  // Use the full details we fetched
 				status: selectedSubtask.status
 			},
 			parentTask: {
@@ -1248,16 +1277,31 @@ Focus on: current industry standards, common pitfalls, security considerations
 					: '-'
 		});
 
-		// Add worktree information
-		contentLines.push({
-			type: 'field',
-			label: 'Git Worktrees:',
-			value:
-				taskWorktrees.length > 0
-					? taskWorktrees.map((wt) => `🌳 ${wt.name}`).join(', ')
-					: '-',
-			color: taskWorktrees.length > 0 ? theme.success : theme.textDim
-		});
+		// Add worktree information with git status
+		if (taskWorktrees.length > 0) {
+			contentLines.push({
+				type: 'field',
+				label: 'Git Worktrees:',
+				value: `${taskWorktrees.length} worktree${taskWorktrees.length > 1 ? 's' : ''}`,
+				color: theme.success
+			});
+			
+			// Add detailed worktree status
+			taskWorktrees.forEach((wt) => {
+				contentLines.push({
+					type: 'text',
+					text: `  🌳 ${wt.name} ${wt.status ? `(${wt.status})` : ''}`,
+					color: theme.text
+				});
+			});
+		} else {
+			contentLines.push({
+				type: 'field',
+				label: 'Git Worktrees:',
+				value: '-',
+				color: theme.textDim
+			});
+		}
 
 		if (selectedTask.complexity) {
 			contentLines.push({
@@ -1751,15 +1795,31 @@ Focus on: current industry standards, common pitfalls, security considerations
 		}
 
 		contentLines.push({ type: 'spacer' });
-		contentLines.push({
-			type: 'field',
-			label: 'Git Worktrees:',
-			value:
-				worktrees.length > 0
-					? worktrees.map((wt) => `🌳 ${wt.name}`).join(', ')
-					: '-',
-			color: worktrees.length > 0 ? theme.success : theme.textDim
-		});
+		// Add worktree information with git status for subtask
+		if (worktrees.length > 0) {
+			contentLines.push({
+				type: 'field',
+				label: 'Git Worktrees:',
+				value: `${worktrees.length} worktree${worktrees.length > 1 ? 's' : ''}`,
+				color: theme.success
+			});
+			
+			// Add detailed worktree status for subtask
+			worktrees.forEach((wt) => {
+				contentLines.push({
+					type: 'text',
+					text: `  🌳 ${wt.name} ${wt.status ? `(${wt.status})` : ''}`,
+					color: theme.text
+				});
+			});
+		} else {
+			contentLines.push({
+				type: 'field',
+				label: 'Git Worktrees:',
+				value: '-',
+				color: theme.textDim
+			});
+		}
 
 		// Calculate visible content based on scroll offset
 		const visibleContent = contentLines.slice(

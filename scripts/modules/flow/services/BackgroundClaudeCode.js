@@ -152,9 +152,12 @@ export class BackgroundClaudeCode {
 				});
 			}
 
-			if (result.success && result.sessionId) {
-				// Save session if backend supports it
-				if (this.backend.saveClaudeCodeSession) {
+			// Improved success detection - consider it successful if we have a sessionId or if result indicates completion
+			const isSuccessful = result.success || result.sessionId || (result.result && result.result.type === 'result');
+			
+			if (isSuccessful) {
+				// Save session if backend supports it and we have a sessionId
+				if (result.sessionId && this.backend.saveClaudeCodeSession) {
 					await this.backend.saveClaudeCodeSession({
 						sessionId: result.sessionId,
 						prompt,

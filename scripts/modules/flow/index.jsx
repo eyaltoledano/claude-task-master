@@ -72,6 +72,7 @@ function FlowApp({ backend, options = {} }) {
 	const [hookManager, setHookManager] = useState(null);
 	const [branchManager, setBranchManager] = useState(null);
 	const [currentBranch, setCurrentBranch] = useState(null);
+	const [repositoryName, setRepositoryName] = useState(null);
 	const [branchInfo, setBranchInfo] = useState(null);
 
 	const { exit } = useApp();
@@ -189,13 +190,27 @@ function FlowApp({ backend, options = {} }) {
 					});
 				});
 
-				branchMgr.on('initialized', (event) => {
-					setCurrentBranch(event.currentBranch);
+				// Wait for branch manager to fully initialize before getting summary
+				await new Promise((resolve) => {
+					branchMgr.on('initialized', (event) => {
+						setCurrentBranch(event.currentBranch);
+						setRepositoryName(event.repositoryName);
+						resolve();
+					});
+					
+					// In case initialization fails or is already complete, 
+					// fallback to getting summary after a short delay
+					setTimeout(() => {
+						const summary = branchMgr.getBranchSummary();
+						if (summary.currentBranch) {
+							setCurrentBranch(summary.currentBranch);
+						}
+						if (summary.repositoryName) {
+							setRepositoryName(summary.repositoryName);
+						}
+						resolve();
+					}, 100);
 				});
-
-				// Get initial branch info
-				const summary = branchMgr.getBranchSummary();
-				setCurrentBranch(summary.currentBranch);
 
 				// Connect backend to branch manager
 				if (currentBackend.setBranchManager) {
@@ -720,6 +735,7 @@ function FlowApp({ backend, options = {} }) {
 		hookManager,
 		branchManager,
 		currentBranch,
+		repositoryName,
 		branchInfo,
 		tasks,
 		setTasks,
@@ -965,17 +981,24 @@ function FlowApp({ backend, options = {} }) {
 								{/* Bottom status bar */}
 								<Box paddingLeft={1} paddingRight={1}>
 									<Box flexGrow={1}>
-										<Text color={theme.text}>
-											<Text color={theme.accent}>[tag]</Text>{' '}
-											{currentTag || 'master'}
-											{currentBranch && (
-												<>
-													<Text color={theme.textDim}> • </Text>
-													<Text color={theme.accent}>[branch]</Text>{' '}
-													<Text color={theme.text}>{currentBranch}</Text>
-												</>
-											)}
-										</Text>
+																			<Text color={theme.text}>
+										<Text color={theme.accent}>[tag]</Text>{' '}
+										{currentTag || 'master'}
+										{repositoryName && (
+											<>
+												<Text color={theme.textDim}> • </Text>
+												<Text color={theme.accent}>[repo]</Text>{' '}
+												<Text color={theme.text}>{repositoryName}</Text>
+											</>
+										)}
+										{currentBranch && (
+											<>
+												<Text color={theme.textDim}> • </Text>
+												<Text color={theme.accent}>[branch]</Text>{' '}
+												<Text color={theme.text}>{currentBranch}</Text>
+											</>
+										)}
+									</Text>
 									</Box>
 									<Text color={theme.accent}>Task Master AI</Text>
 									<Text dimColor> v0.18.0</Text>

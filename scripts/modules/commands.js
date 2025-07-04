@@ -4621,7 +4621,7 @@ Examples:
 			process.exit(1);
 		});
 
-	// flow command - Interactive TUI
+				// flow command - Interactive TUI
 	programInstance
 		.command('flow')
 		.description('Launch interactive TUI for task management')
@@ -4633,37 +4633,43 @@ Examples:
 			'--mcp-server <id>',
 			'MCP server ID to use with mcp backend (default: uses default server)'
 		)
+		.option(
+			'--project <path>',
+			'Specify the project directory to manage tasks for (default: auto-detect)'
+		)
 		.action(async (options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				// Verify tasks.json exists
-				const tasksPath = path.join(projectRoot, TASKMASTER_TASKS_FILE);
-				if (!fs.existsSync(tasksPath)) {
-					console.error(
-						chalk.red(
-							`❌ No tasks.json file found. Please run "task-master init" first.`
-						)
-					);
-					process.exit(1);
+				// Use specified project directory or auto-detect
+				let projectRoot;
+				if (options.project) {
+					projectRoot = path.resolve(options.project);
+					// Verify the specified directory exists
+					if (!fs.existsSync(projectRoot)) {
+						console.error(chalk.red(`Error: Specified project directory does not exist: ${projectRoot}`));
+						process.exit(1);
+					}
+				} else {
+					projectRoot = findProjectRoot();
+					if (!projectRoot) {
+						console.error(chalk.red('Error: Could not find project root.'));
+						console.error(chalk.yellow('Hint: Use --project <path> to specify the project directory, or run from within a project directory.'));
+						process.exit(1);
+					}
 				}
 
 				// Import and launch the flow TUI
-				const { launchFlow } = await import('./flow/cli-wrapper.js');
-				await launchFlow({
-					backend: options.backend,
-					mcpServerId: options.mcpServer,
-					projectRoot
-				});
-			} catch (error) {
-				console.error(chalk.red(`Error launching Flow TUI: ${error.message}`));
-				process.exit(1);
-			}
-		})
+				// Note: Flow UI handles missing tasks.json gracefully
+					const { launchFlow } = await import('./flow/cli-wrapper.js');
+					await launchFlow({
+						backend: options.backend,
+						mcpServerId: options.mcpServer,
+						projectRoot
+					});
+				} catch (error) {
+					console.error(chalk.red(`Error launching Flow TUI: ${error.message}`));
+					process.exit(1);
+				}
+			})
 		.on('error', function (err) {
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);

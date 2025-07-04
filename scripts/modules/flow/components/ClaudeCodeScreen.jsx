@@ -473,7 +473,23 @@ Additional context:
 					subtaskId: initialContext.currentSubtask.id,
 					parentTaskId: initialContext.parentTask.id,
 					worktreePath: initialContext.worktreePath,
-					prompt: subtaskPrompt
+					prompt: subtaskPrompt,
+					// Pass complete task data with parent info for CLAUDE.md generation
+					taskData: {
+						id: initialContext.currentSubtask.id,
+						title: initialContext.currentSubtask.title,
+						description: initialContext.currentSubtask.description,
+						details: initialContext.currentSubtask.details,
+						status: initialContext.currentSubtask.status,
+						isSubtask: true,
+						parentTask: {
+							id: initialContext.parentTask.id,
+							title: initialContext.parentTask.title,
+							description: initialContext.parentTask.description,
+							details: initialContext.parentTask.details || '',
+							testStrategy: initialContext.parentTask.testStrategy || ''
+						}
+					}
 				}
 			});
 
@@ -534,7 +550,23 @@ Working directory: ${initialContext.worktreePath}
 						type: 'subtask-implementation',
 						subtaskId: initialContext.currentSubtask.id,
 						parentTaskId: initialContext.parentTask.id,
-						worktreePath: initialContext.worktreePath
+						worktreePath: initialContext.worktreePath,
+						// Pass complete task data with parent info for CLAUDE.md generation
+						taskData: {
+							id: initialContext.currentSubtask.id,
+							title: initialContext.currentSubtask.title,
+							description: initialContext.currentSubtask.description,
+							details: initialContext.currentSubtask.details,
+							status: initialContext.currentSubtask.status,
+							isSubtask: true,
+							parentTask: {
+								id: initialContext.parentTask.id,
+								title: initialContext.parentTask.title,
+								description: initialContext.parentTask.description,
+								details: initialContext.parentTask.details || '',
+								testStrategy: initialContext.parentTask.testStrategy || ''
+							}
+						}
 					},
 					onMessage: (message) => {
 						// Messages will be tracked in the background operation

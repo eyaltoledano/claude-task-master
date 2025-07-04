@@ -20,11 +20,16 @@ export default function WorktreeDetailsModal({
 	const [error, setError] = useState(null);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
 	const [showClaudeModal, setShowClaudeModal] = useState(false);
-	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', or 'jump'
+	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', 'jump', or 'workflow'
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [isCreatingPR, setIsCreatingPR] = useState(false);
+	const [isProcessingWorkflow, setIsProcessingWorkflow] = useState(false);
 	const [prResult, setPrResult] = useState(null);
+	const [workflowResult, setWorkflowResult] = useState(null);
+	const [gitStatus, setGitStatus] = useState(null);
+	const [workflowOptions, setWorkflowOptions] = useState(null);
+	const [selectedWorkflowOption, setSelectedWorkflowOption] = useState(0);
 	const theme = useComponentTheme('modal');
 
 	// Constants for scrolling
@@ -45,6 +50,9 @@ export default function WorktreeDetailsModal({
 			]);
 			setDetails(info);
 			setLinkedTasks(tasks || []);
+			
+			// Load git status for workflow integration
+			await loadGitStatus();
 		} catch (err) {
 			setError(err.message);
 		} finally {
@@ -52,12 +60,23 @@ export default function WorktreeDetailsModal({
 		}
 	};
 
-	const handleCreatePR = async () => {
-		if (isCreatingPR) return;
+	const loadGitStatus = async () => {
+		try {
+			// Get git status through backend
+			const status = await backend.getWorktreeGitStatus(worktree.path);
+			setGitStatus(status);
+		} catch (err) {
+			console.warn('Failed to load git status:', err.message);
+			setGitStatus(null);
+		}
+	};
 
-		setIsCreatingPR(true);
+	const handleWorkflowChoice = async (choice) => {
+		if (isProcessingWorkflow) return;
+
+		setIsProcessingWorkflow(true);
 		setError(null);
-		setPrResult(null);
+		setWorkflowResult(null);
 
 		try {
 			// Find the primary task/subtask for this worktree
@@ -66,15 +85,17 @@ export default function WorktreeDetailsModal({
 			) || linkedTasks[0];
 
 			if (!primaryTask) {
-				throw new Error('No suitable task found for PR creation');
+				throw new Error('No suitable task found for workflow completion');
 			}
 
-			// Generate PR title and description
-			const prTitle = primaryTask.parentId 
-				? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
-				: `Task ${primaryTask.id}: ${primaryTask.title}`;
-			
-			const prDescription = `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
+			// Call the enhanced completeSubtask method with workflow choice
+			const result = await backend.completeSubtask(worktree.name, {
+				workflowChoice: choice,
+				autoCommit: choice === 'create-pr' || choice === 'merge-local', // Auto-commit for both workflows
+				prTitle: primaryTask.parentId 
+					? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
+					: `Task ${primaryTask.id}: ${primaryTask.title}`,
+				prDescription: `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
 
 ## Changes Made
 - ${details.status.added > 0 ? `${details.status.added} files added` : ''}
@@ -86,102 +107,37 @@ export default function WorktreeDetailsModal({
 - Source: ${details.sourceBranch || 'main'}
 - Path: ${worktree.path}
 
-Completed via Task Master Flow.`;
+Completed via Task Master Flow.`
+			});
 
-			// Create PR using backend
-			let result;
-			if (primaryTask.parentId) {
-				// This is a subtask
-				result = await backend.completeSubtaskWithPR(worktree.name, {
-					createPR: true,
-					prTitle,
-					prDescription: prDescription
-				});
-			} else {
-				// This is a main task - create PR manually using gh CLI
-				try {
-					const { exec } = await import('child_process');
-					const { promisify } = await import('util');
-					const execAsync = promisify(exec);
+			setWorkflowResult(result);
 
-					// Check if gh cli is available
-					await execAsync('gh --version', { stdio: 'ignore' });
-
-					// First, commit any uncommitted changes
-					try {
-						await execAsync('git add .', { cwd: worktree.path });
-						await execAsync(`git commit -m "${prTitle}"`, { cwd: worktree.path });
-					} catch (commitError) {
-						// It's okay if there's nothing to commit
-						console.log('No changes to commit or commit failed:', commitError.message);
-					}
-
-					// Push the branch to remote (this handles the "must first push" error)
-					const branchName = worktree.branch || `task-${primaryTask.id}`;
-					try {
-						await execAsync(`git push origin "${branchName}"`, { cwd: worktree.path });
-					} catch (pushError) {
-						// Try to set upstream and push
-						await execAsync(`git push --set-upstream origin "${branchName}"`, { cwd: worktree.path });
-					}
-
-					// Create PR using gh cli - always use --head flag
-					const sourceBranch = details.sourceBranch || worktree.sourceBranch || 'main';
-					const prCommand = `gh pr create --title "${prTitle}" --body "${prDescription}" --base ${sourceBranch} --head ${branchName}`;
-					
-					const prResult = await execAsync(prCommand, { 
-						cwd: worktree.path, 
-						encoding: 'utf8' 
-					});
-
-					// Extract PR URL from output
-					const prUrl = prResult.stdout.trim().split('\n').pop();
-					
-					result = {
-						success: true,
-						prUrl: prUrl
-					};
-				} catch (ghError) {
-					if (ghError.message.includes('gh: command not found') || ghError.code === 'ENOENT') {
-						throw new Error('GitHub CLI (gh) is not installed. Please install it to create PRs automatically.');
-					}
-					throw new Error(`Failed to create PR: ${ghError.message}`);
-				}
+			if (result.success) {
+				// Refresh details after successful workflow
+				await loadDetails();
+			} else if (result.reason === 'workflow-choice-needed') {
+				// Show workflow options
+				setWorkflowOptions(result.options);
+				setViewMode('workflow');
 			}
 
-			if (result && (result.success || result.prUrl)) {
-				setPrResult({
-					success: true,
-					prUrl: result.prUrl,
-					prTitle
-				});
-			} else {
-				throw new Error(result?.error || 'Failed to create PR');
-			}
-		} catch (err) {
-			console.error('Error creating PR:', err);
-			setError(`Failed to create PR: ${err.message}`);
+		} catch (error) {
+			setError(error.message);
 		} finally {
-			setIsCreatingPR(false);
+			setIsProcessingWorkflow(false);
 		}
 	};
 
-	// Dynamic modal props based on current mode
-	const getModalProps = () => {
-		if (loading) {
-			return {
-				title: 'Loading Worktree Details',
-				preset: 'info',
-				width: 80,
-				height: 10,
-				onClose
-			};
-		}
+	// Legacy PR creation method (keep for backward compatibility)
+	const handleCreatePR = async () => {
+		await handleWorkflowChoice('create-pr');
+	};
 
+	const getModalProps = () => {
 		const baseProps = {
-			width: 80,
-			height: VISIBLE_ROWS + 6,
-			onClose
+			onClose,
+			width: '90%',
+			height: '90%'
 		};
 
 		switch (viewMode) {
@@ -215,16 +171,29 @@ Completed via Task Master Flow.`;
 								]
 							: ['ESC cancel']
 				};
+			case 'workflow':
+				return {
+					...baseProps,
+					title: `Workflow Options: ${worktree.name}`,
+					preset: 'info',
+					keyboardHints: [
+						'↑↓ navigate',
+						'j/k vim nav',
+						'ENTER select',
+						'ESC back to details'
+					]
+				};
 			default: {
 				// details
 				const hints = ['ESC close'];
-				// Note: We'll check content length after building detailContent, not here
+				
 				if (linkedTasks.length > 0 && onNavigateToTask) {
 					hints.unshift('v view tasks', 'g jump to task');
 				}
 				hints.unshift('l link/manage tasks');
 				if (linkedTasks.length > 0) hints.unshift('c launch Claude');
-				// Add PR creation hint if there are changes and linked tasks
+				
+				// Enhanced workflow hints based on git status
 				const hasChanges = details?.status && (
 					details.status.total > 0 || 
 					details.status.modified > 0 || 
@@ -232,15 +201,11 @@ Completed via Task Master Flow.`;
 					details.status.deleted > 0 || 
 					details.status.untracked > 0
 				);
-				console.log('🔍 [WorktreeDetailsModal] PR hint condition:', {
-					linkedTasksLength: linkedTasks.length,
-					detailsStatus: details?.status,
-					hasChanges,
-					willShowPRHint: linkedTasks.length > 0 && hasChanges
-				});
+				
 				if (linkedTasks.length > 0 && hasChanges) {
-					hints.unshift('p create PR');
+					hints.unshift('w workflow options', 'p create PR', 'm merge locally');
 				}
+				
 				if (!worktree.isCurrent) hints.unshift('d delete');
 
 				return {
@@ -255,7 +220,7 @@ Completed via Task Master Flow.`;
 
 	const keyHandlers = {
 		escape: () => {
-			if (viewMode === 'tasks' || viewMode === 'jump') {
+			if (viewMode === 'tasks' || viewMode === 'jump' || viewMode === 'workflow') {
 				setViewMode('details');
 			} else {
 				onClose();
@@ -266,6 +231,8 @@ Completed via Task Master Flow.`;
 		up: () => {
 			if (viewMode === 'jump' || viewMode === 'tasks') {
 				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
+			} else if (viewMode === 'workflow') {
+				setSelectedWorkflowOption(Math.max(0, selectedWorkflowOption - 1));
 			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
 			}
@@ -276,6 +243,9 @@ Completed via Task Master Flow.`;
 				setSelectedTaskIndex(
 					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
 				);
+			} else if (viewMode === 'workflow') {
+				const maxOptions = workflowOptions ? workflowOptions.length - 1 : 0;
+				setSelectedWorkflowOption(Math.min(maxOptions, selectedWorkflowOption + 1));
 			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => prev + 1);
 			}
@@ -299,13 +269,17 @@ Completed via Task Master Flow.`;
 		},
 
 		return: () => {
-			if (
-				(viewMode === 'jump' || viewMode === 'tasks') &&
-				linkedTasks.length > 0 &&
-				onNavigateToTask
-			) {
-				const selectedTask = linkedTasks[selectedTaskIndex];
-				onNavigateToTask(selectedTask);
+			if (viewMode === 'jump' || viewMode === 'tasks') {
+				if (linkedTasks.length > 0 && onNavigateToTask) {
+					const selectedTask = linkedTasks[selectedTaskIndex];
+					onNavigateToTask(selectedTask);
+				}
+			} else if (viewMode === 'workflow') {
+				if (workflowOptions && workflowOptions[selectedWorkflowOption]) {
+					const selectedOption = workflowOptions[selectedWorkflowOption];
+					handleWorkflowChoice(selectedOption.value);
+					setViewMode('details');
+				}
 			}
 		},
 
@@ -347,6 +321,23 @@ Completed via Task Master Flow.`;
 			}
 		},
 
+		// Enhanced workflow keys
+		w: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges) {
+					setViewMode('workflow');
+					setSelectedWorkflowOption(0);
+				}
+			}
+		},
+
 		p: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
 				const hasChanges = details?.status && (
@@ -357,7 +348,22 @@ Completed via Task Master Flow.`;
 					details.status.untracked > 0
 				);
 				if (hasChanges) {
-					handleCreatePR();
+					handleWorkflowChoice('create-pr');
+				}
+			}
+		},
+
+		m: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges) {
+					handleWorkflowChoice('merge-local');
 				}
 			}
 		}
@@ -407,6 +413,85 @@ Completed via Task Master Flow.`;
 		return (
 			<BaseModal {...getModalProps()}>
 				<LoadingSpinner message="Loading worktree details..." />
+			</BaseModal>
+		);
+	}
+
+	// Workflow options view
+	if (viewMode === 'workflow') {
+		const defaultOptions = [
+			{
+				value: 'create-pr',
+				label: 'Create Pull Request',
+				description: 'Push changes and create a GitHub PR'
+			},
+			{
+				value: 'merge-local',
+				label: 'Merge Locally',
+				description: 'Merge changes to main branch locally'
+			}
+		];
+
+		const options = workflowOptions || defaultOptions;
+
+		return (
+			<BaseModal {...getModalProps()}>
+				<Box flexDirection="column">
+					<Box marginBottom={2}>
+						<Text bold color={theme.accent}>Workflow Options</Text>
+					</Box>
+					
+					{isProcessingWorkflow && (
+						<Box marginBottom={2}>
+							<LoadingSpinner message="Processing workflow..." />
+						</Box>
+					)}
+					
+					{workflowResult && !workflowResult.success && (
+						<Box marginBottom={2} borderStyle="round" borderColor={theme.error} padding={1}>
+							<Text color={theme.error}>
+								{workflowResult.message || 'Workflow failed'}
+							</Text>
+						</Box>
+					)}
+					
+					{workflowResult && workflowResult.success && (
+						<Box marginBottom={2} borderStyle="round" borderColor={theme.success} padding={1}>
+							<Text color={theme.success}>
+								{workflowResult.message || 'Workflow completed successfully'}
+							</Text>
+							{workflowResult.prUrl && (
+								<Text color={theme.text}>PR: {workflowResult.prUrl}</Text>
+							)}
+						</Box>
+					)}
+
+					<Box flexDirection="column">
+						{options.map((option, index) => (
+							<Box
+								key={option.value}
+								marginBottom={1}
+								backgroundColor={
+									index === selectedWorkflowOption ? theme.backgroundHighlight : undefined
+								}
+								paddingX={1}
+								paddingY={0}
+							>
+								<Text
+									color={index === selectedWorkflowOption ? theme.accent : theme.text}
+								>
+									{index === selectedWorkflowOption ? '▸ ' : '  '}
+									{option.label}
+								</Text>
+								{index === selectedWorkflowOption && option.description && (
+									<Box marginLeft={4} marginTop={0}>
+										<Text color={theme.muted}>{option.description}</Text>
+									</Box>
+								)}
+							</Box>
+						))}
+					</Box>
+				</Box>
 			</BaseModal>
 		);
 	}
@@ -550,32 +635,170 @@ Completed via Task Master Flow.`;
 		(worktree.isBare ? '[BARE] ' : '');
 	detailContent.push({ type: 'text', content: statusText });
 
-	detailContent.push({
-		type: 'text',
-		content: `Disk Usage: ${worktree.diskUsage || 'Unknown'}`
-	});
-	detailContent.push({ type: 'blank' });
-
-	// Additional details
-	if (details) {
-		if (details.latestCommit) {
-			detailContent.push({ type: 'header', content: 'Latest Commit:' });
+	// Add Git Status section (new)
+	if (gitStatus) {
+		detailContent.push({ type: 'blank' });
+		detailContent.push({ type: 'header', content: 'Git Status:' });
+		
+		if (gitStatus.hasUncommittedChanges) {
 			detailContent.push({
 				type: 'text',
-				content: `  ${details.latestCommit.hash} - ${details.latestCommit.subject}`,
+				content: `  ⚠️  Uncommitted changes detected`,
+				color: theme.warning,
 				indent: 2
 			});
+			
+			if (gitStatus.staged > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  📝 ${gitStatus.staged} staged files`,
+					color: theme.success,
+					indent: 2
+				});
+			}
+			
+			if (gitStatus.modified > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  📄 ${gitStatus.modified} modified files`,
+					color: theme.warning,
+					indent: 2
+				});
+			}
+			
+			if (gitStatus.untracked > 0) {
+				detailContent.push({
+					type: 'text',
+					content: `  ❓ ${gitStatus.untracked} untracked files`,
+					color: theme.muted,
+					indent: 2
+				});
+			}
+		} else {
 			detailContent.push({
 				type: 'text',
-				content: `  by ${details.latestCommit.author} (${details.latestCommit.date})`,
-				dimColor: true,
+				content: `  ✅ Working directory clean`,
+				color: theme.success,
 				indent: 2
 			});
-			detailContent.push({ type: 'blank' });
 		}
+		
+		if (gitStatus.ahead > 0 || gitStatus.behind > 0) {
+			let trackingStatus = '  ';
+			if (gitStatus.ahead > 0) trackingStatus += `↑ ${gitStatus.ahead} ahead `;
+			if (gitStatus.behind > 0) trackingStatus += `↓ ${gitStatus.behind} behind`;
+			detailContent.push({
+				type: 'text',
+				content: trackingStatus,
+				color: gitStatus.ahead > 0 ? theme.success : theme.warning,
+				indent: 2
+			});
+		}
+	}
 
-		if (details.status) {
-			detailContent.push({ type: 'header', content: 'Working Tree Status:' });
+	// Show workflow status if available
+	if (workflowResult) {
+		detailContent.push({ type: 'blank' });
+		detailContent.push({ type: 'header', content: 'Workflow Status:' });
+		
+		if (workflowResult.success) {
+			detailContent.push({
+				type: 'text',
+				content: `  ✅ ${workflowResult.message}`,
+				color: theme.success,
+				indent: 2
+			});
+			
+			if (workflowResult.prUrl) {
+				detailContent.push({
+					type: 'text',
+					content: `  🔗 PR: ${workflowResult.prUrl}`,
+					color: theme.accent,
+					indent: 2
+				});
+			}
+			
+			if (workflowResult.mergeCommit) {
+				detailContent.push({
+					type: 'text',
+					content: `  🔀 Merge: ${workflowResult.mergeCommit.substring(0, 8)}`,
+					color: theme.accent,
+					indent: 2
+				});
+			}
+		} else {
+			detailContent.push({
+				type: 'text',
+				content: `  ❌ ${workflowResult.message}`,
+				color: theme.error,
+				indent: 2
+			});
+		}
+	}
+
+	// Add error display
+	if (error) {
+		detailContent.push({ type: 'blank' });
+		detailContent.push({
+			type: 'text',
+			content: `Error: ${error}`,
+			color: theme.error
+		});
+		detailContent.push({ type: 'blank' });
+	}
+
+	// Add processing indicator
+	if (isProcessingWorkflow) {
+		detailContent.push({ type: 'blank' });
+		detailContent.push({
+			type: 'text',
+			content: `⚡ Processing workflow...`,
+			color: theme.warning
+		});
+		detailContent.push({ type: 'blank' });
+	}
+
+	// Add PR creation indicator
+	if (isCreatingPR) {
+		detailContent.push({ type: 'blank' });
+		detailContent.push({
+			type: 'text',
+			content: `⚡ Creating pull request...`,
+			color: theme.warning
+		});
+		detailContent.push({ type: 'blank' });
+	}
+
+	// Show PR result
+	if (prResult) {
+		detailContent.push({ type: 'blank' });
+		if (prResult.success) {
+			detailContent.push({
+				type: 'text',
+				content: `✅ PR created: ${prResult.prUrl}`,
+				color: theme.success
+			});
+		} else {
+			detailContent.push({
+				type: 'text',
+				content: `❌ PR creation failed: ${prResult.error}`,
+				color: theme.error
+			});
+		}
+		detailContent.push({ type: 'blank' });
+	}
+
+	// Git Status Information
+	if (details && details.status) {
+		detailContent.push({ type: 'header', content: 'Changes:' });
+		if (details.status.total === 0) {
+			detailContent.push({
+				type: 'text',
+				content: '  No changes',
+				color: theme.muted,
+				indent: 2
+			});
+		} else {
 			if (details.status.modified > 0) {
 				detailContent.push({
 					type: 'text',
@@ -608,16 +831,8 @@ Completed via Task Master Flow.`;
 					indent: 2
 				});
 			}
-			if (details.status.total === 0) {
-				detailContent.push({
-					type: 'text',
-					content: '  Clean (no changes)',
-					color: theme.success,
-					indent: 2
-				});
-			}
-			detailContent.push({ type: 'blank' });
 		}
+		detailContent.push({ type: 'blank' });
 
 		if (details.trackingBranch) {
 			detailContent.push({ type: 'header', content: 'Tracking:' });
@@ -682,87 +897,58 @@ Completed via Task Master Flow.`;
 	const { hints, ...baseModalProps } = modalProps;
 
 	return (
-		<BaseModal 
-			{...baseModalProps}
-			showCloseHint={false} // We'll show our own hints
-			footer={
-				hints && hints.length > 0 && (
-					<Box justifyContent="center">
-						<Text color={theme.textDim}>
-							{hints.join(' • ')}
-						</Text>
-					</Box>
-				)
-			}
-		>
+		<BaseModal {...baseModalProps} keyboardHints={hints}>
 			<Box flexDirection="column">
-				{/* Scrollable content */}
-				<Box flexDirection="column" height={VISIBLE_ROWS}>
-					{visibleContent.map((line, index) => {
-						const lineKey = `${line.type}-${scrollOffset + index}-${line.content?.substring(0, 20) || index}`;
+				{/* Render visible content */}
+				{visibleContent.map((item, index) => {
+					const actualIndex = scrollOffset + index;
+					switch (item.type) {
+						case 'header':
+							return (
+								<Box key={actualIndex} marginBottom={0.5}>
+									<Text bold color={theme.accent}>
+										{item.content}
+									</Text>
+								</Box>
+							);
+						case 'text':
+							return (
+								<Box key={actualIndex} paddingLeft={item.indent || 0}>
+									<Text color={item.color || theme.text}>{item.content}</Text>
+								</Box>
+							);
+						case 'task':
+							return (
+								<Box key={actualIndex} paddingLeft={item.indent || 0}>
+									<Text
+										color={
+											item.status === 'done'
+												? theme.success
+												: item.status === 'in-progress'
+													? theme.warning
+													: theme.text
+										}
+									>
+										{item.content}
+									</Text>
+								</Box>
+							);
+						case 'blank':
+							return <Box key={actualIndex} height={1} />;
+						default:
+							return null;
+					}
+				})}
 
-						if (line.type === 'blank') {
-							return <Box key={lineKey} height={1} />;
-						} else if (line.type === 'header') {
-							return (
-								<Text key={lineKey} bold color={theme.primary}>
-									{line.content}
-								</Text>
-							);
-						} else if (line.type === 'task') {
-							return (
-								<Text
-									key={lineKey}
-									color={line.status === 'done' ? theme.success : theme.text}
-								>
-									{line.content}
-								</Text>
-							);
-						} else {
-							return (
-								<Text
-									key={lineKey}
-									color={line.color || theme.text}
-									dimColor={line.dimColor}
-								>
-									{line.content}
-								</Text>
-							);
-						}
-					})}
-				</Box>
-
-				{/* Scroll indicator */}
+				{/* Scroll indicators */}
 				{totalLines > VISIBLE_ROWS && (
-					<Box marginTop={1}>
+					<Box marginTop={1} justifyContent="center">
 						<Text color={theme.muted}>
-							Lines {scrollOffset + 1}-
-							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of{' '}
-							{totalLines}
+							{scrollOffset > 0 && '↑ '}
+							Line {Math.min(scrollOffset + 1, totalLines)}-
+							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
+							{scrollOffset + VISIBLE_ROWS < totalLines && ' ↓'}
 						</Text>
-					</Box>
-				)}
-
-				{/* PR Creation Status */}
-				{isCreatingPR && (
-					<Box marginTop={1}>
-						<Text color={theme.warning}>⚡ Creating pull request...</Text>
-					</Box>
-				)}
-
-				{/* PR Creation Result */}
-				{prResult && (
-					<Box marginTop={1} flexDirection="column">
-						<Text color={theme.success}>✓ Pull request created successfully!</Text>
-						<Text color={theme.muted}>PR: {prResult.prTitle}</Text>
-						<Text color={theme.accent}>URL: {prResult.prUrl}</Text>
-					</Box>
-				)}
-
-				{/* Error Message */}
-				{error && (
-					<Box marginTop={1}>
-						<Text color="red">✗ {error}</Text>
 					</Box>
 				)}
 			</Box>
