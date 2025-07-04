@@ -113,7 +113,9 @@ function createUtilities() {
 		 * Extract research information from task details
 		 */
 		extractResearchFromTask(task) {
-			if (!task || !task.details) return null;
+			if (!task || !task.details) {
+				return null;
+			}
 
 			// Look for research session markers in task details
 			// Pattern: ## Research Session - July 2, 2025 7:32:51 PM
@@ -125,7 +127,9 @@ function createUtilities() {
 				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
 				const oldMatches = [...task.details.matchAll(oldPattern)];
 				
-				if (oldMatches.length === 0) return null;
+				if (oldMatches.length === 0) {
+					return null;
+				}
 
 				const research = oldMatches.map((match) => ({
 					timestamp: match[1],
@@ -214,7 +218,34 @@ function createUtilities() {
 				'security',
 				'performance',
 				'optimization',
-				'testing'
+				'testing',
+				// Added more general terms
+				'build',
+				'deploy',
+				'create',
+				'develop',
+				'service',
+				'component',
+				'module',
+				'function',
+				'class',
+				'method',
+				'server',
+				'client',
+				'database',
+				'auth',
+				'authentication',
+				'authorization',
+				'validation',
+				'error handling',
+				'logging',
+				'monitoring',
+				'config',
+				'configuration',
+				'environment',
+				'production',
+				'staging',
+				'development'
 			];
 
 			// Technology keywords that often need research
@@ -236,7 +267,38 @@ function createUtilities() {
 				'postgresql',
 				'redis',
 				'graphql',
-				'rest api'
+				'rest api',
+				// Added more technologies
+				'express',
+				'fastapi',
+				'django',
+				'flask',
+				'nextjs',
+				'typescript',
+				'javascript',
+				'css',
+				'html',
+				'tailwind',
+				'bootstrap',
+				'webpack',
+				'vite',
+				'jest',
+				'cypress',
+				'playwright',
+				'prisma',
+				'mysql',
+				'sqlite',
+				'nginx',
+				'apache',
+				'linux',
+				'ubuntu',
+				'git',
+				'github',
+				'gitlab',
+				'ci/cd',
+				'jenkins',
+				'terraform',
+				'ansible'
 			];
 
 			const foundKeywords = [];
@@ -257,7 +319,7 @@ function createUtilities() {
 				}, 0);
 
 			// Calculate confidence based on score
-			const confidence = Math.min(score / 3, 1); // Normalize to 0-1
+			const confidence = Math.min(score / 2, 1); // Normalize to 0-1, changed from score/3 to score/2
 
 			return {
 				needed: confidence > 0.3,

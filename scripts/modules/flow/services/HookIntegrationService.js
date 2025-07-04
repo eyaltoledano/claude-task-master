@@ -49,9 +49,10 @@ export class HookIntegrationService {
 				operationId,
 				type: 'research-check',
 				action: 'check-needed',
+				backend: this.backend,
 				config: {
 					autoDetectExisting: true,
-					confidenceThreshold: 0.7,
+					confidenceThreshold: 0.4,
 					maxSuggestedQueries: 3
 				}
 			};

@@ -22,7 +22,7 @@ export default class ResearchIntegrationHook {
 
 		// If this is just checking if research is needed
 		if (action === 'check-needed') {
-			return this.analyzeResearchNeeds(task, utils, config);
+			return await this.analyzeResearchNeeds(task, utils, config, context);
 		}
 
 		// Otherwise, prepare for research execution
@@ -75,59 +75,102 @@ export default class ResearchIntegrationHook {
 	/**
 	 * Analyze if task needs research
 	 */
-	analyzeResearchNeeds(task, utils, config) {
+	async analyzeResearchNeeds(task, utils, config, context = {}) {
 		try {
-			// Check if research already exists
+			// Check if research already exists in the current task
 			const existingResearch = utils.extractResearchFromTask(task);
 
-			if (existingResearch && config.autoDetectExisting) {
-				const sessionInfo = existingResearch.sessionCount > 1 
-					? `${existingResearch.sessionCount} research sessions found`
-					: 'Research session found';
-				
-				const lastUpdatedInfo = existingResearch.format === 'current'
-					? `Last updated: ${existingResearch.lastUpdated}`
-					: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
+			// Check if this is a subtask (ID contains a dot)
+			const isSubtask = task.id && String(task.id).includes('.');
+			let parentTaskResearch = null;
+
+			if (isSubtask && context.backend) {
+				// For subtasks, also check the parent task for research
+				const parentTaskId = String(task.id).split('.')[0];
+				try {
+					const parentTask = await context.backend.getTask(parentTaskId);
+					if (parentTask) {
+						parentTaskResearch = utils.extractResearchFromTask(parentTask);
+					}
+				} catch (error) {
+					console.warn(`Failed to fetch parent task ${parentTaskId}:`, error);
+				}
+			}
+
+			// Determine if research exists (in either subtask or parent)
+			const hasResearchInSubtask = !!(existingResearch);
+			const hasResearchInParent = !!(parentTaskResearch);
+			const hasAnyResearch = hasResearchInSubtask || hasResearchInParent;
+
+			if (hasAnyResearch && config.autoDetectExisting) {
+				let message;
+				let sessionInfo;
+				let lastUpdatedInfo;
+
+				if (hasResearchInSubtask) {
+					// Research found in subtask
+					sessionInfo = existingResearch.sessionCount > 1 
+						? `${existingResearch.sessionCount} research sessions found in subtask`
+						: 'Research session found in subtask';
+					
+					lastUpdatedInfo = existingResearch.format === 'current'
+						? `Last updated: ${existingResearch.lastUpdated}`
+						: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
+
+					message = `${sessionInfo}. ${lastUpdatedInfo}`;
+				} else if (hasResearchInParent) {
+					// Research found in parent task
+					sessionInfo = parentTaskResearch.sessionCount > 1 
+						? `${parentTaskResearch.sessionCount} research sessions found in parent task`
+						: 'Research session found in parent task';
+					
+					lastUpdatedInfo = parentTaskResearch.format === 'current'
+						? `Last updated: ${parentTaskResearch.lastUpdated}`
+						: `Last updated: ${parentTaskResearch.lastUpdated} (legacy format)`;
+
+					message = `${sessionInfo}. ${lastUpdatedInfo}`;
+				}
 
 				return {
 					researchStatus: {
 						needed: false,
 						reason: 'existing-research-found',
 						hasExisting: true,
-						lastUpdated: existingResearch.lastUpdated,
-						sessionCount: existingResearch.sessionCount || 1,
-						format: existingResearch.format || 'legacy',
+						lastUpdated: (existingResearch || parentTaskResearch).lastUpdated,
+						sessionCount: (existingResearch || parentTaskResearch).sessionCount || 1,
+						format: (existingResearch || parentTaskResearch).format || 'legacy',
 						confidence: 100,
-						message: `${sessionInfo}. ${lastUpdatedInfo}`
+						message,
+						source: hasResearchInSubtask ? 'subtask' : 'parent'
 					}
 				};
 			}
 
-			// Analyze task content for research indicators
-			const analysis = utils.analyzeTaskForResearch(task);
+			// Simple check: if no existing research pattern found in either place, recommend research
+			if (!hasAnyResearch) {
+				const searchLocation = isSubtask ? 'subtask or parent task' : 'task';
+				return {
+					researchStatus: {
+						needed: true,
+						reason: 'no-research-found',
+						hasExisting: false,
+						confidence: 85,
+						message: `No existing research found in ${searchLocation}. Research recommended to gather current best practices and implementation guidance.`
+					}
+				};
+			} else {
+				// Research pattern exists somewhere - no additional research needed
+				return {
+					researchStatus: {
+						needed: false,
+						reason: 'existing-research-found',
+						hasExisting: true,
+						confidence: 100,
+						message: 'Existing research found.'
+					}
+				};
+			}
 
-			// Apply confidence threshold from config
-			const threshold = config.confidenceThreshold || 0.7;
-			const needsResearch = analysis.confidence >= threshold * 100;
-
-			const researchStatus = {
-				needed: needsResearch,
-				reason: needsResearch ? 'content-analysis' : 'low-confidence',
-				hasExisting: !!existingResearch,
-				confidence: analysis.confidence,
-				score: analysis.score,
-				keywords: analysis.keywords,
-				suggestions: analysis.suggestions.slice(
-					0,
-					config.maxSuggestedQueries || 3
-				),
-				threshold: threshold * 100,
-				message: needsResearch
-					? `Research recommended (${analysis.confidence}% confidence). Found ${analysis.keywords.length} relevant keywords.`
-					: `Research not needed (${analysis.confidence}% confidence). Task appears straightforward.`
-			};
-
-			return { researchStatus };
 		} catch (error) {
 			return {
 				researchStatus: {

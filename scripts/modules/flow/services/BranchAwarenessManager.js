@@ -442,7 +442,8 @@ export class BranchAwarenessManager extends EventEmitter {
 			// Check for origin remote
 			const remoteUrl = execSync('git remote get-url origin', {
 				cwd: this.projectRoot,
-				encoding: 'utf8'
+				encoding: 'utf8',
+				stdio: 'pipe'
 			}).trim();
 
 			// Parse URL to determine provider
@@ -505,7 +506,8 @@ export class BranchAwarenessManager extends EventEmitter {
 			// Get all remotes
 			const remotesOutput = execSync('git remote -v', {
 				cwd: this.projectRoot,
-				encoding: 'utf8'
+				encoding: 'utf8',
+				stdio: 'pipe'
 			});
 
 			const remotes = remotesOutput.trim().split('\n').map(line => {
@@ -580,7 +582,8 @@ export class BranchAwarenessManager extends EventEmitter {
 			// Try to get default branch from remote
 			const output = execSync('git symbolic-ref refs/remotes/origin/HEAD', {
 				cwd: this.projectRoot,
-				encoding: 'utf8'
+				encoding: 'utf8',
+				stdio: 'pipe'
 			}).trim();
 
 			const branch = output.replace('refs/remotes/origin/', '');

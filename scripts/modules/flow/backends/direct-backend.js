@@ -2938,7 +2938,7 @@ ${prompt}
 					// For subtasks, we need to check the parent task for research
 					parentTaskId = task.id.toString().split('.')[0];
 					try {
-						const parentTask = await this.getTask(parentTaskId);
+						const parentTask = await this.getTask(parentId);
 						if (parentTask) {
 							taskToCheck = parentTask;
 							logFn.info(`Checking parent task ${parentTaskId} for research instead of subtask ${task.id}`);
@@ -5271,7 +5271,8 @@ ${prompt}
 			
 			try {
 				const { stdout } = await execAsync('git remote get-url origin', {
-					cwd: this.projectRoot
+					cwd: this.projectRoot,
+					stdio: 'pipe' // Suppress stderr output
 				});
 				
 				const remoteUrl = stdout.trim();
@@ -5279,7 +5280,9 @@ ${prompt}
 				
 				let hasGitHubCLI = false;
 				try {
-					await execAsync('gh auth status');
+					await execAsync('gh auth status', {
+						stdio: 'pipe' // Suppress stderr output
+					});
 					hasGitHubCLI = true;
 				} catch (error) {
 					// GitHub CLI not available or not authenticated

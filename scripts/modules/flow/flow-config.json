@@ -289,9 +289,9 @@
 		"showBranchInStatus": true,
 		"autoDetectBranchSwitch": true,
 		"lastWorkingBranch": null,
-		"currentBranch": "joedanz/tm-flow",
+		"currentBranch": "main",
 		"branchHistory": [],
 		"maxHistorySize": 10,
-		"lastUpdated": "2025-07-04T11:47:40.984Z"
+		"lastUpdated": "2025-07-04T17:33:17.373Z"
 	}
 }

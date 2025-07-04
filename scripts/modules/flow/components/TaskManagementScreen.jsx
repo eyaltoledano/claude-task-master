@@ -20,6 +20,8 @@ import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
+import { ResearchInputModal } from './ResearchInputModal.jsx';
+import { HookIntegrationService } from '../services/HookIntegrationService.js';
 
 export function TaskManagementScreen() {
 	const {
@@ -67,28 +69,30 @@ export function TaskManagementScreen() {
 	const [commitAssistantData, setCommitAssistantData] = useState(null);
 	const [gitStatus, setGitStatus] = useState(null);
 	const [repoInfo, setRepoInfo] = useState(null);
+	const [showResearchModal, setShowResearchModal] = useState(false);
+	const [modalTaskData, setModalTaskData] = useState(null);
+
+	// Hook integration service
+	const [hookService] = useState(() => new HookIntegrationService(backend));
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
 	const DETAIL_VISIBLE_ROWS = 20; // Visible rows in detail view
 
-	// Memoize the task object for the modal to prevent re-renders
-	const modalTaskData = useMemo(() => {
-		if (!selectedTask || !selectedSubtask) return null;
-		return [
-			{
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title,
-				description: selectedSubtask.description,
-				details: selectedSubtask.details, // Include implementation details
-				testStrategy: selectedSubtask.testStrategy, // Include test strategy
-				status: selectedSubtask.status,
-				dependencies: selectedSubtask.dependencies,
-				parentId: selectedTask.id,
-				parentTitle: selectedTask.title
-			}
-		];
-	}, [selectedTask, selectedSubtask]);
+	// Initialize hook service
+	useEffect(() => {
+		console.log('[TaskManagementScreen] Initializing hook service...');
+		try {
+			hookService.initialize();
+			console.log('[TaskManagementScreen] Hook service initialized successfully');
+		} catch (error) {
+			console.error('[TaskManagementScreen] Hook service initialization failed:', error);
+			setToast({
+				message: `Hook service initialization failed: ${error.message}`,
+				type: 'error'
+			});
+		}
+	}, [hookService]);
 
 	// Reload tasks on mount
 	useEffect(() => {
@@ -209,322 +213,92 @@ export function TaskManagementScreen() {
 		}
 	});
 
-	// Handle keyboard input
+	// Unified keypress handler
 	useInput((input, key) => {
-		if (isSearching) {
-			// Handle search mode input separately
-			return;
-		}
-
-		// During streaming operations, keyboard input is handled by StreamingModal
-		if (showStreamingModal) {
-			return;
-		}
-
-		if (showExpandOptions) {
-			// SelectInput handles its own input, but we still want ESC to work
-			if (key.escape) {
-				setShowExpandOptions(false);
-			}
-			return;
-		}
-
+		// If any modal is open, let it handle the input, except for global ESC
 		if (key.escape) {
-			if (isExpanding) {
-				// During expansion, ESC is disabled - must use Ctrl+X
-				return;
+			if (showResearchModal) return setShowResearchModal(false);
+			if (showExpandOptions) return setShowExpandOptions(false);
+			// Other modal escape logic can go here...
+
+			if (viewMode === 'detail' || viewMode === 'subtasks') setViewMode('list');
+			else if (viewMode === 'subtask-detail') setViewMode('subtasks');
+			else if (isSearching) {
+				setIsSearching(false);
+				setSearchQuery('');
 			}
-			if (viewMode === 'subtask-detail') {
-				// Go back to subtasks view from subtask detail
-				flushSync(() => {
-					setViewMode('subtasks');
-					setSelectedSubtask(null);
-				});
-			} else if (viewMode === 'subtasks') {
-				// Go back to detail view from subtasks
-				flushSync(() => {
+			return;
+		}
+
+		// Don't process other keys if a modal is active
+		if (showResearchModal || showExpandOptions || isSearching) {
+			return;
+		}
+
+		switch (viewMode) {
+			case 'list':
+				if (key.downArrow) handleDownArrow();
+				else if (key.upArrow) handleUpArrow();
+				else if (key.return && filteredTasks.length > 0) {
+					const task = filteredTasks[selectedIndex];
+					setSelectedTask(task);
 					setViewMode('detail');
-					setSelectedSubtaskIndex(0);
-					setSubtasksScrollOffset(0);
-				});
-			} else if (viewMode === 'detail') {
-				flushSync(() => {
-					setViewMode('list');
-					setSelectedTask(null);
-					setShowExpandOptions(false);
 					setDetailScrollOffset(0);
-				});
-			} else {
-				setCurrentScreen('welcome');
-			}
-			return;
-		}
+				} else if (input === 'f') cycleFilter();
+				else if (input === 'p') cyclePriorityFilter();
+				else if (input === 't' && filteredTasks.length > 0) {
+					cycleTaskStatus(filteredTasks[selectedIndex]);
+				} else if (input === '/') setIsSearching(true);
+				break;
 
-		// Handle Ctrl+X to cancel expansion
-		if (key.ctrl && input === 'x' && isExpanding) {
-			setIsExpanding(false);
-			setToast({
-				message: 'Expansion cancelled',
-				type: 'warning'
-			});
-			return;
-		}
+			case 'detail':
+				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
+				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
+				else if (input === 'e') setShowExpandOptions(true);
+				else if (input === 's' && selectedTask?.subtasks?.length > 0)
+					setViewMode('subtasks');
+				else if (input === 'r') setShowResearchModal(true);
+				break;
 
-		// Subtasks view keyboard handling
-		if (viewMode === 'subtasks') {
-			if (key.downArrow) {
-				const maxIndex = selectedTask.subtasks.length - 1;
-				const newIndex = Math.min(selectedSubtaskIndex + 1, maxIndex);
-				setSelectedSubtaskIndex(newIndex);
-
-				// Adjust scroll if needed
-				if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
-					setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
+			case 'subtasks':
+				if (key.downArrow) {
+					const max = selectedTask.subtasks.length - 1;
+					const newIndex = Math.min(selectedSubtaskIndex + 1, max);
+					setSelectedSubtaskIndex(newIndex);
+					if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
+						setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
+					}
+				} else if (key.upArrow) {
+					const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
+					setSelectedSubtaskIndex(newIndex);
+					if (newIndex < subtasksScrollOffset) {
+						setSubtasksScrollOffset(newIndex);
+					}
+				} else if (key.return) {
+					setSelectedSubtask(selectedTask.subtasks[selectedSubtaskIndex]);
+					setViewMode('subtask-detail');
+					setDetailScrollOffset(0);
+				} else if (input === 't') {
+					const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+					cycleTaskStatus({ ...subtask, id: `${selectedTask.id}.${subtask.id}` });
 				}
-			} else if (key.upArrow) {
-				const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
-				setSelectedSubtaskIndex(newIndex);
+				break;
 
-				// Adjust scroll if needed
-				if (newIndex < subtasksScrollOffset) {
-					setSubtasksScrollOffset(newIndex);
-				}
-			} else if (key.return) {
-				// Enter key - show subtask details
-				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
-				setSelectedSubtask(subtask);
-				setViewMode('subtask-detail');
-				setDetailScrollOffset(0); // Reset scroll for subtask detail view
-			} else if (input === 't') {
-				// Cycle status of selected subtask
-				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
-				const subtaskId = `${selectedTask.id}.${subtask.id}`;
-				cycleTaskStatus({ ...subtask, id: subtaskId });
-			}
-			return;
-		}
-
-		if (viewMode === 'detail') {
-			if (input === 'e' && selectedTask) {
-				// Show expand options - always allow expand, modal will handle confirmation
-				setShowExpandOptions(true);
-			} else if (input === 's' && selectedTask?.subtasks?.length > 0) {
-				// Switch to subtasks view if task has subtasks
-				setViewMode('subtasks');
-				setSelectedSubtaskIndex(0);
-				setSubtasksScrollOffset(0);
-			} else if (key.downArrow) {
-				// Scroll down in detail view
-				setDetailScrollOffset((prev) => prev + 1);
-			} else if (key.upArrow) {
-				// Scroll up in detail view
-				setDetailScrollOffset((prev) => Math.max(0, prev - 1));
-			} else if (key.pageDown) {
-				// Page down in detail view
-				setDetailScrollOffset((prev) => prev + 10);
-			} else if (key.pageUp) {
-				// Page up in detail view
-				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
-			}
-			return;
-		}
-
-		// Subtask detail view keyboard handling
-		if (viewMode === 'subtask-detail') {
-			if (key.downArrow) {
-				// Scroll down in subtask detail view
-				setDetailScrollOffset((prev) => prev + 1);
-			} else if (key.upArrow) {
-				// Scroll up in subtask detail view
-				setDetailScrollOffset((prev) => Math.max(0, prev - 1));
-			} else if (key.pageDown) {
-				// Page down in subtask detail view
-				setDetailScrollOffset((prev) => prev + 10);
-			} else if (key.pageUp) {
-				// Page up in subtask detail view
-				setDetailScrollOffset((prev) => Math.max(0, prev - 10));
-			} else if (input === 'w') {
-				// Work on subtask - automatically create/use worktree and launch Claude
-				handleWorkOnSubtask();
-			} else if (input === 'g') {
-				// Go to worktree (if exists)
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-				if (worktrees.length > 0) {
-					// Navigate to worktree detail page for the first linked worktree
-					setCurrentScreen('worktrees', {
-						selectedWorktree: worktrees[0],
-						showDetails: true
-					});
-				} else {
-					setToast({
-						message: 'No worktrees linked to this subtask',
-						type: 'warning'
-					});
-				}
-			} else if (input === 'c' || input === 'C') {
-				// Launch Claude Code session with subtask context
-				handleClaudeSession();
-			} else if (input === 'v' || input === 'V') {
-				// View Claude Code sessions for this subtask
-				const sessionIds = extractClaudeSessionIds(selectedSubtask.details);
-				if (sessionIds.length > 0) {
-					// Navigate to Claude Code screen with filter for this subtask
-					setCurrentScreen('claude-code', {
-						mode: 'list',
-						filterSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`,
-						highlightSessionId: sessionIds[0], // Highlight the most recent session
-						returnTo: 'tasks',
-						returnData: {
-							selectedTaskId: selectedTask.id,
-							selectedSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`,
-							viewMode: 'subtask-detail'
-						}
-					});
-				} else {
-					setToast({
-						message: 'No Claude Code sessions found for this subtask',
-						type: 'warning'
-					});
-				}
-			} else if (input === 'p' || input === 'P') {
-				// Log progress for this subtask
-				handleLogProgress();
-			} else if (input === 'e' || input === 'E') {
-				// Log exploration phase for this subtask
-				handleLogExploration();
-			} else if (input === 'l' || input === 'L') {
-				// Log completion for this subtask
-				handleLogCompletion();
-			} else if (input === 'W') {
-				// Workflow decision modal
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-				if (worktrees.length > 0) {
-					handleWorkflowDecision(worktrees[0], {
+			case 'subtask-detail':
+				console.log('[TaskManagementScreen] subtask-detail keypress:', input, key);
+				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
+				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
+				else if (input === 't') {
+					cycleTaskStatus({
 						...selectedSubtask,
-						parentId: selectedTask.id,
-						parentTitle: selectedTask.title
+						id: `${selectedTask.id}.${selectedSubtask.id}`
 					});
-				} else {
-					setToast({
-						message: 'No worktrees available for workflow decisions',
-						type: 'warning'
-					});
+				} else if (input === 'c') {
+					console.log('[TaskManagementScreen] c key pressed, calling handleClaudeSession');
+					handleClaudeSession();
 				}
-			} else if (input === 'C') {
-				// Commit assistant
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-				if (worktrees.length > 0 && gitStatus) {
-					handleCommitAssistance(worktrees[0], {
-						...selectedSubtask,
-						parentId: selectedTask.id,
-						parentTitle: selectedTask.title
-					}, gitStatus);
-				} else {
-					setToast({
-						message: 'No worktrees with changes available for commit assistance',
-						type: 'warning'
-					});
-				}
-			}
-			return;
-		}
-
-		// List view keyboard handling
-		if (key.downArrow) {
-			const newIndex = Math.min(selectedIndex + 1, visibleTasks.length - 1);
-			setSelectedIndex(newIndex);
-
-			// Adjust scroll if needed
-			if (newIndex >= scrollOffset + VISIBLE_ROWS) {
-				setScrollOffset(newIndex - VISIBLE_ROWS + 1);
-			}
-		} else if (key.upArrow) {
-			const newIndex = Math.max(selectedIndex - 1, 0);
-			setSelectedIndex(newIndex);
-
-			// Adjust scroll if needed
-			if (newIndex < scrollOffset) {
-				setScrollOffset(newIndex);
-			}
-		} else if (key.pageDown) {
-			// Page down
-			const newIndex = Math.min(
-				selectedIndex + VISIBLE_ROWS,
-				visibleTasks.length - 1
-			);
-			setSelectedIndex(newIndex);
-			setScrollOffset(
-				Math.min(
-					newIndex - VISIBLE_ROWS + 1,
-					Math.max(0, visibleTasks.length - VISIBLE_ROWS)
-				)
-			);
-		} else if (key.pageUp) {
-			// Page up
-			const newIndex = Math.max(selectedIndex - VISIBLE_ROWS, 0);
-			setSelectedIndex(newIndex);
-			setScrollOffset(Math.max(0, newIndex));
-		} else if (key.return) {
-			// Enter key - show task details
-			const task = visibleTasks[selectedIndex];
-			showTaskDetail(task);
-		} else if (input === 'f') {
-			// Switch filter mode between status and priority
-			if (filterMode === 'status') {
-				setFilterMode('priority');
-				setPriorityFilter('all');
-				setFilter('all');
-			} else {
-				setFilterMode('status');
-				setFilter('all');
-				setPriorityFilter('all');
-			}
-		} else if (input === 't') {
-			// Cycle status of selected task
-			const task = visibleTasks[selectedIndex];
-			cycleTaskStatus(task);
-		} else if (input === 'r') {
-			// Cycle through priority filters
-			if (filterMode !== 'priority') {
-				// First switch to priority mode
-				setFilterMode('priority');
-				setFilter('all');
-			}
-
-			// Cycle through priority filters: all → high → medium → low → all
-			const priorityOrder = ['all', 'high', 'medium', 'low'];
-			const currentIndex = priorityOrder.indexOf(priorityFilter);
-			const nextIndex = (currentIndex + 1) % priorityOrder.length;
-			setPriorityFilter(priorityOrder[nextIndex]);
-		} else if (input === '1') {
-			if (filterMode === 'status') {
-				setFilter('all');
-			} else {
-				setPriorityFilter('all');
-			}
-		} else if (input === '2') {
-			if (filterMode === 'status') {
-				setFilter('pending');
-			} else {
-				setPriorityFilter('high');
-			}
-		} else if (input === '3') {
-			if (filterMode === 'status') {
-				setFilter('in-progress');
-			} else {
-				setPriorityFilter('medium');
-			}
-		} else if (input === '4') {
-			if (filterMode === 'status') {
-				setFilter('done');
-			} else {
-				setPriorityFilter('low');
-			}
-		} else if (input === '/') {
-			setIsSearching(true);
+				else if (input === 'r') setShowResearchModal(true);
+				break;
 		}
 	});
 
@@ -691,30 +465,76 @@ export function TaskManagementScreen() {
 	};
 
 	const handleClaudeSession = async () => {
-		if (!selectedTask || !selectedSubtask) return;
+		console.log('[TaskManagementScreen] handleClaudeSession called');
+		console.log('[TaskManagementScreen] selectedTask:', selectedTask?.id);
+		console.log('[TaskManagementScreen] selectedSubtask:', selectedSubtask?.id);
+		
+		if (!selectedTask || !selectedSubtask) {
+			console.error('[TaskManagementScreen] Missing selectedTask or selectedSubtask');
+			return;
+		}
 
 		try {
+			console.log('[TaskManagementScreen] Checking for existing worktrees...');
 			// Check for existing worktrees for this subtask (but don't create)
 			const worktrees = await backend.getTaskWorktrees(
 				`${selectedTask.id}.${selectedSubtask.id}`
 			);
+			console.log('[TaskManagementScreen] Found worktrees:', worktrees);
 
 			let worktreeToUse = null;
 
 			if (worktrees && worktrees.length > 0) {
 				// Use the first linked worktree if it exists
 				worktreeToUse = worktrees[0];
+				console.log('[TaskManagementScreen] Using existing worktree:', worktreeToUse);
 			}
 
-			// Set the worktree (or null if none exists) for Claude launcher
-			setClaudeWorktree(worktreeToUse);
+			// Fetch full parent task details to ensure we have complete information
+			let fullParentTask = selectedTask;
+			let subtaskWithFullDetails = selectedSubtask; // Start with current subtask
 
-			// Show the Claude launcher modal - it will handle worktree creation if needed
+			try {
+				fullParentTask = await backend.getTask(selectedTask.id);
+				if (fullParentTask && fullParentTask.subtasks) {
+					const foundSubtask = fullParentTask.subtasks.find(st => st.id === selectedSubtask.id);
+					if (foundSubtask) {
+						subtaskWithFullDetails = foundSubtask; // Use the one with full details
+					}
+				}
+			} catch (error) {
+				console.warn('Could not fetch full parent task details for modal:', error);
+				// Continue with the task data we have
+			}
+
+
+			// Prepare task data for the Claude launcher modal
+			const taskData = [
+				{
+					id: `${selectedTask.id}.${selectedSubtask.id}`,
+					title: subtaskWithFullDetails.title,
+					description: subtaskWithFullDetails.description,
+					details: subtaskWithFullDetails.details,
+					status: subtaskWithFullDetails.status,
+					isSubtask: true,
+					parentTask: {
+						id: fullParentTask.id,
+						title: fullParentTask.title,
+						description: fullParentTask.description,
+						details: fullParentTask.details,
+						testStrategy: fullParentTask.testStrategy || fullParentTask.test_strategy
+					}
+				}
+			];
+
+			// Set modal data and worktree
+			setModalTaskData(taskData);
+			setClaudeWorktree(worktreeToUse);
 			setShowClaudeLauncherModal(true);
 		} catch (error) {
-			console.error('Failed to setup Claude session:', error);
+			console.error('[TaskManagementScreen] Error launching Claude session:', error);
 			setToast({
-				message: `✗ Failed to setup Claude: ${error.message}`,
+				message: `Error: ${error.message}`,
 				type: 'error'
 			});
 		}
@@ -919,10 +739,47 @@ export function TaskManagementScreen() {
 			// Continue with the subtask we have
 		}
 
-		// Check if research has already been run
-		const hasExistingResearch =
-			subtaskWithDetails.details &&
-			subtaskWithDetails.details.includes('<info added on');
+		// Check if research has already been run using the hook service
+		let hasExistingResearch = false;
+		try {
+			const researchCheck = await hookService.checkResearchNeeded(subtaskWithDetails);
+			if (researchCheck && researchCheck.researchStatus) {
+				hasExistingResearch = !researchCheck.researchStatus.needed;
+				console.log(`[TaskManagementScreen] Research analysis result:`, {
+					needed: researchCheck.researchStatus.needed,
+					hasExisting: !researchCheck.researchStatus.needed,
+					reason: researchCheck.researchStatus.reason
+				});
+			}
+		} catch (error) {
+			console.warn('Failed to check research status via hooks, falling back to simple check:', error);
+			setToast({
+				message: `Hook service error (using fallback): ${error.message}`,
+				type: 'warning'
+			});
+			// Fallback to simple check - check both subtask and parent task
+			hasExistingResearch = false;
+			
+			// Check subtask details using the same pattern as the hook utility
+			if (subtaskWithDetails.details) {
+				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
+				const matches = [...subtaskWithDetails.details.matchAll(oldPattern)];
+				if (matches.length > 0) {
+					hasExistingResearch = true;
+					console.log('[TaskManagementScreen] Found research in subtask via fallback');
+				}
+			}
+			
+			// If not found in subtask, check parent task
+			if (!hasExistingResearch && selectedTask.details) {
+				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
+				const matches = [...selectedTask.details.matchAll(oldPattern)];
+				if (matches.length > 0) {
+					hasExistingResearch = true;
+					console.log('[TaskManagementScreen] Found research in parent task via fallback');
+				}
+			}
+		}
 
 		// Run automatic research only if it hasn't been done before
 		const researchQuery = buildResearchQuery();
@@ -935,6 +792,7 @@ export function TaskManagementScreen() {
 					type: 'info'
 				});
 
+				// Use the backend's research function with saveTo to automatically save in proper format
 				const researchResult = await backend.research({
 					query: researchQuery,
 					taskIds: [
@@ -943,47 +801,16 @@ export function TaskManagementScreen() {
 						...dependencies.filter((d) => d).map((d) => d.id)
 					],
 					includeProjectTree: true,
-					detailLevel: 'medium'
+					detailLevel: 'medium',
+					saveTo: `${selectedTask.id}.${selectedSubtask.id}` // This will save with proper timestamp format
 				});
 
 				researchContext = researchResult.response || researchResult;
 
-				// Save research results to subtask
-				if (researchContext) {
-					try {
-						setToast({
-							message: 'Saving research to subtask...',
-							type: 'info'
-						});
-
-						const researchContent = `## Claude Code Research - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
-
-**Query:** ${researchQuery}
-**Detail Level:** medium
-**Context:** Preparing for Claude Code implementation session
-
-### Research Results
-
-${researchContext}
-
----
-`;
-
-						await backend.updateSubtask({
-							id: `${selectedTask.id}.${selectedSubtask.id}`,
-							prompt: researchContent,
-							research: false // Don't run research again, just append
-						});
-
-						setToast({
-							message: 'Research saved to subtask',
-							type: 'success'
-						});
-					} catch (saveError) {
-						console.error('Failed to save research to subtask:', saveError);
-						// Continue anyway - research is still in context
-					}
-				}
+				setToast({
+					message: 'Research completed and saved to subtask',
+					type: 'success'
+				});
 			} catch (error) {
 				console.error('Research failed:', error);
 				// Continue without research
@@ -1476,6 +1303,33 @@ Focus on: current industry standards, common pitfalls, security considerations
 		}
 	}, [selectedSubtask, viewMode, selectedTask, subtaskWorktrees, backend]);
 
+	const handleRunResearch = async (researchOptions) => {
+		const { query, save } = researchOptions;
+		setShowResearchModal(false);
+
+		if (!query) return;
+
+		setToast({ message: 'Running research...', type: 'info' });
+
+		try {
+			const saveToId =
+				viewMode === 'detail'
+					? selectedTask.id.toString()
+					: `${selectedTask.id}.${selectedSubtask.id}`;
+
+			await backend.research({
+				query,
+				taskIds: [saveToId],
+				saveTo: save ? saveToId : null
+			});
+
+			setToast({ message: 'Research complete!', type: 'success' });
+			reloadTasks(); // Reload tasks to show updated details
+		} catch (error) {
+			setToast({ message: `Research failed: ${error.message}`, type: 'error' });
+		}
+	};
+
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
 		// Determine default number of subtasks based on complexity report
@@ -1706,20 +1560,19 @@ Focus on: current industry standards, common pitfalls, security considerations
 						overflow="hidden"
 					>
 						{visibleContent.map((line, index) => {
+							const key = `detail-${selectedTask.id}-${index}`;
 							if (line.type === 'field') {
 								return (
-									<Box key={index} flexDirection="row" marginBottom={1}>
-										<Box width={20}>
-											<Text color={theme.textDim}>{line.label}</Text>
-										</Box>
-										<Box flexGrow={1}>
-											<Text color={line.color || theme.text}>{line.value}</Text>
-										</Box>
+									<Box key={key}>
+										<Text bold color={theme.textDim} width={15}>
+											{line.label}
+										</Text>
+										<Text color={line.color || theme.text}>{line.value}</Text>
 									</Box>
 								);
 							} else if (line.type === 'header') {
 								return (
-									<Box key={index} flexDirection="column" marginTop={1}>
+									<Box key={key}>
 										<Text color={theme.accent} bold>
 											{line.text}
 										</Text>
@@ -1727,41 +1580,36 @@ Focus on: current industry standards, common pitfalls, security considerations
 								);
 							} else if (line.type === 'text') {
 								return (
-									<Box key={index} marginTop={0.5} paddingLeft={2}>
+									<Box key={key}>
 										<Text color={theme.text}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'subtask') {
 								return (
-									<Box key={index} marginTop={1} paddingLeft={2}>
+									<Box key={key}>
 										<Text color={line.color}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'warning') {
 								return (
-									<Box
-										key={index}
-										borderStyle="round"
-										borderColor={theme.warning}
-										padding={1}
-									>
+									<Box key={key}>
 										<Text color={theme.warning}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'info') {
 								return (
-									<Box key={index} paddingLeft={1}>
+									<Box key={key}>
 										<Text color={theme.textDim}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'hint') {
 								return (
-									<Box key={index} paddingLeft={1}>
+									<Box key={key}>
 										<Text color={theme.textDim}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'spacer') {
-								return <Box key={index} height={1} />;
+								return <Box key={key} height={1} />;
 							}
 							return null;
 						})}
@@ -1803,13 +1651,20 @@ Focus on: current industry standards, common pitfalls, security considerations
 								{contentLines.length > DETAIL_VISIBLE_ROWS
 									? '↑↓ scroll • '
 									: ''}
-								e expand •
+								e expand • r research •
 								{selectedTask?.subtasks?.length > 0 ? 's subtasks • ' : ''}
 								ESC back
 							</>
 						)}
 					</Text>
 				</Box>
+
+				{showResearchModal && (
+					<ResearchInputModal
+						onResearch={handleRunResearch}
+						onClose={() => setShowResearchModal(false)}
+					/>
+				)}
 
 				{toast && (
 					<Toast
@@ -2115,6 +1970,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 					onClose={() => {
 						setShowClaudeLauncherModal(false);
 						setClaudeWorktree(null);
+						setModalTaskData(null);
 					}}
 					onSuccess={handleClaudeLauncherSuccess}
 				/>
@@ -2151,20 +2007,19 @@ Focus on: current industry standards, common pitfalls, security considerations
 					overflow="hidden"
 				>
 					{visibleContent.map((line, index) => {
+						const key = `subtask-detail-${selectedTask.id}-${selectedSubtask.id}-${index}`;
 						if (line.type === 'field') {
 							return (
-								<Box key={index} flexDirection="row" marginBottom={1}>
-									<Box width={20}>
-										<Text color={theme.textDim}>{line.label}</Text>
-									</Box>
-									<Box flexGrow={1}>
-										<Text color={line.color || theme.text}>{line.value}</Text>
-									</Box>
+								<Box key={key}>
+									<Text bold color={theme.textDim} width={15}>
+										{line.label}
+									</Text>
+									<Text color={line.color || theme.text}>{line.value}</Text>
 								</Box>
 							);
 						} else if (line.type === 'header') {
 							return (
-								<Box key={index} flexDirection="column" marginTop={1}>
+								<Box key={key}>
 									<Text color={theme.accent} bold>
 										{line.text}
 									</Text>
@@ -2172,15 +2027,15 @@ Focus on: current industry standards, common pitfalls, security considerations
 							);
 						} else if (line.type === 'text') {
 							return (
-								<Box key={index} marginTop={0.5} paddingLeft={2}>
+								<Box key={key}>
 									<Text color={theme.text}>{line.text}</Text>
 								</Box>
 							);
 						} else if (line.type === 'spacer') {
-							return <Box key={index} height={1} />;
+							return <Box key={key} height={1} />;
 						} else if (line.type === 'workflow-status') {
 							return (
-								<Box key={index} marginTop={1} marginBottom={1}>
+								<Box key={key}>
 									<WorkflowStatusIndicator
 										task={line.task}
 										worktree={line.worktree}
@@ -2231,6 +2086,13 @@ Focus on: current industry standards, common pitfalls, security considerations
 					</Text>
 				</Box>
 
+				{showResearchModal && (
+					<ResearchInputModal
+						onResearch={handleRunResearch}
+						onClose={() => setShowResearchModal(false)}
+					/>
+				)}
+
 				{toast && (
 					<Toast
 						message={toast.message}
@@ -2253,6 +2115,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 				onClose={() => {
 					setShowClaudeLauncherModal(false);
 					setClaudeWorktree(null);
+					setModalTaskData(null);
 				}}
 				onSuccess={handleClaudeLauncherSuccess}
 			/>
@@ -2459,6 +2322,13 @@ Focus on: current industry standards, common pitfalls, security considerations
 					</Box>
 				</Box>
 			</Box>
+
+			{showResearchModal && (
+				<ResearchInputModal
+					onResearch={handleRunResearch}
+					onClose={() => setShowResearchModal(false)}
+				/>
+			)}
 
 			{toast && (
 				<Toast
