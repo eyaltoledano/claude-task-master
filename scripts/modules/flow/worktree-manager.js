@@ -593,9 +593,8 @@ export class WorktreeManager {
 		}
 
 		// Create worktree with a new branch (can't use same branch that's checked out)
-		// Generate a unique branch name and clean up any existing one
-		const baseBranchName = `${name}-branch`;
-		let worktreeBranch = baseBranchName;
+		// Use the worktree name directly as the branch name for consistency
+		let worktreeBranch = name;
 		
 		// Clean up any existing branch with this name first
 		try {
@@ -616,9 +615,9 @@ export class WorktreeManager {
 				});
 				logger.debug(`Successfully deleted existing branch ${worktreeBranch}`);
 			} catch (deleteError) {
-				// If deletion fails, try a different branch name
+				// If deletion fails, try a different branch name with timestamp
 				const timestamp = Date.now();
-				worktreeBranch = `${baseBranchName}-${timestamp}`;
+				worktreeBranch = `${name}-${timestamp}`;
 				logger.debug(`Could not delete existing branch, using ${worktreeBranch} instead`);
 			}
 		} catch {

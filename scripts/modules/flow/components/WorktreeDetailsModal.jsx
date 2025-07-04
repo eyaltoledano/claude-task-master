@@ -233,19 +233,29 @@ Completed via Task Master Flow.`
 					]
 				};
 			
-			default:
+			default: {
+				const hints = [
+					'c launch Claude',
+					's set status',
+					'w workflow',
+					'g jump to task'
+				];
+				
+				// Add subtask-specific hint if this worktree is linked to a subtask
+				const hasSubtask = linkedTasks.some(task => task.parentId);
+				if (hasSubtask) {
+					hints.push('t jump to subtask');
+				}
+				
+				hints.push('ESC close');
+				
 				return {
 					...baseProps,
 					title: `Worktree: ${worktree.name}`,
 					preset: 'default',
-					keyboardHints: [
-						'c launch Claude',
-						's set status',
-						'w workflow',
-						't view task',
-						'ESC close'
-					]
+					keyboardHints: hints
 				};
+			}
 		}
 	};
 
@@ -372,6 +382,23 @@ Completed via Task Master Flow.`
 			) {
 				setViewMode('jump');
 				setSelectedTaskIndex(0);
+			}
+		},
+
+		// Use 't' for direct jump to subtask (if this worktree is linked to a subtask)
+		t: () => {
+			if (viewMode === 'details' && onNavigateToTask && linkedTasks.length > 0) {
+				// Find the first subtask in the linked tasks
+				const subtask = linkedTasks.find(task => task.parentId);
+				if (subtask) {
+					// Create a task object that represents the subtask
+					const subtaskNavData = {
+						id: subtask.id,
+						parentId: subtask.parentId,
+						title: subtask.title
+					};
+					onNavigateToTask(subtaskNavData);
+				}
 			}
 		},
 
@@ -1146,11 +1173,15 @@ Completed via Task Master Flow.`
 		}
 	}
 
-	// Linked Tasks - show all of them
+	// Linked Tasks - show all of them with subtask prominence
+	const subtasks = linkedTasks.filter(task => task.parentId);
+	const parentTasks = linkedTasks.filter(task => !task.parentId);
+	
 	detailContent.push({
 		type: 'header',
 		content: `Linked Tasks (${linkedTasks.length}):`
 	});
+	
 	if (linkedTasks.length === 0) {
 		detailContent.push({
 			type: 'text',
@@ -1159,20 +1190,50 @@ Completed via Task Master Flow.`
 			indent: 2
 		});
 	} else {
-		linkedTasks.forEach((task) => {
-			const prefix = task.parentId ? '  └─ ' : '  • ';
-			const taskType = task.parentId ? `Subtask ${task.id}` : `Task ${task.id}`;
-			let line = `${prefix}${taskType}: ${task.title}`;
-			if (task.status === 'done') line += ' ✓';
-			if (task.status === 'in-progress') line += ' ⚡';
-
+		// Show primary subtask first (most common case)
+		if (subtasks.length > 0) {
+			const primarySubtask = subtasks[0]; // First subtask is primary
+			const statusIcon = primarySubtask.status === 'done' ? ' ✓' : 
+							   primarySubtask.status === 'in-progress' ? ' ⚡' : '';
+			
 			detailContent.push({
-				type: 'task',
-				content: line,
-				status: task.status,
+				type: 'text',
+				content: `  🎯 Primary: Subtask ${primarySubtask.id} - ${primarySubtask.title}${statusIcon}`,
+				color: theme.accent,
 				indent: 2
 			});
-		});
+			
+			// Show additional subtasks if any
+			if (subtasks.length > 1) {
+				subtasks.slice(1).forEach((task) => {
+					const statusIcon = task.status === 'done' ? ' ✓' : 
+									   task.status === 'in-progress' ? ' ⚡' : '';
+					detailContent.push({
+						type: 'task',
+						content: `  └─ Subtask ${task.id}: ${task.title}${statusIcon}`,
+						status: task.status,
+						indent: 2
+					});
+				});
+			}
+		}
+		
+		// Show parent tasks
+		if (parentTasks.length > 0) {
+			if (subtasks.length > 0) {
+				detailContent.push({ type: 'blank' });
+			}
+			parentTasks.forEach((task) => {
+				const statusIcon = task.status === 'done' ? ' ✓' : 
+								   task.status === 'in-progress' ? ' ⚡' : '';
+				detailContent.push({
+					type: 'task',
+					content: `  • Task ${task.id}: ${task.title}${statusIcon}`,
+					status: task.status,
+					indent: 2
+				});
+			});
+		}
 	}
 
 	// Calculate visible content based on scroll offset
