@@ -4621,6 +4621,60 @@ Examples:
 			process.exit(1);
 		});
 
+				// flow command - Interactive TUI
+	programInstance
+		.command('flow')
+		.description('Launch interactive TUI for task management')
+		.option(
+			'--backend <type>',
+			'Backend type: direct, cli, or mcp (default: direct)'
+		)
+		.option(
+			'--mcp-server <id>',
+			'MCP server ID to use with mcp backend (default: uses default server)'
+		)
+		.option(
+			'--project-root <path>',
+			'Specify the project directory to manage tasks for (default: auto-detect)'
+		)
+		.action(async (options) => {
+			try {
+				// Use specified project directory or auto-detect
+				let projectRoot;
+				if (options.projectRoot) {
+					projectRoot = path.resolve(options.projectRoot);
+					// Verify the specified directory exists
+					if (!fs.existsSync(projectRoot)) {
+						console.error(chalk.red(`Error: Specified project directory does not exist: ${projectRoot}`));
+						process.exit(1);
+					}
+				} else {
+					projectRoot = findProjectRoot();
+					if (!projectRoot) {
+						console.error(chalk.red('Error: Could not find project root.'));
+						console.error(chalk.yellow('Hint: Use --project-root <path> to specify the project directory, or run from within a project directory.'));
+						process.exit(1);
+					}
+				}
+
+				// Import and launch the flow TUI
+				// Note: Flow UI handles missing tasks.json gracefully
+					const { launchFlow } = await import('./flow/cli-wrapper.js');
+					await launchFlow({
+						backend: options.backend,
+						mcpServerId: options.mcpServer,
+						projectRoot
+					});
+				} catch (error) {
+					console.error(chalk.red(`Error launching Flow TUI: ${error.message}`));
+					process.exit(1);
+				}
+			})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
 	return programInstance;
 }
 
@@ -4796,8 +4850,11 @@ function displayUpgradeNotification(currentVersion, latestVersion) {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
-		if (process.stdout.isTTY) {
+		// Check if running the flow command
+		const isFlowCommand = argv.length > 2 && argv[2] === 'flow';
+
+		// Display banner if not in a pipe and not running flow command
+		if (process.stdout.isTTY && !isFlowCommand) {
 			displayBanner();
 		}
 
