@@ -10,6 +10,7 @@ import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
 import { EnhancedClaudeWorktreeLauncherModal } from './EnhancedClaudeWorktreeLauncherModal.jsx';
+import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
@@ -54,6 +55,8 @@ export function TaskManagementScreen() {
 	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
 	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
 	const [showStreamingModal, setShowStreamingModal] = useState(false);
+	const [showProgressModal, setShowProgressModal] = useState(false);
+	const [progressModalData, setProgressModalData] = useState(null);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
@@ -374,6 +377,15 @@ export function TaskManagementScreen() {
 						type: 'warning'
 					});
 				}
+			} else if (input === 'p' || input === 'P') {
+				// Log progress for this subtask
+				handleLogProgress();
+			} else if (input === 'e' || input === 'E') {
+				// Log exploration phase for this subtask
+				handleLogExploration();
+			} else if (input === 'l' || input === 'L') {
+				// Log completion for this subtask
+				handleLogCompletion();
 			}
 			return;
 		}
@@ -1210,6 +1222,101 @@ Focus on: current industry standards, common pitfalls, security considerations
 		}
 	};
 
+	// Progress logging handlers
+	const handleLogProgress = () => {
+		if (!selectedSubtask) return;
+		
+		setProgressModalData({
+			subtask: {
+				...selectedSubtask,
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title
+			},
+			phase: 'implementation'
+		});
+		setShowProgressModal(true);
+	};
+
+	const handleLogExploration = () => {
+		if (!selectedSubtask) return;
+		
+		setProgressModalData({
+			subtask: {
+				...selectedSubtask,
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title
+			},
+			phase: 'exploration'
+		});
+		setShowProgressModal(true);
+	};
+
+	const handleLogCompletion = () => {
+		if (!selectedSubtask) return;
+		
+		setProgressModalData({
+			subtask: {
+				...selectedSubtask,
+				id: `${selectedTask.id}.${selectedSubtask.id}`,
+				title: selectedSubtask.title
+			},
+			phase: 'completion'
+		});
+		setShowProgressModal(true);
+	};
+
+	const handleProgressSave = async (progressUpdate) => {
+		try {
+			const subtaskId = progressModalData.subtask.id;
+			const result = await backend.updateSubtask(subtaskId, {
+				prompt: progressUpdate,
+				research: false
+			});
+
+			if (result.success) {
+				setToast({
+					message: 'Progress logged successfully',
+					type: 'success'
+				});
+
+				// Refresh task data to show updated progress
+				await reloadTasks();
+				
+				// Refresh the selected task details
+				if (selectedTask) {
+					const updatedTask = await backend.getTask(selectedTask.id);
+					setSelectedTask(updatedTask);
+					
+					// Update the selected subtask
+					const updatedSubtask = updatedTask.subtasks?.find(
+						s => `${updatedTask.id}.${s.id}` === subtaskId
+					);
+					if (updatedSubtask) {
+						setSelectedSubtask(updatedSubtask);
+					}
+				}
+			} else {
+				setToast({
+					message: result.error || 'Failed to log progress',
+					type: 'error'
+				});
+			}
+		} catch (error) {
+			setToast({
+				message: `Error logging progress: ${error.message}`,
+				type: 'error'
+			});
+		} finally {
+			setShowProgressModal(false);
+			setProgressModalData(null);
+		}
+	};
+
+	const handleProgressCancel = () => {
+		setShowProgressModal(false);
+		setProgressModalData(null);
+	};
+
 	// Render task detail view
 	if (viewMode === 'detail' && selectedTask) {
 		// Determine default number of subtasks based on complexity report
@@ -1935,7 +2042,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 					<Text color={theme.text}>
 						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}w
 						work on subtask •{' '}
-						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • ESC
+						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p progress • e exploration • l completion • ESC
 						back
 					</Text>
 				</Box>
@@ -2194,6 +2301,17 @@ Focus on: current industry standards, common pitfalls, security considerations
 				isOpen={showStreamingModal}
 				onClose={() => setShowStreamingModal(false)}
 			/>
+
+			{/* Progress Logging Modal */}
+			{showProgressModal && progressModalData && (
+				<ProgressLoggingModal
+					subtask={progressModalData.subtask}
+					phase={progressModalData.phase}
+					onSave={handleProgressSave}
+					onCancel={handleProgressCancel}
+					backend={backend}
+				/>
+			)}
 
 			{/* Overflow Indicator */}
 			<OverflowIndicator position="bottom-right" showCount={true} symbol="⋯" />

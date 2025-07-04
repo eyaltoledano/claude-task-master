@@ -366,43 +366,201 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
-	async updateSubtask(options = {}) {
+	/**
+	 * Update a subtask with progress information
+	 * @param {string} subtaskId - Subtask ID (e.g., "1.2")
+	 * @param {Object} options - Update options
+	 * @returns {Promise<Object>} Update result
+	 */
+	async updateSubtask(subtaskId, options = {}) {
 		try {
-			const updateSubtaskById = (
-				await import('../../task-manager/update-subtask-by-id.js')
-			).default;
-
-			const tasksPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
-
-			const result = await updateSubtaskById(
-				tasksPath,
-				options.id,
-				options.prompt,
-				options.research || false,
+			const { updateSubtask } = await import('../../../mcp-server/src/core/task-master-core.js');
+			
+			const result = await updateSubtask(
 				{
-					projectRoot: this.projectRoot,
-					commandName: 'update-subtask',
-					outputType: 'mcp'
+					id: subtaskId,
+					prompt: options.prompt || 'Progress update',
+					research: options.research || false,
+					projectRoot: this.projectRoot
 				},
-				'json'
+				this.createLogWrapper(),
+				{ session: this.session }
 			);
 
-			return {
-				success: true,
-				task: result.task,
-				telemetryData: result.telemetryData
-			};
+			if (result.success) {
+				return {
+					success: true,
+					data: result.data
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || 'Failed to update subtask'
+				};
+			}
 		} catch (error) {
+			console.error('Error updating subtask:', error);
 			return {
 				success: false,
 				error: error.message
 			};
 		}
+	}
+
+	/**
+	 * Set subtask status
+	 * @param {string} subtaskId - Subtask ID (e.g., "1.2")
+	 * @param {string} status - New status
+	 * @returns {Promise<Object>} Status update result
+	 */
+	async setSubtaskStatus(subtaskId, status) {
+		try {
+			const { setTaskStatus } = await import('../../../mcp-server/src/core/task-master-core.js');
+			
+			const result = await setTaskStatus(
+				{
+					id: subtaskId,
+					status: status,
+					projectRoot: this.projectRoot
+				},
+				this.createLogWrapper(),
+				{ session: this.session }
+			);
+
+			if (result.success) {
+				return {
+					success: true,
+					data: result.data
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || 'Failed to set subtask status'
+				};
+			}
+		} catch (error) {
+			console.error('Error setting subtask status:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Get subtask progress information
+	 * @param {string} subtaskId - Subtask ID (e.g., "1.2")
+	 * @returns {Promise<Object>} Subtask progress data
+	 */
+	async getSubtaskProgress(subtaskId) {
+		try {
+			const { getTask } = await import('../../../mcp-server/src/core/task-master-core.js');
+			
+			const result = await getTask(
+				{
+					id: subtaskId,
+					projectRoot: this.projectRoot
+				},
+				this.createLogWrapper(),
+				{ session: this.session }
+			);
+
+			if (result.success && result.data) {
+				const subtask = Array.isArray(result.data) ? result.data[0] : result.data;
+				
+				// Parse implementation journey from details
+				const progress = this.parseImplementationJourney(subtask.details || '');
+				
+				return {
+					success: true,
+					data: {
+						subtask,
+						progress,
+						phase: this.detectImplementationPhase(subtask)
+					}
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || 'Failed to get subtask progress'
+				};
+			}
+		} catch (error) {
+			console.error('Error getting subtask progress:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	/**
+	 * Parse implementation journey from subtask details
+	 * @param {string} details - Subtask details text
+	 * @returns {Object} Parsed progress information
+	 */
+	parseImplementationJourney(details) {
+		const progress = {
+			explorationPhase: null,
+			implementationProgress: [],
+			completionSummary: null,
+			timestamps: []
+		};
+
+		// Look for exploration phase
+		const explorationMatch = details.match(/## Exploration Phase([\s\S]*?)(?=##|$)/);
+		if (explorationMatch) {
+			progress.explorationPhase = explorationMatch[1].trim();
+		}
+
+		// Look for implementation progress entries
+		const progressMatches = [...details.matchAll(/## Implementation Progress([\s\S]*?)(?=##|$)/g)];
+		for (const match of progressMatches) {
+			progress.implementationProgress.push(match[1].trim());
+		}
+
+		// Look for completion summary
+		const completionMatch = details.match(/## Implementation Complete([\s\S]*?)(?=##|$)/);
+		if (completionMatch) {
+			progress.completionSummary = completionMatch[1].trim();
+		}
+
+		// Extract timestamps
+		const timestampMatches = details.matchAll(/<info added on ([\d-T:.Z]+)>/g);
+		for (const match of timestampMatches) {
+			progress.timestamps.push(new Date(match[1]));
+		}
+
+		return progress;
+	}
+
+	/**
+	 * Detect implementation phase of a subtask
+	 * @param {Object} subtask - Subtask object
+	 * @returns {string} Implementation phase
+	 */
+	detectImplementationPhase(subtask) {
+		const { status, details = '' } = subtask;
+		
+		if (status === 'pending') {
+			if (details.includes('## Exploration Phase')) {
+				return 'ready-to-implement';
+			}
+			return 'needs-exploration';
+		}
+		
+		if (status === 'in-progress') {
+			if (details.includes('## Implementation Progress')) {
+				return 'implementing';
+			}
+			return 'starting-implementation';
+		}
+		
+		if (status === 'done') {
+			return 'completed';
+		}
+		
+		return 'unknown';
 	}
 
 	async listTags() {
