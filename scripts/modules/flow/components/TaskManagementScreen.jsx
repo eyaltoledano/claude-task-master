@@ -296,18 +296,17 @@ export function TaskManagementScreen() {
 				} else if (input === 'c') {
 					handleClaudeSession();
 				} else if (input === 'w') {
+					handleWorkOnSubtask();
+				} else if (input === 'g') {
 					// Jump to worktree from subtask detail
 					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
 					const worktrees = subtaskWorktrees.get(subtaskId) || [];
 					
 					if (worktrees.length > 0) {
-						// Navigate to the first (and only) linked worktree
-						const worktree = worktrees[0];
-						setCurrentScreen('worktree-details', { 
-							worktree: { 
-								name: worktree.name, 
-								path: worktree.path 
-							} 
+						// Navigate to worktree detail page for the first linked worktree
+						setCurrentScreen('worktrees', {
+							selectedWorktree: worktrees[0],
+							showDetails: true
 						});
 					} else {
 						setToast({
@@ -315,6 +314,12 @@ export function TaskManagementScreen() {
 							type: 'warning'
 						});
 					}
+				} else if (input === 'p') {
+					handleLogProgress();
+				} else if (input === 'e') {
+					handleLogExploration();
+				} else if (input === 'l') {
+					handleLogCompletion();
 				} else if (input === 'r') setShowResearchModal(true);
 				break;
 		}
