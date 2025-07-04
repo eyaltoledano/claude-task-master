@@ -4634,15 +4634,15 @@ Examples:
 			'MCP server ID to use with mcp backend (default: uses default server)'
 		)
 		.option(
-			'--project <path>',
+			'--project-root <path>',
 			'Specify the project directory to manage tasks for (default: auto-detect)'
 		)
 		.action(async (options) => {
 			try {
 				// Use specified project directory or auto-detect
 				let projectRoot;
-				if (options.project) {
-					projectRoot = path.resolve(options.project);
+				if (options.projectRoot) {
+					projectRoot = path.resolve(options.projectRoot);
 					// Verify the specified directory exists
 					if (!fs.existsSync(projectRoot)) {
 						console.error(chalk.red(`Error: Specified project directory does not exist: ${projectRoot}`));
@@ -4652,7 +4652,7 @@ Examples:
 					projectRoot = findProjectRoot();
 					if (!projectRoot) {
 						console.error(chalk.red('Error: Could not find project root.'));
-						console.error(chalk.yellow('Hint: Use --project <path> to specify the project directory, or run from within a project directory.'));
+						console.error(chalk.yellow('Hint: Use --project-root <path> to specify the project directory, or run from within a project directory.'));
 						process.exit(1);
 					}
 				}
