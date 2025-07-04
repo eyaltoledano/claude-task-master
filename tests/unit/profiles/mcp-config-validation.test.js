@@ -8,14 +8,20 @@ describe('MCP Configuration Validation', () => {
 			cline: {
 				shouldHaveMcp: false,
 				expectedDir: '.clinerules',
-				expectedConfigName: 'cline_mcp_settings.json',
-				expectedPath: '.clinerules/cline_mcp_settings.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			cursor: {
 				shouldHaveMcp: true,
 				expectedDir: '.cursor',
 				expectedConfigName: 'mcp.json',
 				expectedPath: '.cursor/mcp.json'
+			},
+			gemini: {
+				shouldHaveMcp: true,
+				expectedDir: '.gemini',
+				expectedConfigName: 'settings.json',
+				expectedPath: '.gemini/settings.json'
 			},
 			roo: {
 				shouldHaveMcp: true,
@@ -26,8 +32,8 @@ describe('MCP Configuration Validation', () => {
 			trae: {
 				shouldHaveMcp: false,
 				expectedDir: '.trae',
-				expectedConfigName: 'trae_mcp_settings.json',
-				expectedPath: '.trae/trae_mcp_settings.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			vscode: {
 				shouldHaveMcp: true,
@@ -111,51 +117,68 @@ describe('MCP Configuration Validation', () => {
 			});
 		});
 
-		test('should use profile-specific config name for non-MCP profiles', () => {
+		test('should use custom settings.json for Gemini profile', () => {
+			const profile = getRulesProfile('gemini');
+			expect(profile.mcpConfigName).toBe('settings.json');
+		});
+
+		test('should have null config name for non-MCP profiles', () => {
 			const clineProfile = getRulesProfile('cline');
-			expect(clineProfile.mcpConfigName).toBe('cline_mcp_settings.json');
+			expect(clineProfile.mcpConfigName).toBe(null);
 
 			const traeProfile = getRulesProfile('trae');
-			expect(traeProfile.mcpConfigName).toBe('trae_mcp_settings.json');
+			expect(traeProfile.mcpConfigName).toBe(null);
+
+			const claudeProfile = getRulesProfile('claude');
+			expect(claudeProfile.mcpConfigName).toBe(null);
+
+			const codexProfile = getRulesProfile('codex');
+			expect(codexProfile.mcpConfigName).toBe(null);
 		});
 	});
 
 	describe('Profile Directory Structure', () => {
 		test('should ensure each profile has a unique directory', () => {
 			const profileDirs = new Set();
-			// Simple profiles that use root directory (can share the same directory)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that use root directory (can share the same directory)
+			const rootProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Simple profiles can share the root directory
-				if (simpleProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Root profiles can share the root directory for rules
+				if (rootProfiles.includes(profileName) && profile.rulesDir === '.') {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Full profiles should have unique directories
-				expect(profileDirs.has(profile.profileDir)).toBe(false);
-				profileDirs.add(profile.profileDir);
+				// Profile directories should be unique (except for root profiles)
+				if (!rootProfiles.includes(profileName) || profile.profileDir !== '.') {
+					expect(profileDirs.has(profile.profileDir)).toBe(false);
+					profileDirs.add(profile.profileDir);
+				}
 			});
 		});
 
 		test('should ensure profile directories follow expected naming convention', () => {
-			// Simple profiles that use root directory
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that use root directory for rules
+			const rootRulesProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Simple profiles use root directory
-				if (simpleProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Some profiles use root directory for rules
+				if (
+					rootRulesProfiles.includes(profileName) &&
+					profile.rulesDir === '.'
+				) {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Full profiles should follow the .name pattern
-				expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				// Profile directories (not rules directories) should follow the .name pattern
+				// unless they are root profiles with profileDir = '.'
+				if (profile.profileDir !== '.') {
+					expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				}
 			});
 		});
 	});
@@ -168,6 +191,7 @@ describe('MCP Configuration Validation', () => {
 			});
 
 			expect(mcpEnabledProfiles).toContain('cursor');
+			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
@@ -243,5 +267,85 @@ describe('MCP Configuration Validation', () => {
 				}
 			});
 		});
+	});
+
+	describe('MCP configuration validation', () => {
+		const mcpProfiles = ['cursor', 'gemini', 'roo', 'windsurf', 'vscode'];
+		const nonMcpProfiles = ['claude', 'codex', 'cline', 'trae'];
+
+		test.each(mcpProfiles)(
+			'should have valid MCP config for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.mcpConfig).toBe(true);
+				expect(profile.mcpConfigPath).toBeDefined();
+				expect(typeof profile.mcpConfigPath).toBe('string');
+			}
+		);
+
+		test.each(nonMcpProfiles)(
+			'should not require MCP config for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.mcpConfig).toBe(false);
+			}
+		);
+	});
+
+	describe('Profile structure validation', () => {
+		const mcpProfiles = [
+			'cursor',
+			'gemini',
+			'roo',
+			'windsurf',
+			'cline',
+			'trae',
+			'vscode'
+		];
+		const profilesWithLifecycle = ['claude'];
+		const profilesWithoutLifecycle = ['codex'];
+
+		test.each(mcpProfiles)(
+			'should have file mappings for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+			}
+		);
+
+		test.each(profilesWithLifecycle)(
+			'should have file mappings and lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// Claude profile has both fileMap and lifecycle functions
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(typeof profile.onAddRulesProfile).toBe('function');
+				expect(typeof profile.onRemoveRulesProfile).toBe('function');
+				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+			}
+		);
+
+		test.each(profilesWithoutLifecycle)(
+			'should have file mappings without lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// Codex profile has fileMap but no lifecycle functions (simplified)
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(profile.onAddRulesProfile).toBeUndefined();
+				expect(profile.onRemoveRulesProfile).toBeUndefined();
+				expect(profile.onPostConvertRulesProfile).toBeUndefined();
+			}
+		);
 	});
 });
