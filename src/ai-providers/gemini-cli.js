@@ -67,8 +67,7 @@ export class GeminiCliProvider extends BaseAIProvider {
 					apiKey: params.apiKey
 				};
 			} else {
-				// Expected case: Use gemini CLI authentication
-				// Requires: gemini auth login (pre-configured)
+				// Expected case: Use gemini CLI authentication via OAuth
 				authOptions = {
 					authType: 'oauth-personal'
 				};
