@@ -98,19 +98,27 @@ export const StatusScreen = ({
 					</Box>
 					<Box>
 						<Text>{style('✓ Done: ', 'text.secondary')}</Text>
-						{formatTaskCount(tasksInfo?.done || 0, 'done')}
+						<Text>
+							{formatTaskCount(tasksInfo?.done || 0, 'done')}
+						</Text>
 					</Box>
 					<Box>
 						<Text>{style('⏳ In Progress: ', 'text.secondary')}</Text>
-						{formatTaskCount(tasksInfo?.inProgress || 0, 'in-progress')}
+						<Text>
+							{formatTaskCount(tasksInfo?.inProgress || 0, 'in-progress')}
+						</Text>
 					</Box>
 					<Box>
 						<Text>{style('⏸ Pending: ', 'text.secondary')}</Text>
-						{formatTaskCount(tasksInfo?.pending || 0, 'pending')}
+						<Text>
+							{formatTaskCount(tasksInfo?.pending || 0, 'pending')}
+						</Text>
 					</Box>
 					<Box>
 						<Text>{style('🚫 Blocked: ', 'text.secondary')}</Text>
-						{formatTaskCount(tasksInfo?.blocked || 0, 'blocked')}
+						<Text>
+							{formatTaskCount(tasksInfo?.blocked || 0, 'blocked')}
+						</Text>
 					</Box>
 					{tasksInfo?.nextTask && (
 						<Box marginTop={1}>
