@@ -252,7 +252,20 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	async setTaskStatus(taskId, status) {
-		return this.flow.setTaskStatus(taskId, status);
+		const args = {
+			projectRoot: this.projectRoot,
+			tasksJsonPath: this.tasksJsonPath,
+			id: String(taskId),
+			status: status
+		};
+
+		const result = await setTaskStatusDirect(args, this.log, { session: this.session });
+		if (!result.success) {
+			throw new Error(result.error.message || result.error);
+		}
+
+		this.updateTelemetry(result.data);
+		return result.data;
 	}
 
 	async expandTask(taskId, options = {}) {
@@ -1646,6 +1659,15 @@ export class DirectBackend extends FlowBackend {
 			const config = await this.getWorktreesConfig();
 			const worktrees = [];
 
+			// Get actual git worktrees to validate against
+			let actualWorktrees = [];
+			try {
+				const worktreeResult = await this.listWorktrees();
+				actualWorktrees = worktreeResult.all || [];
+			} catch (error) {
+				console.warn('Could not list actual git worktrees:', error.message);
+			}
+
 			// Find all worktrees linked to this task
 			for (const [name, data] of Object.entries(config.worktrees)) {
 				let hasTask = false;
@@ -1666,13 +1688,22 @@ export class DirectBackend extends FlowBackend {
 				}
 
 				if (hasTask) {
-					worktrees.push({
-						name,
-						path: data.path,
-						branch: data.branch,
-						status: data.status,
-						linkedSubtask: data.linkedSubtask
-					});
+					// Validate that this worktree actually exists before including it
+					const actualWorktree = actualWorktrees.find(wt => 
+						wt.path === data.path || wt.name === name
+					);
+
+					if (actualWorktree) {
+						worktrees.push({
+							name,
+							path: data.path,
+							branch: data.branch,
+							status: data.status,
+							linkedSubtask: data.linkedSubtask
+						});
+					} else {
+						console.warn(`Worktree ${name} (${data.path}) exists in config but not on disk - skipping`);
+					}
 				}
 			}
 
@@ -1766,6 +1797,55 @@ export class DirectBackend extends FlowBackend {
 			return {
 				success: false,
 				error: `Failed to cleanup worktree links: ${error.message}`
+			};
+		}
+	}
+
+	async cleanupStaleWorktreeLinks() {
+		try {
+			const config = await this.getWorktreesConfig();
+			let actualWorktrees = [];
+			
+			try {
+				const worktreeResult = await this.listWorktrees();
+				actualWorktrees = worktreeResult.all || [];
+			} catch (error) {
+				console.warn('Could not list actual git worktrees for cleanup:', error.message);
+				return { success: false, error: error.message };
+			}
+
+			const staleEntries = [];
+			
+			// Check each config entry against actual worktrees
+			for (const [name, data] of Object.entries(config.worktrees)) {
+				const actualWorktree = actualWorktrees.find(wt => 
+					wt.path === data.path || wt.name === name
+				);
+				
+				if (!actualWorktree) {
+					staleEntries.push(name);
+				}
+			}
+
+			// Remove stale entries
+			for (const staleName of staleEntries) {
+				delete config.worktrees[staleName];
+			}
+
+			if (staleEntries.length > 0) {
+				await this.saveWorktreesConfig(config);
+				console.log(`Cleaned up ${staleEntries.length} stale worktree entries:`, staleEntries);
+			}
+
+			return { 
+				success: true, 
+				cleanedUp: staleEntries.length,
+				entries: staleEntries
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: `Failed to cleanup stale worktree links: ${error.message}`
 			};
 		}
 	}

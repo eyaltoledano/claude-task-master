@@ -165,6 +165,12 @@ export function ClaudeCodeScreen({
 						timestamp: new Date().toISOString()
 					}
 				]);
+
+				// If the operation was successful and this is a subtask implementation, 
+				// automatically trigger the commit/merge workflow
+				if (result.success && initialMode === 'subtask-implementation' && initialContext) {
+					handleSubtaskCompletion(operationId, result);
+				}
 			}
 		};
 
@@ -523,6 +529,146 @@ Working directory: ${initialContext.worktreePath}
 				'error'
 			);
 			setTimeout(() => handleBack(), 3000);
+		}
+	};
+
+	const handleSubtaskCompletion = async (operationId, result) => {
+		try {
+			console.log('[ClaudeCodeScreen] Handling subtask completion', {
+				operationId,
+				success: result.success,
+				subtaskId: initialContext.currentSubtask.id
+			});
+
+			// Add completion message to watch
+			setWatchMessages((prev) => [
+				...prev,
+				{
+					type: 'system',
+					content: '🎉 Implementation completed! Starting commit and merge workflow...',
+					timestamp: new Date().toISOString()
+				}
+			]);
+
+			// Get the worktree path from the initial context
+			const worktreePath = initialContext.worktreePath;
+			const subtaskId = initialContext.currentSubtask.id;
+
+			// Check if there are changes to commit
+			const gitStatus = await backend.getWorktreeGitStatus(worktreePath);
+			
+			if (gitStatus && (gitStatus.staged?.length > 0 || gitStatus.unstaged?.length > 0)) {
+				// There are changes to commit
+				setWatchMessages((prev) => [
+					...prev,
+					{
+						type: 'system',
+						content: `📝 Found ${(gitStatus.staged?.length || 0) + (gitStatus.unstaged?.length || 0)} changes to commit`,
+						timestamp: new Date().toISOString()
+					}
+				]);
+
+				// Generate commit message based on subtask
+				const commitMessage = `feat(${subtaskId}): ${initialContext.currentSubtask.title}
+
+Implemented subtask ${subtaskId} as part of task ${initialContext.parentTask.id}.
+
+${initialContext.currentSubtask.description}
+
+Auto-committed by Claude Code completion workflow.`;
+
+				// Commit the changes with automatic subtask completion
+				const commitResult = await backend.commitSubtaskProgress(
+					worktreePath,
+					{
+						id: subtaskId,
+						title: initialContext.currentSubtask.title,
+						description: initialContext.currentSubtask.description
+					},
+					commitMessage,
+					{
+						markAsDone: true, // Automatically mark subtask as done
+						autoStage: true   // Stage all changes automatically
+					}
+				);
+
+				if (commitResult.success) {
+					setWatchMessages((prev) => [
+						...prev,
+						{
+							type: 'system',
+							content: `✅ Changes committed and subtask ${subtaskId} marked as done!`,
+							timestamp: new Date().toISOString()
+						}
+					]);
+
+					// Mark the subtask as done using base Taskmaster calls
+					await backend.setTaskStatus(subtaskId, 'done');
+
+					// Show success notification
+					showNotification(
+						`🎉 Subtask ${subtaskId} completed and committed!`,
+						'success',
+						5000
+					);
+
+					// Navigate back to task management after a delay
+					setTimeout(() => {
+						handleBack();
+					}, 3000);
+				} else {
+					setWatchMessages((prev) => [
+						...prev,
+						{
+							type: 'error',
+							content: `❌ Failed to commit changes: ${commitResult.error || 'Unknown error'}`,
+							timestamp: new Date().toISOString()
+						}
+					]);
+				}
+			} else {
+				// No changes to commit
+				setWatchMessages((prev) => [
+					...prev,
+					{
+						type: 'system',
+						content: '📝 No changes detected to commit. Marking subtask as done...',
+						timestamp: new Date().toISOString()
+					}
+				]);
+
+				// Still mark the subtask as done
+				await backend.setTaskStatus(subtaskId, 'done');
+
+				showNotification(
+					`✅ Subtask ${subtaskId} marked as completed!`,
+					'success',
+					5000
+				);
+
+				// Navigate back to task management after a delay
+				setTimeout(() => {
+					handleBack();
+				}, 3000);
+			}
+
+		} catch (error) {
+			console.error('[ClaudeCodeScreen] Error in handleSubtaskCompletion:', error);
+			
+			setWatchMessages((prev) => [
+				...prev,
+				{
+					type: 'error',
+					content: `❌ Error during completion workflow: ${error.message}`,
+					timestamp: new Date().toISOString()
+				}
+			]);
+
+			showNotification(
+				`❌ Completion workflow failed: ${error.message}`,
+				'error',
+				5000
+			);
 		}
 	};
 

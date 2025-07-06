@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
+import { Select } from '@inkjs/ui';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
@@ -24,13 +25,13 @@ export default function WorktreeDetailsModal({
 	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', 'jump', or 'workflow'
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
+	const detailContentRef = useRef([]);
 	const [isCreatingPR, setIsCreatingPR] = useState(false);
 	const [isProcessingWorkflow, setIsProcessingWorkflow] = useState(false);
 	const [prResult, setPrResult] = useState(null);
 	const [workflowResult, setWorkflowResult] = useState(null);
 	const [gitStatus, setGitStatus] = useState(null);
 	const [workflowOptions, setWorkflowOptions] = useState(null);
-	const [selectedWorkflowOption, setSelectedWorkflowOption] = useState(0);
 	const [showTaskStatusModal, setShowTaskStatusModal] = useState(false);
 	const [selectedTaskForStatus, setSelectedTaskForStatus] = useState(null);
 	const [selectedStatusIndex, setSelectedStatusIndex] = useState(0);
@@ -360,7 +361,7 @@ Completed via Task Master Flow automated workflow.`
 			} else if (viewMode === 'jump' || viewMode === 'tasks') {
 				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
 			} else if (viewMode === 'workflow') {
-				setSelectedWorkflowOption(Math.max(0, selectedWorkflowOption - 1));
+				// Workflow handled by Select component
 			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => Math.max(0, prev - 1));
 			}
@@ -381,11 +382,14 @@ Completed via Task Master Flow automated workflow.`
 				setSelectedTaskIndex(
 					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
 				);
-			} else if (viewMode === 'workflow') {
-				const maxOptions = workflowOptions ? workflowOptions.length - 1 : 0;
-				setSelectedWorkflowOption(Math.min(maxOptions, selectedWorkflowOption + 1));
+					} else if (viewMode === 'workflow') {
+			// Workflow handled by Select component
 			} else if (viewMode === 'details') {
-				setScrollOffset((prev) => prev + 1);
+				setScrollOffset((prev) => {
+					const totalLines = detailContentRef.current.length;
+					const maxOffset = Math.max(0, totalLines - VISIBLE_ROWS);
+					return Math.min(maxOffset, prev + 1);
+				});
 			}
 		},
 
@@ -426,11 +430,7 @@ Completed via Task Master Flow automated workflow.`
 					onNavigateToTask(selectedTask);
 				}
 			} else if (viewMode === 'workflow') {
-				if (workflowOptions && workflowOptions[selectedWorkflowOption]) {
-					const selectedOption = workflowOptions[selectedWorkflowOption];
-					handleWorkflowChoice(selectedOption.value);
-					setViewMode('details');
-				}
+				// Workflow selection handled by Select component
 			}
 		},
 
@@ -669,7 +669,7 @@ Completed via Task Master Flow automated workflow.`
 		);
 	}
 
-	// Workflow options view
+	// Workflow options view - using Ink UI Select component
 	if (viewMode === 'workflow') {
 		const defaultOptions = [
 			{
@@ -691,6 +691,7 @@ Completed via Task Master Flow automated workflow.`
 				<Box flexDirection="column">
 					<Box marginBottom={2}>
 						<Text bold color={theme.accent}>Workflow Options</Text>
+						<Text color={theme.muted}>Choose how to handle your completed work:</Text>
 					</Box>
 					
 					{isProcessingWorkflow && (
@@ -718,28 +719,24 @@ Completed via Task Master Flow automated workflow.`
 						</Box>
 					)}
 
-					<Box flexDirection="column">
-						{options.map((option, index) => (
-							<Box
-								key={option.value}
-								marginBottom={1}
-								backgroundColor={
-									index === selectedWorkflowOption ? theme.backgroundHighlight : undefined
-								}
-								paddingX={1}
-								paddingY={0}
-							>
-								<Text
-									color={index === selectedWorkflowOption ? theme.accent : theme.text}
-								>
-									{index === selectedWorkflowOption ? '▸ ' : '  '}
-									{option.label}
-								</Text>
-								{index === selectedWorkflowOption && option.description && (
-									<Box marginLeft={4} marginTop={0}>
-										<Text color={theme.muted}>{option.description}</Text>
-									</Box>
-								)}
+					<Box marginBottom={2}>
+						<Select
+							options={options.map(option => ({
+								label: `${option.label}`,
+								value: option.value
+							}))}
+							onChange={(selectedValue) => {
+								handleWorkflowChoice(selectedValue);
+								setViewMode('details');
+							}}
+						/>
+					</Box>
+					
+					<Box>
+						<Text color={theme.muted} bold>💡 Options:</Text>
+						{options.map((option) => (
+							<Box key={option.value} marginTop={1}>
+								<Text color={theme.muted}>• {option.label}: {option.description}</Text>
 							</Box>
 						))}
 					</Box>
@@ -1061,15 +1058,42 @@ Completed via Task Master Flow automated workflow.`
 	// Add workflow guidance section
 	if (viewMode === 'details') {
 		const primaryTask = getPrimaryTask();
-		const hasUncommittedChanges = gitStatus && (gitStatus.modified.length > 0 || gitStatus.staged.length > 0);
+		const hasUncommittedChanges = gitStatus && gitStatus.hasUncommittedChanges;
 		const hasRemote = gitStatus && gitStatus.remotes && gitStatus.remotes.length > 0;
 		
 		detailContent.push({ type: 'blank' });
 		detailContent.push({ type: 'header', content: 'Next Steps:' });
 		
 		if (primaryTask) {
-			// Task status guidance
-			if (primaryTask.status === 'pending') {
+			// **PRIORITY 1: Check for uncommitted changes first** - this indicates Claude has done work
+			if (hasUncommittedChanges) {
+				detailContent.push({
+					type: 'text',
+					content: `  💾 You have uncommitted changes from Claude Code session`,
+					color: theme.info,
+					indent: 2
+				});
+				detailContent.push({
+					type: 'text',
+					content: `  🔄 Press 'w' to commit and continue workflow`,
+					color: theme.accent,
+					indent: 2
+				});
+				detailContent.push({
+					type: 'text',
+					content: `  ⚡ Press 'x' to manually trigger commit, merge & close`,
+					color: theme.success,
+					indent: 2
+				});
+				detailContent.push({
+					type: 'text',
+					content: `  📋 Press 'p' to create PR or 'm' to merge locally`,
+					color: theme.accent,
+					indent: 2
+				});
+			}
+			// **PRIORITY 2: Task status guidance (only if no uncommitted changes)**
+			else if (primaryTask.status === 'pending') {
 				detailContent.push({
 					type: 'text',
 					content: `  📝 Task is ready to work on`,
@@ -1089,33 +1113,12 @@ Completed via Task Master Flow automated workflow.`
 					color: theme.warning,
 					indent: 2
 				});
-				if (hasUncommittedChanges) {
-					detailContent.push({
-						type: 'text',
-						content: `  💾 You have uncommitted changes`,
-						color: theme.info,
-						indent: 2
-					});
-					detailContent.push({
-						type: 'text',
-						content: `  🔄 Press 'w' to commit and continue workflow`,
-						color: theme.accent,
-						indent: 2
-					});
-					detailContent.push({
-						type: 'text',
-						content: `  ⚡ Press 'x' to manually trigger commit, merge & close`,
-						color: theme.success,
-						indent: 2
-					});
-				} else {
-					detailContent.push({
-						type: 'text',
-						content: `  ✅ Ready to mark as done (Press 's' to update status)`,
-						color: theme.success,
-						indent: 2
-					});
-				}
+				detailContent.push({
+					type: 'text',
+					content: `  ✅ Ready to mark as done (Press 's' to update status)`,
+					color: theme.success,
+					indent: 2
+				});
 			} else if (primaryTask.status === 'done') {
 				detailContent.push({
 					type: 'text',
@@ -1172,22 +1175,6 @@ Completed via Task Master Flow automated workflow.`
 						indent: 2
 					});
 				}
-				
-				// Show any uncommitted changes that might exist
-				if (hasUncommittedChanges) {
-					detailContent.push({
-						type: 'text',
-						content: `  ⚠️  Additional uncommitted changes detected`,
-						color: theme.warning,
-						indent: 2
-					});
-					detailContent.push({
-						type: 'text',
-						content: `  🔄 Press 'w' to commit these changes`,
-						color: theme.accent,
-						indent: 2
-					});
-				}
 			}
 		} else {
 			detailContent.push({
@@ -1216,7 +1203,7 @@ Completed via Task Master Flow automated workflow.`
 			if (hasUncommittedChanges) {
 				detailContent.push({
 					type: 'text',
-					content: `  📊 Working Directory: ${gitStatus.modified.length} modified, ${gitStatus.staged.length} staged`,
+					content: `  📊 Working Directory: ${gitStatus.modified} modified, ${gitStatus.staged} staged`,
 					color: theme.info,
 					indent: 2
 				});
@@ -1303,82 +1290,27 @@ Completed via Task Master Flow automated workflow.`
 		detailContent.push({ type: 'blank' });
 	}
 
-	// Git Status Information
-	if (details && details.status) {
-		detailContent.push({ type: 'header', content: 'Changes:' });
-		if (details.status.total === 0) {
-			detailContent.push({
-				type: 'text',
-				content: '  No changes',
-				color: theme.muted,
-				indent: 2
-			});
-		} else {
-			if (details.status.modified > 0) {
-				detailContent.push({
-					type: 'text',
-					content: `  Modified: ${details.status.modified}`,
-					color: theme.warning,
-					indent: 2
-				});
-			}
-			if (details.status.added > 0) {
-				detailContent.push({
-					type: 'text',
-					content: `  Added: ${details.status.added}`,
-					color: theme.success,
-					indent: 2
-				});
-			}
-			if (details.status.deleted > 0) {
-				detailContent.push({
-					type: 'text',
-					content: `  Deleted: ${details.status.deleted}`,
-					color: theme.error,
-					indent: 2
-				});
-			}
-			if (details.status.untracked > 0) {
-				detailContent.push({
-					type: 'text',
-					content: `  Untracked: ${details.status.untracked}`,
-					color: theme.muted,
-					indent: 2
-				});
-			}
-		}
-		detailContent.push({ type: 'blank' });
-
-		if (details.trackingBranch) {
-			detailContent.push({ type: 'header', content: 'Tracking:' });
-			detailContent.push({
-				type: 'text',
-				content: `  ${details.trackingBranch}`,
-				indent: 2
-			});
-			if (details.ahead > 0 || details.behind > 0) {
-				let trackingStatus = '  ';
-				if (details.ahead > 0) trackingStatus += `↑ ${details.ahead} ahead `;
-				if (details.behind > 0) trackingStatus += `↓ ${details.behind} behind`;
-				detailContent.push({
-					type: 'text',
-					content: trackingStatus,
-					color: details.ahead > 0 ? theme.success : theme.warning,
-					indent: 2
-				});
-			}
-			detailContent.push({ type: 'blank' });
-		}
-	}
+	// Note: Git status information is already displayed in the "Git Status:" section above
+	// No need to duplicate the changes information here
 
 
 
+	// Store content in ref for key handlers
+	detailContentRef.current = detailContent;
+	
 	// Calculate visible content based on scroll offset
 	const visibleContent = detailContent.slice(
 		scrollOffset,
 		scrollOffset + VISIBLE_ROWS
 	);
 	const totalLines = detailContent.length;
+	
+	// Calculate if we actually have scrollable content
+	// If all content fits in the visible area, don't show scroll indicators
+	const actualVisibleItems = visibleContent.length;
+	const hasMoreContentBelow = actualVisibleItems === VISIBLE_ROWS && scrollOffset + VISIBLE_ROWS < totalLines;
+	const hasMoreContentAbove = scrollOffset > 0;
+	const showScrollIndicators = hasMoreContentBelow || hasMoreContentAbove;
 
 	// Main render (details view)
 	const modalProps = getModalProps();
@@ -1429,13 +1361,13 @@ Completed via Task Master Flow automated workflow.`
 				})}
 
 				{/* Scroll indicators */}
-				{totalLines > VISIBLE_ROWS && (
+				{showScrollIndicators && (
 					<Box marginTop={1} justifyContent="center">
 						<Text color={theme.muted}>
-							{scrollOffset > 0 && '↑ '}
+							{hasMoreContentAbove && '↑ '}
 							Line {Math.min(scrollOffset + 1, totalLines)}-
-							{Math.min(scrollOffset + VISIBLE_ROWS, totalLines)} of {totalLines}
-							{scrollOffset + VISIBLE_ROWS < totalLines && ' ↓'}
+							{Math.min(scrollOffset + actualVisibleItems, totalLines)} of {totalLines}
+							{hasMoreContentBelow && ' ↓'}
 						</Text>
 					</Box>
 				)}

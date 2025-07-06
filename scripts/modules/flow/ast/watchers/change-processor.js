@@ -79,7 +79,8 @@ export class ChangeProcessor extends EventEmitter {
 	 */
 	async initialize() {
 		try {
-			this.astConfig = await loadASTConfig(this.projectPath);
+			const configResult = await loadASTConfig(this.projectPath);
+			this.astConfig = configResult.config;
 
 			console.debug(`[ChangeProcessor] Initialized for ${this.projectPath}`);
 			console.debug(

@@ -83,7 +83,8 @@ export class EnhancedASTContextBuilder {
 
 		try {
 			// Load AST configuration
-			this.config = await loadASTConfig(this.projectRoot);
+			const configResult = await loadASTConfig(this.projectRoot);
+			this.config = configResult.config;
 
 			// Check if AST is enabled
 			if (!this.config.enabled) {

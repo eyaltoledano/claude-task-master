@@ -63,7 +63,8 @@ export class UniversalFileWatcher extends EventEmitter {
 	async initialize() {
 		try {
 			// Load AST configuration
-			this.astConfig = await loadASTConfig(this.projectPath);
+			const configResult = await loadASTConfig(this.projectPath);
+			this.astConfig = configResult.config;
 
 			// Extract supported extensions from languages
 			this.supportedExtensions = this._buildSupportedExtensions(

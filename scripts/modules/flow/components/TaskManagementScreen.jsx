@@ -32,6 +32,16 @@ export function TaskManagementScreen() {
 		currentTag,
 		navigationData
 	} = useAppContext();
+
+	// Safety check - don't render if backend is not available
+	if (!backend) {
+		return (
+			<Box flexDirection="column" height="100%" justifyContent="center" alignItems="center">
+				<Text color="yellow">⚠️ Backend service is not available</Text>
+				<Text color="gray">Please wait for initialization to complete...</Text>
+			</Box>
+		);
+	}
 	const theme = getTheme();
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [expandedTasks, setExpandedTasks] = useState(new Set());
@@ -159,13 +169,17 @@ export function TaskManagementScreen() {
 	// Load complexity report when tag changes or on mount
 	useEffect(() => {
 		const loadComplexityReport = async () => {
+			if (!backend) {
+				setLoadingComplexity(false);
+				return;
+			}
+
 			setLoadingComplexity(true);
 			try {
 				const report = await backend.getComplexityReport(currentTag);
 				setComplexityReport(report);
 			} catch (error) {
 				// Silently fail - complexity report is optional
-				console.debug('No complexity report available:', error.message);
 				setComplexityReport(null);
 			} finally {
 				setLoadingComplexity(false);
@@ -289,6 +303,7 @@ export function TaskManagementScreen() {
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
 				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
 				else if (input === 't') {
+					console.log('[TaskManagementScreen] Calling cycleTaskStatus from subtask-detail view');
 					cycleTaskStatus({
 						...selectedSubtask,
 						id: `${selectedTask.id}.${selectedSubtask.id}`
@@ -451,6 +466,15 @@ export function TaskManagementScreen() {
 	};
 
 	const cycleTaskStatus = async (task) => {
+		// Safety check - ensure backend exists
+		if (!backend) {
+			setToast({
+				message: 'Backend service not available. Please try again.',
+				type: 'error'
+			});
+			return;
+		}
+
 		const statusOrder = [
 			'pending',
 			'in-progress',
@@ -468,14 +492,22 @@ export function TaskManagementScreen() {
 			await backend.setTaskStatus(task.id, newStatus);
 			await reloadTasks();
 
-			// If we're in detail view, refresh the task details
-			if (
-				viewMode === 'detail' &&
-				selectedTask &&
-				selectedTask.id === task.id
-			) {
-				const updatedTask = await backend.getTask(task.id);
+			// Refresh task/subtask state based on current view mode
+			if (selectedTask) {
+				// Always refresh selectedTask to get updated subtask data
+				const updatedTask = await backend.getTask(selectedTask.id);
 				setSelectedTask(updatedTask);
+
+				// If we're in subtask views, also update the selected subtask
+				if ((viewMode === 'subtasks' || viewMode === 'subtask-detail') && selectedSubtask) {
+					// Find the updated subtask in the refreshed task
+					const updatedSubtask = updatedTask.subtasks?.find(
+						st => st.id === selectedSubtask.id
+					);
+					if (updatedSubtask) {
+						setSelectedSubtask(updatedSubtask);
+					}
+				}
 			}
 
 			setToast({

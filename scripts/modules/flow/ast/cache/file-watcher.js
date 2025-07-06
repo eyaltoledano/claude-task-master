@@ -25,7 +25,8 @@ export class ASTFileWatcher extends EventEmitter {
 	 */
 	async initialize() {
 		try {
-			this.config = await loadASTConfig();
+			const configResult = await loadASTConfig();
+			this.config = configResult.config;
 		} catch (error) {
 			console.warn(
 				'Failed to load AST config for file watcher:',

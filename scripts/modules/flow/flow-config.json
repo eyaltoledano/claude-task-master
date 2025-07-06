@@ -78,7 +78,7 @@
 		"streamingEnabled": true
 	},
 	"ast": {
-		"enabled": false,
+		"enabled": true,
 		"cacheMaxAge": "2h",
 		"cacheMaxSize": "100MB",
 		"supportedLanguages": [
@@ -292,6 +292,6 @@
 		"currentBranch": "main",
 		"branchHistory": [],
 		"maxHistorySize": 10,
-		"lastUpdated": "2025-07-04T17:44:57.968Z"
+		"lastUpdated": "2025-07-06T20:09:42.994Z"
 	}
 }

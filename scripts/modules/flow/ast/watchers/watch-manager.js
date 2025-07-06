@@ -108,7 +108,8 @@ export class WatchManager extends EventEmitter {
 			console.info(`[WatchManager] Initializing for ${this.projectPath}`);
 
 			// Load AST configuration
-			this.astConfig = await loadASTConfig(this.projectPath);
+			const configResult = await loadASTConfig(this.projectPath);
+			this.astConfig = configResult.config;
 
 			// Configure components based on cache strategy
 			const componentOptions = this._getComponentOptions();

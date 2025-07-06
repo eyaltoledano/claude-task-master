@@ -379,7 +379,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 		n: () => {
 			if (view === 'research' && !isRunningResearch) {
 				setShouldRunResearch(false);
-				prepareReview();
+				prepareReview({ shouldRunResearch: false });
 			}
 		},
 
@@ -441,7 +441,7 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	useKeypress(keyHandlers);
 
 	// Prepare final configuration for review
-	const prepareReview = useCallback(() => {
+	const prepareReview = useCallback((overrideConfig = {}) => {
 		const config = {
 			persona: selectedPersona,
 			toolRestrictions,
@@ -452,7 +452,8 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			shouldRunResearch,
 			createPR,
 			tasks: tasks[0],
-			worktree
+			worktree,
+			...overrideConfig  // Allow overriding any config values
 		};
 
 		setFinalConfig(config);

@@ -84,7 +84,8 @@ export class BatchProcessor extends EventEmitter {
 	 */
 	async initialize() {
 		try {
-			this.astConfig = await loadASTConfig(this.projectPath);
+			const configResult = await loadASTConfig(this.projectPath);
+			this.astConfig = configResult.config;
 
 			console.debug(`[BatchProcessor] Initialized for ${this.projectPath}`);
 			console.debug(`[BatchProcessor] Strategy: ${this.options.strategy}`);
