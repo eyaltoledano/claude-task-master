@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import { style, gradient, getComponentTheme, getColor } from '../theme.js';
+import { useAppContext } from '../index.jsx';
 
 export const StatusScreen = ({
 	projectInfo,
@@ -8,8 +9,17 @@ export const StatusScreen = ({
 	modelsInfo,
 	mcpInfo
 }) => {
+	const { setCurrentScreen } = useAppContext();
 	const taskTheme = getComponentTheme('taskList');
 	const statusTheme = getComponentTheme('status');
+
+	// Handle escape key to return to main menu
+	useInput((input, key) => {
+		if (key.escape) {
+			setCurrentScreen('welcome');
+			return;
+		}
+	});
 
 	// Helper function to style status values
 	const getStatusStyle = (status) => {
