@@ -63,7 +63,7 @@ export class GeminiCliProvider extends BaseAIProvider {
 			if (params.apiKey && params.apiKey !== 'gemini-cli-no-key-required') {
 				// API key provided - use it for compatibility
 				authOptions = {
-					authType: 'api-key',
+					authType: 'gemini-api-key',
 					apiKey: params.apiKey
 				};
 			} else {
