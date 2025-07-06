@@ -968,6 +968,17 @@ export default class ClaudeCodeStopHook {
 					task, services, workflowChoice, result
 				);
 
+				// Ensure worktree config cleanup (safety net for local merges)
+				if (workflowChoice === 'merge-local' && services.backend?.cleanupWorktreeLinks) {
+					try {
+						await services.backend.cleanupWorktreeLinks(worktreeName);
+						console.log('🧹 Worktree config cleanup completed');
+					} catch (cleanupError) {
+						console.warn('⚠️ Worktree config cleanup warning:', cleanupError.message);
+						// Don't fail the whole operation for cleanup issues
+					}
+				}
+
 				return {
 					success: true,
 					workflowType: 'subtask',
@@ -996,6 +1007,17 @@ export default class ClaudeCodeStopHook {
 				const statusResult = await this.handleTaskStatusAfterWorkflow(
 					task, services, autoChoice, retryResult
 				);
+				
+				// Ensure worktree config cleanup (safety net for local merges)
+				if (autoChoice === 'merge-local' && retryResult.success && services.backend?.cleanupWorktreeLinks) {
+					try {
+						await services.backend.cleanupWorktreeLinks(worktreeName);
+						console.log('🧹 Worktree config cleanup completed (retry)');
+					} catch (cleanupError) {
+						console.warn('⚠️ Worktree config cleanup warning (retry):', cleanupError.message);
+						// Don't fail the whole operation for cleanup issues
+					}
+				}
 				
 				return {
 					success: retryResult.success,

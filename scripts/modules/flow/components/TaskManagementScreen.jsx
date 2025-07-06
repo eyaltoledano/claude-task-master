@@ -1223,12 +1223,48 @@ Focus on: current industry standards, common pitfalls, security considerations
 			});
 
 			if (result.success) {
-				setToast({
-					message: `Workflow completed: ${choice}`,
-					type: 'success'
-				});
+				// Extract subtask ID from the workflow data to mark it as done
+				const subtaskInfo = workflowModalData?.taskInfo;
+				if (subtaskInfo && choice === 'complete') {
+					try {
+						// Mark the subtask as done using base Taskmaster calls
+						await backend.setTaskStatus(subtaskInfo.id, 'done');
+						setToast({
+							message: `Workflow completed and subtask ${subtaskInfo.id} marked as done`,
+							type: 'success'
+						});
+					} catch (statusError) {
+						console.warn('Failed to update subtask status:', statusError);
+						setToast({
+							message: `Workflow completed: ${choice} (status update failed)`,
+							type: 'warning'
+						});
+					}
+				} else {
+					setToast({
+						message: `Workflow completed: ${choice}`,
+						type: 'success'
+					});
+				}
+				
 				// Refresh task data
 				await reloadTasks();
+				
+				// Refresh the selected task details if we're viewing it
+				if (selectedTask) {
+					const updatedTask = await backend.getTask(selectedTask.id);
+					setSelectedTask(updatedTask);
+					
+					// Update the selected subtask if it matches
+					if (selectedSubtask && subtaskInfo && selectedSubtask.id === subtaskInfo.id.split('.')[1]) {
+						const updatedSubtask = updatedTask.subtasks?.find(
+							s => `${updatedTask.id}.${s.id}` === subtaskInfo.id
+						);
+						if (updatedSubtask) {
+							setSelectedSubtask(updatedSubtask);
+						}
+					}
+				}
 			} else {
 				setToast({
 					message: result.error || 'Workflow failed',
@@ -1265,10 +1301,51 @@ Focus on: current industry standards, common pitfalls, security considerations
 			);
 
 			if (result.success) {
-				setToast({
-					message: 'Changes committed successfully',
-					type: 'success'
-				});
+				// Check if this commit indicates subtask completion
+				const subtaskInfo = commitAssistantData.subtaskInfo;
+				const markAsDone = options.markAsDone || false; // Allow option to mark as done
+				
+				if (subtaskInfo && markAsDone) {
+					try {
+						// Mark the subtask as done using base Taskmaster calls
+						await backend.setTaskStatus(subtaskInfo.id, 'done');
+						setToast({
+							message: `Changes committed and subtask ${subtaskInfo.id} marked as done`,
+							type: 'success'
+						});
+						
+						// Refresh task data to show updated status
+						await reloadTasks();
+						
+						// Refresh the selected task details if we're viewing it
+						if (selectedTask) {
+							const updatedTask = await backend.getTask(selectedTask.id);
+							setSelectedTask(updatedTask);
+							
+							// Update the selected subtask if it matches
+							if (selectedSubtask && selectedSubtask.id === subtaskInfo.id.split('.')[1]) {
+								const updatedSubtask = updatedTask.subtasks?.find(
+									s => `${updatedTask.id}.${s.id}` === subtaskInfo.id
+								);
+								if (updatedSubtask) {
+									setSelectedSubtask(updatedSubtask);
+								}
+							}
+						}
+					} catch (statusError) {
+						console.warn('Failed to update subtask status:', statusError);
+						setToast({
+							message: 'Changes committed successfully (status update failed)',
+							type: 'warning'
+						});
+					}
+				} else {
+					setToast({
+						message: 'Changes committed successfully',
+						type: 'success'
+					});
+				}
+				
 				// Refresh git status
 				await loadGitStatus();
 			} else {

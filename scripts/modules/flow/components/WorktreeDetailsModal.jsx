@@ -161,6 +161,75 @@ Completed via Task Master Flow.`
 		await handleWorkflowChoice('create-pr');
 	};
 
+	// Manual fallback for completing workflow when automatic process didn't work
+	const handleCompleteWorkflow = async () => {
+		if (isProcessingWorkflow) return;
+
+		setIsProcessingWorkflow(true);
+		setError(null);
+		setWorkflowResult(null);
+
+		try {
+			// Find the primary task/subtask for this worktree
+			const primaryTask = linkedTasks.find(task => 
+				task.status === 'done' || task.status === 'in-progress'
+			) || linkedTasks[0];
+
+			if (!primaryTask) {
+				throw new Error('No suitable task found for workflow completion');
+			}
+
+			// Execute the complete workflow: commit + merge locally + cleanup
+			const result = await backend.completeSubtask(worktree.name, {
+				workflowChoice: 'merge-local',
+				autoCommit: true,
+				prTitle: primaryTask.parentId 
+					? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
+					: `Task ${primaryTask.id}: ${primaryTask.title}`,
+				prDescription: `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
+
+## Changes Made
+- ${details.status.added > 0 ? `${details.status.added} files added` : ''}
+- ${details.status.modified > 0 ? `${details.status.modified} files modified` : ''}
+- ${details.status.deleted > 0 ? `${details.status.deleted} files deleted` : ''}
+
+## Worktree Details
+- Branch: ${worktree.branch}
+- Source: ${details.sourceBranch || 'main'}
+- Path: ${worktree.path}
+
+Completed via Task Master Flow automated workflow.`
+			});
+
+			setWorkflowResult(result);
+
+			if (result.success) {
+				// Mark task as done if not already
+				if (primaryTask.status !== 'done') {
+					await handleSetTaskStatus(primaryTask.id, 'done');
+				}
+				
+				// Ensure worktree config cleanup (safety net)
+				try {
+					await backend.cleanupWorktreeLinks(worktree.name);
+				} catch (cleanupError) {
+					console.warn('Worktree config cleanup warning:', cleanupError.message);
+					// Don't fail the whole operation for cleanup issues
+				}
+				
+				// Close the modal after a short delay to show success
+				setTimeout(() => {
+					onClose();
+				}, 2000);
+			}
+
+		} catch (error) {
+			setError(error.message);
+		} finally {
+			setIsProcessingWorkflow(false);
+		}
+	};
+
 	const handleSetTaskStatus = async (taskId, newStatus) => {
 		try {
 			const result = await backend.setSubtaskStatus(taskId, newStatus);
@@ -245,6 +314,18 @@ Completed via Task Master Flow.`
 				const hasSubtask = linkedTasks.some(task => task.parentId);
 				if (hasSubtask) {
 					hints.push('t jump to subtask');
+				}
+				
+				// Add complete workflow hint if there are changes
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges && linkedTasks.length > 0) {
+					hints.push('x manual complete');
 				}
 				
 				hints.push('ESC close');
@@ -462,6 +543,22 @@ Completed via Task Master Flow.`
 					setShowTaskStatusModal(true);
 					setSelectedTaskForStatus(primaryTask);
 					setSelectedStatusIndex(0);
+				}
+			}
+		},
+
+		// Complete workflow automation - commit, merge, and cleanup
+		x: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges) {
+					handleCompleteWorkflow();
 				}
 			}
 		}
@@ -1005,6 +1102,12 @@ Completed via Task Master Flow.`
 						color: theme.accent,
 						indent: 2
 					});
+					detailContent.push({
+						type: 'text',
+						content: `  ⚡ Press 'x' to manually trigger commit, merge & close`,
+						color: theme.success,
+						indent: 2
+					});
 				} else {
 					detailContent.push({
 						type: 'text',
@@ -1018,6 +1121,14 @@ Completed via Task Master Flow.`
 					type: 'text',
 					content: `  ✅ Task completed successfully`,
 					color: theme.success,
+					indent: 2
+				});
+				
+				// Add note about automatic workflow
+				detailContent.push({
+					type: 'text',
+					content: `  💡 Workflow normally happens automatically after Claude sessions`,
+					color: theme.textDim,
 					indent: 2
 				});
 				
@@ -1037,6 +1148,12 @@ Completed via Task Master Flow.`
 							type: 'text',
 							content: `  📋 Press 'p' to create PR or 'm' to merge`,
 							color: theme.accent,
+							indent: 2
+						});
+						detailContent.push({
+							type: 'text',
+							content: `  ⚡ Press 'x' to manually trigger merge & close`,
+							color: theme.success,
 							indent: 2
 						});
 					} else {
@@ -1115,9 +1232,20 @@ Completed via Task Master Flow.`
 		
 		// Quick actions reminder
 		detailContent.push({ type: 'blank' });
+		const hasChanges = details?.status && (
+			details.status.total > 0 || 
+			details.status.modified > 0 || 
+			details.status.added > 0 || 
+			details.status.deleted > 0 || 
+			details.status.untracked > 0
+		);
+		const quickActions = ['c Claude', 's Status', 'w Workflow', 't Tasks'];
+		if (hasChanges && linkedTasks.length > 0) {
+			quickActions.push('x Manual Complete');
+		}
 		detailContent.push({
 			type: 'text',
-			content: `  🎯 Quick Actions: 'c' Claude • 's' Status • 'w' Workflow • 't' Tasks`,
+			content: `  🎯 Quick Actions: ${quickActions.join(' • ')}`,
 			color: theme.textDim,
 			indent: 2
 		});
