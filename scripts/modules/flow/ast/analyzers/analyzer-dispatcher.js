@@ -15,6 +15,146 @@ import GoAnalyzer from './go-analyzer.js';
 import GenericAnalyzer from './generic-analyzer.js';
 
 /**
+ * Simple HTML Analyzer for basic HTML file analysis
+ */
+class HtmlAnalyzer {
+	constructor(options = {}) {
+		this.options = options;
+	}
+
+	async analyzeHtml(astData, filePath, content) {
+		// Basic HTML analysis - extract structural information
+		return {
+			language: 'html',
+			filePath,
+			structure: {
+				hasTitle: content.includes('<title>'),
+				hasMetaDescription: content.includes('<meta name="description"'),
+				hasViewport: content.includes('<meta name="viewport"'),
+				forms: (content.match(/<form/g) || []).length,
+				images: (content.match(/<img/g) || []).length,
+				links: (content.match(/<a\s+href/g) || []).length
+			},
+			accessibility: {
+				hasAltTexts: content.includes('alt='),
+				hasLangAttribute: content.includes('<html lang=') || content.includes('<html lang '),
+				score: this.calculateAccessibilityScore(content)
+			},
+			seo: {
+				hasTitle: content.includes('<title>'),
+				hasMetaDescription: content.includes('<meta name="description"'),
+				hasCanonical: content.includes('<link rel="canonical"'),
+				score: this.calculateSeoScore(content)
+			},
+			complexity: this.calculateComplexity(content)
+		};
+	}
+
+	calculateAccessibilityScore(content) {
+		let score = 5; // Base score
+		if (content.includes('alt=')) score += 2;
+		if (content.includes('<html lang=')) score += 1;
+		if (content.includes('role=')) score += 1;
+		if (content.includes('aria-')) score += 1;
+		return Math.min(10, score);
+	}
+
+	calculateSeoScore(content) {
+		let score = 5; // Base score
+		if (content.includes('<title>')) score += 2;
+		if (content.includes('<meta name="description"')) score += 2;
+		if (content.includes('<meta name="viewport"')) score += 1;
+		return Math.min(10, score);
+	}
+
+	calculateComplexity(content) {
+		const lines = content.split('\n').length;
+		const elements = (content.match(/<\w+/g) || []).length;
+		if (lines < 50 && elements < 20) return 1;
+		if (lines < 200 && elements < 100) return 3;
+		return 7;
+	}
+}
+
+/**
+ * Simple CSS Analyzer for basic CSS file analysis
+ */
+class CssAnalyzer {
+	constructor(options = {}) {
+		this.options = options;
+	}
+
+	async analyzeCss(astData, filePath, content) {
+		// Basic CSS analysis - extract styling information
+		return {
+			language: 'css',
+			filePath,
+			selectors: this.extractSelectors(content),
+			properties: this.extractProperties(content),
+			mediaQueries: this.extractMediaQueries(content),
+			colors: this.extractColors(content),
+			fonts: this.extractFonts(content),
+			complexity: this.calculateComplexity(content),
+			quality: this.analyzeQuality(content)
+		};
+	}
+
+	extractSelectors(content) {
+		const selectors = content.match(/[^{}]+(?=\s*\{)/g) || [];
+		return {
+			total: selectors.length,
+			types: {
+				id: selectors.filter(s => s.includes('#')).length,
+				class: selectors.filter(s => s.includes('.')).length,
+				element: selectors.filter(s => !s.includes('#') && !s.includes('.')).length
+			}
+		};
+	}
+
+	extractProperties(content) {
+		const properties = content.match(/\s*([a-z-]+)\s*:/g) || [];
+		return {
+			total: properties.length,
+			unique: [...new Set(properties.map(p => p.trim().replace(':', '')))].length
+		};
+	}
+
+	extractMediaQueries(content) {
+		return (content.match(/@media[^{]+/g) || []).length;
+	}
+
+	extractColors(content) {
+		const colors = [
+			...(content.match(/#[0-9a-fA-F]{3,6}/g) || []),
+			...(content.match(/rgb\([^)]+\)/g) || []),
+			...(content.match(/rgba\([^)]+\)/g) || [])
+		];
+		return { total: colors.length, unique: [...new Set(colors)].length };
+	}
+
+	extractFonts(content) {
+		const fonts = content.match(/font-family\s*:\s*([^;]+)/g) || [];
+		return { total: fonts.length };
+	}
+
+	calculateComplexity(content) {
+		const lines = content.split('\n').length;
+		const rules = (content.match(/\{[^}]*\}/g) || []).length;
+		if (lines < 100 && rules < 20) return 1;
+		if (lines < 500 && rules < 100) return 3;
+		return 7;
+	}
+
+	analyzeQuality(content) {
+		let score = 5; // Base score
+		if (content.includes('/* ')) score += 1; // Has comments
+		if (content.includes('@media')) score += 1; // Responsive
+		if (!content.includes('!important')) score += 1; // No !important overrides
+		return { score: Math.min(10, score) };
+	}
+}
+
+/**
  * Main analyzer dispatcher for language-specific analysis
  */
 export class AnalyzerDispatcher {
@@ -32,6 +172,8 @@ export class AnalyzerDispatcher {
 			typescript: new JavaScriptAnalyzer(options.typescript || {}),
 			python: new PythonAnalyzer(options.python || {}),
 			go: new GoAnalyzer(options.go || {}),
+			html: new HtmlAnalyzer(options.html || {}),
+			css: new CssAnalyzer(options.css || {}),
 			generic: new GenericAnalyzer(options.generic || {})
 		};
 
@@ -162,7 +304,13 @@ export class AnalyzerDispatcher {
 			py: 'python',
 			python: 'python',
 			go: 'go',
-			golang: 'go'
+			golang: 'go',
+			html: 'html',
+			htm: 'html',
+			css: 'css',
+			scss: 'css',
+			sass: 'css',
+			less: 'css'
 		};
 
 		const mappedLanguage = languageMapping[normalizedLanguage];
@@ -203,6 +351,10 @@ export class AnalyzerDispatcher {
 			return await analyzer.analyzePython(astData, filePath, content);
 		} else if (analyzer === this.analyzers.go) {
 			return await analyzer.analyzeGo(astData, filePath, content);
+		} else if (analyzer === this.analyzers.html) {
+			return await analyzer.analyzeHtml(astData, filePath, content);
+		} else if (analyzer === this.analyzers.css) {
+			return await analyzer.analyzeCss(astData, filePath, content);
 		} else {
 			// Default to generic analysis
 			return await analyzer.analyzeGeneric(
@@ -258,6 +410,12 @@ export class AnalyzerDispatcher {
 			'py',
 			'go',
 			'golang',
+			'html',
+			'htm',
+			'css',
+			'scss',
+			'sass',
+			'less',
 			'generic' // Always available as fallback
 		];
 	}

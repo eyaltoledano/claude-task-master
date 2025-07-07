@@ -85,7 +85,9 @@
 			"javascript",
 			"typescript",
 			"python",
-			"go"
+			"go",
+			"html",
+			"css"
 		],
 		"excludePatterns": [
 			"node_modules/**",
@@ -292,6 +294,6 @@
 		"currentBranch": "main",
 		"branchHistory": [],
 		"maxHistorySize": 10,
-		"lastUpdated": "2025-07-06T20:09:42.994Z"
+		"lastUpdated": "2025-07-07T00:41:40.178Z"
 	}
 }

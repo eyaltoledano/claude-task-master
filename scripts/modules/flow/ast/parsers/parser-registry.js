@@ -7,6 +7,8 @@ import { ParserRegistry } from './base-parser.js';
 import { JavaScriptParser } from './javascript-parser.js';
 import { PythonParser } from './python-parser.js';
 import { GoParser } from './go-parser.js';
+import { HtmlParser } from './html-parser.js';
+import { CssParser } from './css-parser.js';
 
 /**
  * Language detection patterns
@@ -55,6 +57,36 @@ const LANGUAGE_PATTERNS = {
 			/switch\s+.*\{/,
 			/^\s*\/\//m
 		]
+	},
+	html: {
+		extensions: ['.html', '.htm'],
+		patterns: [
+			/<!DOCTYPE\s+html/i,
+			/<html[^>]*>/i,
+			/<head[^>]*>/i,
+			/<body[^>]*>/i,
+			/<\w+[^>]*>/,
+			/<\/\w+>/,
+			/<!--.*?-->/,
+			/<script[^>]*>/i,
+			/<style[^>]*>/i,
+			/<link[^>]*>/i
+		]
+	},
+	css: {
+		extensions: ['.css', '.scss', '.sass', '.less'],
+		patterns: [
+			/[.#]?\w+\s*\{/,
+			/[a-zA-Z-]+\s*:\s*[^;]+;/,
+			/@\w+/,
+			/@media\s*\([^)]+\)/,
+			/@import\s+['"][^'"]+['"]/,
+			/\/\*.*?\*\//,
+			/--\w+:/,
+			/var\s*\(\s*--\w+/,
+			/rgba?\s*\(/,
+			/hsla?\s*\(/
+		]
 	}
 };
 
@@ -94,6 +126,14 @@ export class EnhancedParserRegistry extends ParserRegistry {
 			// Register Go parser
 			const goParser = new GoParser(this.options);
 			this.register('go', goParser);
+
+			// Register HTML parser
+			const htmlParser = new HtmlParser(this.options);
+			this.register('html', htmlParser);
+
+			// Register CSS parser
+			const cssParser = new CssParser(this.options);
+			this.register('css', cssParser);
 
 			this.initialized = true;
 		} catch (error) {
@@ -355,7 +395,9 @@ export class EnhancedParserRegistry extends ParserRegistry {
 		const samples = {
 			javascript: 'function hello() { return "world"; }',
 			python: 'def hello():\n    return "world"',
-			go: 'package main\n\nfunc hello() string {\n    return "world"\n}'
+			go: 'package main\n\nfunc hello() string {\n    return "world"\n}',
+			html: '<!DOCTYPE html>\n<html>\n<head><title>Test</title></head>\n<body><h1>Hello World</h1></body>\n</html>',
+			css: 'body { margin: 0; padding: 20px; } h1 { color: #333; }'
 		};
 
 		return samples[language] || '// Sample content';
@@ -412,5 +454,5 @@ export function getRegistryStatistics() {
 }
 
 // Export parser classes for direct use
-export { JavaScriptParser, PythonParser, GoParser };
+export { JavaScriptParser, PythonParser, GoParser, HtmlParser, CssParser };
 export { BaseParser, AST_NODE_TYPES } from './base-parser.js';

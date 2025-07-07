@@ -15,6 +15,14 @@ const EXTENSION_LANGUAGE_MAP = {
 	'.mjs': 'javascript',
 	'.cjs': 'javascript',
 
+	// Web Technologies
+	'.html': 'html',
+	'.htm': 'html',
+	'.css': 'css',
+	'.scss': 'css',
+	'.sass': 'css',
+	'.less': 'css',
+
 	// Python
 	'.py': 'python',
 	'.pyw': 'python',
@@ -242,6 +250,8 @@ export function getLanguageDisplayName(language) {
 	const displayNames = {
 		javascript: 'JavaScript',
 		typescript: 'TypeScript',
+		html: 'HTML',
+		css: 'CSS',
 		python: 'Python',
 		go: 'Go',
 		rust: 'Rust',

@@ -569,7 +569,9 @@ export class EnhancedASTContextBuilder {
 			javascript: 1.0,
 			typescript: 1.2,
 			python: 0.9,
-			go: 0.8
+			go: 0.8,
+			html: 0.6,
+			css: 0.7
 		};
 
 		const factor = complexityFactors[language] || 1.0;
@@ -627,6 +629,12 @@ export class EnhancedASTContextBuilder {
 					break;
 				case 'go':
 					extensions.push('.go');
+					break;
+				case 'html':
+					extensions.push('.html', '.htm');
+					break;
+				case 'css':
+					extensions.push('.css', '.scss', '.sass', '.less');
 					break;
 			}
 		}
@@ -894,7 +902,7 @@ class ChangeEventProcessor {
 	 */
 	isMediumImpactChange(change) {
 		const ext = path.extname(change.path);
-		return ['.js', '.ts', '.jsx', '.tsx', '.py', '.go'].includes(ext);
+		return ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.html', '.htm', '.css', '.scss', '.sass', '.less'].includes(ext);
 	}
 
 	/**

@@ -51,9 +51,9 @@ export class GenericAnalyzer {
 	async analyzeGeneric(astData, filePath, content, language = 'unknown') {
 		const analysis = {
 			language: language,
-			fileType: this.detectFileType(filePath),
+			fileType: this.detectFileType(filePath, content),
 			structure: await this.analyzeStructure(astData, content),
-			patterns: await this.analyzeGenericPatterns(astData, content, language),
+			patterns: await this.analyzeGenericPatterns(astData, content, language, filePath),
 			complexity: await this.analyzeComplexity(astData, content, language),
 			codeQuality: await this.analyzeCodeQuality(astData, content, filePath),
 			documentation: this.analyzeDocumentation(content),
@@ -71,9 +71,10 @@ export class GenericAnalyzer {
 	/**
 	 * Detect file type and purpose
 	 * @param {string} filePath - File path
+	 * @param {string} content - File content (optional)
 	 * @returns {Object} File type information
 	 */
-	detectFileType(filePath) {
+	detectFileType(filePath, content = '') {
 		const fileName = filePath.split('/').pop() || '';
 		const extension = fileName.split('.').pop()?.toLowerCase() || '';
 
@@ -315,14 +316,15 @@ export class GenericAnalyzer {
 	 * @param {Object} astData - AST data
 	 * @param {string} content - Source code
 	 * @param {string} language - Programming language
+	 * @param {string} filePath - File path for context
 	 * @returns {Promise<Object>} Pattern analysis
 	 */
-	async analyzeGenericPatterns(astData, content, language) {
+	async analyzeGenericPatterns(astData, content, language, filePath) {
 		// Use Phase 2.1 CodeAnalyzer for base analysis
 		const basePatterns = await this.codeAnalyzer.analyzePatterns(
 			astData,
 			language,
-			null,
+			filePath,
 			content
 		);
 
@@ -842,7 +844,8 @@ export class GenericAnalyzer {
 		const patterns = await this.analyzeGenericPatterns(
 			astData,
 			content,
-			'unknown'
+			'unknown',
+			filePath
 		);
 
 		if (patterns.duplication && patterns.duplication.length > 0) {
