@@ -135,7 +135,7 @@ describe('ProviderRegistry', () => {
 			expect(result).toBe(registry); // Should return self for chaining
 			expect(registry.hasProvider('mock')).toBe(true);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				'Provider "mock" registered with the registry'
 			);
 		});
@@ -278,7 +278,7 @@ describe('ProviderRegistry', () => {
 			expect(result).toBe(true);
 			expect(registry.hasProvider('mock')).toBe(false);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				'Provider "mock" unregistered from the registry'
 			);
 		});
