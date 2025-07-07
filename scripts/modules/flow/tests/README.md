@@ -26,7 +26,7 @@ scripts/modules/flow/tests/
 │   │   └── parsers/         # Parser tests
 │   ├── hooks/               # Hook system unit tests
 │   │   ├── built-in/        # Built-in hook tests
-│   │   └── quality/         # Quality analysis tests
+│   │   └── quality/         # Quality analysis tests ✅ **All quality tests centralized here**
 │   ├── services/            # Service unit tests
 │   ├── backends/            # Backend interface unit tests
 │   ├── tui/                 # TUI component unit tests
@@ -40,6 +40,42 @@ scripts/modules/flow/tests/
 ├── test-runner.js           # Main test runner (⭐ **Use this!**)
 ├── jest.config.js           # Jest configuration
 └── setup.js                 # Test setup/teardown
+```
+
+## 🎯 Test Organization & Consolidation
+
+### ✅ Quality Tests Reorganization Complete
+
+All quality-related tests have been properly organized under the Flow tests directory:
+
+- **`unit/hooks/quality/`** - Contains all quality analysis tests:
+  - `code-quality-analyzer.test.js`
+  - `quality-insights-formatter.test.js`
+  - `test-quality-analyzer.test.js`
+
+**Previous State**: Quality tests were scattered in the root `@/tests` directory alongside Task Master core tests.
+
+**Current State**: All Flow-related tests, including quality tests, are now properly organized under `scripts/modules/flow/tests/` with logical subdirectories.
+
+**Why This Matters**:
+- ✅ Clear separation between Task Master core tests and Flow TUI tests
+- ✅ Quality tests are now alongside the Flow hook system they test
+- ✅ Improved test discovery and organization
+- ✅ Single source of truth for all Flow testing
+
+### Running Quality Tests
+
+```bash
+# Run all quality tests
+node test-runner.js unit quality
+
+# Run specific quality tests
+npx jest unit/hooks/quality/code-quality-analyzer.test.js
+npx jest unit/hooks/quality/quality-insights-formatter.test.js
+npx jest unit/hooks/quality/test-quality-analyzer.test.js
+
+# Run all hook tests (including quality)
+node test-runner.js hooks
 ```
 
 ## 🧪 Test Types

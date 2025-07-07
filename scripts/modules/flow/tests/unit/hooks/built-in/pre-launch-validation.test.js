@@ -481,12 +481,10 @@ describe('Pre-Launch Validation Hook', () => {
 
 	describe('Custom Validators', () => {
 		test('should add custom validator', () => {
-			const customValidator = jest
-				.fn()
-				.mockResolvedValue({
-					valid: true,
-					message: 'Custom validation passed'
-				});
+			const customValidator = jest.fn().mockResolvedValue({
+				valid: true,
+				message: 'Custom validation passed'
+			});
 
 			validationHook.addValidator('custom', customValidator);
 
