@@ -59,6 +59,10 @@ Effect Integration Subcommands:
   stream      Stream execution updates in real-time (Phase 3)
   agent       Manage AI agents (Phase 5)
   generate    Generate code using AI agents (Phase 5)
+  init        Initialize Flow System: Configuration & Error Handling
+  config      Manage Flow configuration  
+  error       Manage error handling and circuit breakers
+  logging     Manage logging configuration and status
 
 Examples:
   task-master flow                                    # Launch interactive TUI
@@ -74,11 +78,20 @@ Examples:
   task-master flow agent list                         # List available AI agents
   task-master flow agent test mock                    # Test mock agent connectivity
   task-master flow agent health                       # Check all agent health
-  task-master flow generate "create a REST API"       # Generate code using AI`)
+  task-master flow generate "create a REST API"       # Generate code using AI
+  task-master flow init                               # Initialize Flow System configuration
+  task-master flow config show                        # Show current configuration
+  task-master flow config set logLevel debug          # Set configuration value
+  task-master flow config env production              # Apply production environment
+  task-master flow error status                       # Show error handling status
+  task-master flow error reset provider               # Reset circuit breaker
+  task-master flow error test --with-retry            # Test error handling
+  task-master flow logging status                     # Show logging status
+  task-master flow logging level info                 # Set log level`)
 		.action(async (subcommand, options) => {
 			try {
 				// Handle Effect integration subcommands
-				if (['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate'].includes(subcommand)) {
+				if (['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate', 'init', 'config', 'error', 'logging'].includes(subcommand)) {
 					try {
 						const { 
 							handleFlowHealthCommand, 
@@ -94,6 +107,19 @@ Examples:
 							handleFlowAgentCommand,
 							handleFlowGenerateCommand
 						} = await import('./effect/cli-command.js');
+						
+						// Import Flow System commands
+						const {
+							initCommand,
+							configShowCommand,
+							configSetCommand,
+							configEnvCommand,
+							errorStatusCommand,
+							errorResetCommand,
+							errorTestCommand,
+							loggingStatusCommand,
+							loggingSetLevelCommand
+						} = await import('./commands/config.command.js');
 						
 						switch (subcommand) {
 							case 'health':
@@ -139,6 +165,84 @@ Examples:
 								await handleFlowGenerateCommand(generateTask, options);
 								break;
 							}
+							case 'init': {
+								await initCommand(options);
+								break;
+							}
+							case 'config': {
+								const configSubcommand = process.argv[4]; // Get the subcommand after 'flow config'
+								const configArg1 = process.argv[5];
+								const configArg2 = process.argv[6];
+								
+								switch (configSubcommand) {
+									case 'show':
+										await configShowCommand(options);
+										break;
+									case 'set':
+										if (!configArg1 || !configArg2) {
+											console.error('Usage: flow config set <key> <value>');
+											process.exit(1);
+										}
+										await configSetCommand(configArg1, configArg2, options);
+										break;
+									case 'env':
+										if (!configArg1) {
+											console.error('Usage: flow config env <environment>');
+											process.exit(1);
+										}
+										await configEnvCommand(configArg1, options);
+										break;
+									default:
+										console.error('Unknown config subcommand. Available: show, set, env');
+										process.exit(1);
+								}
+								break;
+							}
+							case 'error': {
+								const errorSubcommand = process.argv[4]; // Get the subcommand after 'flow error'
+								const errorArg1 = process.argv[5];
+								
+								switch (errorSubcommand) {
+									case 'status':
+										await errorStatusCommand(options);
+										break;
+									case 'reset':
+										if (!errorArg1) {
+											console.error('Usage: flow error reset <breaker-name>');
+											process.exit(1);
+										}
+										await errorResetCommand(errorArg1, options);
+										break;
+									case 'test':
+										await errorTestCommand(errorArg1, options);
+										break;
+									default:
+										console.error('Unknown error subcommand. Available: status, reset, test');
+										process.exit(1);
+								}
+								break;
+							}
+							case 'logging': {
+								const loggingSubcommand = process.argv[4]; // Get the subcommand after 'flow logging'
+								const loggingArg1 = process.argv[5];
+								
+								switch (loggingSubcommand) {
+									case 'status':
+										await loggingStatusCommand(options);
+										break;
+									case 'level':
+										if (!loggingArg1) {
+											console.error('Usage: flow logging level <level>');
+											process.exit(1);
+										}
+										await loggingSetLevelCommand(loggingArg1, options);
+										break;
+									default:
+										console.error('Unknown logging subcommand. Available: status, level');
+										process.exit(1);
+								}
+								break;
+							}
 						}
 						return;
 					} catch (error) {
@@ -148,9 +252,9 @@ Examples:
 				}
 				
 				// If no subcommand or unknown subcommand, launch the TUI
-				if (subcommand && !['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate'].includes(subcommand)) {
+				if (subcommand && !['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate', 'init', 'config', 'error', 'logging'].includes(subcommand)) {
 					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources, execute, status, cancel, stream, debug, agent, generate'));
+					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources, execute, status, cancel, stream, debug, agent, generate, init, config, error, logging'));
 					console.log(chalk.yellow('Or run without subcommand to launch interactive TUI'));
 					process.exit(1);
 				}

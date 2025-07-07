@@ -6,7 +6,7 @@
  * Enhanced with real-time streaming capabilities for Phase 4.
  */
 
-import { streamingService, MessageFormatter, LOG_LEVELS } from "./streaming.service.js"
+import { streamingService, MessageFormatter } from "./streaming.service.js"
 
 /**
  * Custom error types for execution engine
@@ -185,13 +185,13 @@ export class SimpleExecutionService {
 
       state.setStatus('running')
       state.setPhase(EXECUTION_PHASES.INITIALIZING, 'Starting task execution')
-      state.addLog(LOG_LEVELS.INFO, `Starting execution for task: ${taskId}`)
+      state.addLog("info", `Starting execution for task: ${taskId}`)
       state.updateProgress(5, EXECUTION_PHASES.INITIALIZING, 'Initializing execution environment')
       state.startTime = new Date().toISOString()
 
       // Phase 1: Resource Acquisition
       state.setPhase(EXECUTION_PHASES.ACQUIRING, 'Acquiring execution resources')
-      state.addLog(LOG_LEVELS.INFO, 'Acquiring execution resources')
+      state.addLog("info", 'Acquiring execution resources')
       await this._simulateWork(200)
       state.updateProgress(25, EXECUTION_PHASES.ACQUIRING, 'Resources acquired successfully')
 
@@ -202,11 +202,11 @@ export class SimpleExecutionService {
       }
       state.resources.set('provider', provider)
       state.resources.set('sandbox', { id: 'mock-sandbox', status: 'ready' })
-      state.addLog(LOG_LEVELS.INFO, 'Mock execution environment ready')
+      state.addLog("info", 'Mock execution environment ready')
 
       // Phase 2: Code Execution
       state.setPhase(EXECUTION_PHASES.EXECUTING, 'Executing task code')
-      state.addLog(LOG_LEVELS.INFO, 'Beginning code execution')
+      state.addLog("info", 'Beginning code execution')
       state.updateProgress(50, EXECUTION_PHASES.EXECUTING, 'Executing user code')
 
       // Simulate code execution with progress updates
@@ -223,31 +223,31 @@ export class SimpleExecutionService {
           throw new ExecutionCancelledError('Execution cancelled by user', state.executionId)
         }
         state.updateProgress(step.progress, EXECUTION_PHASES.EXECUTING, step.message)
-        state.addLog(LOG_LEVELS.INFO, step.message)
+        state.addLog("info", step.message)
       }
 
       // Simulate execution output
       const mockOutput = this._generateMockOutput(config)
       state.output.push(mockOutput)
-      state.addLog(LOG_LEVELS.INFO, 'Code execution completed successfully')
-      state.addLog(LOG_LEVELS.DEBUG, 'Output generated', { outputLength: mockOutput.length })
+      state.addLog("info", 'Code execution completed successfully')
+      state.addLog("debug", 'Output generated', { outputLength: mockOutput.length })
 
       // Phase 3: Cleanup
       state.setPhase(EXECUTION_PHASES.CLEANING, 'Cleaning up resources')
-      state.addLog(LOG_LEVELS.INFO, 'Starting resource cleanup')
+      state.addLog("info", 'Starting resource cleanup')
       await this._simulateWork(100)
       state.updateProgress(95, EXECUTION_PHASES.CLEANING, 'Releasing resources')
 
       // Clean up resources
       state.resources.clear()
-      state.addLog(LOG_LEVELS.INFO, 'Resources cleaned up successfully')
+      state.addLog("info", 'Resources cleaned up successfully')
 
       // Phase 4: Completion
       state.setPhase(EXECUTION_PHASES.COMPLETED, 'Execution completed')
       state.forceProgress(100, EXECUTION_PHASES.COMPLETED, 'Task execution completed successfully')
       state.setStatus('completed')
       state.endTime = new Date().toISOString()
-      state.addLog(LOG_LEVELS.INFO, `Task execution completed in ${this._calculateDuration(state)}ms`)
+      state.addLog("info", `Task execution completed in ${this._calculateDuration(state)}ms`)
 
       return {
         executionId: state.executionId,
@@ -263,11 +263,11 @@ export class SimpleExecutionService {
       state.setStatus('failed')
       state.setError(error)
       state.endTime = new Date().toISOString()
-      state.addLog(LOG_LEVELS.ERROR, `Execution failed: ${error.message}`)
+      state.addLog("error", `Execution failed: ${error.message}`)
       
       if (error instanceof ExecutionCancelledError) {
         state.setStatus('cancelled')
-        state.addLog(LOG_LEVELS.WARN, `Execution cancelled: ${error.message}`)
+        state.addLog("warn", `Execution cancelled: ${error.message}`)
       }
 
       throw error
@@ -319,7 +319,7 @@ export class SimpleExecutionService {
 
     state.cancelled = true
     state.cancelReason = reason
-    state.addLog(LOG_LEVELS.WARN, `Cancellation requested: ${reason}`)
+    state.addLog("warn", `Cancellation requested: ${reason}`)
     
     // Note: The actual cancellation will be handled by the execution loop
     return {

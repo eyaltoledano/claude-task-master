@@ -4234,7 +4234,7 @@ ${prompt}
 				};
 			}
 
-			// Phase 6: Cleanup (if configured)
+			// Cleanup (if configured)
 			let cleanupResult = null;
 			if (config.cleanupWorktree || config.updateTaskStatus || config.updateASTCache) {
 				cleanupResult = await this.executePhase(mergeAttempt, 'cleanup', async () => {

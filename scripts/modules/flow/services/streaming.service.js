@@ -22,7 +22,7 @@ export const MESSAGE_TYPES = {
 /**
  * Log levels for structured logging
  */
-export const LOG_LEVELS = {
+const STREAMING_LOG_LEVELS = {
   DEBUG: 'debug',
   INFO: 'info',
   WARN: 'warn',
@@ -209,7 +209,7 @@ export class TaskOutputStream extends Readable {
   pushText(text) {
     if (this.isEnded) return false
     
-    const message = MessageFormatter.log(this.executionId, LOG_LEVELS.INFO, text)
+    const message = MessageFormatter.log(this.executionId, STREAMING_LOG_LEVELS.INFO, text)
     return this.push(message)
   }
 

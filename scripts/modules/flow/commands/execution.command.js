@@ -11,7 +11,7 @@ import {
   ExecutionCancelledError,
   EXECUTION_PHASES
 } from "../services/execution.service.js"
-import { LOG_LEVELS, MESSAGE_TYPES } from "../services/streaming.service.js"
+import { MESSAGE_TYPES } from "../services/streaming.service.js"
 
 /**
  * Validate task configuration
@@ -70,10 +70,10 @@ function formatStreamingMessage(message, options = {}) {
 
     case MESSAGE_TYPES.LOG: {
       const levelColors = {
-        [LOG_LEVELS.DEBUG]: c.gray,
-        [LOG_LEVELS.INFO]: c.blue,
-        [LOG_LEVELS.WARN]: c.yellow,
-        [LOG_LEVELS.ERROR]: c.red
+        debug: c.gray,
+        info: c.blue,
+        warn: c.yellow,
+        error: c.red
       }
       const levelColor = levelColors[message.data.log.level] || c.reset
       return `${c.gray}[${timestamp}]${c.reset} ${levelColor}${message.data.log.level.toUpperCase()}:${c.reset} ${message.data.log.message}`

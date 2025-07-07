@@ -265,7 +265,7 @@ export class NextTaskService {
 				throw new Error(`Failed to start next task: ${progressionResult.results.startTask.error}`);
 			}
 
-			// Phase 6: Success!
+			// Success!
 			progressionResult.phase = 'completed';
 			progressionResult.success = true;
 
