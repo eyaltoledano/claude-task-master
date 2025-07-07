@@ -479,6 +479,7 @@ Additional context:
 					subtaskId: initialContext.currentSubtask.id,
 					parentTaskId: initialContext.parentTask.id,
 					worktreePath: initialContext.worktreePath,
+					worktreeName: initialContext.worktreePath ? initialContext.worktreePath.split('/').pop() : undefined,
 					prompt: subtaskPrompt,
 					// Pass complete task data with parent info for CLAUDE.md generation
 					taskData: {
@@ -697,6 +698,7 @@ Auto-committed by Claude Code completion workflow.`;
 						subtaskId: initialContext.currentSubtask.id,
 						parentTaskId: initialContext.parentTask.id,
 						worktreePath: initialContext.worktreePath,
+						worktreeName: initialContext.worktreePath ? initialContext.worktreePath.split('/').pop() : undefined,
 						// Pass complete task data with parent info for CLAUDE.md generation
 						taskData: {
 							id: initialContext.currentSubtask.id,

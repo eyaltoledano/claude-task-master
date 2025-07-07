@@ -595,11 +595,48 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			finalConfig.customPrompt ||
 			'Implement the assigned tasks according to the specifications in CLAUDE.md';
 
+		// Build task data for hook integration
+		const taskData = {
+			id: task.id,
+			title: task.title,
+			description: task.description || '',
+			details: task.details || '',
+			testStrategy: task.testStrategy || '',
+			status: task.status || 'pending',
+			isSubtask: task.isSubtask || String(task.id).includes('.'),
+			parentTask: task.parentTask || null
+		};
+
+		// If this is a subtask and we don't already have parent task data, fetch it
+		if (taskData.isSubtask && task.id.includes('.') && !task.parentTask) {
+			const parentTaskId = task.id.split('.')[0];
+			try {
+				const parentTask = await backend.getTask(parentTaskId);
+				if (parentTask) {
+					taskData.parentTask = {
+						id: parentTask.id,
+						title: parentTask.title,
+						description: parentTask.description || '',
+						details: parentTask.details || '',
+						testStrategy: parentTask.testStrategy || '',
+						status: parentTask.status || 'pending'
+					};
+				}
+			} catch (error) {
+				console.warn(
+					'⚠️ [EnhancedClaudeWorktreeLauncherModal] Failed to fetch parent task:',
+					error
+				);
+			}
+		}
+
 		const operation = await backgroundClaudeCode.startQuery(prompt, {
 			persona: finalConfig.persona,
 			metadata: {
 				type: task.isSubtask ? 'subtask-implementation' : 'task-implementation',
 				taskId: task.id,
+				// Add taskData for hook integration
+				taskData: taskData,
 				worktreePath: worktree.path,
 				worktreeName: worktree.name,
 				branch: worktree.branch || worktree.name,

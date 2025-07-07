@@ -781,6 +781,48 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 			const resumePrompt =
 				'Continue with the implementation from where we left off.';
 
+			// Build task data for hook integration (same logic as in handleLaunch)
+			const task = tasks[0];
+			const taskData = task
+				? await (async () => {
+						const taskInfo = {
+							id: task.id,
+							title: task.title,
+							description: task.description || '',
+							details: task.details || '',
+							testStrategy: task.testStrategy || '',
+							status: task.status || 'pending',
+							isSubtask: task.isSubtask || String(task.id).includes('.'),
+							parentTask: task.parentTask || null
+						};
+
+						// If this is a subtask and we don't already have parent task data, fetch it
+						if (taskInfo.isSubtask && task.id.includes('.') && !task.parentTask) {
+							const parentTaskId = task.id.split('.')[0];
+							try {
+								const parentTask = await backend.getTask(parentTaskId);
+								if (parentTask) {
+									taskInfo.parentTask = {
+										id: parentTask.id,
+										title: parentTask.title,
+										description: parentTask.description || '',
+										details: parentTask.details || '',
+										testStrategy: parentTask.testStrategy || '',
+										status: parentTask.status || 'pending'
+									};
+								}
+							} catch (error) {
+								console.warn(
+									'⚠️ [ClaudeWorktreeLauncherModal] Failed to fetch parent task:',
+									error
+								);
+							}
+						}
+
+						return taskInfo;
+					})()
+				: null;
+
 			// Start a new background operation as continuation
 			const operation = await backgroundClaudeCode.startQuery(resumePrompt, {
 				persona: selectedPersona,
@@ -788,6 +830,8 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 					type: 'session-continuation',
 					originalSessionId: sessionResult.sessionId,
 					taskId: tasks[0]?.id,
+					// Add taskData for hook integration
+					taskData: taskData,
 					worktreePath: worktree?.path,
 					worktreeName: worktree?.name,
 					branch: worktree?.branch || worktree?.name,

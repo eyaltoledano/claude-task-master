@@ -383,10 +383,19 @@ export class BackgroundClaudeCode {
 				return;
 			}
 
+			// Derive worktree name from path if not provided
+			let worktreeName = metadata.worktreeName;
+			if (!worktreeName || worktreeName === 'unknown') {
+				// Extract worktree name from the path (e.g., "/path/to/task-1-2" -> "task-1-2")
+				const pathParts = metadata.worktreePath.split('/');
+				worktreeName = pathParts[pathParts.length - 1];
+				console.log(`🔧 [BackgroundClaudeCode] Derived worktree name from path: ${worktreeName}`);
+			}
+
 			// Build context for hook
 			const worktree = {
 				path: metadata.worktreePath,
-				name: metadata.worktreeName || 'unknown',
+				name: worktreeName,
 				branch: metadata.branch,
 				sourceBranch: metadata.sourceBranch || 'main'
 			};
@@ -420,7 +429,7 @@ export class BackgroundClaudeCode {
 				await hookIntegration.notifySessionFailed(session, result.error, task, worktree);
 			} else {
 				// Trigger session completion hook (which includes task status updates)
-				console.log(`🔄 [BackgroundClaudeCode] Triggering session completion hook for task ${task.id}`);
+				console.log(`🔄 [BackgroundClaudeCode] Triggering session completion hook for task ${task.id} with worktree ${worktreeName}`);
 				await hookIntegration.notifySessionCompleted(session, task, worktree, {
 					...config,
 					services
