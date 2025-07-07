@@ -4621,10 +4621,10 @@ Examples:
 			process.exit(1);
 		});
 
-				// flow command - Interactive TUI
+				// flow command - Interactive TUI with Effect integration subcommands
 	programInstance
-		.command('flow')
-		.description('Launch interactive TUI for task management')
+		.command('flow [subcommand]')
+		.description('Launch interactive TUI for task management or run Effect integration commands')
 		.option(
 			'--backend <type>',
 			'Backend type: direct, cli, or mcp (default: direct)'
@@ -4637,8 +4637,50 @@ Examples:
 			'--project-root <path>',
 			'Specify the project directory to manage tasks for (default: auto-detect)'
 		)
-		.action(async (options) => {
+		.addHelpText('after', `
+Effect Integration Subcommands:
+  health    Check Effect integration health and status
+  test      Run Effect integration tests
+  info      Display Effect module information
+
+Examples:
+  task-master flow              # Launch interactive TUI
+  task-master flow health       # Check Effect integration
+  task-master flow test         # Run Effect tests
+  task-master flow info         # Show Effect info`)
+		.action(async (subcommand, options) => {
 			try {
+				// Handle Effect integration subcommands
+				if (subcommand === 'health' || subcommand === 'test' || subcommand === 'info') {
+					try {
+						const { handleFlowHealthCommand, handleFlowTestCommand, handleFlowInfoCommand } = await import('./flow/effect/cli-command.js');
+						
+						switch (subcommand) {
+							case 'health':
+								await handleFlowHealthCommand(options);
+								break;
+							case 'test':
+								await handleFlowTestCommand(options);
+								break;
+							case 'info':
+								await handleFlowInfoCommand(options);
+								break;
+						}
+						return;
+					} catch (error) {
+						console.error(chalk.red(`Effect integration not available: ${error.message}`));
+						process.exit(1);
+					}
+				}
+				
+				// If no subcommand or unknown subcommand, launch the TUI
+				if (subcommand && !['health', 'test', 'info'].includes(subcommand)) {
+					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
+					console.log(chalk.yellow('Available subcommands: health, test, info'));
+					console.log(chalk.yellow('Or run without subcommand to launch interactive TUI'));
+					process.exit(1);
+				}
+
 				// Use specified project directory or auto-detect
 				let projectRoot;
 				if (options.projectRoot) {
@@ -4674,6 +4716,8 @@ Examples:
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);
 		});
+
+
 
 	return programInstance;
 }
