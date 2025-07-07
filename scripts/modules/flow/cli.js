@@ -37,12 +37,21 @@ export function registerFlowCommand(programInstance) {
 		.addHelpText('after', `
 Available Subcommands:
   provider    Manage sandbox providers (VibeKit integration)
+  config      Manage Flow configuration and provider selection
 
 Provider Management:
   task-master flow provider list                      # List all available providers
   task-master flow provider list --verbose            # Show detailed provider information
   task-master flow provider test <name>               # Test provider connectivity
   task-master flow provider capabilities <name>       # Show provider capabilities
+  task-master flow provider set <name>                # Set default provider
+  task-master flow provider switch <name>             # Switch to provider temporarily
+
+Configuration Management:
+  task-master flow config show                        # Show current configuration
+  task-master flow config show --verbose              # Show detailed configuration
+  task-master flow config set <key> <value>           # Set configuration value
+  task-master flow config env <environment>           # Apply environment preset
 
 Available Providers:
   mock        Mock provider for testing and development
@@ -54,9 +63,9 @@ Available Providers:
 Examples:
   task-master flow                                     # Launch interactive TUI
   task-master flow provider list                      # List all providers
-  task-master flow provider test mock                 # Test mock provider
-  task-master flow provider capabilities e2b          # Show E2B capabilities
-  task-master flow provider list --verbose            # Detailed provider info`)
+  task-master flow provider set e2b                   # Set E2B as default provider
+  task-master flow config show                        # Show current configuration
+  task-master flow config set defaultProvider modal   # Set Modal as default provider`)
 		.action(async (subcommand, options) => {
 			try {
 				// Handle provider subcommand
@@ -76,17 +85,70 @@ Examples:
 					await executionCommands.provider(providerOptions);
 					return;
 				}
+
+				// Handle config subcommand
+				if (subcommand === 'config') {
+					// Import config commands from config.command.js
+					const { 
+						configShowCommand, 
+						configSetCommand, 
+						configEnvCommand 
+					} = await import('./commands/config.command.js');
+					
+					const configAction = process.argv[4] || 'show'; // Get action after 'flow config'
+					const configKey = process.argv[5]; // Get config key if specified
+					const configValue = process.argv[6]; // Get config value if specified
+					
+					switch (configAction) {
+						case 'show':
+							await configShowCommand({ 
+								verbose: options.verbose, 
+								json: options.json 
+							});
+							break;
+						case 'set':
+							if (!configKey || !configValue) {
+								console.error(chalk.red('Config key and value required for set command'));
+								console.log(chalk.yellow('Usage: task-master flow config set <key> <value>'));
+								process.exit(1);
+							}
+							await configSetCommand(configKey, configValue, { 
+								verbose: options.verbose 
+							});
+							break;
+						case 'env':
+							if (!configKey) {
+								console.error(chalk.red('Environment required for env command'));
+								console.log(chalk.yellow('Usage: task-master flow config env <environment>'));
+								console.log(chalk.yellow('Available: development, production, test'));
+								process.exit(1);
+							}
+							await configEnvCommand(configKey, { 
+								verbose: options.verbose 
+							});
+							break;
+						default:
+							console.error(chalk.red(`Unknown config action: ${configAction}`));
+							console.log(chalk.yellow('Available actions: show, set, env'));
+							process.exit(1);
+					}
+					return;
+				}
 				
 				// Handle unknown subcommands
-				if (subcommand && subcommand !== 'provider') {
+				if (subcommand && subcommand !== 'provider' && subcommand !== 'config') {
 					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommand: provider'));
+					console.log(chalk.yellow('Available subcommands: provider, config'));
 					console.log(chalk.yellow('Run without subcommand to launch interactive TUI'));
 					console.log(chalk.yellow(''));
 					console.log(chalk.yellow('Provider commands:'));
 					console.log(chalk.yellow('  task-master flow provider list                 # List all providers'));
+					console.log(chalk.yellow('  task-master flow provider set <name>          # Set default provider'));
 					console.log(chalk.yellow('  task-master flow provider test <name>         # Test provider health'));
-					console.log(chalk.yellow('  task-master flow provider capabilities <name> # Show provider capabilities'));
+					console.log(chalk.yellow(''));
+					console.log(chalk.yellow('Config commands:'));
+					console.log(chalk.yellow('  task-master flow config show                  # Show configuration'));
+					console.log(chalk.yellow('  task-master flow config set <key> <value>     # Set config value'));
 					console.log(chalk.yellow(''));
 					console.log(chalk.yellow('Available providers: mock, e2b, daytona, modal, fly'));
 					process.exit(1);

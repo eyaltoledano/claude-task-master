@@ -17,7 +17,7 @@ const FlowConfigSchema = z.object({
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
   
   // Providers
-  defaultProvider: z.enum(['mock', 'e2b', 'northflank', 'modal']).default('mock'),
+  defaultProvider: z.enum(['mock', 'e2b', 'daytona', 'modal', 'fly']).default('mock'),
   providerTimeout: z.number().min(1000).max(300000).default(30000), // 30 seconds
   
   // Agents  

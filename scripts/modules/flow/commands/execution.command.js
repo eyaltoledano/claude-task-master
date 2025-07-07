@@ -107,10 +107,39 @@ function formatStreamingMessage(message, options = {}) {
  */
 export async function executeCommand(config, options = {}) {
   try {
+    // Get provider from options or config
+    let selectedProvider = options.provider || config.provider || 'mock'
+    
+    // If provider was overridden via CLI, validate it exists
+    if (options.provider) {
+      const { availableProviders } = await import('../providers/registry.js')
+      if (!availableProviders[options.provider]) {
+        throw new Error(`Provider '${options.provider}' not found. Available: ${Object.keys(availableProviders).join(', ')}`)
+      }
+      
+      // Override provider in config
+      config = { ...config, provider: selectedProvider }
+      console.log(`🔄 Provider overridden via CLI: ${options.provider}`)
+    } else {
+      // Check if config provider exists or use default from Flow config
+      if (!config.provider) {
+        try {
+          const { getFlowSystemConfig } = await import('../config/flow-system-integration.js')
+          const { config: flowConfig } = await getFlowSystemConfig()
+          selectedProvider = flowConfig.get('defaultProvider', 'mock')
+          config = { ...config, provider: selectedProvider }
+        } catch (error) {
+          // Fallback to mock if config loading fails
+          selectedProvider = 'mock'
+          config = { ...config, provider: selectedProvider }
+        }
+      }
+    }
+    
     console.log(`🚀 Starting task execution...`)
     console.log(`   Task ID: ${config.taskId}`)
     console.log(`   Language: ${config.language || 'javascript'}`)
-    console.log(`   Provider: ${config.provider || 'mock'}`)
+    console.log(`   Provider: ${selectedProvider}`)
     if (config.timeout) console.log(`   Timeout: ${config.timeout}ms`)
     console.log()
 
@@ -541,8 +570,23 @@ async function providerCommand(options) {
         }
         await getProviderCapabilities({ provider, json })
         break
+      case 'set':
+        if (!provider) {
+          console.error('Provider name required for set command. Use: flow provider set <name>')
+          process.exit(1)
+        }
+        await setDefaultProvider({ provider, verbose, json })
+        break
+      case 'switch':
+        if (!provider) {
+          console.error('Provider name required for switch command. Use: flow provider switch <name>')
+          process.exit(1)
+        }
+        await switchProvider({ provider, verbose, json })
+        break
       default:
         console.error(`Unknown provider action: ${action}`)
+        console.log('Available actions: list, test, capabilities, set, switch')
         process.exit(1)
     }
   } catch (error) {
@@ -741,6 +785,168 @@ async function getProviderCapabilities({ provider, json }) {
     }
 
     console.error(`Failed to get capabilities: ${error.message}`)
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
+  }
+}
+
+/**
+ * Set default provider permanently
+ */
+async function setDefaultProvider({ provider, verbose, json }) {
+  try {
+    const { availableProviders } = await import('../providers/registry.js')
+    
+    if (!availableProviders[provider]) {
+      throw new Error(`Provider '${provider}' not found. Available: ${Object.keys(availableProviders).join(', ')}`)
+    }
+
+    const providerInfo = availableProviders[provider]
+    
+    // Test provider health before setting as default
+    console.log(`🔧 Setting ${providerInfo.name} as default provider...`)
+    console.log(`📋 Testing provider health...`)
+    
+    const factory = await providerInfo.factory()
+    const config = {
+      ...providerInfo.config,
+      ...(providerInfo.config.authentication.envKey && {
+        apiKey: process.env[providerInfo.config.authentication.envKey]
+      })
+    }
+    
+    const healthResult = await factory.healthCheck(config)
+    
+    if (!healthResult.success && providerInfo.config.authentication.type === 'api_key') {
+      console.log(`⚠️  Warning: ${providerInfo.name} health check failed`)
+      console.log(`   Error: ${healthResult.error}`)
+      console.log(`   💡 You may need to set the ${providerInfo.config.authentication.envKey} environment variable`)
+      console.log(`   Setting as default anyway...`)
+    }
+
+    // Update configuration
+    const { getFlowSystemConfig } = await import('../config/flow-system-integration.js')
+    const { config: flowConfig } = await getFlowSystemConfig()
+    
+    const oldProvider = flowConfig.get('defaultProvider')
+    flowConfig.set('defaultProvider', provider)
+    
+    // Save configuration to file
+    await flowConfig.save()
+
+    if (json) {
+      console.log(JSON.stringify({ 
+        success: true, 
+        provider, 
+        oldProvider,
+        providerInfo: {
+          name: providerInfo.name,
+          type: providerInfo.type,
+          features: providerInfo.config.features
+        }
+      }, null, 2))
+      return
+    }
+
+    console.log(`✅ Default provider set to: ${providerInfo.name} (${provider})`)
+    console.log(`   Previous: ${oldProvider}`)
+    console.log(`   Type: ${providerInfo.type}`)
+    console.log(`   Features: ${providerInfo.config.features.join(', ')}`)
+    
+    if (verbose) {
+      console.log(`   Description: ${providerInfo.metadata.description}`)
+      console.log(`   Documentation: ${providerInfo.metadata.documentation || 'N/A'}`)
+    }
+    
+    console.log(`\n💡 Use 'flow config show' to view current configuration`)
+
+  } catch (error) {
+    if (json) {
+      console.log(JSON.stringify({ success: false, error: error.message }, null, 2))
+      return
+    }
+
+    console.error(`❌ Failed to set default provider: ${error.message}`)
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
+  }
+}
+
+/**
+ * Switch provider temporarily (for current session only)
+ */
+async function switchProvider({ provider, verbose, json }) {
+  try {
+    const { availableProviders } = await import('../providers/registry.js')
+    
+    if (!availableProviders[provider]) {
+      throw new Error(`Provider '${provider}' not found. Available: ${Object.keys(availableProviders).join(', ')}`)
+    }
+
+    const providerInfo = availableProviders[provider]
+    
+    // Test provider health before switching
+    console.log(`🔄 Switching to ${providerInfo.name} temporarily...`)
+    console.log(`📋 Testing provider health...`)
+    
+    const factory = await providerInfo.factory()
+    const config = {
+      ...providerInfo.config,
+      ...(providerInfo.config.authentication.envKey && {
+        apiKey: process.env[providerInfo.config.authentication.envKey]
+      })
+    }
+    
+    const healthResult = await factory.healthCheck(config)
+    
+    if (!healthResult.success && providerInfo.config.authentication.type === 'api_key') {
+      console.log(`⚠️  Warning: ${providerInfo.name} health check failed`)
+      console.log(`   Error: ${healthResult.error}`)
+      console.log(`   💡 You may need to set the ${providerInfo.config.authentication.envKey} environment variable`)
+      console.log(`   Switching anyway...`)
+    }
+
+    // Set environment variable for current session
+    process.env.FLOW_DEFAULT_PROVIDER = provider
+
+    if (json) {
+      console.log(JSON.stringify({ 
+        success: true, 
+        provider,
+        temporary: true,
+        providerInfo: {
+          name: providerInfo.name,
+          type: providerInfo.type,
+          features: providerInfo.config.features
+        }
+      }, null, 2))
+      return
+    }
+
+    console.log(`✅ Switched to provider: ${providerInfo.name} (${provider})`)
+    console.log(`   Type: ${providerInfo.type}`)
+    console.log(`   Features: ${providerInfo.config.features.join(', ')}`)
+    console.log(`   ⏰ Temporary: Active for current session only`)
+    
+    if (verbose) {
+      console.log(`   Description: ${providerInfo.metadata.description}`)
+      console.log(`   Documentation: ${providerInfo.metadata.documentation || 'N/A'}`)
+    }
+    
+    console.log(`\n💡 Use 'flow provider set ${provider}' to make this change permanent`)
+    console.log(`💡 Use 'flow config show' to view current configuration`)
+
+  } catch (error) {
+    if (json) {
+      console.log(JSON.stringify({ success: false, error: error.message }, null, 2))
+      return
+    }
+
+    console.error(`❌ Failed to switch provider: ${error.message}`)
     if (verbose) {
       console.error(error.stack)
     }

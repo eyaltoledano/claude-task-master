@@ -6,6 +6,8 @@
 
 import { initializeFlowSystem, getFlowSystemConfig, applyEnvironmentConfig, ENVIRONMENT_CONFIGS } from '../config/flow-system-integration.js'
 import { LOG_LEVELS } from '../logging/flow-logger.js'
+import chalk from 'chalk'
+import { FlowConfig, ConfigurationError } from '../config/flow-config.js'
 
 /**
  * Initialize Flow System command
@@ -55,60 +57,112 @@ export async function initCommand(options = {}) {
  * Show configuration command
  */
 export async function configShowCommand(options = {}) {
-  const { verbose = false, format = 'simple', json = false } = options
+  const { verbose = false, json = false } = options
 
   try {
-    const { config } = await getFlowSystemConfig()
-    const allConfig = config.getAll()
-
-    if (format === 'json' || json) {
-      console.log(JSON.stringify(allConfig, null, 2))
-    } else {
-      console.log('🔧 Flow Configuration:')
-      console.log('')
-      
-      // Core settings
-      console.log('📊 Core Settings:')
-      console.log(`   Environment: ${allConfig.nodeEnv}`)
-      console.log(`   Provider: ${allConfig.defaultProvider}`)
-      console.log(`   Agent: ${allConfig.defaultAgent}`)
-      console.log(`   Log Level: ${allConfig.logLevel}`)
-      console.log('')
-      
-      // Execution settings
-      console.log('⚡ Execution Settings:')
-      console.log(`   Execution Timeout: ${allConfig.executionTimeout}ms`)
-      console.log(`   Max Concurrent: ${allConfig.maxConcurrentExecutions}`)
-      console.log(`   Cleanup on Exit: ${allConfig.cleanupOnExit}`)
-      console.log('')
-      
-      // Error handling
-      console.log('🛡️ Error Handling:')
-      console.log(`   Retries Enabled: ${allConfig.enableRetries}`)
-      console.log(`   Max Retries: ${allConfig.agentMaxRetries}`)
-      console.log(`   Circuit Breaker: ${allConfig.enableCircuitBreaker}`)
-      console.log(`   Circuit Threshold: ${allConfig.circuitBreakerThreshold}`)
-      console.log('')
-      
-      if (verbose) {
-        console.log('📁 Storage & Logging:')
-        console.log(`   Data Directory: ${allConfig.dataDirectory}`)
-        console.log(`   State Directory: ${allConfig.stateDirectory}`)
-        console.log(`   Log to File: ${allConfig.logToFile}`)
-        console.log(`   Log File: ${allConfig.logFilePath}`)
-        console.log('')
-        
-        console.log('🔬 Development:')
-        console.log(`   Debug Mode: ${allConfig.debugMode}`)
-        console.log(`   Verbose Logging: ${allConfig.verboseLogging}`)
-        console.log(`   Mock Delays: ${allConfig.mockDelays}`)
-      }
+    // Initialize config if not already done
+    const flowConfig = new FlowConfig()
+    const result = await flowConfig.initialize({ validate: false })
+    
+    if (json) {
+      console.log(JSON.stringify({
+        config: flowConfig.getAll(),
+        sources: result.sources
+      }, null, 2))
+      return
     }
 
-    return { success: true, config: allConfig }
+    console.log(chalk.cyan('🔧 Flow Configuration'))
+    console.log(chalk.gray('─'.repeat(50)))
+    
+    const config = flowConfig.getAll()
+    
+    // Core Configuration
+    console.log(chalk.yellow('\n📦 Core Settings:'))
+    console.log(`   Environment: ${chalk.green(config.nodeEnv)}`)
+    console.log(`   Default Provider: ${chalk.green(config.defaultProvider)}`)
+    console.log(`   Default Agent: ${chalk.green(config.defaultAgent)}`)
+    console.log(`   Debug Mode: ${config.debugMode ? chalk.green('enabled') : chalk.red('disabled')}`)
+    
+    // Provider Configuration
+    console.log(chalk.yellow('\n🌐 Provider Settings:'))
+    console.log(`   Provider Timeout: ${chalk.cyan(config.providerTimeout)}ms`)
+    console.log(`   Agent Timeout: ${chalk.cyan(config.agentTimeout)}ms`)
+    console.log(`   Agent Max Retries: ${chalk.cyan(config.agentMaxRetries)}`)
+    
+    // Execution Configuration
+    console.log(chalk.yellow('\n⚡ Execution Settings:'))
+    console.log(`   Execution Timeout: ${chalk.cyan(config.executionTimeout)}ms`)
+    console.log(`   Max Concurrent: ${chalk.cyan(config.maxConcurrentExecutions)}`)
+    console.log(`   Cleanup on Exit: ${config.cleanupOnExit ? chalk.green('enabled') : chalk.red('disabled')}`)
+    
+    // Streaming Configuration
+    console.log(chalk.yellow('\n📡 Streaming Settings:'))
+    console.log(`   Streaming Enabled: ${config.streamingEnabled ? chalk.green('enabled') : chalk.red('disabled')}`)
+    console.log(`   Batch Size: ${chalk.cyan(config.streamingBatchSize)}`)
+    console.log(`   Flush Interval: ${chalk.cyan(config.streamingFlushInterval)}ms`)
+    
+    if (verbose) {
+      // Logging Configuration
+      console.log(chalk.yellow('\n📝 Logging Settings:'))
+      console.log(`   Log Level: ${chalk.cyan(config.logLevel)}`)
+      console.log(`   Log Format: ${chalk.cyan(config.logFormat)}`)
+      console.log(`   Log to File: ${config.logToFile ? chalk.green('enabled') : chalk.red('disabled')}`)
+      if (config.logToFile) {
+        console.log(`   Log File Path: ${chalk.gray(config.logFilePath)}`)
+      }
+      
+      // Error Handling Configuration
+      console.log(chalk.yellow('\n🛡️  Error Handling:'))
+      console.log(`   Retries Enabled: ${config.enableRetries ? chalk.green('enabled') : chalk.red('disabled')}`)
+      console.log(`   Retry Backoff Factor: ${chalk.cyan(config.retryBackoffFactor)}`)
+      console.log(`   Retry Max Delay: ${chalk.cyan(config.retryMaxDelay)}ms`)
+      console.log(`   Circuit Breaker: ${config.enableCircuitBreaker ? chalk.green('enabled') : chalk.red('disabled')}`)
+      console.log(`   Circuit Breaker Threshold: ${chalk.cyan(config.circuitBreakerThreshold)}`)
+      
+      // Health Monitoring
+      console.log(chalk.yellow('\n💚 Health Monitoring:'))
+      console.log(`   Health Check Interval: ${chalk.cyan(config.healthCheckInterval)}ms`)
+      console.log(`   Health Check Timeout: ${chalk.cyan(config.healthCheckTimeout)}ms`)
+      
+      // Storage Configuration
+      console.log(chalk.yellow('\n💾 Storage Settings:'))
+      console.log(`   Data Directory: ${chalk.gray(config.dataDirectory)}`)
+      console.log(`   State Directory: ${chalk.gray(config.stateDirectory)}`)
+      console.log(`   Cache Enabled: ${config.cacheEnabled ? chalk.green('enabled') : chalk.red('disabled')}`)
+      console.log(`   Cache TTL: ${chalk.cyan(config.cacheTtl)}s`)
+      
+      // Security & Development
+      console.log(chalk.yellow('\n🔒 Security & Development:'))
+      console.log(`   Telemetry: ${config.enableTelemetry ? chalk.green('enabled') : chalk.red('disabled')}`)
+      if (config.telemetryEndpoint) {
+        console.log(`   Telemetry Endpoint: ${chalk.gray(config.telemetryEndpoint)}`)
+      }
+      console.log(`   Verbose Logging: ${config.verboseLogging ? chalk.green('enabled') : chalk.red('disabled')}`)
+      console.log(`   Mock Delays: ${config.mockDelays ? chalk.green('enabled') : chalk.red('disabled')}`)
+      
+      // Configuration Sources
+      console.log(chalk.yellow('\n📋 Configuration Sources:'))
+      console.log(`   Default Values: ${chalk.cyan(result.sources.defaults)} settings`)
+      console.log(`   Configuration File: ${chalk.cyan(result.sources.file)} settings`)
+      console.log(`   Environment Variables: ${chalk.cyan(result.sources.environment)} settings`)
+    }
+    
+    console.log(chalk.gray('\n💡 Use --verbose for detailed configuration'))
+    console.log(chalk.gray('💡 Use "flow config set <key> <value>" to change settings'))
+    console.log(chalk.gray('💡 Use "flow provider set <name>" to change default provider'))
+
   } catch (error) {
-    console.error('❌ Failed to show configuration:', error.message)
-    return { success: false, error: error.message }
+    if (json) {
+      console.log(JSON.stringify({ success: false, error: error.message }, null, 2))
+      return
+    }
+
+    console.error(chalk.red(`❌ Failed to show configuration: ${error.message}`))
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
   }
 }
 
@@ -119,7 +173,11 @@ export async function configSetCommand(key, value, options = {}) {
   const { verbose = false } = options
 
   try {
-    const { config, logger } = await getFlowSystemConfig()
+    // Initialize config
+    const flowConfig = new FlowConfig()
+    await flowConfig.initialize()
+    
+    const oldValue = flowConfig.get(key)
     
     // Parse value based on type
     let parsedValue = value
@@ -127,27 +185,37 @@ export async function configSetCommand(key, value, options = {}) {
     else if (value === 'false') parsedValue = false
     else if (/^\d+$/.test(value)) parsedValue = parseInt(value, 10)
     else if (/^\d*\.\d+$/.test(value)) parsedValue = parseFloat(value)
-
-    config.set(key, parsedValue)
     
-    await logger.info('Configuration updated', {
-      category: 'configuration',
-      key,
-      oldValue: config.get(key),
-      newValue: parsedValue
-    })
-
-    console.log(`✅ Configuration updated: ${key} = ${parsedValue}`)
+    // Set the value
+    flowConfig.set(key, parsedValue)
+    
+    // Validate the updated configuration
+    try {
+      flowConfig.validate()
+    } catch (validationError) {
+      throw new ConfigurationError(`Invalid value for ${key}: ${validationError.message}`)
+    }
+    
+    // Save to file
+    await flowConfig.save()
+    
+    console.log(chalk.green(`✅ Configuration updated`))
+    console.log(`   Key: ${chalk.cyan(key)}`)
+    console.log(`   Old Value: ${chalk.gray(oldValue)}`)
+    console.log(`   New Value: ${chalk.green(parsedValue)}`)
     
     if (verbose) {
-      console.log(`   Type: ${typeof parsedValue}`)
-      console.log(`   Previous: ${config.get(key)}`)
+      console.log(`   Type: ${chalk.yellow(typeof parsedValue)}`)
     }
+    
+    console.log(chalk.gray('\n💡 Use "flow config show" to view current configuration'))
 
-    return { success: true, key, value: parsedValue }
   } catch (error) {
-    console.error('❌ Failed to set configuration:', error.message)
-    return { success: false, error: error.message }
+    console.error(chalk.red(`❌ Failed to set configuration: ${error.message}`))
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
   }
 }
 
@@ -158,26 +226,60 @@ export async function configEnvCommand(environment, options = {}) {
   const { verbose = false } = options
 
   try {
-    if (!ENVIRONMENT_CONFIGS[environment]) {
-      throw new Error(`Unknown environment: ${environment}. Available: ${Object.keys(ENVIRONMENT_CONFIGS).join(', ')}`)
+    // Validate environment
+    if (!['development', 'production', 'test'].includes(environment)) {
+      throw new ConfigurationError(`Invalid environment: ${environment}. Available: development, production, test`)
     }
-
-    await applyEnvironmentConfig(environment)
     
-    console.log(`✅ Applied ${environment} configuration`)
+    // Initialize config
+    const flowConfig = new FlowConfig()
+    await flowConfig.initialize()
     
-    if (verbose) {
-      const changes = ENVIRONMENT_CONFIGS[environment]
-      console.log('\n📝 Applied changes:')
-      for (const [key, value] of Object.entries(changes)) {
-        console.log(`   ${key}: ${value}`)
+    // Get environment template
+    const template = FlowConfig.getTemplate(environment)
+    
+    console.log(chalk.cyan(`🔧 Applying ${environment} environment configuration...`))
+    console.log(chalk.gray('─'.repeat(50)))
+    
+    // Apply each template setting
+    const changes = []
+    for (const [key, value] of Object.entries(template)) {
+      const oldValue = flowConfig.get(key)
+      if (oldValue !== value) {
+        flowConfig.set(key, value)
+        changes.push({ key, oldValue, newValue: value })
       }
     }
+    
+    if (changes.length === 0) {
+      console.log(chalk.yellow(`⚠️  No changes needed - configuration already matches ${environment} environment`))
+      return
+    }
+    
+    // Validate the updated configuration
+    flowConfig.validate()
+    
+    // Save to file
+    await flowConfig.save()
+    
+    console.log(chalk.green(`✅ Applied ${environment} environment configuration`))
+    console.log(`   Changes: ${chalk.cyan(changes.length)} settings updated`)
+    
+    if (verbose) {
+      console.log(chalk.yellow('\n📋 Changes Applied:'))
+      changes.forEach(({ key, oldValue, newValue }) => {
+        console.log(`   ${chalk.cyan(key)}: ${chalk.gray(oldValue)} → ${chalk.green(newValue)}`)
+      })
+    }
+    
+    console.log(chalk.gray('\n💡 Use "flow config show" to view updated configuration'))
 
-    return { success: true, environment, changes: ENVIRONMENT_CONFIGS[environment] }
   } catch (error) {
-    console.error('❌ Failed to apply environment configuration:', error.message)
-    return { success: false, error: error.message }
+    console.error(chalk.red(`❌ Failed to apply environment configuration: ${error.message}`))
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
   }
 }
 
