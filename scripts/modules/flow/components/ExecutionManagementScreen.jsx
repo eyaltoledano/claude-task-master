@@ -2,14 +2,42 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { StatusMessage, ProgressBar, Spinner, Badge } from '@inkjs/ui';
-import { useExecutions, useStreamingExecution } from '../hooks/useExecutions.js';
+import { useExecutions } from '../hooks/useExecutions.js';
+import { useStreamingExecution } from '../hooks/useStreamingExecution.js';
+import { useOptimizedData, usePerformanceMonitor } from '../hooks/useOptimizedData.js';
 import { BaseModal } from './BaseModal.jsx';
 import { useAppContext } from '../index.jsx';
 
 export function ExecutionManagementScreen({ onBack }) {
-  const { executions, loading } = useExecutions();
+  // Performance monitoring
+  const { renderCount } = usePerformanceMonitor('ExecutionManagementScreen');
+  
+  // Enhanced data hooks with error handling and connection status
+  const { executions, loading, connectionStatus, error, refetch } = useExecutions({
+    pollInterval: 3000,
+    enableStreaming: true,
+    maxRetries: 3
+  });
+  
   const [selectedExecution, setSelectedExecution] = useState(null);
-  const { messages } = useStreamingExecution(selectedExecution?.id);
+  
+  // Enhanced streaming with progress and status tracking
+  const { 
+    messages, 
+    currentStatus, 
+    currentProgress, 
+    isStreaming, 
+    error: streamError,
+    connect,
+    disconnect
+  } = useStreamingExecution(selectedExecution?.id, {
+    maxMessages: 50,
+    autoConnect: true
+  });
+  
+  // Optimized data transformation
+  const optimizedExecutions = useOptimizedData(executions, [connectionStatus]);
+  
   const { setNotification } = useAppContext();
 
   useInput((input, key) => {
@@ -19,6 +47,15 @@ export function ExecutionManagementScreen({ onBack }) {
       } else {
         onBack();
       }
+    }
+    if (input === 'r' && !selectedExecution && connectionStatus === 'error') {
+      // Retry connection
+      refetch();
+      setNotification({
+        message: 'Retrying connection...',
+        type: 'info',
+        duration: 2000
+      });
     }
     if (key.ctrl && input === 'k' && selectedExecution) {
       // Kill execution
@@ -36,6 +73,16 @@ export function ExecutionManagementScreen({ onBack }) {
         duration: 2000
       });
     }
+    if (key.ctrl && input === 's' && selectedExecution) {
+      // Toggle streaming
+      if (isStreaming) {
+        disconnect();
+        setNotification({ message: 'Streaming disconnected', type: 'warning', duration: 2000 });
+      } else {
+        connect();
+        setNotification({ message: 'Streaming connected', type: 'success', duration: 2000 });
+      }
+    }
   });
 
   if (loading) {
@@ -48,33 +95,55 @@ export function ExecutionManagementScreen({ onBack }) {
     );
   }
 
-  const executionItems = executions.map(exec => ({
-    label: `${exec.taskId} - ${exec.status} (${exec.provider})`,
+  const executionItems = optimizedExecutions.map(exec => ({
+    label: `${exec.taskId} - ${exec.status} (${exec.provider}) - ${exec.formattedDuration}`,
     value: exec.id,
     execution: exec
   }));
 
   const handleSelect = (item) => {
-    const execution = executions.find(e => e.id === item.value);
+    const execution = optimizedExecutions.find(e => e.id === item.value);
     setSelectedExecution(execution);
   };
 
   return (
     <BaseModal 
-      title={`Execution Management (${executions.length})`} 
+      title={`Execution Management (${optimizedExecutions.length}) - Renders: ${renderCount}`} 
       onBack={onBack}
     >
       <Box flexDirection="column" padding={1}>
+        {/* Connection Status */}
+        {connectionStatus !== 'connected' && (
+          <Box marginBottom={1}>
+            {connectionStatus === 'error' ? (
+              <StatusMessage variant="error">
+                Connection Error: {error} - Press 'r' to retry
+              </StatusMessage>
+            ) : connectionStatus === 'retrying' ? (
+              <StatusMessage variant="warning">Reconnecting...</StatusMessage>
+            ) : connectionStatus === 'loading' ? (
+              <StatusMessage variant="info">Connecting...</StatusMessage>
+            ) : null}
+          </Box>
+        )}
+        
         {/* Execution List */}
         <Box marginBottom={2}>
-          <Text color="cyan" bold>Select Execution:</Text>
+          <Box justifyContent="space-between">
+            <Text color="cyan" bold>Select Execution:</Text>
+            <Text color="gray" dimColor>Status: {connectionStatus}</Text>
+          </Box>
           {executionItems.length > 0 ? (
             <SelectInput
               items={executionItems}
               onSelect={handleSelect}
             />
           ) : (
-            <Text color="gray">No executions found</Text>
+            <Box marginTop={1}>
+              <StatusMessage variant="info">
+                {connectionStatus === 'connected' ? 'No executions found' : 'Loading executions...'}
+              </StatusMessage>
+            </Box>
           )}
         </Box>
 
@@ -99,11 +168,16 @@ export function ExecutionManagementScreen({ onBack }) {
                 </Text>
                 
                 <Box marginTop={1}>
-                  {selectedExecution.status === 'running' && selectedExecution.progress ? (
+                  {selectedExecution.status === 'running' && (currentProgress > 0 || selectedExecution.progress) ? (
                     <Box flexDirection="column">
-                      <Text color="cyan">Progress:</Text>
-                      <ProgressBar value={selectedExecution.progress} />
-                      <Text color="gray">{Math.round(selectedExecution.progress * 100)}%</Text>
+                      <Box flexDirection="row" justifyContent="space-between">
+                        <Text color="cyan">Progress:</Text>
+                        <Text color="gray">
+                          {isStreaming ? '🔴 Live' : '⚫ Static'} | Stream: {currentStatus}
+                        </Text>
+                      </Box>
+                      <ProgressBar value={currentProgress || selectedExecution.progress} />
+                      <Text color="gray">{Math.round((currentProgress || selectedExecution.progress) * 100)}%</Text>
                     </Box>
                   ) : (
                     <StatusMessage 
@@ -113,7 +187,8 @@ export function ExecutionManagementScreen({ onBack }) {
                         selectedExecution.status === 'running' ? 'info' : 'warning'
                       }
                     >
-                      Status: {selectedExecution.status}
+                      Status: {currentStatus || selectedExecution.status}
+                      {streamError && ` - Stream Error: ${streamError}`}
                       {selectedExecution.error && ` - ${selectedExecution.error}`}
                     </StatusMessage>
                   )}
@@ -142,9 +217,13 @@ export function ExecutionManagementScreen({ onBack }) {
             {/* Quick Actions */}
             <Box borderStyle="single" padding={1}>
               <Text color="yellow" bold>Actions:</Text>
-              <Box marginTop={1}>
+              <Box marginTop={1} flexDirection="column">
                 <Text color="gray">
-                  [Ctrl+K] Kill execution | [Ctrl+R] Restart | [Ctrl+L] View detailed logs
+                  [Ctrl+K] Kill execution | [Ctrl+R] Restart | [Ctrl+S] Toggle streaming
+                </Text>
+                <Text color="gray">
+                  Streaming: {isStreaming ? '✅ Connected' : '❌ Disconnected'} | 
+                  Messages: {messages.length}/50
                 </Text>
               </Box>
             </Box>

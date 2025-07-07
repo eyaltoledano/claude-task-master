@@ -1,74 +1,88 @@
-import { useState, useEffect } from 'react';
-import { useAppContext } from '../index.jsx';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-export function useExecutions() {
-  const { backend } = useAppContext();
+export function useExecutions(options = {}) {
   const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  
+  // Prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  const pollIntervalRef = useRef(null);
+  
+  // Extract config values to stable references
+  const pollInterval = options.pollInterval || 2000;
+  const maxRetries = options.maxRetries || 3;
+  const statusFilter = options.statusFilter;
 
-  // eslint-disable-next-line
-  useEffect(() => {
-    const loadExecutions = async () => {
-      try {
-        setLoading(true);
-        // Use existing backend to get execution data
-        // For now, create mock data that represents task executions
-        const mockExecutions = [
-          {
-            id: 'exec_001',
-            taskId: 'task_001',
-            status: 'running',
-            provider: 'e2b',
-            progress: 0.65,
-            duration: 45000,
-            startTime: new Date(Date.now() - 45000).toISOString()
-          },
-          {
-            id: 'exec_002', 
-            taskId: 'task_005',
-            status: 'completed',
-            provider: 'modal',
-            progress: 1.0,
-            duration: 32000,
-            startTime: new Date(Date.now() - 120000).toISOString()
-          },
-          {
-            id: 'exec_003',
-            taskId: 'task_003',
-            status: 'failed',
-            provider: 'fly',
-            progress: 0.3,
-            duration: 15000,
-            startTime: new Date(Date.now() - 300000).toISOString(),
-            error: 'Connection timeout'
-          }
-        ];
-        
-        // If backend has execution listing capability, use it
-        if (backend.listExecutions) {
-          const result = await backend.listExecutions();
-          setExecutions(result.executions || mockExecutions);
-        } else {
-          setExecutions(mockExecutions);
-        }
-      } catch (err) {
-        setError(err.message);
-        // Fallback to empty array on error
-        setExecutions([]);
-      } finally {
+  const loadExecutions = useCallback(async (retryCount = 0) => {
+    try {
+      setConnectionStatus('loading');
+      
+      // Use existing execution service - import dynamically to avoid circular deps
+      const { executionService } = await import('../services/execution.service.js');
+      
+      // Use existing execution service
+      const filters = statusFilter ? { status: statusFilter } : {};
+      const executionList = executionService.listExecutions(filters);
+      
+      if (isMountedRef.current) {
+        setExecutions(executionList);
+        setError(null);
+        setConnectionStatus('connected');
         setLoading(false);
       }
-    };
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      
+      console.error('Failed to load executions:', err);
+      
+      if (retryCount < maxRetries) {
+        setConnectionStatus('retrying');
+        setTimeout(() => loadExecutions(retryCount + 1), 1000 * (retryCount + 1));
+      } else {
+        setError(err.message);
+        setConnectionStatus('error');
+        setLoading(false);
+      }
+    }
+  }, [statusFilter, maxRetries]);
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Initial load
     loadExecutions();
     
-    // Poll for updates every 2 seconds
-    const interval = setInterval(loadExecutions, 2000);
-    return () => clearInterval(interval);
+    // Set up polling
+    pollIntervalRef.current = setInterval(() => {
+      if (isMountedRef.current) {
+        loadExecutions();
+      }
+    }, pollInterval);
+
+    return () => {
+      isMountedRef.current = false;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [loadExecutions, pollInterval]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  return { executions, loading, error };
+  return { 
+    executions, 
+    loading, 
+    error, 
+    connectionStatus,
+    refetch: () => loadExecutions()
+  };
 }
 
 export function useStreamingExecution(executionId) {
