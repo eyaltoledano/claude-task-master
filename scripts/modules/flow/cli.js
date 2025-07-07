@@ -53,10 +53,6 @@ export function registerFlowCommand(programInstance) {
         case 'info':
           // Inline info handler
           return await showSystemInfo(options);
-        case 'test-vibekit':
-          // Legacy command - redirect to diagnostics
-          console.log('🔄 Redirecting to enhanced diagnostics...');
-          return await runDiagnostics('vibekit', options);
         default:
           console.error(`Unknown subcommand: ${subcommand}`);
           console.log('');
