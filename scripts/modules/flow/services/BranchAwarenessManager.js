@@ -4,10 +4,10 @@
  */
 
 import { execSync } from 'child_process';
-import fs from 'fs/promises';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { fileURLToPath } from 'url';
+import { flowConfig } from '../config/flow-config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,8 +16,7 @@ export class BranchAwarenessManager extends EventEmitter {
 		super();
 		
 		this.projectRoot = projectRoot;
-		// Config path should be relative to Task Master installation, not target project
-		this.configPath = path.join(__dirname, '../flow-config.json');
+		this.flowConfig = flowConfig;
 		
 		this.options = {
 			enabled: true,
@@ -339,14 +338,13 @@ export class BranchAwarenessManager extends EventEmitter {
 	 */
 	async loadSavedState() {
 		try {
-			const configData = await fs.readFile(this.configPath, 'utf8');
-			const config = JSON.parse(configData);
-			const branchConfig = config.branchAwareness;
-
-			if (branchConfig) {
-				this.lastWorkingBranch = branchConfig.lastWorkingBranch;
-				this.branchHistory = branchConfig.branchHistory || [];
+			// Ensure config is initialized
+			if (!this.flowConfig._config) {
+				await this.flowConfig.initialize();
 			}
+
+			this.lastWorkingBranch = this.flowConfig.get('branchAwareness.lastWorkingBranch');
+			this.branchHistory = this.flowConfig.get('branchAwareness.branchHistory', []);
 		} catch (error) {
 			console.debug('Failed to load branch awareness state:', error.message);
 		}
@@ -359,22 +357,17 @@ export class BranchAwarenessManager extends EventEmitter {
 		if (!this.options.rememberLastBranch) return;
 
 		try {
-			const configData = await fs.readFile(this.configPath, 'utf8');
-			const config = JSON.parse(configData);
-
-			if (!config.branchAwareness) {
-				config.branchAwareness = {};
+			// Ensure config is initialized
+			if (!this.flowConfig._config) {
+				await this.flowConfig.initialize();
 			}
 
-			config.branchAwareness = {
-				...config.branchAwareness,
-				currentBranch: this.currentBranch,
-				lastWorkingBranch: this.lastWorkingBranch,
-				branchHistory: this.branchHistory,
-				lastUpdated: new Date().toISOString()
-			};
+			this.flowConfig.set('branchAwareness.currentBranch', this.currentBranch);
+			this.flowConfig.set('branchAwareness.lastWorkingBranch', this.lastWorkingBranch);
+			this.flowConfig.set('branchAwareness.branchHistory', this.branchHistory);
+			this.flowConfig.set('branchAwareness.lastUpdated', new Date().toISOString());
 
-			await fs.writeFile(this.configPath, JSON.stringify(config, null, '\t'));
+			await this.flowConfig.save();
 		} catch (error) {
 			console.debug('Failed to save branch awareness state:', error.message);
 		}

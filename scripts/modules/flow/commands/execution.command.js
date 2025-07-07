@@ -124,7 +124,7 @@ export async function executeCommand(config, options = {}) {
       // Check if config provider exists or use default from Flow config
       if (!config.provider) {
         try {
-          const { getFlowSystemConfig } = await import('../config/flow-system-integration.js')
+          const { getFlowSystemConfig } = await import('../services/flow-system-integration.js')
           const { config: flowConfig } = await getFlowSystemConfig()
           selectedProvider = flowConfig.get('defaultProvider', 'mock')
           config = { ...config, provider: selectedProvider }
@@ -827,7 +827,7 @@ async function setDefaultProvider({ provider, verbose, json }) {
     }
 
     // Update configuration
-    const { getFlowSystemConfig } = await import('../config/flow-system-integration.js')
+    const { getFlowSystemConfig } = await import('../services/flow-system-integration.js')
     const { config: flowConfig } = await getFlowSystemConfig()
     
     const oldProvider = flowConfig.get('defaultProvider')

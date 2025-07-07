@@ -3,6 +3,8 @@
  * Handles the complete lifecycle of PRs from creation to merge and cleanup
  */
 
+import { flowConfig } from '../../config/flow-config.js';
+
 export default class PRLifecycleManagementHook {
 	constructor() {
 		this.name = 'pr-lifecycle-management';
@@ -97,15 +99,12 @@ export default class PRLifecycleManagementHook {
 	 */
 	async loadNotificationConfig() {
 		try {
-			// Load from flow-config.json
-			const fs = await import('fs/promises');
-			const path = await import('path');
+			// Ensure config is initialized
+			if (!flowConfig._config) {
+				await flowConfig.initialize();
+			}
 			
-			const configPath = path.join(process.cwd(), 'scripts/modules/flow/flow-config.json');
-			const configContent = await fs.readFile(configPath, 'utf8');
-			const config = JSON.parse(configContent);
-			
-			return config.notifications || this.getDefaultNotificationConfig();
+			return flowConfig.get('notifications', this.getDefaultNotificationConfig());
 		} catch (error) {
 			console.warn('Failed to load notification config, using defaults:', error.message);
 			return this.getDefaultNotificationConfig();

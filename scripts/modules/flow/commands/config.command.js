@@ -4,7 +4,7 @@
  * CLI commands for managing Flow configuration, error handling, and logging.
  */
 
-import { initializeFlowSystem, getFlowSystemConfig, applyEnvironmentConfig, ENVIRONMENT_CONFIGS } from '../config/flow-system-integration.js'
+import { initializeFlowSystem, getFlowSystemConfig, applyEnvironmentConfig, ENVIRONMENT_CONFIGS } from '../services/flow-system-integration.js'
 import { LOG_LEVELS } from '../logging/flow-logger.js'
 import chalk from 'chalk'
 import { FlowConfig, ConfigurationError } from '../config/flow-config.js'

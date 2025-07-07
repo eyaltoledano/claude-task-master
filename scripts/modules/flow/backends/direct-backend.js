@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import { query as claudeQuery } from '@anthropic-ai/claude-code';
 import { FlowBackend } from '../backend-interface.js';
 import { directFunctions } from '../../../../mcp-server/src/core/task-master-core.js';
+import { flowConfig } from '../config/flow-config.js';
 import {
 	PersonaPromptBuilder,
 	detectPersona,
@@ -2016,41 +2017,21 @@ export class DirectBackend extends FlowBackend {
 	// Get Claude Code configuration
 	async getClaudeCodeConfig() {
 		try {
-			// First try Flow-specific config
-			const flowConfigPath = path.join(
-				path.dirname(fileURLToPath(import.meta.url)),
-				'../flow-config.json'
-			);
-			try {
-				const flowConfig = await fs.readFile(flowConfigPath, 'utf8');
-				const flowParsed = JSON.parse(flowConfig);
-				if (flowParsed.claudeCode) {
-					return {
-						success: true,
-						config: flowParsed.claudeCode
-					};
-				}
-			} catch (flowError) {
-				// Flow config doesn't exist or doesn't have claudeCode, continue to taskmaster config
+			// Ensure config is initialized
+			if (!flowConfig._config) {
+				await flowConfig.initialize();
 			}
 
-			// Fall back to taskmaster config
-			const configPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'config.json'
-			);
-			const config = await fs.readFile(configPath, 'utf8');
-			const parsed = JSON.parse(config);
+			const claudeCodeConfig = flowConfig.get('claudeCode', {
+				enabled: false,
+				permissionMode: 'acceptEdits',
+				defaultMaxTurns: 3,
+				allowedTools: ['Read', 'Write', 'Bash']
+			});
 
 			return {
 				success: true,
-				config: parsed.claudeCode || {
-					enabled: false,
-					permissionMode: 'acceptEdits',
-					defaultMaxTurns: 3,
-					allowedTools: ['Read', 'Write', 'Bash']
-				}
+				config: claudeCodeConfig
 			};
 		} catch (error) {
 			return {
@@ -2068,51 +2049,13 @@ export class DirectBackend extends FlowBackend {
 	// Save Claude Code configuration
 	async saveClaudeCodeConfig(claudeConfig) {
 		try {
-			// First try to save to Flow-specific config
-			const flowConfigPath = path.join(
-				path.dirname(fileURLToPath(import.meta.url)),
-				'../flow-config.json'
-			);
-
-			try {
-				let flowConfig = {};
-				try {
-					const existing = await fs.readFile(flowConfigPath, 'utf8');
-					flowConfig = JSON.parse(existing);
-				} catch {
-					// Flow config doesn't exist yet
-				}
-
-				flowConfig.claudeCode = claudeConfig;
-				await fs.writeFile(flowConfigPath, JSON.stringify(flowConfig, null, 2));
-
-				return { success: true };
-			} catch (flowError) {
-				// If Flow config save fails, fall back to taskmaster config
-				console.warn(
-					'Could not save to Flow config, falling back to taskmaster config:',
-					flowError.message
-				);
+			// Ensure config is initialized
+			if (!flowConfig._config) {
+				await flowConfig.initialize();
 			}
 
-			// Fall back to taskmaster config
-			const configPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'config.json'
-			);
-			let config = {};
-
-			try {
-				const existing = await fs.readFile(configPath, 'utf8');
-				config = JSON.parse(existing);
-			} catch {
-				// Config doesn't exist yet
-			}
-
-			config.claudeCode = claudeConfig;
-
-			await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+			flowConfig.set('claudeCode', claudeConfig);
+			await flowConfig.save();
 
 			return { success: true };
 		} catch (error) {

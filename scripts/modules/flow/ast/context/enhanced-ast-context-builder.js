@@ -877,7 +877,7 @@ class ChangeEventProcessor {
 	isCriticalChange(change) {
 		return (
 			change.path.includes('package.json') ||
-			change.path.includes('.taskmaster/flow-config.json') ||
+							change.path.includes('.taskmaster/flow/config.json') ||
 			change.path.includes('tsconfig.json') ||
 			change.path.includes('.eslintrc')
 		);
