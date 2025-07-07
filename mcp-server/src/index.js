@@ -68,7 +68,13 @@ class TaskMasterMCPServer {
 		}
 
 		this.server.on('connect', (event) => {
-			this.logger.info(`MCP Server connected: ${event.session}`);
+			event.session.server.sendLoggingMessage({
+				data: {
+					context: event.session.context,
+					message: `MCP Server connected: ${event.session.name}`
+				},
+				level: 'info'
+			});
 			this.registerRemoteProvider(event.session);
 		});
 
@@ -89,9 +95,13 @@ class TaskMasterMCPServer {
 		if (session) {
 			// Make sure session has required capabilities
 			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
-				this.logger.warn(
-					'MCP session missing required sampling capabilities, providers not registered'
-				);
+				session.server.sendLoggingMessage({
+					data: {
+						context: session.context,
+						message: `MCP session missing required sampling capabilities, providers not registered`
+					},
+					level: 'info'
+				});
 				return;
 			}
 
@@ -105,9 +115,21 @@ class TaskMasterMCPServer {
 			const providerRegistry = ProviderRegistry.getInstance();
 			providerRegistry.registerProvider('mcp', mcpProvider);
 
-			this.logger.info('MCP provider registered with Provider Registry');
+			session.server.sendLoggingMessage({
+				data: {
+					context: session.context,
+					message: `MCP Server connected`
+				},
+				level: 'info'
+			});
 		} else {
-			this.logger.warn('No MCP sessions available, providers not registered');
+			session.server.sendLoggingMessage({
+				data: {
+					context: session.context,
+					message: `No MCP sessions available, providers not registered`
+				},
+				level: 'warn'
+			});
 		}
 	}
 

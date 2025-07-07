@@ -83,7 +83,7 @@ class ProviderRegistry {
 			registeredAt: new Date()
 		});
 
-		log('info', `Provider "${providerName}" registered with the registry`);
+		log('debug', `Provider "${providerName}" registered with the registry`);
 		return this;
 	}
 
@@ -122,7 +122,7 @@ class ProviderRegistry {
 	unregisterProvider(providerName) {
 		if (this._providers.has(providerName)) {
 			this._providers.delete(providerName);
-			log('info', `Provider "${providerName}" unregistered from the registry`);
+			log('debug', `Provider "${providerName}" unregistered from the registry`);
 			return true;
 		}
 		return false;
