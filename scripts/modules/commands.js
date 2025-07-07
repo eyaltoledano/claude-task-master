@@ -4645,6 +4645,13 @@ Examples:
 		.option('--create', 'Create a test resource (for resources subcommand)')
 		.option('--list', 'List existing resources (for resources subcommand)')
 		.option('--provider <type>', 'Specify provider type (for resources subcommand)')
+		.option('--task-id <id>', 'Task ID for execution (for execute subcommand)')
+		.option('--code <code>', 'Code to execute (for execute subcommand)')
+		.option('--language <lang>', 'Programming language (for execute subcommand)', 'javascript')
+		.option('--timeout <ms>', 'Execution timeout in milliseconds (for execute subcommand)', '30000')
+		.option('--execution-id <id>', 'Execution ID (for status/cancel/stream subcommands)')
+		.option('--filter <status>', 'Filter executions by status (for status subcommand)')
+		.option('--follow', 'Follow execution updates in real-time (for stream subcommand)')
 		.addHelpText('after', `
 Effect Integration Subcommands:
   health      Check Effect integration health and status
@@ -4652,27 +4659,38 @@ Effect Integration Subcommands:
   info        Display Effect module information
   providers   List and manage sandbox providers (Phase 2)
   resources   Test resource operations with providers (Phase 2)
+  execute     Execute tasks in sandbox environments (Phase 3)
+  status      Check execution status or list executions (Phase 3)
+  cancel      Cancel running execution (Phase 3)
+  stream      Stream execution updates in real-time (Phase 3)
 
 Examples:
-  task-master flow                    # Launch interactive TUI
-  task-master flow health             # Check Effect integration
-  task-master flow test               # Run Effect tests
-  task-master flow info               # Show Effect info
-  task-master flow providers          # List available providers
-  task-master flow providers --health # Check provider health
-  task-master flow resources --create # Create test resource
-  task-master flow resources --list   # List resources`)
+  task-master flow                                    # Launch interactive TUI
+  task-master flow health                             # Check Effect integration
+  task-master flow test                               # Run Effect tests
+  task-master flow info                               # Show Effect info
+  task-master flow providers --health                 # Check provider health
+  task-master flow resources --create                 # Create test resource
+  task-master flow execute --task-id test1 --code "console.log('Hello')"
+  task-master flow status --execution-id exec123      # Check execution status
+  task-master flow cancel --execution-id exec123      # Cancel execution
+  task-master flow stream --execution-id exec123      # Stream execution updates`)
 		.action(async (subcommand, options) => {
 			try {
 				// Handle Effect integration subcommands
-				if (['health', 'test', 'info', 'providers', 'resources'].includes(subcommand)) {
+				if (['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug'].includes(subcommand)) {
 					try {
 						const { 
 							handleFlowHealthCommand, 
 							handleFlowTestCommand, 
 							handleFlowInfoCommand,
 							handleFlowProvidersCommand,
-							handleFlowResourcesCommand 
+							handleFlowResourcesCommand,
+							handleFlowExecuteCommand,
+							handleFlowStatusCommand,
+							handleFlowCancelCommand,
+							handleFlowStreamCommand,
+							handleFlowDebugCommand
 						} = await import('./flow/effect/cli-command.js');
 						
 						switch (subcommand) {
@@ -4691,6 +4709,21 @@ Examples:
 							case 'resources':
 								await handleFlowResourcesCommand(options);
 								break;
+							case 'execute':
+								await handleFlowExecuteCommand(options);
+								break;
+							case 'status':
+								await handleFlowStatusCommand(options);
+								break;
+							case 'cancel':
+								await handleFlowCancelCommand(options);
+								break;
+							case 'stream':
+								await handleFlowStreamCommand(options);
+								break;
+							case 'debug':
+								await handleFlowDebugCommand(options);
+								break;
 						}
 						return;
 					} catch (error) {
@@ -4700,9 +4733,9 @@ Examples:
 				}
 				
 				// If no subcommand or unknown subcommand, launch the TUI
-				if (subcommand && !['health', 'test', 'info', 'providers', 'resources'].includes(subcommand)) {
+				if (subcommand && !['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream'].includes(subcommand)) {
 					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources'));
+					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources, execute, status, cancel, stream'));
 					console.log(chalk.yellow('Or run without subcommand to launch interactive TUI'));
 					process.exit(1);
 				}

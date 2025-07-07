@@ -1,6 +1,6 @@
 /**
  * Task Master Flow - Effect CLI Command Integration
- * Phase 0-2: Foundation, Schema & Provider Abstraction
+ * Phase 0-3: Foundation, Schema, Provider Abstraction & Execution Engine
  * 
  * Provides CLI commands for testing and managing Effect integration.
  */
@@ -11,10 +11,23 @@ import { runBasicIntegrationTest, runSmokeTest } from './test-integration.js';
 import { EFFECT_MODULE_VERSION, EFFECT_FEATURES, isEffectAvailable } from './index.js';
 
 // Phase 2: Provider Abstraction imports
-import { Effect, Runtime } from "effect";
+import { Effect, Runtime, Layer } from "effect";
 import { ProviderRegistryLive, ProviderRegistry } from '../providers/registry.js';
 import { getProviderFromConfig } from '../providers/registry.js';
 import { SandboxProvider } from '../providers/provider.interface.js';
+
+// Phase 3: Execution Engine imports
+import { 
+  executeTask, 
+  getExecutionStatus, 
+  cancelExecution, 
+  listExecutions, 
+  streamExecution,
+  executeTasks,
+  displayExecutionSummary,
+  displayExecutionDetails,
+  validateTaskConfig
+} from '../commands/execution.command.js';
 
 /**
  * Handle flow:health command
@@ -114,13 +127,17 @@ export async function handleFlowInfoCommand(options = {}) {
     const info = {
       module: 'task-master-flow-effect',
       version: EFFECT_MODULE_VERSION,
-      phase: 'Phase 0-2: Foundation, Schema & Provider Abstraction',
+      phase: 'Phase 0-3: Foundation, Schema, Provider Abstraction & Execution Engine',
       features: {
         ...EFFECT_FEATURES,
         providerAbstraction: true,
         mockProvider: true,
         providerRegistry: true,
-        resourceManagement: true
+        resourceManagement: true,
+        executionEngine: true,
+        taskOrchestration: true,
+        streamingResults: true,
+        cancellationSupport: true
       },
       effectAvailable: await isEffectAvailable(),
       environment: {
@@ -357,6 +374,189 @@ export async function handleFlowResourcesCommand(options = {}) {
 }
 
 /**
+ * Handle flow:execute command - Phase 3 functionality
+ * 
+ * @param {Object} options - Command options
+ */
+export async function handleFlowExecuteCommand(options = {}) {
+  try {
+    console.log('🚀 Task Master Flow Execute');
+    console.log('─'.repeat(50));
+    
+    // Validate required options
+    if (!options.taskId) {
+      console.error('❌ Task ID is required. Use --task-id <id>');
+      process.exit(1);
+    }
+    
+    // Build task configuration
+    const taskConfig = {
+      taskId: options.taskId,
+      provider: options.provider || 'mock',
+      action: options.action || 'run',
+      code: options.code || 'console.log("Hello from Flow execution!");',
+      language: options.language || 'javascript',
+      timeout: options.timeout ? parseInt(options.timeout) : 30000,
+      environment: options.env ? JSON.parse(options.env) : {},
+      secrets: options.secrets ? JSON.parse(options.secrets) : {}
+    };
+    
+    // Validate configuration
+    validateTaskConfig(taskConfig);
+    
+    console.log(`📋 Task Configuration:`);
+    console.log(`   Task ID: ${taskConfig.taskId}`);
+    console.log(`   Provider: ${taskConfig.provider}`);
+    console.log(`   Action: ${taskConfig.action}`);
+    console.log(`   Language: ${taskConfig.language}`);
+    console.log(`   Timeout: ${taskConfig.timeout}ms`);
+    console.log();
+    
+    // Execute the task
+    const result = await executeTask(taskConfig, {
+      streaming: options.stream,
+      verbose: options.verbose
+    });
+    
+    console.log('✅ Execution completed successfully');
+    displayExecutionDetails(result, { json: options.json, verbose: options.verbose });
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Execute command failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:status command - Phase 3 functionality
+ * 
+ * @param {Object} options - Command options
+ */
+export async function handleFlowStatusCommand(options = {}) {
+  try {
+    console.log('📊 Task Master Flow Status');
+    console.log('─'.repeat(50));
+    
+    if (options.executionId) {
+      // Get specific execution status
+      const status = await getExecutionStatus(options.executionId, options);
+      displayExecutionDetails(status, { json: options.json, verbose: options.verbose });
+    } else {
+      // List all executions
+      const filter = {};
+      if (options.status) filter.status = options.status;
+      if (options.provider) filter.provider = options.provider;
+      
+      const executions = await listExecutions(filter, options);
+      displayExecutionSummary(executions, { json: options.json });
+    }
+    
+  } catch (error) {
+    console.error('❌ Status command failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:cancel command - Phase 3 functionality
+ * 
+ * @param {Object} options - Command options
+ */
+export async function handleFlowCancelCommand(options = {}) {
+  try {
+    console.log('🛑 Task Master Flow Cancel');
+    console.log('─'.repeat(50));
+    
+    if (!options.executionId) {
+      console.error('❌ Execution ID is required. Use --execution-id <id>');
+      process.exit(1);
+    }
+    
+    const result = await cancelExecution(
+      options.executionId, 
+      options.reason || "User cancellation", 
+      options
+    );
+    
+    console.log('✅ Cancellation completed');
+    if (options.json) {
+      console.log(JSON.stringify(result, null, 2));
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Cancel command failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:stream command - Phase 3 functionality
+ * 
+ * @param {Object} options - Command options
+ */
+export async function handleFlowStreamCommand(options = {}) {
+  try {
+    console.log('📡 Task Master Flow Stream');
+    console.log('─'.repeat(50));
+    
+    if (!options.executionId) {
+      console.error('❌ Execution ID is required. Use --execution-id <id>');
+      process.exit(1);
+    }
+    
+    // Set up Ctrl+C handler
+    process.on('SIGINT', () => {
+      console.log('\n📡 Streaming stopped by user');
+      process.exit(0);
+    });
+    
+    await streamExecution(options.executionId, {
+      json: options.json,
+      quiet: options.quiet,
+      verbose: options.verbose
+    });
+    
+  } catch (error) {
+    console.error('❌ Stream command failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:debug command - Enhanced execution service test with multiple workarounds
+ */
+export async function handleFlowDebugCommand(options = {}) {
+  try {
+    // Use the enhanced debug command from execution.command.js
+    const { debugCommand } = await import('../commands/execution.command.js');
+    await debugCommand(options);
+    
+  } catch (error) {
+    console.error('❌ Debug test failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
  * Register Effect commands with Task Master CLI
  * 
  * @param {Object} program - Commander.js program instance
@@ -407,4 +607,59 @@ export function registerEffectCommands(program) {
     .option('--json', 'Output results in JSON format')
     .option('--verbose', 'Show detailed error information')
     .action(handleFlowResourcesCommand);
+  
+  // flow:execute command - Phase 3
+  program
+    .command('flow:execute')
+    .description('Execute tasks in sandbox environments')
+    .requiredOption('--task-id <id>', 'Task ID to execute')
+    .option('--provider <type>', 'Sandbox provider to use (default: mock)', 'mock')
+    .option('--action <action>', 'Action to perform (default: run)', 'run')
+    .option('--code <code>', 'Code to execute', 'console.log("Hello from Flow execution!");')
+    .option('--language <lang>', 'Programming language (default: javascript)', 'javascript')
+    .option('--timeout <ms>', 'Execution timeout in milliseconds', '30000')
+    .option('--env <json>', 'Environment variables as JSON string')
+    .option('--secrets <json>', 'Secrets as JSON string')
+    .option('--stream', 'Stream execution updates in real-time')
+    .option('--json', 'Output results in JSON format')
+    .option('--verbose', 'Show detailed error information')
+    .action(handleFlowExecuteCommand);
+  
+  // flow:status command - Phase 3
+  program
+    .command('flow:status')
+    .description('Check execution status or list executions')
+    .option('--execution-id <id>', 'Get status for specific execution')
+    .option('--status <status>', 'Filter by execution status (pending, running, completed, failed, cancelled)')
+    .option('--provider <type>', 'Filter by provider type')
+    .option('--json', 'Output results in JSON format')
+    .option('--verbose', 'Show detailed information')
+    .action(handleFlowStatusCommand);
+  
+  // flow:cancel command - Phase 3
+  program
+    .command('flow:cancel')
+    .description('Cancel running execution')
+    .requiredOption('--execution-id <id>', 'Execution ID to cancel')
+    .option('--reason <reason>', 'Cancellation reason')
+    .option('--json', 'Output results in JSON format')
+    .option('--verbose', 'Show detailed error information')
+    .action(handleFlowCancelCommand);
+  
+  // flow:stream command - Phase 3
+  program
+    .command('flow:stream')
+    .description('Stream execution updates in real-time')
+    .requiredOption('--execution-id <id>', 'Execution ID to stream')
+    .option('--json', 'Output updates in JSON format')
+    .option('--quiet', 'Suppress non-essential output')
+    .option('--verbose', 'Show detailed information')
+    .action(handleFlowStreamCommand);
+  
+  // flow:debug command - Phase 3
+  program
+    .command('flow:debug')
+    .description('Simple execution service test')
+    .option('--verbose', 'Show detailed error information')
+    .action(handleFlowDebugCommand);
 } 
