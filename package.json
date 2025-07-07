@@ -79,7 +79,7 @@
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
-		"ai-sdk-provider-gemini-cli": "^0.0.3"
+		"ai-sdk-provider-gemini-cli": "^0.0.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
