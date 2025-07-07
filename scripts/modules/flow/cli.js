@@ -1,255 +1,292 @@
 /**
- * @fileoverview Flow CLI Module - Command Registration
- *
- * Handles registration of the Flow command and all its subcommands.
- * Keeps Flow functionality contained within the flow directory.
+ * Flow CLI Commands
+ * Enhanced with VibeKit provider monitoring, health checking, and advanced error handling
  */
 
-import path from 'path';
-import fs from 'fs';
-import chalk from 'chalk';
-import { findProjectRoot } from '../utils.js';
+import { 
+  executeTask, 
+  generateCode, 
+  listAgents, 
+  switchProvider,
+  showProviderHealth,
+  runDiagnostics,
+  resetProviderConfig
+} from './commands/enhanced-execution.command.js';
+
+export function registerFlowCommand(programInstance) {
+  // Main flow command with enhanced subcommands
+  programInstance
+    .command('flow [subcommand]')
+    .description('Enhanced VibeKit-powered task execution with health monitoring')
+    .option('--agent <type>', 'Agent type: claude, codex, gemini, opencode') // Updated
+    .option('--mode <mode>', 'Execution mode: code or ask')
+    .option('--no-stream', 'Disable streaming output')
+    .option('--verbose', 'Show detailed information')
+    .option('--project-root <path>', 'Project root directory')
+    .action(async (subcommand, options) => {
+      if (!subcommand) {
+        // Launch TUI by default
+        const { run } = await import('./index.jsx');
+        await run(options);
+        return;
+      }
+
+      // Handle subcommands
+      switch (subcommand) {
+        case 'execute':
+          console.log('💡 Use: task-master flow execute <taskId>');
+          break;
+        case 'generate':
+          console.log('💡 Use: task-master flow generate "<prompt>"');
+          break;
+        case 'agents':
+          return await listAgents(options);
+        case 'health':
+          return await showProviderHealth(options);
+        case 'diagnostics':
+          return await runDiagnostics(null, options);
+        case 'switch':
+          console.log('💡 Use: task-master flow switch <providerName>');
+          break;
+        case 'reset':
+          return await resetProviderConfig(options);
+        case 'info':
+          // Inline info handler
+          return await showSystemInfo(options);
+        case 'test-vibekit':
+          // Legacy command - redirect to diagnostics
+          console.log('🔄 Redirecting to enhanced diagnostics...');
+          return await runDiagnostics('vibekit', options);
+        default:
+          console.error(`Unknown subcommand: ${subcommand}`);
+          console.log('');
+          console.log('Available subcommands:');
+          console.log('  execute <taskId>  - Execute a task');
+          console.log('  generate "<prompt>" - Generate code');
+          console.log('  agents           - List available agents');
+          console.log('  health           - Show provider health');
+          console.log('  diagnostics      - Run diagnostics');
+          console.log('  switch <provider> - Switch provider');
+          console.log('  reset            - Reset configuration');
+          console.log('  info             - Show system information');
+          process.exit(1);
+      }
+    });
+
+  // Execute task subcommand
+  programInstance
+    .command('flow execute <taskId>')
+    .description('Execute a task using Enhanced VibeKit with monitoring')
+    .option('--agent <type>', 'Agent type: claude, codex, gemini, opencode', 'claude')
+    .option('--branch <name>', 'Git branch to use')
+    .option('--mode <mode>', 'Execution mode: code or ask', 'code')
+    .option('--project-root <path>', 'Project root directory')
+    .option('--verbose', 'Show detailed execution information')
+    .action(async (taskId, options) => {
+      try {
+        await executeTask(taskId, options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Generate code subcommand
+  programInstance
+    .command('flow generate <prompt>')
+    .description('Generate code using Enhanced VibeKit with monitoring')
+    .option('--agent <type>', 'Agent type: claude, codex, gemini, opencode', 'claude')
+    .option('--mode <mode>', 'Generation mode: code or ask', 'code')
+    .option('--no-stream', 'Disable streaming output')
+    .option('--verbose', 'Show provider status and detailed information')
+    .action(async (prompt, options) => {
+      try {
+        await generateCode(prompt, options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // List agents subcommand
+  programInstance
+    .command('flow agents')
+    .description('List available VibeKit agents with health information')
+    .option('--json', 'Output as JSON')
+    .option('--verbose', 'Show detailed agent configuration')
+    .action(async (options) => {
+      try {
+        await listAgents(options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Provider health subcommand
+  programInstance
+    .command('flow health')
+    .description('Show comprehensive provider health status')
+    .option('--json', 'Output as JSON')
+    .option('--verbose', 'Show detailed configuration information')
+    .action(async (options) => {
+      try {
+        await showProviderHealth(options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Provider diagnostics subcommand
+  programInstance
+    .command('flow diagnostics [provider]')
+    .description('Run comprehensive provider diagnostics')
+    .option('--json', 'Output as JSON')
+    .option('--verbose', 'Show detailed diagnostic information')
+    .action(async (provider, options) => {
+      try {
+        await runDiagnostics(provider, options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Switch provider subcommand
+  programInstance
+    .command('flow switch <providerName>')
+    .description('Switch to a different provider')
+    .option('--verbose', 'Show detailed provider status after switch')
+    .action(async (providerName, options) => {
+      try {
+        await switchProvider(providerName, options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Reset configuration subcommand
+  programInstance
+    .command('flow reset')
+    .description('Reset provider configuration to defaults')
+    .option('--force', 'Skip confirmation and reset immediately')
+    .action(async (options) => {
+      try {
+        await resetProviderConfig(options);
+      } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Info subcommand - show comprehensive system information
+  programInstance
+    .command('flow info')
+    .description('Show comprehensive Flow system information')
+    .option('--json', 'Output as JSON')
+    .action(async (options) => {
+      try {
+        console.log('ℹ️  Flow TUI System Information');
+        console.log('==============================');
+        console.log('');
+        
+        // Show health summary
+        const healthReport = await import('./providers/enhanced-registry.js')
+          .then(m => m.enhancedRegistry.generateHealthReport());
+        
+        if (options.json) {
+          console.log(JSON.stringify({
+            version: '2.0.0', // Phase 2 version
+            timestamp: Date.now(),
+            healthReport
+          }, null, 2));
+          return;
+        }
+
+        console.log('📊 System Status:');
+        console.log(`   Version: 2.0.0 (Enhanced Provider Registry)`);
+        console.log(`   Environment: ${healthReport.system.environment}`);
+        console.log(`   Initialized: ${healthReport.system.initialized ? 'Yes' : 'No'}`);
+        console.log(`   Active Provider: ${healthReport.system.activeProvider}`);
+        console.log('');
+
+        const summary = healthReport.healthReport.summary;
+        console.log('🏥 Health Overview:');
+        console.log(`   Total Providers: ${summary.totalProviders}`);
+        console.log(`   Healthy: ${summary.healthyProviders} ✅`);
+        console.log(`   Issues: ${summary.unhealthyProviders + summary.errorProviders} ⚠️`);
+        console.log('');
+
+        console.log('🚀 Available Commands:');
+        console.log('   task-master flow execute <taskId>  - Execute tasks with monitoring');
+        console.log('   task-master flow generate "<prompt>"  - Generate code with failover');
+        console.log('   task-master flow health            - Show provider health');
+        console.log('   task-master flow diagnostics       - Run comprehensive diagnostics');
+        console.log('   task-master flow agents            - List agents with status');
+        console.log('   task-master flow switch <provider> - Switch providers');
+        console.log('   task-master flow                   - Launch interactive TUI');
+        console.log('');
+
+        if (summary.unhealthyProviders + summary.errorProviders > 0) {
+          console.log('💡 For troubleshooting: task-master flow diagnostics');
+        }
+
+      } catch (error) {
+        console.error(`❌ Failed to get system information: ${error.message}`);
+        process.exit(1);
+             }
+     });
+}
 
 /**
- * Register the Flow command and all its subcommands
- * @param {Object} programInstance - Commander program instance
+ * Show comprehensive system information
  */
-export function registerFlowCommand(programInstance) {
-	// flow command - Interactive TUI with sandbox provider management
-	programInstance
-		.command('flow [subcommand]')
-		.description(
-			'Launch interactive TUI for task management or manage sandbox providers'
-		)
-		.option(
-			'--backend <type>',
-			'Backend type: direct, cli, or mcp (default: direct)'
-		)
-		.option(
-			'--mcp-server <id>',
-			'MCP server ID to use with mcp backend (default: uses default server)'
-		)
-		.option(
-			'--project-root <path>',
-			'Specify the project directory to manage tasks for (default: auto-detect)'
-		)
-		.option('--json', 'Output results in JSON format')
-		.option('--verbose', 'Show detailed error information')
-		.option('--provider <type>', 'Specify provider type')
-		.addHelpText(
-			'after',
-			`
-Available Subcommands:
-  provider    Manage sandbox providers (VibeKit integration)
-  config      Manage Flow configuration and provider selection
+async function showSystemInfo(options) {
+  try {
+    console.log('ℹ️  Flow TUI System Information');
+    console.log('==============================');
+    console.log('');
+    
+    // Import enhanced registry
+    const { enhancedRegistry } = await import('./providers/enhanced-registry.js');
+    
+    // Show health summary
+    const healthReport = await enhancedRegistry.generateHealthReport();
+    
+    if (options.json) {
+      console.log(JSON.stringify({
+        version: '2.0.0', // Phase 2 version
+        timestamp: Date.now(),
+        healthReport
+      }, null, 2));
+      return;
+    }
 
-Provider Management:
-  task-master flow provider list                      # List all available providers
-  task-master flow provider list --verbose            # Show detailed provider information
-  task-master flow provider test <name>               # Test provider connectivity
-  task-master flow provider capabilities <name>       # Show provider capabilities
-  task-master flow provider set <name>                # Set default provider
-  task-master flow provider switch <name>             # Switch to provider temporarily
+    console.log('📊 System Status:');
+    console.log(`   Version: 2.0.0 (Enhanced Provider Registry)`);
+    console.log(`   Environment: ${healthReport.system.environment}`);
+    console.log(`   Initialized: ${healthReport.system.initialized ? 'Yes' : 'No'}`);
+    console.log(`   Active Provider: ${healthReport.system.activeProvider}`);
+    console.log('');
 
-Configuration Management:
-  task-master flow config show                        # Show current configuration
-  task-master flow config show --verbose              # Show detailed configuration
-  task-master flow config set <key> <value>           # Set configuration value
-  task-master flow config env <environment>           # Apply environment preset
+    const summary = healthReport.healthReport.summary;
+    console.log('🏥 Health Overview:');
+    console.log(`   Total Providers: ${summary.totalProviders}`);
+    console.log(`   Healthy: ${summary.healthyProviders} ✅`);
+    console.log(`   Issues: ${summary.unhealthyProviders + summary.errorProviders} ⚠️`);
+    console.log('');
 
-Available Providers:
-  mock        Mock provider for testing and development
-  e2b         E2B AI-focused sandbox platform
-  daytona     Daytona cloud-based development environments
-  modal       Modal Labs serverless compute with GPU support
-  fly         Fly.io global edge compute platform
+    console.log('🚀 Available Commands:');
+    console.log('   task-master flow execute <taskId>  - Execute tasks with monitoring');
+    console.log('   task-master flow generate "<prompt>"  - Generate code with failover');
+    console.log('   task-master flow health            - Show provider health');
+    console.log('   task-master flow diagnostics       - Run comprehensive diagnostics');
+    console.log('   task-master flow agents            - List agents with status');
+    console.log('   task-master flow switch <provider> - Switch providers');
+    console.log('   task-master flow                   - Launch interactive TUI');
+    console.log('');
 
-Examples:
-  task-master flow                                     # Launch interactive TUI
-  task-master flow provider list                      # List all providers
-  task-master flow provider set e2b                   # Set E2B as default provider
-  task-master flow config show                        # Show current configuration
-  task-master flow config set defaultProvider modal   # Set Modal as default provider`
-		)
-		.action(async (subcommand, options) => {
-			try {
-				// Handle provider subcommand
-				if (subcommand === 'provider') {
-					// Import provider commands from execution.command.js
-					const { executionCommands } = await import(
-						'./commands/execution.command.js'
-					);
+    if (summary.unhealthyProviders + summary.errorProviders > 0) {
+      console.log('💡 For troubleshooting: task-master flow diagnostics');
+    }
 
-					const providerAction = process.argv[4] || 'list'; // Get action after 'flow provider'
-					const providerName = process.argv[5]; // Get provider name if specified
-
-					const providerOptions = {
-						...options,
-						action: providerAction,
-						provider: providerName
-					};
-
-					await executionCommands.provider(providerOptions);
-					return;
-				}
-
-				// Handle config subcommand
-				if (subcommand === 'config') {
-					// Import config commands from config.command.js
-					const { configShowCommand, configSetCommand, configEnvCommand } =
-						await import('./commands/config.command.js');
-
-					const configAction = process.argv[4] || 'show'; // Get action after 'flow config'
-					const configKey = process.argv[5]; // Get config key if specified
-					const configValue = process.argv[6]; // Get config value if specified
-
-					switch (configAction) {
-						case 'show':
-							await configShowCommand({
-								verbose: options.verbose,
-								json: options.json
-							});
-							break;
-						case 'set':
-							if (!configKey || !configValue) {
-								console.error(
-									chalk.red('Config key and value required for set command')
-								);
-								console.log(
-									chalk.yellow(
-										'Usage: task-master flow config set <key> <value>'
-									)
-								);
-								process.exit(1);
-							}
-							await configSetCommand(configKey, configValue, {
-								verbose: options.verbose
-							});
-							break;
-						case 'env':
-							if (!configKey) {
-								console.error(
-									chalk.red('Environment required for env command')
-								);
-								console.log(
-									chalk.yellow(
-										'Usage: task-master flow config env <environment>'
-									)
-								);
-								console.log(
-									chalk.yellow('Available: development, production, test')
-								);
-								process.exit(1);
-							}
-							await configEnvCommand(configKey, {
-								verbose: options.verbose
-							});
-							break;
-						default:
-							console.error(
-								chalk.red(`Unknown config action: ${configAction}`)
-							);
-							console.log(chalk.yellow('Available actions: show, set, env'));
-							process.exit(1);
-					}
-					return;
-				}
-
-				// Handle unknown subcommands
-				if (
-					subcommand &&
-					subcommand !== 'provider' &&
-					subcommand !== 'config'
-				) {
-					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommands: provider, config'));
-					console.log(
-						chalk.yellow('Run without subcommand to launch interactive TUI')
-					);
-					console.log(chalk.yellow(''));
-					console.log(chalk.yellow('Provider commands:'));
-					console.log(
-						chalk.yellow(
-							'  task-master flow provider list                 # List all providers'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'  task-master flow provider set <name>          # Set default provider'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'  task-master flow provider test <name>         # Test provider health'
-						)
-					);
-					console.log(chalk.yellow(''));
-					console.log(chalk.yellow('Config commands:'));
-					console.log(
-						chalk.yellow(
-							'  task-master flow config show                  # Show configuration'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'  task-master flow config set <key> <value>     # Set config value'
-						)
-					);
-					console.log(chalk.yellow(''));
-					console.log(
-						chalk.yellow('Available providers: mock, e2b, daytona, modal, fly')
-					);
-					process.exit(1);
-				}
-
-				// Use specified project directory or auto-detect
-				let projectRoot;
-				if (options.projectRoot) {
-					projectRoot = path.resolve(options.projectRoot);
-					// Verify the specified directory exists
-					if (!fs.existsSync(projectRoot)) {
-						console.error(
-							chalk.red(
-								`Error: Specified project directory does not exist: ${projectRoot}`
-							)
-						);
-						process.exit(1);
-					}
-				} else {
-					projectRoot = findProjectRoot();
-					if (!projectRoot) {
-						console.error(chalk.red('Error: Could not find project root.'));
-						console.error(
-							chalk.yellow(
-								'Hint: Use --project-root <path> to specify the project directory, or run from within a project directory.'
-							)
-						);
-						process.exit(1);
-					}
-				}
-
-				// Import and launch the flow TUI
-				// Note: Flow UI handles missing tasks.json gracefully
-				try {
-					const { launchFlow } = await import('./cli-wrapper.js');
-					await launchFlow({
-						backend: options.backend,
-						mcpServerId: options.mcpServer,
-						projectRoot
-					});
-				} catch (error) {
-					console.error(
-						chalk.red(`Error launching Flow TUI: ${error.message}`)
-					);
-					process.exit(1);
-				}
-			} catch (error) {
-				console.error(chalk.red(`Error in flow command: ${error.message}`));
-				process.exit(1);
-			}
-		})
-		.on('error', function (err) {
-			console.error(chalk.red(`Error: ${err.message}`));
-			process.exit(1);
-		});
+  } catch (error) {
+    console.error(`❌ Failed to get system information: ${error.message}`);
+    process.exit(1);
+  }
 }
