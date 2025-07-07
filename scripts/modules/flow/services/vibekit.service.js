@@ -8,7 +8,7 @@ import { VibeKit } from '@vibe-kit/sdk';
 export class VibeKitService {
   constructor(config = {}) {
     this.config = {
-      defaultAgent: config.defaultAgent || 'claude',
+      defaultAgent: config.defaultAgent || 'claude-code',
       environment: {
         e2b: {
           apiKey: process.env.E2B_API_KEY
@@ -125,11 +125,11 @@ Please implement this task completely, including any necessary dependencies, err
 
   getApiKeyForAgent(agentType) {
     switch (agentType) {
-      case 'claude':
+      case 'claude-code':
         return process.env.ANTHROPIC_API_KEY;
       case 'codex':
         return process.env.OPENAI_API_KEY;
-      case 'gemini':
+      case 'gemini-cli':
         return process.env.GOOGLE_API_KEY;
       case 'opencode':
         return process.env.OPENCODE_API_KEY;

@@ -9,7 +9,7 @@ export const availableProviders = {
     name: 'VibeKit SDK',
     type: 'vibekit',
     description: 'Secure sandbox execution using VibeKit SDK',
-    agents: ['claude', 'codex', 'gemini', 'opencode'],
+    agents: ['claude-code', 'codex', 'gemini-cli', 'opencode'],
     features: [
       'secure-sandbox',
       'streaming',
