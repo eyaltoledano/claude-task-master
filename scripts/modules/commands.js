@@ -4637,23 +4637,43 @@ Examples:
 			'--project-root <path>',
 			'Specify the project directory to manage tasks for (default: auto-detect)'
 		)
+		.option('--extended', 'Extended health check with diagnostics (for health subcommand)')
+		.option('--json', 'Output results in JSON format')
+		.option('--verbose', 'Show detailed error information')
+		.option('--smoke', 'Run only smoke test (for test subcommand)')
+		.option('--health', 'Check health of all providers (for providers subcommand)')
+		.option('--create', 'Create a test resource (for resources subcommand)')
+		.option('--list', 'List existing resources (for resources subcommand)')
+		.option('--provider <type>', 'Specify provider type (for resources subcommand)')
 		.addHelpText('after', `
 Effect Integration Subcommands:
-  health    Check Effect integration health and status
-  test      Run Effect integration tests
-  info      Display Effect module information
+  health      Check Effect integration health and status
+  test        Run Effect integration tests
+  info        Display Effect module information
+  providers   List and manage sandbox providers (Phase 2)
+  resources   Test resource operations with providers (Phase 2)
 
 Examples:
-  task-master flow              # Launch interactive TUI
-  task-master flow health       # Check Effect integration
-  task-master flow test         # Run Effect tests
-  task-master flow info         # Show Effect info`)
+  task-master flow                    # Launch interactive TUI
+  task-master flow health             # Check Effect integration
+  task-master flow test               # Run Effect tests
+  task-master flow info               # Show Effect info
+  task-master flow providers          # List available providers
+  task-master flow providers --health # Check provider health
+  task-master flow resources --create # Create test resource
+  task-master flow resources --list   # List resources`)
 		.action(async (subcommand, options) => {
 			try {
 				// Handle Effect integration subcommands
-				if (subcommand === 'health' || subcommand === 'test' || subcommand === 'info') {
+				if (['health', 'test', 'info', 'providers', 'resources'].includes(subcommand)) {
 					try {
-						const { handleFlowHealthCommand, handleFlowTestCommand, handleFlowInfoCommand } = await import('./flow/effect/cli-command.js');
+						const { 
+							handleFlowHealthCommand, 
+							handleFlowTestCommand, 
+							handleFlowInfoCommand,
+							handleFlowProvidersCommand,
+							handleFlowResourcesCommand 
+						} = await import('./flow/effect/cli-command.js');
 						
 						switch (subcommand) {
 							case 'health':
@@ -4665,6 +4685,12 @@ Examples:
 							case 'info':
 								await handleFlowInfoCommand(options);
 								break;
+							case 'providers':
+								await handleFlowProvidersCommand(options);
+								break;
+							case 'resources':
+								await handleFlowResourcesCommand(options);
+								break;
 						}
 						return;
 					} catch (error) {
@@ -4674,9 +4700,9 @@ Examples:
 				}
 				
 				// If no subcommand or unknown subcommand, launch the TUI
-				if (subcommand && !['health', 'test', 'info'].includes(subcommand)) {
+				if (subcommand && !['health', 'test', 'info', 'providers', 'resources'].includes(subcommand)) {
 					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommands: health, test, info'));
+					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources'));
 					console.log(chalk.yellow('Or run without subcommand to launch interactive TUI'));
 					process.exit(1);
 				}
