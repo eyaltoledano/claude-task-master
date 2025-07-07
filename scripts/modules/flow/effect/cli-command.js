@@ -27,6 +27,15 @@ import {
   debugCommand
 } from '../commands/execution.command.js';
 
+// Phase 5: Agent Integration imports
+import {
+  listAgentsCommand,
+  testAgentCommand,
+  healthCheckCommand,
+  generateCodeCommand,
+  agentStatsCommand
+} from '../commands/agent.command.js';
+
 /**
  * Handle flow:health command
  * 
@@ -539,6 +548,66 @@ export async function handleFlowDebugCommand(options = {}) {
     
   } catch (error) {
     console.error('❌ Debug test failed:', error.message);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:agent command with subcommands - Phase 5 Agent Integration
+ */
+export async function handleFlowAgentCommand(subcommand, provider = null, options = {}) {
+  try {
+    switch (subcommand) {
+      case 'list':
+        await listAgentsCommand(options);
+        break;
+        
+      case 'test':
+        if (!provider) {
+          throw new Error('Provider is required for test command');
+        }
+        await testAgentCommand(provider, options);
+        break;
+        
+      case 'health':
+        await healthCheckCommand(provider, options);
+        break;
+        
+      case 'stats':
+        await agentStatsCommand(options);
+        break;
+        
+      default:
+        console.error(`❌ Unknown agent subcommand: ${subcommand}`);
+        console.log('Available commands: list, test <provider>, health [provider], stats');
+        process.exit(1);
+    }
+    
+  } catch (error) {
+    console.error(`❌ Agent command failed: ${error.message}`);
+    if (options.verbose) {
+      console.error('Stack trace:', error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle flow:generate command - Phase 5 AI Code Generation
+ */
+export async function handleFlowGenerateCommand(task, options = {}) {
+  try {
+    if (!task) {
+      throw new Error('Task description is required for code generation');
+    }
+    
+    await generateCodeCommand(task, options);
+    
+  } catch (error) {
+    console.error(`❌ Code generation failed: ${error.message}`);
     if (options.verbose) {
       console.error('Stack trace:', error.stack);
     }
