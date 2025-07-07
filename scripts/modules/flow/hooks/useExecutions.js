@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useThrottledCallback } from './useOptimizedData.js';
 
 export function useExecutions(options = {}) {
   const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [lastRefresh, setLastRefresh] = useState(null);
   
   // Prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -14,6 +16,14 @@ export function useExecutions(options = {}) {
   const pollInterval = options.pollInterval || 2000;
   const maxRetries = options.maxRetries || 3;
   const statusFilter = options.statusFilter;
+
+  // Throttled execution loading to prevent excessive API calls
+  const throttledSetExecutions = useThrottledCallback((executionList) => {
+    if (isMountedRef.current) {
+      setExecutions(executionList);
+      setLastRefresh(new Date().toISOString());
+    }
+  }, 500);
 
   const loadExecutions = useCallback(async (retryCount = 0) => {
     try {
@@ -27,7 +37,7 @@ export function useExecutions(options = {}) {
       const executionList = executionService.listExecutions(filters);
       
       if (isMountedRef.current) {
-        setExecutions(executionList);
+        throttledSetExecutions(executionList);
         setError(null);
         setConnectionStatus('connected');
         setLoading(false);
@@ -46,7 +56,7 @@ export function useExecutions(options = {}) {
         setLoading(false);
       }
     }
-  }, [statusFilter, maxRetries]);
+  }, [statusFilter, maxRetries, throttledSetExecutions]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -76,12 +86,47 @@ export function useExecutions(options = {}) {
     };
   }, []);
 
+  // Memoized execution statistics for performance
+  const executionStats = useMemo(() => {
+    const total = executions.length;
+    const running = executions.filter(e => e.status === 'running').length;
+    const completed = executions.filter(e => e.status === 'completed').length;
+    const failed = executions.filter(e => e.status === 'failed').length;
+    const pending = executions.filter(e => e.status === 'pending').length;
+    
+    const avgProgress = executions.length > 0 
+      ? executions.reduce((sum, e) => sum + (e.progress || 0), 0) / executions.length 
+      : 0;
+    
+    const activeExecutions = executions.filter(e => ['running', 'in-progress'].includes(e.status));
+    
+    return {
+      total,
+      running,
+      completed,
+      failed,
+      pending,
+      avgProgress: Math.round(avgProgress),
+      activeCount: activeExecutions.length,
+      hasActive: activeExecutions.length > 0
+    };
+  }, [executions]);
+
+  // Manual refresh function with immediate update
+  const manualRefresh = useCallback(async () => {
+    setLoading(true);
+    await loadExecutions();
+  }, [loadExecutions]);
+
   return { 
     executions, 
     loading, 
     error, 
     connectionStatus,
-    refetch: () => loadExecutions()
+    lastRefresh,
+    executionStats,
+    refetch: () => loadExecutions(),
+    manualRefresh
   };
 }
 

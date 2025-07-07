@@ -5,6 +5,7 @@ import { StatusMessage, ProgressBar, Spinner, Badge } from '@inkjs/ui';
 import { useExecutions } from '../hooks/useExecutions.js';
 import { useStreamingExecution } from '../hooks/useStreamingExecution.js';
 import { useOptimizedData, usePerformanceMonitor } from '../hooks/useOptimizedData.js';
+import { InteractiveExecutionList } from './InteractiveExecutionList.jsx';
 import { BaseModal } from './BaseModal.jsx';
 import { useAppContext } from '../index.jsx';
 
@@ -20,6 +21,7 @@ export function ExecutionManagementScreen({ onBack }) {
   });
   
   const [selectedExecution, setSelectedExecution] = useState(null);
+  const [useInteractiveMode, setUseInteractiveMode] = useState(false);
   
   // Enhanced streaming with progress and status tracking
   const { 
@@ -47,6 +49,16 @@ export function ExecutionManagementScreen({ onBack }) {
       } else {
         onBack();
       }
+    }
+    if (input === 'i') {
+      // Toggle interactive mode
+      setUseInteractiveMode(!useInteractiveMode);
+      setSelectedExecution(null); // Reset selection when switching modes
+      setNotification({
+        message: `Switched to ${!useInteractiveMode ? 'Interactive' : 'Traditional'} mode`,
+        type: 'info',
+        duration: 2000
+      });
     }
     if (input === 'r' && !selectedExecution && connectionStatus === 'error') {
       // Retry connection
@@ -95,6 +107,11 @@ export function ExecutionManagementScreen({ onBack }) {
     );
   }
 
+  // If using interactive mode, render the new component
+  if (useInteractiveMode) {
+    return <InteractiveExecutionList onBack={onBack} />;
+  }
+
   const executionItems = optimizedExecutions.map(exec => ({
     label: `${exec.taskId} - ${exec.status} (${exec.provider}) - ${exec.formattedDuration}`,
     value: exec.id,
@@ -108,7 +125,7 @@ export function ExecutionManagementScreen({ onBack }) {
 
   return (
     <BaseModal 
-      title={`Execution Management (${optimizedExecutions.length}) - Renders: ${renderCount}`} 
+      title={`Execution Management - Traditional Mode (${optimizedExecutions.length}) - Renders: ${renderCount}`} 
       onBack={onBack}
     >
       <Box flexDirection="column" padding={1}>
@@ -232,7 +249,7 @@ export function ExecutionManagementScreen({ onBack }) {
         
         <Box marginTop={2}>
           <Text color="gray">
-            [↑/↓] Navigate | [Enter] Select | [Esc] {selectedExecution ? 'Deselect' : 'Back'}
+            [↑/↓] Navigate | [Enter] Select | [i] Interactive Mode | [Esc] {selectedExecution ? 'Deselect' : 'Back'}
           </Text>
         </Box>
       </Box>
