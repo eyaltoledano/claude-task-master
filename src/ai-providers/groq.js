@@ -1,6 +1,8 @@
 /**
- * groq.js
- * AI provider implementation for Groq models using Vercel AI SDK.
+ * src/ai-providers/groq.js
+ *
+ * Implementation for interacting with Groq models
+ * using the Vercel AI SDK.
  */
 
 import { createGroq } from '@ai-sdk/groq';
