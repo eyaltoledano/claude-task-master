@@ -33,6 +33,7 @@ import { NextTaskModal } from './components/NextTaskModal.jsx';
 import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
+import { ProvidersScreen } from './components/ProvidersScreen.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
@@ -100,6 +101,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/tags', description: 'Manage task tags' },
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
+			{ name: '/providers', description: 'Manage sandbox providers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			{ name: '/work', description: 'Manage Git worktrees' },
 			{ name: '/claude', description: 'Claude Code assistant' },
@@ -461,6 +463,9 @@ function FlowApp({ backend, options = {} }) {
 				case 'quit':
 					exit();
 					break;
+				case 'providers':
+					setCurrentScreen('providers');
+					break;
 				default:
 					setMessages([
 						...messages,
@@ -655,6 +660,9 @@ function FlowApp({ backend, options = {} }) {
 					case 'q':
 						exit();
 						break;
+					case 'p':
+						setCurrentScreen('providers');
+						break;
 					default:
 						setNotification({
 							message: `Unknown shortcut: Ctrl+X ${input}`,
@@ -704,7 +712,8 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'chat' &&
 				currentScreen !== 'status' &&
 				currentScreen !== 'worktrees' &&
-				currentScreen !== 'claude-code'
+				currentScreen !== 'claude-code' &&
+				currentScreen !== 'providers'
 		}
 	);
 
@@ -937,6 +946,17 @@ function FlowApp({ backend, options = {} }) {
 								}
 							}}
 							log={currentBackend.log}
+						/>
+					) : currentScreen === 'providers' ? (
+						<ProvidersScreen 
+							onBack={() => setCurrentScreen('welcome')}
+							onError={(errorMessage) => {
+								setNotification({
+									message: errorMessage,
+									type: 'error',
+									duration: 5000
+								});
+							}}
 						/>
 					) : (
 						<>
