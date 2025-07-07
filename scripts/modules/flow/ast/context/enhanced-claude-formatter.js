@@ -905,17 +905,75 @@ function analyzeComplexityDistribution(analysis) {
 }
 
 function estimateTechnicalDebt(analysis) {
-	return {
-		totalHours: 2.5,
-		majorIssues: ['Long parameter lists', 'Duplicated code patterns']
-	};
+	let totalHours = 0;
+	const majorIssues = [];
+
+	if (!analysis || !analysis.files) {
+		return { totalHours, majorIssues };
+	}
+
+	// Calculate debt based on real file analysis
+	analysis.files.forEach((file) => {
+		// High complexity files increase debt
+		if (file.complexity && file.complexity > 7) {
+			totalHours += 1.5;
+			majorIssues.push(`High complexity in ${file.path}`);
+		}
+
+		// Large files increase debt  
+		if (file.size && file.size > 1000) {
+			totalHours += 1;
+			majorIssues.push(`Large file: ${file.path}`);
+		}
+
+		// Too many functions indicate poor structure
+		if (file.functionCount && file.functionCount > 15) {
+			totalHours += 0.5;
+			majorIssues.push(`Overly complex module: ${file.path}`);
+		}
+	});
+
+	// Round to 1 decimal place
+	totalHours = Math.round(totalHours * 10) / 10;
+
+	return { totalHours, majorIssues };
 }
 
 function detectCodeSmells(analysis) {
-	return [
-		{ description: 'Long parameter list', file: 'src/utils/helpers.js' },
-		{ description: 'Large class', file: 'src/services/DataManager.js' }
-	];
+	const codeSmells = [];
+
+	if (!analysis || !analysis.files) {
+		return codeSmells;
+	}
+
+	// Analyze real files for actual code smells
+	analysis.files.forEach((file) => {
+		// Check for high complexity
+		if (file.complexity && file.complexity > 7) {
+			codeSmells.push({
+				description: `High complexity (${file.complexity}/10)`,
+				file: file.path
+			});
+		}
+
+		// Check for large files (>1000 lines)
+		if (file.size && file.size > 1000) {
+			codeSmells.push({
+				description: 'Large file (>1000 lines)',
+				file: file.path
+			});
+		}
+
+		// Check function count indicating large class/module
+		if (file.functionCount && file.functionCount > 20) {
+			codeSmells.push({
+				description: `Too many functions (${file.functionCount})`,
+				file: file.path
+			});
+		}
+	});
+
+	return codeSmells;
 }
 
 function generateBestPractices(analysis, frameworks) {

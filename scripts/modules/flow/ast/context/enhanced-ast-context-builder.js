@@ -16,10 +16,10 @@
  */
 
 import { loadASTConfig } from '../../config/ast-config.js';
-import { initializeDefaultRegistry } from '../parsers/parser-registry.js';
+import { initializeDefaultRegistry, defaultParserRegistry } from '../parsers/parser-registry.js';
 import { createCacheKey, getCachedOrExecute } from './cache-manager.js';
 import { createAnalyzerDispatcher } from '../analyzers/analyzer-dispatcher.js';
-import ContextBuilder from './context-builder.js';
+import { ContextBuilder } from './context-builder.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { glob } from 'glob';
@@ -94,7 +94,8 @@ export class EnhancedASTContextBuilder {
 			}
 
 			// Initialize parser registry
-			this.parserRegistry = initializeDefaultRegistry();
+			await initializeDefaultRegistry();
+			this.parserRegistry = defaultParserRegistry;
 
 			// Initialize Phase 2.2 analyzer dispatcher
 			if (this.options.enablePhase22) {
@@ -174,9 +175,9 @@ export class EnhancedASTContextBuilder {
 			// Phase 3: Intelligent Context Assembly (Phase 2.1)
 			let assembledContext;
 			if (this.options.enablePhase21 && this.contextBuilder) {
-				assembledContext = await this.contextBuilder.buildIntelligentContext(
-					parseResults,
-					contextOptions.tasks,
+				assembledContext = await this.contextBuilder.buildTaskAwareContext(
+					'Task implementation context',  // task description
+					new Map(Object.entries(parseResults.byFile)),  // Convert to Map
 					{
 						worktreePath,
 						projectRoot: this.projectRoot,
@@ -403,16 +404,17 @@ export class EnhancedASTContextBuilder {
 							file.path
 						);
 
-						// Basic AST parsing
+						// Read file content first
+						const content = await fs.readFile(file.fullPath, 'utf-8');
+
+						// Basic AST parsing with content
 						const astResult = await this.parserRegistry.parseFile(
-							file.fullPath
+							file.fullPath,
+							content
 						);
 						if (!astResult.success) {
 							return astResult;
 						}
-
-						// Read file content for enhanced analysis
-						const content = await fs.readFile(file.fullPath, 'utf-8');
 
 						// Phase 2.2: Language-specific analysis
 						let enhancedAnalysis = null;
@@ -445,7 +447,8 @@ export class EnhancedASTContextBuilder {
 					{
 						maxAge: this.config.cacheMaxAge,
 						language,
-						filePath: file.path
+						filePath: file.path,
+						projectRoot: worktreePath  // Pass the correct project root
 					}
 				);
 

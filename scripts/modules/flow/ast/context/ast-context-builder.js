@@ -249,12 +249,15 @@ export class ASTContextBuilder {
 					cacheKey,
 					async () => {
 						console.debug(`[AST] Parsing ${language} file:`, file.path);
-						return await this.parserRegistry.parseFile(file.fullPath);
+						// Read file content first
+						const content = await fs.readFile(file.fullPath, 'utf-8');
+						return await this.parserRegistry.parseFile(file.fullPath, content);
 					},
 					{
 						maxAge: this.config.cacheMaxAge,
 						language,
-						filePath: file.path
+						filePath: file.path,
+						projectRoot: worktreePath  // Pass the correct project root
 					}
 				);
 

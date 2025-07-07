@@ -44,7 +44,7 @@ export class JavaScriptAnalyzer {
 		const analysis = {
 			language: this.detectLanguageVariant(filePath, content),
 			framework: await this.detectFramework(astData, content),
-			patterns: await this.analyzeJavaScriptPatterns(astData, content),
+			patterns: await this.analyzeJavaScriptPatterns(astData, content, filePath),
 			complexity: await this.analyzeComplexity(astData, content),
 			codeQuality: await this.analyzeCodeQuality(astData, content),
 			recommendations: []
@@ -362,14 +362,15 @@ export class JavaScriptAnalyzer {
 	 * Analyze JavaScript-specific patterns
 	 * @param {Object} astData - AST data
 	 * @param {string} content - Source code
+	 * @param {string} filePath - File path for context
 	 * @returns {Promise<Object>} Pattern analysis
 	 */
-	async analyzeJavaScriptPatterns(astData, content) {
+	async analyzeJavaScriptPatterns(astData, content, filePath = 'unknown') {
 		// Use Phase 2.1 CodeAnalyzer for base analysis
 		const basePatterns = await this.codeAnalyzer.analyzePatterns(
 			astData,
 			'javascript',
-			null,
+			filePath,
 			content
 		);
 

@@ -95,7 +95,7 @@ export async function getCachedOrExecute(
 	executeFunction,
 	options = {}
 ) {
-	const projectRoot = findProjectRoot(options.filePath);
+	const projectRoot = options.projectRoot || findProjectRoot(options.filePath);
 	const cacheFile = path.join(projectRoot, CACHE_DIR, `${cacheKey}.ast`);
 
 	try {

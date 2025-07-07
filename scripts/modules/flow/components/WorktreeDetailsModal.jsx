@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
-import { Select } from '@inkjs/ui';
+import { Select, Alert, Spinner, ConfirmInput } from '@inkjs/ui';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
@@ -22,19 +22,19 @@ export default function WorktreeDetailsModal({
 	const [error, setError] = useState(null);
 	const [showLinkTasksModal, setShowLinkTasksModal] = useState(false);
 	const [showClaudeModal, setShowClaudeModal] = useState(false);
-	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', 'jump', or 'workflow'
+	const [viewMode, setViewMode] = useState('details'); // 'details', 'tasks', 'jump', 'workflow', or 'quickActions'
 	const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const detailContentRef = useRef([]);
 	const [isCreatingPR, setIsCreatingPR] = useState(false);
 	const [isProcessingWorkflow, setIsProcessingWorkflow] = useState(false);
 	const [prResult, setPrResult] = useState(null);
+	const [showQuickActions, setShowQuickActions] = useState(false);
 	const [workflowResult, setWorkflowResult] = useState(null);
 	const [gitStatus, setGitStatus] = useState(null);
 	const [workflowOptions, setWorkflowOptions] = useState(null);
 	const [showTaskStatusModal, setShowTaskStatusModal] = useState(false);
 	const [selectedTaskForStatus, setSelectedTaskForStatus] = useState(null);
-	const [selectedStatusIndex, setSelectedStatusIndex] = useState(0);
 	const theme = useComponentTheme('modal');
 
 	// Constants for scrolling
@@ -302,9 +302,22 @@ Completed via Task Master Flow automated workflow.`
 						'ESC back to details'
 					]
 				};
+			case 'quickActions':
+				return {
+					...baseProps,
+					title: `Quick Actions: ${worktree.name}`,
+					preset: 'info',
+					keyboardHints: [
+						'↑↓ navigate',
+						'j/k vim nav',
+						'ENTER select',
+						'ESC back to details'
+					]
+				};
 			
 			default: {
 				const hints = [
+					'TAB quick actions',
 					'c launch Claude',
 					's set status',
 					'w workflow',
@@ -343,22 +356,19 @@ Completed via Task Master Flow automated workflow.`
 
 	const keyHandlers = {
 		escape: () => {
-			if (viewMode === 'tasks' || viewMode === 'jump' || viewMode === 'workflow') {
+			if (viewMode === 'tasks' || viewMode === 'jump' || viewMode === 'workflow' || viewMode === 'quickActions') {
 				setViewMode('details');
-			} else if (showTaskStatusModal) {
-				setShowTaskStatusModal(false);
-				setSelectedTaskForStatus(null);
-				setSelectedStatusIndex(0);
-			} else {
+					} else if (showTaskStatusModal) {
+			setShowTaskStatusModal(false);
+			setSelectedTaskForStatus(null);
+		} else {
 				onClose();
 			}
 		},
 
 		// Navigation for all modes
 		up: () => {
-			if (showTaskStatusModal) {
-				setSelectedStatusIndex(Math.max(0, selectedStatusIndex - 1));
-			} else if (viewMode === 'jump' || viewMode === 'tasks') {
+			if (viewMode === 'jump' || viewMode === 'tasks') {
 				setSelectedTaskIndex(Math.max(0, selectedTaskIndex - 1));
 			} else if (viewMode === 'workflow') {
 				// Workflow handled by Select component
@@ -368,22 +378,12 @@ Completed via Task Master Flow automated workflow.`
 		},
 
 		down: () => {
-			if (showTaskStatusModal) {
-				const statusOptions = [
-					{ value: 'pending', label: 'Pending' },
-					{ value: 'in-progress', label: 'In Progress' },
-					{ value: 'done', label: 'Done' },
-					{ value: 'review', label: 'Review' },
-					{ value: 'deferred', label: 'Deferred' },
-					{ value: 'cancelled', label: 'Cancelled' }
-				];
-				setSelectedStatusIndex(Math.min(statusOptions.length - 1, selectedStatusIndex + 1));
-			} else if (viewMode === 'jump' || viewMode === 'tasks') {
+			if (viewMode === 'jump' || viewMode === 'tasks') {
 				setSelectedTaskIndex(
 					Math.min(linkedTasks.length - 1, selectedTaskIndex + 1)
 				);
-					} else if (viewMode === 'workflow') {
-			// Workflow handled by Select component
+			} else if (viewMode === 'workflow') {
+				// Workflow handled by Select component
 			} else if (viewMode === 'details') {
 				setScrollOffset((prev) => {
 					const totalLines = detailContentRef.current.length;
@@ -411,20 +411,7 @@ Completed via Task Master Flow automated workflow.`
 		},
 
 		return: () => {
-			if (showTaskStatusModal && selectedTaskForStatus) {
-				const statusOptions = [
-					{ value: 'pending', label: 'Pending' },
-					{ value: 'in-progress', label: 'In Progress' },
-					{ value: 'done', label: 'Done' },
-					{ value: 'review', label: 'Review' },
-					{ value: 'deferred', label: 'Deferred' },
-					{ value: 'cancelled', label: 'Cancelled' }
-				];
-				const selectedStatus = statusOptions[selectedStatusIndex];
-				if (selectedStatus) {
-					handleSetTaskStatus(selectedTaskForStatus.id, selectedStatus.value);
-				}
-			} else if (viewMode === 'jump' || viewMode === 'tasks') {
+			if (viewMode === 'jump' || viewMode === 'tasks') {
 				if (linkedTasks.length > 0 && onNavigateToTask) {
 					const selectedTask = linkedTasks[selectedTaskIndex];
 					onNavigateToTask(selectedTask);
@@ -434,39 +421,45 @@ Completed via Task Master Flow automated workflow.`
 			}
 		},
 
-		// Action keys (details view only)
-		d: () => {
-			if (viewMode === 'details' && !worktree.isCurrent && onDelete) {
-				onDelete();
-			}
-		},
-
-		l: () => {
+		// Open Quick Actions menu
+		tab: () => {
 			if (viewMode === 'details') {
-				setShowLinkTasksModal(true);
+				setViewMode('quickActions');
 			}
 		},
 
-		v: () => {
+		// Keep individual action keys for power users (legacy support)
+		c: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
-				setViewMode('tasks');
-				setSelectedTaskIndex(0);
+				setShowClaudeModal(true);
 			}
 		},
 
-		// Use 'g' for jump to avoid conflict with 'j' vim navigation
-		g: () => {
-			if (
-				viewMode === 'details' &&
-				linkedTasks.length > 0 &&
-				onNavigateToTask
-			) {
-				setViewMode('jump');
-				setSelectedTaskIndex(0);
+		s: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const primaryTask = getPrimaryTask();
+				if (primaryTask) {
+					setShowTaskStatusModal(true);
+					setSelectedTaskForStatus(primaryTask);
+				}
 			}
 		},
 
-		// Use 't' for direct jump to subtask (if this worktree is linked to a subtask)
+		w: () => {
+			if (viewMode === 'details' && linkedTasks.length > 0) {
+				const hasChanges = details?.status && (
+					details.status.total > 0 || 
+					details.status.modified > 0 || 
+					details.status.added > 0 || 
+					details.status.deleted > 0 || 
+					details.status.untracked > 0
+				);
+				if (hasChanges) {
+					setViewMode('workflow');
+				}
+			}
+		},
+
 		t: () => {
 			if (viewMode === 'details' && onNavigateToTask && linkedTasks.length > 0) {
 				// Find the first subtask in the linked tasks
@@ -483,71 +476,18 @@ Completed via Task Master Flow automated workflow.`
 			}
 		},
 
-		c: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0) {
-				setShowClaudeModal(true);
+		// Additional legacy keys
+		g: () => {
+			if (
+				viewMode === 'details' &&
+				linkedTasks.length > 0 &&
+				onNavigateToTask
+			) {
+				setViewMode('jump');
+				setSelectedTaskIndex(0);
 			}
 		},
 
-		// Enhanced workflow keys
-		w: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
-				if (hasChanges) {
-					setViewMode('workflow');
-					setSelectedWorkflowOption(0);
-				}
-			}
-		},
-
-		p: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
-				if (hasChanges) {
-					handleWorkflowChoice('create-pr');
-				}
-			}
-		},
-
-		m: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
-				if (hasChanges) {
-					handleWorkflowChoice('merge-local');
-				}
-			}
-		},
-
-		s: () => {
-			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const primaryTask = getPrimaryTask();
-				if (primaryTask) {
-					setShowTaskStatusModal(true);
-					setSelectedTaskForStatus(primaryTask);
-					setSelectedStatusIndex(0);
-				}
-			}
-		},
-
-		// Complete workflow automation - commit, merge, and cleanup
 		x: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
 				const hasChanges = details?.status && (
@@ -603,7 +543,7 @@ Completed via Task Master Flow automated workflow.`
 		);
 	}
 
-	// Show task status modal
+	// Show task status modal using Ink UI Select
 	if (showTaskStatusModal && selectedTaskForStatus) {
 		const statusOptions = [
 			{ value: 'pending', label: 'Pending', description: 'Ready to be worked on' },
@@ -614,12 +554,16 @@ Completed via Task Master Flow automated workflow.`
 			{ value: 'cancelled', label: 'Cancelled', description: 'No longer needed' }
 		];
 
+		const handleStatusSelect = (selectedValue) => {
+			handleSetTaskStatus(selectedTaskForStatus.id, selectedValue);
+		};
+
 		return (
 			<BaseModal
 				title={`Set Status: ${selectedTaskForStatus.title}`}
 				preset="info"
 				width="60%"
-				height="50%"
+				height="60%"
 				keyboardHints={['↑↓ navigate', 'ENTER select', 'ESC cancel']}
 				onClose={() => {
 					setShowTaskStatusModal(false);
@@ -627,34 +571,31 @@ Completed via Task Master Flow automated workflow.`
 				}}
 			>
 				<Box flexDirection="column">
-					<Box marginBottom={1}>
+					<Box marginBottom={2}>
 						<Text color={theme.text}>
 							Current status: <Text color={theme.accent}>{selectedTaskForStatus.status}</Text>
 						</Text>
+						<Text color={theme.muted} marginTop={1}>
+							Choose a new status for this task:
+						</Text>
 					</Box>
 					
-					{statusOptions.map((option, index) => (
-						<Box
-							key={option.value}
-							backgroundColor={
-								index === selectedStatusIndex
-									? theme.backgroundHighlight
-									: undefined
-							}
-							paddingLeft={1}
-							paddingRight={1}
-						>
-							<Text
-								color={
-									index === selectedStatusIndex ? theme.accent : theme.text
-								}
-							>
-								{index === selectedStatusIndex ? '▸ ' : '  '}
-								{option.label}
-							</Text>
-							<Text color={theme.muted}> - {option.description}</Text>
-						</Box>
-					))}
+					<Select
+						options={statusOptions.map(option => ({
+							label: `${option.label}`,
+							value: option.value
+						}))}
+						onChange={handleStatusSelect}
+					/>
+
+					<Box marginTop={2}>
+						<Text color={theme.muted} bold>Status Descriptions:</Text>
+						{statusOptions.map((option) => (
+							<Box key={option.value} marginTop={1}>
+								<Text color={theme.muted}>• {option.label}: {option.description}</Text>
+							</Box>
+						))}
+					</Box>
 				</Box>
 			</BaseModal>
 		);
@@ -856,6 +797,161 @@ Completed via Task Master Flow automated workflow.`
 							))}
 						</Box>
 					)}
+				</Box>
+			</BaseModal>
+		);
+	}
+
+	// Quick Actions view
+	if (viewMode === 'quickActions') {
+		const quickActionsOptions = [];
+		
+		// Always available actions
+		if (linkedTasks.length > 0) {
+			quickActionsOptions.push({
+				value: 'claude',
+				label: '💡 Launch Claude Code',
+				description: 'Start a Claude Code session for this worktree'
+			});
+			
+			quickActionsOptions.push({
+				value: 'status',
+				label: '📊 Set Task Status',
+				description: 'Update the status of the linked task'
+			});
+		}
+		
+		// Workflow actions (only if there are changes)
+		const hasUncommittedChanges = gitStatus && gitStatus.hasUncommittedChanges;
+		const hasCommitsToShare = gitStatus && gitStatus.ahead > 0;
+		
+		if (hasUncommittedChanges || hasCommitsToShare) {
+			quickActionsOptions.push({
+				value: 'workflow',
+				label: '🔄 Commit & Workflow',
+				description: 'Commit changes and choose workflow (PR or merge)'
+			});
+			
+			if (hasUncommittedChanges) {
+				quickActionsOptions.push({
+					value: 'complete',
+					label: '⚡ Auto Complete',
+					description: 'Automatically commit, merge locally, and close'
+				});
+			}
+		}
+		
+		// Navigation actions
+		if (linkedTasks.length > 0 && onNavigateToTask) {
+			const subtask = linkedTasks.find(task => task.parentId);
+			if (subtask) {
+				quickActionsOptions.push({
+					value: 'jump-subtask',
+					label: '🎯 Jump to Subtask',
+					description: `Go to subtask ${subtask.id}: ${subtask.title}`
+				});
+			}
+			
+			quickActionsOptions.push({
+				value: 'view-tasks',
+				label: '📋 View All Tasks',
+				description: 'See all tasks linked to this worktree'
+			});
+		}
+		
+		// Additional actions
+		quickActionsOptions.push({
+			value: 'link-tasks',
+			label: '🔗 Link Tasks',
+			description: 'Link additional tasks to this worktree'
+		});
+		
+		if (!worktree.isCurrent && onDelete) {
+			quickActionsOptions.push({
+				value: 'delete',
+				label: '🗑️ Delete Worktree',
+				description: 'Permanently delete this worktree'
+			});
+		}
+
+		const handleQuickActionSelect = (selectedValue) => {
+			switch (selectedValue) {
+				case 'claude':
+					setShowClaudeModal(true);
+					setViewMode('details');
+					break;
+				case 'status': {
+					const primaryTask = getPrimaryTask();
+					if (primaryTask) {
+						setShowTaskStatusModal(true);
+						setSelectedTaskForStatus(primaryTask);
+					}
+					setViewMode('details');
+					break;
+				}
+				case 'workflow':
+					setViewMode('workflow');
+					break;
+				case 'complete':
+					handleCompleteWorkflow();
+					setViewMode('details');
+					break;
+				case 'jump-subtask': {
+					const subtask = linkedTasks.find(task => task.parentId);
+					if (subtask && onNavigateToTask) {
+						const subtaskNavData = {
+							id: subtask.id,
+							parentId: subtask.parentId,
+							title: subtask.title
+						};
+						onNavigateToTask(subtaskNavData);
+					}
+					break;
+				}
+				case 'view-tasks':
+					setViewMode('tasks');
+					setSelectedTaskIndex(0);
+					break;
+				case 'link-tasks':
+					setShowLinkTasksModal(true);
+					setViewMode('details');
+					break;
+				case 'delete':
+					if (onDelete) {
+						onDelete();
+					}
+					break;
+				default:
+					setViewMode('details');
+			}
+		};
+
+		return (
+			<BaseModal {...getModalProps()}>
+				<Box flexDirection="column">
+					<Box marginBottom={2}>
+						<Text bold color={theme.accent}>Quick Actions</Text>
+						<Text color={theme.muted} marginTop={1}>
+							Choose an action to perform on this worktree:
+						</Text>
+					</Box>
+					
+					{quickActionsOptions.length > 0 ? (
+						<Select
+							options={quickActionsOptions}
+							onChange={handleQuickActionSelect}
+						/>
+					) : (
+						<Box marginTop={2}>
+							<Text color={theme.muted}>No actions available</Text>
+						</Box>
+					)}
+
+					<Box marginTop={2}>
+						<Text color={theme.muted} fontSize="small">
+							💡 Tip: You can also use individual keys (c, s, w, t) for quick access
+						</Text>
+					</Box>
 				</Box>
 			</BaseModal>
 		);

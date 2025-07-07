@@ -193,9 +193,11 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			const task = tasks[0];
 			const query = `Best practices for implementing: ${task.title}. ${task.description || ''}`;
 
-			// Run research using backend
-			const results = await backend.research(query, {
+			// Run research using backend with saveTo to save to tasks.json
+			const results = await backend.research({
+				query,
 				taskIds: [task.id],
+				saveTo: task.id, // Save research results to tasks.json
 				saveToFile: false,
 				detailLevel: 'medium'
 			});

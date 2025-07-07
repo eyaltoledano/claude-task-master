@@ -49,6 +49,9 @@ export class JavaScriptParser extends BaseParser {
 			return this.handleParsingError(new Error('Invalid content'), filePath);
 		}
 
+		// Strip shebang line if present (e.g., #!/usr/bin/env node)
+		const cleanContent = this.stripShebang(content);
+
 		await this.initialize();
 
 		try {
@@ -56,16 +59,31 @@ export class JavaScriptParser extends BaseParser {
 
 			if (this.initialized && this.ts) {
 				// Use TypeScript compiler API for robust parsing
-				ast = this.parseWithTypeScript(filePath, content);
+				ast = this.parseWithTypeScript(filePath, cleanContent);
 			} else {
 				// Fallback to simple regex-based parsing
-				ast = this.parseWithRegex(content);
+				ast = this.parseWithRegex(cleanContent);
 			}
 
 			return this.createAnalysisResult(ast, filePath);
 		} catch (error) {
 			return this.handleParsingError(error, filePath);
 		}
+	}
+
+	/**
+	 * Strip shebang line from content
+	 * @param {string} content - Source code content
+	 * @returns {string} Content without shebang line
+	 */
+	stripShebang(content) {
+		if (content.startsWith('#!')) {
+			const firstNewline = content.indexOf('\n');
+			if (firstNewline !== -1) {
+				return content.substring(firstNewline + 1);
+			}
+		}
+		return content;
 	}
 
 	/**
