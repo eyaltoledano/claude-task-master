@@ -15,10 +15,10 @@ import { findProjectRoot } from '../utils.js';
  * @param {Object} programInstance - Commander program instance
  */
 export function registerFlowCommand(programInstance) {
-	// flow command - Interactive TUI with Effect integration subcommands
+	// flow command - Interactive TUI with sandbox provider management
 	programInstance
 		.command('flow [subcommand]')
-		.description('Launch interactive TUI for task management or run Effect integration commands')
+		.description('Launch interactive TUI for task management or manage sandbox providers')
 		.option(
 			'--backend <type>',
 			'Backend type: direct, cli, or mcp (default: direct)'
@@ -31,231 +31,64 @@ export function registerFlowCommand(programInstance) {
 			'--project-root <path>',
 			'Specify the project directory to manage tasks for (default: auto-detect)'
 		)
-		.option('--extended', 'Extended health check with diagnostics (for health subcommand)')
 		.option('--json', 'Output results in JSON format')
 		.option('--verbose', 'Show detailed error information')
-		.option('--smoke', 'Run only smoke test (for test subcommand)')
-		.option('--health', 'Check health of all providers (for providers subcommand)')
-		.option('--create', 'Create a test resource (for resources subcommand)')
-		.option('--list', 'List existing resources (for resources subcommand)')
-		.option('--provider <type>', 'Specify provider type (for resources subcommand)')
-		.option('--task-id <id>', 'Task ID for execution (for execute subcommand)')
-		.option('--code <code>', 'Code to execute (for execute subcommand)')
-		.option('--language <lang>', 'Programming language (for execute subcommand)', 'javascript')
-		.option('--timeout <ms>', 'Execution timeout in milliseconds (for execute subcommand)', '30000')
-		.option('--execution-id <id>', 'Execution ID (for status/cancel/stream subcommands)')
-		.option('--filter <status>', 'Filter executions by status (for status subcommand)')
-		.option('--follow', 'Follow execution updates in real-time (for stream subcommand)')
+		.option('--provider <type>', 'Specify provider type')
 		.addHelpText('after', `
-Effect Integration Subcommands:
-  health      Check Effect integration health and status
-  test        Run Effect integration tests
-  info        Display Effect module information
-  providers   List and manage sandbox providers (Phase 2)
-  resources   Test resource operations with providers (Phase 2)
-  execute     Execute tasks in sandbox environments (Phase 3)
-  status      Check execution status or list executions (Phase 3)
-  cancel      Cancel running execution (Phase 3)
-  stream      Stream execution updates in real-time (Phase 3)
-  agent       Manage AI agents (Phase 5)
-  generate    Generate code using AI agents (Phase 5)
-  init        Initialize Flow System: Configuration & Error Handling
-  config      Manage Flow configuration  
-  error       Manage error handling and circuit breakers
-  logging     Manage logging configuration and status
+Available Subcommands:
+  provider    Manage sandbox providers (VibeKit integration)
+
+Provider Management:
+  task-master flow provider list                      # List all available providers
+  task-master flow provider list --verbose            # Show detailed provider information
+  task-master flow provider test <name>               # Test provider connectivity
+  task-master flow provider capabilities <name>       # Show provider capabilities
+
+Available Providers:
+  mock        Mock provider for testing and development
+  e2b         E2B AI-focused sandbox platform
+  daytona     Daytona cloud-based development environments
+  modal       Modal Labs serverless compute with GPU support
+  fly         Fly.io global edge compute platform
 
 Examples:
-  task-master flow                                    # Launch interactive TUI
-  task-master flow health                             # Check Effect integration
-  task-master flow test                               # Run Effect tests
-  task-master flow info                               # Show Effect info
-  task-master flow providers --health                 # Check provider health
-  task-master flow resources --create                 # Create test resource
-  task-master flow execute --task-id test1 --code "console.log('Hello')"
-  task-master flow status --execution-id exec123      # Check execution status
-  task-master flow cancel --execution-id exec123      # Cancel execution
-  task-master flow stream --execution-id exec123      # Stream execution updates
-  task-master flow agent list                         # List available AI agents
-  task-master flow agent test mock                    # Test mock agent connectivity
-  task-master flow agent health                       # Check all agent health
-  task-master flow generate "create a REST API"       # Generate code using AI
-  task-master flow init                               # Initialize Flow System configuration
-  task-master flow config show                        # Show current configuration
-  task-master flow config set logLevel debug          # Set configuration value
-  task-master flow config env production              # Apply production environment
-  task-master flow error status                       # Show error handling status
-  task-master flow error reset provider               # Reset circuit breaker
-  task-master flow error test --with-retry            # Test error handling
-  task-master flow logging status                     # Show logging status
-  task-master flow logging level info                 # Set log level`)
+  task-master flow                                     # Launch interactive TUI
+  task-master flow provider list                      # List all providers
+  task-master flow provider test mock                 # Test mock provider
+  task-master flow provider capabilities e2b          # Show E2B capabilities
+  task-master flow provider list --verbose            # Detailed provider info`)
 		.action(async (subcommand, options) => {
 			try {
-				// Handle Effect integration subcommands
-				if (['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate', 'init', 'config', 'error', 'logging'].includes(subcommand)) {
-					try {
-						const { 
-							handleFlowHealthCommand, 
-							handleFlowTestCommand, 
-							handleFlowInfoCommand,
-							handleFlowProvidersCommand,
-							handleFlowResourcesCommand,
-							handleFlowExecuteCommand,
-							handleFlowStatusCommand,
-							handleFlowCancelCommand,
-							handleFlowStreamCommand,
-							handleFlowDebugCommand,
-							handleFlowAgentCommand,
-							handleFlowGenerateCommand
-						} = await import('./effect/cli-command.js');
-						
-						// Import Flow System commands
-						const {
-							initCommand,
-							configShowCommand,
-							configSetCommand,
-							configEnvCommand,
-							errorStatusCommand,
-							errorResetCommand,
-							errorTestCommand,
-							loggingStatusCommand,
-							loggingSetLevelCommand
-						} = await import('./commands/config.command.js');
-						
-						switch (subcommand) {
-							case 'health':
-								await handleFlowHealthCommand(options);
-								break;
-							case 'test':
-								await handleFlowTestCommand(options);
-								break;
-							case 'info':
-								await handleFlowInfoCommand(options);
-								break;
-							case 'providers':
-								await handleFlowProvidersCommand(options);
-								break;
-							case 'resources':
-								await handleFlowResourcesCommand(options);
-								break;
-							case 'execute':
-								await handleFlowExecuteCommand(options);
-								break;
-							case 'status':
-								await handleFlowStatusCommand(options);
-								break;
-							case 'cancel':
-								await handleFlowCancelCommand(options);
-								break;
-							case 'stream':
-								await handleFlowStreamCommand(options);
-								break;
-							case 'debug':
-								await handleFlowDebugCommand(options);
-								break;
-							case 'agent': {
-								const agentSubcommand = process.argv[4]; // Get the subcommand after 'flow agent'
-								// Only treat the next argument as provider if it doesn't start with --
-								const nextArg = process.argv[5];
-								const agentProvider = (nextArg && !nextArg.startsWith('--')) ? nextArg : null;
-								await handleFlowAgentCommand(agentSubcommand, agentProvider, options);
-								break;
-							}
-							case 'generate': {
-								const generateTask = process.argv[4]; // Get the task description after 'flow generate'
-								await handleFlowGenerateCommand(generateTask, options);
-								break;
-							}
-							case 'init': {
-								await initCommand(options);
-								break;
-							}
-							case 'config': {
-								const configSubcommand = process.argv[4]; // Get the subcommand after 'flow config'
-								const configArg1 = process.argv[5];
-								const configArg2 = process.argv[6];
-								
-								switch (configSubcommand) {
-									case 'show':
-										await configShowCommand(options);
-										break;
-									case 'set':
-										if (!configArg1 || !configArg2) {
-											console.error('Usage: flow config set <key> <value>');
-											process.exit(1);
-										}
-										await configSetCommand(configArg1, configArg2, options);
-										break;
-									case 'env':
-										if (!configArg1) {
-											console.error('Usage: flow config env <environment>');
-											process.exit(1);
-										}
-										await configEnvCommand(configArg1, options);
-										break;
-									default:
-										console.error('Unknown config subcommand. Available: show, set, env');
-										process.exit(1);
-								}
-								break;
-							}
-							case 'error': {
-								const errorSubcommand = process.argv[4]; // Get the subcommand after 'flow error'
-								const errorArg1 = process.argv[5];
-								
-								switch (errorSubcommand) {
-									case 'status':
-										await errorStatusCommand(options);
-										break;
-									case 'reset':
-										if (!errorArg1) {
-											console.error('Usage: flow error reset <breaker-name>');
-											process.exit(1);
-										}
-										await errorResetCommand(errorArg1, options);
-										break;
-									case 'test':
-										await errorTestCommand(errorArg1, options);
-										break;
-									default:
-										console.error('Unknown error subcommand. Available: status, reset, test');
-										process.exit(1);
-								}
-								break;
-							}
-							case 'logging': {
-								const loggingSubcommand = process.argv[4]; // Get the subcommand after 'flow logging'
-								const loggingArg1 = process.argv[5];
-								
-								switch (loggingSubcommand) {
-									case 'status':
-										await loggingStatusCommand(options);
-										break;
-									case 'level':
-										if (!loggingArg1) {
-											console.error('Usage: flow logging level <level>');
-											process.exit(1);
-										}
-										await loggingSetLevelCommand(loggingArg1, options);
-										break;
-									default:
-										console.error('Unknown logging subcommand. Available: status, level');
-										process.exit(1);
-								}
-								break;
-							}
-						}
-						return;
-					} catch (error) {
-						console.error(chalk.red(`Effect integration not available: ${error.message}`));
-						process.exit(1);
-					}
+				// Handle provider subcommand
+				if (subcommand === 'provider') {
+					// Import provider commands from execution.command.js
+					const { executionCommands } = await import('./commands/execution.command.js');
+					
+					const providerAction = process.argv[4] || 'list'; // Get action after 'flow provider'
+					const providerName = process.argv[5]; // Get provider name if specified
+					
+					const providerOptions = {
+						...options,
+						action: providerAction,
+						provider: providerName
+					};
+					
+					await executionCommands.provider(providerOptions);
+					return;
 				}
 				
-				// If no subcommand or unknown subcommand, launch the TUI
-				if (subcommand && !['health', 'test', 'info', 'providers', 'resources', 'execute', 'status', 'cancel', 'stream', 'debug', 'agent', 'generate', 'init', 'config', 'error', 'logging'].includes(subcommand)) {
+				// Handle unknown subcommands
+				if (subcommand && subcommand !== 'provider') {
 					console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
-					console.log(chalk.yellow('Available subcommands: health, test, info, providers, resources, execute, status, cancel, stream, debug, agent, generate, init, config, error, logging'));
-					console.log(chalk.yellow('Or run without subcommand to launch interactive TUI'));
+					console.log(chalk.yellow('Available subcommand: provider'));
+					console.log(chalk.yellow('Run without subcommand to launch interactive TUI'));
+					console.log(chalk.yellow(''));
+					console.log(chalk.yellow('Provider commands:'));
+					console.log(chalk.yellow('  task-master flow provider list                 # List all providers'));
+					console.log(chalk.yellow('  task-master flow provider test <name>         # Test provider health'));
+					console.log(chalk.yellow('  task-master flow provider capabilities <name> # Show provider capabilities'));
+					console.log(chalk.yellow(''));
+					console.log(chalk.yellow('Available providers: mock, e2b, daytona, modal, fly'));
 					process.exit(1);
 				}
 

@@ -514,4 +514,248 @@ export async function debugCommand(options = {}) {
     }
     throw error
   }
-} 
+}
+
+/**
+ * Provider management commands for Phase 7
+ */
+async function providerCommand(options) {
+  const { action = 'list', provider, verbose = false, json = false } = options
+
+  try {
+    switch (action) {
+      case 'list':
+        await listProviders({ verbose, json })
+        break
+      case 'test':
+        if (!provider) {
+          console.error('Provider name required for testing. Use --provider <name>')
+          process.exit(1)
+        }
+        await testProvider({ provider, verbose, json })
+        break
+      case 'capabilities':
+        if (!provider) {
+          console.error('Provider name required for capabilities. Use --provider <name>')
+          process.exit(1)
+        }
+        await getProviderCapabilities({ provider, json })
+        break
+      default:
+        console.error(`Unknown provider action: ${action}`)
+        process.exit(1)
+    }
+  } catch (error) {
+    console.error(`Provider command failed: ${error.message}`)
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
+  }
+}
+
+async function listProviders({ verbose, json }) {
+  const { availableProviders, globalRegistry } = await import('../providers/registry.js')
+  
+  if (json) {
+    console.log(JSON.stringify(availableProviders, null, 2))
+    return
+  }
+
+  console.log('📦 Available Sandbox Providers (VibeKit Integration):')
+  console.log('')
+
+  for (const [key, provider] of Object.entries(availableProviders)) {
+    // Check for API key configuration
+    const authConfig = provider.config.authentication
+    let hasApiKey = false
+    let configStatus = '⚠️'
+    
+    if (authConfig.type === 'none') {
+      hasApiKey = true
+      configStatus = '✅'
+    } else if (authConfig.type === 'api_key' && authConfig.envKey) {
+      hasApiKey = !!process.env[authConfig.envKey]
+      configStatus = hasApiKey ? '✅' : '⚠️'
+    }
+    
+    console.log(`${configStatus} ${provider.name} (${key})`)
+    console.log(`   Type: ${provider.type}`)
+    console.log(`   Features: ${provider.config.features.join(', ')}`)
+    console.log(`   Status: ${hasApiKey ? 'Ready' : `Missing ${authConfig.envKey || 'API Key'}`}`)
+    
+    if (verbose) {
+      console.log(`   Description: ${provider.metadata.description}`)
+      console.log(`   Stability: ${provider.metadata.stability}`)
+      console.log(`   API Endpoint: ${provider.config.apiEndpoint || 'N/A'}`)
+      if (provider.metadata.documentation) {
+        console.log(`   Documentation: ${provider.metadata.documentation}`)
+      }
+      if (authConfig.envKey) {
+        console.log(`   Environment Variable: ${authConfig.envKey}`)
+      }
+    }
+    console.log('')
+  }
+
+  console.log('Legend: ✅ Configured  ⚠️ Missing API Key')
+  if (!verbose) {
+    console.log('Use --verbose for detailed information')
+  }
+}
+
+async function testProvider({ provider, verbose, json }) {
+  console.log(`🧪 Testing provider: ${provider}`)
+
+  try {
+    const { availableProviders, globalRegistry } = await import('../providers/registry.js')
+    
+    if (!availableProviders[provider]) {
+      throw new Error(`Provider '${provider}' not found. Available: ${Object.keys(availableProviders).join(', ')}`)
+    }
+
+    const providerInfo = availableProviders[provider]
+    console.log(`Loading ${providerInfo.name}...`)
+
+    // Load factory and test health
+    const factory = await providerInfo.factory()
+    
+    // Get configuration with API key
+    const config = {
+      ...providerInfo.config,
+      ...(providerInfo.config.authentication.envKey && {
+        apiKey: process.env[providerInfo.config.authentication.envKey]
+      })
+    }
+
+    console.log(`Testing ${providerInfo.name} connection...`)
+    const healthResult = await factory.healthCheck(config)
+    
+    if (json) {
+      console.log(JSON.stringify(healthResult, null, 2))
+      return
+    }
+
+    if (healthResult.success) {
+      console.log(`✅ ${providerInfo.name} is healthy`)
+      console.log(`   Status: ${healthResult.status}`)
+      console.log(`   Provider: ${healthResult.provider}`)
+      
+      if (config.apiKey) {
+        console.log(`   API Key: Configured`)
+      } else {
+        console.log(`   API Key: Not required/configured`)
+      }
+      
+      if (verbose) {
+        console.log(`   Checked at: ${healthResult.checkedAt}`)
+        if (healthResult.metrics) {
+          console.log(`   Metrics:`, healthResult.metrics)
+        }
+        if (healthResult.activeResources !== undefined) {
+          console.log(`   Active Resources: ${healthResult.activeResources}`)
+        }
+        if (healthResult.templatesAvailable !== undefined) {
+          console.log(`   Templates Available: ${healthResult.templatesAvailable}`)
+        }
+        if (healthResult.creditsRemaining !== undefined) {
+          console.log(`   Credits Remaining: ${healthResult.creditsRemaining}`)
+        }
+        if (healthResult.profilesAvailable !== undefined) {
+          console.log(`   Profiles Available: ${healthResult.profilesAvailable}`)
+        }
+      }
+    } else {
+      console.log(`❌ ${providerInfo.name} is unhealthy`)
+      console.log(`   Error: ${healthResult.error}`)
+      
+      if (providerInfo.config.authentication.type === 'api_key') {
+        const envKey = providerInfo.config.authentication.envKey
+        const hasKey = !!process.env[envKey]
+        console.log(`   API Key (${envKey}): ${hasKey ? 'Configured' : 'Missing/Invalid'}`)
+        
+        if (!hasKey) {
+          console.log(`   💡 Set the ${envKey} environment variable to test this provider`)
+        }
+      }
+    }
+
+  } catch (error) {
+    if (json) {
+      console.log(JSON.stringify({ success: false, error: error.message }, null, 2))
+      return
+    }
+
+    console.log(`❌ Provider test failed: ${error.message}`)
+    if (verbose) {
+      console.error(error.stack)
+    }
+  }
+}
+
+async function getProviderCapabilities({ provider, json }) {
+  try {
+    const { availableProviders } = await import('../providers/registry.js')
+    
+    if (!availableProviders[provider]) {
+      throw new Error(`Provider '${provider}' not found. Available: ${Object.keys(availableProviders).join(', ')}`)
+    }
+
+    const providerInfo = availableProviders[provider]
+    const factory = await providerInfo.factory()
+    const capabilities = await factory.capabilities()
+
+    if (json) {
+      console.log(JSON.stringify(capabilities, null, 2))
+      return
+    }
+
+    console.log(`🔧 ${providerInfo.name} Capabilities:`)
+    console.log('')
+    console.log(`Provider: ${capabilities.provider}`)
+    console.log(`Languages: ${capabilities.languages.join(', ')}`)
+    console.log('')
+    console.log('Features:')
+    for (const [feature, supported] of Object.entries(capabilities.features)) {
+      const icon = supported ? '✅' : '❌'
+      console.log(`  ${icon} ${feature.replace(/([A-Z])/g, ' $1').toLowerCase()}`)
+    }
+    console.log('')
+    console.log('Limits:')
+    for (const [limit, value] of Object.entries(capabilities.limits)) {
+      const displayName = limit.replace(/([A-Z])/g, ' $1').toLowerCase()
+      console.log(`  ${displayName}: ${value}`)
+    }
+    console.log('')
+    console.log('Security:')
+    for (const [security, enabled] of Object.entries(capabilities.security)) {
+      const icon = enabled ? '✅' : '❌'
+      const displayName = security.replace(/([A-Z])/g, ' $1').toLowerCase()
+      console.log(`  ${icon} ${displayName}`)
+    }
+
+  } catch (error) {
+    if (json) {
+      console.log(JSON.stringify({ success: false, error: error.message }, null, 2))
+      return
+    }
+
+    console.error(`Failed to get capabilities: ${error.message}`)
+    if (verbose) {
+      console.error(error.stack)
+    }
+    process.exit(1)
+  }
+}
+
+/**
+ * Export all execution and provider commands
+ */
+export const executionCommands = {
+  execute: executeCommand,
+  status: statusCommand,
+  cancel: cancelCommand,
+  stream: streamCommand,
+  debug: debugCommand,
+  provider: providerCommand
+}

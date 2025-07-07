@@ -1,76 +1,79 @@
 /**
  * @fileoverview Mock Provider Implementation
  * 
- * Provides a mock implementation of the SandboxProvider interface for testing
+ * Provides a mock implementation of the sandbox provider for testing
  * and development. Simulates realistic provider behaviors without external dependencies.
+ * Based on VibeKit patterns and Task Master Phase 7 architecture.
  */
-
-import { Effect, Layer } from "effect"
-import { 
-  SandboxProvider, 
-  SandboxProviderInterface,
-  ResourceState,
-  ProviderError,
-  ResourceNotFoundError,
-  createResourceStatus,
-  createActionResult,
-  createProviderCapabilities,
-  createHealthStatus
-} from "../provider.interface.js"
 
 /**
- * In-memory storage for mock resources
+ * Mock error classes for realistic error simulation
  */
-class MockResourceStore {
+export class MockError extends Error {
+  constructor({ code, message, category, details = {} }) {
+    super(message)
+    this.name = 'MockError'
+    this.code = code
+    this.category = category
+    this.details = details
+  }
+}
+
+export class MockConnectionError extends MockError {
+  constructor({ code, message, category, details = {} }) {
+    super({ code, message, category, details })
+    this.name = 'MockConnectionError'
+    this.retryable = true
+  }
+}
+
+export class MockExecutionError extends MockError {
+  constructor({ code, message, category, details = {} }) {
+    super({ code, message, category, details })
+    this.name = 'MockExecutionError'
+    this.retryable = false
+  }
+}
+
+/**
+ * Mock Resource Manager for tracking resources
+ */
+class MockResourceManager {
   constructor() {
     this.resources = new Map()
-    this.actions = new Map()
+    this.executions = new Map()
     this.logs = new Map()
   }
 
-  addResource(resource) {
-    this.resources.set(resource.id, resource)
-    this.addLog(resource.id, "info", `Resource ${resource.id} created`)
-    return resource
-  }
-
-  getResource(id) {
-    return this.resources.get(id)
-  }
-
-  updateResource(id, updates) {
-    const existing = this.resources.get(id)
-    if (!existing) return null
-    
-    const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() }
-    this.resources.set(id, updated)
-    this.addLog(id, "info", `Resource ${id} updated`)
-    return updated
-  }
-
-  deleteResource(id) {
-    const resource = this.resources.get(id)
-    if (!resource) return false
-    
-    this.resources.delete(id)
-    this.logs.delete(id)
-    this.actions.delete(id)
-    return true
-  }
-
-  listResources() {
-    return Array.from(this.resources.values())
-  }
-
-  addAction(resourceId, action, result) {
-    if (!this.actions.has(resourceId)) {
-      this.actions.set(resourceId, [])
-    }
-    this.actions.get(resourceId).push({
-      action,
-      result,
-      timestamp: new Date().toISOString()
+  trackResource(resource) {
+    this.resources.set(resource.id, {
+      ...resource,
+      trackedAt: new Date().toISOString()
     })
+    this.addLog(resource.id, 'info', `Resource ${resource.id} tracked`)
+  }
+
+  updateResource(resourceId, updates) {
+    const resource = this.resources.get(resourceId)
+    if (resource) {
+      const updatedResource = { ...resource, ...updates, updatedAt: new Date().toISOString() }
+      this.resources.set(resourceId, updatedResource)
+      this.addLog(resourceId, 'info', `Resource ${resourceId} updated`)
+    }
+  }
+
+  untrackResource(resourceId) {
+    this.resources.delete(resourceId)
+    this.executions.delete(resourceId)
+    this.logs.delete(resourceId)
+  }
+
+  logExecution(resourceId, execution) {
+    if (!this.executions.has(resourceId)) {
+      this.executions.set(resourceId, [])
+    }
+    this.executions.get(resourceId).push(execution)
+    this.addLog(resourceId, 'info', `Executed ${execution.action} in ${execution.duration}ms`)
   }
 
   addLog(resourceId, level, message) {
@@ -80,210 +83,639 @@ class MockResourceStore {
     this.logs.get(resourceId).push({
       timestamp: new Date().toISOString(),
       level,
-      message
+      message,
+      provider: 'mock'
     })
   }
 
-  getResourceLogs(resourceId) {
-    return this.logs.get(resourceId) || []
+  getResourceLogs(resourceId, options = {}) {
+    const logs = this.logs.get(resourceId) || []
+    if (options.recent) {
+      return logs.slice(-10) // Return last 10 logs
+    }
+    return logs
   }
 }
 
-// Global store instance for the mock provider
-const mockStore = new MockResourceStore()
-
 /**
  * Mock Provider Implementation
+ * Simulates realistic sandbox provider behavior with code execution capabilities
  */
-export const MockProvider = {
-  ...SandboxProviderInterface,
-
-  /**
-   * Create a new mock resource
-   */
-  createResource: (config) => Effect.gen(function* () {
-    const resource = createResourceStatus({
-      id: `mock-${Date.now()}`,
-      state: ResourceState.CREATING,
-      health: "unknown",
-      config
-    })
-
-    // Simulate async creation
-    yield* Effect.sleep("100 millis")
+export class MockProvider {
+  constructor(config = {}) {
+    this.config = {
+      maxConcurrent: config.maxConcurrent || 10,
+      defaultTimeout: config.defaultTimeout || 30000,
+      simulateLatency: config.simulateLatency !== false,
+      failureRate: config.failureRate || 0, // 0-1, chance of random failures
+      ...config
+    }
     
-    const finalResource = mockStore.addResource({
-      ...resource,
-      state: ResourceState.RUNNING,
-      health: "healthy"
-    })
-
-    return finalResource
-  }),
+    this.resourceManager = new MockResourceManager()
+    this.activeResources = new Map()
+    this.metrics = {
+      created: 0,
+      destroyed: 0,
+      executed: 0,
+      errors: 0,
+      totalExecutionTime: 0
+    }
+  }
 
   /**
-   * Update an existing mock resource
+   * Initialize the Mock provider
    */
-  updateResource: (resourceId, updates) => Effect.gen(function* () {
-    const resource = mockStore.getResource(resourceId)
-    if (!resource) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
+  async initialize() {
+    if (this.config.simulateLatency) {
+      await this.simulateDelay(100, 300)
     }
 
-    const updatedResource = mockStore.updateResource(resourceId, updates)
-    return updatedResource
-  }),
+    return {
+      success: true,
+      provider: 'mock',
+      initialized: true,
+      capabilities: await this.getCapabilities()
+    }
+  }
+
+  /**
+   * Create a new mock sandbox resource
+   */
+  async createResource(config = {}) {
+    try {
+      if (this.activeResources.size >= this.config.maxConcurrent) {
+        throw new MockError({
+          code: 'MAX_RESOURCES_EXCEEDED',
+          message: `Maximum concurrent resources (${this.config.maxConcurrent}) exceeded`,
+          category: 'resource'
+        })
+      }
+
+      await this.simulateRandomFailure()
+      await this.simulateDelay(200, 800)
+
+      const resource = {
+        id: `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type: 'sandbox',
+        provider: 'mock',
+        status: 'ready',
+        template: config.template || 'mock-default',
+        createdAt: new Date().toISOString(),
+        config: {
+          language: config.language || 'javascript',
+          timeout: config.timeout || this.config.defaultTimeout,
+          environment: config.environment || {},
+          ...config
+        },
+        metadata: {
+          provider: 'mock',
+          simulated: true,
+          version: '1.0.0',
+          ...config.metadata
+        }
+      }
+
+      this.activeResources.set(resource.id, resource)
+      this.metrics.created++
+      this.resourceManager.trackResource(resource)
+
+      return {
+        success: true,
+        resource: {
+          id: resource.id,
+          type: resource.type,
+          provider: resource.provider,
+          status: resource.status,
+          template: resource.template,
+          createdAt: resource.createdAt,
+          metadata: resource.metadata
+        }
+      }
+    } catch (error) {
+      this.metrics.errors++
+      if (error instanceof MockError) {
+        throw error
+      }
+      throw new MockError({
+        code: 'RESOURCE_CREATION_FAILED',
+        message: `Failed to create mock resource: ${error.message}`,
+        category: 'resource',
+        details: { config, originalError: error }
+      })
+    }
+  }
+
+  /**
+   * Update resource configuration
+   */
+  async updateResource(resourceId, updates = {}) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        throw new MockError({
+          code: 'RESOURCE_NOT_FOUND',
+          message: `Resource ${resourceId} not found`,
+          category: 'resource'
+        })
+      }
+
+      await this.simulateDelay(100, 300)
+
+      if (updates.metadata) {
+        resource.metadata = { ...resource.metadata, ...updates.metadata }
+      }
+
+      if (updates.environment) {
+        resource.config.environment = { ...resource.config.environment, ...updates.environment }
+      }
+
+      resource.updatedAt = new Date().toISOString()
+      this.activeResources.set(resourceId, resource)
+      this.resourceManager.updateResource(resourceId, updates)
+
+      return {
+        success: true,
+        resource: {
+          id: resource.id,
+          status: resource.status,
+          updatedAt: resource.updatedAt,
+          metadata: resource.metadata
+        }
+      }
+    } catch (error) {
+      this.metrics.errors++
+      if (error instanceof MockError) {
+        throw error
+      }
+      throw new MockError({
+        code: 'RESOURCE_UPDATE_FAILED',
+        message: `Failed to update resource ${resourceId}: ${error.message}`,
+        category: 'resource',
+        details: { resourceId, updates, originalError: error }
+      })
+    }
+  }
 
   /**
    * Delete a mock resource
    */
-  deleteResource: (resourceId) => Effect.gen(function* () {
-    const success = mockStore.deleteResource(resourceId)
-    if (!success) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
-    }
-
-    return createActionResult(true, `Resource ${resourceId} deleted`)
-  }),
-
-  /**
-   * Get mock resource status
-   */
-  getResourceStatus: (resourceId) => Effect.gen(function* () {
-    const resource = mockStore.getResource(resourceId)
-    if (!resource) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
-    }
-
-    return resource
-  }),
-
-  /**
-   * List all mock resources
-   */
-  listResources: () => Effect.succeed(mockStore.listResources()),
-
-  /**
-   * Execute action on mock resource
-   */
-  executeAction: (resourceId, action, parameters = {}) => Effect.gen(function* () {
-    const resource = mockStore.getResource(resourceId)
-    if (!resource) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
-    }
-
-    // Simulate different actions
-    let message = `Executed ${action} on ${resourceId}`
-    let newState = resource.state
-
-    switch (action) {
-      case "start":
-        if (resource.state === ResourceState.STOPPED) {
-          newState = ResourceState.RUNNING
-          message = `Started resource ${resourceId}`
-        }
-        break
-      case "stop":
-        if (resource.state === ResourceState.RUNNING) {
-          newState = ResourceState.STOPPED
-          message = `Stopped resource ${resourceId}`
-        }
-        break
-      case "restart":
-        newState = ResourceState.RUNNING
-        message = `Restarted resource ${resourceId}`
-        break
-      case "scale": {
-        const replicas = parameters.replicas || 1
-        message = `Scaled resource ${resourceId} to ${replicas} replicas`
-        break
+  async deleteResource(resourceId) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        return { success: true, message: 'Resource already deleted' }
       }
-      default:
-        message = `Executed custom action '${action}' on ${resourceId}`
+
+      await this.simulateDelay(200, 500)
+
+      this.activeResources.delete(resourceId)
+      this.metrics.destroyed++
+      this.resourceManager.untrackResource(resourceId)
+
+      return {
+        success: true,
+        resourceId,
+        deletedAt: new Date().toISOString()
+      }
+    } catch (error) {
+      this.metrics.errors++
+      throw new MockError({
+        code: 'RESOURCE_DELETION_FAILED',
+        message: `Failed to delete resource ${resourceId}: ${error.message}`,
+        category: 'resource',
+        details: { resourceId, originalError: error }
+      })
     }
-
-    // Update resource state if it changed
-    if (newState !== resource.state) {
-      mockStore.updateResource(resourceId, { state: newState })
-    }
-
-    const result = createActionResult(true, message, { action, parameters })
-    mockStore.addAction(resourceId, action, result)
-    mockStore.addLog(resourceId, "info", message)
-
-    return result
-  }),
+  }
 
   /**
-   * Get mock provider capabilities
+   * Get resource status
    */
-  getCapabilities: () => Effect.succeed(createProviderCapabilities({
-    name: "Mock Provider",
-    supportedActions: ["create", "delete", "start", "stop", "restart", "scale"],
-    maxCpu: 16,
-    maxMemory: 32768,
-    maxStorage: 100000,
-    networking: {
-      externalAccess: true,
-      ipWhitelisting: false
-    },
-    security: {
-      tlsSupport: true,
-      secretsManagement: false
-    },
-    regions: ["mock-region-1", "mock-region-2"],
-    features: ["basic-operations", "resource-lifecycle", "action-simulation"]
-  })),
+  async getResourceStatus(resourceId) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        return {
+          success: false,
+          status: 'not_found',
+          message: `Resource ${resourceId} not found`
+        }
+      }
 
-  /**
-   * Mock provider health check
-   */
-  healthCheck: () => Effect.gen(function* () {
-    // Simulate some latency
-    yield* Effect.sleep("50 millis")
-    
-    return createHealthStatus("healthy", 50)
-  }),
+      await this.simulateDelay(50, 150)
 
-  /**
-   * Get mock resource logs
-   */
-  getResourceLogs: (resourceId, options = {}) => Effect.gen(function* () {
-    const resource = mockStore.getResource(resourceId)
-    if (!resource) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
+      return {
+        success: true,
+        resource: {
+          id: resource.id,
+          type: resource.type,
+          provider: resource.provider,
+          status: resource.status,
+          template: resource.template,
+          createdAt: resource.createdAt,
+          lastChecked: new Date().toISOString(),
+          metadata: resource.metadata
+        }
+      }
+    } catch (error) {
+      this.metrics.errors++
+      throw new MockError({
+        code: 'STATUS_CHECK_FAILED',
+        message: `Failed to get status for resource ${resourceId}: ${error.message}`,
+        category: 'resource',
+        details: { resourceId, originalError: error }
+      })
     }
+  }
 
-    const logs = mockStore.getResourceLogs(resourceId)
-    
+  /**
+   * List all resources
+   */
+  async listResources() {
+    try {
+      await this.simulateDelay(100, 250)
+
+      const resources = Array.from(this.activeResources.values()).map(resource => ({
+        id: resource.id,
+        type: resource.type,
+        provider: resource.provider,
+        status: resource.status,
+        template: resource.template,
+        createdAt: resource.createdAt,
+        metadata: resource.metadata
+      }))
+
+      return {
+        success: true,
+        resources,
+        total: resources.length,
+        provider: 'mock'
+      }
+    } catch (error) {
+      this.metrics.errors++
+      throw new MockError({
+        code: 'LIST_RESOURCES_FAILED',
+        message: `Failed to list resources: ${error.message}`,
+        category: 'resource',
+        details: { originalError: error }
+      })
+    }
+  }
+
+  /**
+   * Execute code in a mock sandbox
+   */
+  async executeAction(resourceId, action, parameters = {}) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        throw new MockError({
+          code: 'RESOURCE_NOT_FOUND',
+          message: `Resource ${resourceId} not found`,
+          category: 'resource'
+        })
+      }
+
+      if (action !== 'execute') {
+        throw new MockError({
+          code: 'UNSUPPORTED_ACTION',
+          message: `Action '${action}' not supported by Mock provider`,
+          category: 'execution'
+        })
+      }
+
+      const { code, language = 'javascript', timeout = 30000 } = parameters
+
+      if (!code) {
+        throw new MockError({
+          code: 'MISSING_CODE',
+          message: 'Code parameter is required for execution',
+          category: 'execution'
+        })
+      }
+
+      const startTime = Date.now()
+      await this.simulateRandomFailure()
+      
+      // Simulate execution time
+      const executionTime = Math.random() * 2000 + 500 // 500-2500ms
+      await this.simulateDelay(executionTime, executionTime + 100)
+
+      const endTime = Date.now()
+      this.metrics.executed++
+      this.metrics.totalExecutionTime += (endTime - startTime)
+
+      // Mock execution results based on code content
+      const result = this.simulateCodeExecution(code, language)
+
+      const execution = {
+        resourceId,
+        action,
+        language,
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(endTime).toISOString(),
+        duration: endTime - startTime,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        output: result.stdout,
+        metadata: {
+          provider: 'mock',
+          template: resource.template,
+          simulated: true
+        }
+      }
+
+      this.resourceManager.logExecution(resourceId, execution)
+
+      return {
+        success: true,
+        execution
+      }
+    } catch (error) {
+      this.metrics.errors++
+      if (error instanceof MockError) {
+        throw error
+      }
+      throw new MockExecutionError({
+        code: 'EXECUTION_FAILED',
+        message: `Failed to execute code in resource ${resourceId}: ${error.message}`,
+        category: 'execution',
+        details: { resourceId, action, parameters, originalError: error }
+      })
+    }
+  }
+
+  /**
+   * Get resource logs
+   */
+  async getResourceLogs(resourceId, options = {}) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        throw new MockError({
+          code: 'RESOURCE_NOT_FOUND',
+          message: `Resource ${resourceId} not found`,
+          category: 'resource'
+        })
+      }
+
+      await this.simulateDelay(100, 200)
+
+      const logs = this.resourceManager.getResourceLogs(resourceId, options)
+
+      return {
+        success: true,
+        logs,
+        resourceId,
+        provider: 'mock'
+      }
+    } catch (error) {
+      this.metrics.errors++
+      throw new MockError({
+        code: 'GET_LOGS_FAILED',
+        message: `Failed to get logs for resource ${resourceId}: ${error.message}`,
+        category: 'resource',
+        details: { resourceId, options, originalError: error }
+      })
+    }
+  }
+
+  /**
+   * Stream resource logs (mock implementation)
+   */
+  async streamResourceLogs(resourceId, callback) {
+    try {
+      const resource = this.activeResources.get(resourceId)
+      if (!resource) {
+        throw new MockError({
+          code: 'RESOURCE_NOT_FOUND',
+          message: `Resource ${resourceId} not found`,
+          category: 'resource'
+        })
+      }
+
+      // Simulate streaming with intervals
+      const streamInterval = setInterval(async () => {
+        try {
+          // Generate random log entries
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            level: ['info', 'debug', 'warn'][Math.floor(Math.random() * 3)],
+            message: `Mock log entry ${Date.now()}`,
+            provider: 'mock'
+          }
+          callback(logEntry)
+        } catch (error) {
+          callback({ 
+            type: 'error', 
+            message: error.message, 
+            timestamp: new Date().toISOString() 
+          })
+        }
+      }, 2000)
+
+      // Return cleanup function
+      return () => clearInterval(streamInterval)
+    } catch (error) {
+      this.metrics.errors++
+      throw new MockError({
+        code: 'STREAM_LOGS_FAILED',
+        message: `Failed to stream logs for resource ${resourceId}: ${error.message}`,
+        category: 'resource',
+        details: { resourceId, originalError: error }
+      })
+    }
+  }
+
+  /**
+   * Get provider capabilities
+   */
+  async getCapabilities() {
     return {
-      logs,
-      hasMore: false,
-      nextToken: null
+      provider: 'mock',
+      languages: ['javascript', 'typescript', 'python', 'bash', 'go', 'rust'],
+      features: {
+        filesystem: true,
+        networking: true,
+        persistentStorage: false,
+        realTimeStreaming: true,
+        packageInstallation: true,
+        multiLanguage: true,
+        simulation: true
+      },
+      limits: {
+        maxExecutionTime: this.config.defaultTimeout,
+        maxMemory: '4GB',
+        maxCPU: 4,
+        maxConcurrentSandboxes: this.config.maxConcurrent
+      },
+      security: {
+        containerIsolation: true,
+        networkIsolation: true,
+        fileSystemIsolation: true,
+        resourceLimits: true
+      }
     }
-  }),
+  }
 
   /**
-   * Stream mock resource logs (simplified)
+   * Health check
    */
-  streamResourceLogs: (resourceId, callback) => Effect.gen(function* () {
-    const resource = mockStore.getResource(resourceId)
-    if (!resource) {
-      yield* Effect.fail(new ResourceNotFoundError(resourceId, "mock"))
+  async healthCheck() {
+    try {
+      await this.simulateDelay(50, 150)
+      
+      // Simulate occasional health check failures
+      if (Math.random() < 0.1) { // 10% failure rate
+        throw new Error('Simulated health check failure')
+      }
+
+      return {
+        success: true,
+        provider: 'mock',
+        status: 'healthy',
+        checkedAt: new Date().toISOString(),
+        metrics: this.metrics,
+        activeResources: this.activeResources.size
+      }
+    } catch (error) {
+      this.metrics.errors++
+      return {
+        success: false,
+        provider: 'mock',
+        status: 'unhealthy',
+        error: error.message,
+        checkedAt: new Date().toISOString(),
+        metrics: this.metrics
+      }
+    }
+  }
+
+  /**
+   * Get provider metrics
+   */
+  getMetrics() {
+    return {
+      ...this.metrics,
+      activeResources: this.activeResources.size,
+      provider: 'mock',
+      averageExecutionTime: this.metrics.executed > 0 
+        ? this.metrics.totalExecutionTime / this.metrics.executed 
+        : 0
+    }
+  }
+
+  /**
+   * Clean up all resources
+   */
+  async cleanup() {
+    const cleanupPromises = Array.from(this.activeResources.keys()).map(
+      resourceId => this.deleteResource(resourceId).catch(error => 
+        console.warn(`Failed to cleanup resource ${resourceId}:`, error.message)
+      )
+    )
+
+    await Promise.all(cleanupPromises)
+    this.activeResources.clear()
+
+    return {
+      success: true,
+      cleanedUp: cleanupPromises.length,
+      provider: 'mock'
+    }
+  }
+
+  // Helper methods
+
+  /**
+   * Simulate network delay if enabled
+   */
+  async simulateDelay(min = 100, max = 500) {
+    if (!this.config.simulateLatency) return
+    
+    const delay = Math.random() * (max - min) + min
+    await new Promise(resolve => setTimeout(resolve, delay))
+  }
+
+  /**
+   * Simulate random failures based on failure rate
+   */
+  async simulateRandomFailure() {
+    if (Math.random() < this.config.failureRate) {
+      throw new MockConnectionError({
+        code: 'SIMULATED_FAILURE',
+        message: 'Simulated random failure for testing',
+        category: 'connection'
+      })
+    }
+  }
+
+  /**
+   * Simulate code execution with realistic outputs
+   */
+  simulateCodeExecution(code, language) {
+    // Simple code analysis for realistic outputs
+    if (code.includes('console.log') || code.includes('print')) {
+      return {
+        stdout: `Mock output for ${language} execution\nCode executed successfully\n`,
+        stderr: '',
+        exitCode: 0
+      }
     }
 
-    // Mock streaming by calling callback with existing logs
-    const logs = mockStore.getResourceLogs(resourceId)
-    logs.forEach(callback)
-
-    // Return cleanup function
-    return () => {
-      // No cleanup needed for mock
+    if (code.includes('error') || code.includes('throw')) {
+      return {
+        stdout: '',
+        stderr: `Mock error: Simulated execution error\n`,
+        exitCode: 1
+      }
     }
-  })
+
+    if (code.includes('import') || code.includes('require')) {
+      return {
+        stdout: `Dependencies loaded successfully\nExecution completed\n`,
+        stderr: '',
+        exitCode: 0
+      }
+    }
+
+    return {
+      stdout: `Mock execution result\nLanguage: ${language}\nExecution completed\n`,
+      stderr: '',
+      exitCode: 0
+    }
+  }
 }
 
 /**
- * Create a Layer that provides the MockProvider
+ * Create Mock provider instance
  */
-export const MockProviderLive = Layer.succeed(SandboxProvider, MockProvider) 
+export function createMockProvider(config) {
+  return new MockProvider(config)
+}
+
+/**
+ * Provider factory for registry
+ */
+export const MockProviderFactory = {
+  create: (config) => createMockProvider(config),
+  capabilities: async () => {
+    const provider = createMockProvider()
+    return provider.getCapabilities()
+  },
+  healthCheck: async (config) => {
+    const provider = createMockProvider(config)
+    try {
+      await provider.initialize()
+      return await provider.healthCheck()
+    } catch (error) {
+      return {
+        success: false,
+        provider: 'mock',
+        status: 'unhealthy',
+        error: error.message
+      }
+    }
+  }
+} 
