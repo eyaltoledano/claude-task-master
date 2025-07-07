@@ -434,10 +434,23 @@ export class EnhancedASTContextBuilder {
 							}
 						}
 
+						// Merge parser analysis with enhanced analysis
+						const mergedAnalysis = {
+							// Start with parser analysis (functions, classes, imports, complexity)
+							...(astResult.analysis || {}),
+							// Add enhanced analysis (patterns, framework detection, etc.)
+							...(enhancedAnalysis || {}),
+							// Ensure we preserve the core parser data
+							functions: astResult.analysis?.functions || [],
+							classes: astResult.analysis?.classes || [],
+							imports: astResult.analysis?.imports || [],
+							complexity: astResult.analysis?.complexity || enhancedAnalysis?.complexity || 1
+						};
+
 						return {
 							success: true,
 							ast: astResult.ast,
-							analysis: enhancedAnalysis,
+							analysis: mergedAnalysis,
 							content:
 								content.length > 10000
 									? content.substring(0, 10000) + '...'
