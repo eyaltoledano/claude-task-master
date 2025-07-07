@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
+import { StatusMessage, ProgressBar, Spinner, Badge } from '@inkjs/ui';
 import { style, gradient, getComponentTheme, getColor } from '../theme.js';
 import { useAppContext } from '../index.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { useExecutions } from '../hooks/useExecutions.js';
+import { useProviders } from '../hooks/useProviders.js';
 
 export const StatusScreen = () => {
 	const { setCurrentScreen, backend, currentTag } = useAppContext();
@@ -14,6 +17,10 @@ export const StatusScreen = () => {
 	const [modelsInfo, setModelsInfo] = useState(null);
 	const [mcpInfo, setMcpInfo] = useState(null);
 	const [complexityInfo, setComplexityInfo] = useState(null);
+	
+	// Add new execution and provider data
+	const { executions, loading: execLoading } = useExecutions();
+	const { providers, loading: provLoading } = useProviders();
 
 	// Get terminal width for dynamic borders
 	const terminalWidth = stdout?.columns || 80;
@@ -461,6 +468,108 @@ export const StatusScreen = () => {
 					</Box>
 				</Box>
 			)}
+
+			{/* Enhanced Execution Management Section */}
+			<Box flexDirection="column" marginBottom={2}>
+				<Text bold>{style('⚡ Execution Management', 'primary')}</Text>
+				<Box marginLeft={2} flexDirection="column">
+					{execLoading ? (
+						<Spinner label="Loading executions..." />
+					) : (
+						<>
+							<Box flexDirection="row" marginBottom={1}>
+								<Text>{style('Active Executions: ', 'text.secondary')}</Text>
+								<Box marginLeft={1}>
+									<Badge color="green">
+										{executions.filter(e => e.status === 'running').length} running
+									</Badge>
+								</Box>
+								<Box marginLeft={1}>
+									<Badge color="gray">
+										{executions.length} total
+									</Badge>
+								</Box>
+							</Box>
+							
+							{executions.slice(0, 3).map(execution => (
+								<Box key={execution.id} marginBottom={1} flexDirection="row">
+									<Box width="20%">
+										<Text color="gray">{execution.taskId}</Text>
+									</Box>
+									<Box width="50%">
+										{execution.status === 'running' && execution.progress ? (
+											<Box flexDirection="column">
+												<ProgressBar value={execution.progress} />
+												<Text color="gray">{Math.round(execution.progress * 100)}%</Text>
+											</Box>
+										) : (
+											<StatusMessage 
+												variant={
+													execution.status === 'completed' ? 'success' :
+													execution.status === 'failed' ? 'error' :
+													execution.status === 'running' ? 'info' : 'warning'
+												}
+											>
+												{execution.status}
+											</StatusMessage>
+										)}
+									</Box>
+									<Box width="30%">
+										<Badge color="blue">{execution.provider}</Badge>
+									</Box>
+								</Box>
+							))}
+							
+							{executions.length > 3 && (
+								<Text color="gray">... and {executions.length - 3} more (use /exec to view all)</Text>
+							)}
+							
+							{executions.length === 0 && (
+								<Text color="gray">No executions currently active</Text>
+							)}
+						</>
+					)}
+				</Box>
+			</Box>
+
+			{/* Enhanced Provider Status Section */}
+			<Box flexDirection="column" marginBottom={2}>
+				<Text bold>{style('🏗️ Provider Status', 'primary')}</Text>
+				<Box marginLeft={2} flexDirection="column">
+					{provLoading ? (
+						<Spinner label="Checking providers..." />
+					) : (
+						<>
+							{providers.map(provider => (
+								<Box key={provider.key} marginBottom={1} flexDirection="row">
+									<Box width="30%">
+										<Text>{style(provider.name, 'text.primary')}</Text>
+									</Box>
+									<Box width="40%">
+										<StatusMessage 
+											variant={provider.health?.success ? 'success' : 'error'}
+										>
+											{provider.health?.success ? 'Healthy' : 'Error'}
+										</StatusMessage>
+									</Box>
+									<Box width="30%" flexDirection="row">
+										{provider.isDefault && (
+											<Badge color="yellow">Default</Badge>
+										)}
+										<Box marginLeft={1}>
+											<Badge color="blue">{provider.type}</Badge>
+										</Box>
+									</Box>
+								</Box>
+							))}
+							
+							{providers.length === 0 && (
+								<Text color="gray">No providers configured</Text>
+							)}
+						</>
+					)}
+				</Box>
+			</Box>
 
 			{/* AI Models Configuration */}
 			<Box flexDirection="column" marginBottom={2}>

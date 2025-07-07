@@ -7,12 +7,14 @@ import React, {
 	useRef
 } from 'react';
 import { render, Text, Box, useInput, useApp } from 'ink';
+import { ThemeProvider, defaultTheme, extendTheme } from '@inkjs/ui';
 import TextInput from 'ink-text-input';
 import { spawn } from 'child_process';
 import { DirectBackend } from './backends/direct-backend.js';
 import { CliBackend } from './backends/cli-backend.js';
 import { theme, setTheme, getTheme } from './theme.js';
 import { MCPClientBackend } from './backends/mcp-client-backend.js';
+import { createInkUITheme } from './theme/ink-ui-theme.js';
 
 // Import screens
 import { WelcomeScreen } from './components/WelcomeScreen.jsx';
@@ -34,6 +36,7 @@ import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from './components/ProvidersScreen.jsx';
+import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
@@ -100,6 +103,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/parse', description: 'Parse PRD to generate tasks' },
 			{ name: '/tags', description: 'Manage task tags' },
 			{ name: '/next', description: 'Show next task to work on' },
+			{ name: '/exec', description: 'Manage task executions' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/providers', description: 'Manage sandbox providers' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
@@ -463,6 +467,10 @@ function FlowApp({ backend, options = {} }) {
 				case 'quit':
 					exit();
 					break;
+				case 'exec':
+				case 'executions':
+					setCurrentScreen('executions');
+					break;
 				case 'providers':
 					setCurrentScreen('providers');
 					break;
@@ -663,6 +671,9 @@ function FlowApp({ backend, options = {} }) {
 					case 'p':
 						setCurrentScreen('providers');
 						break;
+					case 'e':
+						setCurrentScreen('executions');
+						break;
 					default:
 						setNotification({
 							message: `Unknown shortcut: Ctrl+X ${input}`,
@@ -713,7 +724,8 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'status' &&
 				currentScreen !== 'worktrees' &&
 				currentScreen !== 'claude-code' &&
-				currentScreen !== 'providers'
+				currentScreen !== 'providers' &&
+				currentScreen !== 'executions'
 		}
 	);
 
@@ -958,6 +970,10 @@ function FlowApp({ backend, options = {} }) {
 								});
 							}}
 						/>
+					) : currentScreen === 'executions' ? (
+						<ExecutionManagementScreen
+							onBack={() => setCurrentScreen('welcome')}
+						/>
 					) : (
 						<>
 							{/* Main content area */}
@@ -1124,8 +1140,15 @@ export async function run(options = {}) {
 	// Initialize backend
 	await backend.initialize();
 
-	// Create app instance
-	const app = render(<FlowApp backend={backend} />);
+	// Create Ink UI theme
+	const inkUITheme = extendTheme(defaultTheme, createInkUITheme());
+
+	// Create app instance with ThemeProvider
+	const app = render(
+		<ThemeProvider theme={inkUITheme}>
+			<FlowApp backend={backend} options={options} />
+		</ThemeProvider>
+	);
 
 	// Wait for app to exit
 	await app.waitUntilExit();
