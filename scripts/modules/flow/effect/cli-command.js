@@ -18,15 +18,13 @@ import { SandboxProvider } from '../providers/provider.interface.js';
 
 // Phase 3: Execution Engine imports
 import { 
-  executeTask, 
-  getExecutionStatus, 
-  cancelExecution, 
-  listExecutions, 
-  streamExecution,
+  executeCommand,
+  statusCommand,
+  cancelCommand,
+  streamCommand,
   executeTasks,
-  displayExecutionSummary,
-  displayExecutionDetails,
-  validateTaskConfig
+  validateTaskConfig,
+  debugCommand
 } from '../commands/execution.command.js';
 
 /**
@@ -413,13 +411,13 @@ export async function handleFlowExecuteCommand(options = {}) {
     console.log();
     
     // Execute the task
-    const result = await executeTask(taskConfig, {
-      streaming: options.stream,
-      verbose: options.verbose
+    const result = await executeCommand(taskConfig, {
+      stream: options.stream,
+      verbose: options.verbose,
+      json: options.json
     });
     
-    console.log('✅ Execution completed successfully');
-    displayExecutionDetails(result, { json: options.json, verbose: options.verbose });
+    // Result display is handled by executeCommand
     
     return result;
     
@@ -442,19 +440,12 @@ export async function handleFlowStatusCommand(options = {}) {
     console.log('📊 Task Master Flow Status');
     console.log('─'.repeat(50));
     
-    if (options.executionId) {
-      // Get specific execution status
-      const status = await getExecutionStatus(options.executionId, options);
-      displayExecutionDetails(status, { json: options.json, verbose: options.verbose });
-    } else {
-      // List all executions
-      const filter = {};
-      if (options.status) filter.status = options.status;
-      if (options.provider) filter.provider = options.provider;
-      
-      const executions = await listExecutions(filter, options);
-      displayExecutionSummary(executions, { json: options.json });
-    }
+    // Use the enhanced status command that handles both single and list operations
+    await statusCommand(options.executionId, {
+      status: options.status,
+      verbose: options.verbose,
+      json: options.json
+    });
     
   } catch (error) {
     console.error('❌ Status command failed:', error.message);
@@ -480,16 +471,16 @@ export async function handleFlowCancelCommand(options = {}) {
       process.exit(1);
     }
     
-    const result = await cancelExecution(
+    const result = await cancelCommand(
       options.executionId, 
-      options.reason || "User cancellation", 
-      options
+      options.reason || "User requested cancellation", 
+      {
+        json: options.json,
+        verbose: options.verbose
+      }
     );
     
-    console.log('✅ Cancellation completed');
-    if (options.json) {
-      console.log(JSON.stringify(result, null, 2));
-    }
+    // Result display is handled by cancelCommand
     
     return result;
     
@@ -523,9 +514,9 @@ export async function handleFlowStreamCommand(options = {}) {
       process.exit(0);
     });
     
-    await streamExecution(options.executionId, {
+    await streamCommand(options.executionId, {
       json: options.json,
-      quiet: options.quiet,
+      noColors: options.quiet,
       verbose: options.verbose
     });
     
@@ -539,12 +530,11 @@ export async function handleFlowStreamCommand(options = {}) {
 }
 
 /**
- * Handle flow:debug command - Enhanced execution service test with multiple workarounds
+ * Handle flow:debug command - Enhanced execution service test with streaming capabilities
  */
 export async function handleFlowDebugCommand(options = {}) {
   try {
-    // Use the enhanced debug command from execution.command.js
-    const { debugCommand } = await import('../commands/execution.command.js');
+    // Use the enhanced debug command with Phase 4 streaming capabilities
     await debugCommand(options);
     
   } catch (error) {

@@ -1,12 +1,12 @@
 /**
- * @fileoverview Simplified Execution Service - Phase 3 Implementation
+ * @fileoverview Simplified Execution Service - Phase 3 Implementation with Phase 4 Streaming
  * 
  * Provides task orchestration capabilities using standard JavaScript patterns
  * instead of Effect Context.Tag system to avoid compatibility issues.
- * Maintains identical interface and functionality for seamless CLI integration.
+ * Enhanced with real-time streaming capabilities for Phase 4.
  */
 
-import { ProviderRegistry } from "../providers/registry.js"
+import { streamingService, MessageFormatter, LOG_LEVELS } from "./streaming.service.js"
 
 /**
  * Custom error types for execution engine
@@ -20,366 +20,476 @@ export class ExecutionError extends Error {
   }
 }
 
-export class ExecutionCancelledError extends ExecutionError {
-  constructor(message, taskId, executionId, reason) {
-    super(message, taskId, executionId)
+export class ExecutionCancelledError extends Error {
+  constructor(message, executionId) {
+    super(message)
     this.name = 'ExecutionCancelledError'
-    this.reason = reason
+    this.executionId = executionId
   }
 }
 
 /**
- * Task execution state model
+ * Task execution phases
  */
-export class TaskExecutionState {
-  constructor(executionId, taskId, config = {}) {
-    this.executionId = executionId
+export const EXECUTION_PHASES = {
+  INITIALIZING: 'initializing',
+  ACQUIRING: 'acquiring',
+  EXECUTING: 'executing',
+  CLEANING: 'cleaning',
+  COMPLETED: 'completed'
+}
+
+/**
+ * Enhanced execution state model with streaming support
+ */
+export class ExecutionState {
+  constructor(taskId, config) {
+    this.executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     this.taskId = taskId
     this.config = config
     this.status = 'pending'
-    this.phase = 'initializing'
-    this.startedAt = null
-    this.completedAt = null
-    this.error = null
-    this.result = null
+    this.phase = EXECUTION_PHASES.INITIALIZING
     this.progress = 0
+    this.startTime = null
+    this.endTime = null
+    this.output = []
     this.logs = []
-    this.resourceId = null
-    this.provider = null
-    this.cancelRequested = false
+    this.error = null
+    this.resources = new Map()
+    this.cancelled = false
     this.cancelReason = null
+    
+    // Streaming support
+    this.streamingActive = false
   }
 
-  updateStatus(status, phase = null) {
+  updateProgress(progress, phase = null, message = null) {
+    this.progress = Math.min(100, Math.max(0, progress))
+    if (phase) this.phase = phase
+    
+    // Emit streaming update if active
+    if (this.streamingActive) {
+      streamingService.updateProgress(this.executionId, this.progress, this.phase, message)
+    }
+  }
+
+  forceProgress(progress, phase = null, message = null) {
+    this.progress = Math.min(100, Math.max(0, progress))
+    if (phase) this.phase = phase
+    
+    // Emit immediate streaming update if active
+    if (this.streamingActive) {
+      streamingService.forceProgress(this.executionId, this.progress, this.phase, message)
+    }
+  }
+
+  addLog(level, message, details = null) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      details
+    }
+    this.logs.push(logEntry)
+    
+    // Emit streaming log if active
+    if (this.streamingActive) {
+      streamingService.emitLog(this.executionId, level, message, details)
+    }
+  }
+
+  setStatus(status, phase = null) {
     this.status = status
     if (phase) this.phase = phase
     
-    if (status === 'running' && !this.startedAt) {
-      this.startedAt = new Date().toISOString()
+    // Emit streaming status if active
+    if (this.streamingActive) {
+      streamingService.emitStatus(this.executionId, status, this.phase)
+    }
+  }
+
+  setPhase(phase, message = null) {
+    this.phase = phase
+    
+    // Emit streaming phase transition if active
+    if (this.streamingActive) {
+      streamingService.emitPhase(this.executionId, phase, message)
+    }
+  }
+
+  setError(error, phase = null) {
+    this.error = {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
     }
     
-    if (['completed', 'failed', 'cancelled'].includes(status) && !this.completedAt) {
-      this.completedAt = new Date().toISOString()
+    // Emit streaming error if active
+    if (this.streamingActive) {
+      streamingService.emitError(this.executionId, error, phase || this.phase)
     }
   }
 
-  addLog(message, level = 'info') {
-    this.logs.push({
-      timestamp: new Date().toISOString(),
-      level,
-      message
-    })
+  startStreaming() {
+    if (!this.streamingActive) {
+      streamingService.startStream(this.executionId)
+      this.streamingActive = true
+      
+      // Emit current state
+      streamingService.emitStatus(this.executionId, this.status, this.phase)
+      streamingService.forceProgress(this.executionId, this.progress, this.phase)
+    }
   }
 
-  requestCancel(reason = 'User cancellation') {
-    this.cancelRequested = true
-    this.cancelReason = reason
+  stopStreaming() {
+    if (this.streamingActive) {
+      streamingService.stopStream(this.executionId)
+      this.streamingActive = false
+    }
   }
 }
 
 /**
- * Simplified execution service without Effect dependencies
+ * Simplified execution service with streaming support
  */
 export class SimpleExecutionService {
   constructor() {
     this.executions = new Map()
-    this.registry = new ProviderRegistry()
-    this.listeners = new Map() // For streaming
+    this.listeners = new Map()
+    // Use simplified provider handling for Phase 4
+    this.providers = new Map([
+      ['mock', { 
+        name: 'Mock Provider', 
+        type: 'mock',
+        ready: true,
+        executeAction: async (action) => ({ success: true, output: 'Mock result' })
+      }]
+    ])
   }
 
   /**
-   * Generate unique execution ID
-   */
-  generateExecutionId() {
-    return `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  /**
-   * Execute a task with full lifecycle management
+   * Execute a task with full lifecycle management and streaming
    */
   async executeTask(config, options = {}) {
-    const executionId = this.generateExecutionId()
-    const state = new TaskExecutionState(executionId, config.taskId, config)
+    const taskId = config.taskId || `task_${Date.now()}`
+    const state = new ExecutionState(taskId, config)
     
-    this.executions.set(executionId, state)
+    this.executions.set(state.executionId, state)
     
     try {
-      // Validate configuration
-      this.validateTaskConfig(config)
-      
-      // Initialize execution
-      state.updateStatus('pending', 'initializing')
-      state.addLog(`Starting execution for task ${config.taskId}`)
-      
-      // Get provider
-      const provider = await this.getProvider(config.provider || 'mock')
-      state.provider = provider
-      
-      // Acquire resources
-      state.updateStatus('running', 'acquiring')
-      state.addLog('Acquiring execution resources')
-      
-      const resource = await provider.createResource({
-        type: 'task-execution',
-        resources: config.resources || { cpu: 1, memory: 512, storage: 1024 },
-        tags: { 
-          taskId: config.taskId,
-          executionId: executionId,
-          language: config.language || 'javascript'
+      // Start streaming if requested
+      if (options.stream !== false) {
+        state.startStreaming()
+      }
+
+      state.setStatus('running')
+      state.setPhase(EXECUTION_PHASES.INITIALIZING, 'Starting task execution')
+      state.addLog(LOG_LEVELS.INFO, `Starting execution for task: ${taskId}`)
+      state.updateProgress(5, EXECUTION_PHASES.INITIALIZING, 'Initializing execution environment')
+      state.startTime = new Date().toISOString()
+
+      // Phase 1: Resource Acquisition
+      state.setPhase(EXECUTION_PHASES.ACQUIRING, 'Acquiring execution resources')
+      state.addLog(LOG_LEVELS.INFO, 'Acquiring execution resources')
+      await this._simulateWork(200)
+      state.updateProgress(25, EXECUTION_PHASES.ACQUIRING, 'Resources acquired successfully')
+
+      // Acquire mock resources
+      const provider = this.providers.get('mock')
+      if (!provider) {
+        throw new Error('Mock provider not available')
+      }
+      state.resources.set('provider', provider)
+      state.resources.set('sandbox', { id: 'mock-sandbox', status: 'ready' })
+      state.addLog(LOG_LEVELS.INFO, 'Mock execution environment ready')
+
+      // Phase 2: Code Execution
+      state.setPhase(EXECUTION_PHASES.EXECUTING, 'Executing task code')
+      state.addLog(LOG_LEVELS.INFO, 'Beginning code execution')
+      state.updateProgress(50, EXECUTION_PHASES.EXECUTING, 'Executing user code')
+
+      // Simulate code execution with progress updates
+      const steps = [
+        { progress: 60, message: 'Parsing code structure' },
+        { progress: 70, message: 'Running code validation' },
+        { progress: 80, message: 'Executing main code block' },
+        { progress: 90, message: 'Processing output' }
+      ]
+
+      for (const step of steps) {
+        await this._simulateWork(300)
+        if (state.cancelled) {
+          throw new ExecutionCancelledError('Execution cancelled by user', state.executionId)
         }
-      })
-      
-      state.resourceId = resource.id
-      state.addLog(`Resource acquired: ${resource.id}`)
-      
-      // Execute task
-      state.updateStatus('running', 'executing')
-      state.addLog('Executing task code')
-      
-      const result = await this.executeCode(provider, resource, config)
-      
-      // Complete execution
-      state.updateStatus('completed', 'completed')
-      state.result = result
-      state.progress = 100
-      state.addLog('Task execution completed successfully')
-      
-      // Cleanup resources
-      await this.cleanupResources(provider, resource, state)
-      
+        state.updateProgress(step.progress, EXECUTION_PHASES.EXECUTING, step.message)
+        state.addLog(LOG_LEVELS.INFO, step.message)
+      }
+
+      // Simulate execution output
+      const mockOutput = this._generateMockOutput(config)
+      state.output.push(mockOutput)
+      state.addLog(LOG_LEVELS.INFO, 'Code execution completed successfully')
+      state.addLog(LOG_LEVELS.DEBUG, 'Output generated', { outputLength: mockOutput.length })
+
+      // Phase 3: Cleanup
+      state.setPhase(EXECUTION_PHASES.CLEANING, 'Cleaning up resources')
+      state.addLog(LOG_LEVELS.INFO, 'Starting resource cleanup')
+      await this._simulateWork(100)
+      state.updateProgress(95, EXECUTION_PHASES.CLEANING, 'Releasing resources')
+
+      // Clean up resources
+      state.resources.clear()
+      state.addLog(LOG_LEVELS.INFO, 'Resources cleaned up successfully')
+
+      // Phase 4: Completion
+      state.setPhase(EXECUTION_PHASES.COMPLETED, 'Execution completed')
+      state.forceProgress(100, EXECUTION_PHASES.COMPLETED, 'Task execution completed successfully')
+      state.setStatus('completed')
+      state.endTime = new Date().toISOString()
+      state.addLog(LOG_LEVELS.INFO, `Task execution completed in ${this._calculateDuration(state)}ms`)
+
       return {
-        executionId,
-        taskId: config.taskId,
+        executionId: state.executionId,
+        taskId,
         status: 'completed',
-        result: result,
-        duration: new Date() - new Date(state.startedAt),
+        progress: 100,
+        output: state.output,
+        duration: this._calculateDuration(state),
         logs: state.logs
       }
-      
+
     } catch (error) {
-      state.updateStatus('failed', 'failed')
-      state.error = error.message
-      state.addLog(`Execution failed: ${error.message}`, 'error')
+      state.setStatus('failed')
+      state.setError(error)
+      state.endTime = new Date().toISOString()
+      state.addLog(LOG_LEVELS.ERROR, `Execution failed: ${error.message}`)
       
-      // Cleanup on error
-      if (state.resourceId && state.provider) {
-        await this.cleanupResources(state.provider, { id: state.resourceId }, state)
+      if (error instanceof ExecutionCancelledError) {
+        state.setStatus('cancelled')
+        state.addLog(LOG_LEVELS.WARN, `Execution cancelled: ${error.message}`)
       }
-      
-      throw new ExecutionError(
-        `Task execution failed: ${error.message}`,
-        config.taskId,
-        executionId
-      )
+
+      throw error
+    } finally {
+      // Always stop streaming when execution ends
+      state.stopStreaming()
     }
   }
 
   /**
-   * Get execution status
+   * Get execution status with streaming support
    */
-  async getExecutionStatus(executionId) {
+  getExecutionStatus(executionId) {
     const state = this.executions.get(executionId)
     if (!state) {
-      throw new ExecutionError(`Execution not found: ${executionId}`, null, executionId)
+      throw new Error(`Execution ${executionId} not found`)
     }
-    
+
     return {
       executionId: state.executionId,
       taskId: state.taskId,
       status: state.status,
       phase: state.phase,
       progress: state.progress,
-      startedAt: state.startedAt,
-      completedAt: state.completedAt,
-      result: state.result,
-      error: state.error,
+      startTime: state.startTime,
+      endTime: state.endTime,
+      output: state.output,
       logs: state.logs,
-      resourceId: state.resourceId,
-      provider: state.provider?.name || 'unknown'
+      error: state.error,
+      cancelled: state.cancelled,
+      cancelReason: state.cancelReason,
+      streamingActive: state.streamingActive,
+      duration: state.endTime ? this._calculateDuration(state) : null
     }
   }
 
   /**
-   * Cancel execution
+   * Cancel execution with streaming notification
    */
-  async cancelExecution(executionId, reason = 'User cancellation') {
+  async cancelExecution(executionId, reason = 'User requested cancellation') {
     const state = this.executions.get(executionId)
     if (!state) {
-      throw new ExecutionError(`Execution not found: ${executionId}`, null, executionId)
+      throw new Error(`Execution ${executionId} not found`)
     }
-    
-    if (!['pending', 'running'].includes(state.status)) {
-      throw new ExecutionError(
-        `Cannot cancel execution in status: ${state.status}`,
-        state.taskId,
-        executionId
-      )
+
+    if (state.status === 'completed' || state.status === 'failed' || state.cancelled) {
+      throw new Error(`Cannot cancel execution ${executionId}: already ${state.status}`)
     }
+
+    state.cancelled = true
+    state.cancelReason = reason
+    state.addLog(LOG_LEVELS.WARN, `Cancellation requested: ${reason}`)
     
-    state.requestCancel(reason)
-    state.updateStatus('cancelled', 'cancelled')
-    state.addLog(`Execution cancelled: ${reason}`, 'warn')
-    
-    // Cleanup resources
-    if (state.resourceId && state.provider) {
-      await this.cleanupResources(state.provider, { id: state.resourceId }, state)
-    }
-    
+    // Note: The actual cancellation will be handled by the execution loop
     return {
       executionId,
-      taskId: state.taskId,
-      status: 'cancelled',
-      reason: reason,
-      cancelledAt: state.completedAt
+      status: 'cancelling',
+      reason
     }
   }
 
   /**
-   * List executions with filtering
+   * Stream execution updates using async iterator
    */
-  async listExecutions(filter = {}) {
-    const executions = Array.from(this.executions.values())
-    
-    let filtered = executions
-    
-    if (filter.status) {
-      filtered = filtered.filter(e => e.status === filter.status)
-    }
-    
-    if (filter.taskId) {
-      filtered = filtered.filter(e => e.taskId === filter.taskId)
-    }
-    
-    if (filter.provider) {
-      filtered = filtered.filter(e => e.provider?.name === filter.provider)
-    }
-    
-    return filtered.map(state => ({
-      executionId: state.executionId,
-      taskId: state.taskId,
-      status: state.status,
-      phase: state.phase,
-      progress: state.progress,
-      startedAt: state.startedAt,
-      completedAt: state.completedAt,
-      provider: state.provider?.name || 'unknown'
-    }))
-  }
-
-  /**
-   * Stream execution updates
-   */
-  async streamExecution(executionId, callback) {
+  async* streamExecution(executionId) {
     const state = this.executions.get(executionId)
     if (!state) {
-      throw new ExecutionError(`Execution not found: ${executionId}`, null, executionId)
+      throw new Error(`Execution ${executionId} not found`)
     }
-    
-    // Add listener for this execution
-    if (!this.listeners.has(executionId)) {
-      this.listeners.set(executionId, [])
+
+    // Start streaming if not already active
+    if (!state.streamingActive) {
+      state.startStreaming()
     }
-    this.listeners.get(executionId).push(callback)
-    
-    // Send current state
-    callback({
-      type: 'status',
-      executionId,
-      data: await this.getExecutionStatus(executionId)
-    })
-    
-    // Return cleanup function
-    return () => {
-      const listeners = this.listeners.get(executionId)
-      if (listeners) {
-        const index = listeners.indexOf(callback)
-        if (index > -1) {
-          listeners.splice(index, 1)
-        }
+
+    // Use the streaming service's async iterator
+    try {
+      for await (const message of streamingService.streamMessages(executionId)) {
+        yield message
       }
+    } catch (error) {
+      // Handle streaming errors
+      throw new Error(`Streaming failed for execution ${executionId}: ${error.message}`)
     }
   }
 
   /**
-   * Execute multiple tasks with concurrency control
+   * Subscribe to execution updates
    */
-  async executeTasks(configs, options = {}) {
-    const { maxConcurrency = 3 } = options
+  subscribeToExecution(executionId, listener) {
+    return streamingService.subscribe(executionId, listener)
+  }
+
+  /**
+   * Get execution stream (Node.js Readable)
+   */
+  getExecutionStream(executionId) {
+    const state = this.executions.get(executionId)
+    if (!state) {
+      throw new Error(`Execution ${executionId} not found`)
+    }
+
+    // Start streaming if not already active
+    if (!state.streamingActive) {
+      state.startStreaming()
+    }
+
+    return streamingService.getOutputStream(executionId)
+  }
+
+  /**
+   * List executions with optional filtering
+   */
+  listExecutions(filters = {}) {
     const results = []
     
-    // Execute tasks in batches
-    for (let i = 0; i < configs.length; i += maxConcurrency) {
-      const batch = configs.slice(i, i + maxConcurrency)
-      const batchPromises = batch.map(config => this.executeTask(config, options))
+    for (const [executionId, state] of this.executions) {
+      if (filters.status && state.status !== filters.status) continue
+      if (filters.taskId && state.taskId !== filters.taskId) continue
       
-      const batchResults = await Promise.allSettled(batchPromises)
-      results.push(...batchResults)
+      results.push({
+        executionId: state.executionId,
+        taskId: state.taskId,
+        status: state.status,
+        phase: state.phase,
+        progress: state.progress,
+        startTime: state.startTime,
+        endTime: state.endTime,
+        cancelled: state.cancelled,
+        streamingActive: state.streamingActive,
+        duration: state.endTime ? this._calculateDuration(state) : null
+      })
     }
     
     return results
   }
 
   /**
-   * Helper methods
+   * Execute multiple tasks with concurrency control
    */
-  
-  validateTaskConfig(config) {
-    if (!config.taskId) {
-      throw new ExecutionError('Task ID is required', config.taskId)
-    }
-    
-    if (!config.code && !config.action) {
-      throw new ExecutionError('Either code or action must be specified', config.taskId)
-    }
-    
-    if (config.timeout && (config.timeout < 1000 || config.timeout > 300000)) {
-      throw new ExecutionError('Timeout must be between 1000ms and 300000ms', config.taskId)
-    }
-  }
+  async executeTasks(configs, options = {}) {
+    const maxConcurrency = options.maxConcurrency || 3
+    const results = []
+    const executing = new Set()
 
-  async getProvider(providerType) {
-    // For now, always use mock provider
-    // In full implementation, this would use the provider registry
-    return {
-      name: 'mock',
-      createResource: async (config) => ({
-        id: `resource_${Date.now()}`,
-        state: 'running',
-        health: 'healthy',
-        createdAt: new Date().toISOString()
-      }),
-      deleteResource: async (id) => ({ deleted: true })
-    }
-  }
-
-  async executeCode(provider, resource, config) {
-    // Mock code execution
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
-    
-    // Simulate execution result
-    return {
-      output: `Executed: ${config.code || config.action}`,
-      exitCode: 0,
-      duration: 1500,
-      logs: ['Task started', 'Code executed successfully', 'Task completed']
-    }
-  }
-
-  async cleanupResources(provider, resource, state) {
-    try {
-      if (provider.deleteResource) {
-        await provider.deleteResource(resource.id)
-        state.addLog(`Resource ${resource.id} cleaned up`)
+    for (const config of configs) {
+      // Wait if we've hit the concurrency limit
+      while (executing.size >= maxConcurrency) {
+        await Promise.race(executing)
       }
-    } catch (error) {
-      state.addLog(`Resource cleanup failed: ${error.message}`, 'warn')
+
+      const promise = this.executeTask(config, options)
+        .then(result => {
+          executing.delete(promise)
+          return result
+        })
+        .catch(error => {
+          executing.delete(promise)
+          throw error
+        })
+
+      executing.add(promise)
+      results.push(promise)
     }
+
+    // Wait for all remaining executions
+    return Promise.allSettled(results)
+  }
+
+  /**
+   * Check if streaming is active for execution
+   */
+  isStreamingActive(executionId) {
+    return streamingService.isStreaming(executionId)
+  }
+
+  /**
+   * Get list of active streams
+   */
+  getActiveStreams() {
+    return streamingService.getActiveStreams()
+  }
+
+  // Private helper methods
+  async _simulateWork(ms) {
+    await new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  _generateMockOutput(config) {
+    if (config.code) {
+      return `// Mock execution output for: ${config.taskId}\n// Code: ${config.code}\n// Result: Success\nconsole.log('Hello from ${config.taskId}!');`
+    }
+    return `Mock execution completed for task: ${config.taskId}`
+  }
+
+  _calculateDuration(state) {
+    if (!state.startTime || !state.endTime) return null
+    return new Date(state.endTime).getTime() - new Date(state.startTime).getTime()
+  }
+
+  /**
+   * Cleanup service resources
+   */
+  cleanup() {
+    // Stop all active streams
+    for (const [executionId] of this.executions) {
+      const state = this.executions.get(executionId)
+      if (state && state.streamingActive) {
+        state.stopStreaming()
+      }
+    }
+    
+    // Clean up streaming service
+    streamingService.cleanup()
+    
+    // Clear executions
+    this.executions.clear()
+    this.listeners.clear()
   }
 }
 
-/**
- * Export singleton instance
- */
+// Singleton instance for the service
 export const executionService = new SimpleExecutionService()
 
 /**
